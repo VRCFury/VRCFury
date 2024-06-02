@@ -157,7 +157,6 @@ internal static class FeatureFinder {
         return wrapper;
     }
 
-    [CanBeNull]
     public static FeatureBuilder GetBuilder(FeatureModel model, VFGameObject gameObject, VRCFuryInjector injector, VFGameObject avatarObject) {
         if (model == null) {
             throw new Exception(

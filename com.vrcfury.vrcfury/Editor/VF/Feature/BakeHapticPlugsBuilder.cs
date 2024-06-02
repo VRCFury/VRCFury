@@ -17,7 +17,6 @@ using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Dynamics;
-using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
     [VFService]
@@ -34,6 +33,8 @@ namespace VF.Feature {
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
         [VFAutowired] private readonly ClipRewriteService clipRewriteService;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly AvatarBindingStateService avatarBindingStateService;
 
         private readonly Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
             new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
@@ -164,7 +165,7 @@ namespace VF.Feature {
                                     useHipAvoidance: plug.useHipAvoidance);
                             }
                             void SendParam(string shaderParam, string tag) {
-                                var oneClip = fx.NewClip($"{shaderParam}_one");
+                                var oneClip = clipFactory.NewClip($"{shaderParam}_one");
                                 foreach (var r in renderers.Select(r => r.renderer)) {
                                     var path = r.owner().GetPath(manager.AvatarObject);
                                     var binding = EditorCurveBinding.FloatCurve(path, r.GetType(), $"material.{shaderParam}");
@@ -185,7 +186,7 @@ namespace VF.Feature {
                         }
                         
                         if (spsPlusClip == null) {
-                            spsPlusClip = fx.NewClip("SpsPlus");
+                            spsPlusClip = clipFactory.NewClip("SpsPlus");
                             directTree.Add(spsPlusClip);
                         }
 
@@ -219,7 +220,7 @@ namespace VF.Feature {
                                 .NewMenuToggle(
                                     $"{spsOptions.GetOptionsPath()}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
                                     param);
-                            tipLightOnClip = fx.NewClip("EnableAutoReceivers");
+                            tipLightOnClip = clipFactory.NewClip("EnableAutoReceivers");
                             var layer = fx.NewLayer("Tip Light");
                             var off = layer.NewState("Off");
                             var on = layer.NewState("On").WithAnimation(tipLightOnClip);
@@ -252,7 +253,7 @@ namespace VF.Feature {
             public VFGameObject plugObject;
             public SkinnedMeshRenderer skin;
             public VFGameObject bakeRoot;
-            public Func<Material, Material> configureMaterial;
+            public Func<int, Material, Material> configureMaterial;
             public IList<string> spsBlendshapes;
         }
         private readonly List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
@@ -311,9 +312,9 @@ namespace VF.Feature {
                             }
                         }
 
-                        if (!curve.IsFloat && binding.path == pathToRenderer && binding.propertyName.StartsWith("m_Materials")) {
+                        if (!curve.IsFloat && binding.path == pathToRenderer && avatarBindingStateService.TryParseMaterialSlot(binding, out _, out var slotNum)) {
                             var newKeys = curve.ObjectCurve.Select(frame => {
-                                if (frame.value is Material m) frame.value = rewrite.configureMaterial(m);
+                                if (frame.value is Material m) frame.value = rewrite.configureMaterial(slotNum, m);
                                 return frame;
                             }).ToArray();
                             clip.SetCurve(binding, newKeys);
@@ -322,7 +323,9 @@ namespace VF.Feature {
                 }
                 clipRewriteService.ForAllClips(RewriteClip);
 
-                rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials.Select(rewrite.configureMaterial).ToArray();
+                rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials
+                    .Select((mat,slotNum) => rewrite.configureMaterial(slotNum, mat))
+                    .ToArray();
             }
         }
 

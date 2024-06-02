@@ -19,6 +19,7 @@ namespace VF.Feature {
     internal class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
         [VFAutowired] private readonly FixWriteDefaultsBuilder fixWriteDefaults;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
         
         [FeatureBuilderAction(FeatureOrder.DirectTreeOptimizer)]
         public void Apply() {
@@ -47,7 +48,7 @@ namespace VF.Feature {
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
 
             if (eligibleLayers.Count > 0) {
-                var tree = fx.NewBlendTree("Optimized DBT");
+                var tree = clipFactory.NewBlendTree("Optimized DBT");
                 tree.blendType = BlendTreeType.Direct;
                 var layer = fx.NewLayer("Optimized DBT");
                 layer.NewState("DBT").WithAnimation(tree);
@@ -59,12 +60,12 @@ namespace VF.Feature {
                     VFAFloat param;
                     Motion motion;
                     if (!offEmpty) {
-                        var subTree = fx.NewBlendTree("Layer " + toggle.offState.name);
+                        var subTree = clipFactory.NewBlendTree("Layer " + toggle.offState.name);
                         subTree.useAutomaticThresholds = false;
                         subTree.blendType = BlendTreeType.Simple1D;
                         subTree.AddChild(toggle.offState, 0);
                         subTree.AddChild(
-                            !onEmpty ? toggle.onState : fx.GetEmptyClip(), 1);
+                            !onEmpty ? toggle.onState : clipFactory.GetEmptyClip(), 1);
                         subTree.blendParameter = toggle.param;
                         param = fx.One();
                         motion = subTree;
@@ -274,7 +275,7 @@ namespace VF.Feature {
                     if (string.IsNullOrWhiteSpace(state.timeParameter)) {
                         throw new DoNotOptimizeException($"{state.name} contains a motion time clip without a valid parameter");
                     }
-                    var subTree = fx.NewBlendTree($"Layer {layer.name} - {state.name}");
+                    var subTree = clipFactory.NewBlendTree($"Layer {layer.name} - {state.name}");
                     subTree.useAutomaticThresholds = false;
                     subTree.blendType = BlendTreeType.Simple1D;
                     subTree.AddChild(dualState.Item1, 0);

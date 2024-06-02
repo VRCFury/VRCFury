@@ -94,6 +94,15 @@ namespace VF.Inspector {
                 text.Add($"Detected Length: {size.worldLength}m");
                 text.Add($"Detected Radius: {size.worldRadius}m");
 
+                text.Add("Patching Material Slots:");
+                foreach (var renderer in size.matSlots.GetKeys()) {
+                    text.Add($"  {renderer.name}");
+                    foreach (var slot in size.matSlots.Get(renderer)) {
+                        var matName = renderer.GetComponent<Renderer>()?.sharedMaterials[slot]?.name ?? "Unset";
+                        text.Add($"    #{slot} (currently {matName})");
+                    }
+                }
+
                 var bones = size.renderers.OfType<SkinnedMeshRenderer>()
                     .SelectMany(skin => skin.bones)
                     .Where(bone => bone != null)
@@ -450,7 +459,10 @@ namespace VF.Inspector {
                         var spsBaked = plug.enableSps ? SpsBaker.Bake(skin, tmpDir, activeFromMask, false, spsBlendshapes) : null;
 
                         var finishedCopies = new HashSet<Material>();
-                        Material ConfigureMaterial(Material mat) {
+                        Material ConfigureMaterial(int slotNum, Material mat) {
+                            var shouldPatch = size.matSlots.Get(skin.owner()).Contains(slotNum);
+                            if (!shouldPatch) return mat;
+
                             try {
                                 if (mat == null) return null;
                                 if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return mat;
@@ -492,7 +504,7 @@ namespace VF.Inspector {
             } else {
                 rendererResults = renderers.Select(r => new RendererResult {
                     renderer = r,
-                    configureMaterial = m => m
+                    configureMaterial = (slotNum,m) => m
                 }).ToArray();
             }
 
@@ -507,7 +519,7 @@ namespace VF.Inspector {
 
             if (!deferMaterialConfig) {
                 foreach (var r in rendererResults) {
-                    r.renderer.sharedMaterials = r.renderer.sharedMaterials.Select(r.configureMaterial).ToArray();
+                    r.renderer.sharedMaterials = r.renderer.sharedMaterials.Select((mat,slotNum) => r.configureMaterial(slotNum, mat)).ToArray();
                 }
             }
 
@@ -528,7 +540,7 @@ namespace VF.Inspector {
 
         public class RendererResult {
             public Renderer renderer;
-            public Func<Material, Material> configureMaterial;
+            public Func<int, Material, Material> configureMaterial;
             public IList<string> spsBlendshapes;
         }
     }

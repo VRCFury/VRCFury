@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using JetBrains.Annotations;
+using UnityEngine;
 using VF.Model;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
@@ -6,6 +7,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace com.vrcfury.api.Components {
     /** Create an instance using <see cref="FuryComponents"/> */
+    [PublicAPI]
     public class FuryFullController {
         private readonly FullController c;
 

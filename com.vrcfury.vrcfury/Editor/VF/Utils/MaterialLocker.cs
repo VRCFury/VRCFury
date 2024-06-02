@@ -50,20 +50,28 @@ namespace VF.Utils {
             }
         }
 
-        private static void LockPoiyomi(Material mat) {
-            if (mat.shader == null) return;
-            if (mat.shader.name.StartsWith("Hidden/Locked/")) return;
+        public static bool UsesPoiLockdown(Material mat) {
+            if (mat.shader == null) return false;
+            if (mat.shader.name.StartsWith("Hidden/Locked/")) return false;
 
             var optimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
-            if (optimizer == null) return;
+            if (optimizer == null) return false;
 
             var usesMethod = optimizer.GetMethod(
                 "IsShaderUsingThryOptimizer",
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
             );
-            if (usesMethod == null) return;
+            if (usesMethod == null) return false;
             var usesPoi = (bool)ReflectionUtils.CallWithOptionalParams(usesMethod, null, mat.shader);
+            return usesPoi;
+        }
+
+        private static void LockPoiyomi(Material mat) {
+            var usesPoi = UsesPoiLockdown(mat);
             if (!usesPoi) return;
+            
+            var optimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
+            if (optimizer == null) return;
 
             var lockMethod = optimizer.GetMethod(
                 "SetLockedForAllMaterials",

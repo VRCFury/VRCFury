@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Hooks;
 using VF.Service;
 using VF.Utils;
 
@@ -53,7 +54,20 @@ namespace VF.Feature {
 
                     if (!hasNonEmptyClip && !hasBehaviour) {
                         Debug.LogWarning($"Removing layer {layer.name} from {c.GetType()} because it doesn't do anything");
-                        layer.Remove();
+                        if (layer.stateMachine.states.Length > 0 && !IsActuallyUploadingHook.Get()) {
+                            layer.name += " (NO VALID ANIMATIONS)";
+                            var s = layer.NewState(
+                                "Warning from VRCFury!\n" +
+                                "This layer contains no valid animations," +
+                                " and will be removed during a real upload," +
+                                " Make sure the animated objects / components" +
+                                " actually exist at the paths used in the clips");
+                            var entryPos = layer.stateMachine.entryPosition;
+                            var warningPos = new Vector2(entryPos.x, entryPos.y - 100);
+                            s.SetRawPosition(warningPos);
+                        } else {
+                            layer.Remove();
+                        }
                     }
                 }
             }

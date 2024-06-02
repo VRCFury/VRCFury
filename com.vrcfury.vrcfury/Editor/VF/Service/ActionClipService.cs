@@ -15,10 +15,12 @@ using VF.Model.StateAction;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
+using static VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu.Control;
 
 namespace VF.Service {
     /** Turns VRCFury actions into clips */
     [VFService]
+    [VFPrototypeScope]
     internal class ActionClipService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly AvatarManager avatarManager;
@@ -27,17 +29,22 @@ namespace VF.Service {
         [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
         [VFAutowired] private readonly PhysboneResetService physboneResetService;
         [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
-        [VFAutowired] private readonly DriveParameterService driveParameterService;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly GlobalsService globals;
 
         private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
+        private readonly List<(VFAFloat,string,float)> drivenSyncParams = new List<(VFAFloat,string,float)>();
+        private readonly List<(VFAFloat,string,float)> drivenToggles = new List<(VFAFloat,string,float)>();
+        private readonly List<(VFAFloat,string,float,FeatureBuilder)> drivenTags = new List<(VFAFloat,string,float,FeatureBuilder)>();
 
         public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, ToggleBuilder toggleFeature = null) {
             return LoadStateAdv(name, state, animObjectOverride, toggleFeature: toggleFeature).onClip;
         }
         
+
         public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, ToggleBuilder toggleFeature = null) {
             var result = LoadStateAdv(name, state, avatarManager.AvatarObject, animObjectOverride ?? avatarManager.CurrentComponentObject, this, toggleFeature);
-            result.onClip.name = manager.GetFx().NewClipName(name);
+            result.onClip.name = $"{clipFactory.GetPrefix()}/{name}";
             return result;
         }
 
@@ -376,7 +383,7 @@ namespace VF.Service {
                             triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
                             onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
                         }
-                        service.driveParameterService.CreateParamTrigger(triggerParam, syncParamAction.param, syncParamAction.value);
+                        service.drivenSyncParams.Add((triggerParam, syncParamAction.param, syncParamAction.value));
                         break;
                     }
                     case ToggleStateAction toggleStateAction: {
@@ -384,7 +391,7 @@ namespace VF.Service {
                             triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
                             onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
                         }
-                        service.driveParameterService.CreateToggleTrigger(triggerParam, toggleStateAction.toggle, toggleStateAction.value);
+                        service.drivenToggles.Add((triggerParam, toggleStateAction.toggle, toggleStateAction.value));
                         break;
                     }
                     case TagStateAction tagStateAction: {
@@ -392,7 +399,7 @@ namespace VF.Service {
                             triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
                             onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
                         }
-                        service.driveParameterService.CreateTagTrigger(triggerParam, tagStateAction.tag, tagStateAction.value, toggleFeature);
+                        service.drivenTags.Add((triggerParam, tagStateAction.tag, tagStateAction.value, toggleFeature));
                         break;
                     }
                 }
@@ -442,6 +449,40 @@ namespace VF.Service {
                 nonFloatParams.UnionWith(c.GetRaw().parameters
                     .Where(p => p.type != AnimatorControllerParameterType.Float || c.GetType() != VRCAvatarDescriptor.AnimLayerType.FX)
                     .Select(p => p.name));
+            }
+
+            List<(VFAFloat, string, float)> triggers = new();
+            foreach (var trigger in drivenTags) {
+                var (param, tag, target, feature) = trigger;
+                foreach (var other in globals.allBuildersInRun
+                     .OfType<ToggleBuilder>()
+                     .Where(b => b != feature)) {
+                        var otherTags = other.GetTags();
+                        
+                        if (otherTags.Contains(tag)) {
+                            if (target == 0) triggers.Add((param, other.getParam(), 0));
+                            else triggers.Add((param, other.getParam(), other.model.slider ? target : 1));
+                        }
+                }
+            }
+
+            foreach (var trigger in drivenToggles) {
+                var (param, path, target) = trigger;
+                var control = manager.GetMenu().GetMenuItem(path);
+                if (control == null) continue;
+                if (target == 0) triggers.Add((param, control.parameter.name, 0));
+                else if (control.type == ControlType.RadialPuppet) triggers.Add((param, control.parameter.name, target));
+                else triggers.Add((param, control.parameter.name, control.value));
+            }
+
+            foreach (var trigger in drivenSyncParams) {
+                var (triggerParam, param, target) = trigger;
+                triggers.Add((triggerParam, param, target));
+            }
+
+            foreach (var trigger in triggers) {
+                var (triggerParam, param, value) = trigger;
+                driveOtherTypesFromFloatService.Drive(triggerParam, param, value, false);
             }
 
             var rewrites = new Dictionary<string, string>();

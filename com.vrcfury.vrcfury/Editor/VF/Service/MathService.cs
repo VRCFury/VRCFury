@@ -19,6 +19,7 @@ namespace VF.Service {
     internal class MathService {
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
         private ControllerManager fx => avatarManager.GetFx();
         
         // A VFAFloat, but it's guaranteed to be 0 or 1
@@ -110,7 +111,7 @@ namespace VF.Service {
             var minClip = MakeSetter(output, outMin);
             var maxClip = MakeSetter(output, outMax);
 
-            var tree = fx.NewBlendTree($"{CleanName(input)} ({inMin}-{inMax}) -> ({outMin}-{outMax})");
+            var tree = clipFactory.NewBlendTree($"{CleanName(input)} ({inMin}-{inMax}) -> ({outMin}-{outMax})");
             tree.blendType = BlendTreeType.Simple1D;
             tree.useAutomaticThresholds = false;
             tree.blendParameter = input.Name();
@@ -146,7 +147,7 @@ namespace VF.Service {
         public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false, string name = null) {
             name = name ?? $"{CleanName(a)} {(orEqual ? ">=" : ">")} {CleanName(b)}";
             return new VFAFloatBool((whenTrue, whenFalse) => {
-                var tree = fx.NewBlendTree(name);
+                var tree = clipFactory.NewBlendTree(name);
                 tree.blendType = BlendTreeType.SimpleDirectional2D;
                 tree.useAutomaticThresholds = false;
                 tree.blendParameter = a.Name();
@@ -237,13 +238,13 @@ namespace VF.Service {
         }
 
         public AnimationClip MakeSetter(VFAap param, float value) {
-            var clip = fx.NewClip($"{CleanName(param)} = {value}");
+            var clip = clipFactory.NewClip($"{CleanName(param)} = {value}");
             clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), value);
             return clip;
         }
 
         public BlendTree Make1D(string name, VFAFloat param, params (float, Motion)[] children) {
-            var tree = fx.NewBlendTree(name);
+            var tree = clipFactory.NewBlendTree(name);
             tree.blendType = BlendTreeType.Simple1D;
             tree.useAutomaticThresholds = false;
             tree.blendParameter = param.Name();
@@ -271,7 +272,7 @@ namespace VF.Service {
         */
 
         public BlendTree MakeDirect(string name) {
-            var tree = fx.NewBlendTree(name);
+            var tree = clipFactory.NewBlendTree(name);
             tree.blendType = BlendTreeType.Direct;
             return tree;
         }

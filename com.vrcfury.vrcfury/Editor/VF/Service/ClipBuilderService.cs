@@ -15,10 +15,11 @@ namespace VF.Service {
     internal class ClipBuilderService {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AvatarBindingStateService bindingStateService;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
         private VFGameObject baseObject => globals.avatarObject;
 
         public AnimationClip MergeSingleFrameClips(params (float, AnimationClip)[] sources) {
-            var output = VrcfObjectFactory.Create<AnimationClip>();
+            var output = clipFactory.NewClip("Merged");
             foreach (var binding in sources.SelectMany(tuple => tuple.Item2.GetFloatBindings()).Distinct()) {
                 var exists = bindingStateService.GetFloat(binding, out var defaultValue);
                 if (!exists && binding.path == "" && binding.type == typeof(Animator)) {

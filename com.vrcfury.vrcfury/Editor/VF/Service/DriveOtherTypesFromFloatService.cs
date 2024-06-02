@@ -15,8 +15,9 @@ namespace VF.Service {
         private VFState idle;
 
         private readonly Dictionary<string, (VFAInteger,int,VFTransition)> currentSettings = new Dictionary<string, (VFAInteger,int,VFTransition)>();
+        private readonly Dictionary<VFAFloat, VFState> createdStates = new Dictionary<VFAFloat, VFState>();
 
-        public void Drive(VFAFloat input, string output, float value) {
+        public void Drive(VFAFloat input, string output, float value, bool reset = true) {
             var fx = manager.GetFx();
             if (layer == null) {
                 layer = fx.NewLayer("Cross-Type Param Driver");
@@ -33,10 +34,12 @@ namespace VF.Service {
                     name = lastState_.Name(),
                     value = 0
                 });
-                driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
-                    name = output,
-                    value = 0
-                });
+                if (reset) {
+                    driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
+                        name = output,
+                        value = 0
+                    });
+                }
                 currentSettings[output] = (lastState_, 0, t);
             }
 
@@ -49,18 +52,27 @@ namespace VF.Service {
                 currentSettings[output] = c;
             }
 
-            var name = $"{output} = {value} (from {input.Name()})";
+            if (!createdStates.ContainsKey(input)) {
+                var name = $"{output} = {value} (from {input.Name()})";
 
-            var state = layer.NewState(name);
-            var condition = input.IsGreaterThan(0);
-            offTransition.AddCondition(condition.Not());
-            idle.TransitionsTo(state).When(condition.And(lastState.IsLessThan(myNumber)));
-            state.TransitionsToExit().When(fx.Always());
-            var myDriver = state.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
-            myDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
-                name = lastState.Name(),
-                value = myNumber
-            });
+                var state = layer.NewState(name);
+                var condition = input.IsGreaterThan(0);
+                offTransition.AddCondition(condition.Not());
+                idle.TransitionsTo(state).When(condition.And(lastState.IsLessThan(myNumber)));
+                state.TransitionsToExit().When(fx.Always());
+
+                var lastStateDriver = state.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
+                lastStateDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
+                    name = lastState.Name(),
+                    value = myNumber
+                });
+
+                createdStates[input] = state;
+            } else {
+                var rawState = createdStates[input].GetRaw();
+                rawState.name = rawState.name.Insert(rawState.name.IndexOf(" (from"),  $", {output} = {value}");
+            }
+            var myDriver = createdStates[input].GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
             myDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
                 name = output,
                 value = value

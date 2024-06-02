@@ -148,6 +148,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 var valueFloat = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"), "Value");
                 var valueVector = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueVector"), "Value");
                 var valueColor = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueColor"), "Value");
+                var warningBox = new VisualElement();
 
                 var propertyNameProp = prop.FindPropertyRelative("propertyName");
                 {
@@ -162,18 +163,37 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(valueFloat);
                 content.Add(valueVector);
                 content.Add(valueColor);
+                content.Add(warningBox);
+                
                 UpdateValueType();
 
                 void UpdateValueType() {
-                    var (_, valueType) = ActionClipService.MatPropLookup(
+                    var propName = propertyNameProp.stringValue;
+                    var (renderers, valueType) = ActionClipService.MatPropLookup(
                         affectAllMeshesProp.boolValue,
                         rendererProp.objectReferenceValue as Renderer,
                         avatarObject,
-                        propertyNameProp.stringValue
+                        propName
                     );
                     valueFloat.SetVisible(valueType != ShaderUtil.ShaderPropertyType.Color && valueType != ShaderUtil.ShaderPropertyType.Vector);
                     valueVector.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Vector);
                     valueColor.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Color);
+                    warningBox.Clear();
+
+                    var badMats = renderers
+                        .SelectMany(r => r.sharedMaterials)
+                        .NotNull()
+                        .Distinct()
+                        .Where(m => m.HasProperty(propertyNameProp.stringValue))
+                        .Where(MaterialLocker.UsesPoiLockdown)
+                        .Where(m => m.GetTag(propName + "Animated", false, "") == "")
+                        .Select(m => m.name)
+                        .ToList();
+                    if (badMats.Any()) {
+                        warningBox.Add(VRCFuryEditorUtils.Warn(
+                            $"These materials are using Poiyomi, but do not have {propName} set as Animated. Check the right click menu of the property on the material:\n" + string.Join(", ", badMats)
+                        ));
+                    }
                 }
 
                 return content;

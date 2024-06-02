@@ -125,6 +125,9 @@ internal class VRCFuryBuilder {
         var collectedBuilders = new List<FeatureBuilder>();
 
         var injector = new VRCFuryInjector();
+        injector.OnCachedServiceBuilt(service => {
+            AddActionsFromObject(service, avatarObject);
+        });
         
         var globals = new GlobalsService {
             tmpDirParent = tmpDirParent,
@@ -157,11 +160,6 @@ internal class VRCFuryBuilder {
         injector.GetService(typeof(FinalizeControllerBuilder));
         injector.GetService(typeof(MarkThingsAsDirtyJustInCaseBuilder));
         injector.GetService(typeof(FixEmptyMotionBuilder));
-        injector.GetService(typeof(DriveParameterBuilder));
-
-        foreach (var service in injector.GetAllServices()) {
-            AddActionsFromObject(service, avatarObject);
-        }
 
         void AddComponent(FeatureModel component, VFGameObject configObject, int? serviceNumOverride = null) {
             collectedModels.Add(component);
