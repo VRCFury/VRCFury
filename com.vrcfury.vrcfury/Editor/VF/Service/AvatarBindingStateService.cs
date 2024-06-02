@@ -24,7 +24,7 @@ namespace VF.Service {
             copy.FinalizeAsset();
             copy.SampleAnimation(avatarObject, 0);
             foreach (var (binding,curve) in clip.GetAllCurves()) {
-                var value = curve.GetFirst();
+                var value = curve.GetLast();
                 HandleMaterialSwaps(binding, value);
                 HandleMaterialProperties(binding, value);
             }
@@ -123,7 +123,7 @@ namespace VF.Service {
             return component != null;
         }
 
-        private bool TryParseMaterialSlot(EditorCurveBinding binding, out Renderer renderer, out int slotNum) {
+        public bool TryParseMaterialSlot(EditorCurveBinding binding, out Renderer renderer, out int slotNum) {
             renderer = null;
             slotNum = 0;
             var prefix = "m_Materials.Array.data[";

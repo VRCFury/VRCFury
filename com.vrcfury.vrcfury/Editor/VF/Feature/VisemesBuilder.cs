@@ -21,6 +21,7 @@ internal class VisemesBuilder : FeatureBuilder<Visemes> {
     [VFAutowired] private readonly DirectBlendTreeService directTree;
     [VFAutowired] private readonly MathService math;
     [VFAutowired] private readonly SmoothingService smooth;
+    [VFAutowired] private readonly ClipFactoryService clipFactory;
 
     private readonly string[] visemeNames = {
         "sil", "PP", "FF", "TH", "DD", "kk", "CH", "SS", "nn", "RR", "aa", "E", "I", "O", "U"
@@ -63,8 +64,7 @@ internal class VisemesBuilder : FeatureBuilder<Visemes> {
             var _clip = actionClipService.LoadState(text, clipState);
 
             // Ensure it's only one frame, since it's going into the main direct blendtree
-            var clip = VrcfObjectFactory.Create<AnimationClip>();
-            clip.name = "Viseme " + text;
+            var clip = clipFactory.NewClip("Viseme " + text);
             clip.CopyFromLast(_clip);
 
             var intensityRaw = math.SetValueWithConditions(
@@ -98,7 +98,7 @@ internal class VisemesBuilder : FeatureBuilder<Visemes> {
 
             directTree.Add(enabledWhen.create(
                 math.MakeSetter(enabled, 1),
-                VrcfObjectFactory.Create<AnimationClip>()
+                clipFactory.GetEmptyClip()
             ));
         });
     }

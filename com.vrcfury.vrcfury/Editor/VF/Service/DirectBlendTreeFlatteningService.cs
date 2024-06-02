@@ -12,6 +12,7 @@ namespace VF.Service {
     [VFService]
     internal class DirectBlendTreeFlatteningService {
         [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
         
         [FeatureBuilderAction(FeatureOrder.FlattenDbts)]
         public void Optimize() {
@@ -54,22 +55,30 @@ namespace VF.Service {
                 FlattenClips(child.motion);
             }
             if (tree.blendType != BlendTreeType.Direct) return;
-            AnimationClip onClip = null;
-            tree.children = tree.children.SelectMany(child => {
-                if (child.directBlendParameter == manager.GetFx().One().Name() &&
-                    child.motion is AnimationClip clip) {
-                    if (onClip == null) {
-                        onClip = new AnimationClip();
-                        onClip.CopyFrom(clip);
-                        child.motion = onClip;
-                        return new ChildMotion[] { child };
-                    } else {
-                        onClip.CopyFrom(clip);
-                        return new ChildMotion[] { };
+
+            bool IsAlwaysOnClip(ChildMotion child) =>
+                child.directBlendParameter == manager.GetFx().One().Name()
+                && child.motion is AnimationClip clip;
+
+            var hasMultipleAlwaysOnClips = tree.children.Where(IsAlwaysOnClip).Count() > 1;
+            if (hasMultipleAlwaysOnClips) {
+                AnimationClip onClip = null;
+                tree.children = tree.children.SelectMany(child => {
+                    if (IsAlwaysOnClip(child) && child.motion is AnimationClip clip) {
+                        if (onClip == null) {
+                            onClip = clipFactory.NewClip("Flattened");
+                            onClip.CopyFrom(clip);
+                            child.motion = onClip;
+                            return new ChildMotion[] { child };
+                        } else {
+                            onClip.CopyFrom(clip);
+                            return new ChildMotion[] { };
+                        }
                     }
-                }
-                return new ChildMotion[] { child };
-            }).ToArray();
+
+                    return new ChildMotion[] { child };
+                }).ToArray();
+            }
         }
     }
 }

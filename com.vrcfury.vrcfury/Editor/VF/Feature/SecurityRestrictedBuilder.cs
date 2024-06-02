@@ -16,6 +16,7 @@ namespace VF.Feature {
     internal class SecurityRestrictedBuilder : FeatureBuilder<SecurityRestricted> {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
         
         [FeatureBuilderAction(FeatureOrder.SecurityRestricted)]
         public void Apply() {
@@ -49,7 +50,7 @@ namespace VF.Feature {
 
             wrapper.active = false;
 
-            var clip = VrcfObjectFactory.Create<AnimationClip>();
+            var clip = clipFactory.NewClip("Unlock");
             clipBuilder.Enable(clip, wrapper);
             directTree.Add(security.GetEnabled().AsFloat(), clip);
         }

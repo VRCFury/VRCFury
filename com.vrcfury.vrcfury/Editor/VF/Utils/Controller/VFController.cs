@@ -132,7 +132,7 @@ namespace VF.Utils.Controller {
             }
 
             // Make a copy of everything
-            ctrl = MutableManager.CopyRecursive(ctrl);
+            ctrl = MutableManager.CopyRecursive(ctrl, $"Copied from {ctrl.name}/");
 
             // Collect any override controllers wrapping the main controller
             var overrides = new List<AnimatorOverrideController>();
@@ -166,7 +166,7 @@ namespace VF.Utils.Controller {
             // Make sure all masks are unique, so we don't modify one and affect another
             foreach (var layer in output.GetLayers()) {
                 if (layer.mask != null) {
-                    layer.mask = MutableManager.CopyRecursive(layer.mask, false);
+                    layer.mask = MutableManager.CopyRecursive(layer.mask);
                 }
             }
             
@@ -221,7 +221,7 @@ namespace VF.Utils.Controller {
                     return;
                 }
             } else {
-                baseMask = MutableManager.CopyRecursive(baseMask, false);
+                baseMask = MutableManager.CopyRecursive(baseMask);
             }
 
             // Because of some unity bug, ONLY the muscle part of the base mask is actually applied to the child layers
@@ -230,7 +230,7 @@ namespace VF.Utils.Controller {
 
             foreach (var layer in GetLayers()) {
                 if (layer.mask == null) {
-                    layer.mask = MutableManager.CopyRecursive(baseMask, false);
+                    layer.mask = MutableManager.CopyRecursive(baseMask);
                 } else {
                     layer.mask.IntersectWith(baseMask);
                 }

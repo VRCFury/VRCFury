@@ -45,7 +45,7 @@ namespace VF.Feature {
                 return PropType.Fx;
             }
 
-            var copyForFx = MutableManager.CopyRecursiveAdv(gesture.GetRaw().GetRaw(), false);
+            var copyForFx = MutableManager.CopyRecursiveAdv(gesture.GetRaw().GetRaw());
             var copyForFxLayers = copyForFx.output.layers;
             foreach (var pair in copyForFx.originalToCopy) {
                 if (pair.Key is VRCAnimatorLayerControl from && pair.Value is VRCAnimatorLayerControl to) {

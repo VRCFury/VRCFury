@@ -45,7 +45,7 @@ namespace VF.Utils {
             if (motion is AnimationClip clip) {
                 clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
                     if (curve.lengthInSeconds == 0) return (binding, curve, false);
-                    return (binding, curve.GetFirst(), true);
+                    return (binding, curve.GetLast(), true);
                 }));
                 if (!clip.GetAllBindings().Any()) {
                     clip.SetFloatCurve(

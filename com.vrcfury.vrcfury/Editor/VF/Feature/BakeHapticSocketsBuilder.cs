@@ -34,6 +34,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         [FeatureBuilderAction]
         public void Apply() {
@@ -48,7 +49,7 @@ namespace VF.Feature {
             if (enableAuto) {
                 autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false, saved: saved);
                 manager.GetMenu().NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
-                autoOnClip = fx.NewClip("Enable SPS Auto Contacts");
+                autoOnClip = clipFactory.NewClip("Enable SPS Auto Contacts");
                 directTree.Add(math.And(
                     math.GreaterThan(fx.IsLocal().AsFloat(), 0.5f, name: "SPS: Auto Contacts"),
                     math.GreaterThan(autoOn.AsFloat(), 0.5f, name: "When Local")
@@ -149,12 +150,12 @@ namespace VF.Feature {
                             child.active = false;
                         }
 
-                        var onLocalClip = fx.NewClip($"{name} (Local)");
+                        var onLocalClip = clipFactory.NewClip($"{name} (Local)");
                         foreach (var child in FindChildren("Senders", "Haptics", "Lights", "Animations")) {
                             clipBuilder.Enable(onLocalClip, child.gameObject);
                         }
 
-                        var onRemoteClip = fx.NewClip($"{name} (Remote)");
+                        var onRemoteClip = clipFactory.NewClip($"{name} (Remote)");
                         foreach (var child in FindChildren("Senders", "Lights", "Animations")) {
                             clipBuilder.Enable(onRemoteClip, child.gameObject);
                         }
@@ -173,7 +174,7 @@ namespace VF.Feature {
                             onRemoteClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), activeAnimParam.Name()), 1);
                         }
 
-                        var onStealthClip = fx.NewClip($"{name} (Stealth)");
+                        var onStealthClip = clipFactory.NewClip($"{name} (Stealth)");
                         foreach (var child in FindChildren("Haptics")) {
                             clipBuilder.Enable(onStealthClip, child.gameObject);
                         }

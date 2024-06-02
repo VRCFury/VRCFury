@@ -17,6 +17,7 @@ namespace VF.Feature {
 
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ObjectMoveService mover;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         private VFABool toggle;
         
@@ -54,7 +55,7 @@ namespace VF.Feature {
             resetConstraint.constraintActive = true;
             resetConstraint.locked = true;
 
-            var dropClip = VrcfObjectFactory.Create<AnimationClip>();
+            var dropClip = clipFactory.NewClip("Drop");
             clipBuilder.Enable(dropClip, resetConstraint, false);
             foreach (var constriant in featureBaseObject.GetComponents<IConstraint>()) {
                 clipBuilder.Enable(dropClip, constriant, false);

@@ -1,8 +1,10 @@
-﻿using UnityEngine;
+﻿using JetBrains.Annotations;
+using UnityEngine;
 using VF.Builder;
 
 namespace com.vrcfury.api {
     /** Useful code utilities provided by VRCFury */
+    [PublicAPI]
     public static class FuryUtils {
         /**
          * Finds the given bone transform from a GameObject containing an Animator with an attached rig.
