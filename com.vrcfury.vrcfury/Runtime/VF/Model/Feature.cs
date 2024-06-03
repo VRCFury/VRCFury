@@ -351,7 +351,7 @@ namespace VF.Model.Feature {
 
     [Serializable]
     internal class Toggle : NewFeatureModel {
-        public string name;
+        public string name = "";
         public State state = new State();
         public bool saved;
         public bool slider;
@@ -361,7 +361,7 @@ namespace VF.Model.Feature {
         [Obsolete] public bool includeInRest;
         public bool exclusiveOffState;
         public bool enableExclusiveTag;
-        public string exclusiveTag;
+        public string exclusiveTag = "";
         [Obsolete] public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
@@ -371,7 +371,7 @@ namespace VF.Model.Feature {
         public bool enableIcon;
         public GuidTexture2d icon;
         public bool enableDriveGlobalParam;
-        public string driveGlobalParam;
+        public string driveGlobalParam = "";
         public bool separateLocal;
         public State localState;
         public bool hasTransition;
@@ -387,7 +387,7 @@ namespace VF.Model.Feature {
         [Range(0,1)]
         public float defaultSliderValue = 0;
         public bool useGlobalParam;
-        public string globalParam;
+        public string globalParam = "";
         public bool holdButton;
         public bool invertRestLogic;
 
