@@ -97,7 +97,11 @@ namespace VF.Builder {
                 var copy = original.Clone();
                 if (obj == original) rootCopy = copy as T;
 
-                copy.name = $"{addPrefix}{original.name}";
+                if (copy is AnimatorState || copy is AnimatorStateMachine) {
+                    // don't add prefix
+                } else {
+                    copy.name = $"{addPrefix}{original.name}";
+                }
 
                 originalToMutable[original] = copy;
                 mutableToOriginal[copy] = original;
