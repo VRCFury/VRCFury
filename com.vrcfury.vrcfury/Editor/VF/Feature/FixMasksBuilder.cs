@@ -132,9 +132,7 @@ namespace VF.Feature {
 
                 AvatarMask expectedMask = null;
                 if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                    expectedMask = AvatarMaskExtensions.Empty();
-                    expectedMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
-                    expectedMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
+                    expectedMask = GetGestureMask(c);
                 }
 
                 var layer0 = ctrl.GetLayer(0);
