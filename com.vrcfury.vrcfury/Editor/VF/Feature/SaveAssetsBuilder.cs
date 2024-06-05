@@ -17,6 +17,11 @@ namespace VF.Builder {
 
         [FeatureBuilderAction(FeatureOrder.SaveAssets)]
         public void Run() {
+            // Save mats and meshes
+            foreach (var component in manager.AvatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
+                SaveUnsavedComponentAssets(component, manager.tmpDir);
+            }
+            
             // Special handling for mask and controller names
             foreach (var controller in manager.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetLayers()) {
