@@ -186,7 +186,6 @@ namespace VF.Utils.Controller {
                 if (layer.stateMachine == null) {
                     var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
                     sm.name = layer.name;
-                    sm.hideFlags = HideFlags.HideInHierarchy;
                     layer.stateMachine = sm;
                 }
                 return layer;
@@ -292,7 +291,6 @@ namespace VF.Utils.Controller {
                 if (layer.syncedLayerIndex >= layers.Length) {
                     var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
                     sm.name = layer.name;
-                    sm.hideFlags = HideFlags.HideInHierarchy;
                     layer.stateMachine = sm;
                     layer.syncedLayerIndex = -1;
                     return layer;
