@@ -13,11 +13,11 @@ namespace VF.Builder {
             StateMachineBehaviour added = null;
             CleanupLegacyBuilder.WithTemporaryPersistence(machine, () => {
                 added = machine.AddStateMachineBehaviour(type);
-                VrcfObjectFactory.Register(added);
             });
             if (added == null) {
                 ThrowProbablyCompileErrorException($"Failed to create state behaviour of type {type.Name}.");
             }
+            VrcfObjectFactory.Register(added);
             return added;
         }
 
