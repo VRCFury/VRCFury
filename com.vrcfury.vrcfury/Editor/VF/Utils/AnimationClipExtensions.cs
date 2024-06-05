@@ -41,13 +41,11 @@ namespace VF.Utils {
             }, 0);
         }
 
-        public static AnimationClip Clone(this AnimationClip clip) {
-            var copy = new AnimationClip();
-            copy.name = clip.name;
-            copy.frameRate = clip.frameRate;
-            AnimationUtility.SetAnimationClipSettings(copy, AnimationUtility.GetAnimationClipSettings(clip));
-            clipDb[copy] = GetExt(clip).Clone();
-            return copy;
+        public static void CopyData(AnimationClip from, AnimationClip to) {
+            to.name = from.name;
+            to.frameRate = from.frameRate;
+            AnimationUtility.SetAnimationClipSettings(to, AnimationUtility.GetAnimationClipSettings(from));
+            clipDb[to] = GetExt(from).Clone();
         }
         public static void FinalizeAsset(this AnimationClip clip) {
             if (AnimationUtility.GetCurveBindings(clip).Any() ||

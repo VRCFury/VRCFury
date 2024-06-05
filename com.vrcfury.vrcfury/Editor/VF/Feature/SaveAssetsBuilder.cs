@@ -53,7 +53,7 @@ namespace VF.Builder {
             MutableManager.ForEachChild(obj, asset => {
                 if (asset == obj) return true;
                 if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
-                if (IsSaved(asset)) return false;
+                if (!NeedsSaved(asset)) return false;
                 if (asset is AnimationClip vac) {
                     var useOriginalClip = vac.GetUseOriginalUserClip();
                     if (useOriginalClip != null) {
@@ -74,16 +74,12 @@ namespace VF.Builder {
             return unsavedChildren;
         }
 
-        private static bool IsSaved(Object asset) {
-            // Note to future self. DO NOT RETURN TRUE FOR MonoScript HERE
-            // State machine behaviors are MonoScripts.
-            if (asset is UnityEngine.Component || asset is GameObject) return true;
-            if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) return true;
-            return false;
+        private static bool NeedsSaved(Object asset) {
+            return VrcfObjectFactory.DidCreate(asset) && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset));
         }
 
         private static void SaveAssetAndChildren(Object asset, string filename, string tmpDir) {
-            if (IsSaved(asset)) return;
+            if (!NeedsSaved(asset)) return;
 
             var unsavedChildren = GetUnsavedChildren(asset);
 
@@ -91,16 +87,28 @@ namespace VF.Builder {
             // If we don't save textures before the materials that use them, unity just throws them away
             foreach (var subAsset in unsavedChildren) {
                 if (subAsset is Texture2D) {
+                    subAsset.hideFlags = HideFlags.None;
                     VRCFuryAssetDatabase.SaveAsset(subAsset, tmpDir, filename + "_" + subAsset.name);
                 }
             }
             
             // Save the main asset
+            asset.hideFlags = HideFlags.None;
             VRCFuryAssetDatabase.SaveAsset(asset, tmpDir, filename);
 
             // Attach children
             foreach (var subAsset in unsavedChildren) {
                 if (subAsset is Texture2D) continue;
+                subAsset.hideFlags = HideFlags.None;
+                if (subAsset is AnimatorStateMachine
+                    || subAsset is AnimatorState
+                    || subAsset is AnimatorTransitionBase
+                    || subAsset is StateMachineBehaviour
+                    || subAsset is BlendTree
+                ) {
+                    subAsset.hideFlags |= HideFlags.HideInHierarchy;
+                }
+
                 AssetDatabase.RemoveObjectFromAsset(subAsset);
                 AssetDatabase.AddObjectToAsset(subAsset, asset);
             }

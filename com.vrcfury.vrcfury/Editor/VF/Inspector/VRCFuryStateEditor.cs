@@ -1,7 +1,13 @@
+using System.Collections.Immutable;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
+using VF.Component;
+using VF.Model;
 using VF.Model.StateAction;
+using VF.Service;
 using VF.Utils;
 
 namespace VF.Inspector {
@@ -107,6 +113,35 @@ internal class VRCFuryStateEditor : PropertyDrawer {
 
             return VRCFuryEditorUtils.AssembleProp(myLabel, tooltip, body, false, showList, labelWidth);
         }, list));
+
+        /*
+        var debug = new VisualElement();
+        container.Add(debug);
+
+        container.schedule.Execute(() => {
+            debug.Clear();
+
+            var actionSet = prop.GetObject() as State;
+            if (actionSet == null) return;
+            var component = prop.serializedObject.targetObject as VRCFuryComponent;
+            if (component == null) return;
+            var gameObject = component.gameObject;
+            var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
+            if (avatarObject == null) return;
+            var test = ActionClipService.LoadStateAdv("test", actionSet, avatarObject, gameObject);
+
+            var bindings = test.onClip
+                .GetAllBindings()
+                .Select(b => b.path)
+                .Distinct()
+                .OrderBy(path => path)
+                .ToImmutableList();
+
+            var objs = Resources.FindObjectsOfTypeAll<AnimationClip>();
+            
+            debug.Add(VRCFuryEditorUtils.Debug(string.Join("\n", bindings) + "\n" + "Clips: " + objs.Length));
+        }).Every(1000);
+        */
 
         return container;
     }

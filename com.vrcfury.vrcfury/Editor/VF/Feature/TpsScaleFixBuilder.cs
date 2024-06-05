@@ -59,7 +59,7 @@ namespace VF.Feature {
 
                     if (!isTps && !isSps) return mat;
 
-                    mat = MutableManager.MakeMutable(mat);
+                    mat = mat.Clone();
                     if (isTps) {
                         if (TpsConfigurer.IsLocked(mat)) {
                             throw new VRCFBuilderException(

@@ -231,7 +231,7 @@ namespace VF.Feature {
                     outputTransitions.Add(transition);
                     foreach (var combo in GetCombinations(flip)) {
                         if (combo.Length == 0) continue;
-                        var copy = MutableManager.MakeMutable(transition, true);
+                        var copy = transition.Clone();
                         var cs = copy.conditions;
                         foreach (var i in combo) {
                             var c = cs[i];
