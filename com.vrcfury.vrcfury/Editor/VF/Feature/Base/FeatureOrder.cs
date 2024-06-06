@@ -97,9 +97,6 @@ namespace VF.Feature.Base {
         MoveMenuItems,
         FinalizeMenu,
 
-        // Finalize Parameters
-        FinalizeParams,
-
         MarkThingsAsDirtyJustInCase,
         
         RemoveJunkAnimators,
@@ -108,5 +105,7 @@ namespace VF.Feature.Base {
         
         // Needs to happen after everything is done using the animator
         ResetAnimatorAfter,
+        
+        Validation,
     }
 }

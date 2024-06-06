@@ -353,7 +353,7 @@ namespace VF.Builder.Haptics {
             if (deletions.Count > 0)
                 parts.Add("These objects will be deleted:\n" + string.Join("\n", deletions));
             if (alreadyExists.Count > 0)
-                parts.Add("Haptics already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
+                parts.Add("SPS already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
 
             if (parts.Count == 0) return "";
             return string.Join("\n\n", parts);
