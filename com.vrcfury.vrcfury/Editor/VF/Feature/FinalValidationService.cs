@@ -219,13 +219,9 @@ namespace VF.Feature {
             );
             if (ok) {
                 autofix();
-                EditorUtility.DisplayDialog(
-                    "Warning",
-                    "The issues have been auto-fixed, but the current build may still fail. Please retry.",
-                    "Ok"
-                );
+            } else {
+                excService.ThrowIfActuallyUploading(new Exception(msg));
             }
-            excService.ThrowIfActuallyUploading(new Exception(msg));
         }
     }
 }
