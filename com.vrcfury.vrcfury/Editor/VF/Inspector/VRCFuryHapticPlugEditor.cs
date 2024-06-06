@@ -231,82 +231,82 @@ namespace VF.Inspector {
 
         public static VisualElement ConstraintWarning(UnityEngine.Component c, bool isSocket = false) {
             var output = new VisualElement();
-            {
-                var warning = VRCFuryEditorUtils.Warn(
-                    "This SPS component is used within a Constraint! " +
-                    "AVOID using SPS within constraints if at all possible. " +
-                    (isSocket
-                        ? "Sharing one socket in multiple locations will make your avatar LESS performant, not more! "
-                        : "") +
-                    "\n\n" +
-                    "Check out https://vrcfury.com/sps/constraints for details");
-                void Update() => warning.SetVisible(c.gameObject.asVf().GetComponentsInSelfAndParents<IConstraint>().Length > 0);
-                Update();
-                warning.schedule.Execute(Update).Every(1000);
-                output.Add(warning);
-            }
-            {
-                var holder = new VisualElement();
-                void Update() {
-                    var tipLightPaths = new List<string>();
-                    var avatar = VRCAvatarUtils.GuessAvatarObject(c);
-                    if (avatar != null) {
-                        tipLightPaths.AddRange(avatar.GetComponentsInSelfAndChildren<Light>()
-                            .Where(light => {
-                                var rangeId = light.range % 0.1;
-                                return rangeId >= 0.085f && rangeId < 0.095f;
-                            })
-                            .Select(light => light.owner().GetPath(avatar, true))
-                            .OrderBy(path => path));
+            void Update() {
+                var legacyRendererPaths = new List<string>();
+                var lightPaths = new List<string>();
+                var tipLightPaths = new List<string>();
+                var orificeLightPaths = new List<string>();
+                var avatar = VRCAvatarUtils.GuessAvatarObject(c);
+                if (avatar != null) {
+                    foreach (var light in avatar.GetComponentsInSelfAndChildren<Light>()) {
+                        var path = light.owner().GetPath(avatar, true);
+                        var type = VRCFuryHapticSocketEditor.GetLegacyDpsLightType(light);
+                        if (type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Tip)
+                            tipLightPaths.Add(path);
+                        else if (type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Hole ||
+                                 type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Ring ||
+                                 type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Front)
+                            orificeLightPaths.Add(path);
+                        else
+                            lightPaths.Add(path);
                     }
-
-                    holder.Clear();
-                    if (tipLightPaths.Any()) {
-                        var warning = VRCFuryEditorUtils.Warn(
-                            "This avatar still contains a DPS tip light! This means your avatar has not been fully converted to SPS," +
-                            " and your DPS penetrator may cause issues if too many sockets are on nearby." +
-                            "\n\n" +
-                            "Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
-                            string.Join("\n", tipLightPaths)
-                        );
-                        holder.Add(warning);
-                    }
-                }
-                Update();
-                holder.schedule.Execute(Update).Every(1000);
-                output.Add(holder);
-            }
-            {
-                var holder = new VisualElement();
-                void Update() {
-                    var legacyPaths = new List<string>();
-                    var avatar = VRCAvatarUtils.GuessAvatarObject(c);
-                    if (avatar != null) {
-                        foreach (var renderer in avatar.GetComponentsInSelfAndChildren<Renderer>()) {
-                            foreach (var m in renderer.sharedMaterials) {
-                                if (DpsConfigurer.IsDps(m) || TpsConfigurer.IsTps(m)) {
-                                    legacyPaths.Add($"{m.name} in {renderer.owner().GetPath(avatar)}");
-                                }
+                    foreach (var renderer in avatar.GetComponentsInSelfAndChildren<Renderer>()) {
+                        foreach (var m in renderer.sharedMaterials) {
+                            if (DpsConfigurer.IsDps(m) || TpsConfigurer.IsTps(m)) {
+                                legacyRendererPaths.Add($"{m.name} in {renderer.owner().GetPath(avatar)}");
                             }
                         }
                     }
-
-                    holder.Clear();
-                    if (legacyPaths.Any()) {
-                        var warning = VRCFuryEditorUtils.Warn(
-                            "This avatar still contains a legacy DPS or TPS penetrator! This means your avatar has not been fully converted to SPS," +
-                            " and your legacy penetrator may cause issues if too many sockets are on nearby." +
-                            "\n\n" +
-                            "Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
-                            string.Join("\n", legacyPaths)
-                        );
-                        holder.Add(warning);
-                    }
                 }
-                Update();
-                holder.schedule.Execute(Update).Every(1000);
-                output.Add(holder);
+
+                output.Clear();
+                if (tipLightPaths.Any()) {
+                    var warning = VRCFuryEditorUtils.Warn(
+                        "This avatar still contains a DPS tip light! This means your avatar has not been fully converted to SPS," +
+                        " and your DPS penetrator may cause issues if too many sockets are on nearby." +
+                        " Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
+                        string.Join("\n", tipLightPaths)
+                    );
+                    output.Add(warning);
+                }
+                if (orificeLightPaths.Any()) {
+                    var warning = VRCFuryEditorUtils.Warn(
+                        "This avatar still contains un-upgraded DPS orifice lights! This means your avatar has not been fully converted to SPS," +
+                        " and your DPS orifices may cause issues if too many are active at the same time." +
+                        " Check out https://vrcfury.com/sps for details about how to upgrade DPS orifices to SPS sockets.\n\n" +
+                        string.Join("\n", orificeLightPaths)
+                    );
+                    output.Add(warning);
+                }
+                if (lightPaths.Any()) {
+                    var warning = VRCFuryEditorUtils.Warn(
+                        "This avatar still contains lights! Beware that these lights may interfere with SPS if they are enabled at the same time.\n\n" +
+                        string.Join("\n", lightPaths)
+                    );
+                    output.Add(warning);
+                }
+                if (legacyRendererPaths.Any()) {
+                    var warning = VRCFuryEditorUtils.Warn(
+                        "This avatar still contains a legacy DPS or TPS penetrator! This means your avatar has not been fully converted to SPS," +
+                        " and your legacy penetrator may cause issues if too many sockets are on nearby." +
+                        " Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
+                        string.Join("\n", legacyRendererPaths)
+                    );
+                    output.Add(warning);
+                }
+                if (c.gameObject.asVf().GetComponentsInSelfAndParents<IConstraint>().Length > 0) {
+                    var warning = VRCFuryEditorUtils.Warn(
+                        "This SPS component is used within a Constraint! " +
+                        "AVOID using SPS within constraints if at all possible. " +
+                        (isSocket
+                            ? "Sharing one socket in multiple locations will make your avatar LESS performant, not more! "
+                            : "") +
+                        " Check out https://vrcfury.com/sps/constraints for details.");
+                    output.Add(warning);
+                }
             }
+            Update();
+            output.schedule.Execute(Update).Every(1000);
             return output;
         }
 

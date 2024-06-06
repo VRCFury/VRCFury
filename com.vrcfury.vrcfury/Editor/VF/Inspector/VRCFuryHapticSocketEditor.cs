@@ -379,18 +379,24 @@ namespace VF.Inspector {
             var radius = length / 2.5f;
             return Tuple.Create(length, radius);
         }
-        
-        public static bool IsHole(Light light) {
-            var rangeId = light.range % 0.1;
-            return rangeId >= 0.005f && rangeId < 0.015f;
+
+        public enum LegacyDpsLightType {
+            None,
+            Hole,
+            Ring,
+            Front,
+            Tip
         }
-        public static bool IsRing(Light light) {
-            var rangeId = light.range % 0.1;
-            return rangeId >= 0.015f && rangeId < 0.025f;
-        }
-        public static bool IsNormal(Light light) {
-            var rangeId = light.range % 0.1;
-            return rangeId >= 0.045f && rangeId <= 0.055f;
+        public static LegacyDpsLightType GetLegacyDpsLightType(Light light) {
+            if (light.range >= 0.5) return LegacyDpsLightType.None; // Outside of range
+            var secondDecimal = (int)Math.Round((light.range % 0.1) * 100);
+            if ((light.color.maxColorComponent > 1 && light.color.a > 0)) return LegacyDpsLightType.None; // For some reason, dps tip lights are (1,1,1,255)
+            if (secondDecimal == 9 || secondDecimal == 8) return LegacyDpsLightType.Tip;
+            if ((light.color.maxColorComponent > 0 && light.color.a > 0)) return LegacyDpsLightType.None; // Visible light
+            if (secondDecimal == 1 || secondDecimal == 3) return LegacyDpsLightType.Hole;
+            if (secondDecimal == 2 || secondDecimal == 4) return LegacyDpsLightType.Ring;
+            if (secondDecimal == 5 || secondDecimal == 6) return LegacyDpsLightType.Front;
+            return LegacyDpsLightType.None;
         }
 
         public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(VRCFuryHapticSocket socket) {
@@ -419,7 +425,8 @@ namespace VF.Inspector {
             void Visit(Light light) {
                 if (visited.Contains(light)) return;
                 visited.Add(light);
-                if (!IsHole(light) && !IsRing(light) && !IsNormal(light)) return;
+                var type = GetLegacyDpsLightType(light);
+                if (type != LegacyDpsLightType.Hole && type != LegacyDpsLightType.Ring && type != LegacyDpsLightType.Front) return;
                 act(light);
             }
             foreach (var child in obj.Children()) {
@@ -436,26 +443,27 @@ namespace VF.Inspector {
         public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLights(VFGameObject obj, bool directOnly = false) {
             var isRing = false;
             Light main = null;
-            Light normal = null;
+            Light front = null;
             ForEachPossibleLight(obj, directOnly, light => {
+                var type = GetLegacyDpsLightType(light);
                 if (main == null) {
-                    if (IsHole(light)) {
+                    if (type == LegacyDpsLightType.Hole) {
                         main = light;
-                    } else if (IsRing(light)) {
+                    } else if (type == LegacyDpsLightType.Ring) {
                         main = light;
                         isRing = true;
                     }
                 }
-                if (normal == null && IsNormal(light)) {
-                    normal = light;
+                if (front == null && type == LegacyDpsLightType.Front) {
+                    front = light;
                 }
             });
 
-            if (main == null || normal == null) return null;
+            if (main == null || front == null) return null;
 
             var position = obj.InverseTransformPoint(main.owner().worldPosition);
-            var normalPosition = obj.InverseTransformPoint(normal.owner().worldPosition);
-            var forward = (normalPosition - position).normalized;
+            var frontPosition = obj.InverseTransformPoint(front.owner().worldPosition);
+            var forward = (frontPosition - position).normalized;
             var rotation = Quaternion.LookRotation(forward);
 
             return Tuple.Create(isRing ? VRCFuryHapticSocket.AddLight.Ring : VRCFuryHapticSocket.AddLight.Hole, position, rotation);
