@@ -15,7 +15,13 @@ namespace VF.Utils {
         
         public static Texture2D Optimize(this Texture2D original, bool forceCompression = true, int maxSize = 256) {
             var needsResized = original.width > maxSize || original.height > maxSize;
-            var needsCompressed = forceCompression && !GraphicsFormatUtility.IsCompressedFormat(original.format);
+            
+#if UNITY_2022_1_OR_NEWER
+            var isCompressed = GraphicsFormatUtility.IsCompressedFormat(original.format);
+#else
+            var isCompressed = GraphicsFormatUtility.IsCompressedFormat(GraphicsFormatUtility.GetGraphicsFormat(original.format, true));
+#endif
+            var needsCompressed = forceCompression && !isCompressed;
 
             if (!needsResized && !needsCompressed) return original;
             
