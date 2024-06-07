@@ -47,7 +47,7 @@ namespace VF.Utils {
             if (mesh != null && !mesh.isReadable && Application.isPlaying) {
                 if (readWriteCache.TryGetValue(mesh, out var cached)) return cached;
                 var copy = mesh.Clone();
-                ForceReadWrite(copy);
+                copy.ForceReadable();
                 readWriteCache[mesh] = copy;
                 return copy;
             }
@@ -61,16 +61,8 @@ namespace VF.Utils {
             if (mesh == null) return null;
             var copy = mesh.Clone();
             renderer.SetMesh(copy);
-            ForceReadWrite(copy);
+            copy.ForceReadable();
             return copy;
-        }
-
-        private static void ForceReadWrite(Mesh mesh) {
-            var so = new SerializedObject(mesh);
-            so.Update();
-            var sp = so.FindProperty("m_IsReadable");
-            sp.boolValue = true;
-            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         public static void SetMesh(this Renderer renderer, Mesh mesh) {

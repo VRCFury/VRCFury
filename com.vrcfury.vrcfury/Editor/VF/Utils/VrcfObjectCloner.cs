@@ -18,8 +18,14 @@ namespace VF.Utils {
             }
 
             T copy;
-            if (original is Material || original is Mesh) {
-                copy = Object.Instantiate(original);
+            if (original is Material || original is Mesh || original is Texture2D) {
+                if (original is Texture2D t && !t.isReadable) {
+                    t.ForceReadable();
+                    copy = Object.Instantiate(original);
+                    t.ForceReadable(false);
+                } else {
+                    copy = Object.Instantiate(original);
+                }
                 VrcfObjectFactory.Register(copy);
             } else {
                 copy = (T)VrcfObjectFactory.Create(original.GetType());

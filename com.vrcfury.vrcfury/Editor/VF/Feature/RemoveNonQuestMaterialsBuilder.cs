@@ -23,21 +23,13 @@ namespace VF.Feature {
 
             foreach (var ctrl in avatarManager.GetAllUsedControllers()) {
                 foreach (var clip in ctrl.GetClips()) {
-                    foreach (var binding in clip.GetObjectBindings()) {
-                        var changed = false;
-                        var curve = clip.GetObjectCurve(binding).Select(
-                            key => {
-                                if (key.value is Material m && !IsMobileMat(m)) {
-                                    changed = true;
-                                    key.value = null;
-                                    removedMats.Add($"{m.name} in animation {clip.name}");
-                                }
-                                return key;
-                            }).ToArray();
-                        if (changed) {
-                            clip.SetObjectCurve(binding, curve);
+                    clip.Rewrite(AnimationRewriter.RewriteObject(obj => {
+                        if (obj is Material m && !IsMobileMat(m)) {
+                            removedMats.Add($"{m.name} in animation {clip.name}");
+                            return null;
                         }
-                    }
+                        return obj;
+                    }));
                 }
             }
 

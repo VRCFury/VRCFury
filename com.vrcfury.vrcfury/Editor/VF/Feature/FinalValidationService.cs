@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
@@ -20,15 +21,15 @@ namespace VF.Feature {
      * Many of these checks are copied from or modified from the validation checks in the VRCSDK
      */
     [VFService]
-    internal class FinalValidationService : FeatureBuilder {
+    internal class FinalValidationService {
         [VFAutowired] private readonly ExceptionService excService;
+        [VFAutowired] private readonly AvatarManager manager;
+        private VFGameObject avatarObject => manager.AvatarObject;
 
         [FeatureBuilderAction(FeatureOrder.Validation)]
         public void Apply() {
             CheckParams();
             CheckContacts();
-            CheckMenus();
-            CheckMipmap();
         }
 
         private void CheckParams() {
@@ -74,153 +75,6 @@ namespace VF.Feature {
                         + contacts.Length + "/" + contactLimit
                         + ". Delete some contacts from your avatar."));
                 }
-            }
-        }
-
-        private void CheckMenus() {
-            var menu = manager.GetMenu();
-
-            // These methods were copied from the VRCSDK
-            const int MAX_ACTION_TEXTURE_SIZE = 256;
-            bool ValidateTexture(Texture2D texture)
-            {
-                string path = AssetDatabase.GetAssetPath(texture);
-                TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
-                if (importer == null)
-                    return true;
-                TextureImporterPlatformSettings settings = importer.GetDefaultPlatformTextureSettings();
-
-                //Max texture size
-                if ((texture.width > MAX_ACTION_TEXTURE_SIZE || texture.height > MAX_ACTION_TEXTURE_SIZE) &&
-                    settings.maxTextureSize > MAX_ACTION_TEXTURE_SIZE)
-                    return false;
-
-                //Compression
-                if (settings.textureCompression == TextureImporterCompression.Uncompressed)
-                    return false;
-
-                //Success
-                return true;
-            }
-            void FixTexture(Texture2D texture)
-            {
-                string path = AssetDatabase.GetAssetPath(texture);
-                TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
-                if (importer == null)
-                    return;
-                TextureImporterPlatformSettings settings = importer.GetDefaultPlatformTextureSettings();
-
-                //Max texture size
-                if (texture.width > MAX_ACTION_TEXTURE_SIZE || texture.height > MAX_ACTION_TEXTURE_SIZE)
-                    settings.maxTextureSize = Math.Min(settings.maxTextureSize, MAX_ACTION_TEXTURE_SIZE);
-
-                //Compression
-                if (settings.textureCompression == TextureImporterCompression.Uncompressed)
-                    settings.textureCompression = TextureImporterCompression.Compressed;
-
-                //Set & Reimport
-                importer.SetPlatformTextureSettings(settings);
-                AssetDatabase.ImportAsset(path);
-            }
-
-            var iconsTooLarge = new HashSet<Texture2D>();
-            void CheckIcon(Texture2D icon) {
-                if (icon == null) return;
-                if (!ValidateTexture(icon)) {
-                    iconsTooLarge.Add(icon);
-                }
-            }
-            
-            menu.GetRaw().ForEachMenu(ForEachItem: (control, path) => {
-                //Check controls
-                CheckIcon(control.icon);
-                if (control.labels != null) {
-                    foreach (var label in control.labels) {
-                        CheckIcon(label.icon);
-                    }
-                }
-
-                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
-            });
-
-            if (iconsTooLarge.Any()) {
-                var msg =
-                    "You have some VRCFury props that are using menu icons larger than the VRCSDK will allow. Find these icons, and make" +
-                    " sure the Max Size is set to 256 and that compression is enabled:\n\n" +
-                    string.Join("\n", iconsTooLarge.Select(AssetDatabase.GetAssetPath).OrderBy(n => n));
-                void autofix() {
-                    foreach (var texture in iconsTooLarge) {
-                        FixTexture(texture);
-                    }
-                };
-                OfferAutoFix(msg, autofix);
-            }
-        }
-
-        private void CheckMipmap() {
-            var materials = new HashSet<Material>();
-            materials.UnionWith(manager.AvatarObject.GetComponentsInSelfAndChildren<Renderer>()
-                .SelectMany(r => r.sharedMaterials)
-                .NotNull()
-            );
-            var materialsFromClips = manager.GetAllUsedControllers()
-                .SelectMany(c => c.GetClips())
-                .SelectMany(clip => clip.GetObjectCurves())
-                .SelectMany(pair => pair.Item2)
-                .Select(frame => frame.value)
-                .OfType<Material>();
-            materials.UnionWith(materialsFromClips);
-
-            var textures = materials.SelectMany(m => {
-                int[] texIDs = m.GetTexturePropertyNameIDs();
-                if (texIDs == null) return new Texture[] { };
-                return texIDs.Select(m.GetTexture).NotNull();
-            });
-            
-            List<TextureImporter> badTextureImporters = new List<TextureImporter>();
-            List<Texture> badTextures = new List<Texture>();
-            foreach (var t in textures) {
-                var path = AssetDatabase.GetAssetPath(t);
-                if (string.IsNullOrEmpty(path)) continue;
-                TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
-                if (importer != null && importer.mipmapEnabled && !importer.streamingMipmaps) {
-                    badTextureImporters.Add(importer);
-                    badTextures.Add(t);
-                }
-            }
-
-            if (!badTextureImporters.Any())
-                return;
-
-            var msg = "This avatar has mipmapped textures without 'Streaming Mip Maps' enabled:\n\n"
-                + string.Join("\n", badTextures.Select(AssetDatabase.GetAssetPath).OrderBy(n => n));
-            void autofix() {
-                List<string> paths = new List<string>();
-                foreach (TextureImporter t in badTextureImporters) {
-                    Undo.RecordObject(t, "Set Mip Map Streaming");
-                    t.streamingMipmaps = true;
-                    t.streamingMipmapsPriority = 0;
-                    EditorUtility.SetDirty(t);
-                    paths.Add(t.assetPath);
-                }
-
-                AssetDatabase.ForceReserializeAssets(paths);
-                AssetDatabase.Refresh();
-            }
-            OfferAutoFix(msg, autofix);
-        }
-
-        private void OfferAutoFix(string msg, Action autofix) {
-            var ok = EditorUtility.DisplayDialog(
-                "Warning",
-                msg,
-                "Auto-Fix",
-                "Ignore (upload will fail)"
-            );
-            if (ok) {
-                autofix();
-            } else {
-                excService.ThrowIfActuallyUploading(new Exception(msg));
             }
         }
     }

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     internal class AnimationRewriter {
@@ -30,6 +32,22 @@ namespace VF.Utils {
         }
         public static AnimationRewriter RewriteCurve(CurveRewriter rewrite) {
             return new AnimationRewriter(rewrite);
+        }
+        public static AnimationRewriter RewriteObject(Func<Object,Object> rewrite) {
+            return RewriteCurve((binding, curve) => {
+                if (curve.IsFloat) return (binding, curve, false);
+                var changed = false;
+                var newCurve = curve.ObjectCurve.Select(frame => {
+                    if (frame.value == null) return frame;
+                    var newValue = rewrite(frame.value);
+                    if (newValue != frame.value) {
+                        frame.value = newValue;
+                        changed = true;
+                    }
+                    return frame;
+                }).ToArray();
+                return (binding, newCurve, changed);
+            });
         }
         public static AnimationRewriter DeleteAllBindings() {
             return RewriteCurve((b, c) => (b, null, false));

@@ -96,6 +96,8 @@ namespace VF.Feature.Base {
         MoveSpsMenus,
         MoveMenuItems,
         FinalizeMenu,
+        FixMipmapStreaming,
+        FixMenuIconTextures,
 
         MarkThingsAsDirtyJustInCase,
         
