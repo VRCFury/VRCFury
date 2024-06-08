@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using JetBrains.Annotations;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Inspector;
@@ -58,6 +59,19 @@ namespace VF.Utils {
                 return child;
             });
             VRCFuryEditorUtils.MarkDirty(tree);
+        }
+
+        public static bool GetNormalizedBlendValues(this BlendTree tree) {
+            using (var so = new SerializedObject(tree)) {
+                return so.FindProperty("m_NormalizedBlendValues").boolValue;
+            }
+        }
+        
+        public static void SetNormalizedBlendValues(this BlendTree tree, bool on) {
+            using (var so = new SerializedObject(tree)) {
+                so.FindProperty("m_NormalizedBlendValues").boolValue = on;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
     }
 }

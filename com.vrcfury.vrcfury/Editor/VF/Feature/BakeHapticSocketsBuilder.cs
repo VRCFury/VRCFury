@@ -111,26 +111,94 @@ namespace VF.Feature {
                         // Receivers
                         var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket, manager.Avatar);
                         var haptics = GameObjects.Create("Haptics", bakeRoot);
+
+                        var baseReq = new HapticContactsService.ReceiverRequest() {
+                            obj = haptics,
+                            usePrefix = false,
+                            localOnly = true,
+                            useHipAvoidance = socket.useHipAvoidance
+                        };
+
                         if (handTouchZoneSize != null) {
                             var oscDepth = handTouchZoneSize.Item1;
                             var closeRadius = handTouchZoneSize.Item2;
-                            hapticContacts.AddReceiver(haptics, Vector3.forward * -oscDepth, paramPrefix + "/TouchSelf", "TouchSelf", oscDepth, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
-                            hapticContacts.AddReceiver(haptics, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchSelfClose", "TouchSelfClose", closeRadius, HapticUtils.SelfContacts, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: socket.useHipAvoidance);
-                            hapticContacts.AddReceiver(haptics, Vector3.forward * -oscDepth, paramPrefix + "/TouchOthers", "TouchOthers", oscDepth, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
-                            hapticContacts.AddReceiver(haptics, Vector3.forward * -(oscDepth/2), paramPrefix + "/TouchOthersClose", "TouchOthersClose", closeRadius, HapticUtils.BodyContacts, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: socket.useHipAvoidance);
-                            // Legacy non-upgraded TPS detection
-                            hapticContacts.AddReceiver(haptics, Vector3.forward * -oscDepth, paramPrefix + "/PenOthers", "PenOthers", oscDepth, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
-                            hapticContacts.AddReceiver(haptics, Vector3.forward * -(oscDepth/2), paramPrefix + "/PenOthersClose", "PenOthersClose", closeRadius, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, height: oscDepth, rotation: capsuleRotation, type: ContactReceiver.ReceiverType.Constant, useHipAvoidance: socket.useHipAvoidance);
-                            
-                            var frotRadius = 0.1f;
-                            var frotPos = 0.05f;
-                            hapticContacts.AddReceiver(haptics, Vector3.forward * frotPos, paramPrefix + "/FrotOthers", "FrotOthers", frotRadius, new []{HapticUtils.TagTpsOrfRoot}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
+                            {
+                                var r = baseReq.Clone();
+                                r.pos = Vector3.forward * -oscDepth;
+                                r.paramName = paramPrefix + "/TouchSelf";
+                                r.objName = "TouchSelf";
+                                r.radius = oscDepth;
+                                r.tags = HapticUtils.SelfContacts;
+                                r.party = HapticUtils.ReceiverParty.Self;
+                                hapticContacts.AddReceiver(r);
+                                r.paramName = paramPrefix + "/TouchOthers";
+                                r.objName = "TouchOthers";
+                                r.tags = HapticUtils.BodyContacts;
+                                r.party = HapticUtils.ReceiverParty.Others;
+                                hapticContacts.AddReceiver(r);
+                                // Legacy non-upgraded TPS detection
+                                r.paramName = paramPrefix + "/PenOthers";
+                                r.objName = "PenOthers";
+                                r.tags = new[] { HapticUtils.CONTACT_PEN_MAIN };
+                                hapticContacts.AddReceiver(r);
+                            }
+                            {
+                                var r = baseReq.Clone();
+                                r.pos = Vector3.forward * -(oscDepth / 2);
+                                r.paramName = paramPrefix + "/TouchSelfClose";
+                                r.objName = "TouchSelfClose";
+                                r.radius = closeRadius;
+                                r.tags = HapticUtils.SelfContacts;
+                                r.party = HapticUtils.ReceiverParty.Self;
+                                r.height = oscDepth;
+                                r.rotation = capsuleRotation;
+                                r.type = ContactReceiver.ReceiverType.Constant;
+                                hapticContacts.AddReceiver(r);
+                                r.paramName = paramPrefix + "/TouchOthersClose";
+                                r.objName = "TouchOthersClose";
+                                r.tags = HapticUtils.BodyContacts;
+                                r.party = HapticUtils.ReceiverParty.Others;
+                                hapticContacts.AddReceiver(r);
+                                // Legacy non-upgraded TPS detection
+                                r.paramName = paramPrefix + "/PenOthersClose";
+                                r.objName = "PenOthersClose";
+                                r.tags = new[] { HapticUtils.CONTACT_PEN_MAIN };
+                                hapticContacts.AddReceiver(r);
+                            }
+                            {
+                                var frotRadius = 0.1f;
+                                var frotPos = 0.05f;
+                                var r = baseReq.Clone();
+                                r.pos = Vector3.forward * frotPos;
+                                r.paramName = paramPrefix + "/FrotOthers";
+                                r.objName = "FrotOthers";
+                                r.radius = frotRadius;
+                                r.tags = new[] { HapticUtils.TagTpsOrfRoot };
+                                r.party = HapticUtils.ReceiverParty.Others;
+                                hapticContacts.AddReceiver(r);
+                            }
                         }
 
-                        hapticContacts.AddReceiver(haptics, Vector3.zero, paramPrefix + "/PenSelfNewRoot", "PenSelfNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
-                        hapticContacts.AddReceiver(haptics, Vector3.zero, paramPrefix + "/PenSelfNewTip", "PenSelfNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Self, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
-                        hapticContacts.AddReceiver(haptics, Vector3.zero, paramPrefix + "/PenOthersNewRoot", "PenOthersNewRoot", 1f, new []{HapticUtils.CONTACT_PEN_ROOT}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
-                        hapticContacts.AddReceiver(haptics, Vector3.zero, paramPrefix + "/PenOthersNewTip", "PenOthersNewTip", 1f, new []{HapticUtils.CONTACT_PEN_MAIN}, HapticUtils.ReceiverParty.Others, usePrefix: false, localOnly:true, useHipAvoidance: socket.useHipAvoidance);
+                        var req = baseReq.Clone();
+                        req.radius = 1f;
+                        req.paramName = paramPrefix + "/PenSelfNewRoot";
+                        req.objName = "PenSelfNewRoot";
+                        req.tags = new[] { HapticUtils.CONTACT_PEN_ROOT };
+                        req.party = HapticUtils.ReceiverParty.Self;
+                        hapticContacts.AddReceiver(req);
+                        req.paramName = paramPrefix + "/PenOthersNewRoot";
+                        req.objName = "PenOthersNewRoot";
+                        req.party = HapticUtils.ReceiverParty.Others;
+                        hapticContacts.AddReceiver(req);
+                        req.paramName = paramPrefix + "/PenSelfNewTip";
+                        req.objName = "PenSelfNewTip";
+                        req.tags = new[] { HapticUtils.CONTACT_PEN_MAIN };
+                        req.party = HapticUtils.ReceiverParty.Self;
+                        hapticContacts.AddReceiver(req);
+                        req.paramName = paramPrefix + "/PenOthersNewTip";
+                        req.objName = "PenOthersNewTip";
+                        req.party = HapticUtils.ReceiverParty.Others;
+                        hapticContacts.AddReceiver(req);
                     }
 
                     // This needs to be created before we make the menu item, because it turns this off.
@@ -203,63 +271,38 @@ namespace VF.Feature {
 
                         if (socket.enableAuto && autoOnClip) {
                             var autoReceiverObj = GameObjects.Create("AutoDistance", bakeRoot);
-                            var distParam = hapticContacts.AddReceiver(
-                                autoReceiverObj,
-                                Vector3.zero,
-                                name + "/AutoDistance",
-                                "Receiver",
-                                0.3f,
-                                new[] { HapticUtils.CONTACT_PEN_MAIN },
-                                party: HapticUtils.ReceiverParty.Others,
-                                useHipAvoidance: socket.useHipAvoidance
-                            );
+                            var distParam = hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
+                                obj = autoReceiverObj,
+                                paramName = name + "/AutoDistance",
+                                objName = "Receiver",
+                                radius = 0.3f,
+                                tags = new[] { HapticUtils.CONTACT_PEN_MAIN },
+                                party = HapticUtils.ReceiverParty.Others,
+                                useHipAvoidance = socket.useHipAvoidance
+                            });
                             autoReceiverObj.active = false;
                             clipBuilder.Enable(autoOnClip, autoReceiverObj);
                             autoSockets.Add(Tuple.Create(name, holeOn, distParam));
                         }
                     }
+                    
+                    var contacts = new SocketContacts(animRoot, name, hapticContacts, clipFactory, directTree, math, socket.useHipAvoidance);
 
                     if (socket.enableDepthAnimations && socket.depthActions.Count > 0) {
                         _hapticAnimContactsService.CreateSocketAnims(
                             socket.depthActions,
                             socket.owner(),
-                            animRoot,
-                            name,
-                            socket.unitsInMeters,
-                            socket.useHipAvoidance
+                            contacts,
+                            socket.unitsInMeters
                         );
                     }
 
                     if (socket.IsValidPlugLength || socket.IsValidPlugWidth) {
-                        var penTip = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/LengthSensor/TipContact", "PenTip", 1f, new[] { HapticUtils.CONTACT_PEN_MAIN }, HapticUtils.ReceiverParty.Both);
                         if (socket.IsValidPlugLength) {
-                            var penRoot = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/LengthSensor/RootContact", "PenRoot", 1f, new[] { HapticUtils.CONTACT_PEN_ROOT }, HapticUtils.ReceiverParty.Both);
-                            // Calculate `Plug Length` using `TPS_Pen_Penetrating - TPS_Pen_Root + 0.01 (radius of root sender)`
-                            var plugLength = math.Add(
-                                $"{name}/LengthSensor/Detected",
-                                (penTip,1),
-                                (penRoot,-1),
-                                (0.01f, 1)
-                            );
-                            var validWhen = math.And(math.GreaterThan(penRoot, 0), math.LessThan(penTip, 1));
-                            // We have to delay the validWhen by 1 frame, because Add takes a frame
-                            var validWhenBuffered = math.Buffer(validWhen, $"{name}/LengthSensor/IsValid");
-                            var plugLengthValid = math.SetValueWithConditions($"{name}/LengthSensor/Stable", (plugLength, validWhenBuffered));
-                            math.Buffer(plugLengthValid, socket.plugLengthParameterName, usePrefix: false);
+                            math.Buffer(contacts.closestLength.Value, socket.plugLengthParameterName, usePrefix: false);
                         }
                         if (socket.IsValidPlugWidth) {
-                            var penWidth = hapticContacts.AddReceiver(animRoot, Vector3.zero, $"{name}/WidthSensor/WidthContact", "PenWidth", 1f, new[] { HapticUtils.CONTACT_PEN_WIDTH }, HapticUtils.ReceiverParty.Both);
-                            // Calculate `Plug Width` using `(TPS_Pen_Penetrating - TPS_Pen_Width)/2` 
-                            var plugWidth = math.Add(
-                                $"{name}/WidthSensor/Detected",
-                                (penTip,0.5f),
-                                (penWidth,-0.5f)
-                            );
-                            var validWhen = math.And(math.GreaterThan(penWidth, 0), math.LessThan(penTip, 1));
-                            // We have to delay the validWhen by 1 frame, because Add takes a frame
-                            var validWhenBuffered = math.Buffer(validWhen, $"{name}/WidthSensor/IsValid");
-                            var plugWidthValid = math.SetValueWithConditions($"{name}/WidthSensor/Stable", (plugWidth, validWhenBuffered));
-                            math.Buffer(plugWidthValid, socket.plugWidthParameterName, usePrefix: false);
+                            math.Buffer(contacts.closestRadius.Value, socket.plugWidthParameterName, usePrefix: false);
                         }
                     }
                 } catch (Exception e) {

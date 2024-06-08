@@ -52,8 +52,7 @@ namespace VF.Builder.Haptics {
 
         public enum ReceiverParty {
             Self,
-            Others,
-            Both
+            Others
         }
 
         private static bool IsZeroScale(VFGameObject obj) {

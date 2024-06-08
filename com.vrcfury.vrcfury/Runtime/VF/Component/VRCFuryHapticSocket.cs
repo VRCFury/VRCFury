@@ -51,16 +51,18 @@ namespace VF.Component {
         [Serializable]
         public class DepthAction {
             public State state;
-            public float startDistance = 0;
-            public float endDistance = -0.25f;
+            public Vector2 range = new Vector2(-0.25f, 0);
             public bool enableSelf;
             public float smoothingSeconds = 0.25f;
+            public bool rangeInPlugLengths = false;
             
             [Obsolete] public float minDepth;
             [Obsolete] public float maxDepth;
             [Obsolete] public float smoothing;
+            [Obsolete] public float startDistance;
+            [Obsolete] public float endDistance;
         }
-        
+
         public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
             if (fromVersion < 1) {
@@ -96,6 +98,14 @@ namespace VF.Component {
             if (fromVersion < 7) {
                 enableActiveAnimation = activeActions.actions.Count > 0;
             }
+            if (fromVersion < 8) {
+                foreach (var a in depthActions) {
+                    a.range = new Vector2(
+                        Math.Min(a.startDistance, a.endDistance),
+                        Math.Max(a.startDistance, a.endDistance)
+                    );
+                }
+            }
 #pragma warning restore 0612
             return false;
         }
@@ -117,7 +127,7 @@ namespace VF.Component {
         }
 
         public override int GetLatestVersion() {
-            return 7;
+            return 8;
         }
     }
 }

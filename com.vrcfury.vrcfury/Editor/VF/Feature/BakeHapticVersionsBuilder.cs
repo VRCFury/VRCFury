@@ -11,9 +11,12 @@ using VF.Service;
 namespace VF.Builder.Haptics {
     /** Adds a parameter to the avatar so OGB can pick up what version of haptics are available */
     [VFService]
-    internal class BakeHapticVersionsBuilder : FeatureBuilder {
+    internal class BakeHapticVersionsBuilder {
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
+        [VFAutowired] private readonly AvatarManager manager;
+        private VFGameObject avatarObject => manager.AvatarObject;
+        private ControllerManager fx => manager.GetFx();
         
         // Bump when plug senders or receivers are changed
         private const int LocalVersion = 10;
@@ -34,7 +37,12 @@ namespace VF.Builder.Haptics {
                          ?? avatarObject;
             var beaconRoot = GameObjects.Create("vfh_versionbeacon", parent);
             var versionBeaconTag = "VFH_VERSION_" + BeaconVersion;
-            hapticContacts.AddSender(beaconRoot, Vector3.zero, "VersionBeacon", 0.01f, new [] { versionBeaconTag });
+            hapticContacts.AddSender(new HapticContactsService.SenderRequest() {
+                obj = beaconRoot,
+                objName = "VersionBeacon",
+                radius = 0.01f,
+                tags = new [] { versionBeaconTag }
+            });
             
             var hasOgbReceivers = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>().Any(c => !c.sendersOnly)
                                   || avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any(c => !c.sendersOnly);
@@ -44,22 +52,20 @@ namespace VF.Builder.Haptics {
                 // Add a parameter to FX so it can be picked up by client apps
                 // Because of https://feedback.vrchat.com/bug-reports/p/oscquery-provides-wrong-values-for-avatar-parameters-until-they-are-changed
                 // we can't just use an int and set it to the version number.
-                var fx = manager.GetFx();
                 fx.NewBool($"VFH/Version/{LocalVersion}", usePrefix: false, synced: true, networkSynced: false);
                 
                 var receiveTags = new List<string>() { versionBeaconTag };
                 if (BeaconVersion == 7) receiveTags.Add("OGB_VERSION_6");
-                hapticContacts.AddReceiver(
-                    beaconRoot,
-                    Vector3.zero,
-                    "VFH/Beacon",
-                    "BeaconReceiver",
-                    3f, // this is the max radius that vrc will allow
-                    receiveTags.ToArray(),
-                    party: HapticUtils.ReceiverParty.Others,
-                    usePrefix: false,
-                    localOnly: true
-                );
+                hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
+                    obj = beaconRoot,
+                    paramName = "VFH/Beacon",
+                    objName = "BeaconReceiver",
+                    radius = 3f, // this is the max radius that vrc will allow
+                    tags = receiveTags.ToArray(),
+                    party = HapticUtils.ReceiverParty.Others,
+                    usePrefix = false,
+                    localOnly = true
+                });
             }
         }
     }

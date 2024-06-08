@@ -146,12 +146,65 @@ namespace VF.Inspector {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
                 var c = new VisualElement();
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state")));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
+                var rangeInPlugLengths = prop.FindPropertyRelative("rangeInPlugLengths");
+                c.Add(VRCFuryEditorUtils.RefreshOnChange(() =>
+                    VRCFuryEditorUtils.BetterProp(
+                        null,
+                        "Activation distance",
+                        tooltip: "Animation will begin at the further distance, and 'max' at the closer distance",
+                        fieldOverride: MinMaxSlider(prop.FindPropertyRelative("range"), rangeInPlugLengths.boolValue)
+                    )
+                , rangeInPlugLengths));
+                c.Add(VRCFuryEditorUtils.BetterProp(
+                    rangeInPlugLengths,
+                    "Range based on plug scale",
+                    tooltip: "By default, range is defined in meters. If you enable this option, the range units will instead be based on 'how long the plug is', meaning that -1 is 'fully inserted'."
+                ));
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
                 return c;
             }
+        }
+        
+        public static VisualElement MinMaxSlider(SerializedProperty prop, bool rangeInPlugLengths) {
+            var output = new VisualElement();
+            output.Row();
+            output.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("x")).FlexBasis(50));
+
+            var c = new VisualElement();
+
+            var test = new Label(rangeInPlugLengths ? "Fully\n\u2193 Inserted" : "Tip\n\u2193 inside 1m");
+            test.style.position = Position.Absolute;
+            test.style.bottom = 15;
+            test.style.fontSize = 9;
+            c.Add(test);
+        
+            var test2 = new Label("Tip at\n\u2193 Entrance");
+            test2.style.position = Position.Absolute;
+            test2.style.bottom = 15;
+            test2.style.left = Length.Percent(25);
+            test2.style.fontSize = 9;
+            c.Add(test2);
+        
+            var test3 = new Label(rangeInPlugLengths ? "Tip 3 plug-lengths\naway \u2193" : "Tip 3m\naway \u2193");
+            test3.style.position = Position.Absolute;
+            test3.style.bottom = 15;
+            test3.style.right = 0;
+            test3.style.fontSize = 9;
+            test3.style.unityTextAlign = TextAnchor.UpperRight;
+            c.Add(test3);
+        
+            c.Add(new MinMaxSlider {
+                bindingPath = prop.propertyPath,
+                highLimit = 3,
+                lowLimit = -1
+            });
+
+            output.style.marginTop = 20;
+
+            output.Add(c.FlexGrow(1).FlexBasis(0));
+            output.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("y")).FlexBasis(50));
+            return output;
         }
 
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]
@@ -309,9 +362,21 @@ namespace VF.Inspector {
                             break;
                     }
                 }
-                hapticContactsService.AddSender(senders, Vector3.zero, "Root", 0.001f, rootTags.ToArray(), useHipAvoidance: socket.useHipAvoidance);
-                hapticContactsService.AddSender(senders, Vector3.forward * 0.01f, "Front", 0.001f,
-                    new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront }, useHipAvoidance: socket.useHipAvoidance);
+                hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                    obj = senders,
+                    objName = "Root",
+                    radius = 0.001f,
+                    tags = rootTags.ToArray(),
+                    useHipAvoidance = socket.useHipAvoidance
+                });
+                hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                    obj = senders,
+                    pos = Vector3.forward * 0.01f,
+                    objName = "Front",
+                    radius = 0.001f,
+                    tags = new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront },
+                    useHipAvoidance = socket.useHipAvoidance
+                });
             }
 
             if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.sendersOnly) {

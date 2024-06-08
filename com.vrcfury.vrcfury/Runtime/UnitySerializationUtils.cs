@@ -7,7 +7,7 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace VF {
-    public static class UnitySerializationUtils {
+    internal static class UnitySerializationUtils {
         public class IterateVisit {
             public string path;
             [CanBeNull] public FieldInfo field;

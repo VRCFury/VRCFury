@@ -423,11 +423,38 @@ namespace VF.Inspector {
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
             var senders = GameObjects.Create("Senders", bakeRoot);
-            hapticContactsService.AddSender(senders, Vector3.zero, "Length", worldLength, new [] { HapticUtils.CONTACT_PEN_MAIN }, useHipAvoidance: plug.useHipAvoidance);
-            hapticContactsService.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), new [] { HapticUtils.CONTACT_PEN_WIDTH }, useHipAvoidance: plug.useHipAvoidance);
-            hapticContactsService.AddSender(senders, halfWay, "Envelope", worldRadius, new [] { HapticUtils.CONTACT_PEN_CLOSE }, rotation: capsuleRotation, height: worldLength, useHipAvoidance: plug.useHipAvoidance);
-            hapticContactsService.AddSender(senders, Vector3.zero, "Root", 0.01f, new [] { HapticUtils.CONTACT_PEN_ROOT }, useHipAvoidance: plug.useHipAvoidance);
-            
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = senders,
+                objName = "Length",
+                radius = worldLength,
+                tags = new [] { HapticUtils.CONTACT_PEN_MAIN },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = senders,
+                objName = "WidthHelper",
+                radius = Mathf.Max(0.01f, worldLength - worldRadius*2),
+                tags = new [] { HapticUtils.CONTACT_PEN_WIDTH },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = senders,
+                pos = halfWay,
+                objName = "Envelope",
+                radius = worldRadius,
+                tags = new [] { HapticUtils.CONTACT_PEN_CLOSE },
+                rotation = capsuleRotation,
+                height = worldLength,
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = senders,
+                objName = "Root",
+                radius = 0.01f,
+                tags = new [] { HapticUtils.CONTACT_PEN_ROOT },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+
             // TODO: Check if there are 0 renderers,
             // or if there are 0 materials on any of the renderers
 

@@ -68,9 +68,13 @@ namespace VF.Service {
                 FlattenTrees(child.motion);
             }
             if (tree.blendType != BlendTreeType.Direct) return;
+            if (tree.GetNormalizedBlendValues()) return;
             tree.children = tree.children.SelectMany(child => {
-                if (child.directBlendParameter == manager.GetFx().One().Name() &&
-                    child.motion is BlendTree childTree && childTree.blendType == BlendTreeType.Direct) {
+                if (child.directBlendParameter == manager.GetFx().One().Name()
+                    && child.motion is BlendTree childTree
+                    && childTree.blendType == BlendTreeType.Direct
+                    && !childTree.GetNormalizedBlendValues()
+                ) {
                     return childTree.children;
                 }
                 return new ChildMotion[] { child };
@@ -83,6 +87,7 @@ namespace VF.Service {
                 FlattenClips(child.motion);
             }
             if (tree.blendType != BlendTreeType.Direct) return;
+            if (tree.GetNormalizedBlendValues()) return;
 
             bool IsAlwaysOnClip(ChildMotion child) =>
                 child.directBlendParameter == manager.GetFx().One().Name()

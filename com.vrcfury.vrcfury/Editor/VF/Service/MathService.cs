@@ -69,21 +69,30 @@ namespace VF.Service {
 
             var output = MakeAap(name, def: defaultValue);
 
-            // The "fall through" (if all conditions are false) is to maintain the current output value
-            var elseTree = MakeCopier(output, output);
+            var targetMotions = targets
+                .Select(target => (MakeCopier(target.value, output), target.condition))
+                // The "fall through" (if all conditions are false) is to maintain the current output value
+                .Append((MakeCopier(output, output), null))
+                .ToArray();
+            SetValueWithConditions(targetMotions);
+
+            return output;
+        }
+        
+        public void SetValueWithConditions(
+            params (Motion whenTrue,VFAFloatBool condition)[] targets
+        ) {
+            Motion elseTree = null;
 
             foreach (var target in targets.Reverse()) {
-                var doWhenTrue = MakeCopier(target.value, output);
-
                 if (target.condition == null) {
-                    elseTree = doWhenTrue;
+                    elseTree = target.whenTrue;
                     continue;
                 }
 
-                elseTree = target.condition.create(doWhenTrue, elseTree);
+                elseTree = target.condition.create(target.whenTrue, elseTree);
             }
             directTree.Add(elseTree);
-            return output;
         }
 
         public VFAFloatBool False() {
@@ -219,22 +228,31 @@ namespace VF.Service {
             }
 
             var output = MakeAap(name, def: def);
+            directTree.Add(Add(name, output, components));
+            return output;
+        }
 
+        /**
+         * input : [0,Infinity)
+         * multiplier : (-Infinity,Infinity)
+         */
+        public Motion Add(string name, VFAap output, params (VFAFloatOrConst input,float multiplier)[] components) {
             var clipCache = new Dictionary<float, AnimationClip>();
             AnimationClip MakeCachedSetter(float multiplier) {
                 if (clipCache.TryGetValue(multiplier, out var cached)) return cached;
                 return clipCache[multiplier] = MakeSetter(output, multiplier);
             }
-            
+
+            var tree = MakeDirect(name);
             foreach (var (input,multiplier) in components) {
                 if (input.param != null) {
-                    directTree.Add(input.param, MakeCachedSetter(multiplier));
+                    tree.Add(input.param, MakeCachedSetter(multiplier));
                 } else {
-                    directTree.Add(MakeCachedSetter(input.constt * multiplier));
+                    tree.Add(fx.One(), MakeCachedSetter(input.constt * multiplier));
                 }
             }
 
-            return output;
+            return tree;
         }
 
         public AnimationClip MakeSetter(VFAap param, float value) {
@@ -252,6 +270,17 @@ namespace VF.Service {
                 tree.AddChild(motion, threshold);
             }
             return tree;
+        }
+
+        public VFAap Invert(string name, VFAFloat input) {
+            var output = MakeAap(name);
+            var tmp = Add($"{name}/Tmp", (input, 10000), (-1, 1));
+            var tree = MakeDirect(name);
+            tree.SetNormalizedBlendValues(true);
+            tree.Add(tmp, null);
+            tree.Add(fx.One(), MakeSetter(output, 10000));
+            directTree.Add(tree);
+            return output;
         }
 
         /*
