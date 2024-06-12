@@ -33,7 +33,7 @@ namespace VF {
                 new Type[] { },
                 null
             );
-            return (bool)open.Invoke(null, new object[] { });
+            return open.Invoke(null, new object[] { }) != null;
 #endif
         }
     }
