@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using UnityEngine;
 using VF.Builder;
 
@@ -29,7 +30,7 @@ namespace VF {
             var open = prefabStageUtility.GetMethod("GetCurrentPrefabStage",
                 BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
                 null,
-                new[] { },
+                new Type[] { },
                 null
             );
             return (bool)open.Invoke(null, new object[] { });

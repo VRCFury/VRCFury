@@ -79,7 +79,8 @@ namespace VF.Builder {
                     current = current.parent;
                 }
 
-                return nullIfNotFound ? null : binding;
+                if (nullIfNotFound) return null;
+                return binding;
             });
         }
 
