@@ -100,12 +100,8 @@ namespace VF.Inspector {
             }
             
             container.Add(body);
-            
-#if UNITY_2022_1_OR_NEWER
-            var editingPrefab = PrefabStageUtility.GetCurrentPrefabStage() != null;
-#else
-            var editingPrefab = false;
-#endif
+
+            var editingPrefab = UnityCompatUtils.IsEditingPrefab();
 
             var notInAvatarError = VRCFuryEditorUtils.Error(
                 "This VRCFury component is not placed on an avatar, and thus will not do anything! " +

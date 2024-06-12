@@ -1016,4 +1016,8 @@ namespace VF.Model.Feature {
     [Serializable]
     internal class UnlimitedParameters : NewFeatureModel {
     }
+    
+    [Serializable]
+    internal class DescriptorDebug : NewFeatureModel {
+    }
 }
