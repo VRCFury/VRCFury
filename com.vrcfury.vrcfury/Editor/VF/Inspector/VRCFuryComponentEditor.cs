@@ -10,6 +10,7 @@ using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Component;
 using VF.Model;
+using VF.Model.Feature;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
@@ -111,10 +112,15 @@ namespace VF.Inspector {
             UpdateNotInAvatarError();
             notInAvatarError.schedule.Execute(UpdateNotInAvatarError).Every(1000);
             container.Add(notInAvatarError);
-            
+
             var deletedError = VRCFuryEditorUtils.Error(
                 "This VRCFury component is placed within an object that is tagged as EditorOnly or has a vrcfury 'Delete During Upload' component, and thus will not do anything!");
-            void UpdateDeletedError() => deletedError.SetVisible(EditorOnlyUtils.IsInsideEditorOnly(c.gameObject));
+            void UpdateDeletedError() {
+                var hasDelete = v is VRCFury z && z.GetAllFeatures().OfType<DeleteDuringUpload>().Any();
+                var isDeleted = EditorOnlyUtils.IsInsideEditorOnly(c.gameObject);
+                deletedError.SetVisible(isDeleted && !hasDelete);
+            }
+
             UpdateDeletedError();
             deletedError.schedule.Execute(UpdateDeletedError).Every(1000);
             container.Add(deletedError);
