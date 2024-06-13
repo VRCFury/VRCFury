@@ -379,6 +379,7 @@ namespace VF.Service {
                         break;
                     }
                     case SyncParamAction syncParamAction: {
+                        if (service == null) break;
                         if (triggerParam == null) {
                             triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
                             onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
@@ -387,6 +388,7 @@ namespace VF.Service {
                         break;
                     }
                     case ToggleStateAction toggleStateAction: {
+                         if (service == null) break;
                          if (triggerParam == null) {
                             triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
                             onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
@@ -395,6 +397,7 @@ namespace VF.Service {
                         break;
                     }
                     case TagStateAction tagStateAction: {
+                        if (service == null) break;
                         if (triggerParam == null) {
                             triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
                             onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);

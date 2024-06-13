@@ -70,7 +70,7 @@ namespace VF.Service {
                 createdStates[input] = state;
             } else {
                 var rawState = createdStates[input].GetRaw();
-                rawState.name = rawState.name.Insert(rawState.name.IndexOf(" (from"),  $", {output} = {value}");
+                //rawState.name = rawState.name.Insert(rawState.name.IndexOf(" (from"),  $", {output} = {value}");
             }
             var myDriver = createdStates[input].GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
             myDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
