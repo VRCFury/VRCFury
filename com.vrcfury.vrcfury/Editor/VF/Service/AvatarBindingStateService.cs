@@ -101,7 +101,7 @@ namespace VF.Service {
             }
         }
 
-        private static bool TryParseMaterialProperty(EditorCurveBinding binding, out string propertyName) {
+        public static bool TryParseMaterialProperty(EditorCurveBinding binding, out string propertyName) {
             if (binding.propertyName.StartsWith("material.")) {
                 propertyName = binding.propertyName.Substring("material.".Length);
                 return true;
@@ -173,7 +173,7 @@ namespace VF.Service {
 
                 var type = mat.GetPropertyType(propName);
                 if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range) {
-                    mat = MutableManager.MakeMutable(mat);
+                    mat = mat.Clone();
                     mat.SetFloat(propName, val.GetFloat());
                     return mat;
                 }
@@ -187,7 +187,7 @@ namespace VF.Service {
                 // behaviour is that it should be set to 0. However, unit really tries to not allow you to be missing
                 // one component in your animator (by deleting them all at once), so it's probably not a big deal.
                 if (bundleType == ShaderUtil.ShaderPropertyType.Color) {
-                    mat = MutableManager.MakeMutable(mat);
+                    mat = mat.Clone();
                     var color = mat.GetColor(bundleName);
                     if (bundleSuffix == "r") color.r = val.GetFloat();
                     if (bundleSuffix == "g") color.g = val.GetFloat();
@@ -197,7 +197,7 @@ namespace VF.Service {
                     return mat;
                 }
                 if (bundleType == ShaderUtil.ShaderPropertyType.Vector) {
-                    mat = MutableManager.MakeMutable(mat);
+                    mat = mat.Clone();
                     var vector = mat.GetVector(bundleName);
                     if (bundleSuffix == "x") vector.x = val.GetFloat();
                     if (bundleSuffix == "y") vector.y = val.GetFloat();

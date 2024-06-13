@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     internal static class VrcfObjectFactory {
-        private static readonly List<Object> created = new List<Object>();
+        private static readonly HashSet<Object> created = new HashSet<Object>();
 
         [InitializeOnLoadMethod]
         private static void OnLoad() {
@@ -48,7 +49,12 @@ namespace VF.Utils {
 
         public static T Register<T>(T obj) where T : Object {
             created.Add(obj);
+            obj.hideFlags = HideFlags.DontSaveInEditor;
             return obj;
+        }
+
+        public static bool DidCreate(Object obj) {
+            return created.Contains(obj);
         }
     }
 }

@@ -98,9 +98,8 @@ namespace VF.Feature.Base {
         MoveSpsMenus,
         MoveMenuItems,
         FinalizeMenu,
-
-        // Finalize Parameters
-        FinalizeParams,
+        FixMipmapStreaming,
+        FixMenuIconTextures,
 
         MarkThingsAsDirtyJustInCase,
         
@@ -110,5 +109,7 @@ namespace VF.Feature.Base {
         
         // Needs to happen after everything is done using the animator
         ResetAnimatorAfter,
+        
+        Validation,
     }
 }

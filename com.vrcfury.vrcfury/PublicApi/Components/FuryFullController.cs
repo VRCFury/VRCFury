@@ -39,5 +39,9 @@ namespace com.vrcfury.api.Components {
                 parameters = prms
             });
         }
+
+        public void AddGlobalParam(string name) {
+            c.globalParams.Add(name);
+        }
     }
 }

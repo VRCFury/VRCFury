@@ -46,8 +46,8 @@ namespace VF.Utils {
             // while in play mode, so we make a copy that is readable and return that instead.
             if (mesh != null && !mesh.isReadable && Application.isPlaying) {
                 if (readWriteCache.TryGetValue(mesh, out var cached)) return cached;
-                var copy = MutableManager.MakeMutable(mesh, true);
-                ForceReadWrite(copy);
+                var copy = mesh.Clone();
+                copy.ForceReadable();
                 readWriteCache[mesh] = copy;
                 return copy;
             }
@@ -59,18 +59,10 @@ namespace VF.Utils {
         public static Mesh GetMutableMesh(this Renderer renderer) {
             var mesh = renderer.GetMesh();
             if (mesh == null) return null;
-            var copy = MutableManager.MakeMutable(mesh);
+            var copy = mesh.Clone();
             renderer.SetMesh(copy);
-            ForceReadWrite(copy);
+            copy.ForceReadable();
             return copy;
-        }
-
-        private static void ForceReadWrite(Mesh mesh) {
-            var so = new SerializedObject(mesh);
-            so.Update();
-            var sp = so.FindProperty("m_IsReadable");
-            sp.boolValue = true;
-            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         public static void SetMesh(this Renderer renderer, Mesh mesh) {

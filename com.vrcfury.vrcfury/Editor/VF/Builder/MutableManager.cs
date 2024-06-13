@@ -32,13 +32,6 @@ namespace VF.Builder {
             typeof(VRCExpressionParameters),
             typeof(VRCExpressionsMenu),
         };
-        
-        private static readonly Type[] hiddenTypes = {
-            typeof(AnimatorStateMachine),
-            typeof(AnimatorState),
-            typeof(AnimatorTransitionBase),
-            typeof(StateMachineBehaviour),
-        };
 
         private static void Iterate(SerializedObject obj, Action<SerializedProperty> act) {
             var prop = obj.GetIterator();
@@ -101,11 +94,11 @@ namespace VF.Builder {
                     if (!IsType(original, typesToMakeMutable)) return false;
                 }
 
-                var copy = MakeMutable(original, true);
+                var copy = original.Clone();
                 if (obj == original) rootCopy = copy as T;
 
-                if (IsType(copy, hiddenTypes)) {
-                    copy.hideFlags |= HideFlags.HideInHierarchy;
+                if (copy is AnimatorState || copy is AnimatorStateMachine) {
+                    // don't add prefix
                 } else {
                     copy.name = $"{addPrefix}{original.name}";
                 }
@@ -148,22 +141,7 @@ namespace VF.Builder {
         // AnimatorControllers, AnimatorStateMachines, AnimatorStates,
         // and other things that unity usually logs errors from when using
         // Object.Instantiate
-        private static T SafeInstantiate<T>(T original) where T : Object {
-            if (original is Material || original is Mesh) {
-                var c = Object.Instantiate(original);
-                VrcfObjectFactory.Register(c);
-                return c;
-            }
 
-            if (original is AnimationClip clip) {
-                return clip.Clone() as T;
-            }
-
-            var copy = VrcfObjectFactory.Create(original.GetType()) as T;
-            EditorUtility.CopySerialized(original, copy);
-            return copy;
-        }
-        
         public static void ForEachChild(Object obj, Func<Object,bool> visit) {
             if (obj == null) return;
             var visited = new HashSet<Object>();
@@ -199,32 +177,5 @@ namespace VF.Builder {
 
         private static bool IsType(Object obj, Type[] types) =>
             types.Any(type => type.IsInstanceOfType(obj));
-
-        public static T MakeMutable<T>(T original, bool forceCopy = false) where T : Object {
-            if (!forceCopy && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(original))) {
-                // Already mutable
-                return original;
-            }
-
-            if (original is Material originalMat) {
-                MaterialLocker.Lock(originalMat);
-            }
-
-            var copy = SafeInstantiate(original);
-            copy.name = original.name;
-            if (copy is Material copyMat) {
-                // Ensure the material is flattened (if it's a material variant)
-                // This way, things like SPS can change the shader
-#if UNITY_2022_1_OR_NEWER
-                copyMat.parent = null;
-#endif
-                
-                // Keep the thry suffix so if it's locked later, the renamed properties still use the same suffixes
-                if (string.IsNullOrWhiteSpace(copyMat.GetTag("thry_rename_suffix", false))) {
-                    copyMat.SetOverrideTag("thry_rename_suffix", Regex.Replace(original.name, "[^a-zA-Z0-9_]", ""));
-                }
-            }
-            return copy;
-        }
     }
 }

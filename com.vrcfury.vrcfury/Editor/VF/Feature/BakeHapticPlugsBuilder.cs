@@ -49,6 +49,7 @@ namespace VF.Feature {
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
                     PhysboneUtils.RemoveFromPhysbones(plug.owner());
+                    if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) continue;
                     var bakeInfo = VRCFuryHapticPlugEditor.Bake(
                         plug,
                         hapticContacts,
@@ -74,7 +75,24 @@ namespace VF.Feature {
             AnimationClip tipLightOnClip = null;
             AnimationClip spsPlusClip = null;
 
-            foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
+            var plugs = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>();
+
+            if (plugs.Any(plug => plug.addDpsTipLight)) {
+                var param = fx.NewBool("tipLight", synced: true);
+                manager.GetMenu()
+                    .NewMenuToggle(
+                        $"{spsOptions.GetOptionsPath()}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
+                        param);
+                tipLightOnClip = clipFactory.NewClip("EnableAutoReceivers");
+                var layer = fx.NewLayer("Tip Light");
+                var off = layer.NewState("Off");
+                var on = layer.NewState("On").WithAnimation(tipLightOnClip);
+                var whenOn = param.IsTrue();
+                off.TransitionsTo(on).When(whenOn);
+                on.TransitionsTo(off).When(whenOn.Not());
+            }
+
+            foreach (var plug in plugs) {
                 try {
                     if (!bakeResults.TryGetValue(plug, out var bakeInfo)) continue;
 
@@ -199,7 +217,7 @@ namespace VF.Feature {
                         }
                     }
 
-                    if (plug.addDpsTipLight) {
+                    if (tipLightOnClip != null) {
                         var tip = GameObjects.Create("LegacyDpsTip", bakeRoot);
                         tip.active = false;
                         if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
@@ -212,21 +230,6 @@ namespace VF.Feature {
                             light.intensity = worldLength;
 
                             dpsTipToDo.Add(light);
-                        }
-
-                        if (tipLightOnClip == null) {
-                            var param = fx.NewBool("tipLight", synced: true);
-                            manager.GetMenu()
-                                .NewMenuToggle(
-                                    $"{spsOptions.GetOptionsPath()}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
-                                    param);
-                            tipLightOnClip = clipFactory.NewClip("EnableAutoReceivers");
-                            var layer = fx.NewLayer("Tip Light");
-                            var off = layer.NewState("Off");
-                            var on = layer.NewState("On").WithAnimation(tipLightOnClip);
-                            var whenOn = param.IsTrue();
-                            off.TransitionsTo(on).When(whenOn);
-                            on.TransitionsTo(off).When(whenOn.Not());
                         }
 
                         clipBuilder.Enable(tipLightOnClip, tip);

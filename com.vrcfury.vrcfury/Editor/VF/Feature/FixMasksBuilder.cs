@@ -35,7 +35,6 @@ namespace VF.Feature {
 
             var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
             var newFxLayers = new List<AnimatorControllerLayer>();
-            var fx = manager.GetFx();
             
             PropType GetPropType(EditorCurveBinding b) {
                 if (b.path == "" && b.type == typeof(Animator)) {
@@ -71,28 +70,6 @@ namespace VF.Feature {
                 newFxLayers.Add(layerForFx);
                 animatorLayerControlManager.Alias(layerForGesture.stateMachine, layerForFx.stateMachine);
                 layerSourceService.CopySource(layerForGesture.stateMachine, layerForFx.stateMachine);
-                
-                // Remove fx bindings from the gesture copy
-                foreach (var clip in new AnimatorIterator.Clips().From(new VFLayer(null,layerForGesture.stateMachine))) {
-                    clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
-                        if (GetPropType(b) != PropType.Fx) return b;
-                        return null;
-                    }));
-                }
-                if (layerForGesture.avatarMask != null) {
-                    layerForGesture.avatarMask.AllowAllTransforms();
-                }
-
-                // Remove muscle control from the fx copy
-                foreach (var clip in new AnimatorIterator.Clips().From(new VFLayer(null,layerForFx.stateMachine))) {
-                    clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
-                        if (GetPropType(b) != PropType.Muscle) return b;
-                        return null;
-                    }));
-                }
-                if (layerForFx.avatarMask != null && layerForFx.avatarMask.AllowsAllTransforms()) {
-                    layerForFx.avatarMask = null;
-                }
 
                 if (propTypes.Contains(PropType.Muscle) || propTypes.Contains(PropType.Aap)) {
                     // We're keeping both layers
@@ -116,6 +93,38 @@ namespace VF.Feature {
                     });
                 }
             }
+            
+            // This clip cleanup must happen after the merge is all finished,
+            // because otherwise `propTypes` above could be wrong for some layers that use shared clips
+            // if we cleanup while iterating through the layers
+            
+            // Remove fx bindings from the gesture copy
+            foreach (var clip in new AnimatorIterator.Clips().From(gesture.GetRaw())) {
+                clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
+                    if (GetPropType(b) != PropType.Fx) return b;
+                    return null;
+                }));
+            }
+
+            foreach (var layerForGesture in gesture.GetLayers()) {
+                if (layerForGesture.mask != null) {
+                    layerForGesture.mask.AllowAllTransforms();
+                }
+            }
+
+            // Remove muscle control from the fx copy
+            foreach (var clip in new AnimatorIterator.Clips().From(fx.GetRaw())) {
+                clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
+                    if (GetPropType(b) != PropType.Muscle) return b;
+                    return null;
+                }));
+            }
+
+            foreach (var layerForFx in fx.GetLayers()) {
+                if (layerForFx.mask != null && layerForFx.mask.AllowsAllTransforms()) {
+                    layerForFx.mask = null;
+                }
+            }
         }
         
         [FeatureBuilderAction(FeatureOrder.FixMasks)]
@@ -132,9 +141,7 @@ namespace VF.Feature {
 
                 AvatarMask expectedMask = null;
                 if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                    expectedMask = AvatarMaskExtensions.Empty();
-                    expectedMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
-                    expectedMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
+                    expectedMask = GetGestureMask(c);
                 }
 
                 var layer0 = ctrl.GetLayer(0);

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using JetBrains.Annotations;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -29,9 +30,36 @@ namespace VF.Service {
                 //Debug.LogError("Something added a non-static clip to a VRCF DBT. This is likely a bug.");
                 return;
             }
-            tree.MakeZeroLength();
+            MakeZeroLength(tree);
             FlattenTrees(tree);
             FlattenClips(tree);
+        }
+        
+        private void MakeZeroLength(Motion motion) {
+            if (motion is AnimationClip clip) {
+                clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                    if (curve.lengthInSeconds == 0) return (binding, curve, false);
+                    return (binding, curve.GetLast(), true);
+                }));
+                if (!clip.GetAllBindings().Any()) {
+                    clip.SetFloatCurve(
+                        EditorCurveBinding.FloatCurve("__ignored", typeof(GameObject), "m_IsActive"),
+                        AnimationCurve.Constant(0, 0, 0)
+                    );
+                }
+            } else {
+                foreach (var tree in new AnimatorIterator.Trees().From(motion)) {
+                    tree.RewriteChildren(child => {
+                        if (child.motion == null) {
+                            child.motion = clipFactory.NewClip("Empty");
+                        }
+                        return child;
+                    });
+                }
+                foreach (var c in new AnimatorIterator.Clips().From(motion)) {
+                    MakeZeroLength(c);
+                }
+            }
         }
 
         private void FlattenTrees([CanBeNull] Motion motion) {
