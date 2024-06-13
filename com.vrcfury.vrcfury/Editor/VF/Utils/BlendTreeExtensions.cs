@@ -18,7 +18,7 @@ namespace VF.Utils {
         }
 
         public static void Add(this BlendTree tree, VFAFloat param, Motion motion) {
-            AddDirectChild(tree, param.Name(), motion);
+            AddDirectChild(tree, param, motion);
         }
 
         /**

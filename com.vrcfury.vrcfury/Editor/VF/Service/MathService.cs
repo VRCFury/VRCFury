@@ -114,7 +114,7 @@ namespace VF.Service {
             var tree = clipFactory.NewBlendTree($"{CleanName(input)} ({inMin}-{inMax}) -> ({outMin}-{outMax})");
             tree.blendType = BlendTreeType.Simple1D;
             tree.useAutomaticThresholds = false;
-            tree.blendParameter = input.Name();
+            tree.blendParameter = input;
             if (inMin < inMax) {
                 tree.AddChild(minClip, inMin);
                 tree.AddChild(maxClip, inMax);
@@ -150,8 +150,8 @@ namespace VF.Service {
                 var tree = clipFactory.NewBlendTree(name);
                 tree.blendType = BlendTreeType.SimpleDirectional2D;
                 tree.useAutomaticThresholds = false;
-                tree.blendParameter = a.Name();
-                tree.blendParameterY = b.Name();
+                tree.blendParameter = a;
+                tree.blendParameterY = b;
                 tree.AddChild(whenFalse, new Vector2(-10000, -10000));
                 tree.AddChild(whenFalse, new Vector2(10000, 10000));
                 tree.AddChild(whenFalse, new Vector2(0, 0));
@@ -239,7 +239,7 @@ namespace VF.Service {
 
         public AnimationClip MakeSetter(VFAap param, float value) {
             var clip = clipFactory.NewClip($"{CleanName(param)} = {value}");
-            clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), value);
+            clip.SetAap(param.Name(), value);
             return clip;
         }
 
@@ -247,7 +247,7 @@ namespace VF.Service {
             var tree = clipFactory.NewBlendTree(name);
             tree.blendType = BlendTreeType.Simple1D;
             tree.useAutomaticThresholds = false;
-            tree.blendParameter = param.Name();
+            tree.blendParameter = param;
             foreach (var (threshold, motion) in children) {
                 tree.AddChild(motion, threshold);
             }
@@ -365,7 +365,7 @@ namespace VF.Service {
         }
 
         private static string CleanName(VFAFloatOrConst a) {
-            if (a.param != null) return a.param.Name();
+            if (a.param != null) return a.param;
             return a.constt + "";
         }
 

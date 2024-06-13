@@ -92,7 +92,7 @@ namespace VF.Service {
             var child = GameObjects.Create(objName, obj);
             var receiver = child.AddComponent<VRCContactReceiver>();
             receiver.position = pos;
-            receiver.parameter = param.Name();
+            receiver.parameter = param;
             receiver.radius = radius;
             receiver.receiverType = type;
             receiver.collisionTags = new List<string>(tags);

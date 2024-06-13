@@ -92,10 +92,10 @@ namespace VF.Service {
                 var copy = clip.Clone();
                 foreach (var muscleType in types) {
                     var trigger = service.fullBodyEmoteService.AddClip(copy, muscleType);
-                    clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), trigger.Name()), 1);
+                    clip.SetAap(trigger, 1);
                 }
                 clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
-                    if (b.IsMuscle()) return null;
+                    if (b.GetPropType() == EditorCurveBindingType.Muscle) return null;
                     return b;
                 }));
             }
@@ -295,25 +295,20 @@ namespace VF.Service {
                         if (service == null) break;
 
                         var myFloat = service.manager.GetFx().NewFloat("vrcfParamDriver");
-                        var binding = EditorCurveBinding.FloatCurve(
-                            "",
-                            typeof(Animator),
-                            myFloat.Name()
-                        );
-                        onClip.SetCurve(binding, fxFloatAction.value);
+                        onClip.SetAap(myFloat, fxFloatAction.value);
                         service.drivenParams.Add((myFloat, fxFloatAction.name, fxFloatAction.value));
                         break;
                     }
                     case BlockBlinkingAction blockBlinkingAction: {
                         if (service == null) break;
                         var blockTracking = service.trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingEyes);
-                        onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
+                        onClip.SetAap(blockTracking, 1);
                         break;
                     }
                     case BlockVisemesAction blockVisemesAction: {
                         if (service == null) break;
                         var blockTracking = service.trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingMouth);
-                        onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), blockTracking.Name()), 1);
+                        onClip.SetAap(blockTracking, 1);
                         break;
                     }
                     case ResetPhysboneAction resetPhysbone: {
@@ -373,7 +368,7 @@ namespace VF.Service {
 
             if (physbonesToReset.Count > 0 && service != null) {
                 var param = service.physboneResetService.CreatePhysBoneResetter(physbonesToReset, name);
-                onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), 1);
+                onClip.SetAap(param, 1);
             }
 
             return new BuiltAction() {
@@ -422,7 +417,7 @@ namespace VF.Service {
                 if (nonFloatParams.Contains(targetParam)) {
                     driveOtherTypesFromFloatService.Drive(floatParam, targetParam, onValue);
                 } else {
-                    rewrites.Add(floatParam.Name(), targetParam);
+                    rewrites.Add(floatParam, targetParam);
                 }
             }
 

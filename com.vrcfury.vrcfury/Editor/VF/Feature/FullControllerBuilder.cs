@@ -311,7 +311,7 @@ namespace VF.Feature {
                         minSupported: minSupported,
                         maxSupported: maxSupported
                     );
-                    smoothedDict[rewritten] = smoothed.Name();
+                    smoothedDict[rewritten] = smoothed;
                 }
 
                 toMain.GetRaw().RewriteParameters(name => {

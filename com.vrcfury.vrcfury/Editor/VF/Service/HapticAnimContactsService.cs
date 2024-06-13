@@ -89,7 +89,7 @@ namespace VF.Service {
                     var tree = clipFactory.NewBlendTree(prefix + " tree");
                     tree.blendType = BlendTreeType.Simple1D;
                     tree.useAutomaticThresholds = false;
-                    tree.blendParameter = smoothParam.Name();
+                    tree.blendParameter = smoothParam;
                     tree.AddChild(clipFactory.GetEmptyClip(), 0);
                     tree.AddChild(clip, 1);
                     on.WithAnimation(tree);
@@ -182,7 +182,7 @@ namespace VF.Service {
                     var tree = clipFactory.NewBlendTree(prefix + " tree");
                     tree.blendType = BlendTreeType.Simple1D;
                     tree.useAutomaticThresholds = false;
-                    tree.blendParameter = smoothed.Name();
+                    tree.blendParameter = smoothed;
                     tree.AddChild(clipFactory.GetEmptyClip(), 0);
                     tree.AddChild(clip, 1);
                     on.WithAnimation(tree);

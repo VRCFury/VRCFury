@@ -30,7 +30,7 @@ namespace VF.Service {
                 var driver = off.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
                 var t = idle.TransitionsTo(off).When(lastState_.IsGreaterThan(0));
                 driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
-                    name = lastState_.Name(),
+                    name = lastState_,
                     value = 0
                 });
                 driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
@@ -58,7 +58,7 @@ namespace VF.Service {
             state.TransitionsToExit().When(fx.Always());
             var myDriver = state.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
             myDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
-                name = lastState.Name(),
+                name = lastState,
                 value = myNumber
             });
             myDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {

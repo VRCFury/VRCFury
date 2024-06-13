@@ -170,8 +170,8 @@ namespace VF.Feature {
                             off.TransitionsTo(on).When(activeAnimParam.IsGreaterThan(0));
                             on.TransitionsTo(off).When(activeAnimParam.IsLessThan(1));
 
-                            onLocalClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), activeAnimParam.Name()), 1);
-                            onRemoteClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), activeAnimParam.Name()), 1);
+                            onLocalClip.SetAap(activeAnimParam, 1);
+                            onRemoteClip.SetAap(activeAnimParam, 1);
                         }
 
                         var onStealthClip = clipFactory.NewClip($"{name} (Stealth)");
