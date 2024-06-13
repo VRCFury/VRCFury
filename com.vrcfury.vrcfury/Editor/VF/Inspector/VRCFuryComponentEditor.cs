@@ -28,7 +28,7 @@ namespace VF.Inspector {
             }
 
             var avatarObject = VRCAvatarUtils.GuessAvatarObject(target as UnityEngine.Component);
-            var versionLabel = new Label(SceneViewOverlay.GetOutputString(avatarObject) + " " + VRCFPackageUtils.Version);
+            var versionLabel = new Label(VrcfDebugLine.GetOutputString(avatarObject));
             versionLabel.AddToClassList("vfVersionLabel");
             
             var contentWithVersion = new VisualElement();
