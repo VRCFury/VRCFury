@@ -286,7 +286,11 @@ namespace VF.Feature {
                         }
                     }
                     
-                    var contacts = new SocketContacts(animRoot, name, hapticContacts, clipFactory, directTree, math, socket.useHipAvoidance);
+                    var contacts = new SocketContacts(animRoot, name, hapticContacts, directTree, math, socket.useHipAvoidance);
+                    var a = contacts.closestDistanceMeters.Value;
+                    a = contacts.closestLength.Value;
+                    a = contacts.closestRadius.Value;
+                    a = contacts.closestDistancePlugLengths.Value;
 
                     if (socket.enableDepthAnimations && socket.depthActions.Count > 0) {
                         _hapticAnimContactsService.CreateSocketAnims(

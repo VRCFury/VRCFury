@@ -6,6 +6,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Injector;
 using VF.Inspector;
+using VF.Model.StateAction;
 using VF.Utils;
 using VF.Utils.Controller;
 
@@ -438,6 +439,29 @@ namespace VF.Service {
          */
         public void MakeAapSafe(BlendTree blendTree, VFAap aap) {
             blendTree.Add(fx.One(), MakeSetter(aap, 0));
+        }
+
+        public void MultiplyInPlace(VFAap output, VFAFloat multiplier, VFAFloat existing) {
+            foreach (var tree in new AnimatorIterator.Trees().From(directTree.GetTree())) {
+                tree.RewriteChildren(child => {
+                    if (!(child.motion is AnimationClip oldClip)) return child;
+                    var oldBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), existing.Name());
+                    var oldCurve = oldClip.GetCurve(oldBinding, true);
+                    if (oldCurve == null) return child;
+
+                    var newClip = VrcfObjectFactory.Create<AnimationClip>();
+                    var newBinding = oldBinding;
+                    newBinding.propertyName = output.Name();
+                    var newCurve = oldCurve.Clone();
+                    newClip.SetCurve(newBinding, newCurve);
+                    var newTree = MakeDirect("");
+                    newTree.Add(fx.One(), oldClip);
+                    newTree.Add(multiplier, newClip);
+
+                    child.motion = newTree;
+                    return child;
+                });
+            }
         }
     }
 }

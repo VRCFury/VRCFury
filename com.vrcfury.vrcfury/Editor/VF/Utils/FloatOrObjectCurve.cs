@@ -90,5 +90,15 @@ namespace VF.Utils {
                 return objectCurve.ToArray();
             }
         }
+
+        public void Scale(float multiplier) {
+            if (!isFloat) return;
+            floatCurve.keys = floatCurve.keys.Select(k => {
+                k.value *= multiplier;
+                k.inTangent *= multiplier;
+                k.outTangent *= multiplier;
+                return k;
+            }).ToArray();
+        }
     }
 }
