@@ -230,8 +230,8 @@ namespace VF.Inspector {
         }
 
         public static VisualElement ConstraintWarning(UnityEngine.Component c, bool isSocket = false) {
-            var output = new VisualElement();
-            void Update() {
+            return VRCFuryEditorUtils.Debug(refreshElement: () => {
+                var output = new VisualElement();
                 var legacyRendererPaths = new List<string>();
                 var lightPaths = new List<string>();
                 var tipLightPaths = new List<string>();
@@ -304,10 +304,9 @@ namespace VF.Inspector {
                         " Check out https://vrcfury.com/sps/constraints for details.");
                     output.Add(warning);
                 }
-            }
-            Update();
-            output.schedule.Execute(Update).Every(1000);
-            return output;
+
+                return output;
+            });
         }
 
         private class GizmoCache {

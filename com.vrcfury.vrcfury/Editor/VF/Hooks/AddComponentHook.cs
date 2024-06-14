@@ -59,6 +59,11 @@ namespace VF.Hooks {
                         false,
                         0,
                         () => {
+                            var failureMsg = editorInst.FailWhenAdded();
+                            if (failureMsg != null) {
+                                EditorUtility.DisplayDialog($"Error adding {title}", failureMsg, "Ok");
+                                return;
+                            }
                             foreach (var obj in Selection.gameObjects) {
                                 if (obj == null) continue;
                                 var modelInst = Activator.CreateInstance(feature.Key) as FeatureModel;
