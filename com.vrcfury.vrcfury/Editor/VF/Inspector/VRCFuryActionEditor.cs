@@ -76,19 +76,16 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             return row;
         }, desktopActive, androidActive));
 
-        var debugInfo = new VisualElement();
-        col.Add(debugInfo);
+        col.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
+            var debugInfo = new VisualElement();
 
-        void UpdateDebug() {
-            debugInfo.Clear();
-            
             var action = prop.GetObject() as Action;
-            if (action == null) return;
+            if (action == null) return debugInfo;
             var component = prop.serializedObject.targetObject as VRCFuryComponent;
-            if (component == null) return;
+            if (component == null) return debugInfo;
             var gameObject = component.gameObject;
             var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
-            if (avatarObject == null) return;
+            if (avatarObject == null) return debugInfo;
 
             List<VisualElement> warnings;
             if (action is AnimationClipAction a && a.clip.Get() != null) {
@@ -104,10 +101,8 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             foreach (var warning in warnings) {
                 debugInfo.Add(warning);
             }
-        }
-
-        UpdateDebug();
-        debugInfo.schedule.Execute(UpdateDebug).Every(1000);
+            return debugInfo;
+        }));
 
         return col;
     }

@@ -521,10 +521,10 @@ namespace VF.Feature {
 
             content.Add(adv);
 
-            var debug = new VisualElement();
-            content.Add(debug);
-            void UpdateDebug() {
-                debug.Clear();
+            content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
+                var debug = new VisualElement();
+                if (avatarObject == null) return debug;
+                
                 var baseObject = GetBaseObject();
                 var controllers = model.controllers
                     .Select(c => c?.controller?.Get() as AnimatorController)
@@ -545,10 +545,9 @@ namespace VF.Feature {
                 foreach (var c in warnings) {
                     debug.Add(c);
                 }
-            }
 
-            UpdateDebug();
-            debug.schedule.Execute(UpdateDebug).Every(1000);
+                return debug;
+            }));
 
             return content;
         }
