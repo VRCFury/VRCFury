@@ -37,9 +37,11 @@ namespace VF.Service {
             }
 
             var holder = GameObjects.Create("vrcf_ScaleDetector", obj);
+            holder.worldScale = Vector3.one;
+
             var senderObj = GameObjects.Create("Sender", holder);
             var sender = senderObj.AddComponent<VRCContactSender>();
-            sender.radius = 0.001f / senderObj.worldScale.x;
+            sender.radius = 0.001f;
             var tag = $"VRCF_SCALEFACTORFIX_AA_{scaleIndex++}";
             sender.collisionTags.Add(tag);
 
