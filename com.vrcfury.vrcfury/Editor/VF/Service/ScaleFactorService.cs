@@ -31,21 +31,22 @@ namespace VF.Service {
 
         private int scaleIndex = 0;
 
-        private readonly Dictionary<VFGameObject, (VFGameObject, VFAFloat)> cache =
-            new Dictionary<VFGameObject, (VFGameObject, VFAFloat)>();
+        private readonly Dictionary<(VFGameObject,bool), (VFGameObject, VFAFloat)> cache =
+            new Dictionary<(VFGameObject,bool), (VFGameObject, VFAFloat)>();
 
         [CanBeNull]
         public VFAFloat Get(VFGameObject parent) {
-            return GetAdv(parent)?.Item2;
+            return GetAdv(parent)?.factor;
         }
 
         [CanBeNull]
-        public (VFGameObject, VFAFloat)? GetAdv(VFGameObject parent) {
+        public (VFGameObject worldSpace, VFAFloat factor)? GetAdv(VFGameObject parent, bool includeBasis = false) {
             if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
                 return null;
             }
 
-            if (cache.TryGetValue(parent, out var cached)) return cached;
+            var cacheKey = (parent, includeBasis);
+            if (cache.TryGetValue(cacheKey, out var cached)) return cached;
 
             var senderObj = GameObjects.Create("LocalScale", parent);
             senderObj.worldScale = Vector3.one;
@@ -73,9 +74,9 @@ namespace VF.Service {
             p.constraintActive = true;
             p.locked = true;
 
-            var final = math.Multiply($"SFFix {parent.name} - Final", receiverParam, 100);
+            var final = math.Multiply($"SFFix {parent.name} - Final", receiverParam, 100 * (includeBasis ? parent.worldScale.x : 1));
             
-            return cache[parent] = (receiverObj, final);
+            return cache[cacheKey] = (receiverObj, final);
         }
     }
 }

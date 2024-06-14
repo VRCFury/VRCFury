@@ -16,17 +16,18 @@ namespace VF.Builder.Haptics {
         public readonly Lazy<VFAFloat> closestRadius;
         public readonly Lazy<VFAFloat> closestDistanceMeters;
         public readonly Lazy<VFAFloat> closestDistancePlugLengths;
+        public readonly Lazy<VFAFloat> closestDistanceLocal;
 
-        public SocketContacts(VFGameObject parent, string paramPrefix, HapticContactsService hapticContactsService, DirectBlendTreeService directTree, MathService math, bool useHipAvoidance) {
-            self = new TipRootPair(parent, paramPrefix + "/Self", "Self", hapticContactsService, directTree, math, useHipAvoidance, HapticUtils.ReceiverParty.Self);
-            others = new TipRootPair(parent, paramPrefix + "/Others", "Others", hapticContactsService, directTree, math, useHipAvoidance, HapticUtils.ReceiverParty.Others);
+        public SocketContacts(VFGameObject parent, string paramPrefix, HapticContactsService hapticContactsService, DirectBlendTreeService directTree, MathService math, bool useHipAvoidance, VFAFloat scaleFactor) {
+            self = new TipRootPair(parent, paramPrefix + "/Self", "Self", hapticContactsService, directTree, math, useHipAvoidance, HapticUtils.ReceiverParty.Self, scaleFactor);
+            others = new TipRootPair(parent, paramPrefix + "/Others", "Others", hapticContactsService, directTree, math, useHipAvoidance, HapticUtils.ReceiverParty.Others, scaleFactor);
             var whoIsClosest = new Lazy<(VFAFloat isSelf,VFAFloat isOthers)>(() => {
                 var isSelf = math.MakeAap(paramPrefix + "/Closest/IsSelf");
                 var isOthers = math.MakeAap(paramPrefix + "/Closest/IsOthers");
-                math.GreaterThan(others.plugDistanceMeters.Value, self.plugDistanceMeters.Value).create(
+                directTree.Add(math.GreaterThan(others.plugDistanceMeters.Value, self.plugDistanceMeters.Value).create(
                     math.MakeSetter(isSelf, 1),
                     math.MakeSetter(isOthers, 1)
-                );
+                ));
                 return (isSelf, isOthers);
             });
             VFAFloat MakeClosest(string name, Func<TipRootPair, Lazy<VFAFloat>> getInner) {
@@ -39,6 +40,7 @@ namespace VF.Builder.Haptics {
             closestRadius = new Lazy<VFAFloat>(() => MakeClosest("Radius", o => o.plugRadius));
             closestDistanceMeters = new Lazy<VFAFloat>(() => MakeClosest("Dist/Meters", o => o.plugDistanceMeters));
             closestDistancePlugLengths = new Lazy<VFAFloat>(() => MakeClosest("Dist/PlugLens", o => o.plugDistancePlugLengths));
+            closestDistanceLocal = new Lazy<VFAFloat>(() => MakeClosest("Dist/Local", o => o.plugDistanceLocal));
         }
     }
 
@@ -47,11 +49,22 @@ namespace VF.Builder.Haptics {
         public readonly Lazy<VFAFloat> plugRadius;
         public readonly Lazy<VFAFloat> plugDistanceMeters;
         public readonly Lazy<VFAFloat> plugDistancePlugLengths;
+        public readonly Lazy<VFAFloat> plugDistanceLocal;
 
         /**
          * test on android
          */
-        public TipRootPair(VFGameObject parent, string paramPrefix, string objPrefix, HapticContactsService hapticContactsService, DirectBlendTreeService directTree, MathService math, bool useHipAvoidance, HapticUtils.ReceiverParty party) {
+        public TipRootPair(
+            VFGameObject parent,
+            string paramPrefix,
+            string objPrefix,
+            HapticContactsService hapticContactsService,
+            DirectBlendTreeService directTree,
+            MathService math,
+            bool useHipAvoidance,
+            HapticUtils.ReceiverParty party,
+            VFAFloat scaleFactor
+        ) {
 
             var contactRadius = 3f;
             var tipContact = new Lazy<VFAFloat>(() => {
@@ -104,7 +117,7 @@ namespace VF.Builder.Haptics {
                         (0.01f, 1)
                     );
                 var whenTipOnly = math.Add($"{paramPrefix}/{name}/TipOnly", output, (defaultSize, 1));
-                var whenGone = math.Add($"{paramPrefix}/{name}/Gone", output);
+                Motion whenGone = null;
                 var whenInside = math.Add($"{paramPrefix}/{name}/Inside", output, (output, 1));
 
                 directTree.Add(
@@ -167,6 +180,11 @@ namespace VF.Builder.Haptics {
                 var output = math.MakeAap($"{paramPrefix}/Dist/PlugLens", def: 100);
                 var invertedPlugLength = math.Invert($"{paramPrefix}/Length/Inverted", plugLength.Value);
                 math.MultiplyInPlace(output, invertedPlugLength, plugDistanceMeters.Value);
+                return output;
+            });
+            plugDistanceLocal = new Lazy<VFAFloat>(() => {
+                var output = math.MakeAap($"{paramPrefix}/Dist/Local", def: 100);
+                math.MultiplyInPlace(output, scaleFactor, plugDistanceMeters.Value);
                 return output;
             });
         }

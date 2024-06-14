@@ -448,13 +448,15 @@ namespace VF.Service {
                     var oldBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), existing.Name());
                     var oldCurve = oldClip.GetCurve(oldBinding, true);
                     if (oldCurve == null) return child;
+                    if (oldCurve.FloatCurve.keys.Length == 1 && oldCurve.FloatCurve.keys[0].value == 0) return child;
 
                     var newClip = VrcfObjectFactory.Create<AnimationClip>();
+                    newClip.name = $"{output.Name()} = {oldCurve.FloatCurve.keys[0].value}";
                     var newBinding = oldBinding;
                     newBinding.propertyName = output.Name();
                     var newCurve = oldCurve.Clone();
                     newClip.SetCurve(newBinding, newCurve);
-                    var newTree = MakeDirect("");
+                    var newTree = MakeDirect(oldClip.name);
                     newTree.Add(fx.One(), oldClip);
                     newTree.Add(multiplier, newClip);
 

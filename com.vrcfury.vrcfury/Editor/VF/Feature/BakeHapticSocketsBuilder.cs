@@ -35,6 +35,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly ScaleFactorService scaleFactorService;
 
         [FeatureBuilderAction]
         public void Apply() {
@@ -285,12 +286,14 @@ namespace VF.Feature {
                             autoSockets.Add(Tuple.Create(name, holeOn, distParam));
                         }
                     }
-                    
-                    var contacts = new SocketContacts(animRoot, name, hapticContacts, directTree, math, socket.useHipAvoidance);
+
+                    var scaleFactor = scaleFactorService.GetAdv(animRoot, true).Value;
+                    var contacts = new SocketContacts(scaleFactor.worldSpace, name, hapticContacts, directTree, math, socket.useHipAvoidance, scaleFactor.factor);
                     var a = contacts.closestDistanceMeters.Value;
                     a = contacts.closestLength.Value;
                     a = contacts.closestRadius.Value;
                     a = contacts.closestDistancePlugLengths.Value;
+                    a = contacts.closestDistanceLocal.Value;
 
                     if (socket.enableDepthAnimations && socket.depthActions.Count > 0) {
                         _hapticAnimContactsService.CreateSocketAnims(
