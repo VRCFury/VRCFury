@@ -98,6 +98,11 @@ namespace VF.Builder {
             public IImmutableSet<T> From(IEnumerable<VFLayer> layers) {
                 return layers.SelectMany(From).ToImmutableHashSet();
             }
+            
+            public IImmutableSet<T> From(AnimatorController root) {
+                if (root == null) return ImmutableHashSet<T>.Empty;
+                return From((VFController)root);
+            }
 
             public IImmutableSet<T> From(VFController root) {
                 if (root == null) return ImmutableHashSet<T>.Empty;

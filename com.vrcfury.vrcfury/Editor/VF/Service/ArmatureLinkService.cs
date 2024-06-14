@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using VF.Builder;
 using VF.Builder.Exceptions;
+using VF.Feature;
 using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
@@ -28,7 +29,7 @@ namespace VF.Service {
         
         [FeatureBuilderAction(FeatureOrder.ArmatureLink)]
         public void Apply() {
-            var models = globals.allFeaturesInRun.OfType<ArmatureLink>().ToList();
+            var builders = globals.allBuildersInRun.OfType<ArmatureLinkBuilder>().ToList();
 
             var anim = findAnimatedTransformsService.Find();
             var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).Values.ToImmutableHashSet();
@@ -48,10 +49,25 @@ namespace VF.Service {
             
             var animLink = new VFMultimapList<VFGameObject, VFGameObject>();
 
-            foreach (var m in models) {
-                ApplyOne(m, avatarObject, saveDebugInfo, avatarHumanoidBones, anim, doNotReparent, mover, pruneCheck, animLink);
+            foreach (var builder in builders) {
+                try {
+                    ApplyOne(
+                        builder.model,
+                        avatarObject,
+                        saveDebugInfo,
+                        avatarHumanoidBones,
+                        anim,
+                        doNotReparent,
+                        mover,
+                        pruneCheck,
+                        animLink
+                    );
+                } catch (Exception e) {
+                    var path = builder.featureBaseObject.GetPath(avatarObject);
+                    throw new ExceptionWithCause($"Failed to build ArmatureLink from {path}", e);
+                }
             }
-            
+
             mover.ApplyDeferred();
             
             // Clean up objects that don't need to exist anymore

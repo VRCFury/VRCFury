@@ -70,7 +70,7 @@ namespace VF.Service {
             if (tree.blendType != BlendTreeType.Direct) return;
             if (tree.GetNormalizedBlendValues()) return;
             tree.children = tree.children.SelectMany(child => {
-                if (child.directBlendParameter == manager.GetFx().One().Name()
+                if (child.directBlendParameter == manager.GetFx().One()
                     && child.motion is BlendTree childTree
                     && childTree.blendType == BlendTreeType.Direct
                     && !childTree.GetNormalizedBlendValues()
@@ -90,7 +90,7 @@ namespace VF.Service {
             if (tree.GetNormalizedBlendValues()) return;
 
             bool IsAlwaysOnClip(ChildMotion child) =>
-                child.directBlendParameter == manager.GetFx().One().Name()
+                child.directBlendParameter == manager.GetFx().One()
                 && child.motion is AnimationClip clip;
 
             var hasMultipleAlwaysOnClips = tree.children.Where(IsAlwaysOnClip).Count() > 1;

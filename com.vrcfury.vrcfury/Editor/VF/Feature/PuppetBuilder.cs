@@ -30,9 +30,9 @@ internal class PuppetBuilder : FeatureBuilder<Puppet> {
         var on = layer.NewState("Blend").WithAnimation(tree);
 
         var x = fx.NewFloat(model.name + "_x", synced: usesX, saved: model.saved, def: model.defaultX);
-        tree.blendParameter = x.Name();
+        tree.blendParameter = x;
         var y = fx.NewFloat(model.name + "_y", synced: usesY, saved: model.saved, def: model.defaultY);
-        tree.blendParameterY = y.Name();
+        tree.blendParameterY = y;
         if (model.slider) {
             if (usesX) manager.GetMenu().NewMenuSlider(
                 model.name,

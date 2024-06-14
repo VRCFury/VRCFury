@@ -82,7 +82,7 @@ namespace VF.Feature {
                                         trackingParamsCache[(layerOwner, type)] = param;
                                     }
                                     driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
-                                        name = param.Name(),
+                                        name = param,
                                         value = value == VRC_AnimatorTrackingControl.TrackingType.Animation ? 1 : 0
                                     });
                                 }
@@ -129,7 +129,7 @@ namespace VF.Feature {
             refresh.TransitionsToExit().When(fx.Always());
             var refreshDriver = refresh.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
             foreach (var type in typesUsed) {
-                refreshDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type].Name(), value = -1 });
+                refreshDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type], value = -1 });
             }
             
             // Lock into this trap state and don't allow anything to touch tracking control
@@ -176,7 +176,7 @@ namespace VF.Feature {
                 
                     foreach (var type in types) {
                         type.SetValue(control, controlValue);
-                        driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type].Name(), value = driveValue });
+                        driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type], value = driveValue });
                     }
                 }
                 

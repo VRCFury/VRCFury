@@ -169,6 +169,10 @@ namespace VF.Utils {
             }
         }
 
+        public static void SetAap(this AnimationClip clip, string paramName, FloatOrObjectCurve curve) {
+            clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), paramName), curve);
+        }
+
         public static void SetCurve(this AnimationClip clip, EditorCurveBinding binding, FloatOrObjectCurve curve) {
             clip.SetCurves(new [] { (binding,curve) });
         }

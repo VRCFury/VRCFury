@@ -1,10 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEditor;
-using UnityEngine;
+using VF.Inspector;
+using Debug = UnityEngine.Debug;
 
 namespace VF.Builder.Exceptions {
     internal static class VRCFExceptionUtils {
@@ -20,8 +24,9 @@ namespace VF.Builder.Exceptions {
             try {
                 await go();
             } catch(Exception e) {
-                Debug.LogException(e);
-                await AsyncUtils.DisplayDialog($"VRCFury encountered an error.\n\n{GetGoodCause(e).Message}");
+                await AsyncUtils.InMainThread(() => {
+                    DisplayErrorPopup(e);
+                });
             }
         }
 
@@ -29,33 +34,45 @@ namespace VF.Builder.Exceptions {
             try {
                 go();
             } catch(Exception e) {
-                Debug.LogException(e);
-                
-                var sneaky = SneakyException.GetFromStack(e);
-                if (sneaky != null) {
-                    EditorUtility.DisplayDialog(
-                        "Avatar Error",
-                        sneaky.Message,
-                        "Ok"
-                    );
-                } else {
-                    var message = GetGoodCause(e).Message.Trim();
-                    var closestLine = GetClosestVrcfuryLine(e);
-                    var output = new List<string>();
-                    output.Add("VRCFury encountered an error.");
-                    if (!string.IsNullOrWhiteSpace(message)) output.Add(message);
-                    if (!string.IsNullOrWhiteSpace(closestLine)) output.Add($"({e.GetBaseException().GetType().Name} {closestLine})");
-                    EditorUtility.DisplayDialog(
-                        "VRCFury Error",
-                        string.Join("\n\n", output),
-                        "Ok"
-                    );
-                }
-
+                DisplayErrorPopup(e);
                 return false;
             }
 
             return true;
+        }
+
+        private static void DisplayErrorPopup(Exception e) {
+            Debug.LogException(e);
+                
+            var sneaky = SneakyException.GetFromStack(e);
+            if (sneaky != null) {
+                EditorUtility.DisplayDialog(
+                    "Avatar Error",
+                    sneaky.Message,
+                    "Ok"
+                );
+            } else {
+                var message = GetGoodCause(e).Message.Trim();
+                
+                var output = new List<string>();
+                output.Add("VRCFury encountered an error.");
+                if (!string.IsNullOrWhiteSpace(message)) output.Add(message);
+
+                var debugInfo = "";
+                debugInfo += "(";
+                debugInfo += e.GetBaseException().GetType().Name;
+                var closestLine = GetClosestVrcfuryLine(e);
+                if (!string.IsNullOrWhiteSpace(closestLine)) debugInfo += " in " + closestLine;
+                debugInfo += ")";
+                debugInfo += "\n" + VrcfDebugLine.GetOutputString();
+                output.Add(debugInfo);
+
+                EditorUtility.DisplayDialog(
+                    "VRCFury Error",
+                    string.Join("\n\n", output),
+                    "Ok"
+                );
+            }
         }
 
         private static string GetClosestVrcfuryLine(Exception e) {
@@ -67,9 +84,16 @@ namespace VF.Builder.Exceptions {
             }
             causes.Reverse();
             foreach (var cause in causes) {
-                foreach (var line in cause.StackTrace.Split('\n')) {
-                    if (line.Contains("VF")) {
-                        return line.Trim();
+                var stack = new System.Diagnostics.StackTrace(cause, true);
+                var frames = stack.GetFrames();
+                if (frames == null) continue;
+                foreach (var frame in frames) {
+                    if (frame.GetMethod()?.DeclaringType?.FullName?.StartsWith("VF") ?? false) {
+                        var filename = Path.GetFileName(frame.GetFileName());
+                        return
+                            frame.GetMethod().Name +
+                            " at " +
+                            $"{filename}:{frame.GetFileLineNumber()}:{frame.GetFileColumnNumber()}";
                     }
                 }
             }

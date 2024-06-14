@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
@@ -8,10 +9,14 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Component;
+using VF.Feature;
+using VF.Model;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
+using Action = VF.Model.StateAction.Action;
 using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
@@ -70,7 +75,40 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
 
             return row;
         }, desktopActive, androidActive));
-        
+
+        var debugInfo = new VisualElement();
+        col.Add(debugInfo);
+
+        void UpdateDebug() {
+            debugInfo.Clear();
+            
+            var action = prop.GetObject() as Action;
+            if (action == null) return;
+            var component = prop.serializedObject.targetObject as VRCFuryComponent;
+            if (component == null) return;
+            var gameObject = component.gameObject;
+            var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
+            if (avatarObject == null) return;
+
+            List<VisualElement> warnings;
+            if (action is AnimationClipAction a && a.clip.Get() != null) {
+                warnings = VrcfAnimationDebugInfo.BuildDebugInfo(a.clip.Get().GetAllBindings(), avatarObject, gameObject);
+            } else {
+                var actionSet = new State() { actions = { action } };
+                var test = ActionClipService.LoadStateAdv("test", actionSet, avatarObject, gameObject);
+                var bindings = test.onClip.GetAllBindings().ToImmutableHashSet();
+                warnings =
+                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject, avatarObject);
+            }
+
+            foreach (var warning in warnings) {
+                debugInfo.Add(warning);
+            }
+        }
+
+        UpdateDebug();
+        debugInfo.schedule.Execute(UpdateDebug).Every(1000);
+
         return col;
     }
     
@@ -148,7 +186,6 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 var valueFloat = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"), "Value");
                 var valueVector = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueVector"), "Value");
                 var valueColor = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueColor"), "Value");
-                var warningBox = new VisualElement();
 
                 var propertyNameProp = prop.FindPropertyRelative("propertyName");
                 {
@@ -163,7 +200,6 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(valueFloat);
                 content.Add(valueVector);
                 content.Add(valueColor);
-                content.Add(warningBox);
                 
                 UpdateValueType();
 
@@ -178,22 +214,6 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                     valueFloat.SetVisible(valueType != ShaderUtil.ShaderPropertyType.Color && valueType != ShaderUtil.ShaderPropertyType.Vector);
                     valueVector.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Vector);
                     valueColor.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Color);
-                    warningBox.Clear();
-
-                    var badMats = renderers
-                        .SelectMany(r => r.sharedMaterials)
-                        .NotNull()
-                        .Distinct()
-                        .Where(m => m.HasProperty(propertyNameProp.stringValue))
-                        .Where(MaterialLocker.UsesPoiLockdown)
-                        .Where(m => m.GetTag(propName + "Animated", false, "") == "")
-                        .Select(m => m.name)
-                        .ToList();
-                    if (badMats.Any()) {
-                        warningBox.Add(VRCFuryEditorUtils.Warn(
-                            $"These materials are using Poiyomi, but do not have {propName} set as Animated. Check the right click menu of the property on the material:\n" + string.Join(", ", badMats)
-                        ));
-                    }
                 }
 
                 return content;

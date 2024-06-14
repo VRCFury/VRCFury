@@ -50,7 +50,8 @@ namespace VF.Builder {
         public static AnimationRewriter CreateNearestMatchPathRewriter(
             VFGameObject animObject = null,
             VFGameObject rootObject = null,
-            bool rootBindingsApplyToAvatar = false
+            bool rootBindingsApplyToAvatar = false,
+            bool nullIfNotFound = false
         ) {
             if (animObject == null) {
                 throw new VRCFBuilderException("animObject cannot be null");
@@ -78,6 +79,7 @@ namespace VF.Builder {
                     current = current.parent;
                 }
 
+                if (nullIfNotFound) return null;
                 return binding;
             });
         }

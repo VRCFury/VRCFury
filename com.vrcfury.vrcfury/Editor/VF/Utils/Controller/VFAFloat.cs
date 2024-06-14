@@ -10,10 +10,10 @@ namespace VF.Utils.Controller {
         }
 
         public VFCondition IsGreaterThan(float num) {
-            return new VFCondition(new AnimatorCondition { mode = AnimatorConditionMode.Greater, parameter = Name(), threshold = num });
+            return new VFCondition(new AnimatorCondition { mode = AnimatorConditionMode.Greater, parameter = this, threshold = num });
         }
         public VFCondition IsLessThan(float num) {
-            return new VFCondition(new AnimatorCondition { mode = AnimatorConditionMode.Less, parameter = Name(), threshold = num });
+            return new VFCondition(new AnimatorCondition { mode = AnimatorConditionMode.Less, parameter = this, threshold = num });
         }
         public VFCondition IsGreaterThanOrEquals(float num) {
             return IsLessThan(num).Not();

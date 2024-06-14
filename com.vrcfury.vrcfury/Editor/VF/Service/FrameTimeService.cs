@@ -36,8 +36,8 @@ namespace VF.Service {
             var timeSinceStart = fx.NewFloat("timeSinceLoad");
             var layer = fx.NewLayer("FrameTime Counter");
             var clip = clipFactory.NewClip("FrameTime Counter");
-            clip.SetCurve(
-                EditorCurveBinding.FloatCurve("", typeof(Animator), timeSinceStart.Name()),
+            clip.SetAap(
+                timeSinceStart,
                 AnimationCurve.Linear(0, 0, 10_000_000, 10_000_000)
             );
             layer.NewState("Time").WithAnimation(clip);

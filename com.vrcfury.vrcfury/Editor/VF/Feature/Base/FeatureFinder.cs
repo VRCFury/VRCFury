@@ -149,7 +149,6 @@ internal static class FeatureFinder {
         if (bodyContent != null) {
             var body = new VisualElement();
             body.Add(bodyContent);
-            body.style.marginLeft = 10;
             body.style.marginTop = 5;
             wrapper.Add(body);
         }

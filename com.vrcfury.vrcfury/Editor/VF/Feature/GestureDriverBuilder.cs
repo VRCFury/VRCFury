@@ -93,7 +93,7 @@ namespace VF.Feature {
                 var tree = clipFactory.NewBlendTree(uid + "_blend");
                 tree.blendType = BlendTreeType.Simple1D;
                 tree.useAutomaticThresholds = false;
-                tree.blendParameter = smoothedWeight.Name();
+                tree.blendParameter = smoothedWeight;
                 tree.AddChild(clipFactory.GetEmptyClip(), 0);
                 tree.AddChild(clip, 1);
                 on.WithAnimation(tree);

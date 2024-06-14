@@ -31,9 +31,9 @@ namespace VF.Feature {
         }
 
         public static void RemoveWrongParamTypes(VFController controller) {
-            var badBool = new Lazy<string>(() => controller.NewBool("InvalidParam").Name());
-            var badFloat = new Lazy<string>(() => controller.NewFloat("InvalidParamFloat").Name());
-            var badThreshold = new Lazy<string>(() => controller.NewBool("BadIntThreshold", def: true).Name());
+            var badBool = new Lazy<string>(() => controller.NewBool("InvalidParam"));
+            var badFloat = new Lazy<string>(() => controller.NewFloat("InvalidParamFloat"));
+            var badThreshold = new Lazy<string>(() => controller.NewBool("BadIntThreshold", def: true));
 
             var paramTypes = controller.parameters
                 .ToImmutableDictionary(p => p.name, p => p.type);

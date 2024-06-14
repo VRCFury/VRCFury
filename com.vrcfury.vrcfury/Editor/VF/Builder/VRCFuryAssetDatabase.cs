@@ -204,5 +204,12 @@ namespace VF.Builder {
 
             return null;
         }
+
+        public static T LoadAssetByGuid<T>(string guid) where T : Object {
+            if (guid.IsEmpty()) return null;
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            if (path.IsEmpty()) return null;
+            return AssetDatabase.LoadAssetAtPath<T>(path);
+        }
     }
 }

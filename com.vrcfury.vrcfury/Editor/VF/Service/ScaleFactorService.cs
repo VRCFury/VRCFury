@@ -51,7 +51,7 @@ namespace VF.Service {
             receiver.radius = 0.1f;
             receiver.position = new Vector3(0.1f, 0, 0);
             var receiverParam = fx.NewFloat($"SFFix {obj.name} - Rcv");
-            receiver.parameter = receiverParam.Name();
+            receiver.parameter = receiverParam;
             var p = receiverObj.AddComponent<ScaleConstraint>();
             p.AddSource(new ConstraintSource() {
                 sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),

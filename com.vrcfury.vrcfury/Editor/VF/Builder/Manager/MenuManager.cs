@@ -197,7 +197,7 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.Button;
             control.parameter = new VRCExpressionsMenu.Control.Parameter {
-                name = param != null ? param.Name() : ""
+                name = param ?? ""
             };
             control.value = value;
             control.icon = icon;
@@ -206,7 +206,7 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
             control.parameter = new VRCExpressionsMenu.Control.Parameter {
-                name = param.Name()
+                name = param
             };
             control.value = value;
             control.icon = icon;
@@ -215,7 +215,7 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
             var menuParam = new VRCExpressionsMenu.Control.Parameter {
-                name = param.Name()
+                name = param
             };
             control.subParameters = new[]{menuParam};
             control.icon = icon;
@@ -224,9 +224,9 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet;
             var menuParamX = new VRCExpressionsMenu.Control.Parameter();
-            menuParamX.name = (x != null) ? x.Name() : "";
+            menuParamX.name = x ?? "";
             var menuParamY = new VRCExpressionsMenu.Control.Parameter();
-            menuParamY.name = (y != null) ? y.Name() : "";
+            menuParamY.name = y ?? "";
             control.subParameters = new[]{menuParamX, menuParamY};
             control.icon = icon;
         }

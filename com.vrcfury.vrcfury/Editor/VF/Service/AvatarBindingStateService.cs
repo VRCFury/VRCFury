@@ -101,7 +101,7 @@ namespace VF.Service {
             }
         }
 
-        private static bool TryParseMaterialProperty(EditorCurveBinding binding, out string propertyName) {
+        public static bool TryParseMaterialProperty(EditorCurveBinding binding, out string propertyName) {
             if (binding.propertyName.StartsWith("material.")) {
                 propertyName = binding.propertyName.Substring("material.".Length);
                 return true;
