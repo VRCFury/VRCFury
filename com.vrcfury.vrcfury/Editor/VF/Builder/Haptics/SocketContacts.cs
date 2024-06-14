@@ -51,33 +51,47 @@ namespace VF.Builder.Haptics {
         }
     }
     
+    internal class Distance {
+        public MathService.VFAap meters;
+        public MathService.VFAap local;
+        public MathService.VFAap plugLengths;
+
+        private readonly VFAFloat localScaleMultiplier;
+        private readonly VFAFloat plugScaleMultiplier;
+        private readonly MathService math;
+
+        public Distance() {}
+
+        public Distance(string paramPrefix, VFAFloat localScaleMultiplier, VFAFloat plugScaleMultiplier, MathService math) {
+            this.localScaleMultiplier = localScaleMultiplier;
+            this.plugScaleMultiplier = plugScaleMultiplier;
+            this.math = math;
+            meters = math.MakeAap($"{paramPrefix}/Meters");
+            meters = math.MakeAap($"{paramPrefix}/Local");
+            meters = math.MakeAap($"{paramPrefix}/PlugLengths");
+        }
+
+        public Motion MakeSetter(float valueMeters) {
+            var output = math.MakeDirect("Distance = " + valueMeters);
+            output.Add(math.One(), math.MakeSetter(meters, valueMeters));
+            output.Add(localScaleMultiplier, math.MakeSetter(local, valueMeters));
+            output.Add(plugScaleMultiplier, math.MakeSetter(plugLengths, valueMeters));
+            return output;
+        }
+    }
+    
     internal class TipRootPair {
         public Lazy<VFAFloat> plugLength;
         public Lazy<VFAFloat> plugRadius;
-        public Lazy<VFAFloat> plugDistanceMeters;
-        public Lazy<VFAFloat> plugDistancePlugLengths;
+        public Lazy<Distance> plugDistance;
 
         /**
          * test on android
          */
         public TipRootPair(VFGameObject parent, string paramPrefix, string objPrefix, HapticContactsService hapticContactsService, ClipFactoryService clipFactory, DirectBlendTreeService directTree, MathService math, bool useHipAvoidance, HapticUtils.ReceiverParty party) {
-            
-            void AddScaleConstraint() {
-                if (parent.GetComponent<ScaleConstraint>() != null) return;
-                parent.worldScale = Vector3.one;
-                var p = parent.AddComponent<ScaleConstraint>();
-                p.AddSource(new ConstraintSource() {
-                    sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
-                    weight = 1
-                });
-                p.weight = 1;
-                p.constraintActive = true;
-                p.locked = true;
-            }
-            
+
             var contactRadius = 3f;
             var tipContact = new Lazy<VFAFloat>(() => {
-                AddScaleConstraint();
                 return hapticContactsService.AddReceiver(new HapticContactsService.ReceiverRequest() {
                     obj = parent,
                     paramName = $"{paramPrefix}/Contact/Tip",
@@ -89,7 +103,6 @@ namespace VF.Builder.Haptics {
                 });
             });
             var rootContact = new Lazy<VFAFloat>(() => {
-                AddScaleConstraint();
                 return hapticContactsService.AddReceiver(new HapticContactsService.ReceiverRequest() {
                     obj = parent,
                     paramName = $"{paramPrefix}/Contact/Root",
@@ -101,7 +114,6 @@ namespace VF.Builder.Haptics {
                 });
             });
             var widthContact = new Lazy<VFAFloat>(() => {
-                AddScaleConstraint();
                 return hapticContactsService.AddReceiver(new HapticContactsService.ReceiverRequest() {
                     obj = parent,
                     paramName = $"{paramPrefix}/Contact/Width",

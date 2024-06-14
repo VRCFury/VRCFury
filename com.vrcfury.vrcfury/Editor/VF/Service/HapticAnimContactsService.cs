@@ -107,64 +107,25 @@ namespace VF.Service {
         public void CreateSocketAnims(
             ICollection<VRCFuryHapticSocket.DepthAction> actions,
             VFGameObject socketOwner,
-            VFGameObject animRoot,
             string name,
-            bool worldScale,
-            bool useHipAvoidance
+            SocketContacts contacts,
+            bool worldScale
         ) {
             var fx = avatarManager.GetFx();
-            
-            var maxDist = Math.Max(0, actions.Max(a => a.range.Max())) * (worldScale ? 1f : animRoot.worldScale.z);
-            var minDist = Math.Min(0, actions.Min(a => a.range.Min())) * (worldScale ? 1f : animRoot.worldScale.z);
-            var offset = Math.Max(0, -minDist); // Because the blendtree math can't handle negative values
-
-            var cache = new Dictionary<bool, VFAFloat>();
-            VFAFloat GetDistance(bool self) {
-                if (cache.TryGetValue(self, out var cached)) return cached;
-
-                var prefix = $"{name}/Anim/{(self ? "Self" : "Others")}";
-                var outerRadius = Math.Max(0.01f, maxDist);
-                var outer = CreateFrontBack($"{prefix}/Outer", GameObjects.Create("Outer", animRoot), outerRadius, self, HapticUtils.CONTACT_PEN_MAIN, useHipAvoidance);
-
-                var targets = new List<(MathService.VFAFloatOrConst, MathService.VFAFloatBool)>();
-                if (minDist < 0) {
-                    var inner = CreateFrontBack($"{prefix}/Inner", GameObjects.Create("Inner", animRoot), -minDist, self, HapticUtils.CONTACT_PEN_MAIN, useHipAvoidance, Vector3.forward * minDist);
-                    // Some of the animations have an inside depth (negative distance)
-                    targets.Add((
-                        math.Map($"{prefix}/Inner/Distance", inner.front, 1, 0, offset+minDist, offset+0),
-                        math.GreaterThan(outer.front, 1, true)
-                    ));
-                }
-                if (maxDist > 0) {
-                    // Some of the animations have an outside depth (positive distance)
-                    targets.Add((
-                        math.Map($"{prefix}/Outer/Distance", outer.front, 1, 0, offset+0, offset+outerRadius),
-                        math.GreaterThan(outer.front, 0)
-                    ));
-                }
-                // If plug isn't in either region, set to 0
-                targets.Add((fx.NewFloat($"{prefix}/MaxDist", def: offset+outerRadius), null));
-                var unsmoothed = math.SetValueWithConditions(
-                    $"{prefix}/Distance",
-                    targets.ToArray()
-                );
-
-                var result = unsmoothed;
-                cache[self] = result;
-                return result;
-            }
 
             var actionNum = 0;
             foreach (var depthAction in actions) {
                 actionNum++;
-                var prefix = $"{name}/Anim{actionNum}";
+                var prefix = $"{name}/Anim/{actionNum}";
 
-                var unsmoothed = GetDistance(depthAction.enableSelf);
+                var unsmoothed = depthAction.rangeInPlugLengths
+                    ? ( depthAction.enableSelf ? contacts.closestDistancePlugLengths.Value : contacts.others.plugDistancePlugLengths.Value )
+                    : ( depthAction.enableSelf ? contacts.closestDistanceMeters.Value : contacts.others.plugDistanceMeters.Value );
                 var mapped = math.Map(
                     $"{prefix}/Mapped",
                     unsmoothed,
-                    offset + depthAction.range.Max() * (worldScale ? 1f : animRoot.worldScale.z),
-                    offset + depthAction.range.Min() * (worldScale ? 1f : animRoot.worldScale.z),
+                    depthAction.range.Max() * (worldScale ? 1f : socketOwner.worldScale.z),
+                    depthAction.range.Min() * (worldScale ? 1f : socketOwner.worldScale.z),
                     0, 1
                 );
                 var smoothed = smoothing.Smooth(

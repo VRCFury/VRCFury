@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -26,33 +27,42 @@ namespace VF.Service {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
+        private ControllerManager fx => manager.GetFx();
 
         private int scaleIndex = 0;
 
+        private readonly Dictionary<VFGameObject, (VFGameObject, VFAFloat)> cache =
+            new Dictionary<VFGameObject, (VFGameObject, VFAFloat)>();
+
         [CanBeNull]
-        public VFAFloat Get(VFGameObject obj) {
-            var fx = manager.GetFx();
+        public VFAFloat Get(VFGameObject parent) {
+            return GetAdv(parent)?.Item2;
+        }
+
+        [CanBeNull]
+        public (VFGameObject, VFAFloat)? GetAdv(VFGameObject parent) {
             if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
                 return null;
             }
 
-            var holder = GameObjects.Create("vrcf_ScaleDetector", obj);
-            holder.worldScale = Vector3.one;
+            if (cache.TryGetValue(parent, out var cached)) return cached;
 
-            var senderObj = GameObjects.Create("Sender", holder);
+            var senderObj = GameObjects.Create("LocalScale", parent);
+            senderObj.worldScale = Vector3.one;
             var sender = senderObj.AddComponent<VRCContactSender>();
             sender.radius = 0.001f;
             var tag = $"VRCF_SCALEFACTORFIX_AA_{scaleIndex++}";
             sender.collisionTags.Add(tag);
 
-            var receiverObj = GameObjects.Create("Receiver", holder);
+            var receiverObj = GameObjects.Create("WorldScale", parent);
+            receiverObj.worldScale = Vector3.one;
             var receiver = receiverObj.AddComponent<VRCContactReceiver>();
             receiver.allowOthers = false;
             receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
             receiver.collisionTags.Add(tag);
             receiver.radius = 0.1f;
             receiver.position = new Vector3(0.1f, 0, 0);
-            var receiverParam = fx.NewFloat($"SFFix {obj.name} - Rcv");
+            var receiverParam = fx.NewFloat($"SFFix {parent.name} - Rcv");
             receiver.parameter = receiverParam;
             var p = receiverObj.AddComponent<ScaleConstraint>();
             p.AddSource(new ConstraintSource() {
@@ -63,7 +73,9 @@ namespace VF.Service {
             p.constraintActive = true;
             p.locked = true;
 
-            return math.Multiply($"SFFix {obj.name} - Final", receiverParam, 100);
+            var final = math.Multiply($"SFFix {parent.name} - Final", receiverParam, 100);
+            
+            return cache[parent] = (receiverObj, final);
         }
     }
 }

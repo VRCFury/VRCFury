@@ -238,21 +238,35 @@ namespace VF.Service {
          */
         public Motion Add(string name, VFAap output, params (VFAFloatOrConst input,float multiplier)[] components) {
             var clipCache = new Dictionary<float, AnimationClip>();
-            AnimationClip MakeCachedSetter(float multiplier) {
+            Motion MakeCachedSetter(float multiplier) {
                 if (clipCache.TryGetValue(multiplier, out var cached)) return cached;
                 return clipCache[multiplier] = MakeSetter(output, multiplier);
             }
 
-            var tree = MakeDirect(name);
-            foreach (var (input,multiplier) in components) {
-                if (input.param != null) {
-                    tree.Add(input.param, MakeCachedSetter(multiplier));
+            var motionComponents = components.Select(pair => {
+                if (pair.input.param != null) {
+                    return (pair.input.param, MakeCachedSetter(pair.multiplier));
                 } else {
-                    tree.Add(fx.One(), MakeCachedSetter(input.constt * multiplier));
+                    return (fx.One(), MakeCachedSetter(pair.input.constt * pair.multiplier));
                 }
-            }
+            }).ToArray();
 
+            return Add(name, motionComponents);
+        }
+        
+        /**
+         * input : [0,Infinity)
+         */
+        public Motion Add(string name, params (VFAFloat input,Motion motion)[] components) {
+            var tree = MakeDirect(name);
+            foreach (var (input,motion) in components) {
+                tree.Add(input, motion);
+            }
             return tree;
+        }
+
+        public VFAFloat One() {
+            return fx.One();
         }
 
         public AnimationClip MakeSetter(VFAap param, float value) {

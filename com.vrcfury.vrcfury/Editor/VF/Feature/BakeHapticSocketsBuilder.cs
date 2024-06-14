@@ -292,6 +292,7 @@ namespace VF.Feature {
                         _hapticAnimContactsService.CreateSocketAnims(
                             socket.depthActions,
                             socket.owner(),
+                            name,
                             contacts,
                             socket.unitsInMeters
                         );
