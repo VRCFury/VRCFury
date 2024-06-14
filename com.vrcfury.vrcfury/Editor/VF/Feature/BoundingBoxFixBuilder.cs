@@ -7,8 +7,8 @@ using VF.Model.Feature;
 namespace VF.Feature {
 
     internal class BoundingBoxFixBuilder : FeatureBuilder<BoundingBoxFix2> {
-        public override bool ShowInMenu() {
-            return false;
+        public override string FailWhenAdded() {
+            return "Bounding Box Fix is now automatically enabled by default for all avatars using any VRCFury component. Adding the Bounding Box Fix component is no longer needed.";
         }
 
         public override string GetEditorTitle() {
