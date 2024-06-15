@@ -104,26 +104,25 @@ namespace VF.Inspector {
 
             var editingPrefab = UnityCompatUtils.IsEditingPrefab();
 
-            var notInAvatarError = VRCFuryEditorUtils.Error(
-                "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
-                "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
-                "object, and not just alongside it in the scene.");
-            void UpdateNotInAvatarError() => notInAvatarError.SetVisible(!editingPrefab && c.gameObject.asVf().GetComponentInSelfOrParent<VRCAvatarDescriptor>() == null);
-            UpdateNotInAvatarError();
-            notInAvatarError.schedule.Execute(UpdateNotInAvatarError).Every(1000);
-            container.Add(notInAvatarError);
+            container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
+                var warning = new VisualElement();
 
-            var deletedError = VRCFuryEditorUtils.Error(
-                "This VRCFury component is placed within an object that is tagged as EditorOnly or has a vrcfury 'Delete During Upload' component, and thus will not do anything!");
-            void UpdateDeletedError() {
+                if (!editingPrefab && c.gameObject.asVf().GetComponentInSelfOrParent<VRCAvatarDescriptor>() == null) {
+                    warning.Add(VRCFuryEditorUtils.Error(
+                        "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
+                        "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
+                        "object, and not just alongside it in the scene."));
+                }
+
                 var hasDelete = v is VRCFury z && z.GetAllFeatures().OfType<DeleteDuringUpload>().Any();
                 var isDeleted = EditorOnlyUtils.IsInsideEditorOnly(c.gameObject);
-                deletedError.SetVisible(isDeleted && !hasDelete);
-            }
-
-            UpdateDeletedError();
-            deletedError.schedule.Execute(UpdateDeletedError).Every(1000);
-            container.Add(deletedError);
+                if (isDeleted && !hasDelete) {
+                    warning.Add(VRCFuryEditorUtils.Error(
+                        "This VRCFury component is placed within an object that is tagged as EditorOnly or has a vrcfury 'Delete During Upload' component, and thus will not do anything!"));
+                }
+                
+                return warning;
+            }));
 
             return container;
         }
