@@ -578,13 +578,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             sliderProp
         ));
 
-        var toggleOffWarning = VRCFuryEditorUtils.Error(
-            "You cannot use Turn Off for an object that another Toggle Turns On! Turn Off should only be used for objects which are not controlled by their own toggle.\n\n" +
-            "1. You do not need a dedicated 'Turn Off' toggle. Turning off the other toggle will turn off the object.\n\n" +
-            "2. If you want this toggle to turn off the other toggle when activated, use Exclusive Tags instead (in the options on the top right).");
-        toggleOffWarning.SetVisible(false);
-        content.Add(toggleOffWarning);
-        void Update() {
+        content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
             var baseObject = avatarObject != null ? avatarObject : featureBaseObject.root;
 
             var turnsOff = model.state.actions
@@ -603,10 +597,15 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                 .Where(o => o != null)
                 .ToImmutableHashSet();
             var overlap = turnsOff.Intersect(othersTurnOn);
-            toggleOffWarning.SetVisible(overlap.Count > 0);
-        }
-        Update();
-        content.schedule.Execute(Update).Every(1000);
+            if (overlap.Count > 0) {
+                return VRCFuryEditorUtils.Error(
+                    "You cannot use Turn Off for an object that another Toggle Turns On! Turn Off should only be used for objects which are not controlled by their own toggle.\n\n" +
+                    "1. You do not need a dedicated 'Turn Off' toggle. Turning off the other toggle will turn off the object.\n\n" +
+                    "2. If you want this toggle to turn off the other toggle when activated, use Exclusive Tags instead (in the options on the top right).");
+            }
+
+            return new VisualElement();
+        }));
 
         return content;
     }
