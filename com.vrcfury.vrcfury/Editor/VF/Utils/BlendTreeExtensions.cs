@@ -29,16 +29,16 @@ namespace VF.Utils {
         public static void RewriteChildren(this BlendTree tree, Func<ChildMotion, IList<ChildMotion>> rewrite) {
             var updated = false;
             var newChildren = tree.children.SelectMany(child => {
-                var newChildren = rewrite(child);
-                updated |= newChildren.Count != 1 
-                           || newChildren[0].motion != child.motion
-                           || newChildren[0].threshold != child.threshold
-                           || newChildren[0].position != child.position
-                           || newChildren[0].timeScale != child.timeScale
-                           || newChildren[0].cycleOffset != child.cycleOffset
-                           || newChildren[0].directBlendParameter != child.directBlendParameter
-                           || newChildren[0].mirror != child.mirror;
-                return newChildren;
+                var newSubchildren = rewrite(child);
+                updated |= newSubchildren.Count != 1 
+                           || newSubchildren[0].motion != child.motion
+                           || newSubchildren[0].threshold != child.threshold
+                           || newSubchildren[0].position != child.position
+                           || newSubchildren[0].timeScale != child.timeScale
+                           || newSubchildren[0].cycleOffset != child.cycleOffset
+                           || newSubchildren[0].directBlendParameter != child.directBlendParameter
+                           || newSubchildren[0].mirror != child.mirror;
+                return newSubchildren;
             }).ToArray();
             if (updated) {
                 tree.children = newChildren;
