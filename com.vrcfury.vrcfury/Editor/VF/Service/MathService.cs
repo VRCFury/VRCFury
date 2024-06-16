@@ -270,12 +270,6 @@ namespace VF.Service {
             return output;
         }
         */
-
-        public BlendTree MakeDirect(string name) {
-            var tree = clipFactory.NewBlendTree(name);
-            tree.blendType = BlendTreeType.Direct;
-            return tree;
-        }
         
         /**
          * from : [0,Infinity)
@@ -299,7 +293,7 @@ namespace VF.Service {
 
             var name = $"{CleanName(to)} = {CleanName(from)}";
             if (minSupported >= 0) {
-                var direct = MakeDirect(name);
+                var direct = directTree.Create(name);
                 direct.Add(from.param, MakeSetter(to, 1));
                 return direct;
             }
@@ -354,7 +348,7 @@ namespace VF.Service {
             var output = MakeAap(name, def: a.GetDefault() * b.GetDefault());
 
             if (b.param != null) {
-                var subTree = MakeDirect("Multiply");
+                var subTree = directTree.Create("Multiply");
                 subTree.Add(b.param, MakeSetter(output, 1));
                 directTree.Add(a, subTree);
             } else {

@@ -49,7 +49,7 @@ namespace VF.Utils {
         public float lengthInSeconds {
             get {
                 if (isFloat) return floatCurve.keys.Select(k => k.time).DefaultIfEmpty(0).Max();
-                return 0;
+                return objectCurve.Select(k => k.time).DefaultIfEmpty(0).Max();
             }
         }
 
