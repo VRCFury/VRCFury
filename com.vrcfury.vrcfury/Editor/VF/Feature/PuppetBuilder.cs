@@ -4,6 +4,7 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 
 namespace VF.Feature {
 
@@ -16,16 +17,15 @@ internal class PuppetBuilder : FeatureBuilder<Puppet> {
         var fx = GetFx();
         var layerName = model.name;
         var layer = fx.NewLayer(layerName);
-        var tree = clipFactory.NewBlendTree(model.name);
-        tree.blendType = BlendTreeType.FreeformDirectional2D;
-        tree.AddChild(clipFactory.GetEmptyClip(), new Vector2(0,0));
+        var tree = clipFactory.NewBlendTree(model.name, BlendTreeType.FreeformDirectional2D);
+        tree.Add(new Vector2(0,0), clipFactory.GetEmptyClip());
         var i = 0;
         var usesX = false;
         var usesY = false;
         foreach (var stop in model.stops) {
             if (stop.x != 0) usesX = true;
             if (stop.y != 0) usesY = true;
-            tree.AddChild(actionClipService.LoadState(model.name + "_" + i++, stop.state), new Vector2(stop.x,stop.y));
+            tree.Add(new Vector2(stop.x,stop.y), actionClipService.LoadState(model.name + "_" + i++, stop.state));
         }
         var on = layer.NewState("Blend").WithAnimation(tree);
 

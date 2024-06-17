@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -29,7 +30,10 @@ namespace VF.Service {
             public bool defaultIsTrue { private set; get; }
 
             public VFAFloatBool(CreateCallback create, bool defaultIsTrue) {
-                this.create = create;
+                this.create = (a,b) => {
+                    if (a == null || b == null) throw new Exception("Input clip to VFAFloatBool cannot be null");
+                    return create(a,b);
+                };
                 this.defaultIsTrue = defaultIsTrue;
             }
         }
@@ -111,16 +115,14 @@ namespace VF.Service {
             var minClip = MakeSetter(output, outMin);
             var maxClip = MakeSetter(output, outMax);
 
-            var tree = clipFactory.NewBlendTree($"{CleanName(input)} ({inMin}-{inMax}) -> ({outMin}-{outMax})");
-            tree.blendType = BlendTreeType.Simple1D;
-            tree.useAutomaticThresholds = false;
+            var tree = clipFactory.NewBlendTree($"{CleanName(input)} ({inMin}-{inMax}) -> ({outMin}-{outMax})", BlendTreeType.Simple1D);
             tree.blendParameter = input;
             if (inMin < inMax) {
-                tree.AddChild(minClip, inMin);
-                tree.AddChild(maxClip, inMax);
+                tree.Add(inMin, minClip);
+                tree.Add(inMax, maxClip);
             } else {
-                tree.AddChild(maxClip, inMax);
-                tree.AddChild(minClip, inMin);
+                tree.Add(inMax, maxClip);
+                tree.Add(inMin, minClip);
             }
 
             directTree.Add(tree);
@@ -147,16 +149,16 @@ namespace VF.Service {
         public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false, string name = null) {
             name = name ?? $"{CleanName(a)} {(orEqual ? ">=" : ">")} {CleanName(b)}";
             return new VFAFloatBool((whenTrue, whenFalse) => {
-                var tree = clipFactory.NewBlendTree(name);
-                tree.blendType = BlendTreeType.SimpleDirectional2D;
-                tree.useAutomaticThresholds = false;
+                if (whenTrue == null) whenTrue = clipFactory.GetEmptyClip();
+                if (whenFalse == null) whenFalse = clipFactory.GetEmptyClip();
+                var tree = clipFactory.NewBlendTree(name, BlendTreeType.SimpleDirectional2D);
                 tree.blendParameter = a;
                 tree.blendParameterY = b;
-                tree.AddChild(whenFalse, new Vector2(-10000, -10000));
-                tree.AddChild(whenFalse, new Vector2(10000, 10000));
-                tree.AddChild(whenFalse, new Vector2(0, 0));
-                tree.AddChild(whenFalse, new Vector2(-10000, 10000));
-                tree.AddChild(whenTrue, new Vector2(0.000001f, -0.000001f));
+                tree.Add(new Vector2(-10000, -10000), whenFalse);
+                tree.Add(new Vector2(10000, 10000), whenFalse);
+                tree.Add(new Vector2(0, 0), whenFalse);
+                tree.Add(new Vector2(-10000, 10000), whenFalse);
+                tree.Add(new Vector2(0.000001f, -0.000001f), whenTrue);
                 return tree;
             }, a.GetDefault() > b.GetDefault() || (orEqual && a.GetDefault() == b.GetDefault()));
         }
@@ -244,12 +246,10 @@ namespace VF.Service {
         }
 
         public BlendTree Make1D(string name, VFAFloat param, params (float, Motion)[] children) {
-            var tree = clipFactory.NewBlendTree(name);
-            tree.blendType = BlendTreeType.Simple1D;
-            tree.useAutomaticThresholds = false;
+            var tree = clipFactory.NewBlendTree(name, BlendTreeType.Simple1D);
             tree.blendParameter = param;
             foreach (var (threshold, motion) in children) {
-                tree.AddChild(motion, threshold);
+                tree.Add(threshold, (motion != null) ? motion : clipFactory.GetEmptyClip());
             }
             return tree;
         }
@@ -270,12 +270,6 @@ namespace VF.Service {
             return output;
         }
         */
-
-        public BlendTree MakeDirect(string name) {
-            var tree = clipFactory.NewBlendTree(name);
-            tree.blendType = BlendTreeType.Direct;
-            return tree;
-        }
         
         /**
          * from : [0,Infinity)
@@ -299,7 +293,7 @@ namespace VF.Service {
 
             var name = $"{CleanName(to)} = {CleanName(from)}";
             if (minSupported >= 0) {
-                var direct = MakeDirect(name);
+                var direct = directTree.Create(name);
                 direct.Add(from.param, MakeSetter(to, 1));
                 return direct;
             }
@@ -354,7 +348,7 @@ namespace VF.Service {
             var output = MakeAap(name, def: a.GetDefault() * b.GetDefault());
 
             if (b.param != null) {
-                var subTree = MakeDirect("Multiply");
+                var subTree = directTree.Create("Multiply");
                 subTree.Add(b.param, MakeSetter(output, 1));
                 directTree.Add(a, subTree);
             } else {

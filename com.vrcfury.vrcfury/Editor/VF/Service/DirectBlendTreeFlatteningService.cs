@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
@@ -14,6 +15,7 @@ namespace VF.Service {
     internal class DirectBlendTreeFlatteningService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly DirectBlendTreeService directTree;
         
         [FeatureBuilderAction(FeatureOrder.FlattenDbts)]
         public void Optimize() {
@@ -26,13 +28,16 @@ namespace VF.Service {
         }
 
         private void Optimize(BlendTree tree) {
-            if (!tree.IsStatic()) {
-                //Debug.LogError("Something added a non-static clip to a VRCF DBT. This is likely a bug.");
+            if (!directTree.Created(tree)) {
+                // We didn't make it
                 return;
             }
+            if (!tree.IsStatic()) {
+                throw new Exception("Something added a non-static clip to a VRCF DBT. This is likely a bug.");
+            }
             MakeZeroLength(tree);
-            FlattenTrees(tree);
-            FlattenClips(tree);
+            MergeSubtreesWithOneWeight(tree);
+            MergeClipsWithSameWeight(tree);
         }
         
         private void MakeZeroLength(Motion motion) {
@@ -62,51 +67,70 @@ namespace VF.Service {
             }
         }
 
-        private void FlattenTrees([CanBeNull] Motion motion) {
+        private void MergeSubtreesWithOneWeight([CanBeNull] Motion motion) {
             if (!(motion is BlendTree tree)) return;
             foreach (var child in tree.children) {
-                FlattenTrees(child.motion);
+                MergeSubtreesWithOneWeight(child.motion);
             }
             if (tree.blendType != BlendTreeType.Direct) return;
-            tree.children = tree.children.SelectMany(child => {
-                if (child.directBlendParameter == manager.GetFx().One() &&
-                    child.motion is BlendTree childTree && childTree.blendType == BlendTreeType.Direct) {
+            if (tree.GetNormalizedBlendValues()) return;
+            tree.RewriteChildren(child => {
+                if (child.directBlendParameter == manager.GetFx().One()
+                    && child.motion is BlendTree childTree
+                    && childTree.blendType == BlendTreeType.Direct
+                    && !childTree.GetNormalizedBlendValues()
+                ) {
                     return childTree.children;
                 }
                 return new ChildMotion[] { child };
-            }).ToArray();
+            });
         }
 
-        private void FlattenClips([CanBeNull] Motion motion) {
+        private void MergeClipsWithSameWeight([CanBeNull] Motion motion) {
             if (!(motion is BlendTree tree)) return;
             foreach (var child in tree.children) {
-                FlattenClips(child.motion);
+                MergeClipsWithSameWeight(child.motion);
             }
             if (tree.blendType != BlendTreeType.Direct) return;
+            if (tree.GetNormalizedBlendValues()) return;
 
-            bool IsAlwaysOnClip(ChildMotion child) =>
-                child.directBlendParameter == manager.GetFx().One()
-                && child.motion is AnimationClip clip;
+            var firstClipByWeightParam = new Dictionary<string, AnimationClip>();
 
-            var hasMultipleAlwaysOnClips = tree.children.Where(IsAlwaysOnClip).Count() > 1;
-            if (hasMultipleAlwaysOnClips) {
-                AnimationClip onClip = null;
-                tree.children = tree.children.SelectMany(child => {
-                    if (IsAlwaysOnClip(child) && child.motion is AnimationClip clip) {
-                        if (onClip == null) {
-                            onClip = clipFactory.NewClip("Flattened");
-                            onClip.CopyFrom(clip);
-                            child.motion = onClip;
-                            return new ChildMotion[] { child };
-                        } else {
-                            onClip.CopyFrom(clip);
+            tree.RewriteChildren(child => {
+                if (child.motion is AnimationClip clip) {
+                    if (firstClipByWeightParam.TryGetValue(child.directBlendParameter, out var firstClip)) {
+                        clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                            if (curve.IsFloat && curve.FloatCurve.keys.Length == 1 &&
+                                curve.FloatCurve.keys[0].time == 0) {
+                                var firstClipCurve = firstClip.GetFloatCurve(binding);
+                                if (firstClipCurve != null) {
+                                    // Merge curve into first clip's
+                                    firstClipCurve.keys = firstClipCurve.keys.Select(key => {
+                                        key.value += curve.FloatCurve.keys[0].value;
+                                        return key;
+                                    }).ToArray();
+                                    firstClip.SetCurve(binding, firstClipCurve);
+                                } else {
+                                    // Just shove it into the first clip
+                                    firstClip.SetCurve(binding, curve);
+                                }
+
+                                firstClip.name = $"{clipFactory.GetPrefix()}/Flattened";
+                                return (binding, null, true);
+                            }
+
+                            return (binding, curve, false);
+                        }));
+                        if (!clip.GetAllBindings().Any()) {
                             return new ChildMotion[] { };
                         }
+                    } else {
+                        firstClipByWeightParam[child.directBlendParameter] = clip;
                     }
+                }
 
-                    return new ChildMotion[] { child };
-                }).ToArray();
-            }
+                return new ChildMotion[] { child };
+            });
         }
     }
 }

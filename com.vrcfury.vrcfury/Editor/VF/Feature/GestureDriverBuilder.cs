@@ -90,12 +90,10 @@ namespace VF.Feature {
                 );
                 onCondition = smoothedWeight.IsGreaterThan(0.05f);
                 transitionTime = 0.05f;
-                var tree = clipFactory.NewBlendTree(uid + "_blend");
-                tree.blendType = BlendTreeType.Simple1D;
-                tree.useAutomaticThresholds = false;
+                var tree = clipFactory.NewBlendTree(uid + "_blend", BlendTreeType.Simple1D);
                 tree.blendParameter = smoothedWeight;
-                tree.AddChild(clipFactory.GetEmptyClip(), 0);
-                tree.AddChild(clip, 1);
+                tree.Add(0, clipFactory.GetEmptyClip());
+                tree.Add(1, clip);
                 on.WithAnimation(tree);
             } else {
                 on.WithAnimation(clip);

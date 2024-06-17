@@ -19,9 +19,11 @@ namespace VF.Service {
             clip.name = $"{GetPrefix()}/{name}";
             return clip;
         }
-        public BlendTree NewBlendTree(string name) {
+        public BlendTree NewBlendTree(string name, BlendTreeType type) {
             var tree = VrcfObjectFactory.Create<BlendTree>();
             tree.name = $"{GetPrefix()}/{name}";
+            tree.useAutomaticThresholds = false;
+            tree.blendType = type;
             return tree;
         }
 

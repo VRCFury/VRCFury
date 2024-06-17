@@ -191,6 +191,9 @@ namespace VF.Feature {
         }
 
         void Optimize(AnimatorCondition condition, Motion on, Motion off) {
+            if (on == null) on = clipFactory.GetEmptyClip();
+            if (off == null) off = clipFactory.GetEmptyClip();
+            
             if (condition.mode == AnimatorConditionMode.IfNot) {
                 condition.mode = AnimatorConditionMode.If;
                 (on, off) = (off, on);
@@ -202,7 +205,7 @@ namespace VF.Feature {
                 condition.mode = AnimatorConditionMode.Equals;
                 (on, off) = (off, on);
             }
-            
+
             var onValid = on.HasValidBinding(avatarObject);
             var offValid = off.HasValidBinding(avatarObject);
             if (!onValid && !offValid) throw new DoNotOptimizeException($"Contains no valid bindings");
@@ -243,12 +246,10 @@ namespace VF.Feature {
                     if (string.IsNullOrWhiteSpace(state.timeParameter)) {
                         throw new DoNotOptimizeException($"{state.name} contains a motion time clip without a valid parameter");
                     }
-                    var subTree = clipFactory.NewBlendTree($"Layer {layer.name} - {state.name}");
-                    subTree.useAutomaticThresholds = false;
-                    subTree.blendType = BlendTreeType.Simple1D;
-                    subTree.AddChild(dualState.Item1, 0);
-                    subTree.AddChild(dualState.Item2, 1);
+                    var subTree = clipFactory.NewBlendTree($"Layer {layer.name} - {state.name}", BlendTreeType.Simple1D);
                     subTree.blendParameter = state.timeParameter;
+                    subTree.Add(0, dualState.Item1);
+                    subTree.Add(1, dualState.Item2);
                     return subTree;
                 } else {
                     if (clip.GetLengthInFrames() > 5) {
