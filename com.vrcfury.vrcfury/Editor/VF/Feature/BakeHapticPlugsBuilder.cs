@@ -191,10 +191,10 @@ namespace VF.Feature {
                                 }
 
                                 var self = CreateReceiver(tag, true);
-                                var selfBlend = directTree.Create("selfBlend");
+                                var selfBlend = clipFactory.NewDBT("selfBlend");
                                 selfBlend.Add(self, oneClip);
                                 var others = CreateReceiver(tag, false);
-                                var othersBlend = directTree.Create("othersBlend");
+                                var othersBlend = clipFactory.NewDBT("othersBlend");
                                 othersBlend.Add(others, oneClip);
                                 directTree.Add(math.GreaterThan(self, others).create(selfBlend, othersBlend));
                             }

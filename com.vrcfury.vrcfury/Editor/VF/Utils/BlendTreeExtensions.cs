@@ -10,30 +10,6 @@ using VF.Utils.Controller;
 
 namespace VF.Utils {
     internal static class BlendTreeExtensions {
-        public static void Add(this BlendTree tree, string param, Motion motion) {
-            if (tree.blendType != BlendTreeType.Direct) throw new Exception("Incorrect blendtree type");
-            if (motion == null) throw new Exception("motion cannot be null");
-            tree.AddChild(motion);
-            var children = tree.children;
-            var child = children[children.Length - 1];
-            child.directBlendParameter = param;
-            children[children.Length - 1] = child;
-            tree.children = children;
-        }
-        
-        public static void Add(this BlendTree tree, float threshold, Motion motion) {
-            if (tree.blendType != BlendTreeType.Simple1D) throw new Exception("Incorrect blendtree type");
-            if (motion == null) throw new Exception("motion cannot be null");
-            tree.AddChild(motion, threshold);
-        }
-        
-        public static void Add(this BlendTree tree, Vector2 position, Motion motion) {
-            if (tree.blendType == BlendTreeType.Simple1D || tree.blendType == BlendTreeType.Direct) {
-                throw new Exception("Incorrect blendtree type");
-            }
-            if (motion == null) throw new Exception("motion cannot be null");
-            tree.AddChild(motion, position);
-        }
 
         /**
          * Updating blend tree children is expensive if not needed, because it calls

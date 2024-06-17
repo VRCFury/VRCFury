@@ -316,7 +316,7 @@ namespace VF.Feature {
                         if (i == j) continue;
                         var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
-                        var tree = directTree.Create($"{aName} vs {bName}");
+                        var tree = clipFactory.NewDBT($"{aName} vs {bName}");
                         math.MakeAapSafe(tree, vsParam);
                         tree.Add(bDist, math.MakeSetter(vsParam, 1));
                         tree.Add(aDist, math.MakeSetter(vsParam, -1));

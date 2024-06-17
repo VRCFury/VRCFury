@@ -248,8 +248,7 @@ namespace VF.Feature {
                     if (string.IsNullOrWhiteSpace(state.timeParameter)) {
                         throw new DoNotOptimizeException($"{state.name} contains a motion time clip without a valid parameter");
                     }
-                    var subTree = clipFactory.NewBlendTree($"Layer {layer.name} - {state.name}", BlendTreeType.Simple1D);
-                    subTree.blendParameter = state.timeParameter;
+                    var subTree = clipFactory.New1D($"Layer {layer.name} - {state.name}", state.timeParameter);
                     subTree.Add(0, dualState.Item1);
                     subTree.Add(1, dualState.Item2);
                     return subTree;

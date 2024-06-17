@@ -112,8 +112,7 @@ namespace VF.Service {
             var minClip = MakeSetter(output, outMin);
             var maxClip = MakeSetter(output, outMax);
 
-            var tree = clipFactory.NewBlendTree($"{CleanName(input)} ({inMin}-{inMax}) -> ({outMin}-{outMax})", BlendTreeType.Simple1D);
-            tree.blendParameter = input;
+            var tree = clipFactory.New1D($"{CleanName(input)} ({inMin}-{inMax}) -> ({outMin}-{outMax})", input);
             if (inMin < inMax) {
                 tree.Add(inMin, minClip);
                 tree.Add(inMax, maxClip);
@@ -148,9 +147,7 @@ namespace VF.Service {
             return new VFAFloatBool((whenTrue, whenFalse) => {
                 if (whenTrue == null) whenTrue = clipFactory.GetEmptyClip();
                 if (whenFalse == null) whenFalse = clipFactory.GetEmptyClip();
-                var tree = clipFactory.NewBlendTree(name, BlendTreeType.SimpleDirectional2D);
-                tree.blendParameter = a;
-                tree.blendParameterY = b;
+                var tree = clipFactory.NewSimpleDirectional2D(name, a, b);
                 tree.Add(new Vector2(-10000, -10000), whenFalse);
                 tree.Add(new Vector2(10000, 10000), whenFalse);
                 tree.Add(new Vector2(0, 0), whenFalse);
@@ -242,9 +239,8 @@ namespace VF.Service {
             return clip;
         }
 
-        public BlendTree Make1D(string name, VFAFloat param, params (float, Motion)[] children) {
-            var tree = clipFactory.NewBlendTree(name, BlendTreeType.Simple1D);
-            tree.blendParameter = param;
+        public VFBlendTree1D Make1D(string name, VFAFloat param, params (float, Motion)[] children) {
+            var tree = clipFactory.New1D(name, param);
             foreach (var (threshold, motion) in children) {
                 tree.Add(threshold, (motion != null) ? motion : clipFactory.GetEmptyClip());
             }
@@ -290,7 +286,7 @@ namespace VF.Service {
 
             var name = $"{CleanName(to)} = {CleanName(from)}";
             if (minSupported >= 0) {
-                var direct = directTree.Create(name);
+                var direct = clipFactory.NewDBT(name);
                 direct.Add(from.param, MakeSetter(to, 1));
                 return direct;
             }
@@ -345,7 +341,7 @@ namespace VF.Service {
             var output = MakeAap(name, def: a.GetDefault() * b.GetDefault());
 
             if (b.param != null) {
-                var subTree = directTree.Create("Multiply");
+                var subTree = clipFactory.NewDBT("Multiply");
                 subTree.Add(b.param, MakeSetter(output, 1));
                 directTree.Add(a, subTree);
             } else {
@@ -384,7 +380,7 @@ namespace VF.Service {
          * WARNING: If your aap is animated from a direct blendtree OUTSIDE of the main shared direct blendtree, you must set useWeightProtection to false
          * and ensure that you weight protect the variable in your own tree.
          */
-        public void MakeAapSafe(BlendTree blendTree, VFAap aap) {
+        public void MakeAapSafe(VFBlendTreeDirect blendTree, VFAap aap) {
             blendTree.Add(fx.One(), MakeSetter(aap, 0));
         }
     }

@@ -19,8 +19,8 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         private HashSet<BlendTree> created = new HashSet<BlendTree>();
 
-        private BlendTree _tree;
-        public BlendTree GetTree() {
+        private VFBlendTreeDirect _tree;
+        public VFBlendTreeDirect GetTree() {
             if (_tree == null) {
                 var name = $"DBT for {parent.parent.GetType().Name}";
                 if (parent.parent is FeatureBuilder builder) {
@@ -28,7 +28,7 @@ namespace VF.Service {
                 }
                 var fx = manager.GetFx();
                 var directLayer = fx.NewLayer(name);
-                _tree = Create(name);
+                _tree = clipFactory.NewDBT(name);
                 directLayer.NewState("DBT").WithAnimation(_tree);
             }
             return _tree;
@@ -40,16 +40,6 @@ namespace VF.Service {
         
         public void Add(VFAFloat param, Motion motion) {
             GetTree().Add(param, motion);
-        }
-
-        public BlendTree Create(string name) {
-            var tree = clipFactory.NewBlendTree(name, BlendTreeType.Direct);
-            created.Add(tree);
-            return tree;
-        }
-
-        public bool Created(BlendTree tree) {
-            return created.Contains(tree);
         }
     }
 }
