@@ -125,7 +125,9 @@ namespace VF.Feature {
             if (states.Length == 1) {
                 var state = states[0].state;
                 var onClip = MakeClipForState(layer, state);
-                directTree.Add(onClip);
+                if (onClip != null) {
+                    directTree.Add(onClip);
+                }
                 return;
             }
 
