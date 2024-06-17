@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -29,7 +30,10 @@ namespace VF.Service {
             public bool defaultIsTrue { private set; get; }
 
             public VFAFloatBool(CreateCallback create, bool defaultIsTrue) {
-                this.create = create;
+                this.create = (a,b) => {
+                    if (a == null || b == null) throw new Exception("Input clip to VFAFloatBool cannot be null");
+                    return create(a,b);
+                };
                 this.defaultIsTrue = defaultIsTrue;
             }
         }
