@@ -191,9 +191,6 @@ namespace VF.Feature {
         }
 
         void Optimize(AnimatorCondition condition, Motion on, Motion off) {
-            if (on == null) on = clipFactory.GetEmptyClip();
-            if (off == null) off = clipFactory.GetEmptyClip();
-            
             if (condition.mode == AnimatorConditionMode.IfNot) {
                 condition.mode = AnimatorConditionMode.If;
                 (on, off) = (off, on);
@@ -205,7 +202,7 @@ namespace VF.Feature {
                 condition.mode = AnimatorConditionMode.Equals;
                 (on, off) = (off, on);
             }
-
+            
             var onValid = on.HasValidBinding(avatarObject);
             var offValid = off.HasValidBinding(avatarObject);
             if (!onValid && !offValid) throw new DoNotOptimizeException($"Contains no valid bindings");

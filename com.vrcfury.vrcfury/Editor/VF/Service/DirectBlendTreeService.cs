@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
@@ -17,9 +16,13 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly VFInjectorParent parent;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        private HashSet<BlendTree> created = new HashSet<BlendTree>();
-
+        private VFLayer _layer;
         private BlendTree _tree;
+
+        [CanBeNull] public VFLayer GetLayer() {
+            return _layer;
+        }
+
         public BlendTree GetTree() {
             if (_tree == null) {
                 var name = $"DBT for {parent.parent.GetType().Name}";
@@ -28,7 +31,9 @@ namespace VF.Service {
                 }
                 var fx = manager.GetFx();
                 var directLayer = fx.NewLayer(name);
-                _tree = Create(name);
+                _layer = directLayer;
+                _tree = clipFactory.NewBlendTree(name);
+                _tree.blendType = BlendTreeType.Direct;
                 directLayer.NewState("DBT").WithAnimation(_tree);
             }
             return _tree;
@@ -40,17 +45,6 @@ namespace VF.Service {
         
         public void Add(VFAFloat param, Motion motion) {
             GetTree().Add(param, motion);
-        }
-
-        public BlendTree Create(string name) {
-            var tree = clipFactory.NewBlendTree(name);
-            tree.blendType = BlendTreeType.Direct;
-            created.Add(tree);
-            return tree;
-        }
-
-        public bool Created(BlendTree tree) {
-            return created.Contains(tree);
         }
     }
 }

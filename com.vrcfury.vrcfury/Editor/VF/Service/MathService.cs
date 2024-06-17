@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -30,10 +29,7 @@ namespace VF.Service {
             public bool defaultIsTrue { private set; get; }
 
             public VFAFloatBool(CreateCallback create, bool defaultIsTrue) {
-                this.create = (a,b) => {
-                    if (a == null || b == null) throw new Exception("Input clip to VFAFloatBool cannot be null");
-                    return create(a,b);
-                };
+                this.create = create;
                 this.defaultIsTrue = defaultIsTrue;
             }
         }
@@ -274,6 +270,12 @@ namespace VF.Service {
             return output;
         }
         */
+
+        public BlendTree MakeDirect(string name) {
+            var tree = clipFactory.NewBlendTree(name);
+            tree.blendType = BlendTreeType.Direct;
+            return tree;
+        }
         
         /**
          * from : [0,Infinity)
@@ -297,7 +299,7 @@ namespace VF.Service {
 
             var name = $"{CleanName(to)} = {CleanName(from)}";
             if (minSupported >= 0) {
-                var direct = directTree.Create(name);
+                var direct = MakeDirect(name);
                 direct.Add(from.param, MakeSetter(to, 1));
                 return direct;
             }
@@ -352,7 +354,7 @@ namespace VF.Service {
             var output = MakeAap(name, def: a.GetDefault() * b.GetDefault());
 
             if (b.param != null) {
-                var subTree = directTree.Create("Multiply");
+                var subTree = MakeDirect("Multiply");
                 subTree.Add(b.param, MakeSetter(output, 1));
                 directTree.Add(a, subTree);
             } else {

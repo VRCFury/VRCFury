@@ -37,9 +37,9 @@ internal class VisemesBuilder : FeatureBuilder<Visemes> {
         var VisemeParam = fx.NewFloat("Viseme", usePrefix: false);
         var VolumeParam = fx.NewFloat("Voice", usePrefix: false);
 
-        var voiceTree = directTree.Create("Advanced Visemes");
+        var voiceTree = math.MakeDirect("Advanced Visemes");
         var enabled = math.MakeAap("AdvancedVisemesEnabled", def: 1);
-        var volumeTree = directTree.Create("Advanced Visemes");
+        var volumeTree = math.MakeDirect("Advanced Visemes");
         VFAFloat volumeToUse;
         if (model.instant) {
             volumeToUse = math.SetValueWithConditions(

@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
-using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Inspector;
@@ -10,7 +8,7 @@ using VF.Utils.Controller;
 
 namespace VF.Utils {
     internal static class BlendTreeExtensions {
-        public static void Add(this BlendTree tree, string param, Motion motion) {
+        public static void AddDirectChild(this BlendTree tree, string param, Motion motion) {
             tree.AddChild(motion);
             var children = tree.children;
             var child = children[children.Length - 1];
@@ -19,26 +17,26 @@ namespace VF.Utils {
             tree.children = children;
         }
 
+        public static void Add(this BlendTree tree, VFAFloat param, Motion motion) {
+            AddDirectChild(tree, param, motion);
+        }
+
         /**
          * Updating blend tree children is expensive if not needed, because it calls
          * AnimatorController.OnInvalidateAnimatorController
          */
         public static void RewriteChildren(this BlendTree tree, Func<ChildMotion, ChildMotion> rewrite) {
-            tree.RewriteChildren(c => new [] { rewrite(c) });
-        }
-        public static void RewriteChildren(this BlendTree tree, Func<ChildMotion, IList<ChildMotion>> rewrite) {
             var updated = false;
-            var newChildren = tree.children.SelectMany(child => {
-                var newSubchildren = rewrite(child);
-                updated |= newSubchildren.Count != 1 
-                           || newSubchildren[0].motion != child.motion
-                           || newSubchildren[0].threshold != child.threshold
-                           || newSubchildren[0].position != child.position
-                           || newSubchildren[0].timeScale != child.timeScale
-                           || newSubchildren[0].cycleOffset != child.cycleOffset
-                           || newSubchildren[0].directBlendParameter != child.directBlendParameter
-                           || newSubchildren[0].mirror != child.mirror;
-                return newSubchildren;
+            var newChildren = tree.children.Select(child => {
+                var newChild = rewrite(child);
+                updated |= newChild.motion != child.motion
+                           || newChild.threshold != child.threshold
+                           || newChild.position != child.position
+                           || newChild.timeScale != child.timeScale
+                           || newChild.cycleOffset != child.cycleOffset
+                           || newChild.directBlendParameter != child.directBlendParameter
+                           || newChild.mirror != child.mirror;
+                return newChild;
             }).ToArray();
             if (updated) {
                 tree.children = newChildren;
@@ -60,19 +58,6 @@ namespace VF.Utils {
                 return child;
             });
             VRCFuryEditorUtils.MarkDirty(tree);
-        }
-
-        public static bool GetNormalizedBlendValues(this BlendTree tree) {
-            using (var so = new SerializedObject(tree)) {
-                return so.FindProperty("m_NormalizedBlendValues").boolValue;
-            }
-        }
-        
-        public static void SetNormalizedBlendValues(this BlendTree tree, bool on) {
-            using (var so = new SerializedObject(tree)) {
-                so.FindProperty("m_NormalizedBlendValues").boolValue = on;
-                so.ApplyModifiedPropertiesWithoutUndo();
-            }
         }
     }
 }
