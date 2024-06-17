@@ -10,20 +10,21 @@ namespace VF.Service {
     [VFPrototypeScope]
     internal class ClipFactoryService {
         [VFAutowired] private readonly VFInjectorParent parent;
-        [VFAutowired] private readonly DirectBlendTreeFlatteningService flatteningService;
+        [VFAutowired] private readonly ClipFactoryTrackingService clipFactoryTracking;
 
         public AnimationClip GetEmptyClip() {
             return NewClip("Empty");
         }
         public AnimationClip NewClip(string name) {
             var clip = VrcfObjectFactory.Create<AnimationClip>();
+            clipFactoryTracking.MarkCreated(clip);
             clip.name = $"{GetPrefix()}/{name}";
             return clip;
         }
 
         private BlendTree NewBlendTree(string name, BlendTreeType type) {
             var tree = VrcfObjectFactory.Create<BlendTree>();
-            flatteningService.MarkCreated(tree);
+            clipFactoryTracking.MarkCreated(tree);
             tree.name = $"{GetPrefix()}/{name}";
             tree.useAutomaticThresholds = false;
             tree.blendType = type;

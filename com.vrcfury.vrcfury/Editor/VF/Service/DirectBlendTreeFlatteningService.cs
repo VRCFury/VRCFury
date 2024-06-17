@@ -16,12 +16,7 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
-
-        private HashSet<BlendTree> created = new HashSet<BlendTree>();
-
-        public void MarkCreated(BlendTree tree) {
-            created.Add(tree);
-        }
+        [VFAutowired] private readonly ClipFactoryTrackingService clipFactoryTracking;
         
         [FeatureBuilderAction(FeatureOrder.FlattenDbts)]
         public void Optimize() {
@@ -34,7 +29,7 @@ namespace VF.Service {
         }
 
         private void Optimize(BlendTree tree) {
-            if (!created.Contains(tree)) {
+            if (!clipFactoryTracking.Created(tree)) {
                 // We didn't make it
                 return;
             }
