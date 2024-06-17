@@ -30,10 +30,7 @@ namespace VF.Service {
             public bool defaultIsTrue { private set; get; }
 
             public VFAFloatBool(CreateCallback create, bool defaultIsTrue) {
-                this.create = (a,b) => {
-                    if (a == null || b == null) throw new Exception("Input clip to VFAFloatBool cannot be null");
-                    return create(a,b);
-                };
+                this.create = create;
                 this.defaultIsTrue = defaultIsTrue;
             }
         }
