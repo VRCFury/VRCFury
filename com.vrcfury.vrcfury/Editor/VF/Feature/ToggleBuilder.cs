@@ -201,8 +201,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             var inClip = actionClipService.LoadState(onName + " In", inAction);
             // if clip is empty, copy last frame of transition
             if (clip.GetAllBindings().Length == 0) {
-                clip = clipFactory.NewClip(onName);
-                clip.CopyFromLast(inClip);
+                clip = inClip.GetLastFrame();
             }
             var outClip = model.simpleOutTransition ? inClip.Clone() : actionClipService.LoadState(onName + " Out", outAction);
             var outSpeed = model.simpleOutTransition ? -1 : 1;

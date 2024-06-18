@@ -92,7 +92,7 @@ namespace VF.Feature {
                 transitionTime = 0.05f;
                 var tree = clipFactory.New1D(uid + "_blend", smoothedWeight);
                 tree.Add(0, clipFactory.GetEmptyClip());
-                tree.Add(1, clip);
+                tree.Add(1, clip.GetLastFrame());
                 on.WithAnimation(tree);
             } else {
                 on.WithAnimation(clip);

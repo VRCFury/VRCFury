@@ -17,7 +17,6 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly VFInjectorParent parent;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        private HashSet<BlendTree> created = new HashSet<BlendTree>();
 
         private VFBlendTreeDirect _tree;
         public VFBlendTreeDirect GetTree() {

@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using VF.Injector;
 
 namespace VF.Service {
+    [VFService]
     internal class ClipFactoryTrackingService {
         private readonly HashSet<Motion> created = new HashSet<Motion>();
         
