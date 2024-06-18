@@ -12,60 +12,25 @@ using VF.Utils;
 
 namespace VF.Service {
     [VFService]
-    internal class DirectBlendTreeFlatteningService {
+    internal class BlendTreeOptimizingService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ClipFactoryTrackingService clipFactoryTracking;
         
-        [FeatureBuilderAction(FeatureOrder.FlattenDbts)]
+        [FeatureBuilderAction(FeatureOrder.OptimizeBlendTrees)]
         public void Optimize() {
             var fx = manager.GetFx();
             foreach (var state in new AnimatorIterator.States().From(fx.GetRaw())) {
-                if (state.motion is BlendTree tree) {
+                if (state.motion is BlendTree tree && clipFactoryTracking.Created(tree)) {
                     Optimize(tree);
                 }
             }
         }
 
         private void Optimize(BlendTree tree) {
-            if (!clipFactoryTracking.Created(tree)) {
-                // We didn't make it
-                return;
-            }
-            if (!tree.IsStatic()) {
-                throw new Exception("Something added a non-static clip to a VRCF DBT. This is likely a bug.");
-            }
-            MakeZeroLength(tree);
             MergeSubtreesWithOneWeight(tree);
             MergeClipsWithSameWeight(tree);
-        }
-        
-        private void MakeZeroLength(Motion motion) {
-            if (motion is AnimationClip clip) {
-                clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
-                    if (curve.lengthInSeconds == 0) return (binding, curve, false);
-                    return (binding, curve.GetLast(), true);
-                }));
-                if (!clip.GetAllBindings().Any()) {
-                    clip.SetFloatCurve(
-                        EditorCurveBinding.FloatCurve("__ignored", typeof(GameObject), "m_IsActive"),
-                        AnimationCurve.Constant(0, 0, 0)
-                    );
-                }
-            } else {
-                foreach (var tree in new AnimatorIterator.Trees().From(motion)) {
-                    tree.RewriteChildren(child => {
-                        if (child.motion == null) {
-                            child.motion = clipFactory.NewClip("Empty");
-                        }
-                        return child;
-                    });
-                }
-                foreach (var c in new AnimatorIterator.Clips().From(motion)) {
-                    MakeZeroLength(c);
-                }
-            }
         }
 
         private void MergeSubtreesWithOneWeight([CanBeNull] Motion motion) {

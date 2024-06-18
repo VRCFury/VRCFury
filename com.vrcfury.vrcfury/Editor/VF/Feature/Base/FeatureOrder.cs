@@ -82,6 +82,7 @@ namespace VF.Feature.Base {
         LocomotionConflictResolver,
         ActionConflictResolver,
         TrackingConflictResolver,
+        NormalizeBlendTrees, // Needs to happen before DirectTreeOptimizer (more trees may be eligible for optimization after normalizing)
         DirectTreeOptimizer, // Needs to run after animations are done, including everything that makes its own DBT, including TrackingConflictResolver
         AvoidMmdLayers, // Needs to be after CleanupEmptyLayers (which removes empty layers) and FixMasks and RecordAllDefaults (which may insert layers at the top)
         AdjustWriteDefaults,
@@ -89,7 +90,7 @@ namespace VF.Feature.Base {
         AnimatorLayerControlFix,
         RemoveNonQuestMaterials,
         UpgradeWrongParamTypes,
-        FlattenDbts,
+        OptimizeBlendTrees,
         FinalizeController,
 
         // Finalize Menus
