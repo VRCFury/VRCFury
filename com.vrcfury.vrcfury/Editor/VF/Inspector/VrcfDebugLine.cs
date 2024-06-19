@@ -61,7 +61,10 @@ namespace VF.Inspector {
 
             if (!string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath("0ad731f6b84696142a169af045691c7b"))
                 || !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath("ba7e30ad00ad0c247a3f4e816f1f7d53"))
-                || !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath("cc05f54cef1ff194fb23f8c1d552c492"))) {
+                || !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath("cc05f54cef1ff194fb23f8c1d552c492"))
+                || !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath("0679cc74827adad45ace27875d62ef6e"))
+                || Directory.Exists("Packages/" + VRCFuryEditorUtils.Rev("enrobdoolb.nisaeca.moc"))
+            ) {
                 output += "B";
             }
             
