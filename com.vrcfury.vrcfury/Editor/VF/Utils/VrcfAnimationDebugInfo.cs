@@ -69,7 +69,7 @@ namespace VF.Utils {
                     // binding was deleted by rules :)
                     continue;
                 }
-                if (path.ToLower().Contains("ignore")) {
+                if (IsProbablyIgnoredBinding(path)) {
                     continue;
                 }
                 if (componentObject.Find(path) != null) {
@@ -168,6 +168,13 @@ namespace VF.Utils {
             return shader != null
                    && shader.name.ToLower().Contains("poiyomi")
                    && shader.GetPropertyType(propertyName) != null;
+        }
+
+        private static bool IsProbablyIgnoredBinding(string bindingPath) {
+            if (bindingPath.EndsWith("/Idle Camera")) return true; // dumb gogoloco thing that we don't want to show warnings for
+            if (bindingPath.Contains("/")) return false;
+            var normalized = new string(bindingPath.ToLower().Where(c => char.IsLetter(c)).ToArray());
+            return normalized.Contains("invalid") || normalized.Contains("ignore") || normalized.Contains("av3");
         }
     }
 }
