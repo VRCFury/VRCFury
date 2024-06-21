@@ -19,6 +19,11 @@ namespace VF.Feature {
             var menuSettings = allFeaturesInRun.OfType<OverrideMenuSettings>().FirstOrDefault();
             var menu = manager.GetMenu();
             menu.SortMenu();
+
+            foreach (var c in allFeaturesInRun.OfType<ReorderMenuItem>()) {
+                menu.Reorder(c.path, c.position);
+            }
+            
             MenuSplitter.SplitMenus(menu.GetRaw(), menuSettings);
 
             menu.GetRaw().ForEachMenu(ForEachItem: (control, path) => {

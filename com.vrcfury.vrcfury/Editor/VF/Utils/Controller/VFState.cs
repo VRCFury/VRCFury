@@ -58,7 +58,7 @@ namespace VF.Utils.Controller {
         }
         public VFState MotionTime(VFAFloat param) {
             node.state.timeParameterActive = true;
-            node.state.timeParameter = param.Name();
+            node.state.timeParameter = param;
             return this;
         }
         public VFState Speed(float speed) {
@@ -86,11 +86,11 @@ namespace VF.Utils.Controller {
             return p;
         }
         public VFState Drives(VFABool param, bool value) {
-            Drives(param.Name()).value = value ? 1 : 0;
+            Drives(param).value = value ? 1 : 0;
             return this;
         }
         public VFState Drives(VFAParam param, float value) {
-            Drives(param.Name()).value = value;
+            Drives(param).value = value;
             return this;
         }
         public VFState Drives(string param, float value) {
@@ -98,14 +98,14 @@ namespace VF.Utils.Controller {
             return this;
         }
         public VFState DrivesRandom(VFAInteger param, float min, float max) {
-            var p = Drives(param.Name());
+            var p = Drives(param);
             p.type = VRC_AvatarParameterDriver.ChangeType.Random;
             p.valueMin = min;
             p.valueMax = max;
             return this;
         }
         public VFState DrivesDelta(VFAInteger param, float delta) {
-            var p = Drives(param.Name());
+            var p = Drives(param);
             p.type = VRC_AvatarParameterDriver.ChangeType.Add;
             p.value = delta;
             return this;

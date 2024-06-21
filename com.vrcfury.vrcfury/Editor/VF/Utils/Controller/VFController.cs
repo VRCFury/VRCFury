@@ -392,9 +392,7 @@ namespace VF.Utils.Controller {
             if (includeWrites) {
                 foreach (var clip in new AnimatorIterator.Clips().From(affectsLayers)) {
                     clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
-                        if (binding.path != "") return binding;
-                        if (binding.type != typeof(Animator)) return binding;
-                        if (binding.IsMuscle()) return binding;
+                        if (binding.GetPropType() != EditorCurveBindingType.Aap) return binding;
                         binding.propertyName = RewriteParamName(binding.propertyName);
                         return binding;
                     }));

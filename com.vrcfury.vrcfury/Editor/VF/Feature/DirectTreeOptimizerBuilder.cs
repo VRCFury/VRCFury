@@ -125,7 +125,9 @@ namespace VF.Feature {
             if (states.Length == 1) {
                 var state = states[0].state;
                 var onClip = MakeClipForState(layer, state);
-                directTree.Add(onClip);
+                if (onClip != null) {
+                    directTree.Add(onClip);
+                }
                 return;
             }
 
@@ -191,6 +193,9 @@ namespace VF.Feature {
         }
 
         void Optimize(AnimatorCondition condition, Motion on, Motion off) {
+            if (on == null) on = clipFactory.GetEmptyClip();
+            if (off == null) off = clipFactory.GetEmptyClip();
+            
             if (condition.mode == AnimatorConditionMode.IfNot) {
                 condition.mode = AnimatorConditionMode.If;
                 (on, off) = (off, on);
@@ -202,7 +207,7 @@ namespace VF.Feature {
                 condition.mode = AnimatorConditionMode.Equals;
                 (on, off) = (off, on);
             }
-            
+
             var onValid = on.HasValidBinding(avatarObject);
             var offValid = off.HasValidBinding(avatarObject);
             if (!onValid && !offValid) throw new DoNotOptimizeException($"Contains no valid bindings");
@@ -243,12 +248,9 @@ namespace VF.Feature {
                     if (string.IsNullOrWhiteSpace(state.timeParameter)) {
                         throw new DoNotOptimizeException($"{state.name} contains a motion time clip without a valid parameter");
                     }
-                    var subTree = clipFactory.NewBlendTree($"Layer {layer.name} - {state.name}");
-                    subTree.useAutomaticThresholds = false;
-                    subTree.blendType = BlendTreeType.Simple1D;
-                    subTree.AddChild(dualState.Item1, 0);
-                    subTree.AddChild(dualState.Item2, 1);
-                    subTree.blendParameter = state.timeParameter;
+                    var subTree = clipFactory.New1D($"Layer {layer.name} - {state.name}", state.timeParameter);
+                    subTree.Add(0, dualState.Item1);
+                    subTree.Add(1, dualState.Item2);
                     return subTree;
                 } else {
                     if (clip.GetLengthInFrames() > 5) {

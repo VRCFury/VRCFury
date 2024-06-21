@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
@@ -16,14 +17,9 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly VFInjectorParent parent;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        private VFLayer _layer;
-        private BlendTree _tree;
 
-        [CanBeNull] public VFLayer GetLayer() {
-            return _layer;
-        }
-
-        public BlendTree GetTree() {
+        private VFBlendTreeDirect _tree;
+        public VFBlendTreeDirect GetTree() {
             if (_tree == null) {
                 var name = $"DBT for {parent.parent.GetType().Name}";
                 if (parent.parent is FeatureBuilder builder) {
@@ -31,9 +27,7 @@ namespace VF.Service {
                 }
                 var fx = manager.GetFx();
                 var directLayer = fx.NewLayer(name);
-                _layer = directLayer;
-                _tree = clipFactory.NewBlendTree(name);
-                _tree.blendType = BlendTreeType.Direct;
+                _tree = clipFactory.NewDBT(name);
                 directLayer.NewState("DBT").WithAnimation(_tree);
             }
             return _tree;

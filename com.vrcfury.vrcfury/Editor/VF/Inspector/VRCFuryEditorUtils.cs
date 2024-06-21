@@ -536,6 +536,25 @@ internal static class VRCFuryEditorUtils {
     }
     
     public static VisualElement Debug(string message = "", Func<string> refreshMessage = null, Func<VisualElement> refreshElement = null, float interval = 1) {
+
+        if (refreshElement != null) {
+            var holder = new VisualElement();
+            void Update() {
+                holder.Clear();
+                try {
+                    var newContent = refreshElement();
+                    if (newContent != null) {
+                        holder.Add(newContent);
+                    }
+                } catch (Exception e) {
+                    holder.Add(Error("Error: " + e.Message));
+                }
+            }
+            Update();
+            holder.schedule.Execute(Update).Every((long)(interval * 1000));
+            return holder;
+        }
+
         var el = new VisualElement() {
             style = {
                 backgroundColor = new Color(0,0,0,0.1f),
@@ -553,47 +572,25 @@ internal static class VRCFuryEditorUtils {
         el.Add(rightColumn);
         rightColumn.Add(WrappedLabel("Debug Info").Bold());
 
-        if (refreshElement != null) {
-            var holder = new VisualElement();
-            rightColumn.Add(holder);
+        var label = WrappedLabel(message);
+        rightColumn.Add(label);
+        if (refreshMessage != null) {
             void Update() {
-                holder.Clear();
                 var show = false;
                 try {
-                    var newContent = refreshElement();
-                    if (newContent != null) {
-                        holder.Add(newContent);
-                        show = true;
-                    }
+                    label.text = refreshMessage();
+                    show = !string.IsNullOrWhiteSpace(label.text);
                 } catch (Exception e) {
-                    holder.Add(WrappedLabel($"Error: {e.Message}"));
+                    label.text = $"Error: {e.Message}";
                     show = true;
                 }
                 el.SetVisible(show);
             }
-            Update();
-            holder.schedule.Execute(Update).Every((long)(interval * 1000));
-        } else {
-            var label = WrappedLabel(message);
-            rightColumn.Add(label);
-            if (refreshMessage != null) {
-                void Update() {
-                    var show = false;
-                    try {
-                        label.text = refreshMessage();
-                        show = !string.IsNullOrWhiteSpace(label.text);
-                    } catch (Exception e) {
-                        label.text = $"Error: {e.Message}";
-                        show = true;
-                    }
-                    el.SetVisible(show);
-                }
 
-                Update();
-                label.schedule.Execute(Update).Every((long)(interval * 1000));
-            }
+            Update();
+            label.schedule.Execute(Update).Every((long)(interval * 1000));
         }
-        
+
         return el;
     }
 

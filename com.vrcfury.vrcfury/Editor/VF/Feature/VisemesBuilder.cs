@@ -37,9 +37,9 @@ internal class VisemesBuilder : FeatureBuilder<Visemes> {
         var VisemeParam = fx.NewFloat("Viseme", usePrefix: false);
         var VolumeParam = fx.NewFloat("Voice", usePrefix: false);
 
-        var voiceTree = math.MakeDirect("Advanced Visemes");
+        var voiceTree = clipFactory.NewDBT("Advanced Visemes");
         var enabled = math.MakeAap("AdvancedVisemesEnabled", def: 1);
-        var volumeTree = math.MakeDirect("Advanced Visemes");
+        var volumeTree = clipFactory.NewDBT("Advanced Visemes");
         VFAFloat volumeToUse;
         if (model.instant) {
             volumeToUse = math.SetValueWithConditions(
@@ -61,11 +61,7 @@ internal class VisemesBuilder : FeatureBuilder<Visemes> {
         directTree.Add(enabled, volumeTree);
 
         void addViseme(int index, string text, State clipState) {
-            var _clip = actionClipService.LoadState(text, clipState);
-
-            // Ensure it's only one frame, since it's going into the main direct blendtree
-            var clip = clipFactory.NewClip("Viseme " + text);
-            clip.CopyFromLast(_clip);
+            var clip = actionClipService.LoadState("Viseme " + text, clipState).GetLastFrame();
 
             var intensityRaw = math.SetValueWithConditions(
                 $"{text}Raw",

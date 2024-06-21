@@ -45,6 +45,10 @@ namespace VF.Feature.Base {
             return VRCFuryEditorUtils.WrappedLabel("No body");
         }
 
+        public virtual string FailWhenAdded() {
+            return null;
+        }
+
         public virtual bool OnlyOneAllowed() {
             return false;
         }

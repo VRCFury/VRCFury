@@ -735,6 +735,12 @@ namespace VF.Model.Feature {
             return 3;
         }
     }
+
+    [Serializable]
+    internal class ReorderMenuItem : NewFeatureModel {
+        public string path;
+        public int position;
+    }
     
     [Serializable]
     internal class GestureDriver : NewFeatureModel {

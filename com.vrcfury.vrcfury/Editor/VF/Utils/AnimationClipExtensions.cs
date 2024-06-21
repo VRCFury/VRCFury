@@ -169,6 +169,10 @@ namespace VF.Utils {
             }
         }
 
+        public static void SetAap(this AnimationClip clip, string paramName, FloatOrObjectCurve curve) {
+            clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), paramName), curve);
+        }
+
         public static void SetCurve(this AnimationClip clip, EditorCurveBinding binding, FloatOrObjectCurve curve) {
             clip.SetCurves(new [] { (binding,curve) });
         }
@@ -196,10 +200,17 @@ namespace VF.Utils {
             clip.SetCurves(other.GetAllCurves());
         }
 
-        public static void CopyFromLast(this AnimationClip clip, AnimationClip other) {
-            foreach (var c in other.GetAllCurves()) {
-                clip.SetCurve(c.Item1, c.Item2.GetLast());
+        public static AnimationClip GetLastFrame(this AnimationClip clip) {
+            var output = VrcfObjectFactory.Create<AnimationClip>();
+            if (clip.GetLengthInSeconds() == 0) {
+                output.name = clip.name;
+            } else {
+                output.name = $"{clip.name} - Last Frame";
             }
+            foreach (var c in clip.GetAllCurves()) {
+                output.SetCurve(c.Item1, c.Item2.GetLast());
+            }
+            return output;
         }
 
         public static bool IsLooping(this AnimationClip clip) {

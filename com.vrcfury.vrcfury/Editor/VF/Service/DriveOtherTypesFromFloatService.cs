@@ -31,7 +31,7 @@ namespace VF.Service {
                 var driver = off.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
                 var t = idle.TransitionsTo(off).When(lastState_.IsGreaterThan(0));
                 driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
-                    name = lastState_.Name(),
+                    name = lastState_,
                     value = 0
                 });
                 if (reset) {

@@ -34,7 +34,7 @@ namespace VF.Feature {
                 if (c.mode == AnimatorConditionMode.Equals) forceTrue = c.threshold == 0;
                 if (c.mode == AnimatorConditionMode.NotEqual) forceTrue = c.threshold != 0;
                 return new AnimatorCondition {
-                    parameter = tru.Name(),
+                    parameter = tru,
                     mode = forceTrue ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot
                 };
             });

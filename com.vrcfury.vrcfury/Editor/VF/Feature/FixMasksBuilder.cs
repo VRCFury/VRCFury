@@ -20,12 +20,6 @@ namespace VF.Feature {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
 
-        private enum PropType {
-            Muscle,
-            Aap,
-            Fx
-        }
-
         [FeatureBuilderAction(FeatureOrder.FixGestureFxConflict)]
         public void FixGestureFxConflict() {
             if (manager.GetAllUsedControllers().All(c => c.GetType() != VRCAvatarDescriptor.AnimLayerType.Gesture)) {
@@ -35,13 +29,6 @@ namespace VF.Feature {
 
             var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
             var newFxLayers = new List<AnimatorControllerLayer>();
-            
-            PropType GetPropType(EditorCurveBinding b) {
-                if (b.path == "" && b.type == typeof(Animator)) {
-                    return b.IsMuscle() ? PropType.Muscle : PropType.Aap;
-                }
-                return PropType.Fx;
-            }
 
             var copyForFx = MutableManager.CopyRecursiveAdv(gesture.GetRaw().GetRaw());
             var copyForFxLayers = copyForFx.output.layers;
@@ -55,12 +42,12 @@ namespace VF.Feature {
                 
                 var propTypes = new AnimatorIterator.Clips().From(new VFLayer(null,layerForGesture.stateMachine))
                     .SelectMany(clip => {
-                        if (clip.IsProxyClip()) return new PropType[]{ PropType.Muscle };
-                        return clip.GetAllBindings().Select(GetPropType);
+                        if (clip.IsProxyClip()) return new[]{ EditorCurveBindingType.Muscle };
+                        return clip.GetAllBindings().Select(b => b.GetPropType());
                     })
                     .ToImmutableHashSet();
 
-                if (!propTypes.Contains(PropType.Fx) && !propTypes.Contains(PropType.Aap)) {
+                if (!propTypes.Contains(EditorCurveBindingType.Fx) && !propTypes.Contains(EditorCurveBindingType.Aap)) {
                     // Keep it only in gesture
                     return layerForGesture;
                 }
@@ -70,7 +57,7 @@ namespace VF.Feature {
                 animatorLayerControlManager.Alias(layerForGesture.stateMachine, layerForFx.stateMachine);
                 layerSourceService.CopySource(layerForGesture.stateMachine, layerForFx.stateMachine);
 
-                if (propTypes.Contains(PropType.Muscle) || propTypes.Contains(PropType.Aap)) {
+                if (propTypes.Contains(EditorCurveBindingType.Muscle) || propTypes.Contains(EditorCurveBindingType.Aap)) {
                     // We're keeping both layers
                     // Remove behaviours from the fx copy
                     AnimatorIterator.ForEachBehaviourRW(new VFLayer(null,layerForFx.stateMachine), (behaviour, add) => false);
@@ -100,8 +87,8 @@ namespace VF.Feature {
             // Remove fx bindings from the gesture copy
             foreach (var clip in new AnimatorIterator.Clips().From(gesture.GetRaw())) {
                 clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
-                    if (GetPropType(b) != PropType.Fx) return b;
-                    return null;
+                    if (b.GetPropType() == EditorCurveBindingType.Fx) return null;
+                    return b;
                 }));
             }
 
@@ -114,8 +101,8 @@ namespace VF.Feature {
             // Remove muscle control from the fx copy
             foreach (var clip in new AnimatorIterator.Clips().From(fx.GetRaw())) {
                 clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
-                    if (GetPropType(b) != PropType.Muscle) return b;
-                    return null;
+                    if (b.GetPropType() == EditorCurveBindingType.Muscle) return null;
+                    return b;
                 }));
             }
 

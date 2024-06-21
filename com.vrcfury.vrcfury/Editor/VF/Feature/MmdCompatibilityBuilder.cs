@@ -85,7 +85,7 @@ namespace VF.Feature {
             var mmdDetector = fx.NewFloat("MMDDetector", def: 1);
             var mmdDetectorClip = clipFactory.NewClip("Detector");
             // MMD worlds will disable this layer, setting HandsActive back to the default of 0
-            mmdDetectorClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), mmdDetector.Name()), 0);
+            mmdDetectorClip.SetAap(mmdDetector, 0);
             layer1.NewState("Mmd Detector").WithAnimation(mmdDetectorClip);
             layer1.weight = 1;
 
