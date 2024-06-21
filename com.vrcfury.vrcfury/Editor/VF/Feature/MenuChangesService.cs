@@ -22,7 +22,7 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.MoveMenuItems)]
         public void Apply() {
             var allActions = extraPreActions.Concat(globals.allFeaturesInRun).ToArray();
-            
+
             var iconChanges = allActions.OfType<SetIcon>().ToList();
 
             void BetweenSteps() {
@@ -39,10 +39,13 @@ namespace VF.Feature {
 
             BetweenSteps();
             foreach (var model in allActions.OfType<MoveMenuItem>()) {
-                Debug.Log($"Moving {model.fromPath} to {model.toPath}");
-                var result = manager.GetMenu().Move(model.fromPath, model.toPath);
-                if (result) {
-                    BetweenSteps();
+
+                foreach (var item in model.menuItems) {
+                    Debug.Log($"Moving {item.fromPath} to {item.toPath}");
+                    var result = manager.GetMenu().Move(item.fromPath, item.toPath);
+                    if (result) {
+                        BetweenSteps();
+                    }
                 }
             }
         }
