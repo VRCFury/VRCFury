@@ -38,8 +38,7 @@ namespace VF.Feature {
             
             PropType GetPropType(EditorCurveBinding b) {
                 if (b.path == "" && b.type == typeof(Animator)) {
-                    if (gesture.GetRaw().GetParam(b.propertyName) != null) return PropType.Aap;
-                    return PropType.Muscle;
+                    return b.IsMuscle() ? PropType.Muscle : PropType.Aap;
                 }
                 return PropType.Fx;
             }
