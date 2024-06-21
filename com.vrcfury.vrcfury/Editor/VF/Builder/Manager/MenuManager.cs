@@ -71,31 +71,7 @@ namespace VF.Builder {
             return true;
         }
 
-        public void Insert(VRCExpressionsMenu menu, VRCExpressionsMenu.Control item, int index) {
-            
-            if (index == -1) return;
-            if (index < 0) {
-                index = Math.Max(index + menu.controls.Count(), 0);
-            }
-            index = Math.Min(index, menu.controls.Count() - 1);
-
-            menu.controls.Sort((a, b) => {
-                sortPositions.TryGetValue(a, out var aPos);
-                sortPositions.TryGetValue(b, out var bPos);
-                return aPos - bPos;
-            });
-
-            menu.controls.Remove(item);
-            menu.controls.Insert(index, item);
-
-            var i = 0;
-            foreach (var control in menu.controls) {
-                sortPositions[control] = i;
-                i++;
-            }
-        }
-
-        public bool Move(string from, string to, int index) {
+        public bool Move(string from, string to) {
             GetSubmenuAndItem(from, false, out var fromPath, out var fromPrefix, out var fromName, out var fromMenu);
             if (!fromMenu) return false;
             
@@ -113,12 +89,11 @@ namespace VF.Builder {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
                     GetSubmenu(toPath, createFromControl: control);
                     MergeMenu(toPath, control.subMenu);
-                    Insert(toMenu, GetMenuItem(to), index);
                 } else {
                     control.name = toName;
                     var tmpMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
                     tmpMenu.controls.Add(control);
-                    MergeMenu(toPrefix, tmpMenu, index: index);
+                    MergeMenu(toPrefix, tmpMenu);
                 }
             }
             return true;
@@ -314,8 +289,7 @@ namespace VF.Builder {
         public void MergeMenu(
             IList<string> prefix,
             VRCExpressionsMenu from,
-            Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> seen = null,
-            int index = -1
+            Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> seen = null
         ) {
             var to = GetSubmenu(prefix);
             if (seen == null) {
@@ -334,8 +308,6 @@ namespace VF.Builder {
                         var toControl = CloneControl(fromControl);
                         toControl.subMenu = value;
                         to.controls.Add(toControl);
-                        Insert(to, toControl, index);
-                        if (index >= 0) index++;
                     } else {
                         var submenuDupId = GetNextSubmenuDupId(fromControl.name);
                         var prefix2 = new List<string>(prefix);
@@ -344,10 +316,7 @@ namespace VF.Builder {
                         MergeMenu(prefix2.ToArray(), fromControl.subMenu, seen);
                     }
                 } else {
-                    var toControl = CloneControl(fromControl);
-                    to.controls.Add(toControl);
-                    Insert(to, toControl, index);
-                    if (index >= 0) index++;
+                    to.controls.Add(CloneControl(fromControl));
                 }
             }
         }
