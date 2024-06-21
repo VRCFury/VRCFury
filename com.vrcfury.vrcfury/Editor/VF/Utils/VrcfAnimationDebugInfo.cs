@@ -174,7 +174,10 @@ namespace VF.Utils {
             if (bindingPath.EndsWith("/Idle Camera")) return true; // dumb gogoloco thing that we don't want to show warnings for
             if (bindingPath.Contains("/")) return false;
             var normalized = new string(bindingPath.ToLower().Where(c => char.IsLetter(c)).ToArray());
-            return normalized.Contains("invalid") || normalized.Contains("ignore") || normalized.Contains("av3");
+            return normalized.Contains("invalid")
+                   || normalized.Contains("ignore")
+                   || normalized.Contains("av3")
+                   || normalized.Contains("donothing");
         }
     }
 }
