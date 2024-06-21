@@ -18,7 +18,7 @@ namespace VF.Feature {
                 tooltip: "This is the position that you want to move the menu item to.\n\nExamples:\n" +
                          "0 = 'First' (Top Right)\n" +
                          "1 = 'Second'\n" +
-                         "4 = 'Fourth'\n" +
+                         "4 = 'Fifth'\n" +
                          "999 = 'Last' (Top Left)\n" +
                          "-1 = 'Second-to-Last'\n" + 
                          "-2 = 'Third-to-Last'\n" +
