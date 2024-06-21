@@ -98,6 +98,21 @@ namespace VF.Builder {
             }
             return true;
         }
+        
+        public bool Reorder(string path, int position) {
+            GetSubmenuAndItem(path, false, out var splitPath, out var splitPrefix, out var fromName, out var fromMenu);
+            if (!fromMenu) return false;
+            
+            var controls = FindControlsWithName(fromMenu, fromName);
+            if (controls.Length == 0) return false;
+            fromMenu.controls.RemoveAll(c => controls.Contains(c));
+
+            if (position < 0) position = fromMenu.controls.Count + position;
+            position = VrcfMath.Clamp(position, 0, fromMenu.controls.Count);
+
+            fromMenu.controls.InsertRange(position, controls);
+            return true;
+        }
 
         private void GetSubmenuAndItem(
             string rawPath,

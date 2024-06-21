@@ -8,7 +8,7 @@ using VF.Model.Feature;
 namespace VF.Feature {
     internal class MoveMenuItemBuilder : FeatureBuilder<MoveMenuItem> {
         public override string GetEditorTitle() {
-            return "Move Menu Item";
+            return "Move / Rename Menu Item";
         }
         
         public override VisualElement CreateEditor(SerializedProperty prop) {

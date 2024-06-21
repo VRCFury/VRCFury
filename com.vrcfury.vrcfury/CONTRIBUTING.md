@@ -63,6 +63,7 @@ For more information, please refer to <https://unlicense.org>
   * Added ability for toggles to "play to completion"
   * Added transition time support to Toggles
   * Added popup warning when you're in android mode but don't have any valid mats
+  * Provided first version of reorderable menu items (unused)
 * Happyrobot33
   * Added support for excluded global params in Full Controller
 * KaelanDuck
