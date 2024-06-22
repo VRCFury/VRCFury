@@ -132,15 +132,8 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(Title("Material Swap"));
                 var rendererProp = prop.FindPropertyRelative("renderer");
                 var indexProp = prop.FindPropertyRelative("materialIndex");
-                
-                var rendererField = new ObjectField();
-                rendererField.objectType = typeof(Renderer);
-                rendererField.bindingPath = rendererProp.propertyPath;
-                rendererField.RegisterValueChangedCallback(cb => {
-                    indexProp.intValue = 0;
-                    indexProp.serializedObject.ApplyModifiedProperties();
-                });
-                content.Add(VRCFuryEditorUtils.Prop(rendererProp, "Renderer", fieldOverride:rendererField));
+
+                content.Add(VRCFuryEditorUtils.Prop(rendererProp, "Renderer"));
 
                 var indexField = VRCFuryEditorUtils.RefreshOnChange(() => {
                     var renderer = rendererProp.objectReferenceValue as Renderer;
