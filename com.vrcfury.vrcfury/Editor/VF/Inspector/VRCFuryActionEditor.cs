@@ -130,8 +130,53 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             case nameof(MaterialAction): {
                 var content = new VisualElement();
                 content.Add(Title("Material Swap"));
-                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
-                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot Number"));
+                var rendererProp = prop.FindPropertyRelative("renderer");
+                var indexProp = prop.FindPropertyRelative("materialIndex");
+                var rendererField = new PropertyField(rendererProp);
+                content.Add(VRCFuryEditorUtils.Prop(rendererProp, "Renderer", fieldOverride:rendererField));
+                rendererField.RegisterValueChangeCallback(cb => {
+                    indexProp.intValue = 0;
+                    indexProp.serializedObject.ApplyModifiedProperties();
+                });
+                var indexField = VRCFuryEditorUtils.RefreshOnChange(() => {
+                    var renderer = rendererProp.objectReferenceValue as Renderer;
+                    if (renderer == null) {
+                        var indexField = new PopupField<string>(
+                            new List<string>() { "Select a renderer" },
+                            0
+                        );
+                        indexField.SetEnabled(false);
+                        return indexField;
+                    } else {
+                        var choices = Enumerable.Range(0, renderer.sharedMaterials.Length).ToList();
+                        int selectedIndex;
+                        if (indexProp.intValue >= 0 && indexProp.intValue < renderer.sharedMaterials.Length) {
+                            selectedIndex = indexProp.intValue;
+                        } else {
+                            choices.Add(indexProp.intValue);
+                            selectedIndex = choices.Count - 1;
+                        }
+
+                        string FormatLabel(int i) {
+                            if (i >= 0 && i < renderer.sharedMaterials.Length) {
+                                var mat = renderer.sharedMaterials[i];
+                                if (mat != null) return $"{i} - {mat.name}";
+                            }
+
+                            return $"{i} - ???";
+                        }
+
+                        var indexField = new PopupField<int>(choices, selectedIndex, FormatLabel, FormatLabel);
+                        indexField.RegisterValueChangedCallback(cb => {
+                            if (cb.newValue >= 0 && cb.newValue < renderer.sharedMaterials.Length) {
+                                indexProp.intValue = cb.newValue;
+                                indexProp.serializedObject.ApplyModifiedProperties();
+                            }
+                        });
+                        return indexField;
+                    }
+                }, rendererProp, indexProp);
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot", fieldOverride: indexField));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mat"), "Material"));
                 return content;
             }
