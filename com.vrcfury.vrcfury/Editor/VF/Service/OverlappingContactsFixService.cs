@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using UnityEditor;
+using UnityEngine;
 using UnityEngine.Animations;
 using VF.Builder;
 using VF.Feature.Base;
@@ -49,7 +50,7 @@ namespace VF.Service {
 
             var allOffClip = clipFactory.NewClip("AllReceiversOff");
             foreach (var r in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                clipBuilder.Enable(allOffClip, r.owner(), false);
+                allOffClip.SetCurve(EditorCurveBinding.FloatCurve(r.owner().GetPath(avatarObject), r.GetType(), "m_Enabled"), 0);
             }
 
             var counter = math.MakeAap("counter");
