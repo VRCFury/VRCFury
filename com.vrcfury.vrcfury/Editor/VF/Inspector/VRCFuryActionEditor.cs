@@ -137,7 +137,6 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 rendererField.objectType = typeof(Renderer);
                 rendererField.bindingPath = rendererProp.propertyPath;
                 rendererField.RegisterValueChangedCallback(cb => {
-                    rendererProp.objectReferenceValue = cb.newValue;
                     indexProp.intValue = 0;
                     indexProp.serializedObject.ApplyModifiedProperties();
                 });
