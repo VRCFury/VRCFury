@@ -132,21 +132,26 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(Title("Material Swap"));
                 var rendererProp = prop.FindPropertyRelative("renderer");
                 var indexProp = prop.FindPropertyRelative("materialIndex");
-                var rendererField = new PropertyField(rendererProp);
-                content.Add(VRCFuryEditorUtils.Prop(rendererProp, "Renderer", fieldOverride:rendererField));
-                rendererField.RegisterValueChangeCallback(cb => {
+                
+                var rendererField = new ObjectField();
+                rendererField.objectType = typeof(Renderer);
+                rendererField.bindingPath = rendererProp.propertyPath;
+                rendererField.RegisterValueChangedCallback(cb => {
+                    rendererProp.objectReferenceValue = cb.newValue;
                     indexProp.intValue = 0;
                     indexProp.serializedObject.ApplyModifiedProperties();
                 });
+                content.Add(VRCFuryEditorUtils.Prop(rendererProp, "Renderer", fieldOverride:rendererField));
+
                 var indexField = VRCFuryEditorUtils.RefreshOnChange(() => {
                     var renderer = rendererProp.objectReferenceValue as Renderer;
                     if (renderer == null) {
-                        var indexField = new PopupField<string>(
+                        var f = new PopupField<string>(
                             new List<string>() { "Select a renderer" },
                             0
                         );
-                        indexField.SetEnabled(false);
-                        return indexField;
+                        f.SetEnabled(false);
+                        return f;
                     } else {
                         var choices = Enumerable.Range(0, renderer.sharedMaterials.Length).ToList();
                         int selectedIndex;
@@ -166,14 +171,14 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                             return $"{i} - ???";
                         }
 
-                        var indexField = new PopupField<int>(choices, selectedIndex, FormatLabel, FormatLabel);
-                        indexField.RegisterValueChangedCallback(cb => {
+                        var f = new PopupField<int>(choices, selectedIndex, FormatLabel, FormatLabel);
+                        f.RegisterValueChangedCallback(cb => {
                             if (cb.newValue >= 0 && cb.newValue < renderer.sharedMaterials.Length) {
                                 indexProp.intValue = cb.newValue;
                                 indexProp.serializedObject.ApplyModifiedProperties();
                             }
                         });
-                        return indexField;
+                        return f;
                     }
                 }, rendererProp, indexProp);
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot", fieldOverride: indexField));

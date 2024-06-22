@@ -92,19 +92,16 @@ namespace VF.Builder {
             // If we don't save textures before the materials that use them, unity just throws them away
             foreach (var subAsset in unsavedChildren) {
                 if (subAsset is Texture2D) {
-                    subAsset.hideFlags = HideFlags.None;
                     VRCFuryAssetDatabase.SaveAsset(subAsset, tmpDir, filename + "_" + subAsset.name);
                 }
             }
             
             // Save the main asset
-            asset.hideFlags = HideFlags.None;
             VRCFuryAssetDatabase.SaveAsset(asset, tmpDir, filename);
 
             // Attach children
             foreach (var subAsset in unsavedChildren) {
                 if (subAsset is Texture2D) continue;
-                subAsset.hideFlags = HideFlags.None;
                 if (subAsset is AnimatorStateMachine
                     || subAsset is AnimatorState
                     || subAsset is AnimatorTransitionBase
@@ -114,8 +111,7 @@ namespace VF.Builder {
                     subAsset.hideFlags |= HideFlags.HideInHierarchy;
                 }
 
-                AssetDatabase.RemoveObjectFromAsset(subAsset);
-                AssetDatabase.AddObjectToAsset(subAsset, asset);
+                VRCFuryAssetDatabase.AttachAsset(subAsset, asset);
             }
         }
     }
