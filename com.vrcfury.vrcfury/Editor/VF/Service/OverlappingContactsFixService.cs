@@ -24,9 +24,17 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
+
+        private bool activate = false;
+
+        public void Activate() {
+            activate = true;
+        }
         
         [FeatureBuilderAction(FeatureOrder.FixTouchingContacts)]
         public void Fix() {
+            if (!activate) return;
+
             var testObject = GameObjects.Create("OverlappingContactsFix", avatarObject);
             testObject.active = false;
             testObject.worldScale = Vector3.one;

@@ -26,6 +26,7 @@ namespace VF.Service {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
 
         private int scaleIndex = 0;
 
@@ -46,6 +47,7 @@ namespace VF.Service {
             sender.collisionTags.Add(tag);
 
             var receiverObj = GameObjects.Create("Receiver", holder);
+            overlappingService.Activate();
             var receiver = receiverObj.AddComponent<VRCContactReceiver>();
             receiver.allowOthers = false;
             receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
