@@ -23,7 +23,6 @@ namespace VF.Service {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
-        [VFAutowired] private readonly ScaleFactorService scaleFactorService;
 
         private bool activate = false;
 
