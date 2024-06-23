@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Numerics;
-using Editor.VF.Utils;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
