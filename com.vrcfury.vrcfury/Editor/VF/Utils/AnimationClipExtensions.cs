@@ -98,10 +98,12 @@ namespace VF.Utils {
 
             // Don't use ToDictionary, since animationclips can have duplicate bindings somehow
             foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-                ext.curves[b] = AnimationUtility.GetObjectReferenceCurve(clip, b);
+                var curve = AnimationUtility.GetObjectReferenceCurve(clip, b);
+                if (curve != null) ext.curves[b] = curve;
             }
             foreach (var b in AnimationUtility.GetCurveBindings(clip)) {
-                ext.curves[b] = AnimationUtility.GetEditorCurve(clip, b);
+                var curve = AnimationUtility.GetEditorCurve(clip, b);
+                if (curve != null) ext.curves[b] = curve;
             }
             return ext;
         }
