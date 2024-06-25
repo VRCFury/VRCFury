@@ -76,34 +76,6 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             return row;
         }, desktopActive, androidActive));
 
-        col.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-            var debugInfo = new VisualElement();
-
-            var action = prop.GetObject() as Action;
-            if (action == null) return debugInfo;
-            var component = prop.serializedObject.targetObject as VRCFuryComponent;
-            if (component == null) return debugInfo;
-            var gameObject = component.gameObject;
-            var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
-            if (avatarObject == null) return debugInfo;
-
-            List<VisualElement> warnings;
-            if (action is AnimationClipAction a && a.clip.Get() != null) {
-                warnings = VrcfAnimationDebugInfo.BuildDebugInfo(a.clip.Get().GetAllBindings(), avatarObject, gameObject);
-            } else {
-                var actionSet = new State() { actions = { action } };
-                var test = ActionClipService.LoadStateAdv("test", actionSet, avatarObject, gameObject);
-                var bindings = test.onClip.GetAllBindings().ToImmutableHashSet();
-                warnings =
-                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject, avatarObject);
-            }
-
-            foreach (var warning in warnings) {
-                debugInfo.Add(warning);
-            }
-            return debugInfo;
-        }));
-
         return col;
     }
     

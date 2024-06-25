@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
@@ -11,6 +12,7 @@ using VF.Inspector;
 using VF.Service;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Utils {
     internal static class VrcfAnimationDebugInfo {
@@ -114,6 +116,26 @@ namespace VF.Utils {
                         badMats.Put(propertyName, matName + " on " + obj.name);
                     }
                 }
+            }
+            
+            var inNonAnimatedPhysbones = avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()
+                .Where(physbone => !physbone.isAnimated)
+                .Select(physbone => physbone.GetRootTransform().asVf())
+                .SelectMany(root => root.GetSelfAndAllChildren())
+                .ToImmutableHashSet();
+            var badPhysboneTransforms = new HashSet<string>();
+            foreach (var binding in usedBindings) {
+                if (binding.type != typeof(Transform)) continue;
+                var obj = avatarObject.Find(binding.path);
+                if (obj == null) continue;
+                if (!inNonAnimatedPhysbones.Contains(obj)) continue;
+                badPhysboneTransforms.Add(binding.path);
+            }
+            if (badPhysboneTransforms.Any()) {
+                warnings.Add(VRCFuryEditorUtils.Warn(
+                    $"You're animating these transforms, but they are within physbones that are not marked as Is Animated.\n" +
+                    string.Join("\n", badPhysboneTransforms.OrderBy(a => a))
+                ));
             }
 
             if (badMats.Any()) {
