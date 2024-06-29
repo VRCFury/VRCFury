@@ -12,7 +12,8 @@ namespace VF.Model.StateAction {
      * For instance, if you have a Turn On action somewhere, the object will automatically be "turned off" during the upload.
      * However, if the action is annotated with this attribute, this behaviour will be skipped.
      */
-    [AttributeUsage(AttributeTargets.Field)]
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Class)]
     internal class DoNotApplyRestingStateAttribute : Attribute {
     }
     
@@ -195,4 +196,25 @@ namespace VF.Model.StateAction {
         public float loopTime = 5;
     }
 
+    
+    [Serializable]
+    [DoNotApplyRestingState]
+    internal class SyncParamAction : Action {
+        public string param;
+        public float value = 0;
+    }
+
+    [Serializable]
+    [DoNotApplyRestingState]
+    internal class ToggleStateAction : Action {
+        public string toggle;
+        public float value = 0;
+    }
+
+    [Serializable]
+    [DoNotApplyRestingState]
+    internal class TagStateAction : Action {
+        public string tag;
+        public float value = 0;
+    }
 }

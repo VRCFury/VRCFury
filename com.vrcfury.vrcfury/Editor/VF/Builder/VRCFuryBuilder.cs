@@ -147,6 +147,7 @@ internal class VRCFuryBuilder {
         foreach (var serviceType in ReflectionUtils.GetTypesWithAttributeFromAnyAssembly<VFServiceAttribute>()) {
             injector.GetService(serviceType);
         }
+
         injector.GetService(typeof(CleanupLegacyBuilder));
         injector.GetService(typeof(RemoveJunkAnimatorsBuilder));
         injector.GetService(typeof(FixDoubleFxBuilder));

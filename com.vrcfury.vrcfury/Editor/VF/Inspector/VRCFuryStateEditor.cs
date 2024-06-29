@@ -50,6 +50,9 @@ internal class VRCFuryStateEditor : PropertyDrawer {
                 { "Reset Physbone", typeof(ResetPhysboneAction) },
                 { "Flipbook Builder", typeof(FlipBookBuilderAction) },
                 { "Smooth Loop Builder (Breathing, etc)", typeof(SmoothLoopAction) },
+                { "Drive Synced Param", typeof(SyncParamAction) },
+                { "Drive Toggle Value", typeof(ToggleStateAction) },
+                { "Drive Tag Value", typeof(TagStateAction) },
             };
             var sorted = entries.OrderBy(entry => entry.Key).ToList();
             var menu = new GenericMenu();

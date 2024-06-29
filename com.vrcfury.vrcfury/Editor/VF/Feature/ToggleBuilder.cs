@@ -31,6 +31,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
     private VFCondition isOn;
     private Action<VFState, bool> drive;
     private AnimationClip savedRestingClip;
+    private VFAParam param;
 
     public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
         + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -42,6 +43,17 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             .Select(tag => tag.Trim())
             .Where(tag => !string.IsNullOrWhiteSpace(tag))
             .ToImmutableHashSet();
+    }
+
+    public ISet<string> GetTags() {
+        var output = new HashSet<string>();
+        if (model.enableExclusiveTag) {
+            output.UnionWith(SeparateList(model.exclusiveTag));
+        }
+        if (model.enableTags) {
+            output.UnionWith(SeparateList(model.tags));
+        }
+        return output;
     }
 
     private ISet<string> GetExclusiveTags() {
@@ -66,6 +78,10 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             return (model.globalParam, false);
         }
         return (model.name, model.usePrefixOnParam);
+    }
+
+    public VFAParam getParam() {
+        return param;
     }
 
     [FeatureBuilderAction]
@@ -105,11 +121,13 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                     icon: model.enableIcon ? model.icon?.Get() : null
                 );
             }
+            this.param = param;
         } else if (model.useInt) {
             var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = param.IsNotEqualTo(0);
             drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
+            this.param = param;
         } else {
             var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             onCase = param.IsTrue();
@@ -130,6 +148,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                     );
                 }
             }
+            this.param = param;
         }
         
         this.isOn = onCase;
@@ -164,7 +183,19 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         float inTime,
         float outTime
     ) {
-        var clip = actionClipService.LoadState(onName, action);
+
+        foreach(var tag in GetExclusiveTags()) {
+            var tagAction = new TagStateAction();
+            tagAction.tag = tag;
+            tagAction.value = 0;
+            if (model.hasTransition) {
+                inAction.actions.Add(tagAction);
+            } else {
+                action.actions.Add(tagAction);
+            }
+        }
+
+        var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
 
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
@@ -198,12 +229,13 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             onState.TransitionsToExit().When(onCase.Not());
             restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
         } else if (model.hasTransition) {
-            var inClip = actionClipService.LoadState(onName + " In", inAction);
+            var inClip = actionClipService.LoadState(onName + " In", inAction, toggleFeature: this);
             // if clip is empty, copy last frame of transition
             if (clip.GetAllBindings().Length == 0) {
                 clip = inClip.GetLastFrame();
             }
-            var outClip = model.simpleOutTransition ? inClip.Clone() : actionClipService.LoadState(onName + " Out", outAction);
+            
+            var outClip = model.simpleOutTransition ? inClip.Clone() : actionClipService.LoadState(onName + " Out", outAction, toggleFeature: this);
             var outSpeed = model.simpleOutTransition ? -1 : 1;
             
             // Copy "object enabled" and "material" states to in and out clips if they don't already have them
@@ -239,7 +271,6 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             restingClip = clip;
         }
 
-        exclusiveTagTriggeringStates.Add(inState);
         off.TransitionsTo(inState).When(onCase);
 
         if (model.enableDriveGlobalParam) {
@@ -270,7 +301,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
     public void ApplyExclusiveTags() {
-        if (exclusiveTagTriggeringStates.Count == 0) return;
+        if (!(model.exclusiveOffState && isOn != null && drive != null)) return;
 
         var fx = GetFx();
         var allOthersOffCondition = fx.Always();
@@ -283,22 +314,17 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             var conflictsWithOther = myTags.Any(myTag => otherTags.Contains(myTag));
             if (conflictsWithOther) {
                 if (other.isOn != null && other.drive != null) {
-                    foreach (var state in exclusiveTagTriggeringStates) {
-                        other.drive(state, false);
-                    }
                     allOthersOffCondition = allOthersOffCondition.And(other.isOn.Not());
                 }
             }
         }
 
-        if (model.exclusiveOffState && isOn != null && drive != null) {
-            var layer = fx.NewLayer(model.name + " - Off Trigger");
-            var off = layer.NewState("Idle");
-            var on = layer.NewState("Trigger");
-            off.TransitionsTo(on).When(allOthersOffCondition);
-            on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(isOn.Not()));
-            drive(on, true);
-        }
+        var layer = fx.NewLayer(model.name + " - Off Trigger");
+        var off = layer.NewState("Idle");
+        var on = layer.NewState("Trigger");
+        off.TransitionsTo(on).When(allOthersOffCondition);
+        on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(isOn.Not()));
+        drive(on, true);
     }
 
     public override string GetClipPrefix() {
@@ -341,6 +367,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         var invertRestLogicProp = prop.FindPropertyRelative("invertRestLogic");
         var exclusiveOffStateProp = prop.FindPropertyRelative("exclusiveOffState");
         var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
+        var enableTagsProp = prop.FindPropertyRelative("enableTags");
         var enableIconProp = prop.FindPropertyRelative("enableIcon");
         var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
         var separateLocalProp = prop.FindPropertyRelative("separateLocal");
@@ -401,6 +428,11 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
 
+                advMenu.AddItem(new GUIContent("Enable Tags"), enableTagsProp.boolValue, () => {
+                    enableTagsProp.boolValue = !enableTagsProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+
                 advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
                     enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
@@ -439,6 +471,14 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                 advMenu.ShowAsContext();
             });
         flex.Add(button);
+
+        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            var c = new VisualElement();
+            if (enableTagsProp.boolValue) {
+                c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("tags"), "Tags"));
+            }
+            return c;
+        }, enableTagsProp));
 
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var c = new VisualElement();
