@@ -221,7 +221,7 @@ namespace VF.Service {
                         break;
                     case ObjectToggleAction toggle: {
                         if (toggle.obj == null) {
-                            Debug.LogWarning("Missing object in action: " + name);
+                            //Debug.LogWarning("Missing object in action: " + name);
                             break;
                         }
 
@@ -251,12 +251,12 @@ namespace VF.Service {
                             onClip.SetCurve(binding, blendShape.blendShapeValue);
                         }
                         if (!foundOne) {
-                            Debug.LogWarning("BlendShape not found: " + blendShape.blendShape);
+                            //Debug.LogWarning("BlendShape not found: " + blendShape.blendShape);
                         }
                         break;
                     case ScaleAction scaleAction:
                         if (scaleAction.obj == null) {
-                            Debug.LogWarning("Missing object in action: " + name);
+                            //Debug.LogWarning("Missing object in action: " + name);
                         } else {
                             var localScale = scaleAction.obj.transform.localScale;
                             var newScale = localScale * scaleAction.scale;
@@ -280,7 +280,7 @@ namespace VF.Service {
                     }
                     case SpsOnAction spsAction: {
                         if (spsAction.target == null) {
-                            Debug.LogWarning("Missing target in action: " + name);
+                            //Debug.LogWarning("Missing target in action: " + name);
                             break;
                         }
 

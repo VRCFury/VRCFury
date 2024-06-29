@@ -38,7 +38,8 @@ namespace VF.Feature {
                 return;
             }
 
-            AssetDatabase.AddObjectToAsset(obj, tempAsset);
+            var hideFlags = obj.hideFlags;
+            VRCFuryAssetDatabase.AttachAsset(obj, tempAsset);
             try {
                 with();
             } finally {
@@ -47,6 +48,7 @@ namespace VF.Feature {
                     if (asset == tempAsset) continue;
                     AssetDatabase.RemoveObjectFromAsset(asset);
                 }
+                obj.hideFlags = hideFlags;
             }
         }
 

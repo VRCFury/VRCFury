@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Editor.VF.Utils;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;

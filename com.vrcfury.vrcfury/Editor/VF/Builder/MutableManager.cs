@@ -158,8 +158,10 @@ namespace VF.Builder {
                 if (o is AnimationClip clip) {
                     foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
                         var curve = AnimationUtility.GetObjectReferenceCurve(clip, b);
-                        foreach (var frame in curve) {
-                            if (frame.value != null) stack.Push(frame.value);
+                        if (curve != null) {
+                            foreach (var frame in curve) {
+                                if (frame.value != null) stack.Push(frame.value);
+                            }
                         }
                     }
                 } else {

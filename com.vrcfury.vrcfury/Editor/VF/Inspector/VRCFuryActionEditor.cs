@@ -76,34 +76,6 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             return row;
         }, desktopActive, androidActive));
 
-        col.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-            var debugInfo = new VisualElement();
-
-            var action = prop.GetObject() as Action;
-            if (action == null) return debugInfo;
-            var component = prop.serializedObject.targetObject as VRCFuryComponent;
-            if (component == null) return debugInfo;
-            var gameObject = component.gameObject;
-            var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
-            if (avatarObject == null) return debugInfo;
-
-            List<VisualElement> warnings;
-            if (action is AnimationClipAction a && a.clip.Get() != null) {
-                warnings = VrcfAnimationDebugInfo.BuildDebugInfo(a.clip.Get().GetAllBindings(), avatarObject, gameObject);
-            } else {
-                var actionSet = new State() { actions = { action } };
-                var test = ActionClipService.LoadStateAdv("test", actionSet, avatarObject, gameObject);
-                var bindings = test.onClip.GetAllBindings().ToImmutableHashSet();
-                warnings =
-                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject, avatarObject);
-            }
-
-            foreach (var warning in warnings) {
-                debugInfo.Add(warning);
-            }
-            return debugInfo;
-        }));
-
         return col;
     }
     
@@ -130,8 +102,50 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             case nameof(MaterialAction): {
                 var content = new VisualElement();
                 content.Add(Title("Material Swap"));
-                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
-                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot Number"));
+                var rendererProp = prop.FindPropertyRelative("renderer");
+                var indexProp = prop.FindPropertyRelative("materialIndex");
+
+                content.Add(VRCFuryEditorUtils.Prop(rendererProp, "Renderer"));
+
+                var indexField = VRCFuryEditorUtils.RefreshOnChange(() => {
+                    var renderer = rendererProp.objectReferenceValue as Renderer;
+                    if (renderer == null) {
+                        var f = new PopupField<string>(
+                            new List<string>() { "Select a renderer" },
+                            0
+                        );
+                        f.SetEnabled(false);
+                        return f;
+                    } else {
+                        var choices = Enumerable.Range(0, renderer.sharedMaterials.Length).ToList();
+                        int selectedIndex;
+                        if (indexProp.intValue >= 0 && indexProp.intValue < renderer.sharedMaterials.Length) {
+                            selectedIndex = indexProp.intValue;
+                        } else {
+                            choices.Add(indexProp.intValue);
+                            selectedIndex = choices.Count - 1;
+                        }
+
+                        string FormatLabel(int i) {
+                            if (i >= 0 && i < renderer.sharedMaterials.Length) {
+                                var mat = renderer.sharedMaterials[i];
+                                if (mat != null) return $"{i} - {mat.name}";
+                            }
+
+                            return $"{i} - ???";
+                        }
+
+                        var f = new PopupField<int>(choices, selectedIndex, FormatLabel, FormatLabel);
+                        f.RegisterValueChangedCallback(cb => {
+                            if (cb.newValue >= 0 && cb.newValue < renderer.sharedMaterials.Length) {
+                                indexProp.intValue = cb.newValue;
+                                indexProp.serializedObject.ApplyModifiedProperties();
+                            }
+                        });
+                        return f;
+                    }
+                }, rendererProp, indexProp);
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot", fieldOverride: indexField));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mat"), "Material"));
                 return content;
             }
