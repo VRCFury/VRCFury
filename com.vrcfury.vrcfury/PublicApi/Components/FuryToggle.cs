@@ -24,6 +24,20 @@ namespace com.vrcfury.api.Components {
             c.slider = slider;
         }
 
+        public void SetDefaultOn() {
+            c.defaultOn = true;
+        }
+        
+        public void SetExclusiveOffState() {
+            c.exclusiveOffState = true;
+        }
+
+        public void AddExclusiveTag(string tag) {
+            c.enableExclusiveTag = true;
+            if (!string.IsNullOrEmpty(c.exclusiveTag)) c.exclusiveTag += ",";
+            c.exclusiveTag += tag;
+        }
+
         public FuryActionSet GetActions() {
             return new FuryActionSet(c.state);
         }

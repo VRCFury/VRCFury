@@ -31,7 +31,7 @@ namespace VF.Service {
                 var driver = off.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
                 var t = idle.TransitionsTo(off).When(lastState_.IsGreaterThan(0));
                 driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
-                    name = lastState_.Name(),
+                    name = lastState_,
                     value = 0
                 });
                 if (reset) {
@@ -70,7 +70,7 @@ namespace VF.Service {
                 createdStates[input] = state;
             } else {
                 var rawState = createdStates[input].GetRaw();
-                rawState.name = rawState.name.Insert(rawState.name.IndexOf(" (from"),  $", {output} = {value}");
+                //rawState.name = rawState.name.Insert(rawState.name.IndexOf(" (from"),  $", {output} = {value}");
             }
             var myDriver = createdStates[input].GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
             myDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {

@@ -1,26 +1,42 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Service;
+using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Dynamics.Contact.Components;
+using Object = UnityEngine.Object;
 
 namespace VF.Feature {
-    internal class FinalizeParamsBuilder : FeatureBuilder {
+    /**
+     * Many of these checks are copied from or modified from the validation checks in the VRCSDK
+     */
+    [VFService]
+    internal class FinalValidationService {
         [VFAutowired] private readonly ExceptionService excService;
+        [VFAutowired] private readonly AvatarManager manager;
+        private VFGameObject avatarObject => manager.AvatarObject;
 
-        [FeatureBuilderAction(FeatureOrder.FinalizeParams)]
+        [FeatureBuilderAction(FeatureOrder.Validation)]
         public void Apply() {
+            CheckParams();
+            CheckContacts();
+        }
+
+        private void CheckParams() {
             var p = manager.GetParams();
             var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
             if (maxBits > 9999) {
-                // Some versions of the VRChat SDK have a broken value for this
+                // Some modified versions of the VRChat SDK have a broken value for this
                 maxBits = 256;
             }
             if (p.GetRaw().CalcTotalCost() > maxBits) {
@@ -35,7 +51,9 @@ namespace VF.Feature {
                     $"Your avatar is using too many synced and unsynced expression parameters ({p.GetRaw().parameters.Length})!"
                     + " There's a limit of 8192 total expression parameters."));
             }
+        }
 
+        private void CheckContacts() {
             var contacts = avatarObject.GetComponentsInSelfAndChildren<ContactBase>().ToArray();
             var contactLimit = 256;
             if (contacts.Length > contactLimit) {

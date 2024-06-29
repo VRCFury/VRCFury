@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Editor.VF.Utils;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -186,7 +185,6 @@ namespace VF.Utils.Controller {
                 if (layer.stateMachine == null) {
                     var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
                     sm.name = layer.name;
-                    sm.hideFlags = HideFlags.HideInHierarchy;
                     layer.stateMachine = sm;
                 }
                 return layer;
@@ -292,7 +290,6 @@ namespace VF.Utils.Controller {
                 if (layer.syncedLayerIndex >= layers.Length) {
                     var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
                     sm.name = layer.name;
-                    sm.hideFlags = HideFlags.HideInHierarchy;
                     layer.stateMachine = sm;
                     layer.syncedLayerIndex = -1;
                     return layer;
@@ -394,9 +391,7 @@ namespace VF.Utils.Controller {
             if (includeWrites) {
                 foreach (var clip in new AnimatorIterator.Clips().From(affectsLayers)) {
                     clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
-                        if (binding.path != "") return binding;
-                        if (binding.type != typeof(Animator)) return binding;
-                        if (binding.IsMuscle()) return binding;
+                        if (binding.GetPropType() != EditorCurveBindingType.Aap) return binding;
                         binding.propertyName = RewriteParamName(binding.propertyName);
                         return binding;
                     }));

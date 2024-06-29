@@ -23,23 +23,23 @@ namespace VF.Utils {
         }
 
         public const string NormalizedRotationProperty = "rotation";
-        
-        public static bool IsMuscle(this EditorCurveBinding binding) {
-            if (binding.path != "") return false;
-            if (binding.type != typeof(Animator)) return false;
+
+        public static EditorCurveBindingType GetPropType(this EditorCurveBinding binding) {
+            if (binding.path != "") return EditorCurveBindingType.Fx;
+            if (binding.type != typeof(Animator)) return EditorCurveBindingType.Fx;
 
             var name = binding.propertyName;
             var muscleName = name.Replace("RightHand", "Right");
             muscleName = muscleName.Replace("LeftHand", "Left");
             muscleName = muscleName.Replace(".", " ");
             if (GetHumanMuscleList().Contains(muscleName)) {
-                return true;
+                return EditorCurveBindingType.Muscle;
             }
             if (name.EndsWith("TDOF.x") || name.EndsWith("TDOF.y") || name.EndsWith("TDOF.z")) {
-                return true;
+                return EditorCurveBindingType.Muscle;
             }
 
-            return false;
+            return EditorCurveBindingType.Aap;
         }
 
         private static HashSet<string> _humanMuscleList;
@@ -67,7 +67,7 @@ namespace VF.Utils {
         }
 
         public static MuscleBindingType GetMuscleBindingType(this EditorCurveBinding binding) {
-            if (!binding.IsMuscle()) return MuscleBindingType.NonMuscle;
+            if (binding.GetPropType() != EditorCurveBindingType.Muscle) return MuscleBindingType.NonMuscle;
             if (binding.propertyName.Contains("LeftHand")) return MuscleBindingType.LeftHand;
             if (binding.propertyName.Contains("RightHand")) return MuscleBindingType.RightHand;
             return MuscleBindingType.Body;

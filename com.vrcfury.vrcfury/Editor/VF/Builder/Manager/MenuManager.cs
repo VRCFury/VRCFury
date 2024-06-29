@@ -98,6 +98,21 @@ namespace VF.Builder {
             }
             return true;
         }
+        
+        public bool Reorder(string path, int position) {
+            GetSubmenuAndItem(path, false, out var splitPath, out var splitPrefix, out var fromName, out var fromMenu);
+            if (!fromMenu) return false;
+            
+            var controls = FindControlsWithName(fromMenu, fromName);
+            if (controls.Length == 0) return false;
+            fromMenu.controls.RemoveAll(c => controls.Contains(c));
+
+            if (position < 0) position = fromMenu.controls.Count + position;
+            position = VrcfMath.Clamp(position, 0, fromMenu.controls.Count);
+
+            fromMenu.controls.InsertRange(position, controls);
+            return true;
+        }
 
         public VRCExpressionsMenu.Control GetMenuItem(string path) {
             var split = SplitPath(path);
@@ -210,7 +225,7 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.Button;
             control.parameter = new VRCExpressionsMenu.Control.Parameter {
-                name = param != null ? param.Name() : ""
+                name = param ?? ""
             };
             control.value = value;
             control.icon = icon;
@@ -219,7 +234,7 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
             control.parameter = new VRCExpressionsMenu.Control.Parameter {
-                name = param.Name()
+                name = param
             };
             control.value = value;
             control.icon = icon;
@@ -228,7 +243,7 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
             var menuParam = new VRCExpressionsMenu.Control.Parameter {
-                name = param.Name()
+                name = param
             };
             control.subParameters = new[]{menuParam};
             control.icon = icon;
@@ -237,9 +252,9 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet;
             var menuParamX = new VRCExpressionsMenu.Control.Parameter();
-            menuParamX.name = (x != null) ? x.Name() : "";
+            menuParamX.name = x ?? "";
             var menuParamY = new VRCExpressionsMenu.Control.Parameter();
-            menuParamY.name = (y != null) ? y.Name() : "";
+            menuParamY.name = y ?? "";
             control.subParameters = new[]{menuParamX, menuParamY};
             control.icon = icon;
         }

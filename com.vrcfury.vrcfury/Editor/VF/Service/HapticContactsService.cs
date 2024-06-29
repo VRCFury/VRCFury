@@ -17,6 +17,7 @@ namespace VF.Service {
     internal class HapticContactsService {
         [VFAutowired] [CanBeNull] private readonly AvatarManager manager;
         [VFAutowired] [CanBeNull] private readonly MathService math;
+        [VFAutowired] [CanBeNull] private readonly OverlappingContactsFixService overlappingService;
 
         public void AddSender(
             VFGameObject obj,
@@ -90,9 +91,11 @@ namespace VF.Service {
 
             var param = fx.NewFloat(paramName, usePrefix: usePrefix);
             var child = GameObjects.Create(objName, obj);
+            
+            overlappingService?.Activate();
             var receiver = child.AddComponent<VRCContactReceiver>();
             receiver.position = pos;
-            receiver.parameter = param.Name();
+            receiver.parameter = param;
             receiver.radius = radius;
             receiver.receiverType = type;
             receiver.collisionTags = new List<string>(tags);

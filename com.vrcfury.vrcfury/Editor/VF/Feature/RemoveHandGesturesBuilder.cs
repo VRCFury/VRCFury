@@ -1,4 +1,3 @@
-using Editor.VF.Utils;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine.UIElements;
@@ -6,6 +5,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Feature {
     internal class RemoveHandGesturesBuilder : FeatureBuilder<RemoveHandGestures2> {
@@ -34,7 +34,7 @@ namespace VF.Feature {
                 if (c.mode == AnimatorConditionMode.Equals) forceTrue = c.threshold == 0;
                 if (c.mode == AnimatorConditionMode.NotEqual) forceTrue = c.threshold != 0;
                 return new AnimatorCondition {
-                    parameter = tru.Name(),
+                    parameter = tru,
                     mode = forceTrue ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot
                 };
             });

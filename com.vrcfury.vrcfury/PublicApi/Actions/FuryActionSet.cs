@@ -29,5 +29,16 @@ namespace com.vrcfury.api.Actions {
             s.actions.Add(a);
             return new FuryFlipbookBuilder(a);
         }
+
+        public void AddBlendshape(string name, float value, Renderer renderer = null) {
+            var a = new BlendShapeAction();
+            if (renderer != null) {
+                a.allRenderers = false;
+                a.renderer = renderer;
+            }
+            a.blendShape = name;
+            a.blendShapeValue = value;
+            s.actions.Add(a);
+        }
     }
 }

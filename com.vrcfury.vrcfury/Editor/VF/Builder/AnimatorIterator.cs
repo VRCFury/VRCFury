@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Utils;
 using VF.Utils.Controller;
 using AnimatorStateExtensions = VF.Builder.AnimatorStateExtensions;
 using Object = UnityEngine.Object;
@@ -63,26 +64,22 @@ namespace VF.Builder {
         }
 
         public static void ReplaceClips(AnimatorController controller, Func<AnimationClip, AnimationClip> replace) {
-            foreach (var state in new States().From(controller)) {
-                var motions = new Stack<(Motion, Func<Motion,Motion>)>();
-                motions.Push((state.motion, m => state.motion = m));
-                while (motions.Count > 0) {
-                    var (motion, setMotion) = motions.Pop();
-                    if (motion == null) continue;
-                    switch (motion) {
-                        case AnimationClip clip:
-                            setMotion(replace(clip));
-                            break;
-                        case BlendTree tree:
-                            var children = tree.children;
-                            for (var i = 0; i < children.Length; i++) {
-                                var childNum = i;
-                                var child = children[childNum];
-                                motions.Push((child.motion, m => child.motion = m));
-                            }
-                            break;
-                    }
+            Motion RewriteMotion(Motion motion) {
+                if (motion is AnimationClip clip) {
+                    return replace(clip);
                 }
+                if (motion is BlendTree tree) {
+                    tree.RewriteChildren(child => {
+                        child.motion = RewriteMotion(child.motion);
+                        return child;
+                    });
+                    return tree;
+                }
+                return motion;
+            }
+            
+            foreach (var state in new States().From(controller)) {
+                state.motion = RewriteMotion(state.motion);
             }
         }
 
@@ -100,6 +97,11 @@ namespace VF.Builder {
             
             public IImmutableSet<T> From(IEnumerable<VFLayer> layers) {
                 return layers.SelectMany(From).ToImmutableHashSet();
+            }
+            
+            public IImmutableSet<T> From(AnimatorController root) {
+                if (root == null) return ImmutableHashSet<T>.Empty;
+                return From((VFController)root);
             }
 
             public IImmutableSet<T> From(VFController root) {

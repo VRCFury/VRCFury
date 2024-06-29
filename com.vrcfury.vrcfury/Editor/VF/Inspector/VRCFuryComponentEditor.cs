@@ -10,6 +10,7 @@ using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Component;
 using VF.Model;
+using VF.Model.Feature;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
@@ -27,7 +28,7 @@ namespace VF.Inspector {
             }
 
             var avatarObject = VRCAvatarUtils.GuessAvatarObject(target as UnityEngine.Component);
-            var versionLabel = new Label(SceneViewOverlay.GetOutputString(avatarObject) + " " + VRCFPackageUtils.Version);
+            var versionLabel = new Label(VrcfDebugLine.GetOutputString(avatarObject));
             versionLabel.AddToClassList("vfVersionLabel");
             
             var contentWithVersion = new VisualElement();
@@ -100,28 +101,28 @@ namespace VF.Inspector {
             }
             
             container.Add(body);
-            
-#if UNITY_2022_1_OR_NEWER
-            var editingPrefab = PrefabStageUtility.GetCurrentPrefabStage() != null;
-#else
-            var editingPrefab = false;
-#endif
 
-            var notInAvatarError = VRCFuryEditorUtils.Error(
-                "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
-                "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
-                "object, and not just alongside it in the scene.");
-            void UpdateNotInAvatarError() => notInAvatarError.SetVisible(!editingPrefab && c.gameObject.asVf().GetComponentInSelfOrParent<VRCAvatarDescriptor>() == null);
-            UpdateNotInAvatarError();
-            notInAvatarError.schedule.Execute(UpdateNotInAvatarError).Every(1000);
-            container.Add(notInAvatarError);
-            
-            var deletedError = VRCFuryEditorUtils.Error(
-                "This VRCFury component is placed within an object that is tagged as EditorOnly or has a vrcfury 'Delete During Upload' component, and thus will not do anything!");
-            void UpdateDeletedError() => deletedError.SetVisible(EditorOnlyUtils.IsInsideEditorOnly(c.gameObject));
-            UpdateDeletedError();
-            deletedError.schedule.Execute(UpdateDeletedError).Every(1000);
-            container.Add(deletedError);
+            var editingPrefab = UnityCompatUtils.IsEditingPrefab();
+
+            container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
+                var warning = new VisualElement();
+
+                if (!editingPrefab && c.gameObject.asVf().GetComponentInSelfOrParent<VRCAvatarDescriptor>() == null) {
+                    warning.Add(VRCFuryEditorUtils.Error(
+                        "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
+                        "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
+                        "object, and not just alongside it in the scene."));
+                }
+
+                var hasDelete = v is VRCFury z && z.GetAllFeatures().OfType<DeleteDuringUpload>().Any();
+                var isDeleted = EditorOnlyUtils.IsInsideEditorOnly(c.gameObject);
+                if (isDeleted && !hasDelete) {
+                    warning.Add(VRCFuryEditorUtils.Error(
+                        "This VRCFury component is placed within an object that is tagged as EditorOnly or has a vrcfury 'Delete During Upload' component, and thus will not do anything!"));
+                }
+                
+                return warning;
+            }));
 
             return container;
         }

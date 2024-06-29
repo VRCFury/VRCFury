@@ -34,6 +34,8 @@ namespace VF.Menu {
         public const int detectDuplicatePhysbonesPriority = 1314;
         public const string reserialize = prefix + "Utilites/Reserialize All VRCFury Assets";
         public const int reserializePriority = 1315;
+        public const string uselessOverrides = prefix + "Utilites/Cleanup Useless Overrides";
+        public const int uselessOverridesPriority = 1316;
         
         public const string playMode = prefix + "Settings/Enable VRCFury in play mode";
         public const int playModePriority = 1321;

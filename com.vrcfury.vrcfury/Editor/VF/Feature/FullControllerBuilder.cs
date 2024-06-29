@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -312,7 +311,7 @@ namespace VF.Feature {
                         minSupported: minSupported,
                         maxSupported: maxSupported
                     );
-                    smoothedDict[rewritten] = smoothed.Name();
+                    smoothedDict[rewritten] = smoothed;
                 }
 
                 toMain.GetRaw().RewriteParameters(name => {
@@ -521,89 +520,38 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allowMissingAssets"), "(Deprecated) Don't fail if assets are missing"));
 
             content.Add(adv);
-            
-            content.Add(new VisualElement { style = { paddingTop = 10 } });
-            content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
-                var baseObject = GetBaseObject();
 
-                var missingFromBase = new HashSet<string>();
-                var missingFromAvatar = new HashSet<string>();
-                var usesWdOff = false;
-                var allPaths = new HashSet<string>();
-                foreach (var c in model.controllers) {
-                    var c1 = c.controller?.Get() as AnimatorController;
-                    if (c1 == null) continue;
-                    var controller = (VFController)c1;
-                    foreach (var state in new AnimatorIterator.States().From(controller)) {
-                        if (!state.writeDefaultValues) {
-                            usesWdOff = true;
-                        }
-
-                        allPaths.UnionWith(new AnimatorIterator.Clips().From(state)
-                            .SelectMany(clip => clip.GetAllBindings())
-                            .Select(binding => binding.path)
-                        );
-                    }
-#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-                    allPaths.UnionWith(new AnimatorIterator.Behaviours().From(controller)
-                        .OfType<VRCAnimatorPlayAudio>()
-                        .Select(audio => audio.SourcePath)
-                        .Where(path => path != ""));
-#endif
-                }
+            content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
+                var debug = new VisualElement();
+                if (avatarObject == null) return debug;
                 
-                foreach (var originalPath in allPaths) {
-                    var rewrittenPath = RewritePath(originalPath);
-                    if (rewrittenPath == null) {
-                        // binding was deleted by rules :)
-                        continue;
-                    }
-                    if (rewrittenPath.ToLower().Contains("ignore")) {
-                        continue;
-                    }
-                    if (baseObject.Find(rewrittenPath) == null) {
-                        if (avatarObject == baseObject) {
-                            missingFromAvatar.Add(rewrittenPath);
-                        } else if (avatarObject != null && avatarObject.Find(originalPath) == null) {
-                            missingFromAvatar.Add(originalPath);
-                        } else {
-                            missingFromBase.Add(rewrittenPath);
-                        }
-                    }
-                }
-
-                var text = new List<string>();
+                var baseObject = GetBaseObject();
+                var controllers = model.controllers
+                    .Select(c => c?.controller?.Get() as AnimatorController)
+                    .NotNull()
+                    .ToList();
+                var usesWdOff = controllers
+                    .SelectMany(c => new AnimatorIterator.States().From(c))
+                    .Any(state => !state.writeDefaultValues);
+                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(controllers, avatarObject, baseObject, RewritePath, suggestPathRewrites: true).ToList();
                 if (usesWdOff) {
-                    text.Add(
+                    warnings.Add(VRCFuryEditorUtils.Warn(
                         "This controller uses WD off!" +
                         " If you want this prop to be reusable, you should use WD on." +
                         " VRCFury will automatically convert the WD on or off to match the client's avatar," +
-                        " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost.");
-                    text.Add("");
+                        " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost."
+                    ));
                 }
-                if (missingFromAvatar.Any()) {
-                    text.Add(
-                        "These paths are animated in the controller, but not found in your avatar! Thus, they won't do anything! " +
-                        "You may need to use 'Path Rewrite Rules' in the Advanced Settings to fix them if your avatar's objects are in a different location.");
-                    text.Add("");
-                    text.AddRange(missingFromAvatar.OrderBy(path => path));
-                    text.Add("");
-                }
-                if (missingFromBase.Any()) {
-                    text.Add(
-                        "These paths are animated in the controller, but not found as children of this object. " +
-                        "If you want this prop to be reusable, you should use 'Path Rewrite Rules' in the Advanced Settings to rewrite " +
-                        "these paths so they work with how the objects are located within this object.");
-                    text.Add("");
-                    text.AddRange(missingFromBase.OrderBy(path => path));
+                foreach (var c in warnings) {
+                    debug.Add(c);
                 }
 
-                return string.Join("\n", text);
+                return debug;
             }));
 
             return content;
         }
-        
+
         public static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
             "Viseme",

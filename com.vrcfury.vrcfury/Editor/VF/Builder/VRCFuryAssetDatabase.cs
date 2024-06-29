@@ -87,7 +87,14 @@ namespace VF.Builder {
             // If object was already part of another asset, or was recently deleted, we MUST
             // call this first, or unity will throw an exception
             AssetDatabase.RemoveObjectFromAsset(obj);
+            obj.hideFlags &= ~HideFlags.DontSaveInEditor;
             AssetDatabase.CreateAsset(obj, fullPath);
+        }
+
+        public static void AttachAsset(Object objectToAttach, Object parent) {
+            objectToAttach.hideFlags &= ~HideFlags.DontSaveInEditor;
+            AssetDatabase.RemoveObjectFromAsset(objectToAttach);
+            AssetDatabase.AddObjectToAsset(objectToAttach, parent);
         }
 
         private static bool assetEditing = false;
@@ -203,6 +210,13 @@ namespace VF.Builder {
             }
 
             return null;
+        }
+
+        public static T LoadAssetByGuid<T>(string guid) where T : Object {
+            if (guid.IsEmpty()) return null;
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            if (path.IsEmpty()) return null;
+            return AssetDatabase.LoadAssetAtPath<T>(path);
         }
     }
 }

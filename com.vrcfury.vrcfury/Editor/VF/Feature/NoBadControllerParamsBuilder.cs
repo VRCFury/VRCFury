@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Numerics;
-using Editor.VF.Utils;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -31,9 +30,9 @@ namespace VF.Feature {
         }
 
         public static void RemoveWrongParamTypes(VFController controller) {
-            var badBool = new Lazy<string>(() => controller.NewBool("InvalidParam").Name());
-            var badFloat = new Lazy<string>(() => controller.NewFloat("InvalidParamFloat").Name());
-            var badThreshold = new Lazy<string>(() => controller.NewBool("BadIntThreshold", def: true).Name());
+            var badBool = new Lazy<string>(() => controller.NewBool("InvalidParam"));
+            var badFloat = new Lazy<string>(() => controller.NewFloat("InvalidParamFloat"));
+            var badThreshold = new Lazy<string>(() => controller.NewBool("BadIntThreshold", def: true));
 
             var paramTypes = controller.parameters
                 .ToImmutableDictionary(p => p.name, p => p.type);
@@ -231,7 +230,7 @@ namespace VF.Feature {
                     outputTransitions.Add(transition);
                     foreach (var combo in GetCombinations(flip)) {
                         if (combo.Length == 0) continue;
-                        var copy = MutableManager.MakeMutable(transition, true);
+                        var copy = transition.Clone();
                         var cs = copy.conditions;
                         foreach (var i in combo) {
                             var c = cs[i];

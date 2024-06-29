@@ -20,6 +20,8 @@ namespace VF.Feature {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
         [VFAutowired] private readonly FixWriteDefaultsBuilder fixWriteDefaults;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly MathService math;
         
         [FeatureBuilderAction(FeatureOrder.DirectTreeOptimizer)]
         public void Apply() {
@@ -33,11 +35,10 @@ namespace VF.Feature {
             var bindingsByLayer = fx.GetLayers()
                 .ToDictionary(layer => layer, GetBindingsAnimatedInLayer);
             
-            var eligibleLayers = new List<EligibleLayer>();
             var debugLog = new List<string>();
             foreach (var layer in applyToLayers) {
                 try {
-                    eligibleLayers.Add(OptimizeLayer(layer, bindingsByLayer));
+                    OptimizeLayer(layer, bindingsByLayer);
                     debugLog.Add($"{layer.name} - OPTIMIZED");
                     layer.Remove();
                 } catch (DoNotOptimizeException e) {
@@ -46,51 +47,9 @@ namespace VF.Feature {
             }
             
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
-
-            if (eligibleLayers.Count > 0) {
-                var tree = clipFactory.NewBlendTree("Optimized DBT");
-                tree.blendType = BlendTreeType.Direct;
-                var layer = fx.NewLayer("Optimized DBT");
-                layer.NewState("DBT").WithAnimation(tree);
-
-                foreach (var toggle in eligibleLayers) {
-                    var offEmpty = !toggle.offState.HasValidBinding(avatarObject);
-                    var onEmpty = !toggle.onState.HasValidBinding(avatarObject);
-                    if (offEmpty && onEmpty) continue;
-                    VFAFloat param;
-                    Motion motion;
-                    if (!offEmpty) {
-                        var subTree = clipFactory.NewBlendTree("Layer " + toggle.offState.name);
-                        subTree.useAutomaticThresholds = false;
-                        subTree.blendType = BlendTreeType.Simple1D;
-                        subTree.AddChild(toggle.offState, 0);
-                        subTree.AddChild(
-                            !onEmpty ? toggle.onState : clipFactory.GetEmptyClip(), 1);
-                        subTree.blendParameter = toggle.param;
-                        param = fx.One();
-                        motion = subTree;
-                    } else {
-                        param = toggle.param;
-                        motion = toggle.onState;
-                    }
-
-                    //directTree.Add(param, motion);
-                    tree.AddDirectChild(param, motion);
-
-                    var fxRaw = fx.GetRaw();
-                    fxRaw.parameters = fxRaw.parameters.Select(p => {
-                        if (p.name == toggle.param) {
-                            if (p.type == AnimatorControllerParameterType.Bool) p.defaultFloat = p.defaultBool ? 1 : 0;
-                            if (p.type == AnimatorControllerParameterType.Int) p.defaultFloat = p.defaultInt;
-                            p.type = AnimatorControllerParameterType.Float;
-                        }
-                        return p;
-                    }).ToArray();
-                }
-            }
         }
 
-        EligibleLayer OptimizeLayer(VFLayer layer, Dictionary<VFLayer, ICollection<EditorCurveBinding>> bindingsByLayer) {
+        void OptimizeLayer(VFLayer layer, Dictionary<VFLayer, ICollection<EditorCurveBinding>> bindingsByLayer) {
             // We must never optimize the defaults layer.
             // While it may seem impossible for the defaults layer to be optimized (because it shares keys
             // with other layers), it's theoretically possible for the layer to be created early with bindings
@@ -163,82 +122,58 @@ namespace VF.Feature {
                 throw new DoNotOptimizeException($"Shares animations with other layer: {names}");
             }
 
-            Motion onClip;
-            Motion offClip;
-            VFAFloat param;
-
             if (states.Length == 1) {
                 var state = states[0].state;
-                onClip = MakeClipForState(layer, state);
-                offClip = null;
-                param = fx.One();
-            } else {
-                ICollection<AnimatorTransitionBase> GetTransitionsTo(AnimatorState state) {
-                    var output = new List<AnimatorTransitionBase>();
-                    var ignoreTransitions = new HashSet<AnimatorTransitionBase>();
-                    var entryState = layer.stateMachine.defaultState;
-
-                    if (layer.stateMachine.entryTransitions.Length == 1 &&
-                        layer.stateMachine.entryTransitions[0].conditions.Length == 0) {
-                        entryState = layer.stateMachine.entryTransitions[0].destinationState;
-                        ignoreTransitions.Add(layer.stateMachine.entryTransitions[0]);
-                    }
-
-                    foreach (var t in new AnimatorIterator.Transitions().From(layer)) {
-                        if (ignoreTransitions.Contains(t)) continue;
-                        if (t.destinationState == state || (t.isExit && entryState == state)) {
-                            output.Add(t);
-                        }
-                    }
-                    return output.ToArray();
+                var onClip = MakeClipForState(layer, state);
+                if (onClip != null) {
+                    directTree.Add(onClip);
                 }
-
-                if (states.Length == 3) {
-                    bool IsJunkState(AnimatorState state) {
-                        return layer.stateMachine.defaultState == state && GetTransitionsTo(state).Count == 0;
-                    }
-                    states = states.Where(child => !IsJunkState(child.state)).ToArray();
-                }
-                if (states.Length != 2) {
-                    throw new DoNotOptimizeException($"Contains {states.Length} states");
-                }
-                
-                var state0 = states[0].state;
-                var state1 = states[1].state;
-
-                var state0Condition = GetSingleCondition(GetTransitionsTo(state0));
-                var state1Condition = GetSingleCondition(GetTransitionsTo(state1));
-                if (state0Condition == null || state1Condition == null) {
-                    throw new DoNotOptimizeException($"State conditions are not basic");
-                }
-                if (state0Condition.Value.parameter != state1Condition.Value.parameter) {
-                    throw new DoNotOptimizeException($"State conditions do not use same parameter");
-                }
-
-                var state0EffectiveCondition = EstimateEffectiveCondition(state0Condition.Value);
-                var state1EffectiveCondition = EstimateEffectiveCondition(state1Condition.Value);
-
-                AnimatorState onState;
-                AnimatorState offState;
-                if (
-                    state0EffectiveCondition == EffectiveCondition.WHEN_0 &&
-                    state1EffectiveCondition == EffectiveCondition.WHEN_1) {
-                    offState = state0;
-                    onState = state1;
-                } else if (
-                    state0EffectiveCondition == EffectiveCondition.WHEN_1 &&
-                    state1EffectiveCondition == EffectiveCondition.WHEN_0) {
-                    offState = state1;
-                    onState = state0;
-                } else {
-                    throw new DoNotOptimizeException($"State conditions are not an inversion of each other");
-                }
-                
-                offClip = MakeClipForState(layer, offState);
-                onClip = MakeClipForState(layer, onState);
-                param = new VFAFloat(state0Condition.Value.parameter, 0);
+                return;
             }
 
+            ICollection<AnimatorTransitionBase> GetTransitionsTo(AnimatorState state) {
+                var output = new List<AnimatorTransitionBase>();
+                var ignoreTransitions = new HashSet<AnimatorTransitionBase>();
+                var entryState = layer.stateMachine.defaultState;
+
+                if (layer.stateMachine.entryTransitions.Length == 1 &&
+                    layer.stateMachine.entryTransitions[0].conditions.Length == 0) {
+                    entryState = layer.stateMachine.entryTransitions[0].destinationState;
+                    ignoreTransitions.Add(layer.stateMachine.entryTransitions[0]);
+                }
+
+                foreach (var t in new AnimatorIterator.Transitions().From(layer)) {
+                    if (ignoreTransitions.Contains(t)) continue;
+                    if (t.destinationState == state || (t.isExit && entryState == state)) {
+                        output.Add(t);
+                    }
+                }
+                return output.ToArray();
+            }
+
+            if (states.Length == 3) {
+                bool IsJunkState(AnimatorState state) {
+                    return layer.stateMachine.defaultState == state && GetTransitionsTo(state).Count == 0;
+                }
+                states = states.Where(child => !IsJunkState(child.state)).ToArray();
+            }
+            if (states.Length != 2) {
+                throw new DoNotOptimizeException($"Contains {states.Length} states");
+            }
+            
+            var state0 = states[0].state;
+            var state1 = states[1].state;
+
+            var state0Condition = GetSingleCondition(GetTransitionsTo(state0));
+            var state1Condition = GetSingleCondition(GetTransitionsTo(state1));
+            if (state0Condition == null || state1Condition == null) {
+                throw new DoNotOptimizeException($"State conditions are not basic");
+            }
+            if (state0Condition.Value.parameter != state1Condition.Value.parameter) {
+                throw new DoNotOptimizeException($"State conditions do not use same parameter");
+            }
+            
+            var param = new VFAFloat(state0Condition.Value.parameter, 0);
             var paramType = fx.GetRaw().parameters
                 .Where(p => p.name == param)
                 .Select(p => p.type)
@@ -247,12 +182,50 @@ namespace VF.Feature {
             if (FullControllerBuilder.VRChatGlobalParams.Contains(param) && paramType == AnimatorControllerParameterType.Int) {
                 throw new DoNotOptimizeException($"Uses an int VRC built-in, which means >1 is likely");
             }
+            
+            // TODO: Might want to verify that state1Condition is the opposite of state0Condition
+            // But we already verify that they use the same parameter, so it's /extremely/ unlikely for this to not be the case
+            
+            var state0Clip = MakeClipForState(layer, state0);
+            var state1Clip = MakeClipForState(layer, state1);
 
-            return new EligibleLayer {
-                offState = offClip,
-                onState = onClip,
-                param = param
-            };
+            Optimize(state0Condition.Value, state0Clip, state1Clip);
+        }
+
+        void Optimize(AnimatorCondition condition, Motion on, Motion off) {
+            if (on == null) on = clipFactory.GetEmptyClip();
+            if (off == null) off = clipFactory.GetEmptyClip();
+            
+            if (condition.mode == AnimatorConditionMode.IfNot) {
+                condition.mode = AnimatorConditionMode.If;
+                (on, off) = (off, on);
+            } else if (condition.mode == AnimatorConditionMode.Less) {
+                condition.mode = AnimatorConditionMode.Greater;
+                condition.threshold = VRCFuryEditorUtils.NextFloatDown(condition.threshold);
+                (on, off) = (off, on);
+            } else if (condition.mode == AnimatorConditionMode.NotEqual) {
+                condition.mode = AnimatorConditionMode.Equals;
+                (on, off) = (off, on);
+            }
+
+            var onValid = on.HasValidBinding(avatarObject);
+            var offValid = off.HasValidBinding(avatarObject);
+            if (!onValid && !offValid) throw new DoNotOptimizeException($"Contains no valid bindings");
+
+            var param = new VFAFloat(condition.parameter, 0);
+            if (condition.mode == AnimatorConditionMode.If) {
+                if (!offValid) {
+                    directTree.Add(param, on);
+                } else {
+                    directTree.Add(math.GreaterThan(param, 0.5f).create(on, off));
+                }
+            } else if (condition.mode == AnimatorConditionMode.Equals) {
+                directTree.Add(math.Equals(param, condition.threshold).create(on, off));
+            } else if (condition.mode == AnimatorConditionMode.Greater) {
+                directTree.Add(math.GreaterThan(param, condition.threshold).create(on, off));
+            } else {
+                throw new DoNotOptimizeException($"Unknown condition type");
+            }
         }
 
         Motion MakeClipForState(VFLayer layer, AnimatorState state) {
@@ -275,12 +248,9 @@ namespace VF.Feature {
                     if (string.IsNullOrWhiteSpace(state.timeParameter)) {
                         throw new DoNotOptimizeException($"{state.name} contains a motion time clip without a valid parameter");
                     }
-                    var subTree = clipFactory.NewBlendTree($"Layer {layer.name} - {state.name}");
-                    subTree.useAutomaticThresholds = false;
-                    subTree.blendType = BlendTreeType.Simple1D;
-                    subTree.AddChild(dualState.Item1, 0);
-                    subTree.AddChild(dualState.Item2, 1);
-                    subTree.blendParameter = state.timeParameter;
+                    var subTree = clipFactory.New1D($"Layer {layer.name} - {state.name}", state.timeParameter);
+                    subTree.Add(0, dualState.Item1);
+                    subTree.Add(1, dualState.Item2);
                     return subTree;
                 } else {
                     if (clip.GetLengthInFrames() > 5) {
@@ -313,24 +283,6 @@ namespace VF.Feature {
                 .ToImmutableHashSet();
         }
 
-        private enum EffectiveCondition {
-            WHEN_1,
-            WHEN_0,
-            INVALID
-        }
-        private static EffectiveCondition EstimateEffectiveCondition(AnimatorCondition cond) {
-            if (cond.mode == AnimatorConditionMode.If) return EffectiveCondition.WHEN_1;
-            if (cond.mode == AnimatorConditionMode.IfNot) return EffectiveCondition.WHEN_0;
-            if (cond.mode == AnimatorConditionMode.Equals && Mathf.Approximately(cond.threshold, 1)) return EffectiveCondition.WHEN_1;
-            if (cond.mode == AnimatorConditionMode.Equals && Mathf.Approximately(cond.threshold, 0)) return EffectiveCondition.WHEN_0;
-            if (cond.mode == AnimatorConditionMode.NotEqual && Mathf.Approximately(cond.threshold, 1)) return EffectiveCondition.WHEN_0;
-            if (cond.mode == AnimatorConditionMode.NotEqual && Mathf.Approximately(cond.threshold, 0)) return EffectiveCondition.WHEN_1;
-            if (cond.mode == AnimatorConditionMode.Greater && Mathf.Approximately(cond.threshold, 0)) return EffectiveCondition.WHEN_1;
-            if (cond.mode == AnimatorConditionMode.Less && Mathf.Approximately(cond.threshold, 1)) return EffectiveCondition.WHEN_0;
-            if (cond.mode == AnimatorConditionMode.Less && Mathf.Approximately(cond.threshold, 0)) return EffectiveCondition.WHEN_0;
-            return EffectiveCondition.INVALID;
-        }
-
         private static AnimatorCondition? GetSingleCondition(IEnumerable<AnimatorTransitionBase> transitions) {
             var allConditions = transitions
                 .SelectMany(t => t.conditions)
@@ -338,12 +290,6 @@ namespace VF.Feature {
                 .ToList();
             if (allConditions.Count != 1) return null;
             return allConditions[0];
-        }
-
-        private class EligibleLayer {
-            public Motion offState;
-            public Motion onState;
-            public VFAFloat param;
         }
         
         public override string GetEditorTitle() {

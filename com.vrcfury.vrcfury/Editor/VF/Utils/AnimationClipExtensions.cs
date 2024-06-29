@@ -41,13 +41,11 @@ namespace VF.Utils {
             }, 0);
         }
 
-        public static AnimationClip Clone(this AnimationClip clip) {
-            var copy = new AnimationClip();
-            copy.name = clip.name;
-            copy.frameRate = clip.frameRate;
-            AnimationUtility.SetAnimationClipSettings(copy, AnimationUtility.GetAnimationClipSettings(clip));
-            clipDb[copy] = GetExt(clip).Clone();
-            return copy;
+        public static void CopyData(AnimationClip from, AnimationClip to) {
+            to.name = from.name;
+            to.frameRate = from.frameRate;
+            AnimationUtility.SetAnimationClipSettings(to, AnimationUtility.GetAnimationClipSettings(from));
+            clipDb[to] = GetExt(from).Clone();
         }
         public static void FinalizeAsset(this AnimationClip clip) {
             if (AnimationUtility.GetCurveBindings(clip).Any() ||
@@ -100,10 +98,12 @@ namespace VF.Utils {
 
             // Don't use ToDictionary, since animationclips can have duplicate bindings somehow
             foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-                ext.curves[b] = AnimationUtility.GetObjectReferenceCurve(clip, b);
+                var curve = AnimationUtility.GetObjectReferenceCurve(clip, b);
+                if (curve != null) ext.curves[b] = curve;
             }
             foreach (var b in AnimationUtility.GetCurveBindings(clip)) {
-                ext.curves[b] = AnimationUtility.GetEditorCurve(clip, b);
+                var curve = AnimationUtility.GetEditorCurve(clip, b);
+                if (curve != null) ext.curves[b] = curve;
             }
             return ext;
         }
@@ -171,6 +171,10 @@ namespace VF.Utils {
             }
         }
 
+        public static void SetAap(this AnimationClip clip, string paramName, FloatOrObjectCurve curve) {
+            clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), paramName), curve);
+        }
+
         public static void SetCurve(this AnimationClip clip, EditorCurveBinding binding, FloatOrObjectCurve curve) {
             clip.SetCurves(new [] { (binding,curve) });
         }
@@ -198,10 +202,17 @@ namespace VF.Utils {
             clip.SetCurves(other.GetAllCurves());
         }
 
-        public static void CopyFromLast(this AnimationClip clip, AnimationClip other) {
-            foreach (var c in other.GetAllCurves()) {
-                clip.SetCurve(c.Item1, c.Item2.GetLast());
+        public static AnimationClip GetLastFrame(this AnimationClip clip) {
+            var output = VrcfObjectFactory.Create<AnimationClip>();
+            if (clip.GetLengthInSeconds() == 0) {
+                output.name = clip.name;
+            } else {
+                output.name = $"{clip.name} - Last Frame";
             }
+            foreach (var c in clip.GetAllCurves()) {
+                output.SetCurve(c.Item1, c.Item2.GetLast());
+            }
+            return output;
         }
 
         public static bool IsLooping(this AnimationClip clip) {

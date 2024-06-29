@@ -26,6 +26,7 @@ namespace VF.Service {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
         [VFAutowired] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
 
         private int scaleIndex = 0;
 
@@ -37,13 +38,16 @@ namespace VF.Service {
             }
 
             var holder = GameObjects.Create("vrcf_ScaleDetector", obj);
+            holder.worldScale = Vector3.one;
+
             var senderObj = GameObjects.Create("Sender", holder);
             var sender = senderObj.AddComponent<VRCContactSender>();
-            sender.radius = 0.001f / senderObj.worldScale.x;
+            sender.radius = 0.001f;
             var tag = $"VRCF_SCALEFACTORFIX_AA_{scaleIndex++}";
             sender.collisionTags.Add(tag);
 
             var receiverObj = GameObjects.Create("Receiver", holder);
+            overlappingService.Activate();
             var receiver = receiverObj.AddComponent<VRCContactReceiver>();
             receiver.allowOthers = false;
             receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
@@ -51,7 +55,7 @@ namespace VF.Service {
             receiver.radius = 0.1f;
             receiver.position = new Vector3(0.1f, 0, 0);
             var receiverParam = fx.NewFloat($"SFFix {obj.name} - Rcv");
-            receiver.parameter = receiverParam.Name();
+            receiver.parameter = receiverParam;
             var p = receiverObj.AddComponent<ScaleConstraint>();
             p.AddSource(new ConstraintSource() {
                 sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),

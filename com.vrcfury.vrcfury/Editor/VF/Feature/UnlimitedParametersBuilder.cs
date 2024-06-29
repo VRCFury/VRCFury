@@ -17,7 +17,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using static VF.Utils.VRCExpressionsMenuExtensions.ForEachMenuItemResult;
 
-namespace Editor.VF.Feature {
+namespace VF.Feature {
     internal class UnlimitedParametersBuilder : FeatureBuilder<UnlimitedParameters> {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;

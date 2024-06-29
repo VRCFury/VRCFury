@@ -86,12 +86,9 @@ namespace VF.Service {
 
                 var clip = actionClipService.LoadState(prefix, depthAction.state, plugOwner);
                 if (clip.IsStatic()) {
-                    var tree = clipFactory.NewBlendTree(prefix + " tree");
-                    tree.blendType = BlendTreeType.Simple1D;
-                    tree.useAutomaticThresholds = false;
-                    tree.blendParameter = smoothParam.Name();
-                    tree.AddChild(clipFactory.GetEmptyClip(), 0);
-                    tree.AddChild(clip, 1);
+                    var tree = clipFactory.New1D(prefix + " tree", smoothParam);
+                    tree.Add(0, clipFactory.GetEmptyClip());
+                    tree.Add(1, clip);
                     on.WithAnimation(tree);
                 } else {
                     clip.SetLooping(false);
@@ -179,12 +176,9 @@ namespace VF.Service {
 
                 var clip = actionClipService.LoadState(prefix, depthAction.state, socketOwner);
                 if (clip.IsStatic()) {
-                    var tree = clipFactory.NewBlendTree(prefix + " tree");
-                    tree.blendType = BlendTreeType.Simple1D;
-                    tree.useAutomaticThresholds = false;
-                    tree.blendParameter = smoothed.Name();
-                    tree.AddChild(clipFactory.GetEmptyClip(), 0);
-                    tree.AddChild(clip, 1);
+                    var tree = clipFactory.New1D(prefix + " tree", smoothed);
+                    tree.Add(0, clipFactory.GetEmptyClip());
+                    tree.Add(1, clip);
                     on.WithAnimation(tree);
                 } else {
                     clip.SetLooping(false);

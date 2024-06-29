@@ -157,7 +157,6 @@ internal class VRCFuryBuilder {
         injector.GetService(typeof(CleanupEmptyLayersBuilder));
         injector.GetService(typeof(ResetAnimatorBuilder));
         injector.GetService(typeof(FinalizeMenuBuilder));
-        injector.GetService(typeof(FinalizeParamsBuilder));
         injector.GetService(typeof(FinalizeControllerBuilder));
         injector.GetService(typeof(MarkThingsAsDirtyJustInCaseBuilder));
         injector.GetService(typeof(FixEmptyMotionBuilder));
