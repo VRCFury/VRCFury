@@ -183,6 +183,18 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         float inTime,
         float outTime
     ) {
+
+        foreach(var tag in GetExclusiveTags()) {
+            var tagAction = new TagStateAction();
+            tagAction.tag = tag;
+            tagAction.value = 0;
+            if (model.hasTransition) {
+                inAction.actions.Add(tagAction);
+            } else {
+                action.actions.Add(tagAction);
+            }
+        }
+
         var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
 
         if (model.securityEnabled) {
@@ -259,7 +271,6 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             restingClip = clip;
         }
 
-        exclusiveTagTriggeringStates.Add(inState);
         off.TransitionsTo(inState).When(onCase);
 
         if (model.enableDriveGlobalParam) {
@@ -290,7 +301,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
     public void ApplyExclusiveTags() {
-        if (exclusiveTagTriggeringStates.Count == 0) return;
+        if (!(model.exclusiveOffState && isOn != null && drive != null)) return;
 
         var fx = GetFx();
         var allOthersOffCondition = fx.Always();
@@ -303,22 +314,17 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             var conflictsWithOther = myTags.Any(myTag => otherTags.Contains(myTag));
             if (conflictsWithOther) {
                 if (other.isOn != null && other.drive != null) {
-                    foreach (var state in exclusiveTagTriggeringStates) {
-                        other.drive(state, false);
-                    }
                     allOthersOffCondition = allOthersOffCondition.And(other.isOn.Not());
                 }
             }
         }
 
-        if (model.exclusiveOffState && isOn != null && drive != null) {
-            var layer = fx.NewLayer(model.name + " - Off Trigger");
-            var off = layer.NewState("Idle");
-            var on = layer.NewState("Trigger");
-            off.TransitionsTo(on).When(allOthersOffCondition);
-            on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(isOn.Not()));
-            drive(on, true);
-        }
+        var layer = fx.NewLayer(model.name + " - Off Trigger");
+        var off = layer.NewState("Idle");
+        var on = layer.NewState("Trigger");
+        off.TransitionsTo(on).When(allOthersOffCondition);
+        on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(isOn.Not()));
+        drive(on, true);
     }
 
     public override string GetClipPrefix() {
