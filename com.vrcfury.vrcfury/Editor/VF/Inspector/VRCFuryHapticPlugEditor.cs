@@ -320,16 +320,18 @@ namespace VF.Inspector {
         private static readonly ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache> gizmoCache
             = new ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache>();
         
-        [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
+        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
+        //[DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFuryHapticPlug plug, GizmoType gizmoType) {
             var transform = plug.transform;
             
             var cache = gizmoCache.GetOrCreateValue(plug);
             if (cache.time == 0 || transform.position != cache.position || transform.rotation != cache.rotation || EditorApplication.timeSinceStartup > cache.time + 1) {
                 cache.time = EditorApplication.timeSinceStartup;
-                cache.error = "";
                 cache.position = transform.position;
                 cache.rotation = transform.rotation;
+                cache.size = null;
+                cache.error = null;
                 try {
                     cache.size = PlugSizeDetector.GetWorldSize(plug);
                 } catch (Exception e) {
@@ -337,34 +339,45 @@ namespace VF.Inspector {
                 }
             }
 
-            if (!string.IsNullOrEmpty(cache.error)) {
-                VRCFuryGizmoUtils.DrawText(transform.position, cache.error, Color.white, true);
-                return;
+            var size = cache.size;
+            var worldRoot = transform.TransformPoint(Vector3.zero);
+            Vector3 worldForward;
+            float worldLength;
+            float worldRadius;
+            Color color;
+            string error = null;
+            if (size == null) {
+                worldForward = transform.TransformDirection(Vector3.forward);
+                worldLength = 0.3f;
+                worldRadius = 0.05f;
+                color = Color.red;
+                error = cache.error;
+            } else {
+                worldForward = transform.TransformDirection(size.localRotation * Vector3.forward);
+                worldLength = size.worldLength;
+                worldRadius = size.worldRadius;
+                color = new Color(1f, 0.5f, 0);
             }
 
-            var size = cache.size;
-            var localLength = size.worldLength / transform.lossyScale.x;
-            var localRadius = size.worldRadius / transform.lossyScale.x;
-            var localForward = size.localRotation * Vector3.forward;
-            var localHalfway = localForward * (localLength / 2);
-            var localCapsuleRotation = size.localRotation * Quaternion.Euler(90,0,0);
+            var worldEnd = worldRoot + worldForward * worldLength;
+            VRCFuryGizmoUtils.DrawCappedCylinder(worldRoot, worldEnd, worldRadius, color);
 
-            var worldPosTip = transform.TransformPoint(size.localPosition + localForward * localLength);
+            if (Selection.activeGameObject == plug.gameObject) {
+                VRCFuryGizmoUtils.DrawText(
+                    worldRoot + (worldEnd - worldRoot) / 2,
+                    "SPS Plug" + (error == null ? "" : $"\n({error})"),
+                    Color.gray,
+                    true
+                );
+            }
 
-            DrawCapsule(transform, size.localPosition + localHalfway, localCapsuleRotation, size.worldLength, size.worldRadius);
-            VRCFuryGizmoUtils.DrawText(worldPosTip, "Tip", Color.white, true);
-        }
-
-        public static void DrawCapsule(
-            Transform obj,
-            Vector3 localPosition,
-            Quaternion localRotation,
-            float worldLength,
-            float worldRadius
-        ) {
-            var worldPos = obj.TransformPoint(localPosition);
-            var worldRot = obj.rotation * localRotation;
-            VRCFuryGizmoUtils.DrawCapsule(worldPos, worldRot, worldLength, worldRadius, Color.red);
+            Gizmos.color = Color.clear;
+            var gizmoStart = worldRoot + worldForward * worldRadius;
+            var gizmoEnd = worldEnd - worldForward * worldRadius;
+            var gizmoCount = 5;
+            for (var i = 0; i < gizmoCount; i++) {
+                Gizmos.DrawSphere(gizmoStart + (gizmoEnd - gizmoStart) * i / (gizmoCount-1), worldRadius);
+            }
         }
 
         public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug plug) {
