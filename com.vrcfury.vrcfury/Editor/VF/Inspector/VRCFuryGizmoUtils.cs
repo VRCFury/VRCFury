@@ -67,6 +67,7 @@ namespace VF.Inspector {
             var worldLength = (worldEnd - worldStart).magnitude;
             var worldForward = (worldEnd - worldStart).normalized;
             var worldRight = Vector3.Cross(worldForward, Vector3.up).normalized;
+            if (worldRight.magnitude == 0) worldRight = Vector3.right;
             var worldUp = Vector3.Cross(worldRight, worldForward).normalized;
 
             var cylinderLength = worldLength - worldRadius;
