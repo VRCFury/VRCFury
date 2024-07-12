@@ -4,7 +4,7 @@ using UnityEngine;
 using VF.Model;
 
 namespace VF.Component {
-    [AddComponentMenu("VRCFury/VRCFury | SPS Socket")]
+    [AddComponentMenu("VRCFury/SPS Socket (VRCFury)")]
     // Temporarily public for SPS Configurator
     public class VRCFuryHapticSocket : VRCFuryComponent {
         public enum AddLight {
