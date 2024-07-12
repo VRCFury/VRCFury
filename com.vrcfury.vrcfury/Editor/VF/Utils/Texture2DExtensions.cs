@@ -29,6 +29,7 @@ namespace VF.Utils {
             texture.ForceReadable();
 
             if (needsResized) {
+                Debug.LogWarning($"VRCFury is resizing texture {original.name}");
                 var multiplier = ((double)maxSize) / Math.Max(texture.width, texture.height);
                 var targetWidth = (int)Math.Round(texture.width * multiplier);
                 var targetHeight = (int)Math.Round(texture.height * multiplier);
@@ -48,6 +49,7 @@ namespace VF.Utils {
             }
 
             if (needsCompressed) {
+                Debug.LogWarning($"VRCFury is compressing texture {original.name}");
                 var compressedTypeTest = original.Clone();
                 compressedTypeTest.Compress(false);
                 var autoCompressFormat = compressedTypeTest.format;

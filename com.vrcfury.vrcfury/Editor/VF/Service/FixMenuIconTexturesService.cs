@@ -24,9 +24,6 @@ namespace VF.Service {
                 if (original == null) return original;
                 if (cache.TryGetValue(original, out var cached)) return cached;
                 var newTexture = original.Optimize(forceCompression: true, maxSize: 256);
-                if (original != newTexture) {
-                    Debug.LogWarning($"VRCFury is resizing/compressing menu icon {original.name}");
-                }
                 return cache[original] = newTexture;
             }
             
