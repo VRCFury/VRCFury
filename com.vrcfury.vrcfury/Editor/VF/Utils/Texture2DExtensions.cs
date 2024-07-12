@@ -14,8 +14,16 @@ namespace VF.Utils {
         }
         
         public static Texture2D Optimize(this Texture2D original, bool forceCompression = true, int maxSize = 256) {
-            var needsResized = original.width > maxSize || original.height > maxSize;
-            
+            var multiplier = ((double)maxSize) / Math.Max(original.width, original.height);
+            if (multiplier > 1) multiplier = 1;
+
+            int MakeSafeSize(double size) {
+                return Math.Max(4, Mathf.ClosestPowerOfTwo((int)Math.Round(size)));
+            }
+            var targetWidth = MakeSafeSize(original.width * multiplier);
+            var targetHeight = MakeSafeSize(original.height * multiplier);
+            var needsResized = targetWidth != original.width || targetHeight != original.height;
+
 #if UNITY_2022_1_OR_NEWER
             var isCompressed = GraphicsFormatUtility.IsCompressedFormat(original.format);
 #else
@@ -29,10 +37,7 @@ namespace VF.Utils {
             texture.ForceReadable();
 
             if (needsResized) {
-                Debug.LogWarning($"VRCFury is resizing texture {original.name}");
-                var multiplier = ((double)maxSize) / Math.Max(texture.width, texture.height);
-                var targetWidth = (int)Math.Round(texture.width * multiplier);
-                var targetHeight = (int)Math.Round(texture.height * multiplier);
+                Debug.LogWarning($"VRCFury is resizing texture {AssetDatabase.GetAssetPath(original)} from {original.width}.{original.height} to {targetWidth}x{targetHeight}");
                 var renderTexture = RenderTexture.GetTemporary(targetWidth, targetHeight);
                 Graphics.Blit(texture, renderTexture);
 
@@ -49,10 +54,11 @@ namespace VF.Utils {
             }
 
             if (needsCompressed) {
-                Debug.LogWarning($"VRCFury is compressing texture {original.name}");
-                var compressedTypeTest = original.Clone();
+                Debug.LogWarning($"VRCFury is compressing texture {AssetDatabase.GetAssetPath(original)}");
+                var compressedTypeTest = new Texture2D(256, 256, original.format, false);
                 compressedTypeTest.Compress(false);
                 var autoCompressFormat = compressedTypeTest.format;
+                Debug.LogWarning($"Using type {autoCompressFormat}");
                 EditorUtility.CompressTexture(texture, autoCompressFormat, TextureCompressionQuality.Best);
             }
 
