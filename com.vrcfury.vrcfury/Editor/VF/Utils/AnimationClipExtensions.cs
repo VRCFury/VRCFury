@@ -221,6 +221,10 @@ namespace VF.Utils {
 
         public static void SetLooping(this AnimationClip clip, bool on) {
             var settings = AnimationUtility.GetAnimationClipSettings(clip);
+            if (settings.loopTime == on) return;
+            
+            var ext = GetExt(clip);
+            ext.changedFromOriginalSourceClip = true;
             settings.loopTime = on;
             AnimationUtility.SetAnimationClipSettings(clip, settings);
         }
