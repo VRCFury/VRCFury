@@ -372,7 +372,7 @@ namespace VF.Inspector {
             }
 
             Gizmos.color = Color.clear;
-            var gizmoStart = worldRoot + worldForward * worldRadius;
+            var gizmoStart = worldRoot;
             var gizmoEnd = worldEnd - worldForward * worldRadius;
             var gizmoCount = 5;
             for (var i = 0; i < gizmoCount; i++) {
