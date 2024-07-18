@@ -83,8 +83,6 @@ namespace VF.Service {
                 var weightOff = outState.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
                 weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                 weightOff.goalWeight = 0;
-                state.GetRaw().iKOnFeet = true;
-                outState.GetRaw().iKOnFeet = true;
             } else {
                 var weightOn = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
                 animatorLayerControlManager.Register(weightOn, layer);
