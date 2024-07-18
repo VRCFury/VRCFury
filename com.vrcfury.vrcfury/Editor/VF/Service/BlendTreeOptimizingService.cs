@@ -1,14 +1,13 @@
-using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
-using JetBrains.Annotations;
-using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
     [VFService]
@@ -17,31 +16,61 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ClipFactoryTrackingService clipFactoryTracking;
+        private ControllerManager fx => manager.GetFx();
         
         [FeatureBuilderAction(FeatureOrder.OptimizeBlendTrees)]
         public void Optimize() {
-            var fx = manager.GetFx();
+            var alwaysOneParams = GetAlwaysOneParams();
             foreach (var state in new AnimatorIterator.States().From(fx.GetRaw())) {
                 if (state.motion is BlendTree tree && clipFactoryTracking.Created(tree)) {
-                    Optimize(tree);
+                    Optimize(tree, alwaysOneParams);
                 }
             }
         }
 
-        private void Optimize(BlendTree tree) {
-            MergeSubtreesWithOneWeight(tree);
+        private ISet<string> GetAlwaysOneParams() {
+            var animatedParams = GetAnimatedParams();
+            return fx.GetRaw().parameters
+                .Where(p => p.type == AnimatorControllerParameterType.Float)
+                .Where(p => p.defaultFloat == 1)
+                .Where(p => !animatedParams.Contains(p.name))
+                .Select(p => p.name)
+                .ToImmutableHashSet();
+        }
+
+        private ISet<string> GetAnimatedParams() {
+            var animatedParams = new HashSet<string>();
+            var vrcControlled = manager.GetParams().GetRaw().parameters
+                .Select(p => p.name);
+            animatedParams.UnionWith(vrcControlled);
+            var driven = manager.GetAllUsedControllers()
+                .SelectMany(c => new AnimatorIterator.Behaviours().From(c.GetRaw()))
+                .OfType<VRCAvatarParameterDriver>()
+                .SelectMany(driver => driver.parameters.Select(p => p.name));
+            animatedParams.UnionWith(driven);
+            var aaps = fx.GetClips()
+                .SelectMany(clip => clip.GetFloatBindings())
+                .Where(b => b.GetPropType() == EditorCurveBindingType.Aap)
+                .Select(b => b.propertyName);
+            animatedParams.UnionWith(aaps);
+            return animatedParams;
+        }
+
+        private void Optimize(BlendTree tree, ISet<string> alwaysOneParams) {
+            foreach (var child in tree.children) {
+                if (child.motion is BlendTree t) Optimize(t, alwaysOneParams);
+            }
+
+            ClaimSubtreesWithOneChild(tree, alwaysOneParams);
+            MergeSubtreesWithOneWeight(tree, alwaysOneParams);
             MergeClipsWithSameWeight(tree);
         }
 
-        private void MergeSubtreesWithOneWeight([CanBeNull] Motion motion) {
-            if (!(motion is BlendTree tree)) return;
-            foreach (var child in tree.children) {
-                MergeSubtreesWithOneWeight(child.motion);
-            }
+        private void MergeSubtreesWithOneWeight(BlendTree tree, ISet<string> alwaysOneParams) {
             if (tree.blendType != BlendTreeType.Direct) return;
             if (tree.GetNormalizedBlendValues()) return;
             tree.RewriteChildren(child => {
-                if (child.directBlendParameter == manager.GetFx().One()
+                if (alwaysOneParams.Contains(child.directBlendParameter)
                     && child.motion is BlendTree childTree
                     && childTree.blendType == BlendTreeType.Direct
                     && !childTree.GetNormalizedBlendValues()
@@ -52,49 +81,78 @@ namespace VF.Service {
             });
         }
 
-        private void MergeClipsWithSameWeight([CanBeNull] Motion motion) {
-            if (!(motion is BlendTree tree)) return;
-            foreach (var child in tree.children) {
-                MergeClipsWithSameWeight(child.motion);
-            }
+        private void ClaimSubtreesWithOneChild(BlendTree tree, ISet<string> alwaysOneParams) {
+            tree.RewriteChildren(child => {
+                if (child.motion is BlendTree childTree
+                    && childTree.blendType == BlendTreeType.Direct
+                    && childTree.children.Length == 1
+                    && alwaysOneParams.Contains(childTree.children[0].directBlendParameter)
+                ) {
+                    child.motion = childTree.children[0].motion;
+                }
+                return new ChildMotion[] { child };
+            });
+        }
+
+        private void MergeClipsWithSameWeight(BlendTree tree) {
             if (tree.blendType != BlendTreeType.Direct) return;
             if (tree.GetNormalizedBlendValues()) return;
 
-            var firstClipByWeightParam = new Dictionary<string, AnimationClip>();
+            var children = tree.children;
+            var motions = children.Select(child => child.motion).ToList();
+            var clones = motions.Select(motion => {
+                if (!(motion is AnimationClip clip)) return null;
+                var clone = clip.Clone();
+                clone.name = $"{clip.name} (VRCF Flattened)";
+                return clone;
+            }).ToList();
 
-            tree.RewriteChildren(child => {
-                if (child.motion is AnimationClip clip) {
-                    if (firstClipByWeightParam.TryGetValue(child.directBlendParameter, out var firstClip)) {
-                        clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
-                            if (curve.IsFloat && curve.FloatCurve.keys.Length == 1 &&
-                                curve.FloatCurve.keys[0].time == 0) {
-                                var firstClipCurve = firstClip.GetFloatCurve(binding);
-                                if (firstClipCurve != null) {
-                                    // Merge curve into first clip's
-                                    firstClipCurve.keys = firstClipCurve.keys.Select(key => {
-                                        key.value += curve.FloatCurve.keys[0].value;
-                                        return key;
-                                    }).ToArray();
-                                    firstClip.SetCurve(binding, firstClipCurve);
-                                } else {
-                                    // Just shove it into the first clip
-                                    firstClip.SetCurve(binding, curve);
-                                }
+            var firstClipByWeightParam = new Dictionary<string, int>();
 
-                                firstClip.name = $"{clipFactory.GetPrefix()}/Flattened";
-                                return (binding, null, true);
-                            }
-
-                            return (binding, curve, false);
-                        }));
-                        if (!clip.GetAllBindings().Any()) {
-                            return new ChildMotion[] { };
-                        }
-                    } else {
-                        firstClipByWeightParam[child.directBlendParameter] = clip;
-                    }
+            for (var i = 0; i < children.Length; i++) {
+                var child = children[i];
+                if (!(child.motion is AnimationClip clip)) continue;
+                var param = child.directBlendParameter;
+                if (!firstClipByWeightParam.TryGetValue(param, out var firstClipI)) {
+                    firstClipByWeightParam[param] = i;
+                    continue;
                 }
 
+                var changed = false;
+                clones[i].Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                    if (curve.IsFloat && curve.FloatCurve.keys.Length == 1 &&
+                        curve.FloatCurve.keys[0].time == 0) {
+                        motions[firstClipI] = clones[firstClipI];
+                        var firstClip = clones[firstClipI];
+                        var firstClipCurve = firstClip.GetFloatCurve(binding);
+                        if (firstClipCurve != null) {
+                            // Merge curve into first clip's
+                            firstClipCurve.keys = firstClipCurve.keys.Select(key => {
+                                key.value += curve.FloatCurve.keys[0].value;
+                                return key;
+                            }).ToArray();
+                            firstClip.SetCurve(binding, firstClipCurve);
+                        } else {
+                            // Just shove it into the first clip
+                            firstClip.SetCurve(binding, curve);
+                        }
+
+                        changed = true;
+                        return (binding, null, true);
+                    }
+
+                    return (binding, curve, false);
+                }));
+
+                if (changed) motions[i] = clones[i];
+            }
+
+            var j = 0;
+            tree.RewriteChildren(child => {
+                child.motion = motions[j++];
+                if (child.motion is AnimationClip clip && !clip.GetAllBindings().Any()) {
+                    return new ChildMotion[] { };
+                }
                 return new ChildMotion[] { child };
             });
         }
