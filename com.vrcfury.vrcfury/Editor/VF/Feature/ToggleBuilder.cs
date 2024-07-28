@@ -184,6 +184,15 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         float outTime
     ) {
 
+        State originalInAction = null;
+
+        if (GetExclusiveTags().Count() > 0) {
+            originalInAction = new State();
+            foreach (var a in inAction.actions) {
+                originalInAction.actions.Add(a);
+            }
+        }
+
         foreach(var tag in GetExclusiveTags()) {
             var tagAction = new TagStateAction();
             tagAction.tag = tag;
@@ -235,7 +244,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                 clip = inClip.GetLastFrame();
             }
             
-            var outClip = model.simpleOutTransition ? inClip.Clone() : actionClipService.LoadState(onName + " Out", outAction, toggleFeature: this);
+            var outClip = model.simpleOutTransition ? (originalInAction == null ? inClip.Clone() : actionClipService.LoadState(onName + " Out", originalInAction, toggleFeature: this))  : actionClipService.LoadState(onName + " Out", outAction, toggleFeature: this);
             var outSpeed = model.simpleOutTransition ? -1 : 1;
             
             // Copy "object enabled" and "material" states to in and out clips if they don't already have them
