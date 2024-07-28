@@ -58,7 +58,7 @@ namespace VF.Service {
                 var state = layer.NewState(name);
                 var condition = input.IsGreaterThan(0);
                 offTransition.AddCondition(condition.Not());
-                idle.TransitionsTo(state).When(condition.And(lastState.IsLessThan(myNumber)));
+                idle.TransitionsTo(state).When(condition.And(lastState.IsNotEqualTo(myNumber)));
                 state.TransitionsToExit().When(fx.Always());
 
                 var lastStateDriver = state.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
