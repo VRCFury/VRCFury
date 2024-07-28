@@ -169,20 +169,20 @@ namespace VF.Inspector {
             [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
             static void DrawGizmo2(VRCFurySocketGizmo gizmo, GizmoType gizmoType) {
                 if (!gizmo.show) return;
-                DrawGizmo(gizmo.owner().TransformPoint(gizmo.pos), gizmo.owner().worldRotation * gizmo.rot, gizmo.type, "");
+                DrawGizmo(gizmo.owner().TransformPoint(gizmo.pos), gizmo.owner().worldRotation * gizmo.rot, gizmo.type, "", Selection.activeGameObject == gizmo.gameObject);
             }
         }
 
-        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, string name) {
+        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, string name, bool selected) {
             var orange = new Color(1f, 0.5f, 0);
             var isAndroid = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
 
             var discColor = orange;
             
-            var text = "Socket";
+            var text = "SPS Socket";
             if (!string.IsNullOrWhiteSpace(name)) text += $" '{name}'";
             if (isAndroid) {
-                text += " (SPS Disabled)\nThis is an android project!";
+                text += " (Deformation Disabled)\nThis is an android project!";
                 discColor = Color.red;
             } else if (type == VRCFuryHapticSocket.AddLight.Hole) {
                 text += " (Hole)\nPlug follows orange arrow";
@@ -191,19 +191,13 @@ namespace VF.Inspector {
             } else if (type == VRCFuryHapticSocket.AddLight.RingOneWay) {
                 text += " (One-Way Ring)\nPlug follows orange arrow";
             } else {
-                text += " (SPS disabled)";
+                text += " (Deformation disabled)";
                 discColor = Color.red;
             }
 
             var worldForward = worldRot * Vector3.forward;
-            VRCFuryGizmoUtils.WithHandles(() => {
-                Handles.color = discColor;
-                Handles.DrawWireDisc(worldPos, worldForward, 0.02f);
-            });
-            VRCFuryGizmoUtils.WithHandles(() => {
-                Handles.color = discColor;
-                Handles.DrawWireDisc(worldPos, worldForward, 0.04f);
-            });
+            VRCFuryGizmoUtils.DrawDisc(worldPos, worldForward, 0.02f, discColor);
+            VRCFuryGizmoUtils.DrawDisc(worldPos, worldForward, 0.04f, discColor);
             if (type == VRCFuryHapticSocket.AddLight.RingOneWay) {
                 VRCFuryGizmoUtils.DrawArrow(
                     worldPos + worldForward * 0.05f,
@@ -228,13 +222,16 @@ namespace VF.Inspector {
                     orange
                 );
             }
-            VRCFuryGizmoUtils.DrawText(
-                worldPos,
-                "\n" + text,
-                Color.gray,
-                true,
-                true
-            );
+
+            if (selected) {
+                VRCFuryGizmoUtils.DrawText(
+                    worldPos,
+                    "\n" + text,
+                    Color.gray,
+                    true,
+                    true
+                );
+            }
 
             // So that it's actually clickable
             Gizmos.color = Color.clear;
@@ -250,29 +247,22 @@ namespace VF.Inspector {
 
             var (lightType, localPosition, localRotation) = autoInfo;
             var localForward = localRotation * Vector3.forward;
-            // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
-            var localCapsuleRotation = localRotation * Quaternion.Euler(90,0,0);
 
             if (handTouchZoneSize != null) {
+                var worldStart = transform.TransformPoint(localPosition);
+                var worldForward = transform.TransformDirection(localForward);
                 var worldLength = handTouchZoneSize.Item1;
-                var localLength = worldLength / socket.transform.lossyScale.x;
+                var worldEnd = worldStart - worldForward * worldLength;
                 var worldRadius = handTouchZoneSize.Item2;
-                VRCFuryHapticPlugEditor.DrawCapsule(
-                    transform,
-                    localPosition + localForward * -(localLength / 2),
-                    localCapsuleRotation,
-                    worldLength,
-                    worldRadius
-                );
-                VRCFuryGizmoUtils.DrawText(
-                    transform.TransformPoint(localPosition + localForward * -(localLength / 2)),
-                    "Hand Touch Zone\n(should be INSIDE)",
-                    Color.red,
-                    true
+                VRCFuryGizmoUtils.DrawCapsule(
+                    worldStart,
+                    worldEnd,
+                    worldRadius,
+                    Color.gray
                 );
             }
 
-            DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket));
+            DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket), Selection.activeGameObject == socket.gameObject);
         }
 
         [CanBeNull]

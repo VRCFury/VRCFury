@@ -426,6 +426,9 @@ namespace VF.Builder.Haptics {
                     var type = match.Groups[1].ToString();
                     var name = match.Groups[2].ToString();
                     var keyword = match.Groups[3].ToString();
+                    if (keyword.EndsWith("0")) {
+                        keyword = keyword.Substring(0, keyword.Length - 1);
+                    }
                     output.Add($"#define SPS_STRUCT_{keyword}_TYPE_{type}");
                     output.Add($"#define SPS_STRUCT_{keyword}_NAME {name}");
                 }

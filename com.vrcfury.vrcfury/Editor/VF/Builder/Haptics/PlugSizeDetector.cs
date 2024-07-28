@@ -108,8 +108,9 @@ namespace VF.Builder.Haptics {
                 var mask = plug ? PlugMaskGenerator.GetMask(renderer, plug) : null;
                 var matsUsedByVert = new VFMultimapSet<int, int>();
                 var mesh = renderer.GetMesh();
+                var matSlotsInMesh = 0;
                 if (mesh != null) {
-                    var matCount = mesh.subMeshCount;
+                    var matCount = matSlotsInMesh = mesh.subMeshCount;
                     for (var matI = 0; matI < matCount; matI++) {
                         foreach (var vert in mesh.GetTriangles(matI)) {
                             matsUsedByVert.Put(vert, matI);
@@ -131,6 +132,12 @@ namespace VF.Builder.Haptics {
                         matsUsed.Put(renderer.owner(), matI);
                     }
                     allLocalVerts.Add(v);
+                }
+                // Mat slots in the renderer that are higher than the number of mats on the mesh reuse the same verts as the last mesh mat
+                if (matsUsed.Get(renderer.owner()).Contains(matSlotsInMesh-1)) {
+                    for (var i = matSlotsInMesh; i < renderer.sharedMaterials.Length; i++) {
+                        matsUsed.Put(renderer.owner(), i);
+                    }
                 }
             }
 

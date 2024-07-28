@@ -294,7 +294,7 @@ internal static class VRCFuryEditorUtils {
         } else {
             switch (prop.propertyType) {
                 case SerializedPropertyType.Vector4: {
-                    field = new Vector4Field { bindingPath = prop.propertyPath }.FlexShrink(1);
+                    field = new Vector4Field { bindingPath = prop.propertyPath };
                     break;
                 }
                 case SerializedPropertyType.Enum: {
@@ -303,7 +303,7 @@ internal static class VRCFuryEditorUtils {
                         prop.enumValueIndex,
                         formatSelectedValueCallback: formatEnum,
                         formatListItemCallback: formatEnum
-                    ) { bindingPath = prop.propertyPath }.FlexShrink(1);
+                    ) { bindingPath = prop.propertyPath };
                     break;
                 }
                 case SerializedPropertyType.Generic: {
@@ -362,6 +362,7 @@ internal static class VRCFuryEditorUtils {
             labelRow.Add(labelBox);
 
             field.style.flexGrow = 1;
+            field.style.flexShrink = 1;
             labelRow.Add(field);
 
             wrapper.Add(labelRow);
@@ -703,6 +704,37 @@ internal static class VRCFuryEditorUtils {
         var prms = new object[] { prop, null };
         method.Invoke(null, prms);
         return prms[1] as Type;
+    }
+
+    public class PercentSlider2 : BaseField<float> {
+        private readonly Slider slider;
+        private readonly FloatField text;
+
+        public PercentSlider2() : base(null, null) {
+            this.style.flexDirection = FlexDirection.Row;
+            slider = new Slider(0, 1).Margin(0).FlexShrink(1);
+            slider.style.marginRight = 5;
+            slider.RegisterValueChangedCallback(e => Changed(e.newValue));
+            this.Add(slider);
+            text = new FloatField().Margin(0).FlexBasis(30);
+            text.RegisterValueChangedCallback(e => Changed(e.newValue * 0.01f));
+            this.Add(text);
+        }
+
+        private void Changed(float newValue) {
+            value = Mathf.Clamp(newValue, 0, 1);
+        }
+
+        public override void SetValueWithoutNotify(float newValue) {
+            base.SetValueWithoutNotify(newValue);
+            slider.SetValueWithoutNotify(newValue);
+            text.SetValueWithoutNotify(newValue * 100);
+        }
+    }
+    public static VisualElement PercentSlider(SerializedProperty prop) {
+        var slider = new PercentSlider2();
+        slider.bindingPath = prop.propertyPath;
+        return slider;
     }
 }
     

@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -7,6 +10,7 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Hooks {
     internal static class AddComponentHook {
@@ -31,9 +35,20 @@ namespace VF.Hooks {
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly MethodInfo AddMenuItem = typeof(UnityEditor.Menu).GetMethod("AddMenuItem",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly MethodInfo GetMenuItems = typeof(UnityEditor.Menu).GetMethod("GetMenuItems",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static void Add(string path, string shortcut, bool @checked, int priority, Action execute, Func<bool> validate) =>
             AddMenuItem?.Invoke(null, new object[] { path, shortcut, @checked, priority, execute, validate });
         private static void Remove(string path) => RemoveMenuItem?.Invoke(null, new object[] { path });
+        private static IList<string> List(string path) {
+            if (GetMenuItems == null) return new string[] { };
+            var l = (IEnumerable)GetMenuItems.Invoke(null, new object[] { path, false, false });
+            return l.OfType<object>()
+                .Select(o => o.GetType().GetProperty("path")?.GetValue(o))
+                .NotNull()
+                .OfType<string>()
+                .ToList();
+        }
 
         private static void ResetAddedThisFrame() {
             addedThisFrame = false;
@@ -45,16 +60,30 @@ namespace VF.Hooks {
             EditorApplication.delayCall -= ResetAddedThisFrame;
             EditorApplication.delayCall += ResetAddedThisFrame;
 
-            Remove("Component/UI/Toggle");
-            Remove("Component/UI/Legacy/Dropdown");
-            Remove("Component/UI/Toggle Group");
+            if (GetMenuItems == null) {
+                Remove("Component/UI/Button");
+                Remove("Component/UI/Slider");
+                Remove("Component/UI/Toggle");
+                Remove("Component/UI/Legacy/Dropdown");
+                Remove("Component/UI/Toggle Group");
+            } else {
+                foreach (var path in List("Component/UI")) {
+                    Remove(path);
+                }
+                foreach (var path in List("Component/UI Toolkit")) {
+                    Remove(path);
+                }
+                foreach (var path in List("Component/Physics 2D")) {
+                    Remove(path);
+                }
+            }
 
             foreach (var feature in FeatureFinder.GetAllFeaturesForMenu()) {
                 var editorInst = (FeatureBuilder)Activator.CreateInstance(feature.Value);
                 var title = editorInst.GetEditorTitle();
                 if (title != null) {
                     Add(
-                        "Component/VRCFury/VRCFury | " + title,
+                        $"Component/VRCFury/{title} (VRCFury)",
                         "",
                         false,
                         0,

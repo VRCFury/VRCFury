@@ -418,7 +418,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                     prop.serializedObject.ApplyModifiedProperties();
                 });
 
-                advMenu.AddItem(new GUIContent("Use Slider Wheel"), sliderProp.boolValue, () => {
+                advMenu.AddItem(new GUIContent("Use a Slider (Radial)"), sliderProp.boolValue, () => {
                     sliderProp.boolValue = !sliderProp.boolValue;
                     invertRestLogicProp.boolValue = false;
                     prop.serializedObject.ApplyModifiedProperties();
@@ -583,21 +583,28 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             } else {
                 c = remoteSingle;
             }
-
-            return MakeTabbed("When toggle is enabled:", c);
-        }, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
-
-        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            
+            var output = new VisualElement();
             if (sliderProp.boolValue) {
                 var sliderOptions = new VisualElement();
-                sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("defaultSliderValue"), "Default value"));
-                sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("sliderInactiveAtZero"), "Zero is 'Off' (Advanced)", tooltip: "" +
-                    "When checked, the toggle will be considered to be entirely 'off' when the slider is at 0, meaning that NOTHING will be animated at 0." +
+                sliderOptions.Add(VRCFuryEditorUtils.Prop(null, "Default %", fieldOverride: VRCFuryEditorUtils.PercentSlider(prop.FindPropertyRelative("defaultSliderValue"))));
+                sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("sliderInactiveAtZero"), "Passthrough at 0% (Unusual)", tooltip: "" +
+                    "When checked, the slider will be bypassed when set to 0%, meaning that it will not control any properties at all, allowing the properties to resume" +
+                    " being controlled by some other toggle or animator layer." +
                     " It is unusual to check this, but is required if you want this slider to interact with Exclusive Tags or transitions."));
-                return MakeTabbed("This toggle is a slider", sliderOptions);
+                output.Add(MakeTabbed("This toggle is a slider (radial)", sliderOptions));
+
+                output.Add(MakeTabbed(
+                    "When slider is at 0%:",
+                    VRCFuryEditorUtils.WrappedLabel("The avatar will be like it is in the editor. You can override this with an Apply During Upload component.")
+                ));
+                output.Add(MakeTabbed("When slider is at 100%:", c));
+                return output;
+            } else {
+                output.Add(MakeTabbed("When toggle is enabled:", c));
             }
-            return new VisualElement();
-        }, sliderProp));
+            return output;
+        }, sliderProp, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
 
         // Tags
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
