@@ -230,6 +230,8 @@ namespace VF.Inspector {
         }
 
         public static VisualElement ConstraintWarning(UnityEngine.Component c, bool isSocket = false) {
+            var reg = new VrcRegistryConfig();
+            
             return VRCFuryEditorUtils.Debug(refreshElement: () => {
                 var output = new VisualElement();
                 var legacyRendererPaths = new List<string>();
@@ -280,7 +282,7 @@ namespace VF.Inspector {
                 }
                 if (lightPaths.Any()) {
                     var warning = VRCFuryEditorUtils.Warn(
-                        "This avatar still contains lights! Beware that these lights may interfere with SPS if they are enabled at the same time.\n\n" +
+                        "This avatar contains lights! Beware that these lights may interfere with SPS if they are enabled at the same time.\n\n" +
                         string.Join("\n", lightPaths)
                     );
                     output.Add(warning);
@@ -303,6 +305,25 @@ namespace VF.Inspector {
                             : "") +
                         " Check out https://vrcfury.com/sps/constraints for details.");
                     output.Add(warning);
+                }
+
+                if (reg.TryGet("VRC_AV_INTERACT_SELF", out var val) && val != 1) {
+                    output.Add(VRCFuryEditorUtils.Error(
+                        "You must enable 'Settings > Avatar > Avatar Interactions > Avatar Self Interact' in the VRChat settings" +
+                        " for SPS to work properly."
+                    ));
+                }
+                if (reg.TryGet("VRC_AV_INTERACT_LEVEL", out var val2) && val2 != 2) {
+                    output.Add(VRCFuryEditorUtils.Warn(
+                        "You do not have 'Settings > Avatar > Avatar Interactions > Avatar Allowed to Interact' set to 'Everyone' in the VRChat settings." +
+                        " This may prevent SPS from working properly with other players."
+                    ));
+                }
+                if (reg.TryGet("PIXEL_LIGHT_COUNT", out var val3) && val3 != 3) {
+                    output.Add(VRCFuryEditorUtils.Warn(
+                        "Your VRChat 'Pixel Light Count' setting is not set to HIGH. This may cause SPS to work improperly in some worlds." +
+                        " Please set 'Settings > Graphics > Advanced > Pixel Light Count' to 'High' in the VRChat settings."
+                    ));
                 }
 
                 return output;
