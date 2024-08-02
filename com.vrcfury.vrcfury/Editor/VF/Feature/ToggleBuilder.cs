@@ -365,7 +365,6 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                 var pos = Event.current.mousePosition;
                 
                 advMenu.AddItem(new GUIContent("Select Menu Folder"), false, () => {
-                    var pathProp = prop.FindPropertyRelative("name");
                     MoveMenuItemBuilder.SelectButton(
                         avatarObject,
                         true,
