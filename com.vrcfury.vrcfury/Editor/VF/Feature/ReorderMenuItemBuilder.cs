@@ -3,6 +3,7 @@ using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Feature {
     internal class ReorderMenuItemBuilder : FeatureBuilder<ReorderMenuItem> {
@@ -13,7 +14,10 @@ namespace VF.Feature {
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info("This feature will change the position of a menu item within its folder."));
-            content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("path"), "Menu Item Path"));
+
+            var pathProp = prop.FindPropertyRelative("path");
+            content.Add(MoveMenuItemBuilder.SelectButton(avatarObject, false, pathProp));
+
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("position"), "New Position",
                 tooltip: "This is the position that you want to move the menu item to.\n\nExamples:\n" +
                          "0 = 'First' (Top Right)\n" +

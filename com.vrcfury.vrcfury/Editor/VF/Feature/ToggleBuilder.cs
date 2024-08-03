@@ -406,12 +406,25 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         var flex = new VisualElement().Row();
         content.Add(flex);
 
-        flex.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path", tooltip: menuPathTooltip).FlexGrow(1));
+        var pathProp = prop.FindPropertyRelative("name");
+        flex.Add(VRCFuryEditorUtils.Prop(pathProp, "Menu Path", tooltip: menuPathTooltip).FlexGrow(1));
 
         var button = new Button()
             .Text("Options")
             .OnClick(() => {
                 var advMenu = new GenericMenu();
+                var pos = Event.current.mousePosition;
+                
+                advMenu.AddItem(new GUIContent("Select Menu Folder"), false, () => {
+                    MoveMenuItemBuilder.SelectButton(
+                        avatarObject,
+                        true,
+                        pathProp,
+                        append: () => MoveMenuItemBuilder.GetLastMenuSlug(pathProp.stringValue, "New Toggle"),
+                        immediate: true,
+                        pos: pos
+                    );
+                });
 
                 advMenu.AddItem(new GUIContent("Saved Between Worlds"), savedProp.boolValue, () => {
                     savedProp.boolValue = !savedProp.boolValue;

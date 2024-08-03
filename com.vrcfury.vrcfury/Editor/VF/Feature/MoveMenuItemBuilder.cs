@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -24,81 +25,101 @@ namespace VF.Feature {
             var fromPath = prop.FindPropertyRelative("fromPath");
             var toPath = prop.FindPropertyRelative("toPath");
             
-            {
-                var row = new VisualElement().Row();
-                row.Add(VRCFuryEditorUtils.Prop(fromPath, "From Path").FlexGrow(1));
-                void Apply(string path) {
-                    fromPath.stringValue = path;
-                    fromPath.serializedObject.ApplyModifiedProperties();
-                }
-                var selectButton = new Button(() => SelectButtonPress(false, Apply)) { text = "Select" };
-                row.Add(selectButton);
-                content.Add(row);
-            }
-            {
-                var row = new VisualElement().Row();
-                row.Add(VRCFuryEditorUtils.Prop(toPath, "To Path").FlexGrow(1));
-                void Apply(string path) {
-                    var fromItemName = fromPath.stringValue
-                        .Replace("\\/", "SLAAASH")
-                        .Split('/')
-                        .Last()
-                        .Replace("SLAAASH", "\\/");
-                    if (path != "") path += "/";
-                    path += fromItemName;
-                    toPath.stringValue = path;
-                    toPath.serializedObject.ApplyModifiedProperties();
-                }
-                var selectButton = new Button(() => SelectButtonPress(true, Apply)) { text = "Select" };
-                row.Add(selectButton);
-                content.Add(row);
-            }
-            
+            content.Add(SelectButton(avatarObject, false, fromPath, label: "From Path"));
+            content.Add(SelectButton(avatarObject, true, toPath, label: "To Path", append: () => {
+                return GetLastMenuSlug(fromPath.stringValue, "New Thing");
+            }));
+
             return content;
         }
-        
-        private void SelectButtonPress(bool foldersOnly, Action<string> apply) {
-            if (avatarObject == null) return;
 
-            var controlPaths = new List<IList<string>>();
-            MenuEstimator.Estimate(avatarObject).GetRaw().ForEachMenu(ForEachItem: (control, path) => {
-                if (!foldersOnly || control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
-                    controlPaths.Add(path);
+        public static string GetLastMenuSlug(string path, string def) {
+            var last = path
+                .Replace("\\/", "SLAAASH")
+                .Split('/')
+                .Last()
+                .Replace("SLAAASH", "\\/");
+            if (last == "") return def;
+            return last;
+        }
+
+        public static VisualElement SelectButton(
+            [CanBeNull] VFGameObject avatarObject,
+            bool foldersOnly,
+            SerializedProperty prop,
+            string label = "Menu Path",
+            Func<string> append = null,
+            string selectLabel = "Select",
+            string tooltip = null,
+            bool immediate = false,
+            Vector2? pos = null
+        ) {
+            void Apply(string path) {
+                if (append != null) {
+                    if (path != "") path += "/";
+                    path += append();
                 }
-                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
-            });
-            string PathToString(IList<string> path) {
-                return string.Join("/", path.Select(p => p.Replace("/", "\\/")));
-            }
-            void AddItem(VrcfSearchWindow.Group group, IList<string> prefix) {
-                var children = controlPaths
-                    .Where(path => path.Count == prefix.Count + 1)
-                    .Where(path => prefix.Select((segment, i) => path[i] == segment).All(c => c))
-                    .ToList();
-                if (prefix.Count == 0) {
-                    if (foldersOnly) {
-                        group.Add("<Move to root folder>", "");
-                    }
-                    foreach (var child in children) {
-                        AddItem(group, child);
-                    }
-                } else {
-                    if (children.Count > 0) {
-                        var subGroup = group.AddGroup(prefix.Last());
-                        subGroup.Add("<Select this folder>", PathToString(prefix));
-                        foreach (var child in children) {
-                            AddItem(subGroup, child);
-                        }
-                    } else {
-                        group.Add(prefix.Last(), PathToString(prefix));
-                    }
-                }
+                prop.stringValue = path;
+                prop.serializedObject.ApplyModifiedProperties();
             }
             
-            var window = new VrcfSearchWindow("Avatar Menu Items");
-            AddItem(window.GetMainGroup(), new string[] { });
+            void OnClick() {
+                if (avatarObject == null) return;
 
-            window.Open(apply);
+                var controlPaths = new List<IList<string>>();
+                MenuEstimator.Estimate(avatarObject).GetRaw().ForEachMenu(ForEachItem: (control, path) => {
+                    if (!foldersOnly || control.type == VRCExpressionsMenu.Control.ControlType.SubMenu) {
+                        controlPaths.Add(path);
+                    }
+
+                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                });
+
+                string PathToString(IList<string> path) {
+                    return string.Join("/", path.Select(p => p.Replace("/", "\\/")));
+                }
+
+                void AddItem(VrcfSearchWindow.Group group, IList<string> prefix) {
+                    var children = controlPaths
+                        .Where(path => path.Count == prefix.Count + 1)
+                        .Where(path => prefix.Select((segment, i) => path[i] == segment).All(c => c))
+                        .ToList();
+                    if (prefix.Count == 0) {
+                        if (foldersOnly) {
+                            group.Add("<Select this folder>", "");
+                        }
+
+                        foreach (var child in children) {
+                            AddItem(group, child);
+                        }
+                    } else {
+                        if (children.Count > 0) {
+                            var subGroup = group.AddGroup(prefix.Last());
+                            subGroup.Add("<Select this folder>", PathToString(prefix));
+                            foreach (var child in children) {
+                                AddItem(subGroup, child);
+                            }
+                        } else {
+                            group.Add(prefix.Last(), PathToString(prefix));
+                        }
+                    }
+                }
+
+                var window = new VrcfSearchWindow("Avatar Menu Items");
+                AddItem(window.GetMainGroup(), new string[] { });
+
+                window.Open(Apply, pos);
+            }
+
+            if (immediate) {
+                OnClick();
+                return null;
+            }
+
+            var row = new VisualElement().Row();
+            row.Add(VRCFuryEditorUtils.Prop(prop, label, tooltip: tooltip).FlexGrow(1));
+            row.Add(new Button(OnClick) { text = selectLabel });
+            return row;
         }
 
         public override bool AvailableOnRootOnly() {
