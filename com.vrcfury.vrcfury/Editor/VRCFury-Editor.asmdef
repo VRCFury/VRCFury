@@ -22,6 +22,7 @@
         "VRC.Dynamics.dll",
         "VRC.SDK3.Dynamics.PhysBone.dll",
         "VRC.SDK3.Dynamics.Contact.dll",
+        "VRC.SDK3.Dynamics.Constraint.dll",
         "VRCSDKBase-Editor.dll"
     ],
     "autoReferenced": false,
@@ -51,6 +52,11 @@
             "name": "com.vrchat.base",
             "expression": "3.5.2",
             "define": "VRCSDK_HAS_HEAD_CHOP"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.7.0-aa",
+            "define": "VRCSDK_HAS_VRCCONSTRAINTS"
         }
     ],
     "noEngineReferences": false

@@ -16,6 +16,7 @@ using VF.Menu;
 using VF.Service;
 using VF.Utils;
 using VRC.Dynamics;
+using VRC.SDKBase.Validation.Performance;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
@@ -296,7 +297,9 @@ namespace VF.Inspector {
                     );
                     output.Add(warning);
                 }
-                if (c.gameObject.asVf().GetComponentsInSelfAndParents<IConstraint>().Length > 0) {
+
+                var inConstraints = c.owner().GetConstraints(true).Any();
+                if (inConstraints) {
                     var warning = VRCFuryEditorUtils.Warn(
                         "This SPS component is used within a Constraint! " +
                         "AVOID using SPS within constraints if at all possible. " +
