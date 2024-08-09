@@ -501,7 +501,7 @@ namespace VF.Inspector {
 
                             try {
                                 if (mat == null) return null;
-                                if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return mat;
+                                if (!BuildTargetUtils.IsDesktop()) return mat;
 
                                 if (plug.enableSps) {
                                     var copy = mat.Clone();

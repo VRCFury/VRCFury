@@ -33,7 +33,7 @@ namespace VF.Service {
         [CanBeNull]
         public VFAFloat Get(VFGameObject obj) {
             var fx = manager.GetFx();
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
+            if (!BuildTargetUtils.IsDesktop()) {
                 return null;
             }
 

@@ -29,7 +29,7 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.WorldConstraintBuilder)]
         public void ApplyMove() {
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
+            if (!BuildTargetUtils.IsDesktop()) {
                 return;
             }
 

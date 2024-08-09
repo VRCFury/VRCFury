@@ -49,7 +49,7 @@ namespace VF.Feature {
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
                     PhysboneUtils.RemoveFromPhysbones(plug.owner());
-                    if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) continue;
+                    if (!BuildTargetUtils.IsDesktop()) continue;
                     var bakeInfo = VRCFuryHapticPlugEditor.Bake(
                         plug,
                         hapticContacts,
@@ -161,7 +161,7 @@ namespace VF.Feature {
                         var plusRoot = GameObjects.Create("SpsPlus", bakeRoot);
                         plusRoot.active = false;
                         plusRoot.worldScale = Vector3.one;
-                        if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
+                        if (BuildTargetUtils.IsDesktop()) {
                             var p = plusRoot.AddComponent<ScaleConstraint>();
                             p.AddSource(new ConstraintSource() {
                                 sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
@@ -220,7 +220,7 @@ namespace VF.Feature {
                     if (tipLightOnClip != null) {
                         var tip = GameObjects.Create("LegacyDpsTip", bakeRoot);
                         tip.active = false;
-                        if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
+                        if (BuildTargetUtils.IsDesktop()) {
                             var light = tip.AddComponent<Light>();
                             light.type = LightType.Point;
                             light.color = Color.black;

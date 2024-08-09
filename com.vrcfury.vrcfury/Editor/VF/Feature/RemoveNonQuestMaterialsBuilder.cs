@@ -14,7 +14,7 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.RemoveNonQuestMaterials)]
         public void Apply() {
-            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
+            if (BuildTargetUtils.IsDesktop()) {
                 return;
             }
 
@@ -54,10 +54,10 @@ namespace VF.Feature {
                 var sorted = removedMats.OrderBy(a => a.Length).Take(10).ToArray();
                 var more = removedMats.Count - sorted.Length;
                 var moreText = more > 0 ? $"\n... and {more} more" : "";
-                EditorUtility.DisplayDialog("Invalid Android Materials", 
-                                            "You are currently building an avatar for Android and are using shaders that are not mobile compatible. " + 
-                                            "You have likely switched to Android mode by mistake and simply need to switch back to Windows mode using the VRChat SDK Control Panel. " + 
-                                            "If you have not switched by mistake and want to build for Android, you will need to change your materials to use shaders found in VRChat/Mobile.\n" +
+                EditorUtility.DisplayDialog("Invalid Mobile Materials", 
+                                            "You are currently building an avatar for Android/Quest/iOS and are using shaders that are not mobile compatible. " + 
+                                            "You have likely switched build target by mistake and simply need to switch back to Windows mode using the VRChat SDK Control Panel. " + 
+                                            "If you have not switched by mistake and want to build for mobile, you will need to change your materials to use shaders found in VRChat/Mobile.\n" +
                                             "\n" +
                                             string.Join("\n", sorted) + moreText, 
                                             "OK" );

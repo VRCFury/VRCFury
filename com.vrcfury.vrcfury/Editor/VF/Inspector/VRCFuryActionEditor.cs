@@ -50,7 +50,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 androidActive.boolValue = false;
                 prop.serializedObject.ApplyModifiedProperties();
             }, desktopActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
-            e.menu.AppendAction("Android Only", a => {
+            e.menu.AppendAction("Quest+Android+iOS Only", a => {
                 androidActive.boolValue = !androidActive.boolValue;
                 desktopActive.boolValue = false;
                 prop.serializedObject.ApplyModifiedProperties();
@@ -71,7 +71,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             }
             
             if (desktopActive.boolValue) AddFlag("Desktop Only");
-            if (androidActive.boolValue) AddFlag("Android Only");
+            if (androidActive.boolValue) AddFlag("Quest+Android+iOS Only");
 
             return row;
         }, desktopActive, androidActive));
