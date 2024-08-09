@@ -22,9 +22,10 @@ namespace VF.Service {
      */
     [VFService]
     internal class UpgradeToVrcConstraintsService {
+#if VRCSDK_HAS_VRCCONSTRAINTS
         [VFAutowired] private readonly ClipRewriteService clipRewriteService;
         [VFAutowired] private readonly GlobalsService globals;
-        
+
         [FeatureBuilderAction(FeatureOrder.UpgradeToVrcConstraints)]
         public void Apply() {
             // TODO: Remove this conditional entirely and always upgrade once VRCConstraints are usable in the game live branch
@@ -80,5 +81,6 @@ namespace VF.Service {
             var unityConstraints = globals.avatarObject.GetComponentsInSelfAndChildren<IConstraint>().ToArray();
             upgradeConstraintComponents(unityConstraints, avatarDescriptor, false);
         }
+#endif
     }
 }
