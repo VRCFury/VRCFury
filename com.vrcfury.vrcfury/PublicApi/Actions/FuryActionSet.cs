@@ -40,5 +40,12 @@ namespace com.vrcfury.api.Actions {
             a.blendShapeValue = value;
             s.actions.Add(a);
         }
+
+        public void AddSetFXFloat(string name, float value) {
+            var a = new FxFloatAction();
+            a.name = name;
+            a.value = value;
+            s.actions.Add(a);
+        }
     }
 }

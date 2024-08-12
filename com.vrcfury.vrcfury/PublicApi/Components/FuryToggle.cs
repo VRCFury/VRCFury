@@ -27,6 +27,10 @@ namespace com.vrcfury.api.Components {
         public void SetDefaultOn() {
             c.defaultOn = true;
         }
+
+        public void SetSaved() {
+            c.saved = true;
+        }
         
         public void SetExclusiveOffState() {
             c.exclusiveOffState = true;
@@ -36,6 +40,11 @@ namespace com.vrcfury.api.Components {
             c.enableExclusiveTag = true;
             if (!string.IsNullOrEmpty(c.exclusiveTag)) c.exclusiveTag += ",";
             c.exclusiveTag += tag;
+        }
+
+        public void SetGlobalParameter(string globalParameter) {
+            c.useGlobalParam = true;
+            c.globalParam = globalParameter;
         }
 
         public FuryActionSet GetActions() {
