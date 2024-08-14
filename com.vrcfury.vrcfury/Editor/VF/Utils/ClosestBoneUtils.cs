@@ -1,9 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Animations;
 using VF.Builder;
 using VF.Model;
 using VF.Model.Feature;
@@ -11,9 +9,9 @@ using VF.Service;
 
 namespace VF.Utils {
     internal static class ClosestBoneUtils {
-        private static Dictionary<VFGameObject, Result> resultCache
+        private static readonly Dictionary<VFGameObject, Result> resultCache
             = new Dictionary<VFGameObject, Result>();
-        private static Dictionary<VFGameObject, List<ArmatureLink>> armatureLinkCache
+        private static readonly Dictionary<VFGameObject, List<ArmatureLink>> armatureLinkCache
             = new Dictionary<VFGameObject, List<ArmatureLink>>();
 
         private class Result {
@@ -84,19 +82,13 @@ namespace VF.Utils {
                 }
                 
                 if (followConstraints) {
-                    Transform foundConstraint = null;
-                    foreach (var constraint in current.GetComponents<IConstraint>()) {
-                        if (!(constraint is ParentConstraint) && !(constraint is PositionConstraint)) continue;
-                        if (constraint.sourceCount == 0) continue;
-                        var source = constraint.GetSource(0).sourceTransform;
-                        if (source != null && !alreadyChecked.Contains(source)) {
-                            foundConstraint = source;
-                            break;
-                        }
-                    }
-
-                    if (foundConstraint) {
-                        current = foundConstraint;
+                    var positionTo = current.GetConstraints()
+                        .Where(c => c.IsParent() || c.IsPosition())
+                        .Select(c => c.GetFirstSource())
+                        .NotNull()
+                        .FirstOrDefault();
+                    if (positionTo != null && !alreadyChecked.Contains(positionTo)) {
+                        current = positionTo;
                         continue;
                     }
                 }

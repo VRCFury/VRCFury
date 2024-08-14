@@ -11,6 +11,7 @@ using UnityEditor.Rendering;
 using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Inspector;
+using VF.Utils;
 
 namespace VF.Builder.Haptics {
     internal static class SpsPatcher {
@@ -22,10 +23,13 @@ namespace VF.Builder.Haptics {
                 var renderQueue = mat.renderQueue;
                 PatchUnsafe(mat, keepImports);
                 mat.renderQueue = renderQueue;
-            } catch(SpsErrorMatException) {
-                throw new SneakyException(
-                    $"Your avatar is using a material ({mat.name}) that couldn't load properly.\n\n" +
-                    $"The shader used by this material may be broken or out of date in your project. Ask the creator of this asset what shader and version should be used.");
+            } catch(SpsErrorMatException e) {
+                var msg = $"Your avatar is using a material ({mat.name}) that couldn't load properly.\n\n" +
+                          $"The shader used by this material may be broken or out of date in your project. Ask the creator of this asset what shader and version should be used.";
+                if (e.Message != null) {
+                    msg += "\n\n" + e.Message;
+                }
+                throw new SneakyException(msg);
             } catch (Exception e) {
                 throw new Exception(
                     "Failed to patch shader with SPS. Report this on the VRCFury discord. Maybe this shader isn't supported yet.\n\n" +
@@ -49,6 +53,19 @@ namespace VF.Builder.Haptics {
             public int patchedPrograms;
         }
         private static PatchResult PatchUnsafe(Shader shader, bool keepImports, string parentHash = null) {
+            var testMat = new Material(shader);
+            VrcfObjectFactory.Register(testMat);
+            for (int i = 0; i < testMat.passCount; i++) {
+                ShaderUtil.CompilePass(testMat, i, true);
+            }
+
+            if (ShaderUtil.ShaderHasError(shader)) {
+                var error = ShaderUtil
+                    .GetShaderMessages(shader)
+                    .First(x => x.severity == ShaderCompilerMessageSeverity.Error);
+                throw new SpsErrorMatException($"The vanilla shader at {AssetDatabase.GetAssetPath(shader)} has an internal error:\n\n" + error.file+":"+error.line+" "+error.message);
+            }
+            
             var pathToSps = GetPathToSps();
             var (contents,isBuiltIn) = ReadFile(shader);
 

@@ -39,7 +39,7 @@ namespace VF.Service {
 
         private VFGameObject MakeFakeHead() {
             var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(manager.AvatarObject, HumanBodyBones.Head);
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
+            if (!BuildTargetUtils.IsDesktop()) {
                 return head;
             }
 

@@ -66,9 +66,9 @@ namespace VF.Service {
 
             var actions = state.actions.Where(action => {
                 if (action.desktopActive || action.androidActive) {
-                    var isAndroid = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
-                    if (isAndroid && !action.androidActive) return false;
-                    if (!isAndroid && !action.desktopActive) return false;
+                    var isDesktop = BuildTargetUtils.IsDesktop();
+                    if (!isDesktop && !action.androidActive) return false;
+                    if (isDesktop && !action.desktopActive) return false;
                 }
                 return true;
             }).ToArray();

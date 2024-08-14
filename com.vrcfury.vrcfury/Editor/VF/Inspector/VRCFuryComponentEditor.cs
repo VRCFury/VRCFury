@@ -107,11 +107,18 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
                 var warning = new VisualElement();
 
-                if (!editingPrefab && c.gameObject.asVf().GetComponentInSelfOrParent<VRCAvatarDescriptor>() == null) {
+                var descriptors = c.gameObject.asVf().GetComponentsInSelfAndParents<VRCAvatarDescriptor>();
+                if (!editingPrefab && !descriptors.Any()) {
                     warning.Add(VRCFuryEditorUtils.Error(
                         "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
                         "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
                         "object, and not just alongside it in the scene."));
+                }
+
+                if (descriptors.Length > 1) {
+                    warning.Add(VRCFuryEditorUtils.Error(
+                        "There are multiple avatar descriptors in this hierarchy. Each avatar should only have one avatar descriptor on the avatar root." +
+                        " This may cause issues in this inspector or during your avatar build.\n\n" + string.Join("\n", descriptors.Select(d => d.owner().GetPath()))));
                 }
 
                 var hasDelete = v is VRCFury z && z.GetAllFeatures().OfType<DeleteDuringUpload>().Any();

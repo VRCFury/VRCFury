@@ -31,7 +31,7 @@ namespace VF.Service {
             bool useHipAvoidance = true
         ) {
             var child = GameObjects.Create(objName, obj);
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return;
+            if (!BuildTargetUtils.IsDesktop()) return;
             var sender = child.AddComponent<VRCContactSender>();
             sender.position = pos;
             sender.radius = radius;
@@ -80,7 +80,7 @@ namespace VF.Service {
             }
 
             var fx = manager.GetFx();
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return fx.Zero();
+            if (!BuildTargetUtils.IsDesktop()) return fx.Zero();
 
             if (party == HapticUtils.ReceiverParty.Both) {
                 if (!usePrefix) throw new Exception("Cannot create a 'Both' receiver without param prefix");

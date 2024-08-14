@@ -13,34 +13,35 @@ using VF.Builder.Exceptions;
 
 namespace VF.Updater {
     internal static class UpdateMenuItem {
-        private const string updateName = "Tools/VRCFury/Update VRCFury";
-        private const int updatePriority = 1000;
-        private const string removeName = "Tools/VRCFury/Uninstall VRCFury";
-        private const int removePriority = 1001;
         
         private static readonly HttpClient HttpClient = new HttpClient();
 
-        public static bool IsVrcfuryALocalPackage() {
-            return Directory.Exists("Packages/com.vrcfury.vrcfury") &&
-                   Path.GetFullPath("Packages/com.vrcfury.vrcfury").StartsWith(Path.GetFullPath("Packages"));
+        private static readonly Lazy<bool> shouldShow = new Lazy<bool>(() => {
+            var vpmManifest = "Packages/vpm-manifest.json";
+            if (File.Exists(vpmManifest) && File.ReadLines(vpmManifest).Any(line => line.Contains("vrcfury"))) {
+                // Installed using VCC
+                return false;
+            }
+            var unityManifest = "Packages/manifest.json";
+            if (File.Exists(unityManifest) && File.ReadLines(unityManifest).Any(line => line.Contains("vrcfury"))) {
+                // Installed from disk for dev
+                return false;
+            }
+            return true;
+        });
+        public static bool ShouldShow() {
+            return shouldShow.Value;
         }
 
-        [MenuItem(updateName, priority = updatePriority)]
         public static void Upgrade() {
             Task.Run(() => VRCFExceptionUtils.ErrorDialogBoundaryAsync(UpgradeUnsafe));
         }
 
         private static async Task UpgradeUnsafe() {
-            var vpmManifest = "Packages/vpm-manifest.json";
-            if (File.Exists(vpmManifest) && File.ReadLines(vpmManifest).Any(line => line.Contains("vrcfury"))) {
+            if (!ShouldShow()) {
                 throw new Exception(
                     "VRCFury was installed using the VRChat Creator Companion. " +
                     "Please update VRCFury in the Creator Companion app, in the Manage Project section.");
-            }
-
-            if (!IsVrcfuryALocalPackage()) {
-                throw new Exception(
-                    "VRCFury is not installed as a local package, and thus cannot update itself.");
             }
             
             Log("Downloading installer ...");

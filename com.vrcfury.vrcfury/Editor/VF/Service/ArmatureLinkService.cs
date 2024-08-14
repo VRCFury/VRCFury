@@ -15,7 +15,6 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Utils;
-using Object = UnityEngine.Object;
 using Random = System.Random;
 
 namespace VF.Service {
@@ -189,8 +188,8 @@ namespace VF.Service {
                 }
 
                 // Rip out parent constraints, since they were likely there from an old pre-vrcfury merge process
-                foreach (var c in propBone.GetComponents<ParentConstraint>()) {
-                    Object.DestroyImmediate(c);
+                foreach (var c in propBone.GetConstraints().Where(c => c.IsParent())) {
+                    c.Destroy();
                     AddDebugInfo("An existing parent constraint component was removed, because it was probably a leftover from before Armature Link");
                 }
 
@@ -571,13 +570,13 @@ namespace VF.Service {
          * Detect if this happens, and return the proper child bone instead.
          */
         private static VFGameObject GetMarshmallowChild(VFGameObject orig) {
-            var scaleConstraint = orig.GetComponent<ScaleConstraint>();
+            var scaleConstraint = orig.GetConstraints().FirstOrDefault(c => c.IsScale());
             if (scaleConstraint == null) return null;
-            if (scaleConstraint.sourceCount != 1) return null;
-            var source = scaleConstraint.GetSource(0);
-            if (source.sourceTransform == null) return null;
-            var scaleTargetInMarshmallow = source.sourceTransform
-                .asVf()
+            var sources = scaleConstraint.GetSources();
+            if (sources.Length != 1) return null;
+            var source = sources[0];
+            if (source == null) return null;
+            var scaleTargetInMarshmallow = source
                 .GetSelfAndAllParents()
                 .Any(t => t.name.ToLower().Contains("marshmallow"));
             if (!scaleTargetInMarshmallow) return null;

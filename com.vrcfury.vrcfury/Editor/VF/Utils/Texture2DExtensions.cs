@@ -14,22 +14,29 @@ namespace VF.Utils {
         }
         
         public static Texture2D Optimize(this Texture2D original, bool forceCompression = true, int maxSize = 256) {
-            var multiplier = ((double)maxSize) / Math.Max(original.width, original.height);
-            if (multiplier > 1) multiplier = 1;
-
-            int MakeSafeSize(double size) {
-                return Math.Max(4, Mathf.ClosestPowerOfTwo((int)Math.Round(size)));
-            }
-            var targetWidth = MakeSafeSize(original.width * multiplier);
-            var targetHeight = MakeSafeSize(original.height * multiplier);
-            var needsResized = targetWidth != original.width || targetHeight != original.height;
-
+            var needsCompressed = false;
+            if (forceCompression) {
 #if UNITY_2022_1_OR_NEWER
-            var isCompressed = GraphicsFormatUtility.IsCompressedFormat(original.format);
+                var isCompressed = GraphicsFormatUtility.IsCompressedFormat(original.format);
 #else
-            var isCompressed = GraphicsFormatUtility.IsCompressedFormat(GraphicsFormatUtility.GetGraphicsFormat(original.format, true));
+                var isCompressed = GraphicsFormatUtility.IsCompressedFormat(GraphicsFormatUtility.GetGraphicsFormat(original.format, true));
 #endif
-            var needsCompressed = forceCompression && !isCompressed;
+                needsCompressed = !isCompressed;
+            }
+
+            var outputWidth = original.width;
+            var outputHeight = original.height;
+            if (needsCompressed || outputWidth > maxSize || outputHeight > maxSize) {
+                var multiplier = ((double)maxSize) / Math.Max(original.width, original.height);
+                if (multiplier > 1) multiplier = 1;
+
+                int MakeSafeSize(double size) {
+                    return Math.Max(4, Mathf.ClosestPowerOfTwo((int)Math.Round(size)));
+                }
+                outputWidth = MakeSafeSize(original.width * multiplier);
+                outputHeight = MakeSafeSize(original.height * multiplier);
+            }
+            var needsResized = outputWidth != original.width || outputHeight != original.height;
 
             if (!needsResized && !needsCompressed) return original;
             
@@ -37,16 +44,16 @@ namespace VF.Utils {
             texture.ForceReadable();
 
             if (needsResized) {
-                Debug.LogWarning($"VRCFury is resizing texture {AssetDatabase.GetAssetPath(original)} from {original.width}.{original.height} to {targetWidth}x{targetHeight}");
-                var renderTexture = RenderTexture.GetTemporary(targetWidth, targetHeight);
+                Debug.LogWarning($"VRCFury is resizing texture {AssetDatabase.GetAssetPath(original)} from {original.width}.{original.height} to {outputWidth}x{outputHeight}");
+                var renderTexture = RenderTexture.GetTemporary(outputWidth, outputHeight);
                 Graphics.Blit(texture, renderTexture);
 
-                var scaled = new Texture2D(targetWidth, targetHeight, TextureFormat.RGBA32, false);
+                var scaled = new Texture2D(outputWidth, outputHeight, TextureFormat.RGBA32, false);
                 VrcfObjectFactory.Register(scaled);
                 scaled.filterMode = FilterMode.Bilinear;
                 scaled.wrapMode = TextureWrapMode.Clamp;
                 RenderTexture.active = renderTexture;
-                scaled.ReadPixels(new Rect(0, 0, targetWidth, targetHeight), 0, 0);
+                scaled.ReadPixels(new Rect(0, 0, outputWidth, outputHeight), 0, 0);
                 RenderTexture.active = null;
                 RenderTexture.ReleaseTemporary(renderTexture);
                 texture = scaled;

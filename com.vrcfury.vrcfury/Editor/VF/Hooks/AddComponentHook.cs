@@ -8,8 +8,10 @@ using UnityEngine;
 using VF.Feature;
 using VF.Feature.Base;
 using VF.Inspector;
+using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Updater;
 using VF.Utils;
 
 namespace VF.Hooks {
@@ -76,6 +78,17 @@ namespace VF.Hooks {
                 foreach (var path in List("Component/Physics 2D")) {
                     Remove(path);
                 }
+            }
+
+            if (UpdateMenuItem.ShouldShow()) {
+                Add(
+                    MenuItems.update,
+                    "",
+                    false,
+                    MenuItems.updatePriority,
+                    UpdateMenuItem.Upgrade,
+                    null
+                );
             }
 
             foreach (var feature in FeatureFinder.GetAllFeaturesForMenu()) {

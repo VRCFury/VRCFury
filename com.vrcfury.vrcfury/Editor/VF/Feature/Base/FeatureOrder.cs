@@ -72,6 +72,7 @@ namespace VF.Feature.Base {
         ApplyToggleRestingState,
 
         // Finalize Controllers
+        UpgradeToVrcConstraints, // Needs to happen before any step starts looking at or cleaning up "invalid" animation bindings
         UnlimitedParameters,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves

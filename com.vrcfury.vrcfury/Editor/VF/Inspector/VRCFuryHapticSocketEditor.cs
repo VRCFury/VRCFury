@@ -175,14 +175,13 @@ namespace VF.Inspector {
 
         static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, string name, bool selected) {
             var orange = new Color(1f, 0.5f, 0);
-            var isAndroid = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android;
 
             var discColor = orange;
             
             var text = "SPS Socket";
             if (!string.IsNullOrWhiteSpace(name)) text += $" '{name}'";
-            if (isAndroid) {
-                text += " (Deformation Disabled)\nThis is an android project!";
+            if (!BuildTargetUtils.IsDesktop()) {
+                text += " (Deformation Disabled)\nThis is an Android/iOS project!";
                 discColor = Color.red;
             } else if (type == VRCFuryHapticSocket.AddLight.Hole) {
                 text += " (Hole)\nPlug follows orange arrow";
@@ -311,7 +310,7 @@ namespace VF.Inspector {
                     AvatarCleaner.RemoveComponent(light);
                 });
 
-                if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
+                if (BuildTargetUtils.IsDesktop()) {
                     var main = GameObjects.Create("Root", lights);
                     var mainLight = main.AddComponent<Light>();
                     mainLight.type = LightType.Point;
