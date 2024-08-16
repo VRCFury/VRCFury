@@ -30,7 +30,7 @@ namespace VF.Service {
         public void Apply() {
             // TODO: Remove this conditional entirely and always upgrade once VRCConstraints are usable in the game live branch
 #if VRCSDK_UPGRADE_CONSTRAINTS
-                Upgrade();
+            Upgrade();
 #endif
         }
 
