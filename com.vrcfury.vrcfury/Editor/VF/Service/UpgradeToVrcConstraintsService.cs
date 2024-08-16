@@ -29,14 +29,9 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.UpgradeToVrcConstraints)]
         public void Apply() {
             // TODO: Remove this conditional entirely and always upgrade once VRCConstraints are usable in the game live branch
-#if VRCSDK_UPGRADE_CONSTRAINTS
-            try {
+//#if VRCSDK_UPGRADE_CONSTRAINTS
                 Upgrade();
-            } catch (Exception e)
-            {
-
-            }
-#endif
+//#endif
         }
 
         delegate bool TryGetSubstituteAnimationBinding(
@@ -60,8 +55,16 @@ namespace VF.Service {
             );
             var upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<ConvertUnityConstraintsAcrossGameObjects>(
                 typeof(AvatarDynamicsSetup),
-                "ConvertUnityConstraintsAcrossGameObjects"
+                "ConvertUnityConstraintsToVrChatConstraints"
             );
+
+            if (upgradeConstraintComponents == null) {
+                upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<ConvertUnityConstraintsAcrossGameObjects>(
+                    typeof(AvatarDynamicsSetup),
+                    "ConvertUnityConstraintsAcrossGameObjects"
+                );
+                
+            }
             if (tryUpgradeBinding == null || upgradeConstraintComponents == null) {
                 Debug.LogError("Failed to find constraint binding upgrade methods");
                 return;
