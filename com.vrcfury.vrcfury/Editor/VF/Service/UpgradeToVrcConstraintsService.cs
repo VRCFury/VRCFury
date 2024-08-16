@@ -42,7 +42,7 @@ namespace VF.Service {
             out bool isArrayProperty
         );
 
-        delegate bool ConvertUnityConstraintsToVrChatConstraints(
+        delegate bool ConvertUnityConstraintsAcrossGameObjects(
             IConstraint[] unityConstraints,
             VRCAvatarDescriptor avatarDescriptor,
             bool convertReferencedAnimationClips
@@ -53,10 +53,18 @@ namespace VF.Service {
                 typeof(AvatarDynamicsSetup),
                 "TryGetSubstituteAnimationBinding"
             );
-            var upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<ConvertUnityConstraintsToVrChatConstraints>(
+            var upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<ConvertUnityConstraintsAcrossGameObjects>(
                 typeof(AvatarDynamicsSetup),
-                "ConvertUnityConstraintsToVrChatConstraints"
+                "ConvertUnityConstraintsToVrChatConstraints" //old name
             );
+
+            if (upgradeConstraintComponents == null) {
+                upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<ConvertUnityConstraintsAcrossGameObjects>(
+                    typeof(AvatarDynamicsSetup),
+                    "ConvertUnityConstraintsAcrossGameObjects" // new name https://feedback.vrchat.com/open-beta/p/sdk-370-beta1-please-provide-a-hook-for-supplying-additional-animation-clips-and
+                );
+                
+            }
             if (tryUpgradeBinding == null || upgradeConstraintComponents == null) {
                 Debug.LogError("Failed to find constraint binding upgrade methods");
                 return;
