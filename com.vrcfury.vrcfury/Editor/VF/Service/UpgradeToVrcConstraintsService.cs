@@ -42,7 +42,7 @@ namespace VF.Service {
             out bool isArrayProperty
         );
 
-        delegate bool ConvertUnityConstraintsAcrossGameObjects(
+        delegate bool DoConvertUnityConstraints(
             IConstraint[] unityConstraints,
             VRCAvatarDescriptor avatarDescriptor,
             bool convertReferencedAnimationClips
@@ -53,15 +53,15 @@ namespace VF.Service {
                 typeof(AvatarDynamicsSetup),
                 "TryGetSubstituteAnimationBinding"
             );
-            var upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<ConvertUnityConstraintsAcrossGameObjects>(
+            var upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<DoConvertUnityConstraints>(
                 typeof(AvatarDynamicsSetup),
                 "ConvertUnityConstraintsToVrChatConstraints" //old name
             );
 
             if (upgradeConstraintComponents == null) {
-                upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<ConvertUnityConstraintsAcrossGameObjects>(
+                upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<DoConvertUnityConstraints>(
                     typeof(AvatarDynamicsSetup),
-                    "ConvertUnityConstraintsAcrossGameObjects" // new name https://feedback.vrchat.com/open-beta/p/sdk-370-beta1-please-provide-a-hook-for-supplying-additional-animation-clips-and
+                    "DoConvertUnityConstraints" // new name https://feedback.vrchat.com/open-beta/p/sdk-370-beta1-please-provide-a-hook-for-supplying-additional-animation-clips-and
                 );
                 
             }
