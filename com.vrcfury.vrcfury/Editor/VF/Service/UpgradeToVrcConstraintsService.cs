@@ -34,45 +34,9 @@ namespace VF.Service {
 #endif
         }
 
-        delegate bool TryGetSubstituteAnimationBinding(
-            Type unityConstraintType,
-            string unityConstraintPropertyName,
-            out Type vrcConstraintType,
-            out string vrcConstraintPropertyName,
-            out bool isArrayProperty
-        );
-
-        delegate bool DoConvertUnityConstraints(
-            IConstraint[] unityConstraints,
-            VRCAvatarDescriptor avatarDescriptor,
-            bool convertReferencedAnimationClips
-        );
-
         private void Upgrade() {
-            var tryUpgradeBinding = ReflectionUtils.GetMatchingDelegate<TryGetSubstituteAnimationBinding>(
-                typeof(AvatarDynamicsSetup),
-                "TryGetSubstituteAnimationBinding"
-            );
-            var upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<DoConvertUnityConstraints>(
-                typeof(AvatarDynamicsSetup),
-                "ConvertUnityConstraintsToVrChatConstraints" //old name
-            );
-
-            if (upgradeConstraintComponents == null) {
-                upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<DoConvertUnityConstraints>(
-                    typeof(AvatarDynamicsSetup),
-                    "DoConvertUnityConstraints" // new name https://feedback.vrchat.com/open-beta/p/sdk-370-beta1-please-provide-a-hook-for-supplying-additional-animation-clips-and
-                );
-                
-            }
-            if (tryUpgradeBinding == null || upgradeConstraintComponents == null) {
-                Debug.LogError("Failed to find constraint binding upgrade methods");
-                return;
-                //throw new Exception("Failed to find constraint binding upgrade methods");
-            }
-
             clipRewriteService.RewriteAllClips(AnimationRewriter.RewriteBinding(binding => {
-                if (typeof(IConstraint).IsAssignableFrom(binding.type) && tryUpgradeBinding(
+                if (typeof(IConstraint).IsAssignableFrom(binding.type) && AvatarDynamicsSetup.TryGetSubstituteAnimationBinding(
                         binding.type,
                         binding.propertyName,
                         out var newType,
@@ -87,7 +51,7 @@ namespace VF.Service {
 
             var avatarDescriptor = globals.avatarObject.GetComponent<VRCAvatarDescriptor>();
             var unityConstraints = globals.avatarObject.GetComponentsInSelfAndChildren<IConstraint>().ToArray();
-            upgradeConstraintComponents(unityConstraints, avatarDescriptor, false);
+            AvatarDynamicsSetup.DoConvertUnityConstraints(unityConstraints, avatarDescriptor, false);
         }
 #endif
     }
