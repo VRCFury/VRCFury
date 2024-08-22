@@ -11,7 +11,7 @@ using VRC.SDK3.Avatars;
 
 namespace VF.Hooks {
     internal static class ConstraintUpgradeHook {
-#if VRCSDK_UPGRADE_CONSTRAINTS
+#if VRCSDK_HAS_VRCCONSTRAINTS
         [InitializeOnLoadMethod]
         public static void Init() {
             //AvatarDynamicsSetup.IsUnityConstraintAutoConverted += constraint => true;
