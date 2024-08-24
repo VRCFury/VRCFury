@@ -178,6 +178,26 @@ namespace VF.Utils {
         public static void SetCurve(this AnimationClip clip, EditorCurveBinding binding, FloatOrObjectCurve curve) {
             clip.SetCurves(new [] { (binding,curve) });
         }
+        
+        public static void SetCurve(this AnimationClip clip, UnityEngine.Component component, string propertyName, FloatOrObjectCurve curve) {
+            EditorCurveBinding binding;
+            var avatarObject = VRCAvatarUtils.GuessAvatarObject(component);
+            var path = component.owner().GetPath(avatarObject);
+            if (curve.IsFloat) {
+                binding = EditorCurveBinding.FloatCurve(path, component.GetType(), propertyName);
+            } else {
+                binding = EditorCurveBinding.PPtrCurve(path, component.GetType(), propertyName);
+            }
+            clip.SetCurve(binding, curve);
+        }
+        
+        public static void SetCurve(this AnimationClip clip, UnityEngine.Component component, FloatOrObjectCurve enabledCurve) {
+            clip.SetCurve(component, "m_Active", enabledCurve);
+        }
+        
+        public static void SetEnabled(this AnimationClip clip, UnityEngine.Component component, bool enabled) {
+            clip.SetCurve(component, enabled ? 1 : 0);
+        }
 
         public static void SetFloatCurve(this AnimationClip clip, EditorCurveBinding binding, AnimationCurve curve) {
             clip.SetCurves(new [] { (binding,(FloatOrObjectCurve)curve) });

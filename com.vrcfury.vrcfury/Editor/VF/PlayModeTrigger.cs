@@ -72,6 +72,7 @@ namespace VF {
 
             foreach (var root in VFGameObject.GetRoots()) {
                 foreach (var avatar in root.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>()) {
+                    if (avatar == null) continue; // it was deleted
                     RescanOnStartComponent.AddToObject(avatar.owner());
                     var obj = avatar.owner();
                     if (!obj.activeInHierarchy) continue;
