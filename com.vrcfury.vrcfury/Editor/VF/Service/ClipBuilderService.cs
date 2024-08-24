@@ -34,7 +34,7 @@ namespace VF.Service {
                         outputCurve.AddKey(new Keyframe(time, defaultValue, 0f, 0f));
                     }
                 }
-                output.SetFloatCurve(binding, outputCurve);
+                output.SetCurve(binding, outputCurve);
             }
             foreach (var binding in sources.SelectMany(tuple => tuple.Item2.GetObjectBindings()).Distinct()) {
                 var exists = bindingStateService.GetObject(binding, out var defaultValue);
@@ -48,7 +48,7 @@ namespace VF.Service {
                         outputCurve.Add(new ObjectReferenceKeyframe { time = time, value = defaultValue });
                     }
                 }
-                output.SetObjectCurve(binding, outputCurve.ToArray());
+                output.SetCurve(binding, outputCurve.ToArray());
             }
             return output;
         }

@@ -89,7 +89,7 @@ namespace VF.Service {
                         if (other == null) continue; // it got deleted because the propBone wasn't used
                         var b = binding;
                         b.path = other.GetPath(avatarObject);
-                        clip.SetFloatCurve(b, clip.GetFloatCurve(binding));
+                        clip.SetCurve(b, clip.GetFloatCurve(binding));
                     }
                 }
             }

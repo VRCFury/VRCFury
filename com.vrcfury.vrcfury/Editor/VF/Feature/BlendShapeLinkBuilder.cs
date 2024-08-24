@@ -269,7 +269,7 @@ namespace VF.Feature {
                                 newBinding.path = linked.owner().GetPath(avatarObject);
                                 newBinding.propertyName = "blendShape." + linkedName;
 
-                                clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                                clip.SetCurve(newBinding, clip.GetFloatCurve(binding));
                             }
                         }
                     });

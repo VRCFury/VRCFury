@@ -219,14 +219,6 @@ namespace VF.Utils {
             clip.SetCurve(obj.transform, "m_LocalScale.z", scale.z);
         }
 
-        public static void SetFloatCurve(this AnimationClip clip, EditorCurveBinding binding, AnimationCurve curve) {
-            clip.SetCurves(new [] { (binding,(FloatOrObjectCurve)curve) });
-        }
-        
-        public static void SetObjectCurve(this AnimationClip clip, EditorCurveBinding binding, ObjectReferenceKeyframe[] curve) {
-            clip.SetCurves(new [] { (binding,(FloatOrObjectCurve)curve) });
-        }
-
         public static int GetLengthInFrames(this AnimationClip clip) {
             return (int)Math.Round(clip.GetLengthInSeconds() * clip.frameRate);
         }
