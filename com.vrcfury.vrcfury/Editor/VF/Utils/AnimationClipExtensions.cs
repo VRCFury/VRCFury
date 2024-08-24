@@ -7,6 +7,7 @@ using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     internal static class AnimationClipExtensions {
@@ -172,31 +173,50 @@ namespace VF.Utils {
         }
 
         public static void SetAap(this AnimationClip clip, string paramName, FloatOrObjectCurve curve) {
-            clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), paramName), curve);
+            clip.SetCurve("", typeof(Animator), paramName, curve);
         }
 
         public static void SetCurve(this AnimationClip clip, EditorCurveBinding binding, FloatOrObjectCurve curve) {
             clip.SetCurves(new [] { (binding,curve) });
         }
-        
-        public static void SetCurve(this AnimationClip clip, UnityEngine.Component component, string propertyName, FloatOrObjectCurve curve) {
+
+        public static void SetCurve(this AnimationClip clip, string path, Type type, string propertyName, FloatOrObjectCurve curve) {
             EditorCurveBinding binding;
-            var avatarObject = VRCAvatarUtils.GuessAvatarObject(component);
-            var path = component.owner().GetPath(avatarObject);
             if (curve.IsFloat) {
-                binding = EditorCurveBinding.FloatCurve(path, component.GetType(), propertyName);
+                binding = EditorCurveBinding.FloatCurve(path, type, propertyName);
             } else {
-                binding = EditorCurveBinding.PPtrCurve(path, component.GetType(), propertyName);
+                binding = EditorCurveBinding.PPtrCurve(path, type, propertyName);
             }
             clip.SetCurve(binding, curve);
         }
         
-        public static void SetCurve(this AnimationClip clip, UnityEngine.Component component, FloatOrObjectCurve enabledCurve) {
-            clip.SetCurve(component, "m_Active", enabledCurve);
+        public static void SetCurve(this AnimationClip clip, Object componentOrObject, string propertyName, FloatOrObjectCurve curve) {
+            VFGameObject owner;
+            if (componentOrObject is UnityEngine.Component c) {
+                owner = c.owner();
+            } else if (componentOrObject is GameObject o) {
+                owner = o;
+            } else {
+                return;
+            }
+            var avatarObject = VRCAvatarUtils.GuessAvatarObject(owner);
+            var path = owner.GetPath(avatarObject);
+            clip.SetCurve(path, componentOrObject.GetType(), propertyName, curve);
         }
         
-        public static void SetEnabled(this AnimationClip clip, UnityEngine.Component component, bool enabled) {
-            clip.SetCurve(component, enabled ? 1 : 0);
+        public static void SetEnabled(this AnimationClip clip, Object componentOrObject, FloatOrObjectCurve enabledCurve) {
+            string propertyName = (componentOrObject is GameObject) ? "m_IsActive" : "m_Enabled";
+            clip.SetCurve(componentOrObject, propertyName, enabledCurve);
+        }
+        
+        public static void SetEnabled(this AnimationClip clip, Object componentOrObject, bool enabled) {
+            clip.SetEnabled(componentOrObject, enabled ? 1 : 0);
+        }
+
+        public static void SetScale(this AnimationClip clip, VFGameObject obj, Vector3 scale) {
+            clip.SetCurve(obj.transform, "m_LocalScale.x", scale.x);
+            clip.SetCurve(obj.transform, "m_LocalScale.y", scale.y);
+            clip.SetCurve(obj.transform, "m_LocalScale.z", scale.z);
         }
 
         public static void SetFloatCurve(this AnimationClip clip, EditorCurveBinding binding, AnimationCurve curve) {
@@ -298,6 +318,53 @@ namespace VF.Utils {
                 }
                 return (binding, curve, false);
             }));
+        }
+        
+        /**
+         * Converts a "two keyframe" clip into its two separate keyframes.
+         * If clip is not made up of two unique (start and end) keyframes, returns null.
+         */
+        public static Tuple<AnimationClip, AnimationClip> SplitRangeClip(this AnimationClip clip) {
+            var times = new HashSet<float>();
+            foreach (var (binding,curve) in clip.GetAllCurves()) {
+                if (curve.IsFloat) {
+                    times.UnionWith(curve.FloatCurve.keys.Select(key => key.time));
+                } else {
+                    times.UnionWith(curve.ObjectCurve.Select(key => key.time));
+                }
+            }
+
+            if (!times.Contains(0)) return null;
+            if (times.Count > 2) return null;
+
+            var startClip = VrcfObjectFactory.Create<AnimationClip>();
+            startClip.name = $"{clip.name} - First Frame";
+            var endClip = VrcfObjectFactory.Create<AnimationClip>();
+            endClip.name = $"{clip.name} - Last Frame";
+            
+            foreach (var (binding,curve) in clip.GetAllCurves()) {
+                if (curve.IsFloat) {
+                    var first = true;
+                    foreach (var key in curve.FloatCurve.keys) {
+                        if (first) {
+                            startClip.SetCurve(binding, key.value);
+                            first = false;
+                        }
+                        endClip.SetCurve(binding, key.value);
+                    }
+                } else {
+                    var first = true;
+                    foreach (var key in curve.ObjectCurve) {
+                        if (first) {
+                            startClip.SetCurve(binding, key.value);
+                            first = false;
+                        }
+                        endClip.SetCurve(binding, key.value);
+                    }
+                }
+            }
+
+            return Tuple.Create(startClip, endClip);
         }
     }
 }

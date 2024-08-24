@@ -21,7 +21,6 @@ namespace VF.Feature.Base {
     internal abstract class FeatureBuilder {
         [JsonProperty(Order = -2)] public string type;
 
-        [VFAutowired] protected readonly ClipBuilderService clipBuilder;
         [VFAutowired] protected readonly AvatarManager manager;
         [VFAutowired] private readonly GlobalsService globals;
         protected string tmpDirParent => globals.tmpDirParent;

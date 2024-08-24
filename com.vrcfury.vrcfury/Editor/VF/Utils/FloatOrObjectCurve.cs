@@ -90,5 +90,9 @@ namespace VF.Utils {
                 return objectCurve.ToArray();
             }
         }
+
+        public static FloatOrObjectCurve DummyFloatCurve(float length) {
+            return AnimationCurve.Constant(0, length, 0);
+        }
     }
 }

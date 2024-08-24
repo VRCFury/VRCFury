@@ -23,12 +23,12 @@ namespace VF.Service {
     internal class ActionClipService {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly AvatarManager avatarManager;
-        [VFAutowired] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
         [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
         [VFAutowired] private readonly PhysboneResetService physboneResetService;
         [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly ClipBuilderService clipBuilder;
 
         private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
 
@@ -126,24 +126,15 @@ namespace VF.Service {
                         // in unity displaying frame 0 instead of 1. Instead, we target framenum+0.5, so there's
                         // leniency around it.
                         var frameAnimNum = (float)(Math.Floor((double)flipbook.frame) + 0.5);
-                        var binding = EditorCurveBinding.FloatCurve(
-                            renderer.owner().GetPath(avatarObject),
-                            renderer.GetType(),
-                            "material._FlipbookCurrentFrame"
-                        );
-                        onClip.SetCurve(binding, frameAnimNum);
+                        onClip.SetCurve(renderer, "material._FlipbookCurrentFrame", frameAnimNum);
                         break;
                     }
                     case ShaderInventoryAction shaderInventoryAction: {
                         var renderer = shaderInventoryAction.renderer;
                         if (renderer == null) break;
-                        var binding = EditorCurveBinding.FloatCurve(
-                            renderer.owner().GetPath(avatarObject),
-                            renderer.GetType(),
-                            $"material._InventoryItem{shaderInventoryAction.slot:D2}Animated"
-                        );
-                        offClip.SetCurve(binding, 0);
-                        onClip.SetCurve(binding, 1);
+                        var propertyName = $"material._InventoryItem{shaderInventoryAction.slot:D2}Animated";
+                        offClip.SetCurve(renderer, propertyName, 0);
+                        onClip.SetCurve(renderer, propertyName, 1);
                         break;
                     }
                     case PoiyomiUVTileAction poiyomiUVTileAction: {
@@ -156,13 +147,8 @@ namespace VF.Service {
                             propertyName += $"{poiyomiUVTileAction.row}_{(poiyomiUVTileAction.column)}";
                             if (poiyomiUVTileAction.renamedMaterial != "")
                                 propertyName += $"_{poiyomiUVTileAction.renamedMaterial}";
-                            var binding = EditorCurveBinding.FloatCurve(
-                                renderer.owner().GetPath(avatarObject),
-                                renderer.GetType(),
-                                $"material.{propertyName}"
-                            );
-                            offClip.SetCurve(binding, 1f);
-                            onClip.SetCurve(binding, 0f);
+                            offClip.SetCurve(renderer, $"material.{propertyName}", 1);
+                            onClip.SetCurve(renderer, $"material.{propertyName}", 0);
                         }
                         break;
                     }
@@ -176,12 +162,8 @@ namespace VF.Service {
 
                         foreach (var renderer in renderers) {
                             void AddOne(string suffix, float value) {
-                                var binding = EditorCurveBinding.FloatCurve(
-                                    renderer.owner().GetPath(avatarObject),
-                                    renderer.GetType(),
-                                    $"material.{materialPropertyAction.propertyName}{suffix}"
-                                );
-                                onClip.SetCurve(binding, value);
+                                var propertyName = $"material.{materialPropertyAction.propertyName}{suffix}";
+                                onClip.SetCurve(renderer, propertyName, value);
                             }
 
                             if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range) {
@@ -222,8 +204,8 @@ namespace VF.Service {
                             onState = !toggle.obj.activeSelf;
                         }
 
-                        ClipBuilderService.Enable(offClip, toggle.obj.asVf().GetPath(avatarObject), !onState);
-                        ClipBuilderService.Enable(onClip, toggle.obj.asVf().GetPath(avatarObject), onState);
+                        offClip.SetEnabled(toggle.obj, !onState);
+                        onClip.SetEnabled(toggle.obj, onState);
                         break;
                     }
                     case BlendShapeAction blendShape:
@@ -232,13 +214,7 @@ namespace VF.Service {
                             if (!blendShape.allRenderers && blendShape.renderer != skin) continue;
                             if (!skin.HasBlendshape(blendShape.blendShape)) continue;
                             foundOne = true;
-                            //var defValue = skin.GetBlendShapeWeight(blendShapeIndex);
-                            var binding = EditorCurveBinding.FloatCurve(
-                                skin.owner().GetPath(avatarObject),
-                                typeof(SkinnedMeshRenderer),
-                                "blendShape." + blendShape.blendShape
-                            );
-                            onClip.SetCurve(binding, blendShape.blendShapeValue);
+                            onClip.SetCurve(skin, "blendShape." + blendShape.blendShape, blendShape.blendShapeValue);
                         }
                         if (!foundOne) {
                             //Debug.LogWarning("BlendShape not found: " + blendShape.blendShape);
@@ -250,8 +226,8 @@ namespace VF.Service {
                         } else {
                             var localScale = scaleAction.obj.transform.localScale;
                             var newScale = localScale * scaleAction.scale;
-                            ClipBuilderService.Scale(offClip, scaleAction.obj.asVf().GetPath(avatarObject), localScale);
-                            ClipBuilderService.Scale(onClip, scaleAction.obj.asVf().GetPath(avatarObject), newScale);
+                            offClip.SetScale(scaleAction.obj, localScale);
+                            onClip.SetScale(scaleAction.obj, newScale);
                         }
                         break;
                     case MaterialAction matAction: {
@@ -259,13 +235,9 @@ namespace VF.Service {
                         if (renderer == null) break;
                         var mat = matAction.mat?.Get();
                         if (mat == null) break;
-                        
-                        var binding = EditorCurveBinding.PPtrCurve(
-                            renderer.owner().GetPath(avatarObject),
-                            renderer.GetType(),
-                            "m_Materials.Array.data[" + matAction.materialIndex + "]"
-                        );
-                        onClip.SetCurve(binding, mat);
+
+                        var propertyName = "m_Materials.Array.data[" + matAction.materialIndex + "]";
+                        onClip.SetCurve(renderer, propertyName, mat);
                         break;
                     }
                     case SpsOnAction spsAction: {
@@ -273,14 +245,8 @@ namespace VF.Service {
                             //Debug.LogWarning("Missing target in action: " + name);
                             break;
                         }
-
-                        var binding = EditorCurveBinding.FloatCurve(
-                            spsAction.target.gameObject.asVf().GetPath(avatarObject),
-                            typeof(VRCFuryHapticPlug),
-                            "spsAnimatedEnabled"
-                        );
-                        offClip.SetCurve(binding, 0);
-                        onClip.SetCurve(binding, 1);
+                        offClip.SetCurve(spsAction.target, "spsAnimatedEnabled", 0);
+                        onClip.SetCurve(spsAction.target, "spsAnimatedEnabled", 1);
                         break;
                     }
                     case FxFloatAction fxFloatAction: {

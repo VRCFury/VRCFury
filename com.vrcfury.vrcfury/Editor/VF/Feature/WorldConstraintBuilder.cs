@@ -39,8 +39,8 @@ namespace VF.Feature {
 
             var dropClip = clipFactory.NewClip("Drop");
             directTree.Add(toggle.AsFloat(), dropClip);
-            foreach (var constriant in featureBaseObject.GetComponents<IConstraint>()) {
-                dropClip.SetEnabled((UnityEngine.Component)constriant, false);
+            foreach (var constriant in featureBaseObject.GetConstraints()) {
+                dropClip.SetEnabled(constriant.GetComponent(), false);
             }
 
             var parent = featureBaseObject.parent;

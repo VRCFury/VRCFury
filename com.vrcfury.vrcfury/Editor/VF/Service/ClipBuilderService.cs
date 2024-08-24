@@ -13,10 +13,8 @@ namespace VF.Service {
 
     [VFService]
     internal class ClipBuilderService {
-        [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AvatarBindingStateService bindingStateService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        private VFGameObject baseObject => globals.avatarObject;
 
         public AnimationClip MergeSingleFrameClips(params (float, AnimationClip)[] sources) {
             var output = clipFactory.NewClip("Merged");
@@ -54,82 +52,6 @@ namespace VF.Service {
             }
             return output;
         }
-
-        public void Enable(AnimationClip clip, VFGameObject obj, bool active = true) {
-            Enable(clip, GetPath(obj), active);
-        }
-        
-        public static void Enable(AnimationClip clip, string path, bool active = true) {
-            var binding = EditorCurveBinding.FloatCurve(path, typeof(GameObject), "m_IsActive");
-            clip.SetCurve(binding, active ? 1 : 0);
-        }
-
-        public void Enable(AnimationClip clip, IConstraint constraint, bool active = true) {
-            var component = constraint as UnityEngine.Component;
-            var path = component.owner().GetPath(baseObject);
-            var binding = EditorCurveBinding.FloatCurve(path, constraint.GetType(), "m_Active");
-            clip.SetCurve(binding, active ? 1 : 0);
-        }
-        
-        public static void Scale(AnimationClip clip, string path, Vector3 scale) {
-            var binding = EditorCurveBinding.FloatCurve(path, typeof(Transform), "");
-
-            binding.propertyName = "m_LocalScale.x";
-            clip.SetCurve(binding, scale.x);
-            binding.propertyName = "m_LocalScale.y";
-            clip.SetCurve(binding, scale.y);
-            binding.propertyName = "m_LocalScale.z";
-            clip.SetCurve(binding, scale.z);
-        }
-
-        public string GetPath(VFGameObject gameObject) {
-            return gameObject.GetPath(baseObject);
-        }
-
-        public static Tuple<AnimationClip, AnimationClip> SplitRangeClip(Motion motion) {
-            if (!(motion is AnimationClip clip)) return null;
-            var times = new HashSet<float>();
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (curve.IsFloat) {
-                    times.UnionWith(curve.FloatCurve.keys.Select(key => key.time));
-                } else {
-                    times.UnionWith(curve.ObjectCurve.Select(key => key.time));
-                }
-            }
-
-            if (!times.Contains(0)) return null;
-            if (times.Count > 2) return null;
-
-            var startClip = VrcfObjectFactory.Create<AnimationClip>();
-            startClip.name = $"{clip.name} - First Frame";
-            var endClip = VrcfObjectFactory.Create<AnimationClip>();
-            endClip.name = $"{clip.name} - Last Frame";
-            
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (curve.IsFloat) {
-                    var first = true;
-                    foreach (var key in curve.FloatCurve.keys) {
-                        if (first) {
-                            startClip.SetCurve(binding, key.value);
-                            first = false;
-                        }
-                        endClip.SetCurve(binding, key.value);
-                    }
-                } else {
-                    var first = true;
-                    foreach (var key in curve.ObjectCurve) {
-                        if (first) {
-                            startClip.SetCurve(binding, key.value);
-                            first = false;
-                        }
-                        endClip.SetCurve(binding, key.value);
-                    }
-                }
-            }
-
-            return Tuple.Create(startClip, endClip);
-        }
-
     }
 
 }

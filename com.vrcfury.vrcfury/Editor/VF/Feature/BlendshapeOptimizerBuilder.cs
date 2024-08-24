@@ -212,9 +212,7 @@ namespace VF.Feature {
                     .SelectMany(animator => GetBindings(animator.owner(), animator.runtimeAnimatorController as AnimatorController)))
                 .ToList();
 
-            var skinPath = clipBuilder.GetPath(skin.owner());
-
-            var blendshapeNames = skin.GetBlendshapeNames();
+            var skinPath = skin.owner().GetPath(avatarObject);
             
             var animatedBlendshapes = new HashSet<string>();
             foreach (var tuple in animatedBindings) {

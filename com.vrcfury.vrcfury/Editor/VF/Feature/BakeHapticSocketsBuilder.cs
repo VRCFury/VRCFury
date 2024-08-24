@@ -152,12 +152,12 @@ namespace VF.Feature {
 
                         var onLocalClip = clipFactory.NewClip($"{name} (Local)");
                         foreach (var child in FindChildren("Senders", "Haptics", "Lights", "Animations")) {
-                            clipBuilder.Enable(onLocalClip, child.gameObject);
+                            onLocalClip.SetEnabled(child, true);
                         }
 
                         var onRemoteClip = clipFactory.NewClip($"{name} (Remote)");
                         foreach (var child in FindChildren("Senders", "Lights", "Animations")) {
-                            clipBuilder.Enable(onRemoteClip, child.gameObject);
+                            onRemoteClip.SetEnabled(child, true);
                         }
 
                         if (socket.enableActiveAnimation) {
@@ -176,15 +176,14 @@ namespace VF.Feature {
 
                         var onStealthClip = clipFactory.NewClip($"{name} (Stealth)");
                         foreach (var child in FindChildren("Haptics")) {
-                            clipBuilder.Enable(onStealthClip, child.gameObject);
+                            onStealthClip.SetEnabled(child.gameObject, true);
                         }
 
                         var gizmo = obj.GetComponent<VRCFurySocketGizmo>();
                         if (gizmo != null) {
                             gizmo.show = false;
-                            var path = clipBuilder.GetPath(obj);
-                            onLocalClip.SetCurve(EditorCurveBinding.FloatCurve(path, typeof(VRCFurySocketGizmo), "show"), 1);
-                            onRemoteClip.SetCurve(EditorCurveBinding.FloatCurve(path, typeof(VRCFurySocketGizmo), "show"), 1);
+                            onLocalClip.SetCurve(gizmo, "show", 1);
+                            onRemoteClip.SetCurve(gizmo, "show", 1);
                         }
 
                         var holeOn = fx.NewBool(name, synced: true, saved: saved);
@@ -214,7 +213,7 @@ namespace VF.Feature {
                                 useHipAvoidance: socket.useHipAvoidance
                             );
                             autoReceiverObj.active = false;
-                            clipBuilder.Enable(autoOnClip, autoReceiverObj);
+                            autoOnClip.SetEnabled(autoReceiverObj, true);
                             autoSockets.Add(Tuple.Create(name, holeOn, distParam));
                         }
                     }

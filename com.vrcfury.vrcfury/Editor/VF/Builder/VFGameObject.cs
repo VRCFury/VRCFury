@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -206,6 +207,12 @@ namespace VF.Builder {
                 return "Avatar Root";
             }
             return AnimationUtility.CalculateTransformPath(this, root);
+        }
+
+        public string GetAnimatedPath() {
+            var avatarObject = VRCAvatarUtils.GuessAvatarObject(this);
+            if (avatarObject == null) return "_avatarMissing/" + GetPath();
+            return GetPath(avatarObject);
         }
 
         public void Destroy() {
