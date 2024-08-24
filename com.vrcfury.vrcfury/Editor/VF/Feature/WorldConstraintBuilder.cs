@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.UIElements;
@@ -12,7 +11,9 @@ using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Dynamics;
+#if VRCSDK_HAS_VRCCONSTRAINTS
 using VRC.SDK3.Dynamics.Constraint.Components;
+#endif
 
 namespace VF.Feature {
     internal class WorldConstraintBuilder : FeatureBuilder<WorldConstraint> {
