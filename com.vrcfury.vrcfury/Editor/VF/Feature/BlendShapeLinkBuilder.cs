@@ -89,11 +89,8 @@ namespace VF.Feature {
             
             adv.Add(new Button(() => {
                 var skins = new List<SkinnedMeshRenderer>();
-                var linkList = prop.FindPropertyRelative("linkSkins").GetObject() as IList;
-                if (linkList != null) {
-                    skins.AddRange(linkList.OfType<SkinnedMeshRenderer>()
-                        .Append(prop.FindPropertyRelative("baseObj").objectReferenceValue as SkinnedMeshRenderer)
-                        .NotNull());
+                if (prop.FindPropertyRelative("linkSkins").GetObject() is IList linkList) {
+                    skins.AddRange(linkList.OfType<BlendShapeLink.LinkSkin>().Select(l => l.renderer).NotNull());
                 }
                 var baseName = prop.FindPropertyRelative("baseObj").stringValue;
                 if (avatarObject != null) {
