@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -29,8 +30,8 @@ namespace VF.Feature {
         public class IncludeDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty include) {
                 var row = new VisualElement().Row();
-                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnBase")).FlexGrow(1));
-                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnLinked")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnBase")).FlexBasis(1).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnLinked")).FlexBasis(1).FlexGrow(1));
                 return row;
             }
         }
@@ -85,6 +86,27 @@ namespace VF.Feature {
                 
                 return o;
             }, includeAll));
+            
+            adv.Add(new Button(() => {
+                var skins = new List<SkinnedMeshRenderer>();
+                var linkList = prop.FindPropertyRelative("linkSkins").GetObject() as IList;
+                if (linkList != null) {
+                    skins.AddRange(linkList.OfType<SkinnedMeshRenderer>()
+                        .Append(prop.FindPropertyRelative("baseObj").objectReferenceValue as SkinnedMeshRenderer)
+                        .NotNull());
+                }
+                var baseName = prop.FindPropertyRelative("baseObj").stringValue;
+                if (avatarObject != null) {
+                    var baseObj = avatarObject.Find(baseName);
+                    if (baseObj != null) {
+                        var baseSkin = baseObj.GetComponent<SkinnedMeshRenderer>();
+                        if (baseSkin != null) skins.Add(baseSkin);
+                    }
+                }
+                VRCFuryActionDrawer.ShowBlendshapeSearchWindow(skins, value => {
+                    GUIUtility.systemCopyBuffer = value;
+                });
+            }) { text = "Copy blendshape to clipboard" });
             
             content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
                 if (avatarObject == null) {

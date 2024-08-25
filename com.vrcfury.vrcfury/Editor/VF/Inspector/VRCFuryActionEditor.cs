@@ -364,30 +364,12 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(valueField);
 
                 void SelectButtonPress() {
-                    var window = new VrcfSearchWindow("Blendshapes");
                     var allRenderers = allRenderersProp.boolValue;
                     var singleRenderer = rendererProp.objectReferenceValue as Renderer;
-
-                    var shapes = new Dictionary<string, string>();
-                    if (avatarObject != null) {
-                        foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                            if (!allRenderers && skin != singleRenderer) continue;
-                            foreach (var bs in skin.GetBlendshapeNames()) {
-                                if (shapes.ContainsKey(bs)) {
-                                    shapes[bs] += ", " + skin.owner().name;
-                                } else {
-                                    shapes[bs] = skin.owner().name;
-                                }
-                            }
-                        }
-                    }
-
-                    var mainGroup = window.GetMainGroup();
-                    foreach (var entry in shapes.OrderBy(entry => entry.Key)) {
-                        mainGroup.Add(entry.Key + " (" + entry.Value + ")", entry.Key);
-                    }
-                    
-                    window.Open(value => {
+                    var skins = avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()
+                        .Where(skin => allRenderers || skin == singleRenderer)
+                        .ToArray();
+                    ShowBlendshapeSearchWindow(skins, value => {
                         blendshapeProp.stringValue = value;
                         Apply();
                     });
@@ -483,6 +465,28 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
             return content;
         }
+    }
+    
+    public static void ShowBlendshapeSearchWindow(IList<SkinnedMeshRenderer> skins, Action<string> onSelect) {
+        var window = new VrcfSearchWindow("Blendshapes");
+
+        var shapes = new Dictionary<string, string>();
+        foreach (var skin in skins) {
+            foreach (var bs in skin.GetBlendshapeNames()) {
+                if (shapes.ContainsKey(bs)) {
+                    shapes[bs] += ", " + skin.owner().name;
+                } else {
+                    shapes[bs] = skin.owner().name;
+                }
+            }
+        }
+
+        var mainGroup = window.GetMainGroup();
+        foreach (var entry in shapes.OrderBy(entry => entry.Key)) {
+            mainGroup.Add(entry.Key + " (" + entry.Value + ")", entry.Key);
+        }
+                    
+        window.Open(onSelect);
     }
 }
 
