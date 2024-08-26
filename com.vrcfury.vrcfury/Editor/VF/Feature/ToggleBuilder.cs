@@ -75,6 +75,8 @@ public class ToggleBuilder : FeatureBuilder<Toggle> {
             if (model.transitionStateIn.actions.Count() > 0) return false;
             if (model.transitionStateOut.actions.Count() > 0) return false;
         }
+        if (model.enableExclusiveTag && !string.IsNullOrWhiteSpace(model.exclusiveTag)) return false;
+        if (model.useGlobalParam) return false;
         return true;
     }
 
