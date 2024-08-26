@@ -5,7 +5,7 @@ using VF.Utils;
 
 namespace VF.Builder.Haptics {
     /** Automatically finds the renderer to use for a plug */
-    public static class PlugRendererFinder {
+    internal static class PlugRendererFinder {
         public static IImmutableList<Renderer> GetAutoRenderer(VFGameObject obj, bool newSearchAlgo) {
             if (newSearchAlgo) {
                 var current = obj;

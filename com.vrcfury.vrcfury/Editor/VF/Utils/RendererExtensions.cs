@@ -9,7 +9,7 @@ using VF.Builder;
 using VF.Inspector;
 
 namespace VF.Utils {
-    public static class RendererExtensions {
+    internal static class RendererExtensions {
         public static ShaderUtil.ShaderPropertyType? GetPropertyType(this Renderer renderer, string propertyName) {
             return renderer.sharedMaterials
                 .NotNull()
@@ -19,29 +19,49 @@ namespace VF.Utils {
                 .FirstOrDefault();
         }
 
+        private static Dictionary<Mesh, Mesh> readWriteCache = new Dictionary<Mesh, Mesh>();
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            Scheduler.Schedule(() => readWriteCache.Clear(), 0);
+        }
+
         [CanBeNull]
         public static Mesh GetMesh(this Renderer renderer) {
+            Mesh mesh = null;
+
             if (renderer is SkinnedMeshRenderer skin) {
                 if (skin.sharedMesh == null) return null;
-                return skin.sharedMesh;
+                mesh = skin.sharedMesh;
             }
 
             if (renderer is MeshRenderer) {
                 var owner = renderer.owner();
                 var filter = owner.GetComponent<MeshFilter>();
                 if (filter == null || filter.sharedMesh == null) return null;
-                return filter.sharedMesh;
+                mesh = filter.sharedMesh;
             }
 
-            return null;
+            // Meshes that aren't readable cannot have (basically anything) read from them
+            // while in play mode, so we make a copy that is readable and return that instead.
+            if (mesh != null && !mesh.isReadable && Application.isPlaying) {
+                if (readWriteCache.TryGetValue(mesh, out var cached)) return cached;
+                var copy = mesh.Clone();
+                copy.ForceReadable();
+                readWriteCache[mesh] = copy;
+                return copy;
+            }
+
+            return mesh;
         }
         
         [CanBeNull]
         public static Mesh GetMutableMesh(this Renderer renderer) {
             var mesh = renderer.GetMesh();
             if (mesh == null) return null;
-            var copy = MutableManager.MakeMutable(mesh);
+            var copy = mesh.Clone();
             renderer.SetMesh(copy);
+            copy.ForceReadable();
             return copy;
         }
 
@@ -62,6 +82,7 @@ namespace VF.Utils {
                     );
                 filter.sharedMesh = mesh;
                 VRCFuryEditorUtils.MarkDirty(filter);
+                return;
             }
 
             throw new Exception("Cannot set mesh on renderer with unknown type: " + renderer.owner().GetPath());

@@ -4,15 +4,15 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 namespace VF.Inspector {
-    public class VrcfSearchWindow {
+    internal class VrcfSearchWindow {
         private readonly List<SearchTreeEntry> entries = new List<SearchTreeEntry>();
 
         public VrcfSearchWindow(string title) {
             entries.Add(new SearchTreeGroupEntry(new GUIContent(title), 0));
         }
 
-        public void Open(Action<string> onSelect) {
-            var searchContext = new SearchWindowContext(GUIUtility.GUIToScreenPoint(Event.current.mousePosition), 500, 300);
+        public void Open(Action<string> onSelect, Vector2? pos = null) {
+            var searchContext = new SearchWindowContext(GUIUtility.GUIToScreenPoint(pos ?? Event.current.mousePosition), 500, 300);
             var provider = ScriptableObject.CreateInstance<VRCFurySearchWindowProvider>();
             provider.InitProvider(() => entries, (entry, userData) => {
                 if (entry.userData != null) {

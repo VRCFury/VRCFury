@@ -6,15 +6,13 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder.Exceptions;
-using VF.Builder.Haptics;
 using VF.Inspector;
 using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
-    public class MutableManager {
-        private readonly string tmpDir;
+    internal static class MutableManager {
 
         private static readonly Type[] typesToMakeMutable = {
             // This has to be here because animator override controllers
@@ -34,17 +32,6 @@ namespace VF.Builder {
             typeof(VRCExpressionParameters),
             typeof(VRCExpressionsMenu),
         };
-        
-        private static readonly Type[] hiddenTypes = {
-            typeof(AnimatorStateMachine),
-            typeof(AnimatorState),
-            typeof(AnimatorTransitionBase),
-            typeof(StateMachineBehaviour),
-        };
-
-        public MutableManager(string tmpDir) {
-            this.tmpDir = tmpDir;
-        }
 
         private static void Iterate(SerializedObject obj, Action<SerializedProperty> act) {
             var prop = obj.GetIterator();
@@ -59,7 +46,7 @@ namespace VF.Builder {
             return obj;
         }
 
-        private static void RewriteInternals(Object obj, Dictionary<Object, Object> rewrites) {
+        public static void RewriteInternals(Object obj, Dictionary<Object, Object> rewrites) {
             var serialized = new SerializedObject(obj);
             var changed = false;
             Iterate(serialized, prop => {
@@ -90,11 +77,11 @@ namespace VF.Builder {
             public T output;
         }
 
-        public static T CopyRecursive<T>(T obj, bool addPrefix = true) where T : Object {
+        public static T CopyRecursive<T>(T obj, string addPrefix = "") where T : Object {
             return CopyRecursiveAdv(obj, addPrefix).output;
         }
 
-        public static CopyResults<T> CopyRecursiveAdv<T>(T obj, bool addPrefix = true) where T : Object {
+        public static CopyResults<T> CopyRecursiveAdv<T>(T obj, string addPrefix = "") where T : Object {
             var originalToMutable = new Dictionary<Object, Object>();
             var mutableToOriginal = new Dictionary<Object, Object>();
 
@@ -107,13 +94,13 @@ namespace VF.Builder {
                     if (!IsType(original, typesToMakeMutable)) return false;
                 }
 
-                var copy = MakeMutable(original, true);
+                var copy = original.Clone();
                 if (obj == original) rootCopy = copy as T;
 
-                if (IsType(copy, hiddenTypes)) {
-                    copy.hideFlags |= HideFlags.HideInHierarchy;
-                } else if (addPrefix) {
-                    copy.name = $"{obj.name}/{original.name}";
+                if (copy is AnimatorState || copy is AnimatorStateMachine) {
+                    // don't add prefix
+                } else {
+                    copy.name = $"{addPrefix}{original.name}";
                 }
 
                 originalToMutable[original] = copy;
@@ -154,24 +141,7 @@ namespace VF.Builder {
         // AnimatorControllers, AnimatorStateMachines, AnimatorStates,
         // and other things that unity usually logs errors from when using
         // Object.Instantiate
-        private static T SafeInstantiate<T>(T original) where T : Object {
-            if (original is Material || original is Mesh) {
-                return Object.Instantiate(original);
-            }
 
-            T copy;
-            if (original is ScriptableObject) {
-                copy = ScriptableObject.CreateInstance(original.GetType()) as T;
-            } else {
-                copy = Activator.CreateInstance(original.GetType()) as T;
-            }
-            if (copy == null) {
-                throw new VRCFBuilderException("Failed to create copy of " + original);
-            }
-            EditorUtility.CopySerialized(original, copy);
-            return copy;
-        }
-        
         public static void ForEachChild(Object obj, Func<Object,bool> visit) {
             if (obj == null) return;
             var visited = new HashSet<Object>();
@@ -183,52 +153,31 @@ namespace VF.Builder {
                 visited.Add(o);
                 var enter = visit(o);
                 if (!enter) continue;
-                Iterate(new SerializedObject(o), prop => {
-                    if (prop.propertyType == SerializedPropertyType.ObjectReference) {
-                        var objectReferenceValue = GetObjectReferenceValueSafe(prop);
-                        if (objectReferenceValue != null) {
-                            stack.Push(objectReferenceValue);
+                
+                // AnimationClips are really big, so we can just iterate the possible object children
+                if (o is AnimationClip clip) {
+                    foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+                        var curve = AnimationUtility.GetObjectReferenceCurve(clip, b);
+                        if (curve != null) {
+                            foreach (var frame in curve) {
+                                if (frame.value != null) stack.Push(frame.value);
+                            }
                         }
                     }
-                });
+                } else {
+                    Iterate(new SerializedObject(o), prop => {
+                        if (prop.propertyType == SerializedPropertyType.ObjectReference) {
+                            var objectReferenceValue = GetObjectReferenceValueSafe(prop);
+                            if (objectReferenceValue != null) {
+                                stack.Push(objectReferenceValue);
+                            }
+                        }
+                    });
+                }
             }
         }
 
         private static bool IsType(Object obj, Type[] types) =>
             types.Any(type => type.IsInstanceOfType(obj));
-
-        public static T MakeMutable<T>(T original, bool forceCopy = false) where T : Object {
-            if (!forceCopy && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(original))) {
-                // Already mutable
-                return original;
-            }
-
-            if (original is Material originalMat) {
-                MaterialLocker.Lock(originalMat);
-            }
-
-            var copy = SafeInstantiate(original);
-            copy.name = original.name;
-            if (copy is Material copyMat) {
-                // Ensure the material is flattened (if it's a material variant)
-                // This way, things like SPS can change the shader
-#if UNITY_2022_1_OR_NEWER
-                copyMat.parent = null;
-#endif
-                
-                // Keep the thry suffix so if it's locked later, the renamed properties still use the same suffixes
-                if (string.IsNullOrWhiteSpace(copyMat.GetTag("thry_rename_suffix", false))) {
-                    copyMat.SetOverrideTag("thry_rename_suffix", Regex.Replace(original.name, "[^a-zA-Z0-9_]", ""));
-                }
-            }
-            if (original is AnimationClip originalClip && copy is AnimationClip copyClip) {
-                copyClip.WriteProxyBinding(originalClip);
-            }
-            return copy;
-        }
-
-        public string GetTmpDir() {
-            return tmpDir;
-        }
     }
 }

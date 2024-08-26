@@ -7,11 +7,12 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Builder.Exceptions;
+using VF.Inspector;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Menu {
-    public static class DuplicatePhysboneDetector {
+    internal static class DuplicatePhysboneDetector {
         [MenuItem(MenuItems.detectDuplicatePhysbones, priority = MenuItems.detectDuplicatePhysbonesPriority)]
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(RunUnsafe);
@@ -100,7 +101,7 @@ namespace VF.Menu {
                 foreach (var c in mutable) {
                     var obj = c.owner();
                     Object.DestroyImmediate(c, true);
-                    EditorUtility.SetDirty(obj);
+                    VRCFuryEditorUtils.MarkDirty(obj);
                 }
             }
         }

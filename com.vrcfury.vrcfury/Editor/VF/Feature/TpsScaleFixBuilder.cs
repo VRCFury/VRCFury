@@ -15,7 +15,7 @@ using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
-    public class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
+    internal class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         
         [FeatureBuilderAction(FeatureOrder.TpsScaleFix)]
@@ -41,7 +41,7 @@ namespace VF.Feature {
                     foreach (var binding in clip.GetFloatBindings()) {
                         if (binding.propertyName.Contains("_TPS_PenetratorLength") ||
                             binding.propertyName.Contains("_TPS_PenetratorScale")) {
-                            clip.SetFloatCurve(binding, null);
+                            clip.SetCurve(binding, null);
                         }
                     }
                 }
@@ -59,7 +59,7 @@ namespace VF.Feature {
 
                     if (!isTps && !isSps) return mat;
 
-                    mat = MutableManager.MakeMutable(mat);
+                    mat = mat.Clone();
                     if (isTps) {
                         if (TpsConfigurer.IsLocked(mat)) {
                             throw new VRCFBuilderException(
@@ -121,10 +121,6 @@ namespace VF.Feature {
             return scaledProps;
         }
 
-        public override string GetEditorTitle() {
-            return "TPS Scale Fix (Deprecated)";
-        }
-
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Error(
@@ -135,11 +131,19 @@ namespace VF.Feature {
                 "object scaling, or any combination of the two may be used in conjunction with TPS."));
             return c;
         }
+        
+        public override string GetEditorTitle() {
+            return "TPS Scale Fix (Deprecated)";
+        }
 
         public override bool AvailableOnRootOnly() {
             return true;
         }
-        
+
+        public override bool ShowInMenu() {
+            return false;
+        }
+
         public override bool OnlyOneAllowed() {
             return true;
         }

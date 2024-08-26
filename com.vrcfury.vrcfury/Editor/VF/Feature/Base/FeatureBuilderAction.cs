@@ -4,20 +4,18 @@ using JetBrains.Annotations;
 using VF.Builder;
 
 namespace VF.Feature.Base {
-    public class FeatureBuilderAction : IComparable<FeatureBuilderAction> {
+    internal class FeatureBuilderAction : IComparable<FeatureBuilderAction> {
         private readonly FeatureBuilderActionAttribute attribute;
         private readonly MethodInfo method;
         private readonly object service;
         public int serviceNum { get; private set; }
-        public int menuSortOrder { get; private set; }
         public VFGameObject configObject { get; private set; }
 
-        public FeatureBuilderAction(FeatureBuilderActionAttribute attribute, MethodInfo method, object service, int serviceNum, int menuSortOrder, VFGameObject configObject) {
+        public FeatureBuilderAction(FeatureBuilderActionAttribute attribute, MethodInfo method, object service, int serviceNum, VFGameObject configObject) {
             this.attribute = attribute;
             this.method = method;
             this.service = service;
             this.serviceNum = serviceNum;
-            this.menuSortOrder = menuSortOrder;
             this.configObject = configObject;
         }
 
@@ -26,7 +24,15 @@ namespace VF.Feature.Base {
         }
 
         public int CompareTo(FeatureBuilderAction other) {
-            return attribute.CompareTo(other.attribute);
+            return (
+                (int)attribute.GetPriority(),
+                attribute.GetPriorityOffset(),
+                serviceNum
+            ).CompareTo((
+                (int)other.attribute.GetPriority(),
+                other.attribute.GetPriorityOffset(),
+                serviceNum
+            ));
         }
 
         public object GetService() {

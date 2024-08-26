@@ -8,12 +8,11 @@ namespace VF.Service {
     /**
      * Holds things that are otherwise hard to autowire
      */
-    public class GlobalsService {
+    internal class GlobalsService {
         public string tmpDirParent;
         public string tmpDir;
         public VFGameObject avatarObject;
-        public VFGameObject originalObject;
-        public Action<FeatureModel,VFGameObject> addOtherFeature;
+        public Action<FeatureModel> addOtherFeature;
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
         public Func<int> currentFeatureNumProvider;

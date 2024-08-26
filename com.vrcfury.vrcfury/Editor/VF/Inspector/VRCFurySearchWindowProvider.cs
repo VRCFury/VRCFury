@@ -4,7 +4,7 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 namespace VF.Inspector {
-    public class VRCFurySearchWindowProvider : ScriptableObject, ISearchWindowProvider
+    internal class VRCFurySearchWindowProvider : ScriptableObject, ISearchWindowProvider
     {
         private Func<List<SearchTreeEntry>> _onCreateSearchTree;
         private List<string> _staticSearchEntries;

@@ -4,7 +4,7 @@ using UnityEngine;
 using VF.Builder;
 
 namespace VF.Menu {
-    public static class ZawooDeleter {
+    internal static class ZawooDeleter {
         public static void Run(VFGameObject avatarObj) {
             var effects = CleanupAllZawooComponents(avatarObj, false);
             if (effects.Count == 0) {

@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
+using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Menu;
@@ -11,11 +12,19 @@ using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
     [VFService]
-    public class SpsSendersForAllBuilder {
+    internal class SpsSendersForAllBuilder {
         [VFAutowired] private readonly GlobalsService globals;
         
         [FeatureBuilderAction(FeatureOrder.GiveEverythingSpsSenders)]
         public void Apply() {
+            var hasSps = globals.avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>().Any()
+                         || globals.avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any();
+            var allowAuto = AutoUpgradeDpsMenuItem.Get();
+
+            if (!hasSps && !allowAuto) {
+                return;
+            }
+
             RemoveTPSSenders();
             SpsUpgrader.Apply(globals.avatarObject, false, SpsUpgrader.Mode.AutomatedForEveryone);
         }

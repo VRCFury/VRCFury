@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
@@ -8,16 +9,20 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Component;
+using VF.Feature;
+using VF.Model;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
+using Action = VF.Model.StateAction.Action;
 using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
 
 [CustomPropertyDrawer(typeof(VF.Model.StateAction.Action))]
-public class VRCFuryActionDrawer : PropertyDrawer {
+internal class VRCFuryActionDrawer : PropertyDrawer {
     public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
         var el = new VisualElement();
         el.AddToClassList("vfAction");
@@ -34,6 +39,9 @@ public class VRCFuryActionDrawer : PropertyDrawer {
         var desktopActive = prop.FindPropertyRelative("desktopActive");
         var androidActive = prop.FindPropertyRelative("androidActive");
         col.AddManipulator(new ContextualMenuManipulator(e => {
+            if (e.menu.MenuItems().OfType<DropdownMenuAction>().Any(i => i.name == "Desktop Only")) {
+                return;
+            }
             if (e.menu.MenuItems().Count > 0) {
                 e.menu.AppendSeparator();
             }
@@ -42,7 +50,7 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 androidActive.boolValue = false;
                 prop.serializedObject.ApplyModifiedProperties();
             }, desktopActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
-            e.menu.AppendAction("Android Only", a => {
+            e.menu.AppendAction("Quest+Android+iOS Only", a => {
                 androidActive.boolValue = !androidActive.boolValue;
                 desktopActive.boolValue = false;
                 prop.serializedObject.ApplyModifiedProperties();
@@ -63,11 +71,11 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             }
             
             if (desktopActive.boolValue) AddFlag("Desktop Only");
-            if (androidActive.boolValue) AddFlag("Android Only");
+            if (androidActive.boolValue) AddFlag("Quest+Android+iOS Only");
 
             return row;
         }, desktopActive, androidActive));
-        
+
         return col;
     }
     
@@ -94,8 +102,50 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             case nameof(MaterialAction): {
                 var content = new VisualElement();
                 content.Add(Title("Material Swap"));
-                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
-                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot Number"));
+                var rendererProp = prop.FindPropertyRelative("renderer");
+                var indexProp = prop.FindPropertyRelative("materialIndex");
+
+                content.Add(VRCFuryEditorUtils.Prop(rendererProp, "Renderer"));
+
+                var indexField = VRCFuryEditorUtils.RefreshOnChange(() => {
+                    var renderer = rendererProp.objectReferenceValue as Renderer;
+                    if (renderer == null) {
+                        var f = new PopupField<string>(
+                            new List<string>() { "Select a renderer" },
+                            0
+                        );
+                        f.SetEnabled(false);
+                        return f;
+                    } else {
+                        var choices = Enumerable.Range(0, renderer.sharedMaterials.Length).ToList();
+                        int selectedIndex;
+                        if (indexProp.intValue >= 0 && indexProp.intValue < renderer.sharedMaterials.Length) {
+                            selectedIndex = indexProp.intValue;
+                        } else {
+                            choices.Add(indexProp.intValue);
+                            selectedIndex = choices.Count - 1;
+                        }
+
+                        string FormatLabel(int i) {
+                            if (i >= 0 && i < renderer.sharedMaterials.Length) {
+                                var mat = renderer.sharedMaterials[i];
+                                if (mat != null) return $"{i} - {mat.name}";
+                            }
+
+                            return $"{i} - ???";
+                        }
+
+                        var f = new PopupField<int>(choices, selectedIndex, FormatLabel, FormatLabel);
+                        f.RegisterValueChangedCallback(cb => {
+                            if (cb.newValue >= 0 && cb.newValue < renderer.sharedMaterials.Length) {
+                                indexProp.intValue = cb.newValue;
+                                indexProp.serializedObject.ApplyModifiedProperties();
+                            }
+                        });
+                        return f;
+                    }
+                }, rendererProp, indexProp);
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("materialIndex"), "Slot", fieldOverride: indexField));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mat"), "Material"));
                 return content;
             }
@@ -159,14 +209,16 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(valueFloat);
                 content.Add(valueVector);
                 content.Add(valueColor);
+                
                 UpdateValueType();
 
                 void UpdateValueType() {
-                    var (_, valueType) = ActionClipService.MatPropLookup(
+                    var propName = propertyNameProp.stringValue;
+                    var (renderers, valueType) = ActionClipService.MatPropLookup(
                         affectAllMeshesProp.boolValue,
                         rendererProp.objectReferenceValue as Renderer,
                         avatarObject,
-                        propertyNameProp.stringValue
+                        propName
                     );
                     valueFloat.SetVisible(valueType != ShaderUtil.ShaderPropertyType.Color && valueType != ShaderUtil.ShaderPropertyType.Vector);
                     valueVector.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Vector);
@@ -241,10 +293,10 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 }
             }
             case nameof(ScaleAction): {
-                var row = new VisualElement().Row();
-                row.Add(Title("Scale").FlexBasis(100));
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj")).FlexGrow(1));
-                row.Add( VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scale")).FlexBasis(50));
+                var row = new VisualElement();
+                row.Add(Title("Scale"));
+                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"), "Object"));
+                row.Add( VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scale"), "Multiplier"));
                 return row;
             }
             case nameof(ObjectToggleAction): {
@@ -312,30 +364,12 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(valueField);
 
                 void SelectButtonPress() {
-                    var window = new VrcfSearchWindow("Blendshapes");
                     var allRenderers = allRenderersProp.boolValue;
                     var singleRenderer = rendererProp.objectReferenceValue as Renderer;
-
-                    var shapes = new Dictionary<string, string>();
-                    if (avatarObject != null) {
-                        foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                            if (!allRenderers && skin != singleRenderer) continue;
-                            foreach (var bs in skin.GetBlendshapeNames()) {
-                                if (shapes.ContainsKey(bs)) {
-                                    shapes[bs] += ", " + skin.owner().name;
-                                } else {
-                                    shapes[bs] = skin.owner().name;
-                                }
-                            }
-                        }
-                    }
-
-                    var mainGroup = window.GetMainGroup();
-                    foreach (var entry in shapes.OrderBy(entry => entry.Key)) {
-                        mainGroup.Add(entry.Key + " (" + entry.Value + ")", entry.Key);
-                    }
-                    
-                    window.Open(value => {
+                    var skins = avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()
+                        .Where(skin => allRenderers || skin == singleRenderer)
+                        .ToArray();
+                    ShowBlendshapeSearchWindow(skins, value => {
                         blendshapeProp.stringValue = value;
                         Apply();
                     });
@@ -366,10 +400,21 @@ public class VRCFuryActionDrawer : PropertyDrawer {
                 output.Add(Title("Flipbook Builder"));
                 output.Add(VRCFuryEditorUtils.Info(
                     "This will create a clip made up of one frame per child action. This is mostly useful for" +
-                    " VRCFury Toggles with 'Use Slider Wheel' enabled, as you can put various presets in these slots" +
+                    " VRCFury Toggles with 'Use a Slider (Radial)' enabled, as you can put various presets in these slots" +
                     " and use the slider to select one of them."
                 ));
                 output.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("pages")));
+                return output;
+            }
+            case nameof(SmoothLoopAction): {
+                var output = new VisualElement();
+                output.Add(Title("Smooth Loop Builder (Breathing, etc)"));
+                output.Add(VRCFuryEditorUtils.Info(
+                    "This will create an animation smoothly looping between two states." +
+                    " You can use this for a breathing cycle or any other type of smooth two-state loop."));
+                output.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state1"), "State A"));
+                output.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state2"), "State B"));
+                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("loopTime"), "Loop time (seconds)"));
                 return output;
             }
         }
@@ -420,6 +465,28 @@ public class VRCFuryActionDrawer : PropertyDrawer {
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
             return content;
         }
+    }
+    
+    public static void ShowBlendshapeSearchWindow(IList<SkinnedMeshRenderer> skins, Action<string> onSelect) {
+        var window = new VrcfSearchWindow("Blendshapes");
+
+        var shapes = new Dictionary<string, string>();
+        foreach (var skin in skins) {
+            foreach (var bs in skin.GetBlendshapeNames()) {
+                if (shapes.ContainsKey(bs)) {
+                    shapes[bs] += ", " + skin.owner().name;
+                } else {
+                    shapes[bs] = skin.owner().name;
+                }
+            }
+        }
+
+        var mainGroup = window.GetMainGroup();
+        foreach (var entry in shapes.OrderBy(entry => entry.Key)) {
+            mainGroup.Add(entry.Key + " (" + entry.Value + ")", entry.Key);
+        }
+                    
+        window.Open(onSelect);
     }
 }
 

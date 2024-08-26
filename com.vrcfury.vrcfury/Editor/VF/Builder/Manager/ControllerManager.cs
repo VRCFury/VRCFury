@@ -15,7 +15,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
-    public class ControllerManager {
+    internal class ControllerManager {
         private readonly VFController ctrl;
         private readonly Func<ParamManager> paramManager;
         private readonly VRCAvatarDescriptor.AnimLayerType type;
@@ -66,31 +66,6 @@ namespace VF.Builder {
             var newLayer = ctrl.NewLayer(NewLayerName(name), insertAt);
             layerSourceService.SetSourceToCurrent(newLayer);
             return newLayer;
-        }
-        
-        private AnimationClip _noopClip;
-        public AnimationClip GetEmptyClip() {
-            if (_noopClip == null) {
-                _noopClip = _NewClip("VFempty");
-            }
-            return _noopClip;
-        }
-        public string NewClipName(string name) {
-            return $"{currentFeatureClipPrefixProvider.Invoke()}/{name}";
-        }
-        public AnimationClip NewClip(string name) {
-            return _NewClip(NewClipName(name));
-        }
-        private AnimationClip _NewClip(string name) {
-            var clip = new AnimationClip { name = name };
-            return clip;
-        }
-        public BlendTree NewBlendTree(string name) {
-            return _NewBlendTree(NewClipName(name));
-        }
-        private BlendTree _NewBlendTree(string name) {
-            var tree = new BlendTree { name = name };
-            return tree;
         }
 
         /**
@@ -151,11 +126,7 @@ namespace VF.Builder {
 
         private static readonly FieldInfo networkSyncedField =
             typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
-        
-        public VFABool NewTrigger(string name, bool usePrefix = true) {
-            if (usePrefix) name = makeUniqueParamName(name);
-            return ctrl.NewTrigger(name);
-        }
+
         public VFABool NewBool(string name, bool synced = false, bool networkSynced = true, bool def = false, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = makeUniqueParamName(name);
             if (synced) {

@@ -1,14 +1,15 @@
 using UnityEngine;
 
 namespace VF.Utils.Controller {
-    public abstract class VFAParam {
-        protected readonly AnimatorControllerParameter param;
-        protected VFAParam(AnimatorControllerParameter param) {
-            this.param = param;
+    internal abstract class VFAParam {
+        public static implicit operator string(VFAParam d) => d.Name();
+        
+        protected readonly string name;
+        protected VFAParam(string name) {
+            this.name = name;
         }
         public string Name() {
-            return param.name;
+            return name;
         }
-        public abstract VFCondition IsFalse();
     }
 }

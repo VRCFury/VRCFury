@@ -1,15 +1,15 @@
 using System;
 using UnityEditor;
+using VF.Hooks;
 using VF.Injector;
 
 namespace VF.Service {
     [VFService]
-    public class ExceptionService {
-        [VFAutowired] private readonly IsActuallyUploadingService isActuallyUploadingService;
+    internal class ExceptionService {
         [VFAutowired] private readonly GlobalsService globals;
 
         public void ThrowIfActuallyUploading(Exception e) {
-            if (isActuallyUploadingService.Get()) {
+            if (IsActuallyUploadingHook.Get()) {
                 throw e;
             }
             

@@ -9,20 +9,18 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
 
-public class BlinkingBuilder : FeatureBuilder<Blinking> {
+internal class BlinkingBuilder : FeatureBuilder<Blinking> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
 
     [FeatureBuilderAction]
     public void Apply() {
-        var avatar = manager.Avatar;
-        avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.None;
-
         var fx = GetFx();
         var blinkTriggerSynced = fx.NewBool("BlinkTriggerSynced", synced: true);
 
@@ -68,7 +66,6 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             var waitTrue = layer.NewState("Waiting (true)").Move(waitFalse, 1, 0);
             var checkActive = layer.NewState("Check Active").Move(waitFalse, 0, 1);
             var blinkStart = layer.NewState("Blink Start").Move(checkActive, 1, 0);
-            var blink = layer.NewState("Blink").WithAnimation(blinkClip).Move(blinkStart, 1, 0);
 
             idle.TransitionsTo(waitFalse).When(blinkTriggerSynced.IsFalse());
             idle.TransitionsTo(waitTrue).When(blinkTriggerSynced.IsTrue());
@@ -82,13 +79,23 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
                 }
                 checkActive.TransitionsTo(blinkStart).When(fx.Always());
             });
-            blinkStart.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
-            if (holdDuration > 0) {
-                var hold = layer.NewState("Hold").WithAnimation(blinkClip).Move(blink, 1, 0);
-                blink.TransitionsTo(hold).WithTransitionDurationSeconds(holdDuration).When(fx.Always());
-                hold.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
+
+            if (blinkClip.IsStatic()) {
+                var blink = layer.NewState("Blink").WithAnimation(blinkClip).Move(blinkStart, 1, 0);
+                blinkStart.TransitionsTo(blink).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
+                if (holdDuration > 0) {
+                    var hold = layer.NewState("Hold").WithAnimation(blinkClip).Move(blink, 1, 0);
+                    blink.TransitionsTo(hold).WithTransitionDurationSeconds(holdDuration).When(fx.Always());
+                    hold.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
+                } else {
+                    blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
+                }
             } else {
-                blink.TransitionsTo(idle).WithTransitionDurationSeconds(blinkDuration).When(fx.Always());
+                blinkStart
+                    .WithAnimation(blinkClip)
+                    .TransitionsTo(idle)
+                    .WithTransitionExitTime(1)
+                    .When(fx.Always());
             }
         }
     }
@@ -100,7 +107,7 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var c = new VisualElement();
         c.Add(VRCFuryEditorUtils.Info(
-            "This feature will manage eye-blinking for your avatar. Note this will disable 'Eyelid Type' on the VRC avatar descriptor."));
+            "This feature will add Blinking to your avatar. You can use this in place of blinking in the VRC Avatar Descriptor, or on a prop to add blinking to an additional object."));
         c.Add(VRCFuryEditorUtils.Prop(
             prop.FindPropertyRelative("state"),
             "Blinking State"
@@ -117,10 +124,6 @@ public class BlinkingBuilder : FeatureBuilder<Blinking> {
             "Hold Time - Time eyelids will remain closed (in seconds, -1 will use VRCFury recommended value)"));
         c.Add(adv);
         return c;
-    }
-    
-    public override bool AvailableOnRootOnly() {
-        return true;
     }
 }
 

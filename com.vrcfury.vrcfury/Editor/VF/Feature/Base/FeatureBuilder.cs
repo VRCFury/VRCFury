@@ -18,22 +18,19 @@ using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature.Base {
-    public abstract class FeatureBuilder {
+    internal abstract class FeatureBuilder {
         [JsonProperty(Order = -2)] public string type;
 
-        [VFAutowired] protected readonly ClipBuilderService clipBuilder;
         [VFAutowired] protected readonly AvatarManager manager;
-        [VFAutowired] private readonly MutableManager mutableManager; 
         [VFAutowired] private readonly GlobalsService globals;
         protected string tmpDirParent => globals.tmpDirParent;
         protected string tmpDir => globals.tmpDir;
         protected VFGameObject avatarObject => avatarObjectOverride ?? globals?.avatarObject;
-        protected VFGameObject originalObject => globals.originalObject;
         protected List<FeatureModel> allFeaturesInRun => globals.allFeaturesInRun;
         protected List<FeatureBuilder> allBuildersInRun => globals.allBuildersInRun;
         public VFGameObject avatarObjectOverride = null;
-        public void addOtherFeature(FeatureModel model) {
-            globals.addOtherFeature(model, featureBaseObject);
+        protected void addOtherFeature(FeatureModel model) {
+            globals.addOtherFeature(model);
         }
 
         [NonSerialized] [JsonIgnore] public VFGameObject featureBaseObject;
@@ -45,6 +42,10 @@ namespace VF.Feature.Base {
 
         public virtual VisualElement CreateEditor(SerializedProperty prop) {
             return VRCFuryEditorUtils.WrappedLabel("No body");
+        }
+
+        public virtual string FailWhenAdded() {
+            return null;
         }
 
         public virtual bool OnlyOneAllowed() {
@@ -63,6 +64,8 @@ namespace VF.Feature.Base {
             return manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
         }
 
+        public ControllerManager fx => GetFx();
+
         public virtual string GetClipPrefix() {
             return null;
         }
@@ -73,7 +76,7 @@ namespace VF.Feature.Base {
         }
     }
 
-    public abstract class FeatureBuilder<ModelType> : FeatureBuilder where ModelType : FeatureModel {
+    internal abstract class FeatureBuilder<ModelType> : FeatureBuilder where ModelType : FeatureModel {
         [NonSerialized] [JsonIgnore] public ModelType model;
     }
 }

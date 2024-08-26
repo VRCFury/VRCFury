@@ -1,10 +1,11 @@
+using JetBrains.Annotations;
 using UnityEngine;
 
 namespace VF.Utils {
-    public class FloatOrObject {
+    internal class FloatOrObject {
         private readonly bool isFloat;
         private readonly float floatVal;
-        private readonly Object objectVal;
+        [CanBeNull] private readonly Object objectVal;
         
         public static implicit operator FloatOrObject(float d) {
             return new FloatOrObject(d);
@@ -32,6 +33,7 @@ namespace VF.Utils {
             return floatVal;
         }
 
+        [CanBeNull]
         public Object GetObject() {
             return objectVal;
         }
@@ -48,11 +50,15 @@ namespace VF.Utils {
             return obj is FloatOrObject a && this == a;
         }
         public override int GetHashCode() {
-            return isFloat ? floatVal.GetHashCode() : objectVal.GetHashCode();
+            if (isFloat) return floatVal.GetHashCode();
+            if (objectVal == null) return 0;
+            return objectVal.GetHashCode();
         }
 
         public override string ToString() {
-            return isFloat ? floatVal.ToString() : objectVal.ToString();
+            if (isFloat) return floatVal.ToString();
+            if (objectVal == null) return null;
+            return objectVal.ToString();
         }
     }
 }

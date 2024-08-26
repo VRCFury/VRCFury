@@ -6,11 +6,11 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
 
-    public class BoneConstraintBuilder : FeatureBuilder<BoneConstraint> {
+    internal class BoneConstraintBuilder : FeatureBuilder<BoneConstraint> {
         [FeatureBuilderAction]
         public void Link() {
             addOtherFeature(new ArmatureLink {
-                boneOnAvatar = model.bone,
+                linkTo = { new ArmatureLink.LinkTo { bone = model.bone }},
                 keepBoneOffsets2 = ArmatureLink.KeepBoneOffsets.No,
                 linkMode = ArmatureLink.ArmatureLinkMode.ParentConstraint,
                 propBone = model.obj

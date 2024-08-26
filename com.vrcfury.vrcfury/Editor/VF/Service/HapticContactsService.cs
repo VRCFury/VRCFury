@@ -1,27 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
-using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Service {
     [VFService]
-    public class HapticContactsService {
-        [VFAutowired] private readonly AvatarManager manager;
-        [VFAutowired] private readonly MathService math;
-        private readonly List<Action> addTagsLater = new List<Action>();
-
-        [FeatureBuilderAction(FeatureOrder.HapticContactsDetectPosiion)]
-        public void AddTagsLater() {
-            foreach (var a in addTagsLater) a();
-        }
+    internal class HapticContactsService {
+        [VFAutowired] [CanBeNull] private readonly AvatarManager manager;
+        [VFAutowired] [CanBeNull] private readonly MathService math;
+        [VFAutowired] [CanBeNull] private readonly OverlappingContactsFixService overlappingService;
 
         public void AddSender(
             VFGameObject obj,
@@ -35,7 +31,7 @@ namespace VF.Service {
             bool useHipAvoidance = true
         ) {
             var child = GameObjects.Create(objName, obj);
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return;
+            if (!BuildTargetUtils.IsDesktop()) return;
             var sender = child.AddComponent<VRCContactSender>();
             sender.position = pos;
             sender.radius = radius;
@@ -57,11 +53,10 @@ namespace VF.Service {
                 }).ToList();
             }
             SetTags("");
-            addTagsLater.Add(() => {
-                if (!HapticUtils.IsDirectChildOfHips(obj) || !useHipAvoidance) {
-                    SetTags("", "_SelfNotOnHips");
-                }
-            });
+
+            if (ClosestBoneUtils.GetClosestHumanoidBone(obj) != HumanBodyBones.Hips || !useHipAvoidance) {
+                SetTags("", "_SelfNotOnHips");
+            }
         }
 
         public VFAFloat AddReceiver(
@@ -80,8 +75,12 @@ namespace VF.Service {
             bool worldScale = true,
             bool useHipAvoidance = true
         ) {
+            if (manager == null || math == null) {
+                throw new Exception("Receiver cannot be created in detached mode");
+            }
+
             var fx = manager.GetFx();
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return fx.Zero();
+            if (!BuildTargetUtils.IsDesktop()) return fx.Zero();
 
             if (party == HapticUtils.ReceiverParty.Both) {
                 if (!usePrefix) throw new Exception("Cannot create a 'Both' receiver without param prefix");
@@ -92,9 +91,11 @@ namespace VF.Service {
 
             var param = fx.NewFloat(paramName, usePrefix: usePrefix);
             var child = GameObjects.Create(objName, obj);
+            
+            overlappingService?.Activate();
             var receiver = child.AddComponent<VRCContactReceiver>();
             receiver.position = pos;
-            receiver.parameter = param.Name();
+            receiver.parameter = param;
             receiver.radius = radius;
             receiver.receiverType = type;
             receiver.collisionTags = new List<string>(tags);
@@ -119,12 +120,8 @@ namespace VF.Service {
                 }).ToList();
             }
             SetTags("");
-            if (party == HapticUtils.ReceiverParty.Self && useHipAvoidance) {
-                addTagsLater.Add(() => {
-                    if (HapticUtils.IsDirectChildOfHips(obj)) {
-                        SetTags("_SelfNotOnHips");
-                    }
-                });
+            if (party == HapticUtils.ReceiverParty.Self && useHipAvoidance && ClosestBoneUtils.GetClosestHumanoidBone(obj) == HumanBodyBones.Hips) {
+                SetTags("_SelfNotOnHips");
             }
 
             return param;

@@ -21,37 +21,40 @@ namespace VF.Service {
      * by using local ScaleFactor to move a contact receiver, then syncing that contact receiver's proximity value
      */
     [VFService]
-    public class ScaleFactorService {
+    internal class ScaleFactorService {
         [VFAutowired] private readonly AvatarManager manager;
-        [VFAutowired] private readonly MathService smoothingService;
+        [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
-        [VFAutowired] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
 
         private int scaleIndex = 0;
 
         [CanBeNull]
         public VFAFloat Get(VFGameObject obj) {
             var fx = manager.GetFx();
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
+            if (!BuildTargetUtils.IsDesktop()) {
                 return null;
             }
 
             var holder = GameObjects.Create("vrcf_ScaleDetector", obj);
+            holder.worldScale = Vector3.one;
+
             var senderObj = GameObjects.Create("Sender", holder);
             var sender = senderObj.AddComponent<VRCContactSender>();
-            sender.radius = 0.001f / senderObj.worldScale.x;
+            sender.radius = 0.001f;
             var tag = $"VRCF_SCALEFACTORFIX_AA_{scaleIndex++}";
             sender.collisionTags.Add(tag);
 
             var receiverObj = GameObjects.Create("Receiver", holder);
+            overlappingService.Activate();
             var receiver = receiverObj.AddComponent<VRCContactReceiver>();
             receiver.allowOthers = false;
             receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
             receiver.collisionTags.Add(tag);
             receiver.radius = 0.1f;
             receiver.position = new Vector3(0.1f, 0, 0);
-            var receiverParam = fx.NewFloat("SFFix_Rcv");
-            receiver.parameter = receiverParam.Name();
+            var receiverParam = fx.NewFloat($"SFFix {obj.name} - Rcv");
+            receiver.parameter = receiverParam;
             var p = receiverObj.AddComponent<ScaleConstraint>();
             p.AddSource(new ConstraintSource() {
                 sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
@@ -61,52 +64,7 @@ namespace VF.Service {
             p.constraintActive = true;
             p.locked = true;
 
-            var layer = fx.NewLayer("ScaleFactorFix");
-
-            var off = layer.NewState("Off");
-            var offClip = fx.NewClip("ScaleFactorFix Off");
-            clipBuilder.Enable(offClip, receiverObj, false);
-            off.WithAnimation(offClip);
-            
-            var off2 = layer.NewState("Off2");
-            off.TransitionsTo(off2).When(fx.Always()).WithTransitionDurationSeconds(0.5f);
-            off2.WithAnimation(offClip);
-            
-            var on = layer.NewState("On");
-            off2.TransitionsTo(on).When(fx.Always());
-
-            var on2 = layer.NewState("On2");
-            on.TransitionsTo(on2).When(fx.Always()).WithTransitionDurationSeconds(0.5f);
-
-            var read = layer.NewState("Read");
-            on2.TransitionsTo(read).When(fx.Always());
-            var readParam = fx.NewFloat("SFFix_Read");
-            var readDriver = read.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
-            readDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
-                type = VRC_AvatarParameterDriver.ChangeType.Copy,
-                name = readParam.Name(),
-                source = receiverParam.Name(),
-                convertRange = true,
-                sourceMin = 0,
-                sourceMax = 1,
-                destMin = 0,
-                destMax = 100
-            });
-
-            var copy = layer.NewState("Copy");
-            // Because sometimes vrc doesn't turn on the receiver fast enough and it still reads 0
-            read.TransitionsTo(copy).When(readParam.IsGreaterThan(0.001f));
-            read.TransitionsTo(off).When(fx.Always());
-            copy.TransitionsTo(off).When(fx.Always());
-            var finalParam = fx.NewFloat("SFFix_Final");
-            var finalDriver = copy.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
-            finalDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
-                type = VRC_AvatarParameterDriver.ChangeType.Copy,
-                name = finalParam.Name(),
-                source = readParam.Name(),
-            });
-
-            return finalParam;
+            return math.Multiply($"SFFix {obj.name} - Final", receiverParam, 100);
         }
     }
 }

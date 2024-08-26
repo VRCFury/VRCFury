@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEditor;
@@ -7,7 +8,7 @@ using UnityEngine;
 using VF.Builder.Exceptions;
 
 namespace VF.Builder {
-    public static class VRCFArmatureUtils {
+    internal static class VRCFArmatureUtils {
         private static ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>> cache
             = new ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>>();
 
@@ -45,8 +46,11 @@ namespace VF.Builder {
             var lookup = Load(avatarObject);
 
             if (!lookup.TryGetValue(findBone, out var path)) {
+                if (!lookup.ContainsKey(HumanBodyBones.Hips)) {
+                    throw new Exception($"{findBone} bone could not be found because avatar's rig is not set to humanoid");
+                }
                 throw new VRCFBuilderException(
-                    "Bone isn't present in rig. Are you sure the rig for the avatar is humanoid and contains this bone?");
+                    $"{findBone} bone isn't set in this avatar's rig");
             }
 
             return path;
@@ -145,17 +149,21 @@ namespace VF.Builder {
             return output;
         }
 
-        public static IList<HumanBodyBones> GetAllBones() {
+        public static ISet<HumanBodyBones> GetAllBones() {
             return VRCFEnumUtils.GetValues<HumanBodyBones>()
                 .Where(bone => bone != HumanBodyBones.LastBone)
-                .ToArray();
+                .ToImmutableHashSet();
         }
 
-        public static IList<VFGameObject> GetAllBones(VFGameObject avatarObject) {
-            return GetAllBones()
-                .Select(bone => FindBoneOnArmatureOrNull(avatarObject, bone))
-                .Where(bone => bone != null)
-                .ToList();
+        public static IDictionary<HumanBodyBones, VFGameObject> GetAllBones(VFGameObject avatarObject) {
+            var dict = new Dictionary<HumanBodyBones, VFGameObject>();
+            foreach (var bone in GetAllBones()) {
+                var obj = FindBoneOnArmatureOrNull(avatarObject, bone);
+                if (obj != null) {
+                    dict[bone] = obj;
+                }
+            }
+            return dict;
         }
     }
 }

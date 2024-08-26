@@ -10,8 +10,8 @@ using VF.Service;
 
 namespace VF.Feature {
 
-public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
-    [VFAutowired] private ActionClipService actionClipService;
+internal class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
+    [VFAutowired] private readonly ActionClipService actionClipService;
     
     [FeatureBuilderAction(FeatureOrder.SenkyGestureDriver)]
     public void Apply() {
@@ -127,10 +127,6 @@ public class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
         content.Add(adv);
 
         return content;
-    }
-    
-    public override bool AvailableOnRootOnly() {
-        return true;
     }
 }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -13,7 +14,7 @@ using VF.Model.Feature;
 using VF.Utils;
 
 namespace VF.Feature {
-    public class BlendShapeLinkBuilder : FeatureBuilder<BlendShapeLink> {
+    internal class BlendShapeLinkBuilder : FeatureBuilder<BlendShapeLink> {
         public override string GetEditorTitle() {
             return "BlendShape Link";
         }
@@ -29,8 +30,8 @@ namespace VF.Feature {
         public class IncludeDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty include) {
                 var row = new VisualElement().Row();
-                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnBase")).FlexGrow(1));
-                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnLinked")).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnBase")).FlexBasis(1).FlexGrow(1));
+                row.Add(VRCFuryEditorUtils.Prop(include.FindPropertyRelative("nameOnLinked")).FlexBasis(1).FlexGrow(1));
                 return row;
             }
         }
@@ -85,6 +86,24 @@ namespace VF.Feature {
                 
                 return o;
             }, includeAll));
+            
+            adv.Add(new Button(() => {
+                var skins = new List<SkinnedMeshRenderer>();
+                if (prop.FindPropertyRelative("linkSkins").GetObject() is IList linkList) {
+                    skins.AddRange(linkList.OfType<BlendShapeLink.LinkSkin>().Select(l => l.renderer).NotNull());
+                }
+                var baseName = prop.FindPropertyRelative("baseObj").stringValue;
+                if (avatarObject != null) {
+                    var baseObj = avatarObject.Find(baseName);
+                    if (baseObj != null) {
+                        var baseSkin = baseObj.GetComponent<SkinnedMeshRenderer>();
+                        if (baseSkin != null) skins.Add(baseSkin);
+                    }
+                }
+                VRCFuryActionDrawer.ShowBlendshapeSearchWindow(skins, value => {
+                    GUIUtility.systemCopyBuffer = value;
+                });
+            }) { text = "Copy blendshape to clipboard" });
             
             content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
                 if (avatarObject == null) {
@@ -269,7 +288,7 @@ namespace VF.Feature {
                                 newBinding.path = linked.owner().GetPath(avatarObject);
                                 newBinding.propertyName = "blendShape." + linkedName;
 
-                                clip.SetFloatCurve(newBinding, clip.GetFloatCurve(binding));
+                                clip.SetCurve(newBinding, clip.GetFloatCurve(binding));
                             }
                         }
                     });

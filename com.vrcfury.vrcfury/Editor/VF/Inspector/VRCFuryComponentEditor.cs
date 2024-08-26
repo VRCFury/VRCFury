@@ -1,159 +1,21 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Component;
 using VF.Model;
+using VF.Model.Feature;
 using VF.Utils;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
-    public class VRCFuryComponentEditor<T> : UnityEditor.Editor where T : VRCFuryComponent {
-
-        /*
-        public override bool UseDefaultMargins() {
-            return false;
-        }
-        
-        private Action detachChanges = null;
-
-        private void Detach() {
-            if (detachChanges != null) detachChanges();
-            detachChanges = null;
-        }
-
-        private void CreateHeaderOverlay(VisualElement el) {
-            Detach();
-            
-            var inspectorRoot = el.parent?.parent;
-            if (inspectorRoot == null) return;
-
-            var header = inspectorRoot.Children().ToList()
-                .FirstOrDefault(c => c.name.EndsWith("Header"));
-            var footer = inspectorRoot.Children().ToList()
-                .FirstOrDefault(c => c.name.EndsWith("Footer"));
-            if (header != null) header.style.display = DisplayStyle.None;
-            if (footer != null) footer.style.display = DisplayStyle.None;
-
-            var row = new VisualElement {
-                style = {
-                    flexDirection = FlexDirection.Row,
-                    height = 21,
-                    borderTopWidth = 1,
-                    borderTopColor = Color.black,
-                    backgroundColor = new Color(0.3f, 0.3f, 0.3f),
-                }
-            };
-            VRCFuryEditorUtils.HoverHighlight(row);
-            var normalLabelColor = new Color(0.05f, 0.05f, 0.05f);
-            var label = new Label("VRCF") {
-                style = {
-                    color = new Color(0.8f, 0.4f, 0f),
-                    borderTopRightRadius = 0,
-                    borderBottomRightRadius = 0,
-                    paddingLeft = 10,
-                    paddingRight = 7,
-                    backgroundColor = normalLabelColor,
-                    unityTextAlign = TextAnchor.MiddleCenter,
-                    flexShrink = 1,
-                }
-            };
-            row.Add(label);
-
-            row.Add(new VisualElement {
-                style = {
-                    borderLeftColor = normalLabelColor,
-                    borderTopColor = normalLabelColor,
-                    borderLeftWidth = 5,
-                    borderTopWidth = 10,
-                    borderRightWidth = 5,
-                    borderBottomWidth = 10,
-                }
-            });
-
-            var name = new Label("Toggle") {
-                style = {
-                    //color = Color.white,
-                    flexGrow = 1,
-                    unityTextAlign = TextAnchor.MiddleLeft,
-                    unityFontStyleAndWeight = FontStyle.Bold,
-                    paddingLeft = 5
-                }
-            };
-            row.Add(name);
-            void ContextMenu(Vector2 pos) {
-                var displayMethod = typeof(EditorUtility)
-                    .GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
-                    .Where(method => method.Name == "DisplayObjectContextMenu")
-                    .Where(method => method.GetParameters()[1].ParameterType.IsArray)
-                    .First();
-                displayMethod?.Invoke(null, new object[] {
-                    new Rect(pos.x, pos.y, 0.0f, 0.0f),
-                    targets,
-                    0
-                });
-            }
-            row.RegisterCallback<MouseUpEvent>(e => {
-                if (e.button == 0) {
-                    Debug.Log("Toggle " + target);
-                    e.StopImmediatePropagation();
-                    InternalEditorUtility.SetIsInspectorExpanded(target, !InternalEditorUtility.GetIsInspectorExpanded(target));
-                }
-                if (e.button == 1) {
-                    e.StopImmediatePropagation();
-                    ContextMenu(e.mousePosition);
-                }
-            });
-            {
-                var up = new Label("↑") {
-                    style = {
-                        width = 16,
-                        height = 16,
-                        marginTop = 2,
-                        unityTextAlign = TextAnchor.MiddleCenter,
-                    }
-                };
-                up.RegisterCallback<MouseUpEvent>(e => {
-                    if (e.button != 0) return;
-                    e.StopImmediatePropagation();
-                    ComponentUtility.MoveComponentUp(target as Component);
-                });
-                row.Add(up);
-                VRCFuryEditorUtils.HoverHighlight(up);
-            }
-            {
-                var menu = new Image {
-                    image = EditorGUIUtility.FindTexture("_Menu@2x"),
-                    scaleMode = ScaleMode.StretchToFill,
-                    style = {
-                        width = 16,
-                        height = 16,
-                        marginTop = 2,
-                        marginRight = 4,
-                    }
-                };
-                menu.RegisterCallback<MouseUpEvent>(e => {
-                    if (e.button != 0) return;
-                    e.StopImmediatePropagation();
-                    ContextMenu(e.mousePosition);
-                });
-                row.Add(menu);
-                VRCFuryEditorUtils.HoverHighlight(menu);
-            }
-
-            detachChanges = () => {
-                if (header != null) header.style.display = DisplayStyle.Flex;
-                if (footer != null) footer.style.display = DisplayStyle.Flex;
-                row.parent.Remove(row);
-            };
-
-            inspectorRoot.Insert(0, row);
-        }
-        */
-
+    internal class VRCFuryComponentEditor<T> : UnityEditor.Editor where T : VRCFuryComponent {
         private GameObject dummyObject;
 
         public sealed override VisualElement CreateInspectorGUI() {
@@ -166,14 +28,13 @@ namespace VF.Inspector {
             }
 
             var avatarObject = VRCAvatarUtils.GuessAvatarObject(target as UnityEngine.Component);
-            var versionLabel = new Label(SceneViewOverlay.GetOutputString(avatarObject) + " " + VRCFPackageUtils.Version);
+            var versionLabel = new Label(VrcfDebugLine.GetOutputString(avatarObject));
             versionLabel.AddToClassList("vfVersionLabel");
-            versionLabel.pickingMode = PickingMode.Ignore;
             
             var contentWithVersion = new VisualElement();
             contentWithVersion.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
-            contentWithVersion.Add(versionLabel);
             contentWithVersion.Add(content);
+            contentWithVersion.Add(versionLabel);
             return contentWithVersion;
         }
 
@@ -209,43 +70,67 @@ namespace VF.Inspector {
             VisualElement body;
             if (isInstance) {
                 var copy = CopyComponent(v);
+                var copyGameObject = copy.gameObject;
                 try {
                     VRCFury.RunningFakeUpgrade = true;
                     copy.Upgrade();
+                    // Note that copy may be deleted here!
                 } finally {
                     VRCFury.RunningFakeUpgrade = false;
                 }
-                copy.gameObjectOverride = v.gameObject;
-                var copySo = new SerializedObject(copy);
-                body = CreateEditor(copySo, copy);
+                // We need to prevent our added children from being bound to
+                // the original component by unity
+                body = new BindingBlock();
                 body.SetEnabled(false);
-                // We have to delay adding the editor to the inspector, because otherwise unity will call Bind()
-                // on this visual element immediately after we return from this method, binding it back
-                // to the original (non-temporary-upgraded) object
-                var added = false;
-                container.RegisterCallback<AttachToPanelEvent>(e => {
-                    if (!added) {
-                        added = true;
-                        container.Add(body);
-                        body.Bind(copySo);
-                    }
-                });
+
+                var children = copyGameObject.GetComponents<T>();
+                if (children.Length != 1) body.Add(VRCFuryComponentHeader.CreateHeaderOverlay("Legacy Multi-Component"));
+                foreach (var child in children) {
+                    child.gameObjectOverride = v.gameObject;
+                    var childSo = new SerializedObject(child);
+                    var childEditor = _CreateEditor(childSo, child);
+                    if (children.Length > 1) childEditor.AddToClassList("vrcfMultipleHeaders");
+                    childEditor.Bind(childSo);
+                    body.Add(childEditor); 
+                }
             } else {
                 v.Upgrade();
+                if (v == null) return new VisualElement();
                 serializedObject.Update();
-                body = CreateEditor(serializedObject, v);
-                container.Add(body);
+                body = _CreateEditor(serializedObject, v);
             }
+            
+            container.Add(body);
 
-            /*
-            el.RegisterCallback<AttachToPanelEvent>(e => {
-                CreateHeaderOverlay(el);
-            });
-            el.RegisterCallback<DetachFromPanelEvent>(e => {
-                Detach();
-            });
-            el.style.marginBottom = 4;
-            */
+            var editingPrefab = UnityCompatUtils.IsEditingPrefab();
+
+            container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
+                var warning = new VisualElement();
+
+                var descriptors = c.gameObject.asVf().GetComponentsInSelfAndParents<VRCAvatarDescriptor>();
+                if (!editingPrefab && !descriptors.Any()) {
+                    warning.Add(VRCFuryEditorUtils.Error(
+                        "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
+                        "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
+                        "object, and not just alongside it in the scene."));
+                }
+
+                if (descriptors.Length > 1) {
+                    warning.Add(VRCFuryEditorUtils.Error(
+                        "There are multiple avatar descriptors in this hierarchy. Each avatar should only have one avatar descriptor on the avatar root." +
+                        " This may cause issues in this inspector or during your avatar build.\n\n" + string.Join("\n", descriptors.Select(d => d.owner().GetPath()))));
+                }
+
+                var hasDelete = v is VRCFury z && z.GetAllFeatures().OfType<DeleteDuringUpload>().Any();
+                var isDeleted = EditorOnlyUtils.IsInsideEditorOnly(c.gameObject);
+                if (isDeleted && !hasDelete) {
+                    warning.Add(VRCFuryEditorUtils.Error(
+                        "This VRCFury component is placed within an object that is tagged as EditorOnly or has a vrcfury 'Delete During Upload' component, and thus will not do anything!"));
+                }
+                
+                return warning;
+            }));
+
             return container;
         }
 
@@ -264,8 +149,30 @@ namespace VF.Inspector {
                 DestroyImmediate(dummyObject);
             }
         }
+        
+        private VisualElement _CreateEditor(SerializedObject serializedObject, T target) {
+            if (target is VRCFury) {
+                return CreateEditor(serializedObject, target);
+            }
 
-        public virtual VisualElement CreateEditor(SerializedObject serializedObject, T target) {
+            var output = new VisualElement();
+            var type = target.GetType();
+            var attr = type.GetCustomAttribute<AddComponentMenu>();
+            string title;
+            if (attr != null) {
+                title = attr.componentMenu;
+                title = Regex.Replace(title, @".*/", "");
+                title = Regex.Replace(title, @"^vrcfury[^a-zA-Z0-9]*", "", RegexOptions.IgnoreCase);
+            } else {
+                title = target.GetType().Name;
+                title = Regex.Replace(title, @"(a-z)([A-Z])", "$1 $2");
+            }
+            output.Add(VRCFuryComponentHeader.CreateHeaderOverlay(title));
+            output.Add(CreateEditor(serializedObject, target));
+            return output;
+        }
+
+        protected virtual VisualElement CreateEditor(SerializedObject serializedObject, T target) {
             return new VisualElement();
         }
         
@@ -304,28 +211,25 @@ namespace VF.Inspector {
                 UnityCompatUtils.OpenPrefab(prefabPath, component.owner());
             }
 
+            var row = new VisualElement().Row();
+            row.Add(new VisualElement().FlexGrow(1));
+
             var label = new Button()
                 .OnClick(Open)
-                .Text("You are viewing a prefab instance\nClick here to edit VRCFury on the base prefab")
+                .Text("Edit in Prefab")
                 .TextAlign(TextAnchor.MiddleCenter)
                 .TextWrap()
-                .Padding(5)
-                .BorderColor(Color.black);
-            label.style.paddingTop = 5;
-            label.style.paddingBottom = 5;
-            label.style.borderTopLeftRadius = 5;
-            label.style.borderTopRightRadius = 5;
-            label.style.borderBottomLeftRadius = 0;
-            label.style.borderBottomRightRadius = 0;
-            label.style.marginTop = 5;
-            label.style.marginLeft = 20;
-            label.style.marginRight = 20;
-            label.style.marginBottom = 0;
-            label.style.borderTopWidth = 1;
-            label.style.borderLeftWidth = 1;
-            label.style.borderRightWidth = 1;
-            label.style.borderBottomWidth = 0;
-            return label;
+                .Padding(3, 5)
+                .BorderColor(Color.black)
+                .BorderRadius(5)
+                .Margin(0, 10)
+                .Border(1);
+            label.style.borderTopRightRadius = 0;
+            label.style.borderTopLeftRadius = 0;
+            label.style.marginTop = -2;
+            label.style.borderTopWidth = 0;
+            row.Add(label);
+            return row;
         }
     }
 }

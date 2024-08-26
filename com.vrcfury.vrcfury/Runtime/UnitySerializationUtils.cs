@@ -8,19 +8,8 @@ using Object = UnityEngine.Object;
 
 namespace VF {
     public static class UnitySerializationUtils {
-        public static void FindAndResetMarkedFields(object root) {
-            Iterate(root, visit => {
-                var value = visit.value;
-                if (value == null) return IterateResult.Continue;
-                var resetField = visit.value.GetType().GetField("ResetMePlease2", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (resetField != null && resetField.GetValue(value) is bool b && b) {
-                    visit.set(Activator.CreateInstance(value.GetType()));
-                }
-                return IterateResult.Continue;
-            });
-        }
-
         public class IterateVisit {
+            public string path;
             [CanBeNull] public FieldInfo field;
             public bool isArrayElement = false;
             [CanBeNull] public object value;
@@ -30,17 +19,22 @@ namespace VF {
             Skip,
             Continue
         }
-        public static void Iterate(object obj, Func<IterateVisit,IterateResult> forEach, bool isRoot = true) {
+        public static void Iterate([CanBeNull] object obj, Func<IterateVisit,IterateResult> forEach, bool isRoot = true, string path = "") {
             if (obj == null) return;
             if (isRoot) {
                 var r = forEach(new IterateVisit {
+                    path = "",
                     value = obj,
                 });
                 if (r == IterateResult.Skip) return;
             }
             foreach (var field in GetAllSerializableFields(obj.GetType())) {
                 var value = field.GetValue(obj);
+                var newPath = path;
+                if (newPath != "") newPath += ".";
+                newPath += field.Name;
                 var r = forEach(new IterateVisit {
+                    path = newPath,
                     field = field,
                     value = value,
                     set = v => {
@@ -61,11 +55,11 @@ namespace VF {
                         });
                         if (r2 == IterateResult.Skip) continue;
                         if (SerializionEnters(list[i])) {
-                            Iterate(list[i], forEach, false);
+                            Iterate(list[i], forEach, false, newPath + "[" + i + "]");
                         }
                     }
                 } else if (SerializionEnters(value)) {
-                    Iterate(value, forEach, false);
+                    Iterate(value, forEach, false, newPath);
                 }
             }
         }
@@ -101,7 +95,7 @@ namespace VF {
         }
 
         private static bool SerializionEnters(object obj) {
-            if (obj == null || obj is Object || obj is string || obj.GetType().IsValueType) {
+            if (obj == null || obj is Object || obj is string || obj.GetType().IsPrimitive) {
                 return false;
             }
             return true;
@@ -109,31 +103,21 @@ namespace VF {
 
         private static IEnumerable<FieldInfo> GetAllSerializableFields(Type objType) {
             var output = new List<FieldInfo>();
-            foreach (var field in objType.GetFields()) {
-                if (field.IsInitOnly) continue;
-                output.Add(field);
-            }
+
             for (var current = objType; current != null; current = current.BaseType) {
-                var privateFields = current.GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
+                var privateFields =
+                    current.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 foreach (var field in privateFields) {
+                    if (field.DeclaringType != current) continue;
                     if (field.IsInitOnly) continue;
-                    if (field.GetCustomAttribute<SerializeField>() == null) continue;
+                    if (field.IsLiteral) continue;
+                    if (!field.IsPublic && field.GetCustomAttribute<SerializeField>() == null) continue;
+                    if (field.GetCustomAttribute<NonSerializedAttribute>() != null) continue;
                     output.Add(field);
                 }
             }
+
             return output;
-        }
-        
-        public static bool ContainsNullsInList(object obj) {
-            var containsNull = false;
-            Iterate(obj, visit => {
-                containsNull |=
-                    visit.isArrayElement
-                    && visit.field?.GetCustomAttribute<SerializeReference>() != null
-                    && visit.value == null;
-                return IterateResult.Continue;
-            });
-            return containsNull;
         }
     }
 }

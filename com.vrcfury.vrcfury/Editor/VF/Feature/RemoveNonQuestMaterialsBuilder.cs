@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -8,43 +9,58 @@ using VF.Utils;
 
 namespace VF.Feature {
     [VFService]
-    public class RemoveNonQuestMaterialsBuilder {
-        [VFAutowired] private AvatarManager avatarManager;
+    internal class RemoveNonQuestMaterialsBuilder {
+        [VFAutowired] private readonly AvatarManager avatarManager;
         
         [FeatureBuilderAction(FeatureOrder.RemoveNonQuestMaterials)]
         public void Apply() {
-            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android) {
+            if (BuildTargetUtils.IsDesktop()) {
                 return;
             }
 
+            var removedMats = new HashSet<string>();
+            var removedFromActiveRootRenderer = false;
+
             foreach (var ctrl in avatarManager.GetAllUsedControllers()) {
                 foreach (var clip in ctrl.GetClips()) {
-                    foreach (var binding in clip.GetObjectBindings()) {
-                        var changed = false;
-                        var curve = clip.GetObjectCurve(binding).Select(
-                            key => {
-                                if (key.value is Material m && !IsMobileMat(m)) {
-                                    changed = true;
-                                    key.value = null;
-                                }
-                                return key;
-                            }).ToArray();
-                        if (changed) {
-                            clip.SetObjectCurve(binding, curve);
+                    clip.Rewrite(AnimationRewriter.RewriteObject(obj => {
+                        if (obj is Material m && !IsMobileMat(m)) {
+                            removedMats.Add($"{m.name} in animation {clip.name}");
+                            return null;
                         }
-                    }
+                        return obj;
+                    }));
                 }
             }
 
             foreach (var renderer in avatarManager.AvatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 renderer.sharedMaterials = renderer.sharedMaterials.Select(m => {
-                    if (!IsMobileMat(m)) return null;
+                    if (!IsMobileMat(m)) {
+                        removedMats.Add($"{m.name} in {renderer.owner().GetPath(avatarManager.AvatarObject, true)}");
+                        if (renderer.owner().active && renderer.owner().parent == avatarManager.AvatarObject) {
+                            removedFromActiveRootRenderer = true;
+                        }
+                        return null;
+                    }
                     return m;
                 }).ToArray();
             }
 
             foreach (var light in avatarManager.AvatarObject.GetComponentsInSelfAndChildren<Light>()) {
                 Object.DestroyImmediate(light);
+            }
+            
+            if (removedFromActiveRootRenderer) {
+                var sorted = removedMats.OrderBy(a => a.Length).Take(10).ToArray();
+                var more = removedMats.Count - sorted.Length;
+                var moreText = more > 0 ? $"\n... and {more} more" : "";
+                EditorUtility.DisplayDialog("Invalid Mobile Materials", 
+                                            "You are currently building an avatar for Android/Quest/iOS and are using shaders that are not mobile compatible. " + 
+                                            "You have likely switched build target by mistake and simply need to switch back to Windows mode using the VRChat SDK Control Panel. " + 
+                                            "If you have not switched by mistake and want to build for mobile, you will need to change your materials to use shaders found in VRChat/Mobile.\n" +
+                                            "\n" +
+                                            string.Join("\n", sorted) + moreText, 
+                                            "OK" );
             }
         }
 

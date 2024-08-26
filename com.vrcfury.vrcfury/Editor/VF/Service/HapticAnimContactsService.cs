@@ -16,12 +16,13 @@ namespace VF.Service {
      * This can build the contacts needed for haptic component depth animations
      */
     [VFService]
-    public class HapticAnimContactsService {
+    internal class HapticAnimContactsService {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public void CreatePlugAnims(
             ICollection<VRCFuryHapticPlug.PlugDepthAction> actions,
@@ -85,14 +86,12 @@ namespace VF.Service {
 
                 var clip = actionClipService.LoadState(prefix, depthAction.state, plugOwner);
                 if (clip.IsStatic()) {
-                    var tree = fx.NewBlendTree(prefix + " tree");
-                    tree.blendType = BlendTreeType.Simple1D;
-                    tree.useAutomaticThresholds = false;
-                    tree.blendParameter = smoothParam.Name();
-                    tree.AddChild(fx.GetEmptyClip(), 0);
-                    tree.AddChild(clip, 1);
+                    var tree = clipFactory.New1D(prefix + " tree", smoothParam);
+                    tree.Add(0, clipFactory.GetEmptyClip());
+                    tree.Add(1, clip);
                     on.WithAnimation(tree);
                 } else {
+                    clip.SetLooping(false);
                     on.WithAnimation(clip).MotionTime(smoothParam);
                 }
 
@@ -177,14 +176,12 @@ namespace VF.Service {
 
                 var clip = actionClipService.LoadState(prefix, depthAction.state, socketOwner);
                 if (clip.IsStatic()) {
-                    var tree = fx.NewBlendTree(prefix + " tree");
-                    tree.blendType = BlendTreeType.Simple1D;
-                    tree.useAutomaticThresholds = false;
-                    tree.blendParameter = smoothed.Name();
-                    tree.AddChild(fx.GetEmptyClip(), 0);
-                    tree.AddChild(clip, 1);
+                    var tree = clipFactory.New1D(prefix + " tree", smoothed);
+                    tree.Add(0, clipFactory.GetEmptyClip());
+                    tree.Add(1, clip);
                     on.WithAnimation(tree);
                 } else {
+                    clip.SetLooping(false);
                     on.WithAnimation(clip).MotionTime(smoothed);
                 }
 

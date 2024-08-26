@@ -3,8 +3,8 @@ using System.Linq;
 using UnityEditor.Animations;
 using VF.Inspector;
 
-namespace Editor.VF.Utils {
-    public static class AnimatorTransitionBaseExtensions {
+namespace VF.Utils {
+    internal static class AnimatorTransitionBaseExtensions {
         /**
          * Updating conditions is expensive because it calls AnimatorController.OnInvalidateAnimatorController
          * So only do if it something actually changes.

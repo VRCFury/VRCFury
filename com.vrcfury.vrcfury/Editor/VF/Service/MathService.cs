@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -14,9 +16,12 @@ namespace VF.Service {
      * Performs math within an animator
      */
     [VFService]
-    public class MathService {
+    [VFPrototypeScope]
+    internal class MathService {
         [VFAutowired] private readonly AvatarManager avatarManager;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
+        private ControllerManager fx => avatarManager.GetFx();
         
         // A VFAFloat, but it's guaranteed to be 0 or 1
         public class VFAFloatBool {
@@ -50,30 +55,33 @@ namespace VF.Service {
             public VFAFloat AsFloat() => value;
         }
 
+        /**
+         * value : [0,Infinity)
+         */
         public VFAap SetValueWithConditions(
             string name,
-            params (VFAFloatOrConst,VFAFloatBool)[] targets
+            params (VFAFloatOrConst value,VFAFloatBool condition)[] targets
         ) {
             var defaultValue = targets
-                .Where(target => target.Item2 == null || target.Item2.defaultIsTrue)
-                .Select(target => target.Item1.GetDefault())
+                .Where(target => target.condition == null || target.condition.defaultIsTrue)
+                .Select(target => target.value.GetDefault())
                 .DefaultIfEmpty(0)
                 .First();
 
             var output = MakeAap(name, def: defaultValue);
 
             // The "fall through" (if all conditions are false) is to maintain the current output value
-            var elseTree = MakeMaintainer(output);
+            var elseTree = MakeCopier(output, output);
 
-            foreach (var (target, when) in targets.Reverse()) {
-                var doWhenTrue = MakeCopier(target, output);
+            foreach (var target in targets.Reverse()) {
+                var doWhenTrue = MakeCopier(target.value, output);
 
-                if (when == null) {
+                if (target.condition == null) {
                     elseTree = doWhenTrue;
                     continue;
                 }
 
-                elseTree = when.create(doWhenTrue, elseTree);
+                elseTree = target.condition.create(doWhenTrue, elseTree);
             }
             directTree.Add(elseTree);
             return output;
@@ -92,8 +100,10 @@ namespace VF.Service {
             );
         }
 
+        /**
+         * input : (-Infinity,Infinity)
+         */
         public VFAap Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
-            var fx = avatarManager.GetFx();
             var outputDefault = VrcfMath.Map(input.GetDefault(), inMin, inMax, outMin, outMax);
             outputDefault = VrcfMath.Clamp(outputDefault, outMin, outMax);
             var output = MakeAap(name, def: outputDefault);
@@ -102,16 +112,13 @@ namespace VF.Service {
             var minClip = MakeSetter(output, outMin);
             var maxClip = MakeSetter(output, outMax);
 
-            var tree = fx.NewBlendTree($"{CleanName(input)} ({inMin}-{inMax}) -> ({outMin}-{outMax})");
-            tree.blendType = BlendTreeType.Simple1D;
-            tree.useAutomaticThresholds = false;
-            tree.blendParameter = input.Name();
+            var tree = clipFactory.New1D($"{CleanName(input)} ({inMin}-{inMax}) -> ({outMin}-{outMax})", input);
             if (inMin < inMax) {
-                tree.AddChild(minClip, inMin);
-                tree.AddChild(maxClip, inMax);
+                tree.Add(inMin, minClip);
+                tree.Add(inMax, maxClip);
             } else {
-                tree.AddChild(maxClip, inMax);
-                tree.AddChild(minClip, inMin);
+                tree.Add(inMax, maxClip);
+                tree.Add(inMin, minClip);
             }
 
             directTree.Add(tree);
@@ -119,6 +126,9 @@ namespace VF.Service {
             return output;
         }
         
+        /**
+         * a,b : (-Infinity,Infinity)
+         */
         public VFAFloatBool Equals(VFAFloat a, float b, string name = null) {
             return new VFAFloatBool((whenTrue, whenFalse) => Make1D(
                 name ?? $"{CleanName(a)} == {b}",
@@ -129,34 +139,42 @@ namespace VF.Service {
             ), a.GetDefault() == b);
         }
 
-        public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false) {
+        /**
+         * a,b : [-10000,10000]
+         */
+        public VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false, string name = null) {
+            name = name ?? $"{CleanName(a)} {(orEqual ? ">=" : ">")} {CleanName(b)}";
             return new VFAFloatBool((whenTrue, whenFalse) => {
-                var fx = avatarManager.GetFx();
-                var tree = fx.NewBlendTree($"{CleanName(a)} {(orEqual ? ">=" : ">")} {CleanName(b)}");
-                tree.blendType = BlendTreeType.SimpleDirectional2D;
-                tree.useAutomaticThresholds = false;
-                tree.blendParameter = a.Name();
-                tree.blendParameterY = b.Name();
-                tree.AddChild(whenFalse, new Vector2(-10000, -10000));
-                tree.AddChild(whenFalse, new Vector2(10000, 10000));
-                tree.AddChild(whenFalse, new Vector2(0, 0));
-                tree.AddChild(whenFalse, new Vector2(-10000, 10000));
-                tree.AddChild(whenTrue, new Vector2(0.000001f, -0.000001f));
+                if (whenTrue == null) whenTrue = clipFactory.GetEmptyClip();
+                if (whenFalse == null) whenFalse = clipFactory.GetEmptyClip();
+                var tree = clipFactory.NewSimpleDirectional2D(name, a, b);
+                tree.Add(new Vector2(-10000, -10000), whenFalse);
+                tree.Add(new Vector2(10000, 10000), whenFalse);
+                tree.Add(new Vector2(0, 0), whenFalse);
+                tree.Add(new Vector2(-10000, 10000), whenFalse);
+                tree.Add(new Vector2(0.000001f, -0.000001f), whenTrue);
                 return tree;
             }, a.GetDefault() > b.GetDefault() || (orEqual && a.GetDefault() == b.GetDefault()));
         }
         
-        public VFAFloatBool GreaterThan(VFAFloat a, float b, bool orEqual = false) {
+        /**
+         * a,b : (-Infinity,Infinity)
+         */
+        public VFAFloatBool GreaterThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
+            name = name ?? $"{CleanName(a)} > {b}";
             return new VFAFloatBool((whenTrue, whenFalse) => Make1D(
-                $"{CleanName(a)} > {b}",
+                name,
                 a,
                 (orEqual ? Down(b) : b, whenFalse),
                 (orEqual ? b : Up(b), whenTrue)
             ), a.GetDefault() > b || (orEqual && a.GetDefault() == b));
         }
 
-        public VFAFloatBool LessThan(VFAFloat a, float b, bool orEqual = false) {
-            return Not(GreaterThan(a, b, !orEqual));
+        /**
+         * a,b : (-Infinity,Infinity)
+         */
+        public VFAFloatBool LessThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
+            return Not(GreaterThan(a, b, !orEqual, name));
         }
 
         private static float Up(float a) {
@@ -166,18 +184,27 @@ namespace VF.Service {
             return VRCFuryEditorUtils.NextFloatDown(a);
         }
 
+        /**
+         * a,b : [0,Infinity)
+         */
         public VFAap Subtract(VFAFloatOrConst a, VFAFloatOrConst b, string name = null) {
             name = name ?? $"{CleanName(a)} - {CleanName(b)}";
             return Add(name, (a,1), (b,-1));
         }
         
+        /**
+         * a,b : [0,Infinity)
+         */
         public VFAap Add(VFAFloatOrConst a, VFAFloatOrConst b, string name = null) {
             name = name ?? $"{CleanName(a)} + {CleanName(b)}";
             return Add(name, (a,1), (b,1));
         }
         
+        /**
+         * input : [0,Infinity)
+         * multiplier : (-Infinity,Infinity)
+         */
         public VFAap Add(string name, params (VFAFloatOrConst input,float multiplier)[] components) {
-            var fx = avatarManager.GetFx();
             float def = 0;
             foreach (var c in components) {
                 if (c.input.param != null) {
@@ -189,11 +216,17 @@ namespace VF.Service {
 
             var output = MakeAap(name, def: def);
 
+            var clipCache = new Dictionary<float, AnimationClip>();
+            AnimationClip MakeCachedSetter(float multiplier) {
+                if (clipCache.TryGetValue(multiplier, out var cached)) return cached;
+                return clipCache[multiplier] = MakeSetter(output, multiplier);
+            }
+            
             foreach (var (input,multiplier) in components) {
                 if (input.param != null) {
-                    directTree.Add(input.param, MakeSetter(output, multiplier));
+                    directTree.Add(input.param, MakeCachedSetter(multiplier));
                 } else {
-                    directTree.Add(fx.One(), MakeSetter(output, input.constt * multiplier));
+                    directTree.Add(MakeCachedSetter(input.constt * multiplier));
                 }
             }
 
@@ -201,27 +234,21 @@ namespace VF.Service {
         }
 
         public AnimationClip MakeSetter(VFAap param, float value) {
-            var fx = avatarManager.GetFx();
-            var clip = fx.NewClip($"{CleanName(param)} = {value}");
-            clip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), param.Name()), value);
+            var clip = clipFactory.NewClip($"{CleanName(param)} = {value}");
+            clip.SetAap(param.Name(), value);
             return clip;
         }
 
-        public BlendTree Make1D(string name, VFAFloat param, params (float, Motion)[] children) {
-            var fx = avatarManager.GetFx();
-            var tree = fx.NewBlendTree(name);
-            tree.blendType = BlendTreeType.Simple1D;
-            tree.useAutomaticThresholds = false;
-            tree.blendParameter = param.Name();
+        public VFBlendTree1D Make1D(string name, VFAFloat param, params (float, Motion)[] children) {
+            var tree = clipFactory.New1D(name, param);
             foreach (var (threshold, motion) in children) {
-                tree.AddChild(motion, threshold);
+                tree.Add(threshold, (motion != null) ? motion : clipFactory.GetEmptyClip());
             }
             return tree;
         }
 
         /*
         public VFAFloat Map1D(string name, VFAFloat input, params (float, float)[] children) {
-            var fx = avatarManager.GetFx();
             var defaultValue = children
                 .Where(child => input.GetDefault() <= child.Item1)
                 .Select(child => child.Item2)
@@ -236,14 +263,10 @@ namespace VF.Service {
             return output;
         }
         */
-
-        public BlendTree MakeDirect(string name) {
-            var fx = avatarManager.GetFx();
-            var tree = fx.NewBlendTree(name);
-            tree.blendType = BlendTreeType.Direct;
-            return tree;
-        }
         
+        /**
+         * from : [0,Infinity)
+         */
         public VFAap Buffer(VFAFloat from, string to = null, bool usePrefix = true) {
             to = to ?? $"{CleanName(from)}_b";
             var output = MakeAap(to, from.GetDefault(), usePrefix: usePrefix);
@@ -255,40 +278,40 @@ namespace VF.Service {
             var buffered = SetValueWithConditions(to, (1, from), (0, null));
             return GreaterThan(buffered, 0.5f);
         }
-        
-        /**
-         * Only works on values > 0 !
-         * Value MUST be defaulted to 0, or the copy will ADD to it
-         */
-        public Motion MakeCopier(VFAFloatOrConst from, VFAap to) {
-            if (from.param != null) {
-                var direct = MakeDirect($"{CleanName(to)} = {CleanName(from)}");
-                direct.Add(from.param, MakeSetter(to, 1));
-                return direct;
-            } else {
+
+        public Motion MakeCopier(VFAFloatOrConst from, VFAap to, float minSupported = 0, float maxSupported = float.MaxValue) {
+            if (from.param == null) {
                 return MakeSetter(to, from.constt);
             }
-        }
-        
-        public Motion MakeMaintainer(VFAap param) {
-            return MakeCopier(param, param);
+
+            var name = $"{CleanName(to)} = {CleanName(from)}";
+            if (minSupported >= 0) {
+                var direct = clipFactory.NewDBT(name);
+                direct.Add(from.param, MakeSetter(to, 1));
+                return direct;
+            }
+
+            return Make1D(name, from.param,
+                (minSupported, MakeSetter(to, minSupported)),
+                (maxSupported, MakeSetter(to, maxSupported))
+            );
         }
 
-        public VFAFloatBool Or(VFAFloatBool a, VFAFloatBool b, string name = null) {
+        public VFAFloatBool Or(VFAFloatBool a, VFAFloatBool b) {
             return new VFAFloatBool(
                 (whenTrue, whenFalse) => a.create(whenTrue, b.create(whenTrue, whenFalse)),
                 a.defaultIsTrue || b.defaultIsTrue
             );
         }
         
-        public VFAFloatBool And(VFAFloatBool a, VFAFloatBool b, string name = null) {
+        public VFAFloatBool And(VFAFloatBool a, VFAFloatBool b) {
             return new VFAFloatBool(
                 (whenTrue, whenFalse) => a.create(b.create(whenTrue, whenFalse), whenFalse),
                 a.defaultIsTrue && b.defaultIsTrue
             );
         }
         
-        public VFAFloatBool Xor(VFAFloatBool a, VFAFloatBool b, string name = null) {
+        public VFAFloatBool Xor(VFAFloatBool a, VFAFloatBool b) {
             return new VFAFloatBool(
                 (whenTrue, whenFalse) => a.create(b.create(whenFalse, whenTrue), b.create(whenTrue, whenFalse)),
                 a.defaultIsTrue ^ b.defaultIsTrue
@@ -310,11 +333,15 @@ namespace VF.Service {
             );
         }
         
+        /**
+         * a : [0,Infinity)
+         * b : [0,Infinity) (may be negative if constant)
+         */
         public VFAap Multiply(string name, VFAFloat a, VFAFloatOrConst b) {
             var output = MakeAap(name, def: a.GetDefault() * b.GetDefault());
 
             if (b.param != null) {
-                var subTree = MakeDirect("Multiply");
+                var subTree = clipFactory.NewDBT("Multiply");
                 subTree.Add(b.param, MakeSetter(output, 1));
                 directTree.Add(a, subTree);
             } else {
@@ -325,7 +352,7 @@ namespace VF.Service {
         }
 
         private static string CleanName(VFAFloatOrConst a) {
-            if (a.param != null) return a.param.Name();
+            if (a.param != null) return a.param;
             return a.constt + "";
         }
 
@@ -334,7 +361,6 @@ namespace VF.Service {
          * and call MakeAapSafe in all of the blendtrees animating the aap.
          */
         public VFAap MakeAap(string name, float def = 0, bool usePrefix = true, bool animatedFromDefaultTree = true) {
-            var fx = avatarManager.GetFx();
             var aap = new VFAap(fx.NewFloat(name, def: def, usePrefix: usePrefix));
             if (animatedFromDefaultTree) MakeAapSafe(directTree.GetTree(), aap);
             return aap;
@@ -354,8 +380,8 @@ namespace VF.Service {
          * WARNING: If your aap is animated from a direct blendtree OUTSIDE of the main shared direct blendtree, you must set useWeightProtection to false
          * and ensure that you weight protect the variable in your own tree.
          */
-        public void MakeAapSafe(BlendTree blendTree, VFAap aap) {
-            blendTree.Add(avatarManager.GetFx().One(), MakeSetter(aap, 0));
+        public void MakeAapSafe(VFBlendTreeDirect blendTree, VFAap aap) {
+            blendTree.Add(fx.One(), MakeSetter(aap, 0));
         }
     }
 }

@@ -10,15 +10,22 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Builder {
 
-    public class MenuManager {
+    internal class MenuManager {
         private readonly VRCExpressionsMenu rootMenu;
         private readonly Func<int> currentMenuSortPosition;
         private readonly Dictionary<VRCExpressionsMenu.Control, int> sortPositions
             = new Dictionary<VRCExpressionsMenu.Control, int>();
+        private int overrideMenuSortPosition = -1;
 
         public MenuManager(VRCExpressionsMenu menu, Func<int> currentMenuSortPosition) {
             rootMenu = menu;
             this.currentMenuSortPosition = currentMenuSortPosition;
+        }
+
+        public void OverrideSortPosition(int serviceId, Action with) {
+            this.overrideMenuSortPosition = serviceId;
+            with();
+            this.overrideMenuSortPosition = -1;
         }
 
         public VRCExpressionsMenu GetRaw() {
@@ -27,7 +34,7 @@ namespace VF.Builder {
 
         private VRCExpressionsMenu.Control NewControl() {
             var control = new VRCExpressionsMenu.Control();
-            sortPositions[control] = currentMenuSortPosition();
+            sortPositions[control] = overrideMenuSortPosition >= 0 ? overrideMenuSortPosition : currentMenuSortPosition();
             return control;
         }
 
@@ -84,11 +91,26 @@ namespace VF.Builder {
                     MergeMenu(toPath, control.subMenu);
                 } else {
                     control.name = toName;
-                    var tmpMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+                    var tmpMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
                     tmpMenu.controls.Add(control);
                     MergeMenu(toPrefix, tmpMenu);
                 }
             }
+            return true;
+        }
+        
+        public bool Reorder(string path, int position) {
+            GetSubmenuAndItem(path, false, out var splitPath, out var splitPrefix, out var fromName, out var fromMenu);
+            if (!fromMenu) return false;
+            
+            var controls = FindControlsWithName(fromMenu, fromName);
+            if (controls.Length == 0) return false;
+            fromMenu.controls.RemoveAll(c => controls.Contains(c));
+
+            if (position < 0) position = fromMenu.controls.Count + position;
+            position = VrcfMath.Clamp(position, 0, fromMenu.controls.Count);
+
+            fromMenu.controls.InsertRange(position, controls);
             return true;
         }
 
@@ -190,7 +212,7 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.Button;
             control.parameter = new VRCExpressionsMenu.Control.Parameter {
-                name = param != null ? param.Name() : ""
+                name = param ?? ""
             };
             control.value = value;
             control.icon = icon;
@@ -199,7 +221,7 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
             control.parameter = new VRCExpressionsMenu.Control.Parameter {
-                name = param.Name()
+                name = param
             };
             control.value = value;
             control.icon = icon;
@@ -208,7 +230,7 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
             var menuParam = new VRCExpressionsMenu.Control.Parameter {
-                name = param.Name()
+                name = param
             };
             control.subParameters = new[]{menuParam};
             control.icon = icon;
@@ -217,16 +239,16 @@ namespace VF.Builder {
             var control = NewMenuItem(path);
             control.type = VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet;
             var menuParamX = new VRCExpressionsMenu.Control.Parameter();
-            menuParamX.name = (x != null) ? x.Name() : "";
+            menuParamX.name = x ?? "";
             var menuParamY = new VRCExpressionsMenu.Control.Parameter();
-            menuParamY.name = (y != null) ? y.Name() : "";
+            menuParamY.name = y ?? "";
             control.subParameters = new[]{menuParamX, menuParamY};
             control.icon = icon;
         }
 
         private VRCExpressionsMenu CreateNewMenu(IList<string> path) {
             var cleanPath = path.Select(CleanTitleForFilename);
-            var newMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+            var newMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
             newMenu.name = string.Join(" » ", cleanPath);
             return newMenu;
         }

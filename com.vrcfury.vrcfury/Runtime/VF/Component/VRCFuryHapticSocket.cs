@@ -4,7 +4,8 @@ using UnityEngine;
 using VF.Model;
 
 namespace VF.Component {
-    [AddComponentMenu("VRCFury/VRCFury - SPS Socket")]
+    [AddComponentMenu("VRCFury/SPS Socket (VRCFury)")]
+    // Temporarily public for SPS Configurator
     public class VRCFuryHapticSocket : VRCFuryComponent {
         public enum AddLight {
             None,
@@ -54,7 +55,6 @@ namespace VF.Component {
             public float endDistance = -0.25f;
             public bool enableSelf;
             public float smoothingSeconds = 0.25f;
-            public bool ResetMePlease2;
             
             [Obsolete] public float minDepth;
             [Obsolete] public float maxDepth;

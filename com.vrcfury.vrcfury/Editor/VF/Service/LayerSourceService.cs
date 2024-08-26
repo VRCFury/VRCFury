@@ -5,7 +5,7 @@ using VF.Injector;
 
 namespace VF.Service {
     [VFService]
-    public class LayerSourceService {
+    internal class LayerSourceService {
         [VFAutowired] private readonly GlobalsService globals;
         
         public const string AvatarDescriptorSource = "VRC Avatar Descriptor";

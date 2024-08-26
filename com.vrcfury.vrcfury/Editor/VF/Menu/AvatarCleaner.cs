@@ -13,7 +13,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Menu {
-    public static class AvatarCleaner {
+    internal static class AvatarCleaner {
         public static List<string> Cleanup(
             VFGameObject avatarObj,
             bool perform = false,

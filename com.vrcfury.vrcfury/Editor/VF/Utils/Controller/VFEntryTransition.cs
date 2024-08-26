@@ -3,7 +3,7 @@ using System.Linq;
 using UnityEditor.Animations;
 
 namespace VF.Utils.Controller {
-    public class VFEntryTransition {
+    internal class VFEntryTransition {
         private readonly Func<AnimatorTransition> transitionProvider;
         public VFEntryTransition(Func<AnimatorTransition> transitionProvider) {
             this.transitionProvider = transitionProvider;

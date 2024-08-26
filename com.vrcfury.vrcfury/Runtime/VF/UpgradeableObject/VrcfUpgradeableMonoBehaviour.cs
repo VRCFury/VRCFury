@@ -1,6 +1,7 @@
 using UnityEngine;
 
 namespace VF.Upgradeable {
+    // Temporarily public for SPS Configurator
     public abstract class VrcfUpgradeableMonoBehaviour : MonoBehaviour, IUpgradeable {
         [SerializeField] private int version = -1;
         public string unityVersion;

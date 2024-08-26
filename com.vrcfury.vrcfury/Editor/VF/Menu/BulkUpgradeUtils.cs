@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 using VF.Builder;
 
 namespace VF.Menu {
-    public static class BulkUpgradeUtils {
+    internal static class BulkUpgradeUtils {
         public static void WithAllScenesOpen(Action fn) {
             EditorSceneManager.SaveOpenScenes();
             AssetDatabase.SaveAssets();

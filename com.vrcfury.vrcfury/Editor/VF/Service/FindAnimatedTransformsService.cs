@@ -9,7 +9,7 @@ using VRC.Dynamics;
 
 namespace VF.Service {
     [VFService]
-    public class FindAnimatedTransformsService {
+    internal class FindAnimatedTransformsService {
         [VFAutowired] private readonly AvatarManager manager;
         
         public class AnimatedTransforms {

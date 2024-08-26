@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Editor.VF.Utils;
+using System.Reflection;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -11,7 +11,7 @@ using VF.Inspector;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils.Controller {
-    public class VFController {
+    internal class VFController {
         private readonly AnimatorController ctrl;
 
         private VFController(AnimatorController ctrl) {
@@ -44,7 +44,8 @@ namespace VF.Utils.Controller {
                 layer.Move(insertAt);
             }
             layer.weight = 1;
-            layer.stateMachine.anyStatePosition = VFState.MovePos(layer.stateMachine.entryPosition, 0, 1);
+            layer.stateMachine.anyStatePosition = VFState.CalculateOffsetPosition(layer.stateMachine.entryPosition, 0, 1);
+            VrcfObjectFactory.Register(layer.stateMachine);
             return layer;
         }
 
@@ -52,17 +53,17 @@ namespace VF.Utils.Controller {
             ctrl.RemoveParameter(i);
         }
 
-        public VFABool NewTrigger(string name) {
-            return new VFABool(NewParam(name, AnimatorControllerParameterType.Trigger));
-        }
         public VFABool NewBool(string name, bool def = false) {
-            return new VFABool(NewParam(name, AnimatorControllerParameterType.Bool, param => param.defaultBool = def));
+            var p = NewParam(name, AnimatorControllerParameterType.Bool, param => param.defaultBool = def);
+            return new VFABool(p.name, p.defaultBool);
         }
         public VFAFloat NewFloat(string name, float def = 0) {
-            return new VFAFloat(NewParam(name, AnimatorControllerParameterType.Float, param => param.defaultFloat = def));
+            var p = NewParam(name, AnimatorControllerParameterType.Float, param => param.defaultFloat = def);
+            return new VFAFloat(p.name, p.defaultFloat);
         }
         public VFAInteger NewInt(string name, int def = 0) {
-            return new VFAInteger(NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def));
+            var p = NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def);
+            return new VFAInteger(p.name, p.defaultInt);
         }
         public AnimatorControllerParameter NewParam(string name, AnimatorControllerParameterType type, Action<AnimatorControllerParameter> with = null) {
             var exists = GetParam(name);
@@ -130,7 +131,7 @@ namespace VF.Utils.Controller {
             }
 
             // Make a copy of everything
-            ctrl = MutableManager.CopyRecursive(ctrl);
+            ctrl = MutableManager.CopyRecursive(ctrl, $"Copied from {ctrl.name}/");
 
             // Collect any override controllers wrapping the main controller
             var overrides = new List<AnimatorOverrideController>();
@@ -148,6 +149,7 @@ namespace VF.Utils.Controller {
             output.FixNullStateMachines();
             output.CheckForBadBehaviours();
             output.ReplaceSyncedLayers();
+            output.RemoveDuplicateStateMachines();
 
             // Apply override controllers
             if (overrides.Count > 0) {
@@ -163,7 +165,7 @@ namespace VF.Utils.Controller {
             // Make sure all masks are unique, so we don't modify one and affect another
             foreach (var layer in output.GetLayers()) {
                 if (layer.mask != null) {
-                    layer.mask = MutableManager.CopyRecursive(layer.mask, false);
+                    layer.mask = MutableManager.CopyRecursive(layer.mask);
                 }
             }
             
@@ -181,10 +183,9 @@ namespace VF.Utils.Controller {
         private void FixNullStateMachines() {
             ctrl.layers = ctrl.layers.Select(layer => {
                 if (layer.stateMachine == null) {
-                    layer.stateMachine = new AnimatorStateMachine {
-                        name = layer.name,
-                        hideFlags = HideFlags.HideInHierarchy
-                    };
+                    var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
+                    sm.name = layer.name;
+                    layer.stateMachine = sm;
                 }
                 return layer;
             }).ToArray();
@@ -211,15 +212,51 @@ namespace VF.Utils.Controller {
             if (layer0 == null) return;
 
             var baseMask = layer0.mask;
-            if (isFx && baseMask == null) {
-                baseMask = AvatarMaskExtensions.DefaultFxMask();
+            if (baseMask == null) {
+                if (isFx) {
+                    baseMask = AvatarMaskExtensions.DefaultFxMask();
+                } else {
+                    return;
+                }
+            } else {
+                baseMask = MutableManager.CopyRecursive(baseMask);
             }
+
+            // Because of some unity bug, ONLY the muscle part of the base mask is actually applied to the child layers
+            // The transform part of the base mask DOES NOT impact lower layers!!
+            baseMask.AllowAllTransforms();
+
             foreach (var layer in GetLayers()) {
-                if (layer.mask == baseMask) continue;
                 if (layer.mask == null) {
-                    layer.mask = MutableManager.CopyRecursive(baseMask, false);
+                    layer.mask = MutableManager.CopyRecursive(baseMask);
                 } else {
                     layer.mask.IntersectWith(baseMask);
+                }
+            }
+        }
+
+        private static void RemoveBadBehaviours(string location, object obj) {
+            var field = obj.GetType()
+                .GetProperty("behaviours_Internal", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (field != null) {
+                // 2022+
+                var raw = field.GetValue(obj) as ScriptableObject[];
+                if (raw == null) return;
+                var clean = raw.OfType<StateMachineBehaviour>().Cast<ScriptableObject>().ToArray();
+                if (raw.Length != clean.Length) {
+                    field.SetValue(obj, clean);
+                    Debug.LogWarning($"{location} contained a corrupt behaviour. It has been removed.");
+                }
+            } else {
+                // 2019
+                var oldField = obj.GetType().GetProperty("behaviours", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (oldField == null) return;
+                var raw = oldField.GetValue(obj) as StateMachineBehaviour[];
+                if (raw == null) return;
+                var clean = raw.Cast<object>().OfType<StateMachineBehaviour>().ToArray();
+                if (raw.Length != clean.Length) {
+                    oldField.SetValue(obj, clean);
+                    Debug.LogWarning($"{location} contained a corrupt behaviour. It has been removed.");
                 }
             }
         }
@@ -227,25 +264,11 @@ namespace VF.Utils.Controller {
         private void CheckForBadBehaviours() {
             foreach (var layer in GetLayers()) {
                 foreach (var stateMachine in AnimatorIterator.GetAllStateMachines(layer)) {
-                    try {
-                        var test = stateMachine.behaviours.Cast<object>().ToArray();
-                        if (test.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
-                    } catch (Exception e) {
-                        throw new Exception(
-                            $"{layer.debugName} StateMachine `{stateMachine.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.",
-                            e);
-                    }
+                    RemoveBadBehaviours($"{layer.debugName} StateMachine `{stateMachine.name}`", stateMachine);
                 }
 
                 foreach (var state in new AnimatorIterator.States().From(layer)) {
-                    try {
-                        var test = state.behaviours.Cast<object>().ToArray();
-                        if (test.Any(b => !(b is StateMachineBehaviour))) throw new Exception("Invalid element");
-                    } catch (Exception e) {
-                        throw new Exception(
-                            $"{layer.debugName} State `{state.name}` contains a corrupt behaviour. Often this is a unity cache issue and can be fixed by restarting unity. If that doesn't work, you may need to reimport the controller or find and delete the behaviour.",
-                            e);
-                    }
+                    RemoveBadBehaviours($"{layer.debugName} State `{state.name}`", state);
                 }
             }
         }
@@ -265,10 +288,9 @@ namespace VF.Utils.Controller {
                     return layer;
                 }
                 if (layer.syncedLayerIndex >= layers.Length) {
-                    layer.stateMachine = new AnimatorStateMachine {
-                        name = layer.name,
-                        hideFlags = HideFlags.HideInHierarchy
-                    };
+                    var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
+                    sm.name = layer.name;
+                    layer.stateMachine = sm;
                     layer.syncedLayerIndex = -1;
                     return layer;
                 }
@@ -288,7 +310,26 @@ namespace VF.Utils.Controller {
             }).ToArray();
 
         }
-        
+
+        /**
+         * Some systems (modular avatar) can improperly add multiple layers with the same state machine.
+         * This wrecks havoc, as making changes to one of the layers can impact both, while typically there is
+         * expected to be no cross-talk. Since there's basically no legitimate reason for the same state machine
+         * to be used more than once in the same controller, we can just nuke the copies.
+         */
+        private void RemoveDuplicateStateMachines() {
+            var seenStateMachines = new HashSet<AnimatorStateMachine>();
+            layers = layers.Select(layer => {
+                if (layer.stateMachine != null) {
+                    if (seenStateMachines.Contains(layer.stateMachine)) {
+                        return null;
+                    }
+                    seenStateMachines.Add(layer.stateMachine);
+                }
+                return layer;
+            }).NotNull().ToArray();
+        }
+
         public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<AnimatorStateMachine> limitToLayers = null) {
             string RewriteParamName(string str) {
                 if (string.IsNullOrEmpty(str)) return str;
@@ -325,30 +366,32 @@ namespace VF.Utils.Controller {
                 }
                 VRCFuryEditorUtils.MarkDirty(state);
             }
-
-            // Parameter Drivers
-            if (includeWrites) {
-                foreach (var b in new AnimatorIterator.Behaviours().From(affectsLayers)) {
-                    if (b is VRCAvatarParameterDriver oldB) {
-                        foreach (var p in oldB.parameters) {
-                            p.name = RewriteParamName(p.name);
-                            var sourceField = p.GetType().GetField("source");
-                            if (sourceField != null) {
-                                sourceField.SetValue(p, RewriteParamName((string)sourceField.GetValue(p)));
-                            }
-                        }
-                        VRCFuryEditorUtils.MarkDirty(b);
+            
+            foreach (var b in new AnimatorIterator.Behaviours().From(affectsLayers)) {
+                // VRCAvatarParameterDriver
+                if (includeWrites && b is VRCAvatarParameterDriver oldB) {
+                    foreach (var p in oldB.parameters) {
+                        p.name = RewriteParamName(p.name);
+#if VRCSDK_HAS_DRIVER_COPY
+                        p.source = RewriteParamName(p.source);
+#endif
                     }
+                    VRCFuryEditorUtils.MarkDirty(b);
                 }
+
+                // VRCAnimatorPlayAudio
+#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
+                if (b is VRCAnimatorPlayAudio audio) {
+                    audio.ParameterName = RewriteParamName(audio.ParameterName);
+                }
+#endif
             }
 
             // Parameter Animations
             if (includeWrites) {
                 foreach (var clip in new AnimatorIterator.Clips().From(affectsLayers)) {
                     clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
-                        if (binding.path != "") return binding;
-                        if (binding.type != typeof(Animator)) return binding;
-                        if (binding.IsMuscle()) return binding;
+                        if (binding.GetPropType() != EditorCurveBindingType.Aap) return binding;
                         binding.propertyName = RewriteParamName(binding.propertyName);
                         return binding;
                     }));

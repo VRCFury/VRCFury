@@ -2,9 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using JetBrains.Annotations;
 
 namespace VF {
-    public static class ReflectionUtils {
+    internal static class ReflectionUtils {
         public static Type GetTypeFromAnyAssembly(string type) {
             return AppDomain.CurrentDomain.GetAssemblies()
                 .Select(assembly => assembly.GetType(type))
@@ -39,6 +40,19 @@ namespace VF {
                 }
             }
             return output;
+        }
+
+        [CanBeNull]
+        public static T GetMatchingDelegate<T>(
+            Type methodClass,
+            string methodName
+        ) where T : Delegate {
+            foreach (var method in methodClass.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)) {
+                if (method.Name != methodName) continue;
+                var d = (T)Delegate.CreateDelegate(typeof(T), method, false);
+                if (d != null) return d;
+            }
+            return null;
         }
     }
 }

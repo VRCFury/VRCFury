@@ -4,7 +4,7 @@ using System.Reflection;
 using UnityEngine;
 
 namespace VF.Utils {
-    public class AnimationWindowUtils {
+    internal class AnimationWindowUtils {
         private static readonly Type animationWindowState = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
         
         private static readonly PropertyInfo isRecordingProperty = animationWindowState.GetProperty(

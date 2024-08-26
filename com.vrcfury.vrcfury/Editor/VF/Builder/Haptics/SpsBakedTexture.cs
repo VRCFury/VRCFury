@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using VF.Utils;
 
 namespace VF.Builder.Haptics {
-    public class SpsBakedTexture {
+    internal class SpsBakedTexture {
         private readonly List<Color32> bakeArray = new List<Color32>();
         private readonly bool tpsCompatibility;
 
@@ -29,6 +30,7 @@ namespace VF.Builder.Haptics {
             var width = tpsCompatibility ? 8190 : 8192;
             var height = (int)(bakeArray.LongCount() / width) + 1;
             var tex = new Texture2D(width, height, TextureFormat.RGBA32, false, true);
+            VrcfObjectFactory.Register(tex);
             tex.name = "SPS Data";
             var texArray = tex.GetPixels32();
             for (var i = 0; i < bakeArray.Count; i++) {

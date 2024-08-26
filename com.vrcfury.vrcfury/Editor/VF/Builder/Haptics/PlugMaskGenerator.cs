@@ -7,7 +7,7 @@ using VF.Component;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {
-    public static class PlugMaskGenerator {
+    internal static class PlugMaskGenerator {
         // Returns 1 if active, 0 if ignored
         public static float[] GetMask(Renderer renderer, VRCFuryHapticPlug plug) {
             var mesh = renderer.GetMesh();
@@ -81,6 +81,7 @@ namespace VF.Builder.Haptics {
             RenderTexture previous = RenderTexture.active;
             RenderTexture.active = tmp;
             Texture2D myTexture2D = new Texture2D(texture.width, texture.height);
+            VrcfObjectFactory.Register(myTexture2D);
             myTexture2D.ReadPixels(new Rect(0, 0, tmp.width, tmp.height), 0, 0);
             myTexture2D.Apply();
             RenderTexture.active = previous;

@@ -1,4 +1,3 @@
-using Editor.VF.Utils;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine.UIElements;
@@ -6,9 +5,10 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Feature {
-    public class RemoveHandGesturesBuilder : FeatureBuilder<RemoveHandGestures2> {
+    internal class RemoveHandGesturesBuilder : FeatureBuilder<RemoveHandGestures2> {
         [FeatureBuilderAction]
         public void Apply() {
             foreach (var controller in manager.GetAllUsedControllers()) {
@@ -21,7 +21,7 @@ namespace VF.Feature {
         }
         
         private void AdjustTransition(ControllerManager controller, AnimatorTransitionBase transition) {
-            var tru = controller.NewBool("True", def: true);
+            var tru = controller.True();
             transition.RewriteConditions(c => {
                 if (c.parameter != "GestureLeft" && c.parameter != "GestureRight" &&
                     c.parameter != "GestureLeftWeight" && c.parameter != "GestureRightWeight") {
@@ -34,14 +34,14 @@ namespace VF.Feature {
                 if (c.mode == AnimatorConditionMode.Equals) forceTrue = c.threshold == 0;
                 if (c.mode == AnimatorConditionMode.NotEqual) forceTrue = c.threshold != 0;
                 return new AnimatorCondition {
-                    parameter = tru.Name(),
+                    parameter = tru,
                     mode = forceTrue ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot
                 };
             });
         }
 
         public override string GetEditorTitle() {
-            return "Remove Hand Gestures";
+            return "Remove Built-in Hand Gestures";
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {

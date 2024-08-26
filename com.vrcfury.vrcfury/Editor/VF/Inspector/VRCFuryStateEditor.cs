@@ -1,13 +1,22 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
+using VF.Component;
+using VF.Feature;
+using VF.Model;
 using VF.Model.StateAction;
+using VF.Service;
 using VF.Utils;
 
 namespace VF.Inspector {
 
 [CustomPropertyDrawer(typeof(VF.Model.State))]
-public class VRCFuryStateEditor : PropertyDrawer {
+internal class VRCFuryStateEditor : PropertyDrawer {
     public override VisualElement CreatePropertyGUI(SerializedProperty property) {
         return render(property);
     }
@@ -24,41 +33,34 @@ public class VRCFuryStateEditor : PropertyDrawer {
         var list = prop.FindPropertyRelative("actions");
 
         void OnPlus() {
+            var entries = new Dictionary<string, Type>() {
+                { "Object Toggle", typeof(ObjectToggleAction) },
+                { "BlendShape", typeof(BlendShapeAction) },
+                { "Animation Clip", typeof(AnimationClipAction) },
+                { "Poiyomi Flipbook Frame", typeof(FlipbookAction) },
+                { "Poiyomi UV Tile", typeof(PoiyomiUVTileAction) },
+                { "SCSS Shader Inventory", typeof(ShaderInventoryAction) },
+                { "Material Property", typeof(MaterialPropertyAction) },
+                { "Scale", typeof(ScaleAction) },
+                { "Material Swap", typeof(MaterialAction) },
+                { "Enable SPS", typeof(SpsOnAction) },
+                { "Set an FX Float", typeof(FxFloatAction) },
+                { "Disable Blinking", typeof(BlockBlinkingAction) },
+                { "Disable Visemes", typeof(BlockVisemesAction) },
+                { "Reset Physbone", typeof(ResetPhysboneAction) },
+                { "Flipbook Builder", typeof(FlipBookBuilderAction) },
+                { "Smooth Loop Builder (Breathing, etc)", typeof(SmoothLoopAction) },
+            };
+            var sorted = entries.OrderBy(entry => entry.Key).ToList();
             var menu = new GenericMenu();
-            menu.AddItem(new GUIContent("Object Toggle"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ObjectToggleAction()); });
-            menu.AddItem(new GUIContent("BlendShape"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new BlendShapeAction()); });
-            menu.AddItem(new GUIContent("Animation Clip"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new AnimationClipAction()); });
-            menu.AddItem(new GUIContent("Poiyomi Flipbook Frame"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new FlipbookAction()); });
-            menu.AddItem(new GUIContent("Poiyomi UV Tile"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new PoiyomiUVTileAction()); });
-            menu.AddItem(new GUIContent("SCSS Shader Inventory"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ShaderInventoryAction()); });
-            menu.AddItem(new GUIContent("Material Property"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new MaterialPropertyAction()); });
-            menu.AddItem(new GUIContent("Scale"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ScaleAction()); });
-            menu.AddItem(new GUIContent("Material Swap"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new MaterialAction()); });
-            menu.AddItem(new GUIContent("Enable SPS"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new SpsOnAction()); });
-            menu.AddItem(new GUIContent("Set an FX Float"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new FxFloatAction()); });
-            menu.AddItem(new GUIContent("Disable Blinking"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new BlockBlinkingAction()); });
-            menu.AddItem(new GUIContent("Disable Visemes"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new BlockVisemesAction()); });
-            menu.AddItem(new GUIContent("Reset Physbone"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new ResetPhysboneAction()); });
-            menu.AddItem(new GUIContent("Flipbook Builder"), false,
-                () => { VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = new FlipBookBuilderAction()); });
+            foreach (var pair in sorted) {
+                menu.AddItem(new GUIContent(pair.Key), false, () => {
+                    var instance = Activator.CreateInstance(pair.Value);
+                    VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = instance);
+                });
+            }
             menu.ShowAsContext();
         }
-
-        var actions = prop.FindPropertyRelative("actions");
 
         container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
             var body = new VisualElement();
@@ -106,7 +108,29 @@ public class VRCFuryStateEditor : PropertyDrawer {
             }
 
             return VRCFuryEditorUtils.AssembleProp(myLabel, tooltip, body, false, showList, labelWidth);
-        }, list, actions));
+        }, list));
+        
+        container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
+            var debugInfo = new VisualElement();
+
+            var actionSet = prop.GetObject() as State;
+            if (actionSet == null) return debugInfo;
+            var component = prop.serializedObject.targetObject as VRCFuryComponent;
+            if (component == null) return debugInfo;
+            var gameObject = component.gameObject;
+            var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
+            if (avatarObject == null) return debugInfo;
+
+            var test = ActionClipService.LoadStateAdv("test", actionSet, avatarObject, gameObject);
+            var bindings = test.onClip.GetAllBindings().ToImmutableHashSet();
+            var warnings =
+                VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject, avatarObject);
+
+            foreach (var warning in warnings) {
+                debugInfo.Add(warning);
+            }
+            return debugInfo;
+        }));
 
         return container;
     }

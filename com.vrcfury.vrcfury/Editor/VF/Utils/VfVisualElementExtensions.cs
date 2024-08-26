@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace VF.Utils {
-    public static class VfVisualElementExtensions {
+    internal static class VfVisualElementExtensions {
         public static T SetVisible<T>(this T el, bool visible) where T : VisualElement {
             el.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
             return el;
@@ -57,6 +57,10 @@ namespace VF.Utils {
         }
         public static T Margin<T>(this T el, StyleLength all) where T : VisualElement {
             return el.Margin(all, all);
+        }
+        public static T MarginBottom<T>(this T el, StyleLength v) where T : VisualElement {
+            el.style.marginBottom = v;
+            return el;
         }
         public static T Padding<T>(this T el, StyleLength topbottom, StyleLength leftright) where T : VisualElement {
             el.style.paddingTop = el.style.paddingBottom = topbottom;

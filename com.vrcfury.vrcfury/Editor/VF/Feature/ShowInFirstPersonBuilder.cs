@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -8,17 +10,54 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class ShowInFirstPersonBuilder : FeatureBuilder<ShowInFirstPerson> {
+    internal class ShowInFirstPersonBuilder : FeatureBuilder<ShowInFirstPerson> {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FakeHeadService fakeHead;
         
-        [FeatureBuilderAction(FeatureOrder.ShowInFirstPersonBuilder)]
+        [FeatureBuilderAction]
         public void Apply() {
-            var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Head);
-            mover.Move(featureBaseObject, head);
-            fakeHead.MarkEligible(featureBaseObject);
+            var obj = model.useObjOverride ? model.objOverride.asVf() : featureBaseObject;
+            if (obj == null) return;
+
+            var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
+            if (head == null) return;
+
+            addOtherFeature(new ArmatureLink {
+                propBone = obj,
+                linkTo = new List<ArmatureLink.LinkTo> {
+                    new ArmatureLink.LinkTo {
+#if VRCSDK_HAS_HEAD_CHOP
+                        obj = head,
+#else
+                        obj = fakeHead.GetFakeHead(),
+#endif
+                        useBone = false,
+                        useObj = true
+                    }
+                },
+                linkMode = ArmatureLink.ArmatureLinkMode.ReparentRoot,
+                onlyIf = () => {
+                    var isChildOfHead = obj.IsChildOf(head);
+                    if (model.onlyIfChildOfHead && !isChildOfHead) return false;
+
+#if VRCSDK_HAS_HEAD_CHOP
+                    var headChopObj = fakeHead.GetHeadChopObj();
+                    var headChop = headChopObj.GetComponents<VRCHeadChop>().FirstOrDefault(c => c.targetBones.Length < 32);
+                    if (headChop == null) headChop = headChopObj.AddComponent<VRCHeadChop>();
+                    headChop.targetBones = headChop.targetBones.Append(new VRCHeadChop.HeadChopBone() {
+                        transform = obj,
+                        scaleFactor = 1,
+                        applyCondition = VRCHeadChop.HeadChopBone.ApplyCondition.AlwaysApply
+                    }).ToArray();
+                    if (isChildOfHead) return false;
+#endif
+
+                    return true;
+                }
+            });
         }
 
         public override string GetEditorTitle() {

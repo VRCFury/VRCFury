@@ -2,7 +2,7 @@ using VF.Feature.Base;
 using VF.Inspector;
 
 namespace VF.Feature {
-    public class MarkThingsAsDirtyJustInCaseBuilder : FeatureBuilder {
+    internal class MarkThingsAsDirtyJustInCaseBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.MarkThingsAsDirtyJustInCase)]
         public void Apply() {
             // Just for safety. These don't need to be here if we make sure everywhere else appropriately marks

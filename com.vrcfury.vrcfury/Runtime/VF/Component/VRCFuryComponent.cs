@@ -3,6 +3,7 @@ using UnityEngine;
 using VF.Upgradeable;
 
 namespace VF.Component {
+    // Temporarily public for SPS Configurator
     public abstract class VRCFuryComponent : VrcfUpgradeableMonoBehaviour, IVrcfEditorOnly {
         [NonSerialized] public GameObject gameObjectOverride;
         public new GameObject gameObject {
@@ -17,7 +18,13 @@ namespace VF.Component {
                 return base.transform;
             }
         }
-        
+
+        public static Action _OnValidate;
+
+        private void OnValidate() {
+            _OnValidate?.Invoke();
+        }
+
         public override int GetLatestVersion() {
             return 1;
         }

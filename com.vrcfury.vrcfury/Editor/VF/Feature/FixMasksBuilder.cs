@@ -8,19 +8,17 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     [VFService]
-    public class FixMasksBuilder : FeatureBuilder {
+    internal class FixMasksBuilder : FeatureBuilder {
 
-        private enum PropType {
-            Muscle,
-            Aap,
-            Fx
-        }
+        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+        [VFAutowired] private readonly LayerSourceService layerSourceService;
 
         [FeatureBuilderAction(FeatureOrder.FixGestureFxConflict)]
         public void FixGestureFxConflict() {
@@ -31,67 +29,45 @@ namespace VF.Feature {
 
             var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
             var newFxLayers = new List<AnimatorControllerLayer>();
-            var fx = manager.GetFx();
-            
-            PropType GetPropType(EditorCurveBinding b) {
-                if (b.IsProxyBinding()) return PropType.Muscle;
-                if (b.path == "" && b.type == typeof(Animator)) {
-                    if (gesture.GetRaw().GetParam(b.propertyName) != null) return PropType.Aap;
-                    return PropType.Muscle;
+
+            var copyForFx = MutableManager.CopyRecursiveAdv(gesture.GetRaw().GetRaw());
+            var copyForFxLayers = copyForFx.output.layers;
+            foreach (var pair in copyForFx.originalToCopy) {
+                if (pair.Key is VRCAnimatorLayerControl from && pair.Value is VRCAnimatorLayerControl to) {
+                    animatorLayerControlManager.Alias(from, to);
                 }
-                return PropType.Fx;
             }
 
-            foreach (var layer in gesture.GetLayers()) {
-                var propTypes = new AnimatorIterator.Clips().From(layer)
-                    .SelectMany(clip => clip.GetAllBindings())
-                    .Select(GetPropType)
+            gesture.GetRaw().layers = gesture.GetRaw().layers.Select((layerForGesture,i) => {
+                
+                var propTypes = new AnimatorIterator.Clips().From(new VFLayer(null,layerForGesture.stateMachine))
+                    .SelectMany(clip => {
+                        if (clip.IsProxyClip()) return new[]{ EditorCurveBindingType.Muscle };
+                        return clip.GetAllBindings().Select(b => b.GetPropType());
+                    })
                     .ToImmutableHashSet();
 
-                if (!propTypes.Contains(PropType.Fx) && !propTypes.Contains(PropType.Aap)) continue;
-                
-                // Ensure the gesture copy has a unique copy of all of its clips, as we will be modifying them later,
-                // and they may be shared with other layers (where they should not be modified)
-                foreach (var state in new AnimatorIterator.States().From(layer)) {
-                    if (state.motion != null) {
-                        state.motion = MutableManager.CopyRecursive(state.motion);
-                    }
+                if (!propTypes.Contains(EditorCurveBindingType.Fx) && !propTypes.Contains(EditorCurveBindingType.Aap)) {
+                    // Keep it only in gesture
+                    return layerForGesture;
                 }
 
-                var copyLayer = new AnimatorControllerLayer {
-                    name = layer.name,
-                    stateMachine = MutableManager.CopyRecursive(layer.stateMachine, false),
-                    avatarMask = MutableManager.CopyRecursive(layer.mask, false),
-                    blendingMode = layer.blendingMode,
-                    defaultWeight = layer.weight
-                };
-                newFxLayers.Add(copyLayer);
-                if (propTypes.Contains(PropType.Muscle) || propTypes.Contains(PropType.Aap)) {
-                    // Remove fx bindings from the gesture copy
-                    foreach (var clip in new AnimatorIterator.Clips().From(layer)) {
-                        clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
-                            if (GetPropType(b) != PropType.Fx) return b;
-                            return null;
-                        }, false));
-                    }
-                    if (layer.mask != null) {
-                        layer.mask.AllowAllTransforms();
-                    }
-                    // Remove muscle control from the fx copy
-                    var vfCopy = new VFLayer(null, copyLayer.stateMachine);
-                    foreach (var clip in new AnimatorIterator.Clips().From(vfCopy)) {
-                        clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
-                            if (GetPropType(b) != PropType.Muscle) return b;
-                            return null;
-                        }, false));
-                    }
+                var layerForFx = copyForFxLayers[i];
+                newFxLayers.Add(layerForFx);
+                animatorLayerControlManager.Alias(layerForGesture.stateMachine, layerForFx.stateMachine);
+                layerSourceService.CopySource(layerForGesture.stateMachine, layerForFx.stateMachine);
+
+                if (propTypes.Contains(EditorCurveBindingType.Muscle) || propTypes.Contains(EditorCurveBindingType.Aap)) {
+                    // We're keeping both layers
                     // Remove behaviours from the fx copy
-                    AnimatorIterator.ForEachBehaviourRW(vfCopy, (behaviour, add) => false);
+                    AnimatorIterator.ForEachBehaviourRW(new VFLayer(null,layerForFx.stateMachine), (behaviour, add) => false);
+                    return layerForGesture;
                 } else {
-                    // Move everything to FX and just delete the original
-                    layer.Remove();
+                    // We're only keeping it in FX
+                    // Delete it from Gesture
+                    return null;
                 }
-            }
+            }).NotNull().ToArray();
 
             if (newFxLayers.Count > 0) {
                 fx.GetRaw().layers = newFxLayers.Concat(fx.GetRaw().layers).ToArray();
@@ -103,18 +79,45 @@ namespace VF.Feature {
                     });
                 }
             }
+            
+            // This clip cleanup must happen after the merge is all finished,
+            // because otherwise `propTypes` above could be wrong for some layers that use shared clips
+            // if we cleanup while iterating through the layers
+            
+            // Remove fx bindings from the gesture copy
+            foreach (var clip in new AnimatorIterator.Clips().From(gesture.GetRaw())) {
+                clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
+                    if (b.GetPropType() == EditorCurveBindingType.Fx) return null;
+                    return b;
+                }));
+            }
+
+            foreach (var layerForGesture in gesture.GetLayers()) {
+                if (layerForGesture.mask != null) {
+                    layerForGesture.mask.AllowAllTransforms();
+                }
+            }
+
+            // Remove muscle control from the fx copy
+            foreach (var clip in new AnimatorIterator.Clips().From(fx.GetRaw())) {
+                clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
+                    if (b.GetPropType() == EditorCurveBindingType.Muscle) return null;
+                    return b;
+                }));
+            }
+
+            foreach (var layerForFx in fx.GetLayers()) {
+                if (layerForFx.mask != null && layerForFx.mask.AllowsAllTransforms()) {
+                    layerForFx.mask = null;
+                }
+            }
         }
         
         [FeatureBuilderAction(FeatureOrder.FixMasks)]
         public void FixMasks() {
             foreach (var layer in GetFx().GetLayers()) {
-                // For any layers we added to FX without masks, give them the default FX mask
-                if (layer.mask == null) {
-                    layer.mask = AvatarMaskExtensions.DefaultFxMask();
-                }
-                
                 // Remove redundant FX masks if they're not needed
-                if (layer.mask.AllowsAllTransforms() && !layer.HasMuscles()) {
+                if (layer.mask != null && layer.mask.AllowsAllTransforms()) {
                     layer.mask = null;
                 }
             }
@@ -125,16 +128,23 @@ namespace VF.Feature {
                 AvatarMask expectedMask = null;
                 if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
                     expectedMask = GetGestureMask(c);
-                } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
-                    expectedMask = GetFxMask(c);
                 }
 
                 var layer0 = ctrl.GetLayer(0);
-                // If there are no layers, we still create a base layer because the VRCSDK freaks out if there is a
-                //   controller with no layers
-                // On FX, ALWAYS make an empty base layer, because for some reason transition times can break
-                //   and animate immediately when performed within the base layer
-                if (layer0 == null || layer0.mask != expectedMask || c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) {
+                var createEmptyBaseLayer = false;
+                if (layer0 == null) {
+                    // If there are no layers, we still create a base layer because the VRCSDK freaks out if there is a controller with no layers
+                    createEmptyBaseLayer = true;
+                } else if (layer0.mask != expectedMask) {
+                    // If the mask on layer 0 doesn't match what the base mask needs to be, we need to correct it by making a new base layer
+                    createEmptyBaseLayer = true;
+                } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX && layer0.stateMachine.states.Length > 1) {
+                    // On FX, do not allow a layer with transitions to live as the base layer, because for some reason transition times can break
+                    //   and animate immediately when performed within the base layer
+                    createEmptyBaseLayer = true;
+                }
+
+                if (createEmptyBaseLayer) {
                     c.EnsureEmptyBaseLayer().mask = expectedMask;
                 }
             }
@@ -150,10 +160,6 @@ namespace VF.Feature {
                 mask.UnionWith(layer.mask);
             }
             return mask;
-        }
-
-        private AvatarMask GetFxMask(ControllerManager fx) {
-            return null;
         }
     }
 }

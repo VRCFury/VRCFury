@@ -5,17 +5,41 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace VF.Inspector {
-    public static class VRCFuryGizmoUtils {
-        public static void DrawArrow(
+    internal static class VRCFuryGizmoUtils {
+
+        public static void DrawDisc(
+            Vector3 worldCenter,
+            Vector3 worldForward,
+            float worldRadius,
+            Color color
+        ) {
+            VRCFuryGizmoUtils.WithHandles(() => {
+                Handles.color = color;
+                Handles.DrawWireDisc(worldCenter, worldForward, worldRadius);
+            });
+        }
+        
+        public static void DrawLine(
             Vector3 worldStart,
             Vector3 worldEnd,
             Color color
         ) {
             WithHandles(() => {
                 Handles.color = color;
+                Handles.DrawLine(worldStart, worldEnd);
+            });
+        }
+        
+        public static void DrawArrow(
+            Vector3 worldStart,
+            Vector3 worldEnd,
+            Color color
+        ) {
+            DrawLine(worldStart, worldEnd, color);
+            WithHandles(() => {
+                Handles.color = color;
                 var dir = worldEnd - worldStart;
                 var length = dir.magnitude;
-                Handles.DrawLine(worldStart, worldEnd);
                 var capSize = length / 4;
                 Handles.ConeHandleCap(0, worldEnd - dir.normalized * capSize * 0.7f, Quaternion.LookRotation(dir), capSize, EventType.Repaint);
             });
@@ -32,6 +56,48 @@ namespace VF.Inspector {
                 Handles.color = color;
                 HandlesUtil.DrawWireCapsule(worldPos, worldRot, worldLength, worldRadius);
             });
+        }
+        
+        public static void DrawCappedCylinder(
+            Vector3 worldStart,
+            Vector3 worldEnd,
+            float worldRadius,
+            Color color
+        ) {
+            var worldLength = (worldEnd - worldStart).magnitude;
+            var worldForward = (worldEnd - worldStart).normalized;
+            var worldRight = Vector3.Cross(worldForward, Vector3.up).normalized;
+            if (worldRight.magnitude == 0) worldRight = Vector3.right;
+            var worldUp = Vector3.Cross(worldRight, worldForward).normalized;
+
+            var cylinderLength = worldLength - worldRadius;
+            var cylinderEnd = worldStart + worldForward * cylinderLength;
+            
+            DrawLine(worldStart + worldRight * worldRadius, worldStart - worldRight * worldRadius, Color.gray);
+            DrawLine(worldStart + worldUp * worldRadius, worldStart - worldUp * worldRadius, Color.gray);
+
+            DrawLine(worldStart + worldRight * worldRadius, cylinderEnd + worldRight * worldRadius, color);
+            DrawLine(worldStart - worldRight * worldRadius, cylinderEnd - worldRight * worldRadius, color);
+            DrawLine(worldStart + worldUp * worldRadius, cylinderEnd + worldUp * worldRadius, color);
+            DrawLine(worldStart - worldUp * worldRadius, cylinderEnd - worldUp * worldRadius, color);
+            DrawDisc(worldStart, worldForward, worldRadius, color);
+
+            WithHandles(() => {
+                Handles.color = color;
+                Handles.DrawWireArc(cylinderEnd, worldUp, worldRight, 180f, worldRadius);
+                Handles.DrawWireArc(cylinderEnd, -worldRight, worldUp, 180f, worldRadius);
+            });
+        }
+
+        public static void DrawCapsule(
+            Vector3 worldStart,
+            Vector3 worldEnd,
+            float worldRadius,
+            Color color
+        ) {
+            var mid = worldStart + (worldEnd - worldStart) / 2;
+            var rot = Quaternion.FromToRotation(Vector3.up, worldEnd - worldStart);
+            DrawCapsule(mid, rot, (worldEnd - worldStart).magnitude, worldRadius, color);
         }
         
         public static void DrawSphere(
@@ -60,7 +126,7 @@ namespace VF.Inspector {
             //style.fontSize = 12;
             if (worldSize) {
                 style.fontSize = (int)(1.5 / HandleUtility.GetHandleSize(worldPos));
-                if (style.fontSize < 8) return;
+                if (style.fontSize < 8) style.fontSize = 8;
                 if (style.fontSize > 40) style.fontSize = 40;
             }
             WithHandles(() => {

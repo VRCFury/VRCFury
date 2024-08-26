@@ -14,9 +14,10 @@ using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
-    public class MmdCompatibilityBuilder : FeatureBuilder<MmdCompatibility> {
+    internal class MmdCompatibilityBuilder : FeatureBuilder<MmdCompatibility> {
         [VFAutowired] private readonly MathService mathService;
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
         
         public override string GetEditorTitle() {
             return "MMD Compatibility";
@@ -26,8 +27,7 @@ namespace VF.Feature {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Info(
                 "This component will improve MMD compatibility for your avatar, by maintaining MMD" +
-                " blendshapes, avoiding usage of layers that MMD worlds are known to interfere with, and disabling" +
-                " hand animations when MMD dances are active."));
+                " blendshapes and avoiding usage of layers that MMD worlds are known to interfere with."));
 
             var adv = new Foldout() {
                 text = "Advanced Settings",
@@ -83,9 +83,9 @@ namespace VF.Feature {
             }
 
             var mmdDetector = fx.NewFloat("MMDDetector", def: 1);
-            var mmdDetectorClip = new AnimationClip();
+            var mmdDetectorClip = clipFactory.NewClip("Detector");
             // MMD worlds will disable this layer, setting HandsActive back to the default of 0
-            mmdDetectorClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), mmdDetector.Name()), 0);
+            mmdDetectorClip.SetAap(mmdDetector, 0);
             layer1.NewState("Mmd Detector").WithAnimation(mmdDetectorClip);
             layer1.weight = 1;
 

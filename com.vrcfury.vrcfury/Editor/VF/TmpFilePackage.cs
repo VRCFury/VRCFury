@@ -4,10 +4,10 @@ using System.Reflection;
 using System.Text;
 using UnityEditor;
 using UnityEditor.PackageManager;
+using VF.Builder;
 
 namespace VF {
-    [InitializeOnLoad]
-    public class TmpFilePackage {
+    internal class TmpFilePackage {
         private const string TmpDirPath = "Packages/com.vrcfury.temp";
         private const string TmpPackagePath = TmpDirPath + "/" + "package.json";
         private const string LegacyTmpDirPath = "Assets/_VRCFury";
@@ -21,7 +21,7 @@ namespace VF {
             }
 
             if (!Directory.Exists(TmpDirPath)) {
-                Directory.CreateDirectory(TmpDirPath); 
+                VRCFuryAssetDatabase.CreateFolder(TmpDirPath); 
                 File.Create(LegacyPrefabsImportedMarker).Close();
             }
 
@@ -56,7 +56,8 @@ namespace VF {
             method.Invoke(null, null);
         }
 
-        static TmpFilePackage() {
+        [InitializeOnLoadMethod]
+        private static void Init() {
             GetPath();
         }
 

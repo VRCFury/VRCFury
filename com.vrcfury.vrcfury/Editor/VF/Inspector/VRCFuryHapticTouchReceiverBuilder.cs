@@ -11,7 +11,7 @@ using VF.Service;
 
 namespace VF.Inspector {
     [VFService]
-    public class VRCFuryHapticTouchReceiverBuilder {
+    internal class VRCFuryHapticTouchReceiverBuilder {
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
@@ -55,7 +55,7 @@ namespace VF.Inspector {
         
         [CustomEditor(typeof(VRCFuryHapticTouchReceiver), true)]
         public class VRCFuryHapticTouchReceiverEditor : VRCFuryComponentEditor<VRCFuryHapticTouchReceiver> {
-            public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticTouchReceiver target) {
+            protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticTouchReceiver target) {
                 var container = new VisualElement();
                 
                 container.Add(VRCFuryEditorUtils.Info(
@@ -63,7 +63,7 @@ namespace VF.Inspector {
                     "Haptic level will increase to 100% at the center of the sphere. " +
                     "This touch zone can be activated by Hands, Fingers, Feet, SPS Plugs, VRCF Haptic Touch Senders, and Heads (other players only)."));
 
-                container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target.gameObject));
+                container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target));
             
                 container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in connected apps"));
                 container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("radius"), "Radius"));

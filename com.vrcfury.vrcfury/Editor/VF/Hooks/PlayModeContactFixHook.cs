@@ -10,11 +10,11 @@ namespace VF.Hooks {
     /**
      * Makes "self" and "others" contacts actually work properly in play mode
      */
-    public static class PlayModeContactFixHook {
+    internal static class PlayModeContactFixHook {
         private static int nextPlayerId = (new System.Random()).Next(1, 100_000_000);
 
         [InitializeOnLoadMethod]
-        static void Init() {
+        private static void Init() {
             if (ContactBase.OnValidatePlayers == null) {
                 ContactBase.OnValidatePlayers = (a, b) => true;
             }

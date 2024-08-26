@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VF.Utils {
-    public class AnimationRewriter {
+    internal class AnimationRewriter {
         public delegate (EditorCurveBinding, FloatOrObjectCurve, bool) CurveRewriter(EditorCurveBinding binding, FloatOrObjectCurve curve);
         public static AnimationRewriter RewritePath(Func<string, string> rewrite) {
             return RewriteBinding(binding => {
@@ -16,7 +18,7 @@ namespace VF.Utils {
                 return newBinding;
             });
         }
-        public static AnimationRewriter RewriteBinding(Func<EditorCurveBinding, EditorCurveBinding?> rewrite, bool skipProxyBindings = true) {
+        public static AnimationRewriter RewriteBinding(Func<EditorCurveBinding, EditorCurveBinding?> rewrite) {
             var cache = new Dictionary<EditorCurveBinding, EditorCurveBinding?>();
             var output = RewriteCurve((binding, curve) => {
                 if (!cache.TryGetValue(binding, out var newBinding)) {
@@ -26,11 +28,26 @@ namespace VF.Utils {
                 if (newBinding == null) return (binding, null, false);
                 return (newBinding.Value, curve, false);
             });
-            output.skipProxyBindings = skipProxyBindings;
             return output;
         }
         public static AnimationRewriter RewriteCurve(CurveRewriter rewrite) {
             return new AnimationRewriter(rewrite);
+        }
+        public static AnimationRewriter RewriteObject(Func<Object,Object> rewrite) {
+            return RewriteCurve((binding, curve) => {
+                if (curve.IsFloat) return (binding, curve, false);
+                var changed = false;
+                var newCurve = curve.ObjectCurve.Select(frame => {
+                    if (frame.value == null) return frame;
+                    var newValue = rewrite(frame.value);
+                    if (newValue != frame.value) {
+                        frame.value = newValue;
+                        changed = true;
+                    }
+                    return frame;
+                }).ToArray();
+                return (binding, newCurve, changed);
+            });
         }
         public static AnimationRewriter DeleteAllBindings() {
             return RewriteCurve((b, c) => (b, null, false));
@@ -49,31 +66,43 @@ namespace VF.Utils {
                 }
                 return (binding,curve,curveUpdated);
             });
-            output.skipProxyBindings = false;
             return output;
         }
         private readonly CurveRewriter curveRewriter;
-        private bool skipProxyBindings = true;
         private AnimationRewriter(CurveRewriter curveRewriter) {
             this.curveRewriter = curveRewriter;
         }
 
         private (EditorCurveBinding, FloatOrObjectCurve, bool) RewriteOne(EditorCurveBinding binding, FloatOrObjectCurve curve) {
-            if (skipProxyBindings && binding.IsProxyBinding()) return (binding,curve,false);
             return curveRewriter(binding, curve);
         }
         public void Rewrite(AnimationClip clip) {
+            var originalLength = clip.GetLengthInSeconds();
             var output = new List<(EditorCurveBinding, FloatOrObjectCurve)>();
             foreach (var (binding,curve) in clip.GetAllCurves()) {
+                if (binding.path == "__vrcf_length") {
+                    continue;
+                }
                 var (newBinding, newCurve, curveUpdated) = RewriteOne(binding, curve);
                 if (newCurve == null) {
                     output.Add((binding, null));
-                } else if (binding != newBinding || curve != newCurve || curveUpdated) {
+                } else if (binding != newBinding) {
                     output.Add((binding, null));
                     output.Add((newBinding, newCurve));
+                } else if (curve != newCurve || curveUpdated) {
+                    output.Add((binding, newCurve));
                 }
             }
             clip.SetCurves(output);
+            var newLength = clip.GetLengthInSeconds();
+            if (originalLength != newLength) {
+                clip.SetCurve(
+                    "__vrcf_length",
+                    typeof(GameObject),
+                    "m_IsActive",
+                    FloatOrObjectCurve.DummyFloatCurve(originalLength)
+                );
+            }
         }
 
         public string RewritePath(string input) {

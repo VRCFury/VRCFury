@@ -2,9 +2,10 @@ using System;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Feature;
+using VF.Utils;
 
 namespace VF.Builder {
-    public static class AnimatorStateExtensions {
+    internal static class AnimatorStateExtensions {
         public static StateMachineBehaviour VAddStateMachineBehaviour(this AnimatorState state, Type type) {
             // Unity 2019 and lower log an error if this isn't persistent
             StateMachineBehaviour added = null;
@@ -14,6 +15,7 @@ namespace VF.Builder {
             if (added == null) {
                 AnimatorStateMachineExtensions.ThrowProbablyCompileErrorException($"Failed to create state behaviour of type {type.Name}.");
             }
+            VrcfObjectFactory.Register(added);
             return added;
         }
 

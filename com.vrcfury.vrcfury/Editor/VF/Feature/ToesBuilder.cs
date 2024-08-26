@@ -6,7 +6,7 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
 
-public class ToesBuilder : FeatureBuilder<Toes> {
+internal class ToesBuilder : FeatureBuilder<Toes> {
     [FeatureBuilderAction]
     public void Apply() {
         var toes = new Puppet {

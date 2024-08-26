@@ -14,7 +14,7 @@ using VF.Utils;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Builder.Haptics {
-    public static class SpsUpgrader {
+    internal static class SpsUpgrader {
         private const string dialogTitle = "VRCFury Legacy Haptics Upgrader";
         
         public static void Run() {
@@ -122,12 +122,13 @@ namespace VF.Builder.Haptics {
             // Upgrade "parent-constraint" DPS setups
             if (mode == Mode.Manual) {
                 foreach (var parent in avatarObject.GetComponentsInSelfAndChildren<Transform>()) {
-                    var constraint = parent.owner().GetComponent<ParentConstraint>();
+                    var constraint = parent.owner().GetConstraints().FirstOrDefault(c => c.IsParent());
                     if (constraint == null) continue;
-                    if (constraint.sourceCount < 2) continue;
+                    var sourceTransforms = constraint.GetSources();
+                    if (sourceTransforms.Length < 2) continue;
                     var sourcesWithWeight = 0;
-                    for (var i = 0; i < constraint.sourceCount; i++) {
-                        if (constraint.GetSource(i).weight > 0) sourcesWithWeight++;
+                    foreach (var i in Enumerable.Range(0, sourceTransforms.Length)) {
+                        if (constraint.GetWeight(i) > 0) sourcesWithWeight++;
                     }
 
                     if (sourcesWithWeight > 1) {
@@ -146,12 +147,11 @@ namespace VF.Builder.Haptics {
                     foundParentConstraint = true;
                     objectsToDelete.Add(parent);
 
-                    for (var i = 0; i < constraint.sourceCount; i++) {
-                        var source = constraint.GetSource(i);
-                        var sourcePositionOffset = constraint.GetTranslationOffset(i);
-                        var sourceRotationOffset = Quaternion.Euler(constraint.GetRotationOffset(i));
-                        VFGameObject t = source.sourceTransform;
+                    foreach (var i in Enumerable.Range(0, sourceTransforms.Length)) {
+                        var t = sourceTransforms[i];
                         if (t == null) continue;
+                        var sourcePositionOffset = constraint.GetPositionOffset(i);
+                        var sourceRotationOffset = Quaternion.Euler(constraint.GetRotationOffset(i));
                         var name = HapticUtils.GetName(t);
 
                         var socket = AddSocket(t);
@@ -353,7 +353,7 @@ namespace VF.Builder.Haptics {
             if (deletions.Count > 0)
                 parts.Add("These objects will be deleted:\n" + string.Join("\n", deletions));
             if (alreadyExists.Count > 0)
-                parts.Add("Haptics already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
+                parts.Add("SPS already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
 
             if (parts.Count == 0) return "";
             return string.Join("\n\n", parts);

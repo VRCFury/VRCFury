@@ -5,8 +5,8 @@ using VF.Model;
 using VF.Model.StateAction;
 
 namespace VF.Component {
-    [AddComponentMenu("VRCFury/VRCFury - SPS Plug")]
-    public class VRCFuryHapticPlug : VRCFuryComponent {
+    [AddComponentMenu("VRCFury/SPS Plug (VRCFury)")]
+    internal class VRCFuryHapticPlug : VRCFuryComponent {
         public bool autoRenderer = true;
         public bool autoPosition = true;
         public bool autoLength = true;
@@ -47,7 +47,6 @@ namespace VF.Component {
             public bool enableSelf;
             public float smoothingSeconds = 0.25f;
             [Obsolete] public float smoothing;
-            public bool ResetMePlease2;
         }
 
         public override bool Upgrade(int fromVersion) {
@@ -56,7 +55,7 @@ namespace VF.Component {
                 unitsInMeters = true;
             }
             if (fromVersion < 2) {
-                autoRenderer = configureTpsMesh.Count == 0;
+                autoRenderer = configureTpsMesh == null || configureTpsMesh.Count == 0;
                 autoLength = length == 0;
                 autoRadius = radius == 0;
             }

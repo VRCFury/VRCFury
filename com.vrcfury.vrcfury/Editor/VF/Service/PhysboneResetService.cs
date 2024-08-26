@@ -3,6 +3,7 @@ using JetBrains.Annotations;
 using UnityEngine;
 using VF.Builder;
 using VF.Injector;
+using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Service {
@@ -10,11 +11,11 @@ namespace VF.Service {
      * Creates a physbone resetter that can be triggered by triggering the returned bool
      */
     [VFService]
-    public class PhysboneResetService {
-        [VFAutowired] private AvatarManager avatarManager;
-        [VFAutowired] private ClipBuilderService clipBuilder;
-        [VFAutowired] private MathService mathService;
-        [VFAutowired] private DirectBlendTreeService directTree;
+    internal class PhysboneResetService {
+        [VFAutowired] private readonly AvatarManager avatarManager;
+        [VFAutowired] private readonly MathService mathService;
+        [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public VFAFloat CreatePhysBoneResetter(ICollection<VFGameObject> resetPhysbones, string name) {
             var fx = avatarManager.GetFx();
@@ -23,13 +24,13 @@ namespace VF.Service {
             var buffer2 = mathService.Buffer(buffer1);
             var buffer3 = mathService.Buffer(buffer2);
             
-            var resetClip = fx.NewClip("Physbone Reset");
+            var resetClip = clipFactory.NewClip("Physbone Reset");
             foreach (var physBone in resetPhysbones) {
-                clipBuilder.Enable(resetClip, physBone, false);
+                resetClip.SetEnabled(physBone, false);
             }
 
             directTree.Add(mathService.Xor(mathService.GreaterThan(buffer1, 0), mathService.GreaterThan(buffer3, 0))
-                .create(resetClip, fx.GetEmptyClip()));
+                .create(resetClip, clipFactory.GetEmptyClip()));
 
             return param;
         }

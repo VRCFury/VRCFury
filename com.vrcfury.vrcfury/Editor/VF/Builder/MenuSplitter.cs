@@ -14,7 +14,7 @@ namespace VF.Builder {
      * It is capable of splitting menus with more than the maximum allowed controls into separate pages,
      * and also capable of re-joining them back into oversized menus again.
      */
-    public static class MenuSplitter {
+    internal static class MenuSplitter {
         public static void SplitMenus(VRCExpressionsMenu root, OverrideMenuSettings menuSettings = null) {
             var nextText = "Next";
             Texture2D nextIcon = null;
@@ -27,7 +27,7 @@ namespace VF.Builder {
                 var page = menu;
                 var pageNum = 2;
                 while (page.controls.Count > maxControlsPerPage) {
-                    var nextPage = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+                    var nextPage = VrcfObjectFactory.Create<VRCExpressionsMenu>();
                     nextPage.name = $"{menu.name} (Page {pageNum++})";
                     while (page.controls.Count > maxControlsPerPage - 1) {
                         nextPage.controls.Insert(0, page.controls[page.controls.Count - 1]);

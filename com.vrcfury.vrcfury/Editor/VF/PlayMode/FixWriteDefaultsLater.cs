@@ -10,11 +10,11 @@ using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.PlayMode {
-    [InitializeOnLoad]
-    public class FixWriteDefaultsLater {
+    internal static class FixWriteDefaultsLater {
         private const string Key = "vrcfFixWd";
         
-        static FixWriteDefaultsLater() {
+        [InitializeOnLoadMethod]
+        private static void Init() {
             EditorApplication.playModeStateChanged += state => {
                 if (state == PlayModeStateChange.ExitingEditMode) {
                     EditorPrefs.DeleteKey(Key);
@@ -52,15 +52,17 @@ namespace VF.PlayMode {
 
         private static void SaveNow(VFGameObject avatar, bool auto) {
             if (avatar.GetComponentsInSelfAndChildren<VRCFury>()
-                .SelectMany(v => v.config.features)
+                .SelectMany(v => v.GetAllFeatures())
                 .Any(f => f is FixWriteDefaults)) {
                 return;
             }
 
             var vf = avatar.AddComponent<VRCFury>();
-            vf.config.features.Add(new FixWriteDefaults() {
-                mode = auto ? FixWriteDefaults.FixWriteDefaultsMode.Auto : FixWriteDefaults.FixWriteDefaultsMode.Disabled
-            });
+            vf.content = new FixWriteDefaults() {
+                mode = auto
+                    ? FixWriteDefaults.FixWriteDefaultsMode.Auto
+                    : FixWriteDefaults.FixWriteDefaultsMode.Disabled
+            };
         }
 
         private static Data GetData() {

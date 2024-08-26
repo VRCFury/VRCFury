@@ -6,11 +6,11 @@ using JetBrains.Annotations;
 using UnityEngine;
 
 namespace VF.Utils {
-    public static class AvatarMaskExtensions {
+    internal static class AvatarMaskExtensions {
         private const string MagicEverythingString = "__vrcf_everything";
 
         public static AvatarMask Empty() {
-            var mask = new AvatarMask();
+            var mask = VrcfObjectFactory.Create<AvatarMask>();
             for (AvatarMaskBodyPart bodyPart = 0; bodyPart < AvatarMaskBodyPart.LastBodyPart; bodyPart++) {
                 mask.SetHumanoidBodyPartActive(bodyPart, false);
             }

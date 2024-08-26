@@ -1,16 +1,19 @@
 using System;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Utils;
+using VRC.Dynamics;
+using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     /**
      * VFGameObject is a wrapper around Transform and GameObject, combining the two into one object we can use
      * everywhere, and providing helper methods that are commonly used.
      */
-    public class VFGameObject {
+    internal class VFGameObject {
         private readonly GameObject _gameObject;
         private VFGameObject(GameObject gameObject) {
             _gameObject = gameObject;
@@ -21,7 +24,7 @@ namespace VF.Builder {
         public static implicit operator VFGameObject(GameObject d) => new VFGameObject(d);
         public static implicit operator VFGameObject(Transform d) => new VFGameObject(d == null ? null : d.gameObject);
         public static implicit operator GameObject(VFGameObject d) => d?.gameObject;
-        public static implicit operator UnityEngine.Object(VFGameObject d) => d?.gameObject;
+        public static implicit operator Object(VFGameObject d) => d?.gameObject;
         public static implicit operator Transform(VFGameObject d) => d?.transform;
         public static implicit operator bool(VFGameObject d) => d?.gameObject;
         public static bool operator ==(VFGameObject a, VFGameObject b) => a?.Equals(b) ?? b?.Equals(null) ?? true;
@@ -132,7 +135,23 @@ namespace VF.Builder {
         public T GetComponent<T>() {
             return GetComponents<T>().FirstOrDefault();
         }
-        
+
+        public VFConstraint[] GetConstraints(bool includeParents = false, bool includeChildren = false) {
+            var avatar = VRCAvatarUtils.GuessAvatarObject(this);
+            if (avatar == null) avatar = root;
+            return avatar.GetComponentsInSelfAndChildren<UnityEngine.Component>()
+                .Select(c => c.AsConstraint())
+                .NotNull()
+                .Where(c => {
+                    var affectedObject = c.GetAffectedObject();
+                    if (affectedObject == null) return false;
+                    if (includeParents) return IsChildOf(affectedObject);
+                    if (includeChildren) return affectedObject.IsChildOf(this);
+                    return affectedObject == this;
+                })
+                .ToArray();
+        }
+
         public UnityEngine.Component[] GetComponents(Type t) {
             // Components can sometimes be null for some reason. Perhaps when they're corrupt?
             return gameObject.GetComponents(t).NotNull().ToArray();
@@ -190,12 +209,34 @@ namespace VF.Builder {
             return AnimationUtility.CalculateTransformPath(this, root);
         }
 
+        public string GetAnimatedPath() {
+            var avatarObject = VRCAvatarUtils.GuessAvatarObject(this);
+            if (avatarObject == null) return "_avatarMissing/" + GetPath();
+            return GetPath(avatarObject);
+        }
+
         public void Destroy() {
-            UnityEngine.Object.DestroyImmediate(gameObject);
+            var b = VRCAvatarUtils.GuessAvatarObject(this) ?? root;
+            foreach (var c in b.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
+                if (c.GetRootTransform().IsChildOf(this))
+                    Object.DestroyImmediate(c);
+            }
+            foreach (var c in b.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>()) {
+                if (c.GetRootTransform().IsChildOf(this))
+                    Object.DestroyImmediate(c);
+            }
+            foreach (var c in b.GetComponentsInSelfAndChildren<ContactBase>()) {
+                if (c.GetRootTransform().IsChildOf(this))
+                    Object.DestroyImmediate(c);
+            }
+            foreach (var c in GetConstraints(includeChildren: true)) {
+                c.Destroy();
+            }
+            Object.DestroyImmediate(gameObject);
         }
 
         public VFGameObject Clone() {
-            return UnityEngine.Object.Instantiate(gameObject);
+            return Object.Instantiate(gameObject);
         }
 
         public static VFGameObject[] GetRoots(Scene scene) {
@@ -223,5 +264,32 @@ namespace VF.Builder {
         public Vector3 TransformPoint(Vector3 position) => transform.TransformPoint(position);
         public Vector3 InverseTransformPoint(Vector3 position) => transform.InverseTransformPoint(position);
         public Vector3 TransformDirection(Vector3 direction) => transform.TransformDirection(direction);
+        
+        /**
+         * If two objects share the same name, animations will always target the first one.
+         * If an object contains a slash in its name, it does weird things, since technically
+         *   it can be animated, but it will show as "missing" in the animation editor, and VRCFury
+         *   will think it's invalid because it can't find the object it's pointing to.
+         * Technically we should not remove slashes (since technically they can be animated by the user's animator),
+         *   but vrcfury has already been removing these animations as "invalid" for ages (because it can't find the object),
+         *   so we may as well just keep it at this point because retaining the existing broken animations would be very difficult.
+         */
+        public void EnsureAnimationSafeName() {
+            var name = this.name;
+            name = name.Replace("/", "_");
+            if (string.IsNullOrEmpty(name)) name = "_";
+
+            if (parent != null) {
+                for (var i = 0; ; i++) {
+                    var finalName = name + (i == 0 ? "" : $" ({i})");
+                    var exists = parent.Find(finalName);
+                    if (exists != null && exists != this) continue; // Already used by something else
+                    name = finalName;
+                    break;
+                }
+            }
+
+            this.name = name;
+        }
     }
 }

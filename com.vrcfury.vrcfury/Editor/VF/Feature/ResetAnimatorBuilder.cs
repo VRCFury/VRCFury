@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
@@ -19,7 +20,7 @@ namespace VF.Feature {
      *    it would reset all the child transforms back to how they were before we built. To "lock them in," we need to
      *    reset the animator.
      */
-    public class ResetAnimatorBuilder : FeatureBuilder {
+    internal class ResetAnimatorBuilder : FeatureBuilder {
 
         private bool exists;
         private RuntimeAnimatorController controller;
@@ -48,6 +49,7 @@ namespace VF.Feature {
             // animator.WriteDefaultValues();
             VRCFArmatureUtils.ClearCache();
             VRCFArmatureUtils.WarmupCache(avatarObject);
+            ClosestBoneUtils.ClearCache();
             Object.DestroyImmediate(animator);
         }
 

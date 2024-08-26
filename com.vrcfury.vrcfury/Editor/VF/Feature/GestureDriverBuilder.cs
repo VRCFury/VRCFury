@@ -17,7 +17,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
 namespace VF.Feature {
-    public class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
+    internal class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
         private readonly Dictionary<string, VFCondition> excludeConditions = new Dictionary<string, VFCondition>();
@@ -25,6 +25,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -89,12 +90,9 @@ namespace VF.Feature {
                 );
                 onCondition = smoothedWeight.IsGreaterThan(0.05f);
                 transitionTime = 0.05f;
-                var tree = fx.NewBlendTree(uid + "_blend");
-                tree.blendType = BlendTreeType.Simple1D;
-                tree.useAutomaticThresholds = false;
-                tree.blendParameter = smoothedWeight.Name();
-                tree.AddChild(fx.GetEmptyClip(), 0);
-                tree.AddChild(clip, 1);
+                var tree = clipFactory.New1D(uid + "_blend", smoothedWeight);
+                tree.Add(0, clipFactory.GetEmptyClip());
+                tree.Add(1, clip.GetLastFrame());
                 on.WithAnimation(tree);
             } else {
                 on.WithAnimation(clip);

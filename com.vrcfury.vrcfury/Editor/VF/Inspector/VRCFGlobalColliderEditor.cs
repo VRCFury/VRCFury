@@ -5,7 +5,7 @@ using VF.Component;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryGlobalCollider), true)]
-    public class VRCFGlobalColliderEditor : VRCFuryComponentEditor<VRCFuryGlobalCollider> {
+    internal class VRCFGlobalColliderEditor : VRCFuryComponentEditor<VRCFuryGlobalCollider> {
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFuryGlobalCollider collider, GizmoType gizmoType) {
             var transform = collider.GetTransform();
@@ -20,8 +20,8 @@ namespace VF.Inspector {
                 Color.blue
             );
         }
-        
-        public override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryGlobalCollider target) {
+
+        protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryGlobalCollider target) {
             var container = new VisualElement();
             
             container.Add(VRCFuryEditorUtils.Info(
