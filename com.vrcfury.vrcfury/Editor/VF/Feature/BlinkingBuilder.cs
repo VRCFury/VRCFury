@@ -22,7 +22,7 @@ internal class BlinkingBuilder : FeatureBuilder<Blinking> {
     [FeatureBuilderAction]
     public void Apply() {
         var fx = GetFx();
-        var blinkTriggerSynced = fx.NewBool("BlinkTriggerSynced", synced: true);
+        var blinkTriggerSynced = fx.NewBool("BlinkTriggerSynced", addToParamFile: true);
 
         // Generator
         {
