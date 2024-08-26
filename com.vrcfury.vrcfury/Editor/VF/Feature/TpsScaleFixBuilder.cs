@@ -41,7 +41,7 @@ namespace VF.Feature {
                     foreach (var binding in clip.GetFloatBindings()) {
                         if (binding.propertyName.Contains("_TPS_PenetratorLength") ||
                             binding.propertyName.Contains("_TPS_PenetratorScale")) {
-                            clip.SetFloatCurve(binding, null);
+                            clip.SetCurve(binding, null);
                         }
                     }
                 }

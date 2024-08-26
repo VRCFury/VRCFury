@@ -6,6 +6,7 @@ namespace VF.Feature.Base {
         // Needs to happen before everything
         FixDoubleFx,
         RemoveDefaultControllers,
+        RemoveExtraDescriptors,
 
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore,

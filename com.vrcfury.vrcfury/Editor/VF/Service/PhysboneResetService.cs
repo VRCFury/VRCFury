@@ -3,6 +3,7 @@ using JetBrains.Annotations;
 using UnityEngine;
 using VF.Builder;
 using VF.Injector;
+using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Service {
@@ -11,10 +12,9 @@ namespace VF.Service {
      */
     [VFService]
     internal class PhysboneResetService {
-        [VFAutowired] private AvatarManager avatarManager;
-        [VFAutowired] private ClipBuilderService clipBuilder;
-        [VFAutowired] private MathService mathService;
-        [VFAutowired] private DirectBlendTreeService directTree;
+        [VFAutowired] private readonly AvatarManager avatarManager;
+        [VFAutowired] private readonly MathService mathService;
+        [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public VFAFloat CreatePhysBoneResetter(ICollection<VFGameObject> resetPhysbones, string name) {
@@ -26,7 +26,7 @@ namespace VF.Service {
             
             var resetClip = clipFactory.NewClip("Physbone Reset");
             foreach (var physBone in resetPhysbones) {
-                clipBuilder.Enable(resetClip, physBone, false);
+                resetClip.SetEnabled(physBone, false);
             }
 
             directTree.Add(mathService.Xor(mathService.GreaterThan(buffer1, 0), mathService.GreaterThan(buffer3, 0))

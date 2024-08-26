@@ -243,7 +243,7 @@ namespace VF.Feature {
                     throw new DoNotOptimizeException($"{state.name} contains non-static clip set to loop");
                 }
 
-                var dualState = ClipBuilderService.SplitRangeClip(clip);
+                var dualState = clip.SplitRangeClip();
                 if (dualState == null) {
                     throw new DoNotOptimizeException($"{state.name} contains a non-static clip with more than 2 keyframes");
                 }

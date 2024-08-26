@@ -7,7 +7,7 @@ using VF.Utils;
 
 namespace VF.Service {
     internal class ClipRewriteService {
-        [VFAutowired] private AvatarManager manager;
+        [VFAutowired] private readonly AvatarManager manager;
         private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
 
         public void RewriteAllClips(AnimationRewriter rewriter) {

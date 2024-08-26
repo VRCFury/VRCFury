@@ -26,6 +26,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
     [VFAutowired] private readonly ClipRewriteService clipRewriteService;
     [VFAutowired] private readonly ClipFactoryService clipFactory;
+    [VFAutowired] private readonly ClipBuilderService clipBuilder;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFCondition isOn;

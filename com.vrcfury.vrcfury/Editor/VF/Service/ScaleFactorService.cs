@@ -25,7 +25,6 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
-        [VFAutowired] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
 
         private int scaleIndex = 0;

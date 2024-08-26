@@ -185,9 +185,7 @@ namespace VF.Feature {
                             void SendParam(string shaderParam, string tag) {
                                 var oneClip = clipFactory.NewClip($"{shaderParam}_one");
                                 foreach (var r in renderers.Select(r => r.renderer)) {
-                                    var path = r.owner().GetPath(manager.AvatarObject);
-                                    var binding = EditorCurveBinding.FloatCurve(path, r.GetType(), $"material.{shaderParam}");
-                                    oneClip.SetCurve(binding, 1);
+                                    oneClip.SetCurve(r, $"material.{shaderParam}", 1);
                                 }
 
                                 var self = CreateReceiver(tag, true);
@@ -208,10 +206,11 @@ namespace VF.Feature {
                             directTree.Add(spsPlusClip);
                         }
 
-                        clipBuilder.Enable(spsPlusClip, plusRoot);
+                        spsPlusClip.SetEnabled(plusRoot, true);
                         foreach (var r in renderers) {
                             spsPlusClip.SetCurve(
-                                EditorCurveBinding.FloatCurve(r.renderer.owner().GetPath(avatarObject), typeof(SkinnedMeshRenderer), "material._SPS_Plus_Enabled"),
+                                r.renderer,
+                                "material._SPS_Plus_Enabled",
                                 1
                             );
                         }
@@ -232,7 +231,7 @@ namespace VF.Feature {
                             dpsTipToDo.Add(light);
                         }
 
-                        clipBuilder.Enable(tipLightOnClip, tip);
+                        tipLightOnClip.SetEnabled(tip, true);
                     }
 
                     if (plug.enableDepthAnimations && plug.depthActions.Count > 0) {
@@ -267,17 +266,6 @@ namespace VF.Feature {
             foreach (var rewrite in spsRewritesToDo) {
                 var pathToPlug = rewrite.plugObject.GetPath(avatarObject);
                 var pathToRenderer = rewrite.skin.owner().GetPath(avatarObject);
-                var pathToBake = rewrite.bakeRoot.GetPath(avatarObject);
-                var spsEnabledBinding = EditorCurveBinding.FloatCurve(
-                    pathToRenderer,
-                    typeof(SkinnedMeshRenderer),
-                    "material._SPS_Enabled"
-                );
-                var hapticsEnabledBinding = EditorCurveBinding.FloatCurve(
-                    pathToBake,
-                    typeof(GameObject),
-                    "m_IsActive"
-                );
 
                 void RewriteClip(AnimationClip clip) {
                     foreach (var (_binding,curve) in clip.GetAllCurves()) {
@@ -286,14 +274,14 @@ namespace VF.Feature {
                         if (curve.IsFloat) {
                             if (binding.path == pathToRenderer) {
                                 if (binding.propertyName == "material._TPS_AnimatedToggle") {
-                                    clip.SetCurve(spsEnabledBinding, curve);
-                                    clip.SetCurve(hapticsEnabledBinding, curve);
+                                    clip.SetCurve(rewrite.skin, "material._SPS_Enabled", curve);
+                                    clip.SetEnabled(rewrite.bakeRoot, curve);
                                 }
                             }
                             if (binding.path == pathToPlug) {
                                 if (binding.propertyName == "spsAnimatedEnabled") {
-                                    clip.SetCurve(spsEnabledBinding, curve);
-                                    clip.SetCurve(hapticsEnabledBinding, curve);
+                                    clip.SetCurve(rewrite.skin, "material._SPS_Enabled", curve);
+                                    clip.SetEnabled(rewrite.bakeRoot, curve);
                                 }
                             }
                         }
@@ -309,7 +297,8 @@ namespace VF.Feature {
                             var blendshapeMeshIndex = rewrite.spsBlendshapes.IndexOf(blendshapeName);
                             if (blendshapeMeshIndex >= 0) {
                                 clip.SetCurve(
-                                    EditorCurveBinding.FloatCurve(pathToRenderer, typeof(SkinnedMeshRenderer), $"material._SPS_Blendshape{blendshapeMeshIndex}"),
+                                    rewrite.skin,
+                                    $"material._SPS_Blendshape{blendshapeMeshIndex}",
                                     curve
                                 );
                             }

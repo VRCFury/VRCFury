@@ -51,7 +51,7 @@ namespace VF.Feature {
             wrapper.active = false;
 
             var clip = clipFactory.NewClip("Unlock");
-            clipBuilder.Enable(clip, wrapper);
+            clip.SetEnabled(wrapper, true);
             directTree.Add(security.GetEnabled().AsFloat(), clip);
         }
 

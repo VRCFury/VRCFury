@@ -20,7 +20,7 @@ namespace VF.Service {
      * constraint animations may be pointing the wrong type of constraint before this upgrade
      * has happened.
      */
-    [VFService]
+    //[VFService]
     internal class UpgradeToVrcConstraintsService {
 #if VRCSDK_HAS_VRCCONSTRAINTS
         [VFAutowired] private readonly ClipRewriteService clipRewriteService;
@@ -28,51 +28,12 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.UpgradeToVrcConstraints)]
         public void Apply() {
-            // TODO: Remove this conditional entirely and always upgrade once VRCConstraints are usable in the game live branch
-#if VRCSDK_UPGRADE_CONSTRAINTS
-                Upgrade();
-#endif
+            Upgrade();
         }
 
-        delegate bool TryGetSubstituteAnimationBinding(
-            Type unityConstraintType,
-            string unityConstraintPropertyName,
-            out Type vrcConstraintType,
-            out string vrcConstraintPropertyName,
-            out bool isArrayProperty
-        );
-
-        delegate bool DoConvertUnityConstraints(
-            IConstraint[] unityConstraints,
-            VRCAvatarDescriptor avatarDescriptor,
-            bool convertReferencedAnimationClips
-        );
-
         private void Upgrade() {
-            var tryUpgradeBinding = ReflectionUtils.GetMatchingDelegate<TryGetSubstituteAnimationBinding>(
-                typeof(AvatarDynamicsSetup),
-                "TryGetSubstituteAnimationBinding"
-            );
-            var upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<DoConvertUnityConstraints>(
-                typeof(AvatarDynamicsSetup),
-                "ConvertUnityConstraintsToVrChatConstraints" //old name
-            );
-
-            if (upgradeConstraintComponents == null) {
-                upgradeConstraintComponents = ReflectionUtils.GetMatchingDelegate<DoConvertUnityConstraints>(
-                    typeof(AvatarDynamicsSetup),
-                    "DoConvertUnityConstraints" // new name https://feedback.vrchat.com/open-beta/p/sdk-370-beta1-please-provide-a-hook-for-supplying-additional-animation-clips-and
-                );
-                
-            }
-            if (tryUpgradeBinding == null || upgradeConstraintComponents == null) {
-                Debug.LogError("Failed to find constraint binding upgrade methods");
-                return;
-                //throw new Exception("Failed to find constraint binding upgrade methods");
-            }
-
             clipRewriteService.RewriteAllClips(AnimationRewriter.RewriteBinding(binding => {
-                if (typeof(IConstraint).IsAssignableFrom(binding.type) && tryUpgradeBinding(
+                if (typeof(IConstraint).IsAssignableFrom(binding.type) && AvatarDynamicsSetup.TryGetSubstituteAnimationBinding(
                         binding.type,
                         binding.propertyName,
                         out var newType,
@@ -87,7 +48,7 @@ namespace VF.Service {
 
             var avatarDescriptor = globals.avatarObject.GetComponent<VRCAvatarDescriptor>();
             var unityConstraints = globals.avatarObject.GetComponentsInSelfAndChildren<IConstraint>().ToArray();
-            upgradeConstraintComponents(unityConstraints, avatarDescriptor, false);
+            AvatarDynamicsSetup.DoConvertUnityConstraints(unityConstraints, avatarDescriptor, false);
         }
 #endif
     }

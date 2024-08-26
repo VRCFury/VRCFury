@@ -22,7 +22,6 @@ namespace VF.Service {
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        [VFAutowired] private readonly ClipBuilderService clipBuilder;
 
         private bool activate = false;
 
@@ -52,12 +51,12 @@ namespace VF.Service {
             receiver.parameter = param;
             
             var testObjectOn = clipFactory.NewClip("TestObjectOn");
-            clipBuilder.Enable(testObjectOn, testObject);
+            testObjectOn.SetEnabled(testObject, true);
             directTree.Add(testObjectOn);
 
             var allOffClip = clipFactory.NewClip("AllReceiversOff");
             foreach (var r in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                allOffClip.SetCurve(EditorCurveBinding.FloatCurve(r.owner().GetPath(avatarObject), r.GetType(), "m_Enabled"), 0);
+                allOffClip.SetCurve(r, "m_Enabled", 0);
             }
 
             var counter = math.MakeAap("counter");

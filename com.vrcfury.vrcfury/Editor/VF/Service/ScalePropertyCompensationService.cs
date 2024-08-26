@@ -36,11 +36,15 @@ namespace VF.Service {
             foreach (var prop in properties) {
                 var objectPath = prop.obj.GetPath(manager.AvatarObject);
                 scaleClip.SetCurve(
-                    EditorCurveBinding.FloatCurve(objectPath, prop.ComponentType, prop.PropertyName),
+                    objectPath,
+                    prop.ComponentType,
+                    prop.PropertyName,
                     prop.InitialValue
                 );
                 zeroClip.SetCurve(
-                    EditorCurveBinding.FloatCurve(objectPath, prop.ComponentType, prop.PropertyName),
+                    objectPath,
+                    prop.ComponentType,
+                    prop.PropertyName,
                     0
                 );
             }
