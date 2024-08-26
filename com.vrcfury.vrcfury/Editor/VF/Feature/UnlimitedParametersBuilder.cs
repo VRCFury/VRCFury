@@ -40,8 +40,8 @@ namespace VF.Feature {
                 networkSyncedField.SetValue(vrcPrm, false);
             }
 
-            var syncPointer = fx.NewInt("SyncPointer", synced: true);
-            var syncData = fx.NewInt("SyncData", synced: true);
+            var syncPointer = fx.NewInt("SyncPointer", addToParamFile: true);
+            var syncData = fx.NewInt("SyncData", addToParamFile: true);
 
             var layer = fx.NewLayer("Unlimited Parameters");
             var entry = layer.NewState("Entry");
