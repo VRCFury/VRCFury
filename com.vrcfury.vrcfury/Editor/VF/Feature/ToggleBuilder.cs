@@ -88,7 +88,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
         var networkSyncParam = !getIsOnlyLocalToggle();
 
-        var addToParamFile = addMenuItem || !networkSyncParam;
+        var addToParamFile = addMenuItem || networkSyncParam;
         if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
             addToParamFile = false;
         }
