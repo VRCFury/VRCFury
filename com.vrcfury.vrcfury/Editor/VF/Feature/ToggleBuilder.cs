@@ -106,11 +106,11 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
         var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
-        var networkSyncParam = addMenuItem && !getIsOnlyLocalToggle();
+        var networkSyncParam = !getIsOnlyLocalToggle();
 
-        var synced = addMenuItem;
+        var addToParamFile = addMenuItem || !networkSyncParam;
         if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
-            synced = false;
+            addToParamFile = false;
         }
 
         var (paramName, usePrefixOnParam, menuItemAlreadyMade) = GetParamName();
@@ -120,7 +120,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         if (model.slider) {
             var param = fx.NewFloat(
                 paramName,
-                synced: synced,
+                addToParamFile: addToParamFile,
                 networkSynced: networkSyncParam,
                 saved: model.saved,
                 def: model.defaultSliderValue,
@@ -141,13 +141,13 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             }
             this.param = param;
         } else if (model.useInt) {
-            var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+            var param = fx.NewInt(paramName, addToParamFile: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = param.IsNotEqualTo(0);
             drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
             this.param = param;
         } else {
-            var param = fx.NewBool(paramName, synced: synced, networkSynced: networkSyncParam, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            var param = fx.NewBool(paramName, addToParamFile: addToParamFile, networkSynced: networkSyncParam, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             onCase = param.IsTrue();
             drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
@@ -304,7 +304,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             foreach(var p in GetDriveGlobalParams()) {
                 var driveGlobal = fx.NewBool(
                     p,
-                    synced: false,
+                    addToParamFile: false,
                     saved: false,
                     def: false,
                     usePrefix: false
