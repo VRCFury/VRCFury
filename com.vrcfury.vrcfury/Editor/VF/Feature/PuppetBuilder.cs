@@ -24,8 +24,8 @@ internal class PuppetBuilder : FeatureBuilder<Puppet> {
             if (stop.x != 0) usesX = true;
             if (stop.y != 0) usesY = true;
         }
-        var x = fx.NewFloat(model.name + "_x", synced: usesX, saved: model.saved, def: model.defaultX);
-        var y = fx.NewFloat(model.name + "_y", synced: usesY, saved: model.saved, def: model.defaultY);
+        var x = fx.NewFloat(model.name + "_x", addToParamFile: usesX, saved: model.saved, def: model.defaultX);
+        var y = fx.NewFloat(model.name + "_y", addToParamFile: usesY, saved: model.saved, def: model.defaultY);
         
         var tree = clipFactory.NewFreeformDirectional2D(model.name, x, y);
         tree.Add(new Vector2(0,0), clipFactory.GetEmptyClip());

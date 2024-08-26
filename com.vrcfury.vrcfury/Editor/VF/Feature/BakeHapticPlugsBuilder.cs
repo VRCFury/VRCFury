@@ -78,7 +78,7 @@ namespace VF.Feature {
             var plugs = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>();
 
             if (plugs.Any(plug => plug.addDpsTipLight)) {
-                var param = fx.NewBool("tipLight", synced: true);
+                var param = fx.NewBool("tipLight", addToParamFile: true);
                 manager.GetMenu()
                     .NewMenuToggle(
                         $"{spsOptions.GetOptionsPath()}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
