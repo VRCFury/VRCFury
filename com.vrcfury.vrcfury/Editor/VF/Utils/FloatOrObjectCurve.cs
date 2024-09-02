@@ -91,14 +91,32 @@ namespace VF.Utils {
             }
         }
 
-        public void Scale(float multiplier) {
-            if (!isFloat) return;
-            floatCurve.keys = floatCurve.keys.Select(k => {
+        public FloatOrObjectCurve Scale(float multiplier) {
+            if (!isFloat) return this;
+            var clone = Clone();
+            clone.floatCurve.keys = clone.floatCurve.keys.Select(k => {
                 k.value *= multiplier;
                 k.inTangent *= multiplier;
                 k.outTangent *= multiplier;
                 return k;
             }).ToArray();
+            return clone;
+        }
+
+        public FloatOrObjectCurve Reverse(float totalLength) {
+            if (isFloat) {
+                var clone = Clone();
+                clone.floatCurve.keys = clone.floatCurve.keys.Select(k => {
+                    k.time = totalLength - k.time;
+                    return k;
+                }).ToArray();
+                return clone;
+            } else {
+                return objectCurve.Select(k => {
+                    k.time = totalLength - k.time;
+                    return k;
+                }).ToArray();
+            }
         }
 
         public static FloatOrObjectCurve DummyFloatCurve(float length) {

@@ -261,6 +261,14 @@ namespace VF.Utils {
             AnimationUtility.SetAnimationClipSettings(clip, settings);
         }
 
+        public static void Reverse(this AnimationClip clip) {
+            var length = clip.GetLengthInSeconds();
+            if (clip.GetLengthInSeconds() == 0) return;
+            clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                return (binding, curve.Reverse(length), true);
+            }));
+        }
+
         public static IImmutableSet<EditorCurveBindingExtensions.MuscleBindingType> GetMuscleBindingTypes(this AnimationClip clip) {
             return clip.GetFloatBindings()
                 .Select(binding => binding.GetMuscleBindingType())

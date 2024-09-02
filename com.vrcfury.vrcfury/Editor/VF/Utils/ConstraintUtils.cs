@@ -11,12 +11,12 @@ namespace VF.Utils {
         public static void MakeWorldSpace(VFGameObject obj) {
             obj.worldScale = Vector3.one;
             
-#if VRCSDK_HAS_VRCCONSTRAINTS
-            var constraint = obj.AddComponent<VRCScaleConstraint>();
-            constraint.IsActive = true;
-            constraint.Locked = true;
-            constraint.FreezeToWorld = true;
-#else
+// #if VRCSDK_HAS_VRCCONSTRAINTS
+//             var constraint = obj.AddComponent<VRCScaleConstraint>();
+//             constraint.IsActive = true;
+//             constraint.Locked = true;
+//             constraint.FreezeToWorld = true;
+// #else
             var p = obj.AddComponent<ScaleConstraint>();
             p.AddSource(new ConstraintSource() {
                 sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
@@ -25,7 +25,7 @@ namespace VF.Utils {
             p.weight = 1;
             p.constraintActive = true;
             p.locked = true;
-#endif
+//#endif
         }
     }
 }

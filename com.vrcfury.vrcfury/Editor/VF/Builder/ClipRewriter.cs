@@ -30,7 +30,7 @@ namespace VF.Builder {
                 if (!AnimationUtility.GetFloatValue(rootObject, binding, out var rootScale)) return noChange;
                 if (rootScale == 1) return noChange;
 
-                curve.Scale(rootScale);
+                curve = curve.Scale(rootScale);
                 return (binding, curve, true);
             });
         }

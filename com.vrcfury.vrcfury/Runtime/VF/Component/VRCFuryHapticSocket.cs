@@ -77,6 +77,7 @@ namespace VF.Component {
             public DepthActionUnits units = DepthActionUnits.Meters;
             public bool enableSelf;
             public float smoothingSeconds = 0.1f;
+            public bool reverseClip = false;
         }
 
         public override bool Upgrade(int fromVersion) {
@@ -125,7 +126,8 @@ namespace VF.Component {
                                 Math.Max(a.startDistance, a.endDistance)
                             ),
                             smoothingSeconds = a.smoothingSeconds,
-                            units = unitsInMeters ? DepthActionUnits.Meters : DepthActionUnits.Local
+                            units = unitsInMeters ? DepthActionUnits.Meters : DepthActionUnits.Local,
+                            reverseClip = a.startDistance < a.endDistance
                         });
                     }
                 }
