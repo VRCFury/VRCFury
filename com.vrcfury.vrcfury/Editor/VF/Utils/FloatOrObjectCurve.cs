@@ -91,6 +91,16 @@ namespace VF.Utils {
             }
         }
 
+        public void Scale(float multiplier) {
+            if (!isFloat) return;
+            floatCurve.keys = floatCurve.keys.Select(k => {
+                k.value *= multiplier;
+                k.inTangent *= multiplier;
+                k.outTangent *= multiplier;
+                return k;
+            }).ToArray();
+        }
+
         public static FloatOrObjectCurve DummyFloatCurve(float length) {
             return AnimationCurve.Constant(0, length, 0);
         }

@@ -166,12 +166,12 @@ namespace VF.Builder.Haptics {
 
                             if (name.ToLower().Contains("vag")) {
                                 AddBlendshapeIfPresent(avatarObject, socket,
-                                    VRCFuryEditorUtils.Rev("2ECIFIRO"), -0.03f, 0);
+                                    VRCFuryEditorUtils.Rev("2ECIFIRO"), new Vector2(0, 0.03f));
                             }
 
                             if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(socket)) {
                                 AddBlendshapeIfPresent(avatarObject, socket,
-                                    VRCFuryEditorUtils.Rev("egluBymmuT"), 0, 0.15f);
+                                    VRCFuryEditorUtils.Rev("egluBymmuT"), new Vector2(-0.15f, 0));
                             }
                         }
                     }
@@ -393,20 +393,18 @@ namespace VF.Builder.Haptics {
             VFGameObject avatarObject,
             VRCFuryHapticSocket socket,
             string name,
-            float minDepth,
-            float maxDepth
+            Vector2 range
         ) {
             if (HasBlendshape(avatarObject, name)) {
-                socket.depthActions.Add(new VRCFuryHapticSocket.DepthAction() {
-                    state = new State() {
+                socket.depthActions2.Add(new VRCFuryHapticSocket.DepthAction() {
+                    actionSet = new State() {
                         actions = {
                             new BlendShapeAction {
                                 blendShape = name
                             }
                         }
                     },
-                    startDistance = -minDepth,
-                    endDistance = -maxDepth
+                    range = range
                 });
             }
         }

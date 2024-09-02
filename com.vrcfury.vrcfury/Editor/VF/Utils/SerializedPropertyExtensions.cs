@@ -2,6 +2,7 @@
 using System.Reflection;
 using JetBrains.Annotations;
 using UnityEditor;
+using UnityEngine;
 
 namespace VF.Utils {
     internal static class SerializedPropertyExtensions {
@@ -24,6 +25,11 @@ namespace VF.Utils {
                 }
             }
             return obj;
+        }
+
+        [CanBeNull]
+        public static T GetComponent<T>(this SerializedProperty prop) where T : UnityEngine.Component {
+            return (prop.objectReferenceValue as GameObject).NullSafe()?.GetComponent<T>();
         }
     }
 }

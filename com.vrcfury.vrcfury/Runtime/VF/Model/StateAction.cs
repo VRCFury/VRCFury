@@ -110,12 +110,29 @@ namespace VF.Model.StateAction {
     
     [Serializable]
     internal class MaterialPropertyAction : Action {
-        public Renderer renderer;
+        [Obsolete] public Renderer renderer;
+        public GameObject renderer2;
         public bool affectAllMeshes;
         public string propertyName;
         public float value;
         public Vector4 valueVector;
         public Color valueColor = Color.white;
+        
+        public override bool Upgrade(int fromVersion) {
+#pragma warning disable 0612
+            if (fromVersion < 1) {
+                if (renderer != null) {
+                    renderer2 = renderer.gameObject;
+                }
+                renderer = null;
+            }
+            return false;
+#pragma warning restore 0612
+        }
+
+        public override int GetLatestVersion() {
+            return 1;
+        }
     }
     
     [Serializable]

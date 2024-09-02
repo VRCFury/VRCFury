@@ -34,6 +34,10 @@ namespace VF.Utils {
             tree.children = children;
         }
 
+        public void SetNormalizedBlendValues(bool on) {
+            tree.SetNormalizedBlendValues(on);
+        }
+
         protected override bool IsValidType() {
             return tree.blendType == BlendTreeType.Direct;
         }

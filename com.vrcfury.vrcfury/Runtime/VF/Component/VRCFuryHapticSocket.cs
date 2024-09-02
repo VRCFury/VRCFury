@@ -32,10 +32,8 @@ namespace VF.Component {
         public Vector3 position;
         public Vector3 rotation;
         [NonSerialized] public bool sendersOnly = false;
-
-        public bool enableDepthAnimations = false;
-        public List<DepthAction> depthActions = new List<DepthAction>();
-        public bool enableActiveAnimation = false;
+        
+        public List<DepthAction> depthActions2 = new List<DepthAction>();
         public State activeActions;
         public bool useHipAvoidance = true;
 
@@ -48,19 +46,38 @@ namespace VF.Component {
         public bool IsValidPlugWidth => enablePlugWidthParameter &&
                                          !string.IsNullOrWhiteSpace(plugWidthParameterName);
         
+        [Obsolete] public bool enableDepthAnimations = false;
+        [Obsolete] public List<LegacySocketDepthAction> depthActions = new List<LegacySocketDepthAction>();
+        [Obsolete] public bool enableActiveAnimation = false;
+        
         [Serializable]
-        public class DepthAction {
-            public State state;
-            public float startDistance = 0;
-            public float endDistance = -0.25f;
-            public bool enableSelf;
-            public float smoothingSeconds = 0.25f;
-            
+        [Obsolete]
+        public class LegacySocketDepthAction {
+            [Obsolete] public State state;
+            [Obsolete] public float startDistance = 0;
+            [Obsolete] public float endDistance = -0.25f;
+            [Obsolete] public bool enableSelf;
+            [Obsolete] public float smoothingSeconds = 0.25f;
             [Obsolete] public float minDepth;
             [Obsolete] public float maxDepth;
             [Obsolete] public float smoothing;
         }
+
+        public enum DepthActionUnits {
+            Meters,
+            Plugs,
+            Local
+        }
         
+        [Serializable]
+        public class DepthAction {
+            public State actionSet;
+            public Vector2 range = new Vector2(-0.25f, 0);
+            public DepthActionUnits units = DepthActionUnits.Meters;
+            public bool enableSelf;
+            public float smoothingSeconds = 0.1f;
+        }
+
         public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
             if (fromVersion < 1) {
@@ -96,6 +113,26 @@ namespace VF.Component {
             if (fromVersion < 7) {
                 enableActiveAnimation = activeActions.actions.Count > 0;
             }
+            if (fromVersion < 8) {
+                if (enableDepthAnimations) {
+                    foreach (var a in depthActions) {
+                        depthActions2.Add(new DepthAction() {
+                            actionSet = a.state,
+                            enableSelf = a.enableSelf,
+                            range = new Vector2(
+                                Math.Min(a.startDistance, a.endDistance),
+                                Math.Max(a.startDistance, a.endDistance)
+                            ),
+                            smoothingSeconds = a.smoothingSeconds,
+                            units = unitsInMeters ? DepthActionUnits.Meters : DepthActionUnits.Local
+                        });
+                    }
+                }
+                depthActions.Clear();
+                if (!enableActiveAnimation) {
+                    activeActions.actions.Clear();
+                }
+            }
 #pragma warning restore 0612
             return false;
         }
@@ -117,7 +154,7 @@ namespace VF.Component {
         }
 
         public override int GetLatestVersion() {
-            return 7;
+            return 8;
         }
     }
 }

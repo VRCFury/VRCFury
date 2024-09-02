@@ -186,7 +186,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(Title("Material Property"));
 
                 var affectAllMeshesProp = prop.FindPropertyRelative("affectAllMeshes");
-                var rendererProp = prop.FindPropertyRelative("renderer");
+                var rendererProp = prop.FindPropertyRelative("renderer2");
                 content.Add(RendererSelector(
                     affectAllMeshesProp,
                     rendererProp
@@ -216,7 +216,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                     var propName = propertyNameProp.stringValue;
                     var (renderers, valueType) = ActionClipService.MatPropLookup(
                         affectAllMeshesProp.boolValue,
-                        rendererProp.objectReferenceValue as Renderer,
+                        rendererProp.GetComponent<Renderer>(),
                         avatarObject,
                         propName
                     );
@@ -240,7 +240,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                     var mainGroup = searchWindow.GetMainGroup();
                     var (renderers,_) = ActionClipService.MatPropLookup(
                         affectAllMeshesProp.boolValue,
-                        rendererProp.objectReferenceValue as Renderer,
+                        rendererProp.GetComponent<Renderer>(),
                         avatarObject,
                         null
                     );
@@ -434,7 +434,16 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
         var allRenderersField = VRCFuryEditorUtils.Prop(allRenderersProp, "Apply to all renderers");
         content.Add(allRenderersField);
 
-        var rendererField = VRCFuryEditorUtils.Prop(rendererProp, "Renderer");
+        VisualElement rendererField;
+        if (VRCFuryEditorUtils.GetPropertyType(rendererProp) == typeof(GameObject)) {
+            rendererField = VRCFuryEditorUtils.Prop(
+                null,
+                "Renderer",
+                fieldOverride: VRCFuryEditorUtils.FilteredGameObjectProp<Renderer>(rendererProp)
+            );
+        } else {
+            rendererField = VRCFuryEditorUtils.Prop(rendererProp, "Renderer");
+        }
         content.Add(rendererField);
 
         void UpdateVisibility() {

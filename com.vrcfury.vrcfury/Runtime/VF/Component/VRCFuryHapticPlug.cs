@@ -30,8 +30,9 @@ namespace VF.Component {
         [DoNotApplyRestingState]
         public State postBakeActions;
         public bool spsOverrun = true;
-        public bool enableDepthAnimations = false;
-        public List<PlugDepthAction> depthActions = new List<PlugDepthAction>();
+        [Obsolete] public bool enableDepthAnimations = false;
+        [Obsolete] public List<LegacyPlugDepthAction> depthActions = new List<LegacyPlugDepthAction>();
+        public List<VRCFuryHapticSocket.DepthAction> depthActions2 = new List<VRCFuryHapticSocket.DepthAction>();
         public bool useHipAvoidance = true;
 
         [Obsolete] public bool configureSps = false;
@@ -40,7 +41,8 @@ namespace VF.Component {
         [Obsolete] public GuidTexture2d configureTpsMask = null;
         
         [Serializable]
-        public class PlugDepthAction {
+        [Obsolete]
+        public class LegacyPlugDepthAction {
             public State state;
             public float startDistance = 1;
             public float endDistance;
@@ -89,12 +91,29 @@ namespace VF.Component {
             if (fromVersion < 9) {
                 enableDepthAnimations = depthActions.Count > 0;
             }
+            if (fromVersion < 10) {
+                if (enableDepthAnimations) {
+                    foreach (var a in depthActions) {
+                        depthActions2.Add(new VRCFuryHapticSocket.DepthAction() {
+                            actionSet = a.state,
+                            enableSelf = a.enableSelf,
+                            range = new Vector2(
+                                Math.Min(a.startDistance, a.endDistance) - 1,
+                                Math.Max(a.startDistance, a.endDistance) - 1
+                            ),
+                            smoothingSeconds = a.smoothingSeconds,
+                            units = VRCFuryHapticSocket.DepthActionUnits.Plugs
+                        });
+                    }
+                }
+                depthActions.Clear();
+            }
 #pragma warning restore 0612
             return false;
         }
 
         public override int GetLatestVersion() {
-            return 9;
+            return 10;
         }
     }
 }

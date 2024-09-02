@@ -736,6 +736,69 @@ internal static class VRCFuryEditorUtils {
         slider.bindingPath = prop.propertyPath;
         return slider;
     }
+
+    public static VisualElement CheckboxList(SerializedProperty depthActionsList, string label, string tooltip, string sectionTitle, VisualElement sectionBody = null) {
+        if (sectionBody == null) sectionBody = List(depthActionsList);
+        var container = new VisualElement();
+        var enabledCheckbox = new Toggle();
+        container.Add(BetterProp(
+            null,
+            label,
+            tooltip: tooltip,
+            fieldOverride: enabledCheckbox
+        ));
+        var section = Section(sectionTitle);
+        section.Add(sectionBody);
+        container.Add(section);
+
+        enabledCheckbox.RegisterValueChangedCallback(e => {
+            if (e.newValue) {
+                section.SetVisible(true);
+            } else {
+                depthActionsList.ClearArray();
+                depthActionsList.serializedObject.ApplyModifiedProperties();
+                UpdateState();
+            }
+        });
+
+        void UpdateState() {
+            var show = depthActionsList.arraySize > 0;
+            section.SetVisible(show);
+            enabledCheckbox.SetValueWithoutNotify(show);
+        }
+        container.Add(OnChange(depthActionsList, UpdateState));
+        UpdateState();
+        return container;
+    }
+
+    public static VisualElement FilteredGameObjectProp<T>(SerializedProperty prop) where T : UnityEngine.Component {
+        var output = new VisualElement();
+
+        var visibleField = new ObjectField();
+        output.Add(visibleField);
+        visibleField.objectType = typeof(T);
+        visibleField.RegisterValueChangedCallback(e => {
+            GameObject go = null;
+            if (e.newValue is T r && r != null) {
+                go = r.owner();
+            }
+            prop.objectReferenceValue = go;
+            prop.serializedObject.ApplyModifiedProperties();
+        });
+
+        void UpdateState() {
+            Object shown = null;
+            var obj = prop.objectReferenceValue as GameObject;
+            if (obj != null) {
+                var r = obj.GetComponent<T>();
+                shown = r;
+            }
+            visibleField.SetValueWithoutNotify(shown);
+        }
+        output.Add(OnChange(prop, UpdateState));
+        UpdateState();
+        return output;
+    }
 }
     
 }
