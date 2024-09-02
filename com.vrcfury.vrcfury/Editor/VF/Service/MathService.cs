@@ -430,18 +430,18 @@ namespace VF.Service {
         }
 
         public void MultiplyInPlace(VFAap output, VFAFloat multiplier, VFAFloat existing) {
+            var oldBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), existing.Name());
+            var newBinding = oldBinding;
+            newBinding.propertyName = output;
             foreach (var tree in new AnimatorIterator.Trees().From(directTree.GetTree())) {
                 tree.RewriteChildren(child => {
                     if (!(child.motion is AnimationClip oldClip)) return child;
-                    var oldBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), existing.Name());
                     var oldCurve = oldClip.GetCurve(oldBinding, true);
                     if (oldCurve == null) return child;
                     if (oldCurve.FloatCurve.keys.Length == 1 && oldCurve.FloatCurve.keys[0].value == 0) return child;
 
                     var newClip = VrcfObjectFactory.Create<AnimationClip>();
                     newClip.name = $"{output.Name()} = {oldCurve.FloatCurve.keys[0].value}";
-                    var newBinding = oldBinding;
-                    newBinding.propertyName = output;
                     var newCurve = oldCurve.Clone();
                     newClip.SetCurve(newBinding, newCurve);
                     var newTree = clipFactory.NewDBT(oldClip.name);
@@ -451,6 +451,16 @@ namespace VF.Service {
                     child.motion = newTree;
                     return child;
                 });
+            }
+        }
+        
+        public void CopyInPlace(string output, VFAFloat existing) {
+            var oldBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), existing.Name());
+            var newBinding = oldBinding;
+            newBinding.propertyName = output;
+            foreach (var clip in new AnimatorIterator.Clips().From(directTree.GetTree())) {
+                var curve = clip.GetCurve(oldBinding, true);
+                if (curve != null) clip.SetCurve(newBinding, curve);
             }
         }
     }

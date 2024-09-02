@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
@@ -17,7 +15,6 @@ using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Dynamics;
-using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Feature {
     [VFService]
@@ -301,8 +298,17 @@ namespace VF.Feature {
                         );
                     }
 
+                    var injectDepthToFullControllerParams = allBuildersInRun
+                        .OfType<FullControllerBuilder>()
+                        .Where(fc => fc.featureBaseObject.IsChildOf(socket.owner()))
+                        .Select(fc => fc.injectSpsDepthParam)
+                        .NotNull()
+                        .ToList();
                     if (socket.IsValidPlugLength) {
-                        math.Buffer(contacts.closestLength.Value, socket.plugLengthParameterName, usePrefix: false);
+                        math.CopyInPlace(socket.plugLengthParameterName, contacts.closestLength.Value);
+                    }
+                    foreach (var i in injectDepthToFullControllerParams) {
+                        math.CopyInPlace(i, contacts.closestDistancePlugLengths.Value);
                     }
                     if (socket.IsValidPlugWidth) {
                         math.Buffer(contacts.closestRadius.Value, socket.plugWidthParameterName, usePrefix: false);
