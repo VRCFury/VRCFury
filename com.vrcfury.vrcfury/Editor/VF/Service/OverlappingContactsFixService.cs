@@ -63,9 +63,9 @@ namespace VF.Service {
 
             var counterAddOne = clipFactory.NewDBT("addToCounter");
             var counterEqualsOne = clipFactory.NewClip("counter=1");
-            counterEqualsOne.SetAap(counter.Name(), 1);
+            counterEqualsOne.SetAap(counter, 1);
             counterAddOne.Add(manager.GetFx().One(), counterEqualsOne);
-            counterAddOne.Add(counter.Name(), counterEqualsOne);
+            counterAddOne.Add(counter, counterEqualsOne);
 
             directTree.Add(math.And(math.LessThan(param, 0.5f), math.GreaterThan(counter, 20)).create(
                 math.MakeSetter(counter, 0), counterAddOne));

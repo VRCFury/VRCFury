@@ -183,6 +183,7 @@ namespace VF.Model.Feature {
         public bool rootBindingsApplyToAvatar;
         public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
         public bool allowMissingAssets = false;
+        public string injectSpsDepthParam;
 
         [Obsolete] public GuidController controller;
         [Obsolete] public GuidMenu menu;

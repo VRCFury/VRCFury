@@ -1,6 +1,7 @@
 namespace VF.Feature.Base {
     internal enum FeatureOrder {
 
+        CollectExistingComponents,
         CleanupLegacy,
 
         // Needs to happen before everything
@@ -65,7 +66,6 @@ namespace VF.Feature.Base {
         // Needs to run after toggles are in place
         // Needs to run after HapticsAnimationRewrites
         TpsScaleFix,
-        DpsTipScaleFix,
         
         FixTouchingContacts,
 
@@ -114,5 +114,6 @@ namespace VF.Feature.Base {
         ResetAnimatorAfter,
         
         Validation,
+        HideAddedComponents,
     }
 }

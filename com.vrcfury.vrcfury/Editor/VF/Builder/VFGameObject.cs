@@ -21,8 +21,8 @@ namespace VF.Builder {
 
         public GameObject gameObject => _gameObject;
         public Transform transform => _gameObject == null ? null : _gameObject.transform;
-        public static implicit operator VFGameObject(GameObject d) => new VFGameObject(d);
-        public static implicit operator VFGameObject(Transform d) => new VFGameObject(d == null ? null : d.gameObject);
+        public static implicit operator VFGameObject(GameObject d) => d == null ? null : new VFGameObject(d);
+        public static implicit operator VFGameObject(Transform d) => d == null ? null : new VFGameObject(d.gameObject);
         public static implicit operator GameObject(VFGameObject d) => d?.gameObject;
         public static implicit operator Object(VFGameObject d) => d?.gameObject;
         public static implicit operator Transform(VFGameObject d) => d?.transform;

@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -18,6 +19,11 @@ namespace VF.Feature {
                 ApplyFixes();
             }
 #endif
+            foreach (var controller in manager.GetAllUsedControllers()) {
+                controller.GetRaw().parameters = controller.GetRaw().parameters
+                    .OrderBy(p => p.name)
+                    .ToArray();
+            }
         }
         
         private void ApplyFixes() {

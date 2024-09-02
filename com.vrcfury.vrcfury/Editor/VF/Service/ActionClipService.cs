@@ -165,7 +165,7 @@ namespace VF.Service {
                     case MaterialPropertyAction materialPropertyAction: {
                         var (renderers,type) = MatPropLookup(
                             materialPropertyAction.affectAllMeshes,
-                            materialPropertyAction.renderer,
+                            materialPropertyAction.renderer2.asVf()?.GetComponent<Renderer>(),
                             avatarObject,
                             materialPropertyAction.propertyName
                         );

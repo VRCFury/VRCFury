@@ -8,6 +8,7 @@ using Object = UnityEngine.Object;
 namespace VF.Utils {
     internal static class VrcfObjectFactory {
         private static readonly HashSet<Object> created = new HashSet<Object>();
+        private static readonly HashSet<Object> doNotReuse = new HashSet<Object>();
 
         [InitializeOnLoadMethod]
         private static void OnLoad() {
@@ -23,6 +24,7 @@ namespace VF.Utils {
                 removed++;
             }
             created.Clear();
+            doNotReuse.Clear();
 
             if (removed > 0) {
                 //Debug.Log($"VRCF pruned {removed} unused assets");
@@ -52,9 +54,18 @@ namespace VF.Utils {
             obj.hideFlags = HideFlags.DontSaveInEditor;
             return obj;
         }
+        
+        public static T DoNotReuse<T>(T obj) where T : Object {
+            doNotReuse.Add(obj);
+            return obj;
+        }
 
         public static bool DidCreate(Object obj) {
             return created.Contains(obj);
+        }
+        
+        public static bool IsMarkedAsDoNotReuse(Object obj) {
+            return doNotReuse.Contains(obj);
         }
     }
 }

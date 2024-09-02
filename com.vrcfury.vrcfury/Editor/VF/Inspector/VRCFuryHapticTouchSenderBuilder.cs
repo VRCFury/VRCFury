@@ -18,14 +18,13 @@ namespace VF.Inspector {
         [FeatureBuilderAction]
         public void Apply() {
             foreach (var sender in manager.AvatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticTouchSender>()) {
-                hapticContacts.AddSender(
-                    sender.owner(),
-                    Vector3.zero,
-                    "Sender",
-                    sender.radius,
-                    new string[] { "Finger" },
-                    worldScale: false
-                );
+                hapticContacts.AddSender(new HapticContactsService.SenderRequest() {
+                    obj = sender.owner(),
+                    objName = "Sender",
+                    radius = sender.radius,
+                    tags = new string[] { "Finger" },
+                    worldScale = false
+                });
             }
         }
         

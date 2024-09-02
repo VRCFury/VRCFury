@@ -55,9 +55,8 @@ namespace VF.Feature {
 
                 renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                     var isTps = TpsConfigurer.IsTps(mat);
-                    var isSps = SpsConfigurer.IsSps(mat);
 
-                    if (!isTps && !isSps) return mat;
+                    if (!isTps) return mat;
 
                     mat = mat.Clone();
                     if (isTps) {
@@ -69,12 +68,6 @@ namespace VF.Feature {
                         mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
                         mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
                     }
-                    if (isSps) {
-                        // We can assume that SPS-patched poiyomi is always unlocked at this point, since either:
-                        // 1. The mat was unlocked before the build, we patched it and it's still unlocked (poi will lock it after vrcf)
-                        // 2. The mat was locked before the build, we patched it and now our fields are unlocked even though everything else is locked
-                        mat.SetOverrideTag("_SPS_LengthAnimated", "1");
-                    }
                     return mat;
                 }).ToArray();
 
@@ -83,7 +76,11 @@ namespace VF.Feature {
                     rootBone = skin.rootBone;
                 }
 
-                var props = scaledProps.Select(p => (renderer.owner(), renderer.GetType(), $"material.{p.Key}", p.Value));
+                var props = scaledProps.Select(p => (
+                    (UnityEngine.Component)renderer,
+                    $"material.{p.Key}",
+                    p.Value / rootBone.worldScale.x
+                )).ToList();
                 scaleCompensationService.AddScaledProp(rootBone, props);
             }
         }
@@ -114,8 +111,6 @@ namespace VF.Feature {
                 if (TpsConfigurer.IsTps(mat)) {
                     AddFloat("_TPS_PenetratorLength");
                     AddVector("_TPS_PenetratorScale");
-                } else if (SpsConfigurer.IsSps(mat)) {
-                    AddFloat("_SPS_Length");
                 }
             }
             return scaledProps;

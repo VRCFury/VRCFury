@@ -49,6 +49,10 @@ namespace VF.Utils {
                 var copy = mesh.Clone();
                 copy.ForceReadable();
                 readWriteCache[mesh] = copy;
+                // Because this value is cached, and this mesh may be used in multiple places on the avatar,
+                // we need to make sure that VrcfObjectFactory doesn't return this same copy for every future
+                // use, rather than making a unique copy like it should
+                VrcfObjectFactory.DoNotReuse(copy);
                 return copy;
             }
 

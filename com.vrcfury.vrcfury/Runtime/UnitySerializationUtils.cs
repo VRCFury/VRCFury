@@ -7,7 +7,7 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace VF {
-    public static class UnitySerializationUtils {
+    internal static class UnitySerializationUtils {
         public class IterateVisit {
             public string path;
             [CanBeNull] public FieldInfo field;
@@ -30,6 +30,7 @@ namespace VF {
             }
             foreach (var field in GetAllSerializableFields(obj.GetType())) {
                 var value = field.GetValue(obj);
+                if (!SerializionEnters(value)) continue;
                 var newPath = path;
                 if (newPath != "") newPath += ".";
                 newPath += field.Name;
@@ -58,8 +59,8 @@ namespace VF {
                             Iterate(list[i], forEach, false, newPath + "[" + i + "]");
                         }
                     }
-                } else if (SerializionEnters(value)) {
-                    Iterate(value, forEach, false, newPath);
+                } else {
+                    Iterate(value, forEach, false, newPath); 
                 }
             }
         }
