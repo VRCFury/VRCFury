@@ -5,10 +5,12 @@ namespace VF.Component {
     [AddComponentMenu("")]
     internal class VRCFuryHideGizmoUnlessSelected : VRCFuryPlayComponent {
         private void Update() {
+#if UNITY_EDITOR
             if (Selection.activeGameObject == gameObject)
                 Show();
             else
                 Hide();
+#endif
         }
 
         private void OnDisable() {
