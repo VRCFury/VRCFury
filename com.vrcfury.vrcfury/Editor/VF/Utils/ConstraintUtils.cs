@@ -2,7 +2,9 @@
 using UnityEngine.Animations;
 using VF.Builder;
 using VF.Inspector;
+#if VRCSDK_HAS_VRCCONSTRAINTS
 using VRC.SDK3.Dynamics.Constraint.Components;
+#endif
 
 namespace VF.Utils {
     internal static class ConstraintUtils {
