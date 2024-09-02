@@ -116,7 +116,7 @@ namespace VF.Inspector {
             return container;
         }
         
-        [CustomPropertyDrawer(typeof(VRCFuryHapticSocket.DepthAction))]
+        [CustomPropertyDrawer(typeof(VRCFuryHapticSocket.DepthActionNew))]
         public class DepthActionDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
                 var c = new VisualElement();

@@ -33,7 +33,7 @@ namespace VF.Component {
         public Vector3 rotation;
         [NonSerialized] public bool sendersOnly = false;
         
-        public List<DepthAction> depthActions2 = new List<DepthAction>();
+        public List<DepthActionNew> depthActions2 = new List<DepthActionNew>();
         public State activeActions;
         public bool useHipAvoidance = true;
 
@@ -47,12 +47,13 @@ namespace VF.Component {
                                          !string.IsNullOrWhiteSpace(plugWidthParameterName);
         
         [Obsolete] public bool enableDepthAnimations = false;
-        [Obsolete] public List<LegacySocketDepthAction> depthActions = new List<LegacySocketDepthAction>();
+        [Obsolete] public List<DepthAction> depthActions = new List<DepthAction>();
         [Obsolete] public bool enableActiveAnimation = false;
         
         [Serializable]
         [Obsolete]
-        public class LegacySocketDepthAction {
+        // Named DepthAction because changing the name breaks SPS Configurator
+        public class DepthAction {
             [Obsolete] public State state;
             [Obsolete] public float startDistance = 0;
             [Obsolete] public float endDistance = -0.25f;
@@ -70,7 +71,7 @@ namespace VF.Component {
         }
         
         [Serializable]
-        public class DepthAction {
+        public class DepthActionNew {
             public State actionSet;
             public Vector2 range = new Vector2(-0.25f, 0);
             public DepthActionUnits units = DepthActionUnits.Meters;
@@ -116,7 +117,7 @@ namespace VF.Component {
             if (fromVersion < 8) {
                 if (enableDepthAnimations) {
                     foreach (var a in depthActions) {
-                        depthActions2.Add(new DepthAction() {
+                        depthActions2.Add(new DepthActionNew() {
                             actionSet = a.state,
                             enableSelf = a.enableSelf,
                             range = new Vector2(

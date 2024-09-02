@@ -32,7 +32,7 @@ namespace VF.Component {
         public bool spsOverrun = true;
         [Obsolete] public bool enableDepthAnimations = false;
         [Obsolete] public List<LegacyPlugDepthAction> depthActions = new List<LegacyPlugDepthAction>();
-        public List<VRCFuryHapticSocket.DepthAction> depthActions2 = new List<VRCFuryHapticSocket.DepthAction>();
+        public List<VRCFuryHapticSocket.DepthActionNew> depthActions2 = new List<VRCFuryHapticSocket.DepthActionNew>();
         public bool useHipAvoidance = true;
 
         [Obsolete] public bool configureSps = false;
@@ -94,7 +94,7 @@ namespace VF.Component {
             if (fromVersion < 10) {
                 if (enableDepthAnimations) {
                     foreach (var a in depthActions) {
-                        depthActions2.Add(new VRCFuryHapticSocket.DepthAction() {
+                        depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew() {
                             actionSet = a.state,
                             enableSelf = a.enableSelf,
                             range = new Vector2(

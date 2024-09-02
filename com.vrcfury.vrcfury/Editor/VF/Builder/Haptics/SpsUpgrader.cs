@@ -396,7 +396,7 @@ namespace VF.Builder.Haptics {
             Vector2 range
         ) {
             if (HasBlendshape(avatarObject, name)) {
-                socket.depthActions2.Add(new VRCFuryHapticSocket.DepthAction() {
+                socket.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew() {
                     actionSet = new State() {
                         actions = {
                             new BlendShapeAction {

@@ -26,7 +26,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public void CreateAnims(
-            ICollection<VRCFuryHapticSocket.DepthAction> actions,
+            ICollection<VRCFuryHapticSocket.DepthActionNew> actions,
             VFGameObject spsComponentOwner,
             string name,
             SpsDepthContacts contacts
