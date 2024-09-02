@@ -106,8 +106,14 @@ namespace VF.Utils {
         public FloatOrObjectCurve Reverse(float totalLength) {
             if (isFloat) {
                 var clone = Clone();
+                var postWrapmode = clone.floatCurve.postWrapMode;
+                clone.floatCurve.postWrapMode = clone.floatCurve.preWrapMode;
+                clone.floatCurve.preWrapMode = postWrapmode;
                 clone.floatCurve.keys = clone.floatCurve.keys.Select(k => {
                     k.time = totalLength - k.time;
+                    var x = -k.inTangent;
+                    k.inTangent = -k.outTangent;
+                    k.outTangent = x;
                     return k;
                 }).ToArray();
                 return clone;
