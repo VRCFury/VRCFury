@@ -235,8 +235,7 @@ namespace VF.Feature {
                             var activeAnimParam = fx.NewFloat($"SPS - Active Animation for {name}");
                             var activeAnimLayer = fx.NewLayer($"SPS - Active Animation for {name}");
                             var off = activeAnimLayer.NewState("Off");
-                            var clip = actionClipService.LoadState($"SPS - Active Animation for {name}", socket.activeActions);
-                            var on = activeAnimLayer.NewState("On").WithAnimation(clip);
+                            var on = activeAnimLayer.NewState("On").WithAnimation(activeClip);
 
                             off.TransitionsTo(on).When(activeAnimParam.IsGreaterThan(0));
                             on.TransitionsTo(off).When(activeAnimParam.IsLessThan(1));

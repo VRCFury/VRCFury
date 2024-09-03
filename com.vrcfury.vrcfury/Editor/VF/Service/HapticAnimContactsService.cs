@@ -54,6 +54,7 @@ namespace VF.Service {
                 );
 
                 var layer = fx.NewLayer("Depth Animation " + actionNum + " for " + name);
+                var off = layer.NewState("Off");
                 var on = layer.NewState("On");
 
                 var clip = actionClipService.LoadState(prefix, depthAction.actionSet, spsComponentOwner);
@@ -69,6 +70,10 @@ namespace VF.Service {
                         clip.Reverse();
                     }
                 }
+                
+                var onWhen = smoothed.IsGreaterThan(0.01f);
+                off.TransitionsTo(on).When(onWhen);
+                on.TransitionsTo(off).When(onWhen.Not());
             }
         }
     }

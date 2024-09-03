@@ -102,6 +102,24 @@ namespace VF.Utils {
             }).ToArray();
             return clone;
         }
+        
+        public FloatOrObjectCurve ScaleTime(float multiplier) {
+            if (isFloat) {
+                var clone = Clone();
+                clone.floatCurve.keys = clone.floatCurve.keys.Select(k => {
+                    k.time *= multiplier;
+                    k.inTangent /= multiplier;
+                    k.outTangent /= multiplier;
+                    return k;
+                }).ToArray();
+                return clone;
+            } else {
+                return objectCurve.Select(k => {
+                    k.time *= multiplier;
+                    return k;
+                }).ToArray();
+            }
+        }
 
         public FloatOrObjectCurve Reverse(float totalLength) {
             if (isFloat) {
