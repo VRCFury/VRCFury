@@ -7,19 +7,19 @@ You may choose to use any of the following licenses:
 ### Personal License
 
 VRCFury may be used, copied, modified, merged, published, distributed, or sublicensed for personal purposes if all of the following restrictions are met:
-  * This full copyright and license notice is included in any derivitive works or distributions.
+* This full copyright and license notice is included in any derivitive works or distributions.
 
 ### Commercial License
 
-* VRCFury may be used for personal or commercial purposes if all of the following restrictions are met:
-  * VRCFury must be downloaded directly by the end-user from an archive distributed on https://vcc.vrcfury.com
-  * VRCFury must not be redistributed with your product
-  * The package may be downloaded by an interactive guided process and extracted from a compressed archive, but the source files must be left unmodified.
+VRCFury may be used for personal or commercial purposes if all of the following restrictions are met:
+* VRCFury must be downloaded directly by the end-user from an archive distributed on https://vcc.vrcfury.com
+* VRCFury must not be redistributed with your product
+* The package may be downloaded by an interactive guided process and extracted from a compressed archive, but the source files must be left unmodified.
 
 ### VRCA License
 
-* VRCFury may distributed for personal or commercial purposes if all of the following restrictions are met:
-  * The distribution is made as part of an "uploaded avatar asset bundle," hosted on VRChat asset servers.
+VRCFury may distributed for personal or commercial purposes if all of the following restrictions are met:
+* The distribution is made as part of an "uploaded avatar asset bundle," hosted on VRChat asset servers.
 
 # FAQ
 (These FAQ are for reference only and are not a part of the license above)
