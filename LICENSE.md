@@ -1,3 +1,5 @@
+# License Options
+
 VRCFury (c) 2024 Senky
 
 For the purposes of this document, a "commercial purpose" is one primarily intended for commercial advantage or monetary compensation (including, but not limited to, one-time payments, subscription payments, and donations). A "personal purpose" is any purpose aside from those defined as a "commercial purpose."
