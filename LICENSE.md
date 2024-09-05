@@ -48,3 +48,11 @@ We are not using a FOSS license because:
 
 Yes! As long as you do not distribute VRCFury itself along with your avatar package, you are still totally in
 compliance with the license. Simply instruct your users to download VRCFury from VRCFury website.
+
+### Why not use GPL / AGPL?
+
+GPL can discourage commercial use by forcing commercial users to open-source their own applications using such a library.
+However, this adds a lot of complexity in our case, as neither Unity nor the VRCSDK are GPL-compatible. Even with special exceptions for these,
+we also need to allow custom non-GPL avatar scripts to interact with the VRCFury API, as well as other integrations. Without a way to give separate
+permissions specifically for commercial use, there's not a good way to allow these exceptions while still achieving our
+goals above.

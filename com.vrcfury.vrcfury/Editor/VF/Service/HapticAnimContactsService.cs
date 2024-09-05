@@ -1,15 +1,9 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using UnityEditor.Animations;
-using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
-using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
-using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -57,17 +51,16 @@ namespace VF.Service {
                 var off = layer.NewState("Off");
                 var on = layer.NewState("On");
 
-                var clip = actionClipService.LoadState(prefix, depthAction.actionSet, spsComponentOwner);
-                if (clip.IsStatic()) {
+                var action = actionClipService.LoadStateAdv(prefix, depthAction.actionSet, spsComponentOwner, ActionClipService.MotionTimeMode.Auto);
+                if (action.useMotionTime) {
                     var tree = clipFactory.New1D(prefix + " tree", smoothed);
                     tree.Add(0, clipFactory.GetEmptyClip());
-                    tree.Add(1, clip);
+                    tree.Add(1, action.onClip);
                     on.WithAnimation(tree);
                 } else {
-                    clip.SetLooping(false);
-                    on.WithAnimation(clip).MotionTime(smoothed);
+                    on.WithAnimation(action.onClip).MotionTime(smoothed);
                     if (depthAction.reverseClip) {
-                        clip.Reverse();
+                        action.onClip.Reverse();
                     }
                 }
                 

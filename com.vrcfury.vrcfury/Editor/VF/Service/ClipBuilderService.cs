@@ -29,7 +29,7 @@ namespace VF.Service {
                 foreach (var (time,sourceClip) in sources) {
                     var sourceCurve = sourceClip.GetFloatCurve(binding);
                     if (sourceCurve != null && sourceCurve.keys.Length >= 1) {
-                        outputCurve.AddKey(new Keyframe(time, sourceCurve.keys[0].value, 0f, 0f));
+                        outputCurve.AddKey(new Keyframe(time, sourceCurve.keys.Last().value, 0f, 0f));
                     } else {
                         outputCurve.AddKey(new Keyframe(time, defaultValue, 0f, 0f));
                     }
@@ -43,7 +43,7 @@ namespace VF.Service {
                 foreach (var (time,sourceClip) in sources) {
                     var sourceCurve = sourceClip.GetObjectCurve(binding);
                     if (sourceCurve != null && sourceCurve.Length >= 1) {
-                        outputCurve.Add(new ObjectReferenceKeyframe { time = time, value = sourceCurve[0].value });
+                        outputCurve.Add(new ObjectReferenceKeyframe { time = time, value = sourceCurve.Last().value });
                     } else {
                         outputCurve.Add(new ObjectReferenceKeyframe { time = time, value = defaultValue });
                     }
