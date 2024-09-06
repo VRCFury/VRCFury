@@ -53,15 +53,15 @@ namespace VF.Service {
 
                 var action = actionClipService.LoadStateAdv(prefix, depthAction.actionSet, spsComponentOwner, ActionClipService.MotionTimeMode.Auto);
                 if (action.useMotionTime) {
-                    var tree = clipFactory.New1D(prefix + " tree", smoothed);
-                    tree.Add(0, clipFactory.GetEmptyClip());
-                    tree.Add(1, action.onClip);
-                    on.WithAnimation(tree);
-                } else {
                     on.WithAnimation(action.onClip).MotionTime(smoothed);
                     if (depthAction.reverseClip) {
                         action.onClip.Reverse();
                     }
+                } else {
+                    var tree = clipFactory.New1D(prefix + " tree", smoothed);
+                    tree.Add(0, clipFactory.GetEmptyClip());
+                    tree.Add(1, action.onClip);
+                    on.WithAnimation(tree);
                 }
                 
                 var onWhen = smoothed.IsGreaterThan(0.01f);
