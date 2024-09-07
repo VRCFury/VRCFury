@@ -36,7 +36,7 @@ namespace VF.Service {
 
             var allOffClip = clipFactory.NewClip("AllReceiversOff");
             foreach (var r in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                allOffClip.SetCurve(r, "m_Enabled", 0);
+                allOffClip.SetEnabled(r, false);
             }
 
             var counter = math.MakeAap("counter");
