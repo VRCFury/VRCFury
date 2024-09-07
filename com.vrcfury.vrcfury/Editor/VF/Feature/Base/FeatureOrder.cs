@@ -100,6 +100,7 @@ namespace VF.Feature.Base {
         MoveMenuItems,
         FinalizeMenu,
         FixMipmapStreaming,
+        FixAudio,
         FixMenuIconTextures,
 
         MarkThingsAsDirtyJustInCase,
