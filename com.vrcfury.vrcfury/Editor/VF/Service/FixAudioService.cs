@@ -35,7 +35,7 @@ namespace VF.Service {
                 if (input == null) return null;
                 if (cache.TryGetValue(input, out var cached)) return cached;
                 AudioClip output;
-                if (input.loadInBackground) {
+                if (input.loadInBackground || input.loadType != AudioClipLoadType.DecompressOnLoad) {
                     output = input;
                 } else {
                     output = input.Clone();
