@@ -46,7 +46,8 @@ namespace VF.Builder {
             VFGameObject animObject = null,
             VFGameObject rootObject = null,
             bool rootBindingsApplyToAvatar = false,
-            bool nullIfNotFound = false
+            bool nullIfNotFound = false,
+            bool invert = false
         ) {
             if (animObject == null) {
                 throw new VRCFBuilderException("animObject cannot be null");
@@ -59,17 +60,29 @@ namespace VF.Builder {
             }
 
             return AnimationRewriter.RewriteBinding(binding => {
-                if (binding.path == "" && rootBindingsApplyToAvatar) {
-                    return binding;
-                }
+                if (animObject == rootObject) return binding;
+                if (binding.path == "" && rootBindingsApplyToAvatar) return binding;
 
                 VFGameObject current = animObject;
                 while (current != null) {
-                    var testBinding = binding;
-                    testBinding.path = Join(current.GetPath(rootObject), binding.path);
-                    if (testBinding.IsValid(rootObject)) {
-                        return testBinding;
+                    var prefix = current.GetPath(rootObject);
+                    if (invert) {
+                        if (binding.path == prefix) {
+                            binding.path = "";
+                            return binding;
+                        }
+                        if (binding.path.StartsWith(prefix + "/")) {
+                            binding.path = binding.path.Substring(prefix.Length + 1);
+                            return binding;
+                        }
+                    } else {
+                        var testBinding = binding;
+                        testBinding.path = Join(prefix, binding.path);
+                        if (testBinding.IsValid(rootObject)) {
+                            return testBinding;
+                        }
                     }
+
                     if (current == rootObject) break;
                     current = current.parent;
                 }

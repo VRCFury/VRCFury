@@ -116,15 +116,13 @@ namespace VF.Utils {
 
             if (avatarObject == baseObj) rewriteClip = false;
             if (rewriteClip) {
-                clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
-                    if (binding.type == typeof(Animator)) {
-                    } else if (binding.path == "") {
-                        binding.path = prefix;
-                    } else if (baseObj.Find(binding.path) != null) {
-                        binding.path = prefix + "/" + binding.path;
-                    } 
-                    return binding;
-                }));
+                clip.Rewrite(AnimationRewriter.Combine(
+                    ClipRewriter.CreateNearestMatchPathRewriter(
+                        animObject: baseObj,
+                        rootObject: avatarObject
+                    ),
+                    ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
+                ));
                 clip.FinalizeAsset(false);
             }
 
@@ -136,15 +134,14 @@ namespace VF.Utils {
                     if (wasExpanded) CollapseUtils.SetExpanded(avatarObject, true);
                 }
                 if (rewriteClip && clip != null) {
-                    clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
-                        if (binding.type == typeof(Animator)) {
-                        } else if (binding.path == prefix) {
-                            binding.path = "";
-                        } else if (binding.path.StartsWith(prefix + "/")) {
-                            binding.path = binding.path.Substring(prefix.Length + 1);
-                        } 
-                        return binding;
-                    }));
+                    clip.Rewrite(AnimationRewriter.Combine(
+                        ClipRewriter.CreateNearestMatchPathRewriter(
+                            animObject: baseObj,
+                            rootObject: avatarObject,
+                            invert: true
+                        ),
+                        ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
+                    ));
                     clip.FinalizeAsset(false);
                 }
             };

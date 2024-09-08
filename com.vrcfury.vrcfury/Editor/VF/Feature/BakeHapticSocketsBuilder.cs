@@ -92,6 +92,8 @@ namespace VF.Feature {
                     VFABool toggleParam = null;
                     if (socket.addMenuItem) {
                         toggleParam = fx.NewBool(name, addToParamFile: true, saved: saved);
+                        var icon = socket.menuIcon?.Get();
+                        manager.GetMenu().NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", toggleParam, icon: icon);
                     }
 
                     if (!BuildTargetUtils.IsDesktop()) {
@@ -212,7 +214,7 @@ namespace VF.Feature {
                     // This needs to be created before we make the menu item, because it turns this off.
                     var animRoot = GameObjects.Create("Animations", bakeResult.worldSpace);
 
-                    if (socket.addMenuItem) {
+                    if (toggleParam != null) {
                         obj.active = true;
                         _forceStateInAnimatorService.ForceEnable(obj);
 
@@ -255,9 +257,6 @@ namespace VF.Feature {
                             onLocalClip.SetCurve(gizmo, "show", 1);
                             onRemoteClip.SetCurve(gizmo, "show", 1);
                         }
-
-                        var icon = socket.menuIcon?.Get();
-                        manager.GetMenu().NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", toggleParam, icon: icon);
 
                         var localTree = math.GreaterThan(stealthOn.AsFloat(), 0.5f, name: "When Local")
                             .create(onStealthClip, onLocalClip);
