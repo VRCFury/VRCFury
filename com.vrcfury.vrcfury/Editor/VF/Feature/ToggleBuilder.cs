@@ -26,6 +26,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
     [VFAutowired] private readonly ClipRewriteService clipRewriteService;
     [VFAutowired] private readonly ClipFactoryService clipFactory;
+    [VFAutowired] private readonly ClipBuilderService clipBuilder;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFCondition isOn;
@@ -70,14 +71,29 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         return new HashSet<string>(); 
     }
 
-    private (string,bool) GetParamName() {
+    private (string,bool,bool) GetParamName() {
         if (model.paramOverride != null) {
-            return (model.paramOverride, false);
+            return (model.paramOverride, false, false);
         }
         if (model.useGlobalParam && !string.IsNullOrWhiteSpace(model.globalParam)) {
-            return (model.globalParam, false);
+            return (model.globalParam, false, false);
         }
-        return (model.name, model.usePrefixOnParam);
+        var existingParam = manager.GetMenu().GetMenuParam(model.name, model.slider);
+        if (existingParam != null) {
+            return (existingParam, false, true);
+        }
+        return (model.name, model.usePrefixOnParam, false);
+    }
+
+    private bool getIsOnlyLocalToggle() {
+        if (model.state.actions.Count() > 0) return false;
+        if (model.hasTransition) {
+            if (model.transitionStateIn.actions.Count() > 0) return false;
+            if (model.transitionStateOut.actions.Count() > 0) return false;
+        }
+        if (model.enableExclusiveTag && !string.IsNullOrWhiteSpace(model.exclusiveTag)) return false;
+        if (model.useGlobalParam) return false;
+        return true;
     }
 
     public VFAParam getParam() {
@@ -90,20 +106,22 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
         var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
+        var networkSyncParam = !getIsOnlyLocalToggle();
 
-        var synced = true;
+        var addToParamFile = addMenuItem || networkSyncParam;
         if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
-            synced = false;
+            addToParamFile = false;
         }
 
-        var (paramName, usePrefixOnParam) = GetParamName();
+        var (paramName, usePrefixOnParam, menuItemAlreadyMade) = GetParamName();
         VFCondition onCase;
         VFAFloat weight = null;
         bool defaultOn;
         if (model.slider) {
             var param = fx.NewFloat(
                 paramName,
-                synced: synced,
+                addToParamFile: addToParamFile,
+                networkSynced: networkSyncParam,
                 saved: model.saved,
                 def: model.defaultSliderValue,
                 usePrefix: usePrefixOnParam
@@ -114,7 +132,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             }
             defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
             weight = param;
-            if (addMenuItem) {
+            if (addMenuItem && !menuItemAlreadyMade) {
                 manager.GetMenu().NewMenuSlider(
                     model.name,
                     param,
@@ -123,17 +141,17 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             }
             this.param = param;
         } else if (model.useInt) {
-            var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+            var param = fx.NewInt(paramName, addToParamFile: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = param.IsNotEqualTo(0);
             drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
             this.param = param;
         } else {
-            var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            var param = fx.NewBool(paramName, addToParamFile: addToParamFile, networkSynced: networkSyncParam, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             onCase = param.IsTrue();
             drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
-            if (addMenuItem) {
+            if (addMenuItem && !menuItemAlreadyMade) {
                 if (model.holdButton) {
                     manager.GetMenu().NewMenuButton(
                         model.name,
@@ -204,8 +222,6 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
-
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
                 .OfType<SecurityLockBuilder>()
@@ -223,21 +239,13 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
 
         AnimationClip restingClip;
         if (weight != null) {
+            var clip = actionClipService.LoadState(onName, action, null, ActionClipService.MotionTimeMode.Always, toggleFeature: this);
             inState = onState = layer.NewState(onName);
-            if (clip.IsStatic()) {
-                var motionClip = clipBuilder.MergeSingleFrameClips(
-                    (0, clipFactory.GetEmptyClip()),
-                    (1, clip)
-                );
-                motionClip.UseLinearTangents();
-                motionClip.name = clip.name;
-                clip = motionClip;
-            }
-            clip.SetLooping(false);
             onState.WithAnimation(clip).MotionTime(weight);
             onState.TransitionsToExit().When(onCase.Not());
             restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
         } else if (model.hasTransition) {
+            var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
             var inClip = actionClipService.LoadState(onName + " In", inAction, toggleFeature: this);
             // if clip is empty, copy last frame of transition
             if (clip.GetAllBindings().Length == 0) {
@@ -275,6 +283,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
             restingClip = clip;
         } else {
+            var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
             inState = onState = layer.NewState(onName).WithAnimation(clip);
             onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
             restingClip = clip;
@@ -286,7 +295,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             foreach(var p in GetDriveGlobalParams()) {
                 var driveGlobal = fx.NewBool(
                     p,
-                    synced: false,
+                    addToParamFile: false,
                     saved: false,
                     def: false,
                     usePrefix: false
@@ -391,19 +400,32 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         var flex = new VisualElement().Row();
         content.Add(flex);
 
-        flex.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("name"), "Menu Path", tooltip: menuPathTooltip).FlexGrow(1));
+        var pathProp = prop.FindPropertyRelative("name");
+        flex.Add(VRCFuryEditorUtils.Prop(pathProp, "Menu Path", tooltip: menuPathTooltip).FlexGrow(1));
 
         var button = new Button()
             .Text("Options")
             .OnClick(() => {
                 var advMenu = new GenericMenu();
+                var pos = Event.current.mousePosition;
+                
+                advMenu.AddItem(new GUIContent("Select Menu Folder"), false, () => {
+                    MoveMenuItemBuilder.SelectButton(
+                        avatarObject,
+                        true,
+                        pathProp,
+                        append: () => MoveMenuItemBuilder.GetLastMenuSlug(pathProp.stringValue, "New Toggle"),
+                        immediate: true,
+                        pos: pos
+                    );
+                });
 
                 advMenu.AddItem(new GUIContent("Saved Between Worlds"), savedProp.boolValue, () => {
                     savedProp.boolValue = !savedProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
 
-                advMenu.AddItem(new GUIContent("Use Slider Wheel"), sliderProp.boolValue, () => {
+                advMenu.AddItem(new GUIContent("Use a Slider (Radial)"), sliderProp.boolValue, () => {
                     sliderProp.boolValue = !sliderProp.boolValue;
                     invertRestLogicProp.boolValue = false;
                     prop.serializedObject.ApplyModifiedProperties();
@@ -568,21 +590,28 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             } else {
                 c = remoteSingle;
             }
-
-            return MakeTabbed("When toggle is enabled:", c);
-        }, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
-
-        content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            
+            var output = new VisualElement();
             if (sliderProp.boolValue) {
                 var sliderOptions = new VisualElement();
-                sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("defaultSliderValue"), "Default value"));
-                sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("sliderInactiveAtZero"), "Zero is 'Off' (Advanced)", tooltip: "" +
-                    "When checked, the toggle will be considered to be entirely 'off' when the slider is at 0, meaning that NOTHING will be animated at 0." +
+                sliderOptions.Add(VRCFuryEditorUtils.Prop(null, "Default %", fieldOverride: VRCFuryEditorUtils.PercentSlider(prop.FindPropertyRelative("defaultSliderValue"))));
+                sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("sliderInactiveAtZero"), "Passthrough at 0% (Unusual)", tooltip: "" +
+                    "When checked, the slider will be bypassed when set to 0%, meaning that it will not control any properties at all, allowing the properties to resume" +
+                    " being controlled by some other toggle or animator layer." +
                     " It is unusual to check this, but is required if you want this slider to interact with Exclusive Tags or transitions."));
-                return MakeTabbed("This toggle is a slider", sliderOptions);
+                output.Add(MakeTabbed("This toggle is a slider (radial)", sliderOptions));
+
+                output.Add(MakeTabbed(
+                    "When slider is at 0%:",
+                    VRCFuryEditorUtils.WrappedLabel("The avatar will be like it is in the editor. You can override this with an Apply During Upload component.")
+                ));
+                output.Add(MakeTabbed("When slider is at 100%:", c));
+                return output;
+            } else {
+                output.Add(MakeTabbed("When toggle is enabled:", c));
             }
-            return new VisualElement();
-        }, sliderProp));
+            return output;
+        }, sliderProp, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
 
         // Tags
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
