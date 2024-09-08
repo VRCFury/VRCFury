@@ -19,6 +19,7 @@ namespace VF.Service {
                 foreach (var audio in manager.AvatarObject.GetComponentsInSelfAndChildren<AudioSource>()) {
                     Object.DestroyImmediate(audio);
                 }
+#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
                 foreach (var c in manager.GetAllUsedControllers()) {
                     foreach (var layer in c.GetLayers()) {
                         AnimatorIterator.ForEachBehaviourRW(layer, (b, add) => {
@@ -27,6 +28,7 @@ namespace VF.Service {
                         });
                     }
                 }
+#endif
                 return;
             }
 
@@ -51,14 +53,14 @@ namespace VF.Service {
             foreach (var audio in manager.AvatarObject.GetComponentsInSelfAndChildren<AudioSource>()) {
                 var newClip = FixClip(audio.clip);
                 if (newClip != audio.clip) {
+                    var wasEnabled = audio.enabled;
+                    audio.enabled = false;
                     audio.clip = newClip;
                     EditorUtility.SetDirty(audio);
-                    if (audio.enabled) {
-                        audio.enabled = false;
-                        audio.enabled = true;
-                    }
+                    audio.enabled = wasEnabled;
                 }
             }
+#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
             foreach (var c in manager.GetAllUsedControllers()) {
                 foreach (var b in new AnimatorIterator.Behaviours().From(c.GetRaw())) {
                     if (b is VRCAnimatorPlayAudio audio) {
@@ -67,6 +69,7 @@ namespace VF.Service {
                     }
                 }
             }
+#endif
         }
     }
 }

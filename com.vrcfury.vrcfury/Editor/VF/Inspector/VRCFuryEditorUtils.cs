@@ -698,12 +698,9 @@ internal static class VRCFuryEditorUtils {
     }
     
     public static Type GetPropertyType(SerializedProperty prop) {
-        var util = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ScriptAttributeUtility");
-        var method = util.GetMethod("GetFieldInfoFromProperty",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        var prms = new object[] { prop, null };
-        method.Invoke(null, prms);
-        return prms[1] as Type;
+        if (UnityReflection.Props.GetFieldInfoFromProperty == null) return null;
+        UnityReflection.Props.GetFieldInfoFromProperty(prop, out var type);
+        return type;
     }
 
     public class PercentSlider2 : BaseField<float> {

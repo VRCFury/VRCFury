@@ -11,5 +11,18 @@ namespace VF.Utils {
             else flags |= BindingFlags.Instance;
             return type.GetMethod(name, flags);
         }
+        
+        [CanBeNull]
+        public static T GetMatchingDelegate<T>(
+            this Type methodClass,
+            string methodName
+        ) where T : Delegate {
+            foreach (var method in methodClass.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)) {
+                if (method.Name != methodName) continue;
+                var d = (T)Delegate.CreateDelegate(typeof(T), method, false);
+                if (d != null) return d;
+            }
+            return null;
+        }
     }
 }
