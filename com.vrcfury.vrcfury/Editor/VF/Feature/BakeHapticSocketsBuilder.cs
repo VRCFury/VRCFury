@@ -91,7 +91,7 @@ namespace VF.Feature {
                     
                     VFABool toggleParam = null;
                     if (socket.addMenuItem) {
-                        toggleParam = fx.NewBool(name, synced: true, saved: saved);
+                        toggleParam = fx.NewBool(name, addToParamFile: true, saved: saved);
                     }
 
                     if (!BuildTargetUtils.IsDesktop()) {
