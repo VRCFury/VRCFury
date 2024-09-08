@@ -49,7 +49,7 @@ namespace VF.Feature {
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
         }
 
-        void OptimizeLayer(VFLayer layer, Dictionary<VFLayer, ICollection<EditorCurveBinding>> bindingsByLayer) {
+        private void OptimizeLayer(VFLayer layer, Dictionary<VFLayer, ICollection<EditorCurveBinding>> bindingsByLayer) {
             // We must never optimize the defaults layer.
             // While it may seem impossible for the defaults layer to be optimized (because it shares keys
             // with other layers), it's theoretically possible for the layer to be created early with bindings
@@ -96,6 +96,7 @@ namespace VF.Feature {
             }
 
             var states = layer.stateMachine.states;
+            states = states.Where(child => !IsUnreachableState(layer, child.state)).ToArray();
 
             var hasEulerRotation = states.Any(state => {
                 if (state.state.motion is BlendTree) return false;
@@ -130,32 +131,8 @@ namespace VF.Feature {
                 }
                 return;
             }
-
-            ICollection<AnimatorTransitionBase> GetTransitionsTo(AnimatorState state) {
-                var output = new List<AnimatorTransitionBase>();
-                var ignoreTransitions = new HashSet<AnimatorTransitionBase>();
-                var entryState = layer.stateMachine.defaultState;
-
-                if (layer.stateMachine.entryTransitions.Length == 1 &&
-                    layer.stateMachine.entryTransitions[0].conditions.Length == 0) {
-                    entryState = layer.stateMachine.entryTransitions[0].destinationState;
-                    ignoreTransitions.Add(layer.stateMachine.entryTransitions[0]);
-                }
-
-                foreach (var t in new AnimatorIterator.Transitions().From(layer)) {
-                    if (ignoreTransitions.Contains(t)) continue;
-                    if (t.destinationState == state || (t.isExit && entryState == state)) {
-                        output.Add(t);
-                    }
-                }
-                return output.ToArray();
-            }
-
             if (states.Length == 3) {
-                bool IsJunkState(AnimatorState state) {
-                    return layer.stateMachine.defaultState == state && GetTransitionsTo(state).Count == 0;
-                }
-                states = states.Where(child => !IsJunkState(child.state)).ToArray();
+                states = states.Where(child => !IsEntryOnlyState(layer, child.state)).ToArray();
             }
             if (states.Length != 2) {
                 throw new DoNotOptimizeException($"Contains {states.Length} states");
@@ -164,8 +141,8 @@ namespace VF.Feature {
             var state0 = states[0].state;
             var state1 = states[1].state;
 
-            var state0Condition = GetSingleCondition(GetTransitionsTo(state0));
-            var state1Condition = GetSingleCondition(GetTransitionsTo(state1));
+            var state0Condition = GetSingleCondition(GetTransitionsTo(layer, state0));
+            var state1Condition = GetSingleCondition(GetTransitionsTo(layer, state1));
             if (state0Condition == null || state1Condition == null) {
                 throw new DoNotOptimizeException($"State conditions are not basic");
             }
@@ -191,8 +168,36 @@ namespace VF.Feature {
 
             Optimize(state0Condition.Value, state0Clip, state1Clip);
         }
+        
+        private static bool IsEntryOnlyState(VFLayer layer, AnimatorState state) {
+            return layer.stateMachine.defaultState == state && GetTransitionsTo(layer, state).Count == 0;
+        }
+        
+        private static bool IsUnreachableState(VFLayer layer, AnimatorState state) {
+            return layer.stateMachine.defaultState != state && GetTransitionsTo(layer, state).Count == 0;
+        }
+        
+        private static ICollection<AnimatorTransitionBase> GetTransitionsTo(VFLayer layer, AnimatorState state) {
+            var output = new List<AnimatorTransitionBase>();
+            var ignoreTransitions = new HashSet<AnimatorTransitionBase>();
+            var entryState = layer.stateMachine.defaultState;
 
-        void Optimize(AnimatorCondition condition, Motion on, Motion off) {
+            if (layer.stateMachine.entryTransitions.Length == 1 &&
+                layer.stateMachine.entryTransitions[0].conditions.Length == 0) {
+                entryState = layer.stateMachine.entryTransitions[0].destinationState;
+                ignoreTransitions.Add(layer.stateMachine.entryTransitions[0]);
+            }
+
+            foreach (var t in new AnimatorIterator.Transitions().From(layer)) {
+                if (ignoreTransitions.Contains(t)) continue;
+                if (t.destinationState == state || (t.isExit && entryState == state)) {
+                    output.Add(t);
+                }
+            }
+            return output.ToArray();
+        }
+
+        private void Optimize(AnimatorCondition condition, Motion on, Motion off) {
             if (on == null) on = clipFactory.GetEmptyClip();
             if (off == null) off = clipFactory.GetEmptyClip();
             
@@ -228,7 +233,7 @@ namespace VF.Feature {
             }
         }
 
-        Motion MakeClipForState(VFLayer layer, AnimatorState state) {
+        private Motion MakeClipForState(VFLayer layer, AnimatorState state) {
             var hasNonstaticClips = new AnimatorIterator.Clips().From(state).Any(clip => !clip.IsStatic());
             if (hasNonstaticClips) {
                 if (!(state.motion is AnimationClip clip)) {
@@ -238,7 +243,7 @@ namespace VF.Feature {
                     throw new DoNotOptimizeException($"{state.name} contains non-static clip set to loop");
                 }
 
-                var dualState = ClipBuilderService.SplitRangeClip(clip);
+                var dualState = clip.SplitRangeClip();
                 if (dualState == null) {
                     throw new DoNotOptimizeException($"{state.name} contains a non-static clip with more than 2 keyframes");
                 }

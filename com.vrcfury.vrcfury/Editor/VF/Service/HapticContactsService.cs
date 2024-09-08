@@ -19,112 +19,111 @@ namespace VF.Service {
         [VFAutowired] [CanBeNull] private readonly MathService math;
         [VFAutowired] [CanBeNull] private readonly OverlappingContactsFixService overlappingService;
 
-        public void AddSender(
-            VFGameObject obj,
-            Vector3 pos,
-            string objName,
-            float radius,
-            string[] tags,
-            float height = 0,
-            Quaternion rotation = default,
-            bool worldScale = true,
-            bool useHipAvoidance = true
-        ) {
-            var child = GameObjects.Create(objName, obj);
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return;
+        public class SenderRequest {
+            public VFGameObject obj;
+            public Vector3 pos;
+            public string objName;
+            public float radius;
+            public string[] tags;
+            public float height = 0;
+            public Quaternion rotation = default;
+            public bool worldScale = true;
+            public bool useHipAvoidance = true;
+        }
+
+        [CanBeNull]
+        public VFGameObject AddSender(SenderRequest req) {
+            var child = GameObjects.Create(req.objName, req.obj);
+            if (!BuildTargetUtils.IsDesktop()) return null;
             var sender = child.AddComponent<VRCContactSender>();
-            sender.position = pos;
-            sender.radius = radius;
-            if (height > 0) {
+            sender.position = req.pos;
+            sender.radius = req.radius;
+            if (req.height > 0) {
                 sender.shapeType = ContactBase.ShapeType.Capsule;
-                sender.height = height;
-                sender.rotation = rotation;
+                sender.height = req.height;
+                sender.rotation = req.rotation;
             }
-            if (worldScale) {
+            if (req.worldScale) {
                 sender.position /= child.worldScale.x;
                 sender.radius /= child.worldScale.x;
                 sender.height /= child.worldScale.x;
             }
-            
-            void SetTags(params string[] suffixes) {
-                sender.collisionTags = tags.SelectMany(tag => {
-                    if (!tag.StartsWith("SPSLL_") && !tag.StartsWith("SPS_") && !tag.StartsWith("TPS_")) return new [] { tag };
-                    return suffixes.Select(suffix => tag + suffix);
-                }).ToList();
-            }
-            SetTags("");
 
-            if (ClosestBoneUtils.GetClosestHumanoidBone(obj) != HumanBodyBones.Hips || !useHipAvoidance) {
-                SetTags("", "_SelfNotOnHips");
+            var tags = req.tags;
+            if (ClosestBoneUtils.GetClosestHumanoidBone(req.obj) != HumanBodyBones.Hips || !req.useHipAvoidance) {
+                tags = AddSuffixes(tags, "", "_SelfNotOnHips");
+            }
+            sender.collisionTags = tags.ToList();
+            return child;
+        }
+
+        public class ReceiverRequest {
+            public VFGameObject obj;
+            public Vector3 pos = Vector3.zero;
+            public string paramName;
+            public string objName;
+            public float radius = 0;
+            public string[] tags;
+            public HapticUtils.ReceiverParty party;
+            public bool usePrefix = true;
+            public bool localOnly = false;
+            public float height = 0;
+            public Quaternion rotation = default;
+            public ContactReceiver.ReceiverType type = ContactReceiver.ReceiverType.Proximity;
+            public bool worldScale = true;
+            public bool useHipAvoidance = true;
+
+            public ReceiverRequest Clone() {
+                return (ReceiverRequest)MemberwiseClone();
             }
         }
 
-        public VFAFloat AddReceiver(
-            VFGameObject obj,
-            Vector3 pos,
-            string paramName,
-            string objName,
-            float radius,
-            string[] tags,
-            HapticUtils.ReceiverParty party,
-            bool usePrefix = true,
-            bool localOnly = false,
-            float height = 0,
-            Quaternion rotation = default,
-            ContactReceiver.ReceiverType type = ContactReceiver.ReceiverType.Proximity,
-            bool worldScale = true,
-            bool useHipAvoidance = true
-        ) {
+        public VFAFloat AddReceiver(ReceiverRequest req) {
             if (manager == null || math == null) {
                 throw new Exception("Receiver cannot be created in detached mode");
             }
 
             var fx = manager.GetFx();
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return fx.Zero();
+            if (!BuildTargetUtils.IsDesktop()) return fx.Zero();
 
-            if (party == HapticUtils.ReceiverParty.Both) {
-                if (!usePrefix) throw new Exception("Cannot create a 'Both' receiver without param prefix");
-                var others = AddReceiver(obj, pos, $"{paramName}/Others", $"{objName}Others", radius, tags, HapticUtils.ReceiverParty.Others, true, localOnly, height, rotation, type, worldScale, useHipAvoidance);
-                var self = AddReceiver(obj, pos, $"{paramName}/Self", $"{objName}Self", radius, tags, HapticUtils.ReceiverParty.Self, true, localOnly, height, rotation, type, worldScale, useHipAvoidance);
-                return math.Max(others, self, $"{paramName}/Both");
-            }
-
-            var param = fx.NewFloat(paramName, usePrefix: usePrefix);
-            var child = GameObjects.Create(objName, obj);
+            var param = fx.NewFloat(req.paramName, usePrefix: req.usePrefix);
+            var child = GameObjects.Create(req.objName, req.obj);
             
             overlappingService?.Activate();
             var receiver = child.AddComponent<VRCContactReceiver>();
-            receiver.position = pos;
+            receiver.position = req.pos;
             receiver.parameter = param;
-            receiver.radius = radius;
-            receiver.receiverType = type;
-            receiver.collisionTags = new List<string>(tags);
-            receiver.allowOthers = party == HapticUtils.ReceiverParty.Others;
-            receiver.allowSelf = party == HapticUtils.ReceiverParty.Self;
-            receiver.localOnly = localOnly;
-            if (height > 0) {
+            receiver.radius = req.radius;
+            receiver.receiverType = req.type;
+            receiver.collisionTags = new List<string>(req.tags);
+            receiver.allowOthers = req.party == HapticUtils.ReceiverParty.Others;
+            receiver.allowSelf = req.party == HapticUtils.ReceiverParty.Self;
+            receiver.localOnly = req.localOnly;
+            if (req.height > 0) {
                 receiver.shapeType = ContactBase.ShapeType.Capsule;
-                receiver.height = height;
-                receiver.rotation = rotation;
+                receiver.height = req.height;
+                receiver.rotation = req.rotation;
             }
-            if (worldScale) {
+            if (req.worldScale) {
                 receiver.position /= child.worldScale.x;
                 receiver.radius /= child.worldScale.x;
                 receiver.height /= child.worldScale.x;
             }
 
-            void SetTags(params string[] suffixes) {
-                receiver.collisionTags = tags.SelectMany(tag => {
-                    if (!tag.StartsWith("SPSLL_") && !tag.StartsWith("SPS_") && !tag.StartsWith("TPS_")) return new [] { tag };
-                    return suffixes.Select(suffix => tag + suffix);
-                }).ToList();
+            var tags = req.tags;
+            if (req.party == HapticUtils.ReceiverParty.Self && req.useHipAvoidance && ClosestBoneUtils.GetClosestHumanoidBone(req.obj) == HumanBodyBones.Hips) {
+                tags = AddSuffixes(tags, "_SelfNotOnHips");
             }
-            SetTags("");
-            if (party == HapticUtils.ReceiverParty.Self && useHipAvoidance && ClosestBoneUtils.GetClosestHumanoidBone(obj) == HumanBodyBones.Hips) {
-                SetTags("_SelfNotOnHips");
-            }
+            receiver.collisionTags = tags.ToList();
 
             return param;
+        }
+
+        private string[] AddSuffixes(string[] tags, params string[] suffixes) {
+            return tags.SelectMany(tag => {
+                if (!tag.StartsWith("SPSLL_") && !tag.StartsWith("SPS_") && !tag.StartsWith("TPS_")) return new [] { tag };
+                return suffixes.Select(suffix => tag + suffix);
+            }).ToArray();
         }
     }
 }

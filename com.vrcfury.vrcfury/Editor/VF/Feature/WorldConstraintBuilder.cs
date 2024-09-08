@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.UIElements;
@@ -11,6 +10,10 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.Dynamics;
+#if VRCSDK_HAS_VRCCONSTRAINTS
+using VRC.SDK3.Dynamics.Constraint.Components;
+#endif
 
 namespace VF.Feature {
     internal class WorldConstraintBuilder : FeatureBuilder<WorldConstraint> {
@@ -29,41 +32,45 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.WorldConstraintBuilder)]
         public void ApplyMove() {
-            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) {
+#if ! VRCSDK_HAS_VRCCONSTRAINTS
+            if (!BuildTargetUtils.IsDesktop()) {
                 return;
             }
-
-            var resetTarget = GameObjects.Create("Reset Target", featureBaseObject.parent, featureBaseObject.parent);
-
-            var worldSpace = GameObjects.Create("Worldspace", resetTarget);
-            var worldConstraint = worldSpace.AddComponent<ParentConstraint>();
-            worldConstraint.AddSource(new ConstraintSource() {
-                sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
-                weight = 1
-            });
-            worldConstraint.weight = 1;
-            worldConstraint.constraintActive = true;
-            worldConstraint.locked = true;
-
-            var inner = GameObjects.Create("Droppable", worldSpace);
-            var resetConstraint = inner.AddComponent<ParentConstraint>();
-            resetConstraint.AddSource(new ConstraintSource() {
-                sourceTransform = resetTarget,
-                weight = 1
-            });
-            resetConstraint.weight = 1;
-            resetConstraint.constraintActive = true;
-            resetConstraint.locked = true;
+#endif
 
             var dropClip = clipFactory.NewClip("Drop");
-            clipBuilder.Enable(dropClip, resetConstraint, false);
-            foreach (var constriant in featureBaseObject.GetComponents<IConstraint>()) {
-                clipBuilder.Enable(dropClip, constriant, false);
+            directTree.Add(toggle.AsFloat(), dropClip);
+            foreach (var constriant in featureBaseObject.GetConstraints()) {
+                dropClip.SetEnabled(constriant.GetComponent(), false);
             }
 
-            directTree.Add(toggle.AsFloat(), dropClip);
+            var parent = featureBaseObject.parent;
 
-            mover.Move(featureBaseObject, inner);
+#if VRCSDK_HAS_VRCCONSTRAINTS
+            var droppable = GameObjects.Create("Droppable", parent);
+            mover.Move(featureBaseObject, droppable);
+            var constraint = droppable.AddComponent<VRCParentConstraint>();
+            constraint.IsActive = true;
+            constraint.Locked = true;
+            constraint.Sources.Add(new VRCConstraintSource(parent, 1, Vector3.zero, Vector3.zero));
+            dropClip.SetCurve(constraint, "FreezeToWorld", 1);
+#else
+            var worldSpaceObj = GameObjects.Create("Droppable (WorldSpace)", parent);
+            var worldConstraint = worldSpaceObj.AddComponent<ParentConstraint>();
+            worldConstraint.constraintActive = true;
+            worldConstraint.locked = true;
+            worldConstraint.AddSource(new ConstraintSource() { sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"), weight = 1 });
+
+            var resetObj = GameObjects.Create("Droppable (Reset)", worldSpaceObj);
+            var resetConstraint = resetObj.AddComponent<ParentConstraint>();
+            resetConstraint.constraintActive = true;
+            resetConstraint.locked = true;
+            resetConstraint.AddSource(new ConstraintSource() { sourceTransform = parent, weight = 1 });
+
+            mover.Move(featureBaseObject, resetObj);
+
+            dropClip.SetEnabled(resetConstraint, false);
+#endif
         }
 
         public override string GetEditorTitle() {

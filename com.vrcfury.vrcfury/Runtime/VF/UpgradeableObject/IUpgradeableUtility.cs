@@ -34,7 +34,7 @@ namespace VF.Upgradeable {
         public static bool UpgradeRecursive(object root) {
             var list = new List<IUpgradeable>();
             UnitySerializationUtils.Iterate(root, visit => {
-                if (visit.value is IUpgradeable upgradeable) {
+                if (!visit.outgoingLink && visit.value is IUpgradeable upgradeable) {
                     list.Add(upgradeable);
                 }
                 return UnitySerializationUtils.IterateResult.Continue;
@@ -50,7 +50,7 @@ namespace VF.Upgradeable {
         public static bool IsTooNew(object root) {
             var tooNew = false;
             UnitySerializationUtils.Iterate(root, visit => {
-                if (visit.value is IUpgradeable upgradeable) {
+                if (!visit.outgoingLink && visit.value is IUpgradeable upgradeable) {
                     tooNew |= upgradeable.Version > upgradeable.GetLatestVersion();
                 }
                 return UnitySerializationUtils.IterateResult.Continue;

@@ -50,7 +50,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 androidActive.boolValue = false;
                 prop.serializedObject.ApplyModifiedProperties();
             }, desktopActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
-            e.menu.AppendAction("Android Only", a => {
+            e.menu.AppendAction("Quest+Android+iOS Only", a => {
                 androidActive.boolValue = !androidActive.boolValue;
                 desktopActive.boolValue = false;
                 prop.serializedObject.ApplyModifiedProperties();
@@ -71,7 +71,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             }
             
             if (desktopActive.boolValue) AddFlag("Desktop Only");
-            if (androidActive.boolValue) AddFlag("Android Only");
+            if (androidActive.boolValue) AddFlag("Quest+Android+iOS Only");
 
             return row;
         }, desktopActive, androidActive));
@@ -186,7 +186,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(Title("Material Property"));
 
                 var affectAllMeshesProp = prop.FindPropertyRelative("affectAllMeshes");
-                var rendererProp = prop.FindPropertyRelative("renderer");
+                var rendererProp = prop.FindPropertyRelative("renderer2");
                 content.Add(RendererSelector(
                     affectAllMeshesProp,
                     rendererProp
@@ -216,7 +216,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                     var propName = propertyNameProp.stringValue;
                     var (renderers, valueType) = ActionClipService.MatPropLookup(
                         affectAllMeshesProp.boolValue,
-                        rendererProp.objectReferenceValue as Renderer,
+                        rendererProp.GetComponent<Renderer>(),
                         avatarObject,
                         propName
                     );
@@ -240,7 +240,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                     var mainGroup = searchWindow.GetMainGroup();
                     var (renderers,_) = ActionClipService.MatPropLookup(
                         affectAllMeshesProp.boolValue,
-                        rendererProp.objectReferenceValue as Renderer,
+                        rendererProp.GetComponent<Renderer>(),
                         avatarObject,
                         null
                     );
@@ -364,30 +364,12 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(valueField);
 
                 void SelectButtonPress() {
-                    var window = new VrcfSearchWindow("Blendshapes");
                     var allRenderers = allRenderersProp.boolValue;
                     var singleRenderer = rendererProp.objectReferenceValue as Renderer;
-
-                    var shapes = new Dictionary<string, string>();
-                    if (avatarObject != null) {
-                        foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                            if (!allRenderers && skin != singleRenderer) continue;
-                            foreach (var bs in skin.GetBlendshapeNames()) {
-                                if (shapes.ContainsKey(bs)) {
-                                    shapes[bs] += ", " + skin.owner().name;
-                                } else {
-                                    shapes[bs] = skin.owner().name;
-                                }
-                            }
-                        }
-                    }
-
-                    var mainGroup = window.GetMainGroup();
-                    foreach (var entry in shapes.OrderBy(entry => entry.Key)) {
-                        mainGroup.Add(entry.Key + " (" + entry.Value + ")", entry.Key);
-                    }
-                    
-                    window.Open(value => {
+                    var skins = avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()
+                        .Where(skin => allRenderers || skin == singleRenderer)
+                        .ToArray();
+                    ShowBlendshapeSearchWindow(skins, value => {
                         blendshapeProp.stringValue = value;
                         Apply();
                     });
@@ -398,7 +380,20 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             case nameof(AnimationClipAction): {
                 var row = new VisualElement().Row();
                 row.Add(Title("Animation Clip").FlexBasis(100));
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("clip")).FlexGrow(1));
+                var clipProp = prop.FindPropertyRelative("clip");
+                row.Add(VRCFuryEditorUtils.Prop(clipProp).FlexGrow(1));
+                row.Add(new Button(() => {
+                    var clip = (clipProp.GetObject() as GuidAnimationClip)?.Get();
+                    if (clip == null) {
+                        var newPath = EditorUtility.SaveFilePanelInProject("VRCFury Recorder", "New Animation", "anim", "Path to new animation");
+                        if (string.IsNullOrEmpty(newPath)) return;
+                        clip = new AnimationClip();
+                        AssetDatabase.CreateAsset(clip, newPath);
+                        GuidWrapperPropertyDrawer.SetValue(clipProp, clip);
+                        clipProp.serializedObject.ApplyModifiedProperties();
+                    }
+                    RecorderUtils.Record(clip, component.owner());
+                }) { text = "Record" });
                 return row;
             }
             case nameof(BlockBlinkingAction): {
@@ -418,7 +413,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 output.Add(Title("Flipbook Builder"));
                 output.Add(VRCFuryEditorUtils.Info(
                     "This will create a clip made up of one frame per child action. This is mostly useful for" +
-                    " VRCFury Toggles with 'Use Slider Wheel' enabled, as you can put various presets in these slots" +
+                    " VRCFury Toggles with 'Use a Slider (Radial)' enabled, as you can put various presets in these slots" +
                     " and use the slider to select one of them."
                 ));
                 output.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("pages")));
@@ -486,7 +481,16 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
         var allRenderersField = VRCFuryEditorUtils.Prop(allRenderersProp, "Apply to all renderers");
         content.Add(allRenderersField);
 
-        var rendererField = VRCFuryEditorUtils.Prop(rendererProp, "Renderer");
+        VisualElement rendererField;
+        if (VRCFuryEditorUtils.GetPropertyType(rendererProp) == typeof(GameObject)) {
+            rendererField = VRCFuryEditorUtils.Prop(
+                null,
+                "Renderer",
+                fieldOverride: VRCFuryEditorUtils.FilteredGameObjectProp<Renderer>(rendererProp)
+            );
+        } else {
+            rendererField = VRCFuryEditorUtils.Prop(rendererProp, "Renderer");
+        }
         content.Add(rendererField);
 
         void UpdateVisibility() {
@@ -517,6 +521,28 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
             return content;
         }
+    }
+    
+    public static void ShowBlendshapeSearchWindow(IList<SkinnedMeshRenderer> skins, Action<string> onSelect) {
+        var window = new VrcfSearchWindow("Blendshapes");
+
+        var shapes = new Dictionary<string, string>();
+        foreach (var skin in skins) {
+            foreach (var bs in skin.GetBlendshapeNames()) {
+                if (shapes.ContainsKey(bs)) {
+                    shapes[bs] += ", " + skin.owner().name;
+                } else {
+                    shapes[bs] = skin.owner().name;
+                }
+            }
+        }
+
+        var mainGroup = window.GetMainGroup();
+        foreach (var entry in shapes.OrderBy(entry => entry.Key)) {
+            mainGroup.Add(entry.Key + " (" + entry.Value + ")", entry.Key);
+        }
+                    
+        window.Open(onSelect);
     }
 }
 

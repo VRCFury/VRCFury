@@ -16,6 +16,7 @@ using VF.Menu;
 using VF.Service;
 using VF.Utils;
 using VRC.Dynamics;
+using VRC.SDKBase.Validation.Performance;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
@@ -164,30 +165,21 @@ namespace VF.Inspector {
                 return c;
             }, enableSps));
 
-            var enableDepthAnimationsProp = serializedObject.FindProperty("enableDepthAnimations");
-            container.Add(VRCFuryEditorUtils.BetterProp(
-                enableDepthAnimationsProp,
+            // Depth Animations
+            var list = serializedObject.FindProperty("depthActions2");
+            container.Add(VRCFuryEditorUtils.CheckboxList(
+                list,
                 "Enable Depth Animations",
-                tooltip: "Allows you to animate anything based on the proximity of a socket near this plug"
+                "Allows you to animate anything based on the proximity of a socket near this plug",
+                "Depth Animations",
+                VRCFuryEditorUtils.List(list, () => {
+                    VRCFuryEditorUtils.AddToList(list, newAction => {
+                        newAction.FindPropertyRelative("range").vector2Value = new Vector2(-1, 0);
+                        newAction.FindPropertyRelative("units").enumValueIndex =
+                            (int)VRCFuryHapticSocket.DepthActionUnits.Plugs;
+                    });
+                })
             ));
-            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (!enableDepthAnimationsProp.boolValue) return new VisualElement();
-                var da = VRCFuryEditorUtils.Section("Depth Animations");
-                
-                da.Add(VRCFuryEditorUtils.Info(
-                    "If you provide a non-static (moving) animation clip, the clip will run from start " +
-                    "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
-                da.Add(VRCFuryEditorUtils.Info(
-                    "Distance = 0 : Plug is entirely inside socket\n" +
-                    "Distance = 1 : Tip of plug is touching socket\n" +
-                    "Distance > 1 : Plug is approaching socket\n" +
-                    "1 Unit is the length of the plug"
-                ));
-                
-                da.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions")));
-
-                return da;
-            }, enableDepthAnimationsProp));
 
             container.Add(GetHapticsSection());
 
@@ -215,21 +207,10 @@ namespace VF.Inspector {
             el.Add(VRCFuryEditorUtils.Error("Haptics have been disabled in the VRCFury unity settings"));
             return el;
         }
-        
-        [CustomPropertyDrawer(typeof(VRCFuryHapticPlug.PlugDepthAction))]
-        public class PlugDepthActionDrawer : PropertyDrawer {
-            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var c = new VisualElement();
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state")));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
-                return c;
-            }
-        }
 
         public static VisualElement ConstraintWarning(UnityEngine.Component c, bool isSocket = false) {
+            var reg = new VrcRegistryConfig();
+            
             return VRCFuryEditorUtils.Debug(refreshElement: () => {
                 var output = new VisualElement();
                 var legacyRendererPaths = new List<string>();
@@ -280,7 +261,7 @@ namespace VF.Inspector {
                 }
                 if (lightPaths.Any()) {
                     var warning = VRCFuryEditorUtils.Warn(
-                        "This avatar still contains lights! Beware that these lights may interfere with SPS if they are enabled at the same time.\n\n" +
+                        "This avatar contains lights! Beware that these lights may interfere with SPS if they are enabled at the same time.\n\n" +
                         string.Join("\n", lightPaths)
                     );
                     output.Add(warning);
@@ -294,7 +275,9 @@ namespace VF.Inspector {
                     );
                     output.Add(warning);
                 }
-                if (c.gameObject.asVf().GetComponentsInSelfAndParents<IConstraint>().Length > 0) {
+
+                var inConstraints = c.owner().GetConstraints(true).Any();
+                if (inConstraints) {
                     var warning = VRCFuryEditorUtils.Warn(
                         "This SPS component is used within a Constraint! " +
                         "AVOID using SPS within constraints if at all possible. " +
@@ -303,6 +286,25 @@ namespace VF.Inspector {
                             : "") +
                         " Check out https://vrcfury.com/sps/constraints for details.");
                     output.Add(warning);
+                }
+
+                if (reg.TryGet("VRC_AV_INTERACT_SELF", out var val) && val != 1) {
+                    output.Add(VRCFuryEditorUtils.Error(
+                        "You must enable 'Settings > Avatar > Avatar Interactions > Avatar Self Interact' in the VRChat settings" +
+                        " for SPS to work properly."
+                    ));
+                }
+                if (reg.TryGet("VRC_AV_INTERACT_LEVEL", out var val2) && val2 != 2) {
+                    output.Add(VRCFuryEditorUtils.Warn(
+                        "You do not have 'Settings > Avatar > Avatar Interactions > Avatar Allowed to Interact' set to 'Everyone' in the VRChat settings." +
+                        " This may prevent SPS from working properly with other players."
+                    ));
+                }
+                if (reg.TryGet("PIXEL_LIGHT_COUNT", out var val3) && val3 != 3) {
+                    output.Add(VRCFuryEditorUtils.Warn(
+                        "Your VRChat 'Pixel Light Count' setting is not set to HIGH. This may cause SPS to work improperly in some worlds." +
+                        " Please set 'Settings > Graphics > Advanced > Pixel Light Count' to 'High' in the VRChat settings."
+                    ));
                 }
 
                 return output;
@@ -320,16 +322,18 @@ namespace VF.Inspector {
         private static readonly ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache> gizmoCache
             = new ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache>();
         
-        [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
+        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
+        //[DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFuryHapticPlug plug, GizmoType gizmoType) {
             var transform = plug.transform;
             
             var cache = gizmoCache.GetOrCreateValue(plug);
             if (cache.time == 0 || transform.position != cache.position || transform.rotation != cache.rotation || EditorApplication.timeSinceStartup > cache.time + 1) {
                 cache.time = EditorApplication.timeSinceStartup;
-                cache.error = "";
                 cache.position = transform.position;
                 cache.rotation = transform.rotation;
+                cache.size = null;
+                cache.error = null;
                 try {
                     cache.size = PlugSizeDetector.GetWorldSize(plug);
                 } catch (Exception e) {
@@ -337,34 +341,45 @@ namespace VF.Inspector {
                 }
             }
 
-            if (!string.IsNullOrEmpty(cache.error)) {
-                VRCFuryGizmoUtils.DrawText(transform.position, cache.error, Color.white, true);
-                return;
+            var size = cache.size;
+            var worldRoot = transform.TransformPoint(Vector3.zero);
+            Vector3 worldForward;
+            float worldLength;
+            float worldRadius;
+            Color color;
+            string error = null;
+            if (size == null) {
+                worldForward = transform.TransformDirection(Vector3.forward);
+                worldLength = 0.3f;
+                worldRadius = 0.05f;
+                color = Color.red;
+                error = cache.error;
+            } else {
+                worldForward = transform.TransformDirection(size.localRotation * Vector3.forward);
+                worldLength = size.worldLength;
+                worldRadius = size.worldRadius;
+                color = new Color(1f, 0.5f, 0);
             }
 
-            var size = cache.size;
-            var localLength = size.worldLength / transform.lossyScale.x;
-            var localRadius = size.worldRadius / transform.lossyScale.x;
-            var localForward = size.localRotation * Vector3.forward;
-            var localHalfway = localForward * (localLength / 2);
-            var localCapsuleRotation = size.localRotation * Quaternion.Euler(90,0,0);
+            var worldEnd = worldRoot + worldForward * worldLength;
+            VRCFuryGizmoUtils.DrawCappedCylinder(worldRoot, worldEnd, worldRadius, color);
 
-            var worldPosTip = transform.TransformPoint(size.localPosition + localForward * localLength);
+            if (Selection.activeGameObject == plug.gameObject) {
+                VRCFuryGizmoUtils.DrawText(
+                    worldRoot + (worldEnd - worldRoot) / 2,
+                    "SPS Plug" + (error == null ? "" : $"\n({error})"),
+                    Color.gray,
+                    true
+                );
+            }
 
-            DrawCapsule(transform, size.localPosition + localHalfway, localCapsuleRotation, size.worldLength, size.worldRadius);
-            VRCFuryGizmoUtils.DrawText(worldPosTip, "Tip", Color.white, true);
-        }
-
-        public static void DrawCapsule(
-            Transform obj,
-            Vector3 localPosition,
-            Quaternion localRotation,
-            float worldLength,
-            float worldRadius
-        ) {
-            var worldPos = obj.TransformPoint(localPosition);
-            var worldRot = obj.rotation * localRotation;
-            VRCFuryGizmoUtils.DrawCapsule(worldPos, worldRot, worldLength, worldRadius, Color.red);
+            Gizmos.color = Color.clear;
+            var gizmoStart = worldRoot;
+            var gizmoEnd = worldEnd - worldForward * worldRadius;
+            var gizmoCount = 5;
+            for (var i = 0; i < gizmoCount; i++) {
+                Gizmos.DrawSphere(gizmoStart + (gizmoEnd - gizmoStart) * i / (gizmoCount-1), worldRadius);
+            }
         }
 
         public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug plug) {
@@ -415,18 +430,48 @@ namespace VF.Inspector {
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
-            var bakeRoot = GameObjects.Create("BakedSpsPlug", transform);
-            bakeRoot.localPosition = localPosition;
-            bakeRoot.localRotation = localRotation;
+            var localSpace = GameObjects.Create("BakedSpsPlug", transform);
+            localSpace.localPosition = localPosition;
+            localSpace.localRotation = localRotation;
+
+            var worldSpace = GameObjects.Create("WorldSpace", localSpace);
+            ConstraintUtils.MakeWorldSpace(worldSpace);
 
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
-            var senders = GameObjects.Create("Senders", bakeRoot);
-            hapticContactsService.AddSender(senders, Vector3.zero, "Length", worldLength, new [] { HapticUtils.CONTACT_PEN_MAIN }, useHipAvoidance: plug.useHipAvoidance);
-            hapticContactsService.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), new [] { HapticUtils.CONTACT_PEN_WIDTH }, useHipAvoidance: plug.useHipAvoidance);
-            hapticContactsService.AddSender(senders, halfWay, "Envelope", worldRadius, new [] { HapticUtils.CONTACT_PEN_CLOSE }, rotation: capsuleRotation, height: worldLength, useHipAvoidance: plug.useHipAvoidance);
-            hapticContactsService.AddSender(senders, Vector3.zero, "Root", 0.01f, new [] { HapticUtils.CONTACT_PEN_ROOT }, useHipAvoidance: plug.useHipAvoidance);
-            
+            var senders = GameObjects.Create("Senders", localSpace);
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = senders,
+                objName = "Length",
+                radius = worldLength,
+                tags = new [] { HapticUtils.CONTACT_PEN_MAIN },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = senders,
+                objName = "WidthHelper",
+                radius = Mathf.Max(0.01f, worldLength - worldRadius*2),
+                tags = new [] { HapticUtils.CONTACT_PEN_WIDTH },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = senders,
+                pos = halfWay,
+                objName = "Envelope",
+                radius = worldRadius,
+                tags = new [] { HapticUtils.CONTACT_PEN_CLOSE },
+                rotation = capsuleRotation,
+                height = worldLength,
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = worldSpace,
+                objName = "Sender - Root",
+                radius = 0.01f,
+                tags = new [] { HapticUtils.CONTACT_PEN_ROOT },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+
             // TODO: Check if there are 0 renderers,
             // or if there are 0 materials on any of the renderers
 
@@ -442,7 +487,7 @@ namespace VF.Inspector {
                 rendererResults = renderers.Select(renderer => {
                     var owner = renderer.owner();
                     try {
-                        var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, worldLength);
+                        var skin = TpsConfigurer.NormalizeRenderer(renderer, localSpace, worldLength);
 
                         var spsBlendshapes = plug.spsBlendshapes
                             .Where(b => skin.HasBlendshape(b))
@@ -452,7 +497,7 @@ namespace VF.Inspector {
 
                         var activeFromMask = PlugMaskGenerator.GetMask(skin, plug);
                         if (plug.enableSps && plug.spsAutorig) {
-                            SpsAutoRigger.AutoRig(skin, bakeRoot, worldLength, worldRadius, activeFromMask);
+                            SpsAutoRigger.AutoRig(skin, localSpace, worldLength, worldRadius, activeFromMask);
                         }
 
                         var spsBaked = plug.enableSps ? SpsBaker.Bake(skin, tmpDir, activeFromMask, false, spsBlendshapes) : null;
@@ -464,7 +509,7 @@ namespace VF.Inspector {
 
                             try {
                                 if (mat == null) return null;
-                                if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android) return mat;
+                                if (!BuildTargetUtils.IsDesktop()) return mat;
 
                                 if (plug.enableSps) {
                                     var copy = mat.Clone();
@@ -472,7 +517,7 @@ namespace VF.Inspector {
                                     finishedCopies.Add(copy);
                                     SpsConfigurer.ConfigureSpsMaterial(skin, copy, worldLength,
                                         spsBaked,
-                                        plug, bakeRoot, spsBlendshapes);
+                                        plug, localSpace, spsBlendshapes);
                                     return copy;
                                 }
                                 if (plug.configureTps && TpsConfigurer.IsTps(mat)) {
@@ -507,15 +552,6 @@ namespace VF.Inspector {
                 }).ToArray();
             }
 
-            if (EditorApplication.isPlaying) {
-                foreach (var light in bakeRoot.GetComponentsInSelfAndChildren<Light>()) {
-                    light.hideFlags |= HideFlags.HideInHierarchy;
-                }
-                foreach (var contact in bakeRoot.GetComponentsInSelfAndChildren<ContactBase>()) {
-                    contact.hideFlags |= HideFlags.HideInHierarchy;
-                }
-            }
-
             if (!deferMaterialConfig) {
                 foreach (var r in rendererResults) {
                     r.renderer.sharedMaterials = r.renderer.sharedMaterials.Select((mat,slotNum) => r.configureMaterial(slotNum, mat)).ToArray();
@@ -523,7 +559,8 @@ namespace VF.Inspector {
             }
 
             return new BakeResult {
-                bakeRoot = bakeRoot,
+                bakeRoot = localSpace,
+                worldSpace = worldSpace,
                 renderers = rendererResults,
                 worldLength = worldLength,
                 worldRadius = worldRadius,
@@ -532,6 +569,7 @@ namespace VF.Inspector {
 
         public class BakeResult {
             public VFGameObject bakeRoot;
+            public VFGameObject worldSpace;
             public ICollection<RendererResult> renderers;
             public float worldLength;
             public float worldRadius;

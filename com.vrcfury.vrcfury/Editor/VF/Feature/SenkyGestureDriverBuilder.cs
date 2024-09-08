@@ -11,7 +11,7 @@ using VF.Service;
 namespace VF.Feature {
 
 internal class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
-    [VFAutowired] private ActionClipService actionClipService;
+    [VFAutowired] private readonly ActionClipService actionClipService;
     
     [FeatureBuilderAction(FeatureOrder.SenkyGestureDriver)]
     public void Apply() {

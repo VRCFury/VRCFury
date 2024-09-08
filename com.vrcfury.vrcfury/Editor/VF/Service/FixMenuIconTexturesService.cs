@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
@@ -20,21 +21,29 @@ namespace VF.Service {
             var menu = manager.GetMenu();
             
             var cache = new Dictionary<Texture2D, Texture2D>();
-            Texture2D Optimize(Texture2D original) {
+            Texture2D Optimize(Texture2D original, string path) {
                 if (original == null) return original;
+                if (original.width == 0 || original.height == 0) {
+                    EditorUtility.DisplayDialog(
+                        "VRCFury",
+                        $"The icon in your menu at path \"{path}\" is corrupted." +
+                        $" This is usually caused by a compression bug in Modular Avatar," +
+                        $" where it does not compress non-standard image sizes properly. The icon has been discarded.",
+                        "Ok"
+                    );
+                    return null;
+                }
                 if (cache.TryGetValue(original, out var cached)) return cached;
                 var newTexture = original.Optimize(forceCompression: true, maxSize: 256);
-                if (original != newTexture) {
-                    Debug.LogWarning($"VRCFury is resizing/compressing menu icon {original.name}");
-                }
                 return cache[original] = newTexture;
             }
             
             menu.GetRaw().ForEachMenu(ForEachItem: (control, path) => {
-                control.icon = Optimize(control.icon);
+                var strPath = string.Join("/", path);
+                control.icon = Optimize(control.icon, strPath);
                 if (control.labels != null) {
                     control.labels = control.labels.Select(label => {
-                        label.icon = Optimize(label.icon);
+                        label.icon = Optimize(label.icon, strPath);
                         return label;
                     }).ToArray();
                 }

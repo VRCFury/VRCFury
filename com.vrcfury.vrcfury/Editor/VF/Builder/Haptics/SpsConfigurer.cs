@@ -9,7 +9,8 @@ using VF.Utils;
 namespace VF.Builder.Haptics {
     internal static class SpsConfigurer {
         private const string SpsEnabled = "_SPS_Enabled";
-        private const string SpsLength = "_SPS_Length";
+        public const string SpsLength = "_SPS_Length";
+        public const string SpsPlusEnabled = "_SPS_Plus_Enabled";
         private const string SpsOverrun = "_SPS_Overrun";
         private const string SpsBakedLength = "_SPS_BakedLength";
         private const string SpsBake = "_SPS_Bake";

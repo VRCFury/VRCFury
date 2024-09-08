@@ -1,18 +1,19 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Model;
-using VF.Model.Feature;
 
 namespace VF.Menu {
     internal static class MenuItems {
         private const string prefix = "Tools/VRCFury/";
+        
+        public const string update = prefix + "Update VRCFury";
+        public const int updatePriority = 1000;
 
         public const string testCopy = prefix + "Build an Editor Test Copy";
         public const int testCopyPriority = 1221;

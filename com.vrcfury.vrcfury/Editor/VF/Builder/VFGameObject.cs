@@ -1,9 +1,12 @@
 using System;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Utils;
+using VRC.Dynamics;
+using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     /**
@@ -18,10 +21,10 @@ namespace VF.Builder {
 
         public GameObject gameObject => _gameObject;
         public Transform transform => _gameObject == null ? null : _gameObject.transform;
-        public static implicit operator VFGameObject(GameObject d) => new VFGameObject(d);
-        public static implicit operator VFGameObject(Transform d) => new VFGameObject(d == null ? null : d.gameObject);
+        public static implicit operator VFGameObject(GameObject d) => d == null ? null : new VFGameObject(d);
+        public static implicit operator VFGameObject(Transform d) => d == null ? null : new VFGameObject(d.gameObject);
         public static implicit operator GameObject(VFGameObject d) => d?.gameObject;
-        public static implicit operator UnityEngine.Object(VFGameObject d) => d?.gameObject;
+        public static implicit operator Object(VFGameObject d) => d?.gameObject;
         public static implicit operator Transform(VFGameObject d) => d?.transform;
         public static implicit operator bool(VFGameObject d) => d?.gameObject;
         public static bool operator ==(VFGameObject a, VFGameObject b) => a?.Equals(b) ?? b?.Equals(null) ?? true;
@@ -132,7 +135,23 @@ namespace VF.Builder {
         public T GetComponent<T>() {
             return GetComponents<T>().FirstOrDefault();
         }
-        
+
+        public VFConstraint[] GetConstraints(bool includeParents = false, bool includeChildren = false) {
+            var avatar = VRCAvatarUtils.GuessAvatarObject(this);
+            if (avatar == null) avatar = root;
+            return avatar.GetComponentsInSelfAndChildren<UnityEngine.Component>()
+                .Select(c => c.AsConstraint())
+                .NotNull()
+                .Where(c => {
+                    var affectedObject = c.GetAffectedObject();
+                    if (affectedObject == null) return false;
+                    if (includeParents) return IsChildOf(affectedObject);
+                    if (includeChildren) return affectedObject.IsChildOf(this);
+                    return affectedObject == this;
+                })
+                .ToArray();
+        }
+
         public UnityEngine.Component[] GetComponents(Type t) {
             // Components can sometimes be null for some reason. Perhaps when they're corrupt?
             return gameObject.GetComponents(t).NotNull().ToArray();
@@ -190,12 +209,34 @@ namespace VF.Builder {
             return AnimationUtility.CalculateTransformPath(this, root);
         }
 
+        public string GetAnimatedPath() {
+            var avatarObject = VRCAvatarUtils.GuessAvatarObject(this);
+            if (avatarObject == null) return "_avatarMissing/" + GetPath();
+            return GetPath(avatarObject);
+        }
+
         public void Destroy() {
-            UnityEngine.Object.DestroyImmediate(gameObject);
+            var b = VRCAvatarUtils.GuessAvatarObject(this) ?? root;
+            foreach (var c in b.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
+                if (c.GetRootTransform().IsChildOf(this))
+                    Object.DestroyImmediate(c);
+            }
+            foreach (var c in b.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>()) {
+                if (c.GetRootTransform().IsChildOf(this))
+                    Object.DestroyImmediate(c);
+            }
+            foreach (var c in b.GetComponentsInSelfAndChildren<ContactBase>()) {
+                if (c.GetRootTransform().IsChildOf(this))
+                    Object.DestroyImmediate(c);
+            }
+            foreach (var c in GetConstraints(includeChildren: true)) {
+                c.Destroy();
+            }
+            Object.DestroyImmediate(gameObject);
         }
 
         public VFGameObject Clone() {
-            return UnityEngine.Object.Instantiate(gameObject);
+            return Object.Instantiate(gameObject);
         }
 
         public static VFGameObject[] GetRoots(Scene scene) {
@@ -249,6 +290,10 @@ namespace VF.Builder {
             }
 
             this.name = name;
+        }
+
+        public int GetInstanceID() {
+            return _gameObject.GetInstanceID();
         }
     }
 }

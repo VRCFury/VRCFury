@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEngine;
 
 namespace VF.Builder {
@@ -11,9 +12,11 @@ namespace VF.Builder {
             dynamic d = component;
             return d.gameObject;
         }
+        [CanBeNull]
         public static VFGameObject asVf(this GameObject gameObject) {
             return gameObject;
         }
+        [CanBeNull]
         public static VFGameObject asVf(this Transform transform) {
             return transform;
         }

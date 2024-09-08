@@ -16,7 +16,7 @@ namespace VF.Service {
      */
     [VFService]
     internal class AvatarBindingStateService {
-        [VFAutowired] private GlobalsService globals;
+        [VFAutowired] private readonly GlobalsService globals;
         private VFGameObject avatarObject => globals.avatarObject;
 
         public void ApplyClip(AnimationClip clip) {

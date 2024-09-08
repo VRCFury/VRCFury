@@ -26,30 +26,28 @@ namespace VF.Inspector {
                 name = uniqueHapticNamesService.GetUniqueName(name);
                 var paramPrefix = "VFH/Zone/Touch/" + name.Replace('/','_');
                 
-                hapticContacts.AddReceiver(
-                    receiver.owner(),
-                    Vector3.zero,
-                    paramPrefix + "/Self",
-                    "Self",
-                    receiver.radius,
-                    HapticUtils.SelfContacts.Concat(new [] { HapticUtils.CONTACT_PEN_CLOSE }).ToArray(),
-                    HapticUtils.ReceiverParty.Self,
-                    worldScale: false,
-                    usePrefix: false,
-                    localOnly: true
-                );
-                hapticContacts.AddReceiver(
-                    receiver.owner(),
-                    Vector3.zero,
-                    paramPrefix + "/Others",
-                    "Others",
-                    receiver.radius,
-                    HapticUtils.BodyContacts.Concat(new [] { HapticUtils.CONTACT_PEN_CLOSE }).ToArray(),
-                    HapticUtils.ReceiverParty.Others,
-                    worldScale: false,
-                    usePrefix: false,
-                    localOnly: true
-                );
+                hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
+                    obj = receiver.owner(),
+                    paramName = paramPrefix + "/Self",
+                    objName = "Self",
+                    radius = receiver.radius,
+                    tags = HapticUtils.SelfContacts.Concat(new [] { HapticUtils.CONTACT_PEN_CLOSE }).ToArray(),
+                    party = HapticUtils.ReceiverParty.Self,
+                    worldScale = false,
+                    usePrefix = false,
+                    localOnly = true
+                });
+                hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
+                    obj = receiver.owner(),
+                    paramName = paramPrefix + "/Others",
+                    objName = "Others",
+                    radius = receiver.radius,
+                    tags = HapticUtils.BodyContacts.Concat(new [] { HapticUtils.CONTACT_PEN_CLOSE }).ToArray(),
+                    party = HapticUtils.ReceiverParty.Others,
+                    worldScale = false,
+                    usePrefix = false,
+                    localOnly = true
+                });
             }
         }
         

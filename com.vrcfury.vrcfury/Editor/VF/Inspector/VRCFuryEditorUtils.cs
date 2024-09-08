@@ -294,7 +294,7 @@ internal static class VRCFuryEditorUtils {
         } else {
             switch (prop.propertyType) {
                 case SerializedPropertyType.Vector4: {
-                    field = new Vector4Field { bindingPath = prop.propertyPath }.FlexShrink(1);
+                    field = new Vector4Field { bindingPath = prop.propertyPath };
                     break;
                 }
                 case SerializedPropertyType.Enum: {
@@ -303,7 +303,7 @@ internal static class VRCFuryEditorUtils {
                         prop.enumValueIndex,
                         formatSelectedValueCallback: formatEnum,
                         formatListItemCallback: formatEnum
-                    ) { bindingPath = prop.propertyPath }.FlexShrink(1);
+                    ) { bindingPath = prop.propertyPath };
                     break;
                 }
                 case SerializedPropertyType.Generic: {
@@ -362,6 +362,7 @@ internal static class VRCFuryEditorUtils {
             labelRow.Add(labelBox);
 
             field.style.flexGrow = 1;
+            field.style.flexShrink = 1;
             labelRow.Add(field);
 
             wrapper.Add(labelRow);
@@ -697,12 +698,103 @@ internal static class VRCFuryEditorUtils {
     }
     
     public static Type GetPropertyType(SerializedProperty prop) {
-        var util = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ScriptAttributeUtility");
-        var method = util.GetMethod("GetFieldInfoFromProperty",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        var prms = new object[] { prop, null };
-        method.Invoke(null, prms);
-        return prms[1] as Type;
+        if (UnityReflection.Props.GetFieldInfoFromProperty == null) return null;
+        UnityReflection.Props.GetFieldInfoFromProperty(prop, out var type);
+        return type;
+    }
+
+    public class PercentSlider2 : BaseField<float> {
+        private readonly Slider slider;
+        private readonly FloatField text;
+
+        public PercentSlider2() : base(null, null) {
+            this.style.flexDirection = FlexDirection.Row;
+            slider = new Slider(0, 1).Margin(0).FlexShrink(1);
+            slider.style.marginRight = 5;
+            slider.RegisterValueChangedCallback(e => Changed(e.newValue));
+            this.Add(slider);
+            text = new FloatField().Margin(0).FlexBasis(30);
+            text.RegisterValueChangedCallback(e => Changed(e.newValue * 0.01f));
+            this.Add(text);
+        }
+
+        private void Changed(float newValue) {
+            value = Mathf.Clamp(newValue, 0, 1);
+        }
+
+        public override void SetValueWithoutNotify(float newValue) {
+            base.SetValueWithoutNotify(newValue);
+            slider.SetValueWithoutNotify(newValue);
+            text.SetValueWithoutNotify(newValue * 100);
+        }
+    }
+    public static VisualElement PercentSlider(SerializedProperty prop) {
+        var slider = new PercentSlider2();
+        slider.bindingPath = prop.propertyPath;
+        return slider;
+    }
+
+    public static VisualElement CheckboxList(SerializedProperty depthActionsList, string label, string tooltip, string sectionTitle, VisualElement sectionBody = null) {
+        if (sectionBody == null) sectionBody = List(depthActionsList);
+        var container = new VisualElement();
+        var enabledCheckbox = new Toggle();
+        container.Add(BetterProp(
+            null,
+            label,
+            tooltip: tooltip,
+            fieldOverride: enabledCheckbox
+        ));
+        var section = Section(sectionTitle);
+        section.Add(sectionBody);
+        container.Add(section);
+
+        enabledCheckbox.RegisterValueChangedCallback(e => {
+            if (e.newValue) {
+                section.SetVisible(true);
+            } else {
+                depthActionsList.ClearArray();
+                depthActionsList.serializedObject.ApplyModifiedProperties();
+                UpdateState();
+            }
+        });
+
+        void UpdateState() {
+            var show = depthActionsList.arraySize > 0;
+            section.SetVisible(show);
+            enabledCheckbox.SetValueWithoutNotify(show);
+        }
+        container.Add(OnChange(depthActionsList, UpdateState));
+        UpdateState();
+        return container;
+    }
+
+    public static VisualElement FilteredGameObjectProp<T>(SerializedProperty prop) where T : UnityEngine.Component {
+        var output = new VisualElement();
+
+        var visibleField = new ObjectField();
+        output.Add(visibleField);
+        visibleField.objectType = typeof(T);
+        visibleField.RegisterValueChangedCallback(e => {
+            GameObject go = null;
+            if (e.newValue is T r && r != null) {
+                go = r.owner();
+            }
+            prop.objectReferenceValue = go;
+            prop.serializedObject.ApplyModifiedProperties();
+        });
+
+        void UpdateState() {
+            Object shown = null;
+            var obj = prop.objectReferenceValue as GameObject;
+            if (obj != null) {
+                var r = obj.GetComponent<T>();
+                shown = r;
+            }
+            visibleField.SetValueWithoutNotify(shown);
+        }
+        output.Add(OnChange(prop, UpdateState));
+        UpdateState();
+        return output;
     }
 }
     
