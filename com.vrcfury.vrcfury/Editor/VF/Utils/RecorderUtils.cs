@@ -12,24 +12,11 @@ using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     internal static class RecorderUtils {
-
-        private static readonly Type animStateType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
-        private static readonly PropertyInfo selectionField = animStateType?.GetProperty("selection");
-        private static readonly PropertyInfo gameObjectField = selectionField?.PropertyType.GetProperty("gameObject");
-        private static readonly PropertyInfo animationClipField = animStateType?.GetProperty("activeAnimationClip");
-        private static readonly MethodInfo startRecording = animStateType?.GetMethod("StartRecording");
-        private static bool initialized = false;
-
         private static Action restore = null;
 
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (animStateType == null || selectionField == null || gameObjectField == null || animationClipField == null || startRecording == null) {
-                Debug.LogError("VRCFury failed to find Unity recording methods");
-                return;
-            }
-
-            initialized = true;
+            if (!UnityReflection.IsReady(typeof(UnityReflection.Recorder))) return;
 
             void Cleanup() {
                 if (restore == null) return;
@@ -39,21 +26,38 @@ namespace VF.Utils {
             }
 
             EditorApplication.update += () => {
-                if (!AnimationWindowUtils.IsRecording()) Cleanup();
+                if (!IsRecording()) Cleanup();
             };
 
             AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
         }
 
+        private static bool IsRecording() {
+            if (!UnityReflection.IsReady(typeof(UnityReflection.Recorder))) return false;
+            return Resources.FindObjectsOfTypeAll(UnityReflection.Recorder.animStateType)
+                .Any(window => (bool)UnityReflection.Recorder.isRecordingProperty.GetValue(window, null));
+        }
+
         public static void Record(AnimationClip clip, VFGameObject baseObj, bool rewriteClip = true) {
-            if (!initialized) {
+            if (!UnityReflection.IsReady(typeof(UnityReflection.Recorder))) {
                 EditorUtility.DisplayDialog("VRCFury Animation Recorder",
                     "VRCFury failed to initialize the recorder. Maybe this version of unity is not supported yet?", "Ok");
                 return;
             }
-            if (AnimationWindowUtils.IsRecording()) {
+            if (IsRecording()) {
                 EditorUtility.DisplayDialog("VRCFury Animation Recorder", "An animation is already being recorded",
                     "Ok");
+                return;
+            }
+            
+            // Open / focus the animation tab
+            EditorWindow.GetWindow(UnityReflection.Recorder.AnimationWindow)?.Focus();
+
+            var animState = Resources.FindObjectsOfTypeAll(UnityReflection.Recorder.animStateType).FirstOrDefault();
+            if (animState == null) {
+                EditorUtility.DisplayDialog("VRCFury Animation Recorder", "Animation tab needs to be open",
+                    "Ok");
+                return;
             }
             
             var avatarObject = baseObj.GetComponentInSelfOrParent<VRCAvatarDescriptor>().NullSafe()?.owner();
@@ -105,11 +109,10 @@ namespace VF.Utils {
             state.motion = clip;
             animator.runtimeAnimatorController = controller;
 
-            var animState = Resources.FindObjectsOfTypeAll(animStateType)[0];
-            var selection = selectionField.GetValue(animState);
-            gameObjectField.SetValue(selection, (GameObject)clone);
-            animationClipField.SetValue(animState, clip);
-            startRecording.Invoke(animState, new object[] { });
+            var selection = UnityReflection.Recorder.selectionField.GetValue(animState);
+            UnityReflection.Recorder.gameObjectField.SetValue(selection, (GameObject)clone);
+            UnityReflection.Recorder.animationClipField.SetValue(animState, clip);
+            UnityReflection.Recorder.startRecording.Invoke(animState, new object[] { });
 
             if (avatarObject == baseObj) rewriteClip = false;
             if (rewriteClip) {

@@ -8,6 +8,16 @@ using VF.Utils;
 
 namespace VF {
     internal static class UnityReflection {
+        public class Recorder {
+            public static readonly Type animStateType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
+            public static readonly PropertyInfo selectionField = animStateType?.GetProperty("selection");
+            public static readonly PropertyInfo gameObjectField = selectionField?.PropertyType.GetProperty("gameObject");
+            public static readonly PropertyInfo animationClipField = animStateType?.GetProperty("activeAnimationClip");
+            public static readonly MethodInfo startRecording = animStateType?.GetMethod("StartRecording");
+            public static readonly PropertyInfo isRecordingProperty = animStateType?.GetProperty("recording", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly Type AnimationWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationWindow");
+        }
+
         public class PackageImport {
             public static readonly Type PackageImportWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.PackageImport");
             public static readonly FieldInfo m_ImportPackageItems = PackageImportWindow?.GetField("m_ImportPackageItems", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
