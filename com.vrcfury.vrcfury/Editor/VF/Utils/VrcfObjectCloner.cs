@@ -18,7 +18,7 @@ namespace VF.Utils {
             }
 
             T copy;
-            if (original is Material || original is Mesh || original is Texture2D) {
+            if (original is Material || original is Mesh || original is Texture2D || original is AudioClip) {
                 if (original is Texture2D t && !t.isReadable) {
                     t.ForceReadable();
                     copy = Object.Instantiate(original);

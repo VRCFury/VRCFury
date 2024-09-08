@@ -48,10 +48,37 @@ namespace VF.Utils {
             AnimationUtility.SetAnimationClipSettings(to, AnimationUtility.GetAnimationClipSettings(from));
             clipDb[to] = GetExt(from).Clone();
         }
-        public static void FinalizeAsset(this AnimationClip clip) {
+        public static void FinalizeAsset(this AnimationClip clip, bool enforceEmpty = true) {
             if (AnimationUtility.GetCurveBindings(clip).Any() ||
                 AnimationUtility.GetObjectReferenceCurveBindings(clip).Any()) {
-                throw new Exception("VRCFury FinalizeAsset was called on a clip that wasn't empty! This is definitely a bug.");
+                if (enforceEmpty) {
+                    throw new Exception(
+                        "VRCFury FinalizeAsset was called on a clip that wasn't empty! This is definitely a bug.");
+                } else {
+                    var floatBindings = AnimationUtility.GetCurveBindings(clip);
+                    var objectBindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
+#if UNITY_2022_1_OR_NEWER
+                    if (floatBindings.Any()) {
+                        AnimationUtility.SetEditorCurves(clip,
+                            floatBindings,
+                            floatBindings.Select(p => (AnimationCurve)null).ToArray()
+                        );
+                    }
+                    if (objectBindings.Any()) {
+                        AnimationUtility.SetObjectReferenceCurves(clip,
+                            objectBindings,
+                            objectBindings.Select(p => (ObjectReferenceKeyframe[])null).ToArray()
+                        );
+                    }
+#else
+                    foreach (var b in floatBindings) {
+                        AnimationUtility.SetEditorCurve(clip, b, null);
+                    }
+                    foreach (var b in objectBindings) {
+                        AnimationUtility.SetObjectReferenceCurve(clip, b, null);
+                    }
+#endif
+                }
             }
 
             var ext = GetExt(clip);
@@ -259,6 +286,14 @@ namespace VF.Utils {
             ext.changedFromOriginalSourceClip = true;
             settings.loopTime = on;
             AnimationUtility.SetAnimationClipSettings(clip, settings);
+        }
+
+        public static void Reverse(this AnimationClip clip) {
+            var length = clip.GetLengthInSeconds();
+            if (clip.GetLengthInSeconds() == 0) return;
+            clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                return (binding, curve.Reverse(length), true);
+            }));
         }
 
         public static IImmutableSet<EditorCurveBindingExtensions.MuscleBindingType> GetMuscleBindingTypes(this AnimationClip clip) {

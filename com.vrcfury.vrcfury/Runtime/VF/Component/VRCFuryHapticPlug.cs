@@ -102,7 +102,8 @@ namespace VF.Component {
                                 Math.Max(a.startDistance, a.endDistance) - 1
                             ),
                             smoothingSeconds = a.smoothingSeconds,
-                            units = VRCFuryHapticSocket.DepthActionUnits.Plugs
+                            units = VRCFuryHapticSocket.DepthActionUnits.Plugs,
+                            reverseClip = a.startDistance < a.endDistance
                         });
                     }
                 }

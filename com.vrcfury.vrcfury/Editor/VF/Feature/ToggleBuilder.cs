@@ -222,8 +222,6 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             }
         }
 
-        var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
-
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
                 .OfType<SecurityLockBuilder>()
@@ -241,21 +239,13 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
 
         AnimationClip restingClip;
         if (weight != null) {
+            var clip = actionClipService.LoadState(onName, action, null, ActionClipService.MotionTimeMode.Always, toggleFeature: this);
             inState = onState = layer.NewState(onName);
-            if (clip.IsStatic()) {
-                var motionClip = clipBuilder.MergeSingleFrameClips(
-                    (0, clipFactory.GetEmptyClip()),
-                    (1, clip)
-                );
-                motionClip.UseLinearTangents();
-                motionClip.name = clip.name;
-                clip = motionClip;
-            }
-            clip.SetLooping(false);
             onState.WithAnimation(clip).MotionTime(weight);
             onState.TransitionsToExit().When(onCase.Not());
             restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
         } else if (model.hasTransition) {
+            var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
             var inClip = actionClipService.LoadState(onName + " In", inAction, toggleFeature: this);
             // if clip is empty, copy last frame of transition
             if (clip.GetAllBindings().Length == 0) {
@@ -293,6 +283,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
             restingClip = clip;
         } else {
+            var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
             inState = onState = layer.NewState(onName).WithAnimation(clip);
             onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
             restingClip = clip;

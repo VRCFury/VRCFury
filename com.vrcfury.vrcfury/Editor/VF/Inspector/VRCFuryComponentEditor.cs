@@ -49,9 +49,8 @@ namespace VF.Inspector {
             var loadError = v.GetBrokenMessage();
             if (loadError != null) {
                 return VRCFuryEditorUtils.Error(
-                    $"This VRCFury component failed to load ({loadError}). It's likely that your VRCFury is out of date." +
-                    " Please try Tools -> VRCFury -> Update VRCFury. If this doesn't help, let us know on the " +
-                    " discord at https://vrcfury.com/discord");
+                    $"This VRCFury component failed to load ({loadError}). Please update VRCFury." +
+                    $" If this doesn't help, let us know on the discord at https://vrcfury.com/discord");
             }
             
             var isInstance = PrefabUtility.IsPartOfPrefabInstance(v);

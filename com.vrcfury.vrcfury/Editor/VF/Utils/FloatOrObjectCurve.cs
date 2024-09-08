@@ -91,14 +91,56 @@ namespace VF.Utils {
             }
         }
 
-        public void Scale(float multiplier) {
-            if (!isFloat) return;
-            floatCurve.keys = floatCurve.keys.Select(k => {
+        public FloatOrObjectCurve Scale(float multiplier) {
+            if (!isFloat) return this;
+            var clone = Clone();
+            clone.floatCurve.keys = clone.floatCurve.keys.Select(k => {
                 k.value *= multiplier;
                 k.inTangent *= multiplier;
                 k.outTangent *= multiplier;
                 return k;
             }).ToArray();
+            return clone;
+        }
+        
+        public FloatOrObjectCurve ScaleTime(float multiplier) {
+            if (isFloat) {
+                var clone = Clone();
+                clone.floatCurve.keys = clone.floatCurve.keys.Select(k => {
+                    k.time *= multiplier;
+                    k.inTangent /= multiplier;
+                    k.outTangent /= multiplier;
+                    return k;
+                }).ToArray();
+                return clone;
+            } else {
+                return objectCurve.Select(k => {
+                    k.time *= multiplier;
+                    return k;
+                }).ToArray();
+            }
+        }
+
+        public FloatOrObjectCurve Reverse(float totalLength) {
+            if (isFloat) {
+                var clone = Clone();
+                var postWrapmode = clone.floatCurve.postWrapMode;
+                clone.floatCurve.postWrapMode = clone.floatCurve.preWrapMode;
+                clone.floatCurve.preWrapMode = postWrapmode;
+                clone.floatCurve.keys = clone.floatCurve.keys.Select(k => {
+                    k.time = totalLength - k.time;
+                    var x = -k.inTangent;
+                    k.inTangent = -k.outTangent;
+                    k.outTangent = x;
+                    return k;
+                }).ToArray();
+                return clone;
+            } else {
+                return objectCurve.Select(k => {
+                    k.time = totalLength - k.time;
+                    return k;
+                }).ToArray();
+            }
         }
 
         public static FloatOrObjectCurve DummyFloatCurve(float length) {

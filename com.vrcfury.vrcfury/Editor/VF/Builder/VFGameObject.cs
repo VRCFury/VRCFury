@@ -291,5 +291,9 @@ namespace VF.Builder {
 
             this.name = name;
         }
+
+        public int GetInstanceID() {
+            return _gameObject.GetInstanceID();
+        }
     }
 }

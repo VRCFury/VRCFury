@@ -380,7 +380,20 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             case nameof(AnimationClipAction): {
                 var row = new VisualElement().Row();
                 row.Add(Title("Animation Clip").FlexBasis(100));
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("clip")).FlexGrow(1));
+                var clipProp = prop.FindPropertyRelative("clip");
+                row.Add(VRCFuryEditorUtils.Prop(clipProp).FlexGrow(1));
+                row.Add(new Button(() => {
+                    var clip = (clipProp.GetObject() as GuidAnimationClip)?.Get();
+                    if (clip == null) {
+                        var newPath = EditorUtility.SaveFilePanelInProject("VRCFury Recorder", "New Animation", "anim", "Path to new animation");
+                        if (string.IsNullOrEmpty(newPath)) return;
+                        clip = new AnimationClip();
+                        AssetDatabase.CreateAsset(clip, newPath);
+                        GuidWrapperPropertyDrawer.SetValue(clipProp, clip);
+                        clipProp.serializedObject.ApplyModifiedProperties();
+                    }
+                    RecorderUtils.Record(clip, component.owner());
+                }) { text = "Record" });
                 return row;
             }
             case nameof(BlockBlinkingAction): {

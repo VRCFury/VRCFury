@@ -18,12 +18,14 @@ namespace VF.Component {
         }
 
         private void Show() {
+            if (gameObject == null) return;
             foreach (var c in gameObject.GetComponents<UnityEngine.Component>()) {
                 if (c is Transform || c == this) continue;
                 c.hideFlags &= ~HideFlags.HideInHierarchy;
             }
         }
         private void Hide() {
+            if (gameObject == null) return;
             foreach (var c in gameObject.GetComponents<UnityEngine.Component>()) {
                 if (c is Transform || c == this) continue;
                 c.hideFlags |= HideFlags.HideInHierarchy;
