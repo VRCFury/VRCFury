@@ -84,7 +84,7 @@ namespace VF.Service {
             var offClip = VrcfObjectFactory.Create<AnimationClip>();
 
             var outputClips = actions
-                .Select(a => LoadAction(name, a, offClip, avatarObject, animObject, service))
+                .Select(a => LoadAction(name, a, offClip, avatarObject, animObject, service, toggleFeature))
                 .ToList();
 
             bool useMotionTime;
