@@ -38,6 +38,8 @@ namespace VF.Service {
         private readonly List<(VFAFloat,string,float)> drivenToggles = new List<(VFAFloat,string,float)>();
         private readonly List<(VFAFloat,string,float,FeatureBuilder)> drivenTags = new List<(VFAFloat,string,float,FeatureBuilder)>();
 
+        private static VFAFloat triggerParam = null; // may be used across multiple actions
+
         public enum MotionTimeMode {
             Auto,
             Never,
@@ -61,6 +63,7 @@ namespace VF.Service {
             public bool useMotionTime = false;
         }
         public static BuiltAction LoadStateAdv(string name, State state, VFGameObject avatarObject, VFGameObject animObject, [CanBeNull] ActionClipService service = null, MotionTimeMode motionTime = MotionTimeMode.Never, ToggleBuilder toggleFeature = null) {
+            triggerParam = null; // always reset when making an animation
             if (state == null) {
                 return new BuiltAction();
             }
@@ -166,8 +169,6 @@ namespace VF.Service {
             }
 
             var onClip = VrcfObjectFactory.Create<AnimationClip>();
-
-            VFAFloat triggerParam = null;
 
             if (action.desktopActive || action.androidActive) {
                 var isDesktop = BuildTargetUtils.IsDesktop();
