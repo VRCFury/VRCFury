@@ -71,29 +71,14 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         return new HashSet<string>(); 
     }
 
-    private (string,bool,bool) GetParamName() {
+    private (string,bool) GetParamName() {
         if (model.paramOverride != null) {
-            return (model.paramOverride, false, false);
+            return (model.paramOverride, false);
         }
         if (model.useGlobalParam && !string.IsNullOrWhiteSpace(model.globalParam)) {
-            return (model.globalParam, false, false);
+            return (model.globalParam, false);
         }
-        var existingParam = manager.GetMenu().GetMenuParam(model.name, model.slider);
-        if (existingParam != null) {
-            return (existingParam, false, true);
-        }
-        return (model.name, model.usePrefixOnParam, false);
-    }
-
-    private bool getIsOnlyLocalToggle() {
-        if (model.state.actions.Count() > 0) return false;
-        if (model.hasTransition) {
-            if (model.transitionStateIn.actions.Count() > 0) return false;
-            if (model.transitionStateOut.actions.Count() > 0) return false;
-        }
-        if (model.enableExclusiveTag && !string.IsNullOrWhiteSpace(model.exclusiveTag)) return false;
-        if (model.useGlobalParam) return false;
-        return true;
+        return (model.name, model.usePrefixOnParam);
     }
 
     public VFAParam getParam() {
@@ -106,22 +91,20 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
         var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
-        var networkSyncParam = !getIsOnlyLocalToggle();
 
-        var addToParamFile = addMenuItem || networkSyncParam;
+        var addToParamFile = true;
         if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
             addToParamFile = false;
         }
 
-        var (paramName, usePrefixOnParam, menuItemAlreadyMade) = GetParamName();
+        var (paramName, usePrefixOnParam) = GetParamName();
         VFCondition onCase;
         VFAFloat weight = null;
         bool defaultOn;
         if (model.slider) {
             var param = fx.NewFloat(
                 paramName,
-                addToParamFile: addToParamFile,
-                networkSynced: networkSyncParam,
+                synced: addToParamFile,
                 saved: model.saved,
                 def: model.defaultSliderValue,
                 usePrefix: usePrefixOnParam
@@ -132,7 +115,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             }
             defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
             weight = param;
-            if (addMenuItem && !menuItemAlreadyMade) {
+            if (addMenuItem) {
                 manager.GetMenu().NewMenuSlider(
                     model.name,
                     param,
@@ -141,17 +124,17 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             }
             this.param = param;
         } else if (model.useInt) {
-            var param = fx.NewInt(paramName, addToParamFile: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+            var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
             onCase = param.IsNotEqualTo(0);
             drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
             this.param = param;
         } else {
-            var param = fx.NewBool(paramName, addToParamFile: addToParamFile, networkSynced: networkSyncParam, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            var param = fx.NewBool(paramName, synced: addToParamFile, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
             onCase = param.IsTrue();
             drive = (state,on) => state.Drives(param, on ? 1 : 0);
             defaultOn = model.defaultOn;
-            if (addMenuItem && !menuItemAlreadyMade) {
+            if (addMenuItem) {
                 if (model.holdButton) {
                     manager.GetMenu().NewMenuButton(
                         model.name,
@@ -295,7 +278,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             foreach(var p in GetDriveGlobalParams()) {
                 var driveGlobal = fx.NewBool(
                     p,
-                    addToParamFile: false,
+                    synced: false,
                     saved: false,
                     def: false,
                     usePrefix: false
