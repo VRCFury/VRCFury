@@ -32,7 +32,7 @@ namespace VF.Utils {
             // for all the mats to remain unlocked until d4rk locks them at the end of the build
             if (UsesD4rk(injectedAvatarObject, true)) return;
 
-            LockPoiyomi(mat);
+            PoiyomiUtils.LockPoiyomi(mat);
         }
         
         public static bool UsesD4rk(VFGameObject avatarObject, bool andLockdown) {
@@ -47,49 +47,6 @@ namespace VF.Utils {
                 return optimizers.Any(o => (bool)lockProp.GetValue(o));
             } else {
                 return optimizers.Any();
-            }
-        }
-
-        public static bool UsesPoiLockdown(Material mat) {
-            if (mat.shader == null) return false;
-            if (mat.shader.name.StartsWith("Hidden/Locked/")) return false;
-
-            var optimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
-            if (optimizer == null) return false;
-
-            var usesMethod = optimizer.GetMethod(
-                "IsShaderUsingThryOptimizer",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-            );
-            if (usesMethod == null) return false;
-            var usesPoi = (bool)ReflectionUtils.CallWithOptionalParams(usesMethod, null, mat.shader);
-            return usesPoi;
-        }
-
-        private static void LockPoiyomi(Material mat) {
-            var usesPoi = UsesPoiLockdown(mat);
-            if (!usesPoi) return;
-            
-            var optimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
-            if (optimizer == null) return;
-
-            var lockMethod = optimizer.GetMethod(
-                "SetLockedForAllMaterials",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-            );
-            if (lockMethod == null) return;
-            VRCFuryAssetDatabase.WithoutAssetEditing(() => {
-                var result =
-                    (bool)ReflectionUtils.CallWithOptionalParams(lockMethod, null, new Material[] { mat }, 1);
-                if (!result) {
-                    throw new Exception(
-                        "Poiyomi's lockdown method returned false without an exception. Check the console for the reason.");
-                }
-            });
-
-            if (!mat.shader.name.StartsWith("Hidden/Locked/")) {
-                throw new Exception(
-                    "Failed to lockdown poi material. Try unlocking and relocking the material manually. If that doesn't work, try updating poiyomi.");
             }
         }
     }

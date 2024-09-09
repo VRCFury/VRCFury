@@ -18,6 +18,7 @@ using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using Action = VF.Model.StateAction.Action;
 using Object = UnityEngine.Object;
+using RendererExtensions = VF.Utils.RendererExtensions;
 
 namespace VF.Inspector {
 
@@ -214,14 +215,14 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
 
                 void UpdateValueType() {
                     var propName = propertyNameProp.stringValue;
-                    var (renderers, valueType) = ActionClipService.MatPropLookup(
+                    var (_, valueType) = ActionClipService.MatPropLookup(
                         affectAllMeshesProp.boolValue,
                         rendererProp.GetComponent<Renderer>(),
                         avatarObject,
                         propName
                     );
-                    valueFloat.SetVisible(valueType != ShaderUtil.ShaderPropertyType.Color && valueType != ShaderUtil.ShaderPropertyType.Vector);
-                    valueVector.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Vector);
+                    valueFloat.SetVisible(valueType != ShaderUtil.ShaderPropertyType.Color && valueType != ShaderUtil.ShaderPropertyType.Vector && valueType != MaterialExtensions.StPropertyType);
+                    valueVector.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Vector || valueType == MaterialExtensions.StPropertyType);
                     valueColor.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Color);
                 }
 
@@ -273,12 +274,21 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                                 if (propType != ShaderUtil.ShaderPropertyType.Float &&
                                     propType != ShaderUtil.ShaderPropertyType.Range &&
                                     propType != ShaderUtil.ShaderPropertyType.Color &&
-                                    propType != ShaderUtil.ShaderPropertyType.Vector) continue;
+                                    propType != ShaderUtil.ShaderPropertyType.Vector &&
+                                    propType != ShaderUtil.ShaderPropertyType.TexEnv
+                                ) continue;
                                 var matProp = System.Array.Find(materialProperties, p => p.name == propertyName);
                                 if ((matProp.flags & MaterialProperty.PropFlags.HideInInspector) != 0) continue;
 
+                                if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
+                                    propertyName += "_ST";
+                                }
+
                                 var prioritizePropName = readableName.Length > 25f;
                                 var entryName = prioritizePropName ? propertyName : readableName;
+                                if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
+                                    entryName += " (Offset/Scale)";
+                                }
                                 if (renderers.Count > 1) {
                                     entryName += $" (Mesh: {GetPath(renderer.owner())})";
                                 }

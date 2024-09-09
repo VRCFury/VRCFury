@@ -109,7 +109,7 @@ namespace VF.Utils {
                     var bad = renderer.sharedMaterials
                         .NotNull()
                         .Distinct()
-                        .Where(m => IsPoiyomiWithPropNonanimated(m, propertyName))
+                        .Where(m => PoiyomiUtils.IsPoiyomiWithPropNonanimated(m, propertyName))
                         .Select(m => m.name)
                         .ToList();
                     foreach (var matName in bad) {
@@ -173,23 +173,6 @@ namespace VF.Utils {
             }
 
             return warnings;
-        }
-
-        private static bool IsPoiyomiWithPropNonanimated(Material m, string propertyName) {
-            if (m.GetTag(propertyName + "Animated", false, "") != "") return false;
-
-            if (IsPoiyomiWithProp(m.shader, propertyName)) return true;
-            var origShaderName = m.GetTag("OriginalShader", false, "");
-            if (IsPoiyomiWithProp(Shader.Find(origShaderName), propertyName)) return true;
-            var origShaderGuid = m.GetTag("OriginalShaderGUID", false, "");
-            if (IsPoiyomiWithProp(VRCFuryAssetDatabase.LoadAssetByGuid<Shader>(origShaderGuid), propertyName)) return true;
-            return false;
-        }
-
-        private static bool IsPoiyomiWithProp(Shader shader, string propertyName) {
-            return shader != null
-                   && shader.name.ToLower().Contains("poiyomi")
-                   && shader.GetPropertyType(propertyName) != null;
         }
 
         private static bool IsProbablyIgnoredBinding(string bindingPath) {

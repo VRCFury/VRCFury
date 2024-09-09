@@ -230,6 +230,11 @@ namespace VF.Service {
                             AddOne(".y", materialPropertyAction.valueVector.y);
                             AddOne(".z", materialPropertyAction.valueVector.z);
                             AddOne(".w", materialPropertyAction.valueVector.w);
+                        } else if (type == MaterialExtensions.StPropertyType) {
+                            AddOne(".x", materialPropertyAction.valueVector.x);
+                            AddOne(".y", materialPropertyAction.valueVector.y);
+                            AddOne(".z", materialPropertyAction.valueVector.z);
+                            AddOne(".w", materialPropertyAction.valueVector.w);
                         }
                     }
                     break;
@@ -395,7 +400,7 @@ namespace VF.Service {
             return onClip;
         }
 
-        public static (IList<Renderer>, ShaderUtil.ShaderPropertyType type) MatPropLookup(
+        public static (IList<Renderer>, ShaderUtil.ShaderPropertyType? type) MatPropLookup(
             bool allRenderers,
             Renderer singleRenderer,
             VFGameObject avatarObject,
@@ -409,14 +414,14 @@ namespace VF.Service {
             }
             renderers = renderers.NotNull().ToArray();
             if (propName == null) {
-                return (renderers, ShaderUtil.ShaderPropertyType.Float);
+                return (renderers, null);
             }
 
             var type = renderers
                 .Select(r => r.GetPropertyType(propName))
                 .Where(t => t.HasValue)
-                .Select(t => t.Value)
-                .DefaultIfEmpty(ShaderUtil.ShaderPropertyType.Float)
+                .Select(t => (ShaderUtil.ShaderPropertyType?)t.Value)
+                .DefaultIfEmpty(null)
                 .First();
             return (renderers, type);
         }

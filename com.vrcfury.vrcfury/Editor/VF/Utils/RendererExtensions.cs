@@ -19,7 +19,7 @@ namespace VF.Utils {
                 .FirstOrDefault();
         }
 
-        private static Dictionary<Mesh, Mesh> readWriteCache = new Dictionary<Mesh, Mesh>();
+        private static readonly Dictionary<Mesh, Mesh> readWriteCache = new Dictionary<Mesh, Mesh>();
 
         [InitializeOnLoadMethod]
         private static void Init() {
