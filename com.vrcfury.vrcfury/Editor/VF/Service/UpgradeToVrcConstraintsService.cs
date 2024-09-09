@@ -20,7 +20,7 @@ namespace VF.Service {
      * constraint animations may be pointing the wrong type of constraint before this upgrade
      * has happened.
      */
-    //[VFService]
+    [VFService]
     internal class UpgradeToVrcConstraintsService {
 #if VRCSDK_HAS_VRCCONSTRAINTS
         [VFAutowired] private readonly ClipRewriteService clipRewriteService;
