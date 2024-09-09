@@ -418,6 +418,25 @@ namespace VF.Service {
                 .Select(t => t.Value)
                 .DefaultIfEmpty(ShaderUtil.ShaderPropertyType.Float)
                 .First();
+
+            // this is a list of all distinct shader keywords for the materials
+            // and shaders currently on the renderers
+            var keywords = renderers
+                //Get all of the materials
+                .SelectMany( x => x.materials )
+                .Select( x => x.shader )
+                .SelectMany( x => x.keywordSpace.keywordNames )
+                .Distinct()
+                .ToList();
+
+            var toFind = propName.ToUpper() + "_ON";
+            var propIsKeyword = keywords.Contains(toFind);
+
+            if (propIsKeyword)
+            {
+                Debug.LogWarning($"Property \"{propName}\" is a shader keyword and may not animate correctly");
+            }
+
             return (renderers, type);
         }
 
