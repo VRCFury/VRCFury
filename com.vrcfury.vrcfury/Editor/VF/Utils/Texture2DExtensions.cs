@@ -40,7 +40,7 @@ namespace VF.Utils {
 
             if (!needsResized && !needsCompressed) return original;
             
-            var texture = original.Clone();
+            var texture = original.Clone("Needed to resize / change compression to satisfy VRCSDK requirements");
             texture.ForceReadable();
 
             if (needsResized) {

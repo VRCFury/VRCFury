@@ -1,10 +1,29 @@
 ﻿using System;
+using System.Collections.Generic;
 using JetBrains.Annotations;
+using UnityEditor;
 
 namespace VF.Utils {
     internal static class ObjectExtensions {
-        public static T Clone<T>(this T original) where T : UnityEngine.Object {
-            return VrcfObjectCloner.Clone(original);
+        public static readonly VFMultimapList<UnityEngine.Object, string> cloneReasons
+            = new VFMultimapList<UnityEngine.Object, string>();
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            EditorApplication.update += () => cloneReasons.Clear();
+        }
+
+        public static T Clone<T>(this T original, string reason = null) where T : UnityEngine.Object {
+            var clone = VrcfObjectCloner.Clone(original);
+            if (clone != original) {
+                foreach (var r in cloneReasons.Get(original)) {
+                    cloneReasons.Put(clone, r);
+                }
+            }
+            if (reason != null) {
+                cloneReasons.Put(clone, reason);
+            }
+            return clone;
         }
 
         /**

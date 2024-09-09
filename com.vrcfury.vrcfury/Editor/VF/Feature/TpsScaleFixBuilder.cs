@@ -58,16 +58,14 @@ namespace VF.Feature {
 
                     if (!isTps) return mat;
 
-                    mat = mat.Clone();
-                    if (isTps) {
-                        if (TpsConfigurer.IsLocked(mat)) {
-                            throw new VRCFBuilderException(
-                                "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
-                                $"Please unlock the material on {renderer.owner().GetPath()}");
-                        }
-                        mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
-                        mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
+                    mat = mat.Clone("Needed to mark TPS parameters as animated for TPS Scale Fix");
+                    if (TpsConfigurer.IsLocked(mat)) {
+                        throw new VRCFBuilderException(
+                            "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
+                            $"Please unlock the material on {renderer.owner().GetPath()}");
                     }
+                    mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
+                    mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
                     return mat;
                 }).ToArray();
 

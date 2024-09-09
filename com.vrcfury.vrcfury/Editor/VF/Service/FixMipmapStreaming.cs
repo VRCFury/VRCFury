@@ -23,8 +23,7 @@ namespace VF.Service {
                 if (original == null) return null;
                 if (texCache.TryGetValue(original, out var output)) return output;
                 if (original.mipmapCount > 1 && !original.streamingMipmaps) {
-                    Debug.LogWarning($"VRCFury is enabling mipmap streaming on texture {original.name}");
-                    output = original.Clone();
+                    output = original.Clone("Needed to enable mipmap streaming on texture to make VRCSDK happy");
                     var so = new SerializedObject(output);
                     so.Update();
                     so.FindProperty("m_StreamingMipmaps").boolValue = true;
@@ -45,7 +44,7 @@ namespace VF.Service {
                     var oldTexture = original.GetTexture(id) as Texture2D;
                     var newTexture = OptimizeTexture(oldTexture);
                     if (oldTexture != newTexture) {
-                        output = original.Clone();
+                        output = original.Clone($"Needed to swap texture {oldTexture.name} to a copy that has mipmap streaming enabled");
                         output.SetTexture(id, newTexture);
                     }
                 }

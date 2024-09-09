@@ -173,7 +173,10 @@ namespace VF.Service {
 
                 var type = mat.GetPropertyType(propName);
                 if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range) {
-                    mat = mat.Clone();
+                    var oldValue = mat.GetFloat(propName);
+                    var newValue = val.GetFloat();
+                    if (oldValue == newValue) return mat;
+                    mat = mat.Clone($"Needed to change {propName} property from ${oldValue} to ${newValue}");
                     mat.SetFloat(propName, val.GetFloat());
                     return mat;
                 }
@@ -187,23 +190,27 @@ namespace VF.Service {
                 // behaviour is that it should be set to 0. However, unit really tries to not allow you to be missing
                 // one component in your animator (by deleting them all at once), so it's probably not a big deal.
                 if (bundleType == ShaderUtil.ShaderPropertyType.Color) {
-                    mat = mat.Clone();
-                    var color = mat.GetColor(bundleName);
-                    if (bundleSuffix == "r") color.r = val.GetFloat();
-                    if (bundleSuffix == "g") color.g = val.GetFloat();
-                    if (bundleSuffix == "b") color.b = val.GetFloat();
-                    if (bundleSuffix == "a") color.a = val.GetFloat();
-                    mat.SetColor(bundleName, color);
+                    var oldValue = mat.GetColor(bundleName);
+                    var newValue = oldValue;
+                    if (bundleSuffix == "r") newValue.r = val.GetFloat();
+                    if (bundleSuffix == "g") newValue.g = val.GetFloat();
+                    if (bundleSuffix == "b") newValue.b = val.GetFloat();
+                    if (bundleSuffix == "a") newValue.a = val.GetFloat();
+                    if (oldValue == newValue) return mat;
+                    mat = mat.Clone($"Needed to change {propName} property from ${oldValue} to ${newValue}");
+                    mat.SetColor(bundleName, newValue);
                     return mat;
                 }
                 if (bundleType == ShaderUtil.ShaderPropertyType.Vector) {
-                    mat = mat.Clone();
-                    var vector = mat.GetVector(bundleName);
-                    if (bundleSuffix == "x") vector.x = val.GetFloat();
-                    if (bundleSuffix == "y") vector.y = val.GetFloat();
-                    if (bundleSuffix == "z") vector.z = val.GetFloat();
-                    if (bundleSuffix == "w") vector.w = val.GetFloat();
-                    mat.SetVector(bundleName, vector);
+                    var oldValue = mat.GetVector(bundleName);
+                    var newValue = oldValue;
+                    if (bundleSuffix == "x") newValue.x = val.GetFloat();
+                    if (bundleSuffix == "y") newValue.y = val.GetFloat();
+                    if (bundleSuffix == "z") newValue.z = val.GetFloat();
+                    if (bundleSuffix == "w") newValue.w = val.GetFloat();
+                    if (oldValue == newValue) return mat;
+                    mat = mat.Clone($"Needed to change {propName} property from ${oldValue} to ${newValue}");
+                    mat.SetVector(bundleName, newValue);
                     return mat;
                 }
 

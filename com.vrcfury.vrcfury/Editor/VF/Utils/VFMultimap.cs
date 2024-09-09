@@ -50,6 +50,10 @@ namespace VF.Utils {
         IEnumerator IEnumerable.GetEnumerator() {
             return GetEnumerator();
         }
+
+        public void Clear() {
+            data.Clear();
+        }
     }
     
     internal class VFMultimapList<A, B> : VFMultimap<A, B, List<B>> {

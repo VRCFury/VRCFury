@@ -78,7 +78,7 @@ namespace VF.Feature {
                     .Select(id => new SavedBlendshape(mesh, id))
                     .ToArray();
 
-                mesh = skin.GetMutableMesh();
+                mesh = skin.GetMutableMesh("Needed to remove blendshapes for blendshape optimizer");
                 mesh.ClearBlendShapes();
 
                 for (var id = 0; id < blendshapeCount; id++) {
