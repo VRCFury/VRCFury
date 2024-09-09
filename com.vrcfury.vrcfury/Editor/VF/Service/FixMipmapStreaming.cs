@@ -20,7 +20,6 @@ namespace VF.Service {
         public void Apply() {
             var texCache = new Dictionary<Texture2D, Texture2D>();
             Texture2D OptimizeTexture(Texture2D original) {
-                if (original == null) return null;
                 if (texCache.TryGetValue(original, out var output)) return output;
                 if (original.mipmapCount > 1 && !original.streamingMipmaps) {
                     output = original.Clone("Needed to enable mipmap streaming on texture to make VRCSDK happy");
@@ -41,7 +40,12 @@ namespace VF.Service {
                 if (matCache.TryGetValue(original, out var output)) return output;
                 output = original;
                 foreach (var id in original.GetTexturePropertyNameIDs()) {
+                    // GetTexture can randomly throw a "Material doesn't have a texture property '_whatever'" exception here,
+                    // even though it just came from GetTexturePropertyNameIDs.
+                    // Attempt to avoid this by checking again if it actually has it
+                    if (!original.HasTexture(id)) continue;
                     var oldTexture = original.GetTexture(id) as Texture2D;
+                    if (oldTexture == null) continue;
                     var newTexture = OptimizeTexture(oldTexture);
                     if (oldTexture != newTexture) {
                         output = original.Clone($"Needed to swap texture {oldTexture.name} to a copy that has mipmap streaming enabled");
