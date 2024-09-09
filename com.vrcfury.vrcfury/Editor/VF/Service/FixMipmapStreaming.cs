@@ -43,7 +43,9 @@ namespace VF.Service {
                     // GetTexture can randomly throw a "Material doesn't have a texture property '_whatever'" exception here,
                     // even though it just came from GetTexturePropertyNameIDs.
                     // Attempt to avoid this by checking again if it actually has it
+#if UNITY_2022_1_OR_NEWER
                     if (!original.HasTexture(id)) continue;
+#endif
                     var oldTexture = original.GetTexture(id) as Texture2D;
                     if (oldTexture == null) continue;
                     var newTexture = OptimizeTexture(oldTexture);

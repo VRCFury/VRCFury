@@ -53,6 +53,26 @@ namespace VF {
             public static readonly MethodInfo GetExpandedIDs = SceneHierarchyWindow?.GetMethod("GetExpandedIDs", false);
         }
 #endif
+        
+        public static class PrefabStage {
+            public static readonly Type PrefabStageUtility =
+#if UNITY_2022_1_OR_NEWER
+                ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.SceneManagement.PrefabStageUtility");
+#else
+                ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Experimental.SceneManagement.PrefabStageUtility");
+#endif
+            public static readonly Type PrefabStag =
+#if UNITY_2022_1_OR_NEWER
+                ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.SceneManagement.PrefabStage");
+#else
+                ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Experimental.SceneManagement.PrefabStage");
+#endif
+            public delegate object GetCurrentPrefabStage_();
+            public static readonly GetCurrentPrefabStage_ GetCurrentPrefabStage = PrefabStageUtility?.GetMatchingDelegate<GetCurrentPrefabStage_>("GetCurrentPrefabStage");
+            public delegate object OpenPrefab_(string prefabAssetPath, GameObject openedFromInstance);
+            public static readonly OpenPrefab_ OpenPrefab = PrefabStageUtility?.GetMatchingDelegate<OpenPrefab_>("OpenPrefab");
+            public static PropertyInfo autoSave = PrefabStag?.GetProperty("autoSave", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        }
 
         public static bool IsReady(Type type) {
             foreach (var field in type.GetFields(BindingFlags.Static)) {
