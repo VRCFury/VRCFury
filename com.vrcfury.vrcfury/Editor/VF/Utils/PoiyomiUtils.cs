@@ -17,8 +17,8 @@ namespace VF.Utils {
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
         );
         
-        private static readonly Dictionary<Material, (HashSet<string>,HashSet<string>)> lockedPropsCache
-            = new Dictionary<Material, (HashSet<string>,HashSet<string>)>();
+        private static readonly Dictionary<Material, Dictionary<string, PoiProp>> lockedPropsCache
+            = new Dictionary<Material, Dictionary<string, PoiProp>>();
 
         [InitializeOnLoadMethod]
         private static void Init() {
@@ -40,18 +40,22 @@ namespace VF.Utils {
         }
         
         public static bool IsPoiyomiWithPropNonanimated(Material m, string propertyName) {
-            return (IsPoiLocked(m) || IsPoiUnlocked(m)) && GetLockedProps(m).Item1.Contains(propertyName);
+            return (IsPoiLocked(m) || IsPoiUnlocked(m)) && GetProps(m).TryGetValue(propertyName, out var prop) && !prop.animated;
         }
 
-        private static (HashSet<string>,HashSet<string>) GetLockedProps(Material mat) {
-            var animated = new HashSet<string>();
-            var nonAnimated = new HashSet<string>();
+        public class PoiProp {
+            public string renamedTo;
+            public bool animated;
+        }
 
-            if (mat == null) return (nonAnimated, animated);
+        private static Dictionary<string, PoiProp> GetProps(Material mat) {
+            var output = new Dictionary<string, PoiProp>();
+
+            if (mat == null) return output;
             var shader = mat.shader;
-            if (shader == null) return (nonAnimated, animated);
+            if (shader == null) return output;
 
-            if (lockedPropsCache.TryGetValue(mat, out var cached)) return cached;
+            if (lockedPropsCache.TryGetValue(mat, out var cached)) return output;
 
             var matRenameSuffix = mat.GetTag("thry_rename_suffix", false, "");
 
@@ -61,33 +65,39 @@ namespace VF.Utils {
                 var propType = ShaderUtil.GetPropertyType(shader, i);
                 var animatedTag = mat.GetTag(propertyName + "Animated", false, "");
 
-                var list = animatedTag == "" ? nonAnimated : animated;
+                var isAnimated = animatedTag != "";
                 var renameSuffix = (animatedTag == "2" && matRenameSuffix != "") ? $"_{matRenameSuffix}" : "";
+                void Add(string suffix) {
+                    output.Add($"{propertyName}{suffix}", new PoiProp() {
+                        animated = isAnimated,
+                        renamedTo = $"{propertyName}{renameSuffix}{suffix}"
+                    });
+                }
 
                 if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
-                    list.Add($"{propertyName}{renameSuffix}_ST.x");
-                    list.Add($"{propertyName}{renameSuffix}_ST.y");
-                    list.Add($"{propertyName}{renameSuffix}_ST.z");
-                    list.Add($"{propertyName}{renameSuffix}_ST.w");
-                    list.Add($"{propertyName}{renameSuffix}_TexelSize.x");
-                    list.Add($"{propertyName}{renameSuffix}_TexelSize.y");
-                    list.Add($"{propertyName}{renameSuffix}_TexelSize.z");
-                    list.Add($"{propertyName}{renameSuffix}_TexelSize.w");
+                    Add("_ST.x");
+                    Add("_ST.y");
+                    Add("_ST.z");
+                    Add("_ST.w");
+                    Add("_TexelSize.x");
+                    Add("_TexelSize.y");
+                    Add("_TexelSize.z");
+                    Add("_TexelSize.w");
                 } else if (propType == ShaderUtil.ShaderPropertyType.Vector) {
-                    list.Add($"{propertyName}{renameSuffix}.x");
-                    list.Add($"{propertyName}{renameSuffix}.y");
-                    list.Add($"{propertyName}{renameSuffix}.z");
-                    list.Add($"{propertyName}{renameSuffix}.w");
+                    Add(".x");
+                    Add(".y");
+                    Add(".z");
+                    Add(".w");
                 } else if (propType == ShaderUtil.ShaderPropertyType.Color) {
-                    list.Add($"{propertyName}{renameSuffix}.r");
-                    list.Add($"{propertyName}{renameSuffix}.g");
-                    list.Add($"{propertyName}{renameSuffix}.b");
-                    list.Add($"{propertyName}{renameSuffix}.a");
+                    Add(".r");
+                    Add(".g");
+                    Add(".b");
+                    Add(".a");
                 }
-                list.Add($"{propertyName}{renameSuffix}");
+                Add("");
             }
 
-            return lockedPropsCache[mat] = (nonAnimated, animated);
+            return lockedPropsCache[mat] = output;
         }
 
         public static void LockPoiyomi(Material mat) {

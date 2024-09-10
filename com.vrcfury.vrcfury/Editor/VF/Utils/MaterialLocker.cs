@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 
@@ -34,20 +35,36 @@ namespace VF.Utils {
 
             PoiyomiUtils.LockPoiyomi(mat);
         }
-        
-        public static bool UsesD4rk(VFGameObject avatarObject, bool andLockdown) {
-            if (avatarObject == null) return false;
-            var d4rkOptimizerType = ReflectionUtils.GetTypeFromAnyAssembly("d4rkAvatarOptimizer");
-            if (d4rkOptimizerType == null) return false;
-            var optimizers = avatarObject.GetComponentsInSelfAndChildren(d4rkOptimizerType);
 
-            if (andLockdown) {
-                var lockProp = d4rkOptimizerType.GetProperty("WritePropertiesAsStaticValues", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (lockProp == null) return false;
-                return optimizers.Any(o => (bool)lockProp.GetValue(o));
-            } else {
-                return optimizers.Any();
+        private static class D4rkReflection {
+            public static readonly Type d4rkAvatarOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("d4rkAvatarOptimizer");
+            public static readonly PropertyInfo WritePropertiesAsStaticValues = d4rkAvatarOptimizer?.GetProperty("WritePropertiesAsStaticValues", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly PropertyInfo ApplyOnUpload = d4rkAvatarOptimizer?.GetProperty("ApplyOnUpload", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static bool IsApplyOnUpload(object o) => (bool)(ApplyOnUpload?.GetValue(o) ?? true);
+            public static bool IsWritePropertiesAsStaticValues(object o) => (bool)(WritePropertiesAsStaticValues?.GetValue(o) ?? false);
+        }
+
+        public static bool UsesD4rk(VFGameObject avatarObject, bool andLockdown) {
+            if (D4rkReflection.d4rkAvatarOptimizer == null) return false;
+
+            if (avatarObject != null) {
+                var optimizer = avatarObject.GetComponent(D4rkReflection.d4rkAvatarOptimizer);
+                if (optimizer != null) {
+                    if (!D4rkReflection.IsApplyOnUpload(optimizer)) return false;
+                    if (andLockdown) {
+                        return D4rkReflection.IsWritePropertiesAsStaticValues(optimizer);
+                    } else {
+                        return true;
+                    }
+                }
             }
+
+            var PrefsPrefix = "d4rkpl4y3r_AvatarOptimizer_";
+            var enabled = EditorPrefs.GetBool(PrefsPrefix + "DoOptimizeWithDefaultSettingsWhenNoComponent", false);
+            if (andLockdown) {
+                enabled &= EditorPrefs.GetInt(PrefsPrefix + "WritePropertiesAsStaticValues", 0) != 0;
+            }
+            return enabled;
         }
     }
 }
