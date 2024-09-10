@@ -13,6 +13,7 @@ namespace VF.Hooks {
             DoSafe(DisableErrorPause);
             DoSafe(TurnOffPause);
             DoSafe(EnableErrorLogs);
+            DoSafe(ExitPlayWhenCompiling);
         }
 
         private static void DoSafe(Action with) {
@@ -34,6 +35,18 @@ namespace VF.Hooks {
         private static void EnableErrorLogs() {
             if (UnityReflection.Console.LogLevelError != null) {
                 UnityReflection.Console.SetFlag?.Invoke(null, new object[] { UnityReflection.Console.LogLevelError, true });
+            }
+        }
+   
+        /**
+         * If you recompile while in play mode, the VRCSDK freaks out and starts
+         * spamming console errors regarding physbones
+         */
+        private static void ExitPlayWhenCompiling() {
+            // If "Compilation During Play" is set to "Recompile And Continue Playing",
+            // change it to "Recompile After Finished Playing"
+            if (EditorPrefs.GetInt("ScriptCompilationDuringPlay", 0) == 0) {
+                EditorPrefs.SetInt("ScriptCompilationDuringPlay", 1);
             }
         }
     }
