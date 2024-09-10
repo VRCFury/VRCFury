@@ -208,19 +208,37 @@ namespace VF.Utils.Controller {
          * merging controllers and features much easier. Later on, we recalculate a new base mask in FixMasksBuilder. 
          */
         private void ApplyBaseMask(VRCAvatarDescriptor.AnimLayerType type) {
-            var isFx = type == VRCAvatarDescriptor.AnimLayerType.FX;
             var layer0 = GetLayer(0);
             if (layer0 == null) return;
 
             var baseMask = layer0.mask;
-            if (baseMask == null) {
-                if (isFx) {
+            if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
+                if (baseMask == null) {
                     baseMask = AvatarMaskExtensions.DefaultFxMask();
                 } else {
-                    return;
+                    baseMask = MutableManager.CopyRecursive(baseMask);
+                }
+            } else if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                if (baseMask == null) {
+                    // Technically, we should throw here. The VRCSDK will complain and prevent the user from uploading
+                    // until they fix this. But we fix it here for them temporarily so they can use play mode for now.
+                    // Gesture controllers merged using Full Controller with no base mask will slip through and be allowed
+                    // by this.
+                    baseMask = AvatarMaskExtensions.Empty();
+                    baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
+                    baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
+                } else {
+                    baseMask = MutableManager.CopyRecursive(baseMask);
+                    // If the base mask is just one hand, assume that they put in controller with just a left and right hand layer,
+                    // and meant to have both in the base mask.
+                    if (baseMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers))
+                        baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
+                    if (baseMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers))
+                        baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
                 }
             } else {
-                baseMask = MutableManager.CopyRecursive(baseMask);
+                // VRChat does not use the base mask on any other controller types
+                return;
             }
 
             // Because of some unity bug, ONLY the muscle part of the base mask is actually applied to the child layers

@@ -135,8 +135,9 @@ namespace VF.Feature {
                 if (layer0 == null) {
                     // If there are no layers, we still create a base layer because the VRCSDK freaks out if there is a controller with no layers
                     createEmptyBaseLayer = true;
-                } else if (layer0.mask != expectedMask) {
+                } else if (layer0.mask != expectedMask && (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX || c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture)) {
                     // If the mask on layer 0 doesn't match what the base mask needs to be, we need to correct it by making a new base layer
+                    // (Note: VRC only respects the base mask on gesture and fx)
                     createEmptyBaseLayer = true;
                 } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX && layer0.stateMachine.states.Length > 1) {
                     // On FX, do not allow a layer with transitions to live as the base layer, because for some reason transition times can break
