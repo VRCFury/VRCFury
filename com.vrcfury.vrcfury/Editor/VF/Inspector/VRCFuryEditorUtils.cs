@@ -711,7 +711,7 @@ internal static class VRCFuryEditorUtils {
             this.style.flexDirection = FlexDirection.Row;
             slider = new Slider(0, 1).Margin(0).FlexShrink(1);
             slider.style.marginRight = 5;
-            slider.RegisterValueChangedCallback(e => Changed(e.newValue));
+            slider.RegisterValueChangedCallback(e => Changed((float)Math.Round(e.newValue,2)));
             this.Add(slider);
             text = new FloatField().Margin(0).FlexBasis(30);
             text.RegisterValueChangedCallback(e => Changed(e.newValue * 0.01f));
@@ -720,12 +720,15 @@ internal static class VRCFuryEditorUtils {
 
         private void Changed(float newValue) {
             value = Mathf.Clamp(newValue, 0, 1);
+            SetValueWithoutNotify(value);
         }
 
         public override void SetValueWithoutNotify(float newValue) {
             base.SetValueWithoutNotify(newValue);
             slider.SetValueWithoutNotify(newValue);
-            text.SetValueWithoutNotify(newValue * 100);
+            if (!Mathf.Approximately(text.value, newValue * 100)) {
+                text.SetValueWithoutNotify(newValue * 100);
+            }
         }
     }
     public static VisualElement PercentSlider(SerializedProperty prop) {

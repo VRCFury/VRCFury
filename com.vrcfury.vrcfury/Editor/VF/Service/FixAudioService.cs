@@ -40,7 +40,7 @@ namespace VF.Service {
                 if (input.loadInBackground || input.loadType != AudioClipLoadType.DecompressOnLoad) {
                     output = input;
                 } else {
-                    output = input.Clone();
+                    output = input.Clone("Needed to enable Load In Background to make VRCSDK happy");
                     var so = new SerializedObject(output);
                     so.Update();
                     so.FindProperty("m_LoadInBackground").boolValue = true;

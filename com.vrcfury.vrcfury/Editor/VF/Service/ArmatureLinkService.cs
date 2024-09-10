@@ -260,7 +260,7 @@ namespace VF.Service {
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 // Update skins to use bones and bind poses from the original avatar
                 if (skin.bones.Contains(fromBone.transform)) {
-                    var mesh = skin.GetMutableMesh();
+                    var mesh = skin.GetMutableMesh("Needed to change bone bind-poses for Armature Link to re-use bones on base armature");
                     if (mesh != null) {
                         mesh.bindposes = skin.bones.Zip(mesh.bindposes, (a,b) => (a,b))
                             .Select(boneAndBindPose => {

@@ -146,6 +146,7 @@ namespace VF.Utils.Controller {
             }
             
             var output = new VFController(ac);
+            output.RemoveInvalidParameters();
             output.FixNullStateMachines();
             output.CheckForBadBehaviours();
             output.ReplaceSyncedLayers();
@@ -328,6 +329,15 @@ namespace VF.Utils.Controller {
                 }
                 return layer;
             }).NotNull().ToArray();
+        }
+        
+        /**
+         * Some tools add parameters with an invalid type (not bool, trigger, float, int, etc)
+         * This causes the VRCSDK to blow up and break the mirror clone and throw exceptions in console.
+         * https://feedback.vrchat.com/bug-reports/p/invalid-parameter-type-within-a-controller-breaks-mirror-clone-and-spams-output
+         */
+        private void RemoveInvalidParameters() {
+            ctrl.parameters = ctrl.parameters.Where(p => VRCFEnumUtils.IsValid(p.type)).ToArray();
         }
 
         public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<AnimatorStateMachine> limitToLayers = null) {

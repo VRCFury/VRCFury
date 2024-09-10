@@ -55,7 +55,7 @@ namespace VF.Builder.Haptics {
             if (mesh.boneWeights.Length == 0) {
                 // This is put on this skin instead of in the bake root so that it doesn't get shown by headchop
                 var mainBone = GameObjects.Create("SpsMainBone", skin.owner());
-                var meshCopy = mesh.Clone();
+                var meshCopy = mesh.Clone("Needed to add a rig to make SPS compatible");
                 meshCopy.boneWeights = meshCopy.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
                 meshCopy.bindposes = new[] {
                     Matrix4x4.identity, 

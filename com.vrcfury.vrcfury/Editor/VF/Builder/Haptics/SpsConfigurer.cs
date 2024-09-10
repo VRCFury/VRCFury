@@ -17,21 +17,20 @@ namespace VF.Builder.Haptics {
 
         public static void ConfigureSpsMaterial(
             SkinnedMeshRenderer skin,
-            Material original,
+            Material m,
             float worldLength,
             Texture2D spsBaked,
             VRCFuryHapticPlug plug,
             VFGameObject bakeRoot,
             IList<string> spsBlendshapes
         ) {
-            if (DpsConfigurer.IsDps(original) || TpsConfigurer.IsTps(original)) {
+            if (DpsConfigurer.IsDps(m) || TpsConfigurer.IsTps(m)) {
                 throw new Exception(
                     $"VRCFury SPS plug was asked to use SPS deformation on renderer," +
                     $" but it already has TPS or DPS. If you want to use SPS, use a regular shader" +
                     $" on the mesh instead.");
             }
 
-            var m = original.Clone();
             SpsPatcher.Patch(m, plug.spsKeepImports);
             {
                 // Prevent poi from stripping our parameters
