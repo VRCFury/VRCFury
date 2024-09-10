@@ -23,5 +23,9 @@ namespace VF.Builder {
         public static IEnumerable<T> GetValues<T>() {
             return Enum.GetValues(typeof(T)).Cast<T>();
         }
+        
+        public static bool IsValid(Enum enumval) {
+            return Enum.IsDefined(enumval.GetType(), enumval);
+        }
     }
 }
