@@ -151,6 +151,8 @@ namespace VF.Feature {
                 label: "Restrict scaling factor to powers of 10"
             ));
             
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("removeParentConstraints"), "Remove parent constraints from merged objects"));
+            
             var chestUpWarning = VRCFuryEditorUtils.Warn(
                 "These clothes are designed for an avatar with a different ChestUp configuration. You may" +
                 " have downloaded the wrong version of the clothes for your avatar version, or the clothes may not be designed for your avatar." +

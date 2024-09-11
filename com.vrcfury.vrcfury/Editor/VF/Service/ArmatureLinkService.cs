@@ -188,9 +188,12 @@ namespace VF.Service {
                 }
 
                 // Rip out parent constraints, since they were likely there from an old pre-vrcfury merge process
-                foreach (var c in propBone.GetConstraints().Where(c => c.IsParent())) {
-                    c.Destroy();
-                    AddDebugInfo("An existing parent constraint component was removed, because it was probably a leftover from before Armature Link");
+                if (model.removeParentConstraints) {
+                    foreach (var c in propBone.GetConstraints().Where(c => c.IsParent())) {
+                        c.Destroy();
+                        AddDebugInfo(
+                            "An existing parent constraint component was removed, because it was probably a leftover from before Armature Link");
+                    }
                 }
 
                 var animatedParents = new List<VFGameObject>();
