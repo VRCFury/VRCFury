@@ -1,7 +1,5 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
@@ -9,16 +7,11 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
-using VF.Component;
-using VF.Feature;
 using VF.Model;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
-using VRC.SDK3.Avatars.Components;
-using Action = VF.Model.StateAction.Action;
 using Object = UnityEngine.Object;
-using RendererExtensions = VF.Utils.RendererExtensions;
 
 namespace VF.Inspector {
 
@@ -197,33 +190,64 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 var valueVector = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueVector"), "Value");
                 var valueColor = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueColor"), "Value");
 
+                var propertyTypeProp = prop.FindPropertyRelative("propertyType");
                 var propertyNameProp = prop.FindPropertyRelative("propertyName");
                 {
                     var row = new VisualElement().Row();
-                    var propField = VRCFuryEditorUtils.Prop(propertyNameProp, "Property").FlexGrow(1);
-                    propField.RegisterCallback<ChangeEvent<string>>(e => UpdateValueType());
-                    row.Add(propField);
+                    row.Add(VRCFuryEditorUtils.Prop(propertyNameProp, "Property").FlexGrow(1));
+                    row.Add(VRCFuryEditorUtils.OnChange(propertyNameProp, () => UpdateValueType(true)));
                     row.Add(new Button(SearchClick) { text = "Search" }.Margin(0));
                     content.Add(row);
                 }
 
-                content.Add(valueFloat);
-                content.Add(valueVector);
-                content.Add(valueColor);
+                var typeBox = new VisualElement().AddTo(content);
+                typeBox.Add(VRCFuryEditorUtils.OnChange(propertyTypeProp, () => UpdateValueType(false)));
+                typeBox.Add(valueFloat);
+                typeBox.Add(valueVector);
+                typeBox.Add(valueColor);
                 
-                UpdateValueType();
+                typeBox.AddManipulator(new ContextualMenuManipulator(e => {
+                    if (e.menu.MenuItems().Count > 0) {
+                        e.menu.AppendSeparator();
+                    }
+                    e.menu.AppendAction("Force type to Float", a => {
+                        propertyTypeProp.enumValueIndex = (int)MaterialPropertyAction.Type.Float;
+                        propertyTypeProp.serializedObject.ApplyModifiedProperties();
+                    });
+                    e.menu.AppendAction("Force type to Color", a => {
+                        propertyTypeProp.enumValueIndex = (int)MaterialPropertyAction.Type.Color;
+                        propertyTypeProp.serializedObject.ApplyModifiedProperties();
+                    });
+                    e.menu.AppendAction("Force type to Vector", a => {
+                        propertyTypeProp.enumValueIndex = (int)MaterialPropertyAction.Type.Vector;
+                        propertyTypeProp.serializedObject.ApplyModifiedProperties();
+                    });
+                    e.menu.AppendAction("Force type to Texture Scale+Offset", a => {
+                        propertyTypeProp.enumValueIndex = (int)MaterialPropertyAction.Type.St;
+                        propertyTypeProp.serializedObject.ApplyModifiedProperties();
+                    });
+                }));
+                
+                UpdateValueType(false);
 
-                void UpdateValueType() {
+                void UpdateValueType(bool redetectType) {
                     var propName = propertyNameProp.stringValue;
-                    var (_, valueType) = ActionClipService.MatPropLookup(
+                    var renderers = ActionClipService.FindRenderers(
                         affectAllMeshesProp.boolValue,
                         rendererProp.GetComponent<Renderer>(),
-                        avatarObject,
-                        propName
+                        avatarObject
                     );
-                    valueFloat.SetVisible(valueType != ShaderUtil.ShaderPropertyType.Color && valueType != ShaderUtil.ShaderPropertyType.Vector && valueType != MaterialExtensions.StPropertyType);
-                    valueVector.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Vector || valueType == MaterialExtensions.StPropertyType);
-                    valueColor.SetVisible(valueType == ShaderUtil.ShaderPropertyType.Color);
+                    var oldType = (MaterialPropertyAction.Type)propertyTypeProp.enumValueIndex;
+                    var newType = ActionClipService.GetMaterialPropertyActionTypeToUse(
+                        renderers, propName, oldType, redetectType);
+                    if (newType != oldType) {
+                        propertyTypeProp.enumValueIndex = (int)newType;
+                        propertyTypeProp.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                    }
+
+                    valueFloat.SetVisible(newType == MaterialPropertyAction.Type.Float);
+                    valueVector.SetVisible(newType == MaterialPropertyAction.Type.Vector || newType == MaterialPropertyAction.Type.St);
+                    valueColor.SetVisible(newType == MaterialPropertyAction.Type.Color);
                 }
 
                 return content;
@@ -239,11 +263,10 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
 
                 void GetTreeEntries(VrcfSearchWindow searchWindow) {
                     var mainGroup = searchWindow.GetMainGroup();
-                    var (renderers,_) = ActionClipService.MatPropLookup(
+                    var renderers = ActionClipService.FindRenderers(
                         affectAllMeshesProp.boolValue,
                         rendererProp.GetComponent<Renderer>(),
-                        avatarObject,
-                        null
+                        avatarObject
                     );
                     if (renderers.Count == 0) return;
 
@@ -512,7 +535,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
             }
         }
         UpdateVisibility();
-        allRenderersField.RegisterCallback<ChangeEvent<bool>>(e => UpdateVisibility());
+        content.Add(VRCFuryEditorUtils.OnChange(allRenderersProp, UpdateVisibility));
         return content;
     }
 

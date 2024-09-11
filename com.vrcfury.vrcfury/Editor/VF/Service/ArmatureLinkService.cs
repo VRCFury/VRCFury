@@ -188,9 +188,12 @@ namespace VF.Service {
                 }
 
                 // Rip out parent constraints, since they were likely there from an old pre-vrcfury merge process
-                foreach (var c in propBone.GetConstraints().Where(c => c.IsParent())) {
-                    c.Destroy();
-                    AddDebugInfo("An existing parent constraint component was removed, because it was probably a leftover from before Armature Link");
+                if (model.removeParentConstraints) {
+                    foreach (var c in propBone.GetConstraints().Where(c => c.IsParent())) {
+                        c.Destroy();
+                        AddDebugInfo(
+                            "An existing parent constraint component was removed, because it was probably a leftover from before Armature Link");
+                    }
                 }
 
                 var animatedParents = new List<VFGameObject>();
@@ -210,36 +213,51 @@ namespace VF.Service {
                 }
 
                 // Move it on over
-                var newName = $"[VF{new Random().Next(100,999)}] {propBone.name}";
-                if (propBone.name != rootName) newName += $" from {rootName}";
 
-                var addedObject = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone);
-                var current = addedObject;
-
-                foreach (var a in animatedParents) {
-                    current = GameObjects.Create($"Toggle From {a.name}", current);
-                    current.active = a.active;
-                    animLink.Put(a, current);
-                    AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {a.name}");
-                }
-
-                var transformAnimated =
-                    anim.positionIsAnimated.Contains(propBone)
-                    || anim.rotationIsAnimated.Contains(propBone)
-                    || anim.scaleIsAnimated.Contains(propBone);
-                if (transformAnimated) {
-                    current = GameObjects.Create("Original Parent (Retained for transform animation)", current, propBone.parent);
-
-                    // In a weird edge case, sometimes people mark all their clothing bones with an initial scale of 0,
-                    // to mark them as initially "hidden". In this case, we need to make sure that the transform maintainer
-                    // doesn't just permanently set the scale to 0.
-                    if (current.localScale.x == 0 || current.localScale.y == 0 || current.localScale.z == 0) {
-                        current.localScale = Vector3.one;
+                VFGameObject addedObject;
+                if (!string.IsNullOrWhiteSpace(model.forceMergedName) && linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) {
+                    // Special logic for force naming
+                    var exists = avatarBone.Find(model.forceMergedName);
+                    if (exists != null) {
+                        throw new Exception(
+                            $"Aramture link was asked to move an object to a destination with the forced name" +
+                            $" '{exists.GetPath(avatarObject)}', but that object already exists at the destination.");
                     }
-                    AddDebugInfo($"Detected that this object's transform is animated, so a wrapper object was added to keep its original parent transform");
-                }
+                    mover.Move(propBone, avatarBone, model.forceMergedName, defer: true);
+                    addedObject = propBone;
+                    AddDebugInfo($"Forcefully named {model.forceMergedName} by Armature Link Force Naming." +
+                                 $" Note that this may break toggles or offset animations for this object!");
+                } else {
+                    var newName = $"[VF{new Random().Next(100,999)}] {propBone.name}";
+                    if (propBone.name != rootName) newName += $" from {rootName}";
+                    addedObject = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone);
+                    var current = addedObject;
 
-                mover.Move(propBone, current, "Original Object", defer: true);
+                    foreach (var a in animatedParents) {
+                        current = GameObjects.Create($"Toggle From {a.name}", current);
+                        current.active = a.active;
+                        animLink.Put(a, current);
+                        AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {a.name}");
+                    }
+
+                    var transformAnimated =
+                        anim.positionIsAnimated.Contains(propBone)
+                        || anim.rotationIsAnimated.Contains(propBone)
+                        || anim.scaleIsAnimated.Contains(propBone);
+                    if (transformAnimated) {
+                        current = GameObjects.Create("Original Parent (Retained for transform animation)", current, propBone.parent);
+
+                        // In a weird edge case, sometimes people mark all their clothing bones with an initial scale of 0,
+                        // to mark them as initially "hidden". In this case, we need to make sure that the transform maintainer
+                        // doesn't just permanently set the scale to 0.
+                        if (current.localScale.x == 0 || current.localScale.y == 0 || current.localScale.z == 0) {
+                            current.localScale = Vector3.one;
+                        }
+                        AddDebugInfo($"Detected that this object's transform is animated, so a wrapper object was added to keep its original parent transform");
+                    }
+
+                    mover.Move(propBone, current, "Original Object", defer: true);
+                }
                 
                 if (!keepBoneOffsets) {
                     addedObject.worldPosition = avatarBone.worldPosition;
