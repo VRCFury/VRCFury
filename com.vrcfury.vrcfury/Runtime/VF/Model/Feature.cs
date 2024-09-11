@@ -550,6 +550,7 @@ namespace VF.Model.Feature {
         public float skinRewriteScalingFactor = 0;
         public bool scalingFactorPowersOf10Only = true;
         public bool removeParentConstraints = true;
+        public string forceMergedName = "";
         [NonSerialized] public Func<bool> onlyIf;
         
         // legacy

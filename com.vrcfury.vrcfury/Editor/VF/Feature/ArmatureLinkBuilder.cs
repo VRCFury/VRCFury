@@ -92,11 +92,9 @@ namespace VF.Feature {
             var adv = new Foldout {
                 text = "Advanced Options",
                 value = false
-            };
-            container.Add(adv);
+            }.AddTo(container);
 
-            var matching = VRCFuryEditorUtils.Section("Search / Matching");
-            adv.Add(matching);
+            var matching = VRCFuryEditorUtils.Section("Search / Matching").AddTo(adv);
             
             matching.Add(VRCFuryEditorUtils.Prop(
                 prop.FindPropertyRelative("linkMode"),
@@ -128,8 +126,7 @@ namespace VF.Feature {
                          "based on the difference between the name of the given root bones."
             ));
 
-            var alignment = VRCFuryEditorUtils.Section("Positioning and Alignment");
-            adv.Add(alignment);
+            var alignment = VRCFuryEditorUtils.Section("Positioning and Alignment").AddTo(adv);
 
             alignment.Add(VRCFuryEditorUtils.BetterProp(
                 prop.FindPropertyRelative("keepBoneOffsets2"),
@@ -151,7 +148,20 @@ namespace VF.Feature {
                 label: "Restrict scaling factor to powers of 10"
             ));
             
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("removeParentConstraints"), "Remove parent constraints from merged objects"));
+            var superFoldout = new Foldout {
+                text = "Super Advanced Options",
+                value = false
+            }.AddTo(adv);
+            var super = VRCFuryEditorUtils.Section("Super Advanced Options", "Danger, changing may break things").AddTo(superFoldout);
+            
+            super.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("removeParentConstraints"), "Remove parent constraints from merged objects", forceLabelOnOwnLine: true));
+            
+            super.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("forceMergedName"),
+                "Force Merged Name",
+                tooltip: "This box allows you to force the name of the object at the merged target location." +
+                         " This is useful if you want to forcefully merge a replacement MMD Body onto the base avatar." +
+                         " (Paired with Advanced Link Target Mode pointing to the avatar root)." +
+                         " BEWARE: If you use this, offset animations and toggles for the merged object WILL NOT WORK."));
             
             var chestUpWarning = VRCFuryEditorUtils.Warn(
                 "These clothes are designed for an avatar with a different ChestUp configuration. You may" +

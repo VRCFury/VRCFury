@@ -282,7 +282,8 @@ internal static class VRCFuryEditorUtils {
         int labelWidth = 100,
         Func<string,string> formatEnum = null,
         string tooltip = null,
-        VisualElement fieldOverride = null
+        VisualElement fieldOverride = null,
+        bool forceLabelOnOwnLine = false
     ) {
         VisualElement field = null;
         var isCheckbox = false;
@@ -327,7 +328,7 @@ internal static class VRCFuryEditorUtils {
             tooltip,
             field,
             isCheckbox,
-            false,
+            forceLabelOnOwnLine,
             labelWidth
         );
     }
@@ -343,14 +344,19 @@ internal static class VRCFuryEditorUtils {
         var (labelBox, tooltipBox) = CreateTooltip(label, tooltip);
         var wrapper = new VisualElement();
         var addFieldLast = false;
-        if (isCheckbox && labelBox != null) {
+        if (forceLabelOnOwnLine) {
+            if (labelBox != null) {
+                wrapper.Add(labelBox);
+            }
+            addFieldLast = true;
+        } else if (isCheckbox && labelBox != null) {
             var row = new VisualElement().Row().FlexShrink(0);
             field.style.paddingRight = 3;
             row.Add(field);
             labelBox.style.flexShrink = 1;
             row.Add(labelBox);
             wrapper.Add(row);
-        } else if (forceLabelOnOwnLine || (label != null && label.Length > 16) || labelBox == null || field == null) {
+        } else if ((label != null && label.Length > 16) || labelBox == null || field == null) {
             if (labelBox != null) {
                 wrapper.Add(labelBox);
             }
