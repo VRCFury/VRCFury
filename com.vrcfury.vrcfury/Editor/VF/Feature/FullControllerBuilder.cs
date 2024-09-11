@@ -267,17 +267,6 @@ namespace VF.Feature {
             // (we do this after rewriting paths to ensure animator bindings all hit "")
             from.RewriteParameters(RewriteParamName);
 
-            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                var layer0 = from.GetLayer(0);
-                if (layer0 != null && layer0.mask == null) {
-                    throw new VRCFBuilderException(
-                        "A VRCFury full controller is configured to merge in a Gesture controller," +
-                        " but the controller does not have a Base Mask set. Beware that Gesture controllers" +
-                        " should typically be used for animating FINGERS ONLY. If your controller animates" +
-                        " non-humanoid transforms, they should typically be merged into FX instead!");
-                }
-            }
-
             var myLayers = from.GetLayers();
 
             // Merge Layers

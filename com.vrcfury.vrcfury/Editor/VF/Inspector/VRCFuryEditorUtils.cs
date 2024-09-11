@@ -548,7 +548,7 @@ internal static class VRCFuryEditorUtils {
                         holder.Add(newContent);
                     }
                 } catch (Exception e) {
-                    holder.Add(Error("Error: " + e.Message));
+                    holder.Add(DebugBox("Error rendering debug info: " + e.Message));
                 }
             }
             Update();
@@ -603,6 +603,12 @@ internal static class VRCFuryEditorUtils {
 
     public static VisualElement Warn(string message) {
         var i = Section().BorderColor(Color.yellow).Border(2);
+        i.Add(WrappedLabel(message));
+        return i;
+    }
+    
+    public static VisualElement DebugBox(string message) {
+        var i = Section().BorderColor(Color.gray).Border(2);
         i.Add(WrappedLabel(message));
         return i;
     }

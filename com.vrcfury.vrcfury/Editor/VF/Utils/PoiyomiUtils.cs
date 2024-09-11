@@ -68,10 +68,10 @@ namespace VF.Utils {
                 var isAnimated = animatedTag != "";
                 var renameSuffix = (animatedTag == "2" && matRenameSuffix != "") ? $"_{matRenameSuffix}" : "";
                 void Add(string suffix) {
-                    output.Add($"{propertyName}{suffix}", new PoiProp() {
+                    output[$"{propertyName}{suffix}"] = new PoiProp() {
                         animated = isAnimated,
                         renamedTo = $"{propertyName}{renameSuffix}{suffix}"
-                    });
+                    };
                 }
 
                 if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
