@@ -6,7 +6,6 @@ using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
-using VF.Component;
 using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
@@ -205,11 +204,20 @@ namespace VF.Service {
                     break;
                 }
                 case MaterialPropertyAction materialPropertyAction: {
-                    var (renderers,type) = MatPropLookup(
+                    // Prevent people from trying to animate "one part" of a .x .y .z .w bundle which breaks things
+                    if (materialPropertyAction.propertyName.Contains(".")) {
+                        break;
+                    }
+                    var renderers = FindRenderers(
                         materialPropertyAction.affectAllMeshes,
                         materialPropertyAction.renderer2.asVf()?.GetComponent<Renderer>(),
-                        avatarObject,
-                        materialPropertyAction.propertyName
+                        avatarObject
+                    );
+                    var type = GetMaterialPropertyActionTypeToUse(
+                        renderers,
+                        materialPropertyAction.propertyName,
+                        materialPropertyAction.propertyType,
+                        false
                     );
 
                     foreach (var renderer in renderers) {
@@ -218,19 +226,14 @@ namespace VF.Service {
                             onClip.SetCurve(renderer, propertyName, value);
                         }
 
-                        if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range) {
+                        if (type == MaterialPropertyAction.Type.Float) {
                             AddOne("", materialPropertyAction.value);
-                        } else if (type == ShaderUtil.ShaderPropertyType.Color) {
+                        } else if (type == MaterialPropertyAction.Type.Color) {
                             AddOne(".r", materialPropertyAction.valueColor.r);
                             AddOne(".g", materialPropertyAction.valueColor.g);
                             AddOne(".b", materialPropertyAction.valueColor.b);
                             AddOne(".a", materialPropertyAction.valueColor.a);
-                        } else if (type == ShaderUtil.ShaderPropertyType.Vector) {
-                            AddOne(".x", materialPropertyAction.valueVector.x);
-                            AddOne(".y", materialPropertyAction.valueVector.y);
-                            AddOne(".z", materialPropertyAction.valueVector.z);
-                            AddOne(".w", materialPropertyAction.valueVector.w);
-                        } else if (type == MaterialExtensions.StPropertyType) {
+                        } else if (type == MaterialPropertyAction.Type.Vector || type == MaterialPropertyAction.Type.St) {
                             AddOne(".x", materialPropertyAction.valueVector.x);
                             AddOne(".y", materialPropertyAction.valueVector.y);
                             AddOne(".z", materialPropertyAction.valueVector.z);
@@ -399,12 +402,11 @@ namespace VF.Service {
 
             return onClip;
         }
-
-        public static (IList<Renderer>, ShaderUtil.ShaderPropertyType? type) MatPropLookup(
+        
+        public static IList<Renderer> FindRenderers(
             bool allRenderers,
             Renderer singleRenderer,
-            VFGameObject avatarObject,
-            [CanBeNull] string propName
+            VFGameObject avatarObject
         ) {
             IList<Renderer> renderers;
             if (allRenderers) {
@@ -413,17 +415,43 @@ namespace VF.Service {
                 renderers = new[] { singleRenderer };
             }
             renderers = renderers.NotNull().ToArray();
-            if (propName == null) {
-                return (renderers, null);
-            }
+            return renderers;
+        }
 
-            var type = renderers
+        public static ShaderUtil.ShaderPropertyType? FindMaterialPropertyType(
+            IList<Renderer> renderers,
+            string propName
+        ) {
+            return renderers
                 .Select(r => r.GetPropertyType(propName))
-                .Where(t => t.HasValue)
-                .Select(t => (ShaderUtil.ShaderPropertyType?)t.Value)
+                .NotNull()
                 .DefaultIfEmpty(null)
                 .First();
-            return (renderers, type);
+        }
+
+        public static MaterialPropertyAction.Type GetMaterialPropertyActionTypeToUse(
+            IList<Renderer> renderers,
+            string propName,
+            MaterialPropertyAction.Type setting,
+            bool forceRedetect
+        ) {
+            if (!forceRedetect && setting != MaterialPropertyAction.Type.LegacyAuto) {
+                return setting;
+            }
+            switch (FindMaterialPropertyType(renderers, propName)) {
+                case ShaderUtil.ShaderPropertyType.Color:
+                    return MaterialPropertyAction.Type.Color;
+                case ShaderUtil.ShaderPropertyType.Vector:
+                    return MaterialPropertyAction.Type.Vector;
+                case MaterialExtensions.StPropertyType:
+                    return MaterialPropertyAction.Type.St;
+                case null:
+                    return setting == MaterialPropertyAction.Type.LegacyAuto
+                        ? MaterialPropertyAction.Type.Float
+                        : setting;
+                default:
+                    return MaterialPropertyAction.Type.Float;
+            }
         }
 
         [FeatureBuilderAction(FeatureOrder.DriveNonFloatTypes)]
