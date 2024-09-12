@@ -2,7 +2,7 @@
 
 namespace VF.Feature.Base {
     [AttributeUsage(AttributeTargets.Class)]
-    public class FeatureHideInMenuAttribute : Attribute {
+    internal class FeatureHideInMenuAttribute : Attribute {
         
     }
 }

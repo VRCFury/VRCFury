@@ -2,7 +2,7 @@
 
 namespace VF.Feature.Base {
     [AttributeUsage(AttributeTargets.Class)]
-    public class FeatureHideTitleInEditorAttribute : Attribute {
+    internal class FeatureHideTitleInEditorAttribute : Attribute {
         
     }
 }

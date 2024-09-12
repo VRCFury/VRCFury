@@ -89,7 +89,7 @@ internal static class FeatureFinder {
                     VRCFuryEditorUtils.Error("Failed to find game object")
                 );
             }
-            var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
+            var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject) ?? gameObject.root;
 
             var modelType = VRCFuryEditorUtils.GetManagedReferenceType(prop);
             if (modelType == null) {
@@ -117,7 +117,7 @@ internal static class FeatureFinder {
 
             var allowRootFeatures = AllowRootFeatures(gameObject, avatarObject);
             if (builderType.GetCustomAttribute<FeatureRootOnlyAttribute>() != null && !allowRootFeatures) {
-                return RenderFeatureEditor(title, VRCFuryEditorUtils.Error(
+                return RenderFeatureEditor(title, VRCFuryEditorUtils.Error( 
                     "To avoid abuse by prefab creators, this component can only be placed on the root object" +
                     " containing the avatar descriptor, OR a child object containing ONLY vrcfury components.")
                 );

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -7,7 +9,6 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model.StateAction;
-using VF.Service;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
@@ -23,12 +24,12 @@ namespace VF.Actions {
             if (materialPropertyAction.propertyName.Contains(".")) {
                 return onClip;
             }
-            var renderers = ActionClipService.FindRenderers(
+            var renderers = FindRenderers(
                 materialPropertyAction.affectAllMeshes,
                 materialPropertyAction.renderer2.asVf()?.GetComponent<Renderer>(),
                 avatarObject
             );
-            var type = ActionClipService.GetMaterialPropertyActionTypeToUse(
+            var type = GetMaterialPropertyActionTypeToUse(
                 renderers,
                 materialPropertyAction.propertyName,
                 materialPropertyAction.propertyType,
@@ -116,13 +117,13 @@ namespace VF.Actions {
 
             void UpdateValueType(bool redetectType) {
                 var propName = propertyNameProp.stringValue;
-                var renderers = ActionClipService.FindRenderers(
+                var renderers = FindRenderers(
                     affectAllMeshesProp.boolValue,
                     rendererProp.GetComponent<Renderer>(),
                     avatarObject
                 );
                 var oldType = (MaterialPropertyAction.Type)propertyTypeProp.enumValueIndex;
-                var newType = ActionClipService.GetMaterialPropertyActionTypeToUse(
+                var newType = GetMaterialPropertyActionTypeToUse(
                     renderers, propName, oldType, redetectType);
                 if (newType != oldType) {
                     propertyTypeProp.enumValueIndex = (int)newType;
@@ -147,7 +148,7 @@ namespace VF.Actions {
 
             void GetTreeEntries(VrcfSearchWindow searchWindow) {
                 var mainGroup = searchWindow.GetMainGroup();
-                var renderers = ActionClipService.FindRenderers(
+                var renderers = FindRenderers(
                     affectAllMeshesProp.boolValue,
                     rendererProp.GetComponent<Renderer>(),
                     avatarObject
@@ -184,7 +185,7 @@ namespace VF.Actions {
                                 propType != ShaderUtil.ShaderPropertyType.Vector &&
                                 propType != ShaderUtil.ShaderPropertyType.TexEnv
                             ) continue;
-                            var matProp = System.Array.Find(materialProperties, p => p.name == propertyName);
+                            var matProp = Array.Find(materialProperties, p => p.name == propertyName);
                             if ((matProp.flags & MaterialProperty.PropFlags.HideInInspector) != 0) continue;
 
                             if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
@@ -239,6 +240,57 @@ namespace VF.Actions {
             UpdateVisibility();
             content.Add(VRCFuryEditorUtils.OnChange(allRenderersProp, UpdateVisibility));
             return content;
+        }
+        
+        private static IList<Renderer> FindRenderers(
+            bool allRenderers,
+            Renderer singleRenderer,
+            VFGameObject avatarObject
+        ) {
+            IList<Renderer> renderers;
+            if (allRenderers) {
+                renderers = avatarObject.GetComponentsInSelfAndChildren<Renderer>();
+            } else {
+                renderers = new[] { singleRenderer };
+            }
+            renderers = renderers.NotNull().ToArray();
+            return renderers;
+        }
+
+        private static ShaderUtil.ShaderPropertyType? FindMaterialPropertyType(
+            IList<Renderer> renderers,
+            string propName
+        ) {
+            return renderers
+                .Select(r => r.GetPropertyType(propName))
+                .NotNull()
+                .DefaultIfEmpty(null)
+                .First();
+        }
+
+        private static MaterialPropertyAction.Type GetMaterialPropertyActionTypeToUse(
+            IList<Renderer> renderers,
+            string propName,
+            MaterialPropertyAction.Type setting,
+            bool forceRedetect
+        ) {
+            if (!forceRedetect && setting != MaterialPropertyAction.Type.LegacyAuto) {
+                return setting;
+            }
+            switch (FindMaterialPropertyType(renderers, propName)) {
+                case ShaderUtil.ShaderPropertyType.Color:
+                    return MaterialPropertyAction.Type.Color;
+                case ShaderUtil.ShaderPropertyType.Vector:
+                    return MaterialPropertyAction.Type.Vector;
+                case MaterialExtensions.StPropertyType:
+                    return MaterialPropertyAction.Type.St;
+                case null:
+                    return setting == MaterialPropertyAction.Type.LegacyAuto
+                        ? MaterialPropertyAction.Type.Float
+                        : setting;
+                default:
+                    return MaterialPropertyAction.Type.Float;
+            }
         }
     }
 }
