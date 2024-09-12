@@ -5,10 +5,10 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
+    [FeatureTitle("SPS Options")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class SpsOptionsBuilder : FeatureBuilder<SpsOptions> {
-        public override string GetEditorTitle() {
-            return "SPS Options";
-        }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var c = new VisualElement();
@@ -26,14 +26,6 @@ namespace VF.Feature {
 
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("saveSockets"), "Save Sockets Between Worlds"));
             return c;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-        
-        public override bool OnlyOneAllowed() {
-            return true;
         }
     }
 }

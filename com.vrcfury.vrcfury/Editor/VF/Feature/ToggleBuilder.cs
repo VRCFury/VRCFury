@@ -19,6 +19,7 @@ using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
+[FeatureTitle("Toggle")]
 internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ObjectMoveService mover;
     [VFAutowired] private readonly ActionClipService actionClipService;
@@ -317,10 +318,6 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         foreach (var b in savedRestingClip.GetObjectBindings())
             writeDefaultsManager.RecordDefaultNow(b, false, true);
         restingState.ApplyClipToRestingState(savedRestingClip);
-    }
-
-    public override string GetEditorTitle() {
-        return "Toggle";
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {

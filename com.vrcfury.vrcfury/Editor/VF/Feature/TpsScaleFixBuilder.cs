@@ -15,6 +15,10 @@ using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
+    [FeatureTitle("TPS Scale Fix (Deprecated)")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
+    [FeatureHideInMenu]
     internal class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         
@@ -123,22 +127,6 @@ namespace VF.Feature {
                 "This feature will allow Poiyomi TPS to work properly with scaling. While active, avatar scaling, " +
                 "object scaling, or any combination of the two may be used in conjunction with TPS."));
             return c;
-        }
-        
-        public override string GetEditorTitle() {
-            return "TPS Scale Fix (Deprecated)";
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-
-        public override bool ShowInMenu() {
-            return false;
-        }
-
-        public override bool OnlyOneAllowed() {
-            return true;
         }
     }
 }

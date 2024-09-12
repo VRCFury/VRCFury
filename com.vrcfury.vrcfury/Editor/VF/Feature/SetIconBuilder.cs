@@ -7,10 +7,8 @@ using VF.Model.Feature;
 using VF.Utils;
 
 namespace VF.Feature {
+    [FeatureTitle("Override Menu Icon")]
     internal class SetIconBuilder : FeatureBuilder<SetIcon> {
-        public override string GetEditorTitle() {
-            return "Override Menu Icon";
-        }
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();

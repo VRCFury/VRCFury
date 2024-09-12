@@ -18,6 +18,9 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 using static VF.Utils.VRCExpressionsMenuExtensions.ForEachMenuItemResult;
 
 namespace VF.Feature {
+    [FeatureTitle("Unlimited Params (BETA)")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class UnlimitedParametersBuilder : FeatureBuilder<UnlimitedParameters> {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
@@ -148,18 +151,6 @@ namespace VF.Feature {
             });
 
             return paramsToOptimize.Take(255).ToList();
-        }
-
-        public override string GetEditorTitle() {
-            return "Unlimited Params (BETA)";
-        }
-
-        public override bool OnlyOneAllowed() {
-            return true;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {

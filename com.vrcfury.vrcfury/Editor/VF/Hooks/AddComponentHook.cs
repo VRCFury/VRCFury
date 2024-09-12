@@ -99,8 +99,7 @@ namespace VF.Hooks {
                         false,
                         0,
                         () => {
-                            var builderInst = (FeatureBuilder)Activator.CreateInstance(builderType);
-                            var failureMsg = builderInst.FailWhenAdded();
+                            var failureMsg = builderType.GetCustomAttribute<FeatureFailWhenAddedAttribute>()?.Message;
                             if (failureMsg != null) {
                                 EditorUtility.DisplayDialog($"Error adding {title}", failureMsg, "Ok");
                                 return;

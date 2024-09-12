@@ -13,10 +13,9 @@ using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Feature {
+    [FeatureTitle("Move or Rename Menu Item")]
+    [FeatureRootOnly]
     internal class MoveMenuItemBuilder : FeatureBuilder<MoveMenuItem> {
-        public override string GetEditorTitle() {
-            return "Move or Rename Menu Item";
-        }
         
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
@@ -120,10 +119,6 @@ namespace VF.Feature {
             row.Add(VRCFuryEditorUtils.Prop(prop, label, tooltip: tooltip).FlexGrow(1));
             row.Add(new Button(OnClick) { text = selectLabel });
             return row;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
         }
     }
 }

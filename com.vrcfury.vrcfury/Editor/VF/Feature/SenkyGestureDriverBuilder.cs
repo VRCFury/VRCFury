@@ -10,6 +10,7 @@ using VF.Service;
 
 namespace VF.Feature {
 
+[FeatureTitle("Senky Gesture Driver")]
 internal class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     
@@ -95,10 +96,6 @@ internal class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
                 new BlockBlinkingAction()
             }
         };
-    }
-
-    public override string GetEditorTitle() {
-        return "Senky Gesture Driver";
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {

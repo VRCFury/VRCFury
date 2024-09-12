@@ -5,10 +5,8 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
+    [FeatureTitle("Delete During Upload")]
     internal class DeleteDuringUploadBuilder : FeatureBuilder<DeleteDuringUpload> {
-        public override string GetEditorTitle() {
-            return "Delete During Upload";
-        }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();

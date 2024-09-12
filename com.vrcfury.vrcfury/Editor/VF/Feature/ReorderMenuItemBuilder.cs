@@ -6,10 +6,9 @@ using VF.Model.Feature;
 using VF.Utils;
 
 namespace VF.Feature {
+    [FeatureTitle("Reorder Menu Item")]
+    [FeatureRootOnly]
     internal class ReorderMenuItemBuilder : FeatureBuilder<ReorderMenuItem> {
-        public override string GetEditorTitle() {
-            return "Reorder Menu Item";
-        }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
@@ -29,10 +28,6 @@ namespace VF.Feature {
                         "etc"
             ));
             return content;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
         }
     }
 }

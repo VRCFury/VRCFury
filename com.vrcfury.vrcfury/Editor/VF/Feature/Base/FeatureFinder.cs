@@ -60,15 +60,11 @@ internal static class FeatureFinder {
                     return null;
                 }
                 var titleAttribute = builderType.GetCustomAttribute<FeatureTitleAttribute>();
-                if (titleAttribute != null) {
-                    return Tuple.Create(titleAttribute.Title, e.Key, e.Value);
+                if (titleAttribute == null) {
+                    return null;
                 }
 
-                var impl = (FeatureBuilder)Activator.CreateInstance(builderType);
-                var title = impl.GetEditorTitle();
-                if (title == null) return null;
-                if (!impl.ShowInMenu()) return null;
-                return Tuple.Create(title, e.Key, e.Value);
+                return Tuple.Create(titleAttribute.Title, e.Key, e.Value);
             })
             .Where(tuple => tuple != null)
             .OrderBy(tuple => tuple.Item1);
@@ -103,7 +99,7 @@ internal static class FeatureFinder {
                 );
             }
             title = modelType.Name;
-            var found = modelToBuilder.Value.TryGetValue(modelType, out var implementationType);
+            var found = modelToBuilder.Value.TryGetValue(modelType, out var builderType);
             if (!found) {
                 return RenderFeatureEditor(
                     title,
@@ -114,20 +110,20 @@ internal static class FeatureFinder {
                 );
             }
 
-            var titleAttribute = implementationType.GetCustomAttribute<FeatureTitleAttribute>();
+            var titleAttribute = builderType.GetCustomAttribute<FeatureTitleAttribute>();
             if (titleAttribute != null) {
                 title = titleAttribute.Title;
             }
 
             var allowRootFeatures = AllowRootFeatures(gameObject, avatarObject);
-            if (implementationType.GetCustomAttribute<FeatureRootOnlyAttribute>() != null && !allowRootFeatures) {
+            if (builderType.GetCustomAttribute<FeatureRootOnlyAttribute>() != null && !allowRootFeatures) {
                 return RenderFeatureEditor(title, VRCFuryEditorUtils.Error(
                     "To avoid abuse by prefab creators, this component can only be placed on the root object" +
                     " containing the avatar descriptor, OR a child object containing ONLY vrcfury components.")
                 );
             }
 
-            var staticEditorMethod = implementationType.GetMethods(BindingFlags.Static | BindingFlags.Public)
+            var staticEditorMethod = builderType.GetMethods(BindingFlags.Static | BindingFlags.Public)
                 .Where(method => method.GetCustomAttribute<FeatureEditorAttribute>() != null)
                 .DefaultIfEmpty(null)
                 .First();
@@ -141,20 +137,10 @@ internal static class FeatureFinder {
                 return RenderFeatureEditor(title, body);
             }
 
-            var featureInstance = (FeatureBuilder)Activator.CreateInstance(implementationType);
+            var featureInstance = (FeatureBuilder)Activator.CreateInstance(builderType);
             featureInstance.avatarObjectOverride = avatarObject;
             featureInstance.featureBaseObject = gameObject;
             featureInstance.GetType().GetField("model").SetValue(featureInstance, GetFeature(prop));
-
-            title = featureInstance.GetEditorTitle() ?? title;
-
-            if (featureInstance.AvailableOnRootOnly() && !allowRootFeatures) {
-                return RenderFeatureEditor(title, VRCFuryEditorUtils.Error(
-                    "To avoid abuse by prefab creators, this component can only be placed on the root object" +
-                    " containing the avatar descriptor, OR a child object containing ONLY vrcfury components.")
-                );
-            }
-
             return RenderFeatureEditor(title, featureInstance.CreateEditor(prop));
         } catch(Exception e) {
             Debug.LogException(e);
@@ -193,13 +179,7 @@ internal static class FeatureFinder {
         }
 
         var builder = (FeatureBuilder)injector.CreateAndFillObject(builderType);
-        title = builder.GetEditorTitle() ?? title;
-        if (builder.AvailableOnRootOnly() && !allowRootFeatures) {
-            throw new Exception($"This VRCFury component ({title}) is only allowed on the root object of the avatar, but was found in {gameObject.GetPath(avatarObject)}.");
-        }
-        
         builder.GetType().GetField("model").SetValue(builder, model);
-
         return builder;
     }
 }

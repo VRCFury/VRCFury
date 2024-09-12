@@ -13,6 +13,7 @@ using VF.Service;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [FeatureTitle("Show In First Person")]
     internal class ShowInFirstPersonBuilder : FeatureBuilder<ShowInFirstPerson> {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FakeHeadService fakeHead;
@@ -58,10 +59,6 @@ namespace VF.Feature {
                     return true;
                 }
             });
-        }
-
-        public override string GetEditorTitle() {
-            return "Show In First Person";
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {

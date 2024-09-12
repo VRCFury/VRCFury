@@ -13,6 +13,7 @@ using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
+    [FeatureTitle("Security Restricted")]
     internal class SecurityRestrictedBuilder : FeatureBuilder<SecurityRestricted> {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
@@ -53,10 +54,6 @@ namespace VF.Feature {
             var clip = clipFactory.NewClip("Unlock");
             clip.SetEnabled(wrapper, true);
             directTree.Add(security.GetEnabled().AsFloat(), clip);
-        }
-
-        public override string GetEditorTitle() {
-            return "Security Restricted";
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {

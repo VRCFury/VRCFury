@@ -11,6 +11,9 @@ using VF.Utils.Controller;
 
 namespace VF.Feature {
 
+[FeatureTitle("Security Pin Number")]
+[FeatureOnlyOneAllowed]
+[FeatureRootOnly]
 internal class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
     private MenuManager menu => manager.GetMenu();
     
@@ -108,10 +111,6 @@ internal class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
 
         return paramSecuritySync;
     }
-    
-    public override string GetEditorTitle() {
-        return "Security Pin Number";
-    }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {
         var content = new VisualElement();
@@ -121,14 +120,6 @@ internal class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
             "* All VRCFury Toggles marked with the `Security` flag will be forced Off."));
         content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("pinNumber"), "Pin Number (min 4 digits, max 10 digits, can only use numbers 1-7)"));
         return content;
-    }
-    
-    public override bool AvailableOnRootOnly() {
-        return true;
-    }
-    
-    public override bool OnlyOneAllowed() {
-        return true;
     }
 }
 

@@ -5,16 +5,12 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
-
+    [FeatureTitle("Bounding Box Fix")]
+    [FeatureFailWhenAdded(
+        "Bounding Box Fix is now automatically enabled by default for all avatars" +
+        " using any VRCFury component. Adding the Bounding Box Fix component is no longer needed."
+    )]
     internal class BoundingBoxFixBuilder : FeatureBuilder<BoundingBoxFix2> {
-        public override string FailWhenAdded() {
-            return "Bounding Box Fix is now automatically enabled by default for all avatars using any VRCFury component. Adding the Bounding Box Fix component is no longer needed.";
-        }
-
-        public override string GetEditorTitle() {
-            return "Bounding Box Fix";
-        }
-        
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Error(

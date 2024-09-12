@@ -8,6 +8,9 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
+    [FeatureTitle("Anchor Override Fix")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
         [FeatureBuilderAction(FeatureOrder.AnchorOverrideFix)]
         public void Apply() {
@@ -20,18 +23,6 @@ namespace VF.Feature {
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 skin.probeAnchor = root;
             }
-        }
-        
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-        
-        public override bool OnlyOneAllowed() {
-            return true;
-        }
-        
-        public override string GetEditorTitle() {
-            return "Anchor Override Fix";
         }
         
         public override VisualElement CreateEditor(SerializedProperty prop) {

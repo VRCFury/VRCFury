@@ -5,13 +5,10 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
+    [FeatureTitle("Gizmo")]
     internal class GizmoBuilder : FeatureBuilder<Gizmo> {
         [FeatureBuilderAction]
         public void Apply() {
-        }
-        
-        public override string GetEditorTitle() {
-            return "Gizmo";
         }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {

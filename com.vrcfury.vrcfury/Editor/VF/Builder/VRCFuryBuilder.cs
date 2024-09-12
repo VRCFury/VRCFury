@@ -215,9 +215,13 @@ internal class VRCFuryBuilder {
 
         foreach (var type in collectedBuilders.Select(builder => builder.GetType()).ToImmutableHashSet()) {
             var buildersOfType = collectedBuilders.Where(builder => builder.GetType() == type).ToArray();
-            if (buildersOfType[0].OnlyOneAllowed() && buildersOfType.Length > 1) {
-                throw new Exception(
-                    $"This avatar contains multiple VRCFury '{buildersOfType[0].GetEditorTitle()}' components, but only one is allowed.");
+            if (buildersOfType.Length > 1) {
+                var first = buildersOfType[0];
+                if (first.GetType().GetCustomAttribute<FeatureOnlyOneAllowedAttribute>() != null) {
+                    var title = first.GetType().GetCustomAttribute<FeatureTitleAttribute>().Title;
+                    throw new Exception(
+                        $"This avatar contains multiple VRCFury '{title}' components, but only one is allowed.");
+                }
             }
         }
 

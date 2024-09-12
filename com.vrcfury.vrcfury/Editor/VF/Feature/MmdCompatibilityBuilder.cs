@@ -14,14 +14,13 @@ using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [FeatureTitle("MMD Compatibility")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class MmdCompatibilityBuilder : FeatureBuilder<MmdCompatibility> {
         [VFAutowired] private readonly MathService mathService;
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        
-        public override string GetEditorTitle() {
-            return "MMD Compatibility";
-        }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var c = new VisualElement();
@@ -47,14 +46,6 @@ namespace VF.Feature {
             public override VisualElement CreatePropertyGUI(SerializedProperty property) {
                 return VRCFuryEditorUtils.Prop(property.FindPropertyRelative("name"));
             }
-        }
-
-        public override bool OnlyOneAllowed() {
-            return true;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
         }
 
         [FeatureBuilderAction(FeatureOrder.AvoidMmdLayers)]

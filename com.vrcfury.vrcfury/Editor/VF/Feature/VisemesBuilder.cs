@@ -15,6 +15,7 @@ using VRC.SDKBase;
 
 namespace VF.Feature {
 
+[FeatureTitle("Advanced Visemes")]
 internal class VisemesBuilder : FeatureBuilder<Visemes> {
     [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
     [VFAutowired] private readonly ActionClipService actionClipService;
@@ -97,10 +98,6 @@ internal class VisemesBuilder : FeatureBuilder<Visemes> {
                 clipFactory.GetEmptyClip()
             ));
         });
-    }
-
-    public override string GetEditorTitle() {
-        return "Advanced Visemes";
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {

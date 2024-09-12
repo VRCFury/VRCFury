@@ -16,6 +16,8 @@ namespace VF.Feature.Base {
         [JsonProperty(Order = -2)] public string type;
 
         [VFAutowired] protected readonly AvatarManager manager;
+        protected ControllerManager GetFx() => manager.GetFx();
+        protected ControllerManager fx => manager.GetFx();
         [VFAutowired] private readonly GlobalsService globals;
         protected string tmpDirParent => globals.tmpDirParent;
         protected string tmpDir => globals.tmpDir;
@@ -30,10 +32,6 @@ namespace VF.Feature.Base {
         [NonSerialized] [JsonIgnore] public VFGameObject featureBaseObject;
         [NonSerialized] [JsonIgnore] public int uniqueModelNum;
 
-        public virtual string GetEditorTitle() {
-            return null;
-        }
-
         public virtual VisualElement CreateEditor(SerializedProperty prop) {
             return VRCFuryEditorUtils.WrappedLabel("No body");
         }
@@ -41,24 +39,6 @@ namespace VF.Feature.Base {
         public virtual string FailWhenAdded() {
             return null;
         }
-
-        public virtual bool OnlyOneAllowed() {
-            return false;
-        }
-
-        public virtual bool AvailableOnRootOnly() {
-            return false;
-        }
-        
-        public virtual bool ShowInMenu() {
-            return true;
-        }
-
-        public ControllerManager GetFx() {
-            return manager.GetController(VRCAvatarDescriptor.AnimLayerType.FX);
-        }
-
-        public ControllerManager fx => GetFx();
 
         public virtual string GetClipPrefix() {
             return null;

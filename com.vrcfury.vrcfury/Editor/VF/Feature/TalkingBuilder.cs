@@ -8,6 +8,7 @@ using VF.Service;
 
 namespace VF.Feature {
 
+[FeatureTitle("When-Talking State")]
 internal class TalkingBuilder : FeatureBuilder<Talking> {
     [VFAutowired] private readonly ActionClipService actionClipService;
 
@@ -21,10 +22,6 @@ internal class TalkingBuilder : FeatureBuilder<Talking> {
 
         off.TransitionsTo(on).When(fx.Viseme().IsGreaterThan(9));
         on.TransitionsTo(off).When(fx.Viseme().IsLessThan(10));
-    }
-
-    public override string GetEditorTitle() {
-        return "When-Talking State";
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {

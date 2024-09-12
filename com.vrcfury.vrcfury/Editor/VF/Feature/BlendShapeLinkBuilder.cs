@@ -14,10 +14,8 @@ using VF.Model.Feature;
 using VF.Utils;
 
 namespace VF.Feature {
+    [FeatureTitle("BlendShape Link")]
     internal class BlendShapeLinkBuilder : FeatureBuilder<BlendShapeLink> {
-        public override string GetEditorTitle() {
-            return "BlendShape Link";
-        }
 
         [CustomPropertyDrawer(typeof(BlendShapeLink.Exclude))]
         public class ExcludeDrawer : PropertyDrawer {

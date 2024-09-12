@@ -10,10 +10,8 @@ using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [FeatureTitle("Descriptor Debugger")]
     internal class DescriptorDebugBuilder : FeatureBuilder<DescriptorDebug> {
-        public override string GetEditorTitle() {
-            return "Descriptor Debugger";
-        }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var output = new VisualElement();

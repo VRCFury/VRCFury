@@ -13,10 +13,10 @@ using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [FeatureTitle("Fix Write Defaults")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class FixWriteDefaultsEditor : FeatureBuilder<FixWriteDefaults> {
-        public override string GetEditorTitle() {
-            return "Fix Write Defaults";
-        }
 
         public override VisualElement CreateEditor(SerializedProperty prop) {
             var container = new VisualElement();
@@ -68,14 +68,6 @@ namespace VF.Feature {
             }));
             
             return container;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-        
-        public override bool OnlyOneAllowed() {
-            return true;
         }
         
         [FeatureBuilderAction]

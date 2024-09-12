@@ -6,18 +6,12 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
+    [FeatureTitle("Haptic Component Auto-Adder")]
+    [FeatureHideInMenu]
     internal class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration2> {
         [FeatureBuilderAction(FeatureOrder.UpgradeLegacyHaptics)]
         public void Apply() {
             SpsUpgrader.Apply(featureBaseObject, false, SpsUpgrader.Mode.AutomatedComponent);
-        }
-        
-        public override bool ShowInMenu() {
-            return false;
-        }
-        
-        public override string GetEditorTitle() {
-            return "Haptic Component Auto-Adder";
         }
         
         public override VisualElement CreateEditor(SerializedProperty prop) {

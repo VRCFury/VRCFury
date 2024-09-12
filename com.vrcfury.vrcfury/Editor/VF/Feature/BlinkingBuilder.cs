@@ -9,6 +9,7 @@ using VF.Utils;
 
 namespace VF.Feature {
 
+[FeatureTitle("Blink Controller")]
 internal class BlinkingBuilder : FeatureBuilder<Blinking> {
     [VFAutowired] private readonly ActionClipService actionClipService;
     [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
@@ -92,10 +93,6 @@ internal class BlinkingBuilder : FeatureBuilder<Blinking> {
                     .When(fx.Always());
             }
         }
-    }
-
-    public override string GetEditorTitle() {
-        return "Blink Controller";
     }
 
     public override VisualElement CreateEditor(SerializedProperty prop) {

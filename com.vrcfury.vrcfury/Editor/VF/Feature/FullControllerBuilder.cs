@@ -26,6 +26,7 @@ using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
+    [FeatureTitle("Full Controller")]
     internal class FullControllerBuilder : FeatureBuilder<FullController> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
@@ -323,10 +324,6 @@ namespace VF.Feature {
         VFGameObject GetBaseObject() {
             if (model.rootObjOverride) return model.rootObjOverride;
             return featureBaseObject;
-        }
-
-        public override string GetEditorTitle() {
-            return "Full Controller";
         }
         
         [CustomPropertyDrawer(typeof(FullController.ControllerEntry))]
