@@ -296,6 +296,17 @@ namespace VF.Builder {
                         MergeMenu(prefix2.ToArray(), fromControl.subMenu, seen);
                     }
                 } else {
+                    //check if the exact same control exists, and if it does then just skip it
+                    bool exists = false;
+                    foreach (var toControl in to.controls)
+                    {
+                        //if they are similar by name, type, and parameter, then they are the same
+                        exists = toControl.name == fromControl.name
+                            && toControl.type == fromControl.type
+                            && toControl.parameter?.name == fromControl.parameter?.name;
+                        if (exists) break;
+                    }
+                    if (exists) continue;
                     to.controls.Add(CloneControl(fromControl));
                 }
             }
