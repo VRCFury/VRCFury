@@ -112,7 +112,8 @@ internal class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         return paramSecuritySync;
     }
 
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop) {
         var content = new VisualElement();
         content.Add(VRCFuryEditorUtils.Info(
             "This feature will add a `Security` submenu in your avatar's menu. Until the correct pin number is entered:\n" +

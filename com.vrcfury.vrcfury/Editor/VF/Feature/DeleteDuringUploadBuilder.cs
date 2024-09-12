@@ -8,7 +8,8 @@ namespace VF.Feature {
     [FeatureTitle("Delete During Upload")]
     internal class DeleteDuringUploadBuilder : FeatureBuilder<DeleteDuringUpload> {
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
 
             content.Add(VRCFuryEditorUtils.Info(

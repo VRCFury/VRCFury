@@ -61,7 +61,8 @@ namespace VF.Feature {
             });
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             return VRCFuryEditorUtils.Info(
                 "This component will automatically make this GameObject a child of the head bone, and will" +
                 " use constraint tricks to make it visible in first person.\n\n" +

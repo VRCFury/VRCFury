@@ -118,7 +118,8 @@ namespace VF.Feature {
             return scaledProps;
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Error(
                 "This component is deprecated. It still works, but you may wish to migrate from TPS to SPS for" +

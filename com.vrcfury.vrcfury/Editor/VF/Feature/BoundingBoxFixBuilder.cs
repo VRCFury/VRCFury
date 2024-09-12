@@ -11,7 +11,8 @@ namespace VF.Feature {
         " using any VRCFury component. Adding the Bounding Box Fix component is no longer needed."
     )]
     internal class BoundingBoxFixBuilder : FeatureBuilder<BoundingBoxFix2> {
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Error(
                 "This feature is deprecated and now does nothing." +

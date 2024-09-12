@@ -300,7 +300,8 @@ namespace VF.Feature {
             return allConditions[0];
         }
         
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will automatically convert all non-conflicting toggle layers into a single direct blend tree layer." +

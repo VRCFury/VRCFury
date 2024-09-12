@@ -32,7 +32,8 @@ namespace VF.Feature {
             }
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Info(
                 "This feature lets you define things in your prefab which" +

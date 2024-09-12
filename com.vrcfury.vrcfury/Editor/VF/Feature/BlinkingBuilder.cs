@@ -16,7 +16,6 @@ internal class BlinkingBuilder : FeatureBuilder<Blinking> {
 
     [FeatureBuilderAction]
     public void Apply() {
-        var fx = GetFx();
         var blinkTriggerSynced = fx.NewBool("BlinkTriggerSynced", synced: true);
 
         // Generator
@@ -95,7 +94,8 @@ internal class BlinkingBuilder : FeatureBuilder<Blinking> {
         }
     }
 
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop) {
         var c = new VisualElement();
         c.Add(VRCFuryEditorUtils.Info(
             "This feature will add Blinking to your avatar. You can use this in place of blinking in the VRC Avatar Descriptor, or on a prop to add blinking to an additional object."));

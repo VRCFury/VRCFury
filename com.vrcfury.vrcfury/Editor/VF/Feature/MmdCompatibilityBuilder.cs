@@ -22,7 +22,8 @@ namespace VF.Feature {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Info(
                 "This component will improve MMD compatibility for your avatar, by maintaining MMD" +

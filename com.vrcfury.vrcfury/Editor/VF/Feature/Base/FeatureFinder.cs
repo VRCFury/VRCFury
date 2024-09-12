@@ -127,21 +127,17 @@ internal static class FeatureFinder {
                 .Where(method => method.GetCustomAttribute<FeatureEditorAttribute>() != null)
                 .DefaultIfEmpty(null)
                 .First();
-            if (staticEditorMethod != null) {
-                var injector = new VRCFuryInjector();
-                injector.Set(GetFeature(prop));
-                injector.Set(prop);
-                injector.Set("avatarObject", avatarObject);
-                injector.Set("componentObject", gameObject);
-                var body = (VisualElement)injector.FillMethod(staticEditorMethod);
-                return RenderFeatureEditor(title, body);
+            if (staticEditorMethod == null) {
+                return RenderFeatureEditor(title, VRCFuryEditorUtils.Error("Failed to find Editor method"));
             }
-
-            var featureInstance = (FeatureBuilder)Activator.CreateInstance(builderType);
-            featureInstance.avatarObjectOverride = avatarObject;
-            featureInstance.featureBaseObject = gameObject;
-            featureInstance.GetType().GetField("model").SetValue(featureInstance, GetFeature(prop));
-            return RenderFeatureEditor(title, featureInstance.CreateEditor(prop));
+            
+            var injector = new VRCFuryInjector();
+            injector.Set(GetFeature(prop));
+            injector.Set(prop);
+            injector.Set("avatarObject", avatarObject);
+            injector.Set("componentObject", gameObject);
+            var body = (VisualElement)injector.FillMethod(staticEditorMethod);
+            return RenderFeatureEditor(title, body);
         } catch(Exception e) {
             Debug.LogException(e);
             return RenderFeatureEditor(

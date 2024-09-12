@@ -25,7 +25,8 @@ namespace VF.Feature {
             }
         }
         
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will set the anchor override for every mesh on your avatar to your chest. " +

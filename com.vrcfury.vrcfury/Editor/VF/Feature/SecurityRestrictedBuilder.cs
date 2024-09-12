@@ -56,7 +56,8 @@ namespace VF.Feature {
             directTree.Add(security.GetEnabled().AsFloat(), clip);
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             return VRCFuryEditorUtils.Info(
                 "This object will be forcefully disabled until a Security Pin is entered in your avatar's menu." +
                 "Note: You MUST have a Security Pin Number component on your avatar root with a pin number set, or this will not do anything!"

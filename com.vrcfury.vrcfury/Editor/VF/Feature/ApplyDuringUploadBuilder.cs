@@ -18,7 +18,8 @@ namespace VF.Feature {
             restingState.ApplyClipToRestingState(clip);
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             var content = new VisualElement();
 
             content.Add(VRCFuryEditorUtils.Info(

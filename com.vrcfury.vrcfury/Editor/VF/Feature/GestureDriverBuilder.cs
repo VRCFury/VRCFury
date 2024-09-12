@@ -137,7 +137,8 @@ namespace VF.Feature {
             return smoothing.Smooth($"{input.Name()}/Smoothed", target, 0.15f);
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             return VRCFuryEditorUtils.List(prop.FindPropertyRelative("gestures"));
         }
         

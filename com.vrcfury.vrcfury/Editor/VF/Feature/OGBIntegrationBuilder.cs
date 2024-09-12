@@ -14,7 +14,8 @@ namespace VF.Feature {
             SpsUpgrader.Apply(featureBaseObject, false, SpsUpgrader.Mode.AutomatedComponent);
         }
         
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Error("This feature is deprecated. Use SPS instead! See vrcfury.com/sps"));
             return content;

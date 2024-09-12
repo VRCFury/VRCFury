@@ -10,14 +10,12 @@ namespace VF.Feature {
     [FeatureRootOnly]
     internal class OverrideMenuSettingsBuilder : FeatureBuilder<OverrideMenuSettings> {
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("nextText"), "'Next' Text"));
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("nextIcon"), "'Next' Icon"));
             return c;
         }
-
-        [FeatureBuilderAction]
-        public void Apply() { }
     }
 }

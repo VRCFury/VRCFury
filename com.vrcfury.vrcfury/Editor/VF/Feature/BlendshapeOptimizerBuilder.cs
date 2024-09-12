@@ -21,7 +21,8 @@ namespace VF.Feature {
     [FeatureRootOnly]
     internal class BlendshapeOptimizerBuilder : FeatureBuilder<BlendshapeOptimizer> {
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will automatically bake all non-animated blendshapes into the mesh," +

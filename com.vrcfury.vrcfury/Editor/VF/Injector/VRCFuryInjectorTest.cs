@@ -36,7 +36,9 @@ namespace VF.Injector {
                     .Where(method => method.GetCustomAttribute<FeatureEditorAttribute>() != null)
                     .DefaultIfEmpty(null)
                     .First();
-                if (editorMethod != null) {
+                if (editorMethod == null) {
+                    throw new Exception($"{builderType.Name} is missing an Editor");
+                } else {
                     try {
                         var injector = new VRCFuryInjector();
                         injector.Set(Activator.CreateInstance(modelType));

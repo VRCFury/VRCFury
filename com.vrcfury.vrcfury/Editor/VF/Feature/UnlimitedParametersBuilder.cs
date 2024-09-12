@@ -153,7 +153,8 @@ namespace VF.Feature {
             return paramsToOptimize.Take(255).ToList();
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
                 "This component will optimize all synced float parameters used in radial menu toggles into 16 total bits"));

@@ -32,14 +32,6 @@ namespace VF.Feature.Base {
         [NonSerialized] [JsonIgnore] public VFGameObject featureBaseObject;
         [NonSerialized] [JsonIgnore] public int uniqueModelNum;
 
-        public virtual VisualElement CreateEditor(SerializedProperty prop) {
-            return VRCFuryEditorUtils.WrappedLabel("No body");
-        }
-
-        public virtual string FailWhenAdded() {
-            return null;
-        }
-
         public virtual string GetClipPrefix() {
             return null;
         }

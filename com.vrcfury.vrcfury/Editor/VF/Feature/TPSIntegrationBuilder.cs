@@ -9,12 +9,8 @@ namespace VF.Feature {
     [FeatureRootOnly]
     [FeatureHideInMenu]
     internal class TPSIntegrationBuilder : FeatureBuilder<TPSIntegration2> {
-        [FeatureBuilderAction]
-        public void Apply() {
-
-        }
-        
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Error("This feature is deprecated and now does nothing. Use SPS instead! See vrcfury.com/sps"));
             return content;

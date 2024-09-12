@@ -17,7 +17,8 @@ namespace VF.Feature {
     [FeatureRootOnly]
     internal class MoveMenuItemBuilder : FeatureBuilder<MoveMenuItem> {
         
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject) {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info("This feature will move a menu item to another location. You can use slashes to make subfolders."));
 

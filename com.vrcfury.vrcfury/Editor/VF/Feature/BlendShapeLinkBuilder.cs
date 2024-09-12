@@ -41,7 +41,8 @@ namespace VF.Feature {
             }
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject, BlendShapeLink model) {
             var content = new VisualElement();
             
             content.Add(VRCFuryEditorUtils.Info(
@@ -107,14 +108,14 @@ namespace VF.Feature {
                 if (avatarObject == null) {
                     return "Avatar descriptor is missing";
                 }
-                var baseSkin = GetBaseSkin();
+                var baseSkin = GetBaseSkin(avatarObject, model);
                 if (!baseSkin) {
                     return "Base skin could not be found";
                 }
 
-                var linkSkins = GetLinkSkins();
+                var linkSkins = GetLinkSkins(model);
                 var mappingsWithSkin = linkSkins
-                    .SelectMany(s => GetMappings(baseSkin, s, exactMatch.boolValue).Select(m => (s, (m.Key, m.Value))))
+                    .SelectMany(s => GetMappings(model, baseSkin, s, exactMatch.boolValue).Select(m => (s, (m.Key, m.Value))))
                     .ToImmutableHashSet();
                 var allMappings = mappingsWithSkin
                     .Select(tuple => tuple.Item2)
@@ -154,14 +155,14 @@ namespace VF.Feature {
             return content;
         }
 
-        private IList<SkinnedMeshRenderer> GetLinkSkins() {
+        private static IList<SkinnedMeshRenderer> GetLinkSkins(BlendShapeLink model) {
             return model.linkSkins
                 .Select(link => link.renderer)
                 .NotNull()
                 .ToArray();
         }
 
-        private SkinnedMeshRenderer GetBaseSkin() {
+        private static SkinnedMeshRenderer GetBaseSkin(VFGameObject avatarObject, BlendShapeLink model) {
             return avatarObject.GetSelfAndAllChildren()
                 .Where(t => t.name == model.baseObj)
                 .Select(t => t.GetComponent<SkinnedMeshRenderer>())
@@ -203,7 +204,7 @@ namespace VF.Feature {
             }
         }
 
-        private VFMultimapSet<string, string> GetMappings(SkinnedMeshRenderer baseSkin, SkinnedMeshRenderer linkSkin, bool exact) {
+        private static VFMultimapSet<string, string> GetMappings(BlendShapeLink model, SkinnedMeshRenderer baseSkin, SkinnedMeshRenderer linkSkin, bool exact) {
             Normalizer[] normalizers;
             if (exact) {
                 normalizers = new Normalizer[] { s => s };
@@ -253,16 +254,16 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.BlendShapeLinkFixAnimations)]
         public void Apply() {
-            var baseSkin = GetBaseSkin();
+            var baseSkin = GetBaseSkin(avatarObject, model);
             if (baseSkin == null) {
                 Debug.LogWarning("Failed to find base skin on avatar");
                 return;
             }
             var baseSkinPath = baseSkin.owner().GetPath(avatarObject);
-            var linkSkins = GetLinkSkins();
+            var linkSkins = GetLinkSkins(model);
 
             foreach (var linked in linkSkins) {
-                var baseToLinkedMapping = GetMappings(baseSkin, linked, model.exactMatch);
+                var baseToLinkedMapping = GetMappings(model, baseSkin, linked, model.exactMatch);
                 foreach (var (baseName,linkedName) in baseToLinkedMapping.Select(x => (x.Key, x.Value))) {
                     var baseI = baseSkin.GetBlendShapeIndex(baseName);
                     var linkedI = linked.GetBlendShapeIndex(linkedName);

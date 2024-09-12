@@ -23,7 +23,8 @@ internal class ToesBuilder : FeatureBuilder<Toes> {
         }
     }
 
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop) {
         var content = new VisualElement();
         content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("down"), "Down"));
         content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("up"), "Up"));

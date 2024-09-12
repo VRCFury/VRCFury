@@ -16,7 +16,8 @@ namespace VF.Feature {
     [FeatureHideInMenu]
     internal class Slot4FixBuilder : FeatureBuilder<Slot4Fix> {
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Error("This feature is deprecated and now does nothing. The slot 4 bug has been fixed in unity 2022."));
             return content;

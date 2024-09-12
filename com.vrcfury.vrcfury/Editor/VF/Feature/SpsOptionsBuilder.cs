@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
@@ -10,7 +11,8 @@ namespace VF.Feature {
     [FeatureRootOnly]
     internal class SpsOptionsBuilder : FeatureBuilder<SpsOptions> {
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject) {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menuIcon"), "SPS Menu Icon Override"));
             

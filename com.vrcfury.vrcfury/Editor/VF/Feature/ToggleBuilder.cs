@@ -320,7 +320,8 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         restingState.ApplyClipToRestingState(savedRestingClip);
     }
 
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject, VFGameObject componentObject, Toggle model) {
         var content = new VisualElement();
 
         var savedProp = prop.FindPropertyRelative("saved");
@@ -587,7 +588,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         ));
 
         content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-            var baseObject = avatarObject != null ? avatarObject : featureBaseObject.root;
+            var baseObject = avatarObject != null ? avatarObject : componentObject.root;
 
             var turnsOff = model.state.actions
                 .OfType<ObjectToggleAction>()
@@ -618,7 +619,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         return content;
     }
 
-    private VisualElement MakeTabbed(string label, VisualElement child) {
+    private static VisualElement MakeTabbed(string label, VisualElement child) {
         var output = new VisualElement();
         output.Add(VRCFuryEditorUtils.WrappedLabel(label).Bold());
         var tabbed = new VisualElement { style = { paddingLeft = 10 } };

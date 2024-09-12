@@ -115,7 +115,8 @@ internal class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         return asset;
     }
 
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop) {
         var content = new VisualElement();
 
         content.Add(VRCFuryEditorUtils.Error(

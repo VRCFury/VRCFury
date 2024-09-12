@@ -19,7 +19,8 @@ namespace VF.Feature {
             });
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             var container = new VisualElement();
             
             container.Add(VRCFuryEditorUtils.Error(
