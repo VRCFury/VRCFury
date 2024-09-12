@@ -63,10 +63,15 @@ namespace VF.Service {
                     tree.Add(1, action.onClip);
                     on.WithAnimation(tree);
                 }
-                
-                var onWhen = smoothed.IsGreaterThan(0.01f);
-                off.TransitionsTo(on).When(onWhen);
-                on.TransitionsTo(off).When(onWhen.Not());
+
+
+                if (depthAction.reverseClip) {
+                    off.TransitionsTo(on).When(fx.Always());
+                } else {
+                    var onWhen = smoothed.IsGreaterThan(0.01f);
+                    off.TransitionsTo(on).When(onWhen);
+                    on.TransitionsTo(off).When(onWhen.Not());
+                }
             }
         }
     }
