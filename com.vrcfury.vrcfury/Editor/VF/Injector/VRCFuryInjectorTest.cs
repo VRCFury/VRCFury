@@ -20,7 +20,7 @@ namespace VF.Injector {
         }
 
         public static void TestUnsafe() {
-            {
+            try {
                 var injector = new VRCFuryInjector();
                 injector.ImportScan(typeof(VFServiceAttribute));
                 injector.ImportScan(typeof(ActionBuilder));
@@ -28,6 +28,18 @@ namespace VF.Injector {
                 injector.Set("componentObject", null);
                 injector.Set(new GlobalsService());
                 injector.GetServices<object>();
+            } catch (Exception e) {
+                throw new Exception("Failed to verify main component build context", e);
+            }
+            try {
+                var injector = new VRCFuryInjector();
+                injector.ImportOne(typeof(ActionClipService));
+                injector.ImportScan(typeof(ActionBuilder));
+                injector.Set("avatarObject", null);
+                injector.Set("componentObject", null);
+                injector.CreateAndFillObject<ActionClipService>();
+            } catch (Exception e) {
+                throw new Exception("Failed to verify action debugger context", e);
             }
             foreach (var builderType in ReflectionUtils.GetTypes(typeof(IVRCFuryBuilder))) {
                 var modelType = ReflectionUtils.GetGenericArgument(builderType, typeof(IVRCFuryBuilder<>));
@@ -38,35 +50,27 @@ namespace VF.Injector {
                     .First();
                 if (editorMethod == null) {
                     throw new Exception($"{builderType.Name} is missing an Editor");
-                } else {
-                    try {
-                        var injector = new VRCFuryInjector();
-                        injector.Set(Activator.CreateInstance(modelType));
-                        injector.Set(typeof(SerializedProperty), null);
-                        injector.Set("avatarObject", null);
-                        injector.Set("componentObject", null);
-                        injector.VerifyMethod(editorMethod);
-                    } catch (Exception e) {
-                        throw new Exception("Failed to verify editor context for " + builderType.Name, e);
-                    }
+                }
+
+                try {
+                    var injector = new VRCFuryInjector();
+                    injector.Set(Activator.CreateInstance(modelType));
+                    injector.Set(typeof(SerializedProperty), null);
+                    injector.Set("avatarObject", null);
+                    injector.Set("componentObject", null);
+                    injector.VerifyMethod(editorMethod);
+                } catch (Exception e) {
+                    throw new Exception("Failed to verify editor context for " + builderType.Name, e);
                 }
 
                 if (typeof(ActionBuilder).IsAssignableFrom(builderType)) {
                     try {
                         var injector = new VRCFuryInjector();
-                        injector.ImportOne(typeof(ActionClipService));
-                        injector.ImportScan(typeof(ActionBuilder));
-                        injector.Set("avatarObject", null);
-                        injector.Set("componentObject", null);
-                        injector.CreateAndFillObject<ActionClipService>();
-                    } catch (Exception e) {
-                        throw new Exception("Failed to verify action debug context for " + builderType.Name, e);
-                    }
-                    try {
-                        var injector = new VRCFuryInjector();
                         injector.Set(Activator.CreateInstance(modelType));
+                        injector.Set("actionName", null);
                         injector.Set("animObject", null);
                         injector.Set("offClip", null);
+                        injector.Set(typeof(ActionClipService), null);
                         var buildMethod = builderType.GetMethod("Build");
                         injector.VerifyMethod(buildMethod);
                     } catch (Exception e) {

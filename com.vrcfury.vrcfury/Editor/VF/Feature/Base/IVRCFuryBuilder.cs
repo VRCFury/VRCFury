@@ -1,7 +1,7 @@
 ﻿namespace VF.Feature.Base {
-    public interface IVRCFuryBuilder<T> : IVRCFuryBuilder where T : class {
+    internal interface IVRCFuryBuilder<T> : IVRCFuryBuilder where T : class {
     }
     
-    public interface IVRCFuryBuilder {
+    internal interface IVRCFuryBuilder {
     }
 }

@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Actions;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
@@ -99,7 +100,7 @@ namespace VF.Feature {
                         if (baseSkin != null) skins.Add(baseSkin);
                     }
                 }
-                VRCFuryActionDrawer.ShowBlendshapeSearchWindow(skins, value => {
+                BlendshapeActionBuilder.ShowBlendshapeSearchWindow(skins, value => {
                     GUIUtility.systemCopyBuffer = value;
                 });
             }) { text = "Copy blendshape to clipboard" });
