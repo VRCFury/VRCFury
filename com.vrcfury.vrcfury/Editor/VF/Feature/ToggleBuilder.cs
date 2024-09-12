@@ -19,6 +19,7 @@ using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
+[FeatureTitle("Toggle")]
 internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ObjectMoveService mover;
     [VFAutowired] private readonly ActionClipService actionClipService;
@@ -354,11 +355,8 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         restingState.ApplyClipToRestingState(savedRestingClip);
     }
 
-    public override string GetEditorTitle() {
-        return "Toggle";
-    }
-
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject, VFGameObject componentObject, Toggle model) {
         var content = new VisualElement();
 
         var savedProp = prop.FindPropertyRelative("saved");
@@ -577,7 +575,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             var output = new VisualElement();
             if (sliderProp.boolValue) {
                 var sliderOptions = new VisualElement();
-                sliderOptions.Add(VRCFuryEditorUtils.Prop(null, "Default %", fieldOverride: VRCFuryEditorUtils.PercentSlider(prop.FindPropertyRelative("defaultSliderValue"))));
+                sliderOptions.Add(VRCFuryEditorUtils.Prop(null, "Default %", fieldOverride: new PercentSlider2(prop.FindPropertyRelative("defaultSliderValue"))));
                 sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("sliderInactiveAtZero"), "Passthrough at 0% (Unusual)", tooltip: "" +
                     "When checked, the slider will be bypassed when set to 0%, meaning that it will not control any properties at all, allowing the properties to resume" +
                     " being controlled by some other toggle or animator layer." +
@@ -639,7 +637,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         ));
 
         content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-            var baseObject = avatarObject != null ? avatarObject : featureBaseObject.root;
+            var baseObject = avatarObject != null ? avatarObject : componentObject.root;
 
             var turnsOff = model.state.actions
                 .OfType<ObjectToggleAction>()
@@ -670,7 +668,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         return content;
     }
 
-    private VisualElement MakeTabbed(string label, VisualElement child) {
+    private static VisualElement MakeTabbed(string label, VisualElement child) {
         var output = new VisualElement();
         output.Add(VRCFuryEditorUtils.WrappedLabel(label).Bold());
         var tabbed = new VisualElement { style = { paddingLeft = 10 } };

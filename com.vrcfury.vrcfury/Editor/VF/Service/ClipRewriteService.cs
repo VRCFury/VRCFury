@@ -6,6 +6,7 @@ using VF.Injector;
 using VF.Utils;
 
 namespace VF.Service {
+    [VFService]
     internal class ClipRewriteService {
         [VFAutowired] private readonly AvatarManager manager;
         private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();

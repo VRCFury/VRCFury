@@ -21,7 +21,20 @@ internal class VRCFuryEditor : VRCFuryComponentEditor<VRCFury> {
     [CustomPropertyDrawer(typeof(VF.Model.Feature.FeatureModel))]
     public class FeatureDrawer : PropertyDrawer {
         public override VisualElement CreatePropertyGUI(SerializedProperty property) {
-            return FeatureFinder.RenderFeatureEditor(property);
+            return FeatureFinder.RenderFeatureEditor(property, (title, bodyContent) => {
+                var wrapper = new VisualElement();
+
+                wrapper.Add(VRCFuryComponentHeader.CreateHeaderOverlay(title));
+
+                if (bodyContent != null) {
+                    var body = new VisualElement();
+                    body.Add(bodyContent);
+                    body.style.marginTop = 5;
+                    wrapper.Add(body);
+                }
+
+                return wrapper;
+            });
         }
     }
     

@@ -15,6 +15,10 @@ using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
+    [FeatureTitle("TPS Scale Fix (Deprecated)")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
+    [FeatureHideInMenu]
     internal class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         
@@ -58,16 +62,14 @@ namespace VF.Feature {
 
                     if (!isTps) return mat;
 
-                    mat = mat.Clone();
-                    if (isTps) {
-                        if (TpsConfigurer.IsLocked(mat)) {
-                            throw new VRCFBuilderException(
-                                "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
-                                $"Please unlock the material on {renderer.owner().GetPath()}");
-                        }
-                        mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
-                        mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
+                    mat = mat.Clone("Needed to mark TPS parameters as animated for TPS Scale Fix");
+                    if (TpsConfigurer.IsLocked(mat)) {
+                        throw new VRCFBuilderException(
+                            "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
+                            $"Please unlock the material on {renderer.owner().GetPath()}");
                     }
+                    mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
+                    mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
                     return mat;
                 }).ToArray();
 
@@ -116,7 +118,8 @@ namespace VF.Feature {
             return scaledProps;
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Error(
                 "This component is deprecated. It still works, but you may wish to migrate from TPS to SPS for" +
@@ -125,22 +128,6 @@ namespace VF.Feature {
                 "This feature will allow Poiyomi TPS to work properly with scaling. While active, avatar scaling, " +
                 "object scaling, or any combination of the two may be used in conjunction with TPS."));
             return c;
-        }
-        
-        public override string GetEditorTitle() {
-            return "TPS Scale Fix (Deprecated)";
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-
-        public override bool ShowInMenu() {
-            return false;
-        }
-
-        public override bool OnlyOneAllowed() {
-            return true;
         }
     }
 }

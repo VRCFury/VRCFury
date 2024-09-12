@@ -16,6 +16,7 @@ namespace VF.Feature {
      * We replace them all with a fake, short 1-second-long clip.
      * (1 second long because that's how long a state lasts in unity if no motion is set)
      */
+    [VFService]
     internal class FixEmptyMotionBuilder : FeatureBuilder {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 

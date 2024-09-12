@@ -6,6 +6,9 @@ using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [FeatureTitle("Remove Built-in Blinking")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class RemoveBlinkingBuilder : FeatureBuilder<RemoveBlinking> {
         [FeatureBuilderAction]
         public void Apply() {
@@ -13,23 +16,12 @@ namespace VF.Feature {
             avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.None;
         }
 
-        public override string GetEditorTitle() {
-            return "Remove Built-in Blinking";
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             return VRCFuryEditorUtils.Info(
                 "This feature will disable blinking in the avatar's descriptor (setting eyelid type to None)." +
                 " This is useful if you are using a VRCFury blink controller on a base avatar, and want to disable their default blinking without messing" +
                 " with the stock files.");
-        }
-
-        public override bool OnlyOneAllowed() {
-            return true;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
         }
     }
 }

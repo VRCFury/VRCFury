@@ -5,8 +5,8 @@ using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
+using VF.Actions;
 using VF.Builder;
-using VF.Component;
 using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
@@ -23,15 +23,17 @@ namespace VF.Service {
     [VFService]
     [VFPrototypeScope]
     internal class ActionClipService {
-        [VFAutowired] private readonly AvatarManager manager;
-        [VFAutowired] private readonly AvatarManager avatarManager;
-        [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
-        [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
-        [VFAutowired] private readonly PhysboneResetService physboneResetService;
-        [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
-        [VFAutowired] private readonly ClipFactoryService clipFactory;
-        [VFAutowired] private readonly GlobalsService globals;
-        [VFAutowired] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly Func<VFGameObject> componentObject;
+        [VFAutowired] [CanBeNull] private readonly AvatarManager manager;
+        [VFAutowired] [CanBeNull] private readonly FullBodyEmoteService fullBodyEmoteService;
+        [VFAutowired] [CanBeNull] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
+        [VFAutowired] [CanBeNull] private readonly PhysboneResetService physboneResetService;
+        [VFAutowired] [CanBeNull] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
+        [VFAutowired] [CanBeNull] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] [CanBeNull] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] [CanBeNull] private readonly GlobalsService globals;
+        private readonly IDictionary<Type,ActionBuilder> modelTypeToBuilder;
 
         private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
         private readonly List<(VFAFloat,string,float)> drivenSyncParams = new List<(VFAFloat,string,float)>();
@@ -39,6 +41,13 @@ namespace VF.Service {
         private readonly List<(VFAFloat,string,float,FeatureBuilder)> drivenTags = new List<(VFAFloat,string,float,FeatureBuilder)>();
 
         private static VFAFloat triggerParam = null; // may be used across multiple actions
+
+        public ActionClipService(List<ActionBuilder> actionBuilders) {
+            modelTypeToBuilder = actionBuilders.ToImmutableDictionary(
+                builder => ReflectionUtils.GetGenericArgument(builder.GetType(), typeof(IVRCFuryBuilder<>)),
+                builder => builder
+            );
+        }
 
         public enum MotionTimeMode {
             Auto,
@@ -50,20 +59,17 @@ namespace VF.Service {
             return LoadStateAdv(name, state, animObjectOverride, motionTime, toggleFeature).onClip;
         }
         
-        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never, ToggleBuilder toggleFeature = null) {
-            var result = LoadStateAdv(name, state, avatarManager.AvatarObject, animObjectOverride ?? avatarManager.CurrentComponentObject, this, motionTime, toggleFeature);
-            result.onClip.name = $"{clipFactory.GetPrefix()}/{name}";
-            return result;
-        }
-
         public class BuiltAction {
             // Don't use fx.GetEmptyClip(), since this clip may be mutated later
             public AnimationClip onClip = VrcfObjectFactory.Create<AnimationClip>();
             public AnimationClip implicitRestingClip = VrcfObjectFactory.Create<AnimationClip>();
             public bool useMotionTime = false;
         }
-        public static BuiltAction LoadStateAdv(string name, State state, VFGameObject avatarObject, VFGameObject animObject, [CanBeNull] ActionClipService service = null, MotionTimeMode motionTime = MotionTimeMode.Never, ToggleBuilder toggleFeature = null) {
+        
+        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never, ToggleBuilder toggleFeature = null) {
             triggerParam = null; // always reset when making an animation
+            var animObject = animObjectOverride ?? componentObject();
+
             if (state == null) {
                 return new BuiltAction();
             }
@@ -87,7 +93,7 @@ namespace VF.Service {
             var offClip = VrcfObjectFactory.Create<AnimationClip>();
 
             var outputClips = actions
-                .Select(a => LoadAction(name, a, offClip, avatarObject, animObject, service, toggleFeature))
+                .Select(a => LoadAction(name, a, offClip, animObject, toggleFeature))
                 .ToList();
 
             bool useMotionTime;
@@ -105,8 +111,8 @@ namespace VF.Service {
                 if (finalLength == 0) finalLength = 1;
                 outputClips = outputClips.Select(clip => {
                     var clipLength = clip.GetLengthInSeconds();
-                    if (clip.IsStatic() && service != null) {
-                        var motionClip = service.clipBuilder.MergeSingleFrameClips(
+                    if (clip.IsStatic() && clipBuilder != null) {
+                        var motionClip = clipBuilder.MergeSingleFrameClips(
                             (0, VrcfObjectFactory.Create<AnimationClip>()),
                             (finalLength, clip)
                         );
@@ -137,7 +143,11 @@ namespace VF.Service {
             }
             finalClip.SetLooping(useLoop);
 
-            return new BuiltAction() {
+            if (clipFactory != null) {
+                finalClip.name = $"{clipFactory.GetPrefix()}/{name}";
+            }
+
+            return new BuiltAction {
                 onClip = finalClip,
                 implicitRestingClip = offClip,
                 useMotionTime = useMotionTime
@@ -145,6 +155,7 @@ namespace VF.Service {
         }
         
         private void AddFullBodyClip(AnimationClip clip) {
+            if (fullBodyEmoteService == null) return;
             var types = clip.GetMuscleBindingTypes();
             if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle)) {
                 types = types.Remove(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle);
@@ -163,7 +174,7 @@ namespace VF.Service {
             }));
         }
 
-        private static AnimationClip LoadAction(string name, Action action, AnimationClip offClip, VFGameObject avatarObject, VFGameObject animObject, [CanBeNull] ActionClipService service, ToggleBuilder toggleFeature = null) {
+        private AnimationClip LoadAction(string name, Action action, AnimationClip offClip, VFGameObject animObject, ToggleBuilder toggleFeature = null) {
             if (action == null) {
                 throw new Exception("Action is corrupt");
             }
@@ -176,19 +187,16 @@ namespace VF.Service {
                 if (isDesktop && !action.desktopActive) return onClip;
             }
 
-            switch (action) {
-                case FlipbookAction flipbook: {
-                    var renderer = flipbook.renderer;
-                    if (renderer == null) break;
+            if (modelTypeToBuilder.TryGetValue(action.GetType(), out var builder)) {
+                var methodInjector = new VRCFuryInjector();
+                methodInjector.Set(action);
+                methodInjector.Set("animObject", animObject);
+                methodInjector.Set("offClip", offClip);
+                var buildMethod = builder.GetType().GetMethod("Build");
+                return (AnimationClip)methodInjector.FillMethod(buildMethod, builder);
+            }
 
-                    // If we animate the frame to a flat number, unity can internally do some weird tweening
-                    // which can result in it being just UNDER our target, (say 0.999 instead of 1), resulting
-                    // in unity displaying frame 0 instead of 1. Instead, we target framenum+0.5, so there's
-                    // leniency around it.
-                    var frameAnimNum = (float)(Math.Floor((double)flipbook.frame) + 0.5);
-                    onClip.SetCurve(renderer, "material._FlipbookCurrentFrame", frameAnimNum);
-                    break;
-                }
+            switch (action) {
                 case ShaderInventoryAction shaderInventoryAction: {
                     var renderer = shaderInventoryAction.renderer;
                     if (renderer == null) break;
@@ -212,42 +220,12 @@ namespace VF.Service {
                     }
                     break;
                 }
-                case MaterialPropertyAction materialPropertyAction: {
-                    var (renderers,type) = MatPropLookup(
-                        materialPropertyAction.affectAllMeshes,
-                        materialPropertyAction.renderer2.asVf()?.GetComponent<Renderer>(),
-                        avatarObject,
-                        materialPropertyAction.propertyName
-                    );
-
-                    foreach (var renderer in renderers) {
-                        void AddOne(string suffix, float value) {
-                            var propertyName = $"material.{materialPropertyAction.propertyName}{suffix}";
-                            onClip.SetCurve(renderer, propertyName, value);
-                        }
-
-                        if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range) {
-                            AddOne("", materialPropertyAction.value);
-                        } else if (type == ShaderUtil.ShaderPropertyType.Color) {
-                            AddOne(".r", materialPropertyAction.valueColor.r);
-                            AddOne(".g", materialPropertyAction.valueColor.g);
-                            AddOne(".b", materialPropertyAction.valueColor.b);
-                            AddOne(".a", materialPropertyAction.valueColor.a);
-                        } else if (type == ShaderUtil.ShaderPropertyType.Vector) {
-                            AddOne(".x", materialPropertyAction.valueVector.x);
-                            AddOne(".y", materialPropertyAction.valueVector.y);
-                            AddOne(".z", materialPropertyAction.valueVector.z);
-                            AddOne(".w", materialPropertyAction.valueVector.w);
-                        }
-                    }
-                    break;
-                }
                 case AnimationClipAction clipAction:
                     var clipActionClip = clipAction.clip.Get();
                     if (clipActionClip == null) break;
 
                     var copy = clipActionClip.Clone();
-                    service?.AddFullBodyClip(copy);
+                    AddFullBodyClip(copy);
                     var rewriter = AnimationRewriter.Combine(
                         ClipRewriter.CreateNearestMatchPathRewriter(
                             animObject: animObject,
@@ -259,23 +237,6 @@ namespace VF.Service {
                     copy.Rewrite(rewriter);
                     onClip = copy;
                     break;
-                case ObjectToggleAction toggle: {
-                    if (toggle.obj == null) {
-                        //Debug.LogWarning("Missing object in action: " + name);
-                        break;
-                    }
-
-                    var onState = true;
-                    if (toggle.mode == ObjectToggleAction.Mode.TurnOff) {
-                        onState = false;
-                    } else if (toggle.mode == ObjectToggleAction.Mode.Toggle) {
-                        onState = !toggle.obj.activeSelf;
-                    }
-
-                    offClip.SetEnabled(toggle.obj, !onState);
-                    onClip.SetEnabled(toggle.obj, onState);
-                    break;
-                }
                 case BlendShapeAction blendShape:
                     var foundOne = false;
                     foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
@@ -326,28 +287,28 @@ namespace VF.Service {
                         throw new Exception("Set an FX Float cannot set built-in vrchat parameters");
                     }
 
-                    if (service == null) break;
-
-                    var myFloat = service.manager.GetFx().NewFloat("vrcfParamDriver");
-                    onClip.SetAap(myFloat, fxFloatAction.value);
-                    service.drivenParams.Add((myFloat, fxFloatAction.name, fxFloatAction.value));
+                    if (manager != null && driveOtherTypesFromFloatService != null) {
+                        var myFloat = manager.GetFx().NewFloat("vrcfParamDriver");
+                        onClip.SetAap(myFloat, fxFloatAction.value);
+                        driveOtherTypesFromFloatService.DriveAutoLater(myFloat, fxFloatAction.name, fxFloatAction.value);
+                    }
                     break;
                 }
                 case BlockBlinkingAction blockBlinkingAction: {
-                    if (service == null) break;
-                    var blockTracking = service.trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingEyes);
+                    if (trackingConflictResolverBuilder == null) break;
+                    var blockTracking = trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingEyes);
                     onClip.SetAap(blockTracking, 1);
                     break;
                 }
                 case BlockVisemesAction blockVisemesAction: {
-                    if (service == null) break;
-                    var blockTracking = service.trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingMouth);
+                    if (trackingConflictResolverBuilder == null) break;
+                    var blockTracking = trackingConflictResolverBuilder.AddInhibitor(name, TrackingConflictResolverBuilder.TrackingMouth);
                     onClip.SetAap(blockTracking, 1);
                     break;
                 }
                 case ResetPhysboneAction resetPhysbone: {
-                    if (resetPhysbone.physBone != null && service != null) {
-                        var param = service.physboneResetService.CreatePhysBoneResetter(new [] { resetPhysbone.physBone.owner() }, name);
+                    if (resetPhysbone.physBone != null && physboneResetService != null) {
+                        var param = physboneResetService.CreatePhysBoneResetter(new [] { resetPhysbone.physBone.owner() }, name);
                         onClip.SetAap(param, 1);
                     }
                     break;
@@ -359,13 +320,13 @@ namespace VF.Service {
                     states.Add(states.Last());
                     var sources = states
                         .Select((substate,i) => {
-                            var loaded = LoadStateAdv("tmp", substate, avatarObject, animObject, service);
+                            var loaded = LoadStateAdv("tmp", substate, animObject);
                             return ((float)i, loaded.onClip);
                         })
                         .ToArray();
 
-                    if (service != null) {
-                        var built = service.clipBuilder.MergeSingleFrameClips(sources);
+                    if (clipBuilder != null) {
+                        var built = clipBuilder.MergeSingleFrameClips(sources);
                         built.UseConstantTangents();
                         onClip.CopyFrom(built);
                     } else {
@@ -378,11 +339,11 @@ namespace VF.Service {
                     break;
                 }
                 case SmoothLoopAction smoothLoopAction: {
-                    var clip1 = LoadStateAdv("tmp", smoothLoopAction.state1, avatarObject, animObject, service);
-                    var clip2 = LoadStateAdv("tmp", smoothLoopAction.state2, avatarObject, animObject, service);
+                    var clip1 = LoadStateAdv("tmp", smoothLoopAction.state1, animObject);
+                    var clip2 = LoadStateAdv("tmp", smoothLoopAction.state2, animObject);
 
-                    if (service != null) {
-                        var built = service.clipBuilder.MergeSingleFrameClips(
+                    if (clipBuilder != null) {
+                        var built = clipBuilder.MergeSingleFrameClips(
                             (0, clip1.onClip),
                             (smoothLoopAction.loopTime / 2, clip2.onClip),
                             (smoothLoopAction.loopTime, clip1.onClip)
@@ -399,61 +360,35 @@ namespace VF.Service {
                     break;
                 }
                 case SyncParamAction syncParamAction: {
-                    if (service == null) break;
                     if (triggerParam == null) {
-                        triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
+                        triggerParam = manager.GetFx().NewFloat(name + " (Param Trigger)");
                         onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
                     }
-                    service.drivenSyncParams.Add((triggerParam, syncParamAction.param, syncParamAction.value));
+                    drivenSyncParams.Add((triggerParam, syncParamAction.param, syncParamAction.value));
                     break;
                 }
                 case ToggleStateAction toggleStateAction: {
-                    if (service == null) break;
                     if (triggerParam == null) {
-                    triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
+                    triggerParam = manager.GetFx().NewFloat(name + " (Param Trigger)");
                     onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
                     }
-                    service.drivenToggles.Add((triggerParam, toggleStateAction.toggle, toggleStateAction.value));
+                    drivenToggles.Add((triggerParam, toggleStateAction.toggle, toggleStateAction.value));
                     break;
                 }
                 case TagStateAction tagStateAction: {
-                    if (service == null) break;
                     if (triggerParam == null) {
-                        triggerParam = service.manager.GetFx().NewFloat(name + " (Param Trigger)");
+                        triggerParam = manager.GetFx().NewFloat(name + " (Param Trigger)");
                         onClip.SetCurve(EditorCurveBinding.FloatCurve("", typeof(Animator), triggerParam.Name()), 1);
                     }
-                    service.drivenTags.Add((triggerParam, tagStateAction.tag, tagStateAction.value, toggleFeature));
+                    drivenTags.Add((triggerParam, tagStateAction.tag, tagStateAction.value, toggleFeature));
                     break;
+                }
+                default: {
+                    throw new Exception($"Unknown action type {action.GetType().Name}");
                 }
             }
 
             return onClip;
-        }
-
-        public static (IList<Renderer>, ShaderUtil.ShaderPropertyType type) MatPropLookup(
-            bool allRenderers,
-            Renderer singleRenderer,
-            VFGameObject avatarObject,
-            [CanBeNull] string propName
-        ) {
-            IList<Renderer> renderers;
-            if (allRenderers) {
-                renderers = avatarObject.GetComponentsInSelfAndChildren<Renderer>();
-            } else {
-                renderers = new[] { singleRenderer };
-            }
-            renderers = renderers.NotNull().ToArray();
-            if (propName == null) {
-                return (renderers, ShaderUtil.ShaderPropertyType.Float);
-            }
-
-            var type = renderers
-                .Select(r => r.GetPropertyType(propName))
-                .Where(t => t.HasValue)
-                .Select(t => t.Value)
-                .DefaultIfEmpty(ShaderUtil.ShaderPropertyType.Float)
-                .First();
-            return (renderers, type);
         }
 
         [FeatureBuilderAction(FeatureOrder.DriveNonFloatTypes)]
@@ -507,13 +442,56 @@ namespace VF.Service {
                     rewrites.Add(floatParam, targetParam);
                 }
             }
+        }
+        
+        public static IList<Renderer> FindRenderers(
+            bool allRenderers,
+            Renderer singleRenderer,
+            VFGameObject avatarObject
+        ) {
+            IList<Renderer> renderers;
+            if (allRenderers) {
+                renderers = avatarObject.GetComponentsInSelfAndChildren<Renderer>();
+            } else {
+                renderers = new[] { singleRenderer };
+            }
+            renderers = renderers.NotNull().ToArray();
+            return renderers;
+        }
 
-            if (rewrites.Count > 0) {
-                foreach (var c in manager.GetAllUsedControllers()) {
-                    c.GetRaw().RewriteParameters(from =>
-                        rewrites.TryGetValue(from, out var to) ? to : from
-                    );
-                }
+        public static ShaderUtil.ShaderPropertyType? FindMaterialPropertyType(
+            IList<Renderer> renderers,
+            string propName
+        ) {
+            return renderers
+                .Select(r => r.GetPropertyType(propName))
+                .NotNull()
+                .DefaultIfEmpty(null)
+                .First();
+        }
+
+        public static MaterialPropertyAction.Type GetMaterialPropertyActionTypeToUse(
+            IList<Renderer> renderers,
+            string propName,
+            MaterialPropertyAction.Type setting,
+            bool forceRedetect
+        ) {
+            if (!forceRedetect && setting != MaterialPropertyAction.Type.LegacyAuto) {
+                return setting;
+            }
+            switch (FindMaterialPropertyType(renderers, propName)) {
+                case ShaderUtil.ShaderPropertyType.Color:
+                    return MaterialPropertyAction.Type.Color;
+                case ShaderUtil.ShaderPropertyType.Vector:
+                    return MaterialPropertyAction.Type.Vector;
+                case MaterialExtensions.StPropertyType:
+                    return MaterialPropertyAction.Type.St;
+                case null:
+                    return setting == MaterialPropertyAction.Type.LegacyAuto
+                        ? MaterialPropertyAction.Type.Float
+                        : setting;
+                default:
+                    return MaterialPropertyAction.Type.Float;
             }
         }
     }

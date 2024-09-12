@@ -128,7 +128,7 @@ namespace VF.Inspector {
                         "Activation distance",
                         tooltip: "Animation will begin at the far distance, and 'max' at the near distance. If you provide a static action or clip," +
                                  " the animation will be fully 'off' at the far distance, and fully 'on' at the near distance.",
-                        fieldOverride: MinMaxSlider(prop.FindPropertyRelative("range"), (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex)
+                        fieldOverride: new DepthActionSlider(prop.FindPropertyRelative("range"), (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex)
                     )
                 , units));
                 c.Add(VRCFuryEditorUtils.BetterProp(
@@ -140,47 +140,6 @@ namespace VF.Inspector {
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("reverseClip"), "Reverse clip (unusual)"));
                 return c;
             }
-        }
-        
-        public static VisualElement MinMaxSlider(SerializedProperty prop, VRCFuryHapticSocket.DepthActionUnits units) {
-            var output = new VisualElement();
-            output.Row();
-            output.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("x")).FlexBasis(50));
-
-            var c = new VisualElement();
-
-            var test = new Label(units == VRCFuryHapticSocket.DepthActionUnits.Plugs ? "Fully\n\u2193 Inserted" : units == VRCFuryHapticSocket.DepthActionUnits.Local ? "Tip inside\n\u2193 1 local-unit" : "Tip\n\u2193 inside 1m");
-            test.style.position = Position.Absolute;
-            test.style.bottom = 15;
-            test.style.fontSize = 9;
-            c.Add(test);
-        
-            var test2 = new Label("Tip at\n\u2193 Entrance");
-            test2.style.position = Position.Absolute;
-            test2.style.bottom = 15;
-            test2.style.left = Length.Percent(25);
-            test2.style.fontSize = 9;
-            c.Add(test2);
-        
-            var test3 = new Label(units == VRCFuryHapticSocket.DepthActionUnits.Plugs ? "Tip 3 plug-lengths\naway \u2193" : units == VRCFuryHapticSocket.DepthActionUnits.Local ? "Tip 3 local-units\naway \u2193" : "Tip 3m\naway \u2193");
-            test3.style.position = Position.Absolute;
-            test3.style.bottom = 15;
-            test3.style.right = 0;
-            test3.style.fontSize = 9;
-            test3.style.unityTextAlign = TextAnchor.UpperRight;
-            c.Add(test3);
-        
-            c.Add(new MinMaxSlider {
-                bindingPath = prop.propertyPath,
-                highLimit = 3,
-                lowLimit = -1
-            });
-
-            output.style.marginTop = 20;
-
-            output.Add(c.FlexGrow(1).FlexBasis(0));
-            output.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("y")).FlexBasis(50));
-            return output;
         }
 
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]

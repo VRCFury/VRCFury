@@ -3,10 +3,12 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [VFService]
     internal class FinalizeControllerBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FinalizeController)]
         public void Apply() {

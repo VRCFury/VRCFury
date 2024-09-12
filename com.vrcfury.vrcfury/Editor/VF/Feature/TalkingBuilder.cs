@@ -8,6 +8,7 @@ using VF.Service;
 
 namespace VF.Feature {
 
+[FeatureTitle("When-Talking State")]
 internal class TalkingBuilder : FeatureBuilder<Talking> {
     [VFAutowired] private readonly ActionClipService actionClipService;
 
@@ -23,11 +24,8 @@ internal class TalkingBuilder : FeatureBuilder<Talking> {
         on.TransitionsTo(off).When(fx.Viseme().IsLessThan(10));
     }
 
-    public override string GetEditorTitle() {
-        return "When-Talking State";
-    }
-
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop) {
         var content = new VisualElement();
         content.Add(VRCFuryEditorUtils.Info("This feature will activate the given animation whenever the avatar is talking."));
         content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));

@@ -115,6 +115,7 @@ namespace VF.Model.StateAction {
         public GameObject renderer2;
         public bool affectAllMeshes;
         public string propertyName;
+        public Type propertyType = Type.Float;
         public float value;
         public Vector4 valueVector;
         public Color valueColor = Color.white;
@@ -127,12 +128,23 @@ namespace VF.Model.StateAction {
                 }
                 renderer = null;
             }
+            if (fromVersion < 2) {
+                propertyType = Type.LegacyAuto;
+            }
             return false;
 #pragma warning restore 0612
         }
 
         public override int GetLatestVersion() {
-            return 1;
+            return 2;
+        }
+
+        public enum Type {
+            Float,
+            Color,
+            Vector,
+            St,
+            LegacyAuto
         }
     }
     

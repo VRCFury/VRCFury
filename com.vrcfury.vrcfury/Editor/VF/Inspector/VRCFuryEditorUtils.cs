@@ -282,7 +282,8 @@ internal static class VRCFuryEditorUtils {
         int labelWidth = 100,
         Func<string,string> formatEnum = null,
         string tooltip = null,
-        VisualElement fieldOverride = null
+        VisualElement fieldOverride = null,
+        bool forceLabelOnOwnLine = false
     ) {
         VisualElement field = null;
         var isCheckbox = false;
@@ -327,7 +328,7 @@ internal static class VRCFuryEditorUtils {
             tooltip,
             field,
             isCheckbox,
-            false,
+            forceLabelOnOwnLine,
             labelWidth
         );
     }
@@ -343,14 +344,19 @@ internal static class VRCFuryEditorUtils {
         var (labelBox, tooltipBox) = CreateTooltip(label, tooltip);
         var wrapper = new VisualElement();
         var addFieldLast = false;
-        if (isCheckbox && labelBox != null) {
+        if (forceLabelOnOwnLine) {
+            if (labelBox != null) {
+                wrapper.Add(labelBox);
+            }
+            addFieldLast = true;
+        } else if (isCheckbox && labelBox != null) {
             var row = new VisualElement().Row().FlexShrink(0);
             field.style.paddingRight = 3;
             row.Add(field);
             labelBox.style.flexShrink = 1;
             row.Add(labelBox);
             wrapper.Add(row);
-        } else if (forceLabelOnOwnLine || (label != null && label.Length > 16) || labelBox == null || field == null) {
+        } else if ((label != null && label.Length > 16) || labelBox == null || field == null) {
             if (labelBox != null) {
                 wrapper.Add(labelBox);
             }
@@ -538,6 +544,7 @@ internal static class VRCFuryEditorUtils {
     
     public static VisualElement Debug(string message = "", Func<string> refreshMessage = null, Func<VisualElement> refreshElement = null, float interval = 1) {
 
+        var loggedError = false;
         if (refreshElement != null) {
             var holder = new VisualElement();
             void Update() {
@@ -548,7 +555,11 @@ internal static class VRCFuryEditorUtils {
                         holder.Add(newContent);
                     }
                 } catch (Exception e) {
-                    holder.Add(Error("Error: " + e.Message));
+                    holder.Add(DebugBox("Error rendering debug info: " + e.Message));
+                    if (!loggedError) {
+                        loggedError = true;
+                        UnityEngine.Debug.LogException(e);
+                    }
                 }
             }
             Update();
@@ -603,6 +614,12 @@ internal static class VRCFuryEditorUtils {
 
     public static VisualElement Warn(string message) {
         var i = Section().BorderColor(Color.yellow).Border(2);
+        i.Add(WrappedLabel(message));
+        return i;
+    }
+    
+    public static VisualElement DebugBox(string message) {
+        var i = Section().BorderColor(Color.gray).Border(2);
         i.Add(WrappedLabel(message));
         return i;
     }
@@ -703,37 +720,6 @@ internal static class VRCFuryEditorUtils {
         return type;
     }
 
-    public class PercentSlider2 : BaseField<float> {
-        private readonly Slider slider;
-        private readonly FloatField text;
-
-        public PercentSlider2() : base(null, null) {
-            this.style.flexDirection = FlexDirection.Row;
-            slider = new Slider(0, 1).Margin(0).FlexShrink(1);
-            slider.style.marginRight = 5;
-            slider.RegisterValueChangedCallback(e => Changed(e.newValue));
-            this.Add(slider);
-            text = new FloatField().Margin(0).FlexBasis(30);
-            text.RegisterValueChangedCallback(e => Changed(e.newValue * 0.01f));
-            this.Add(text);
-        }
-
-        private void Changed(float newValue) {
-            value = Mathf.Clamp(newValue, 0, 1);
-        }
-
-        public override void SetValueWithoutNotify(float newValue) {
-            base.SetValueWithoutNotify(newValue);
-            slider.SetValueWithoutNotify(newValue);
-            text.SetValueWithoutNotify(newValue * 100);
-        }
-    }
-    public static VisualElement PercentSlider(SerializedProperty prop) {
-        var slider = new PercentSlider2();
-        slider.bindingPath = prop.propertyPath;
-        return slider;
-    }
-
     public static VisualElement CheckboxList(SerializedProperty depthActionsList, string label, string tooltip, string sectionTitle, VisualElement sectionBody = null) {
         if (sectionBody == null) sectionBody = List(depthActionsList);
         var container = new VisualElement();
@@ -797,5 +783,4 @@ internal static class VRCFuryEditorUtils {
         return output;
     }
 }
-    
 }

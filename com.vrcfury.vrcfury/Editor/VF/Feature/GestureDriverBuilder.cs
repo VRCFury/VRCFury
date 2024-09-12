@@ -17,6 +17,8 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
 namespace VF.Feature {
+    
+    [FeatureTitle("Gestures")]
     internal class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
@@ -135,11 +137,8 @@ namespace VF.Feature {
             return smoothing.Smooth($"{input.Name()}/Smoothed", target, 0.15f);
         }
 
-        public override string GetEditorTitle() {
-            return "Gestures";
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             return VRCFuryEditorUtils.List(prop.FindPropertyRelative("gestures"));
         }
         
