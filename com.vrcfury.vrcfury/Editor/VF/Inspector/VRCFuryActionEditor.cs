@@ -1,17 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Actions;
 using VF.Builder;
+using VF.Feature.Base;
 using VF.Model;
 using VF.Model.StateAction;
-using VF.Service;
 using VF.Utils;
-using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
 
@@ -74,6 +74,18 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
     }
     
     private static VisualElement RenderInner(SerializedProperty prop) {
+        var modelType = VRCFuryEditorUtils.GetManagedReferenceType(prop);
+        var builderType = FeatureFinder.GetBuilderType(modelType);
+        if (builderType != null) {
+            return FeatureFinder.RenderFeatureEditor(prop, (title, body) => {
+                var output = new VisualElement();
+                if (builderType.GetCustomAttribute<FeatureHideTitleInEditorAttribute>() == null)
+                    output.Add(Title(title));
+                output.Add(body);
+                return output;
+            });
+        }
+        
         var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
 
         var component = prop.serializedObject.targetObject as UnityEngine.Component;
@@ -87,9 +99,6 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
         }
         void ApplyWithoutUndo() {
             prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-        }
-        string GetPath(VFGameObject obj) {
-            return avatarObject == null ? obj.name : obj.GetPath(avatarObject);
         }
 
         switch (type) {
@@ -143,13 +152,6 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mat"), "Material"));
                 return content;
             }
-            case nameof(FlipbookAction): {
-                var output = new VisualElement();
-                output.Add(Title("Poiyomi Flipbook Frame"));
-                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renderer"), "Renderer"));
-                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("frame"), "Frame Number"));
-                return output;
-            }
             case nameof(ShaderInventoryAction): {
                 var output = new VisualElement();
                 output.Add(Title("SCSS Shader Inventory"));
@@ -174,177 +176,11 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
                 content.Add(adv);
                 return content;
             }
-            case nameof(MaterialPropertyAction): {
-                var content = new VisualElement();
-
-                content.Add(Title("Material Property"));
-
-                var affectAllMeshesProp = prop.FindPropertyRelative("affectAllMeshes");
-                var rendererProp = prop.FindPropertyRelative("renderer2");
-                content.Add(RendererSelector(
-                    affectAllMeshesProp,
-                    rendererProp
-                ));
-                
-                var valueFloat = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"), "Value");
-                var valueVector = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueVector"), "Value");
-                var valueColor = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueColor"), "Value");
-
-                var propertyTypeProp = prop.FindPropertyRelative("propertyType");
-                var propertyNameProp = prop.FindPropertyRelative("propertyName");
-                {
-                    var row = new VisualElement().Row();
-                    row.Add(VRCFuryEditorUtils.Prop(propertyNameProp, "Property").FlexGrow(1));
-                    row.Add(VRCFuryEditorUtils.OnChange(propertyNameProp, () => UpdateValueType(true)));
-                    row.Add(new Button(SearchClick) { text = "Search" }.Margin(0));
-                    content.Add(row);
-                }
-
-                var typeBox = new VisualElement().AddTo(content);
-                typeBox.Add(VRCFuryEditorUtils.OnChange(propertyTypeProp, () => UpdateValueType(false)));
-                typeBox.Add(valueFloat);
-                typeBox.Add(valueVector);
-                typeBox.Add(valueColor);
-                
-                typeBox.AddManipulator(new ContextualMenuManipulator(e => {
-                    if (e.menu.MenuItems().Count > 0) {
-                        e.menu.AppendSeparator();
-                    }
-                    e.menu.AppendAction("Force type to Float", a => {
-                        propertyTypeProp.enumValueIndex = (int)MaterialPropertyAction.Type.Float;
-                        propertyTypeProp.serializedObject.ApplyModifiedProperties();
-                    });
-                    e.menu.AppendAction("Force type to Color", a => {
-                        propertyTypeProp.enumValueIndex = (int)MaterialPropertyAction.Type.Color;
-                        propertyTypeProp.serializedObject.ApplyModifiedProperties();
-                    });
-                    e.menu.AppendAction("Force type to Vector", a => {
-                        propertyTypeProp.enumValueIndex = (int)MaterialPropertyAction.Type.Vector;
-                        propertyTypeProp.serializedObject.ApplyModifiedProperties();
-                    });
-                    e.menu.AppendAction("Force type to Texture Scale+Offset", a => {
-                        propertyTypeProp.enumValueIndex = (int)MaterialPropertyAction.Type.St;
-                        propertyTypeProp.serializedObject.ApplyModifiedProperties();
-                    });
-                }));
-                
-                UpdateValueType(false);
-
-                void UpdateValueType(bool redetectType) {
-                    var propName = propertyNameProp.stringValue;
-                    var renderers = ActionClipService.FindRenderers(
-                        affectAllMeshesProp.boolValue,
-                        rendererProp.GetComponent<Renderer>(),
-                        avatarObject
-                    );
-                    var oldType = (MaterialPropertyAction.Type)propertyTypeProp.enumValueIndex;
-                    var newType = ActionClipService.GetMaterialPropertyActionTypeToUse(
-                        renderers, propName, oldType, redetectType);
-                    if (newType != oldType) {
-                        propertyTypeProp.enumValueIndex = (int)newType;
-                        propertyTypeProp.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-                    }
-
-                    valueFloat.SetVisible(newType == MaterialPropertyAction.Type.Float);
-                    valueVector.SetVisible(newType == MaterialPropertyAction.Type.Vector || newType == MaterialPropertyAction.Type.St);
-                    valueColor.SetVisible(newType == MaterialPropertyAction.Type.Color);
-                }
-
-                return content;
-
-                void SearchClick() {
-                    var searchWindow = new VrcfSearchWindow("Material Properties");
-                    GetTreeEntries(searchWindow);
-                    searchWindow.Open(value => {
-                        propertyNameProp.stringValue = value;
-                        Apply();
-                    });
-                }
-
-                void GetTreeEntries(VrcfSearchWindow searchWindow) {
-                    var mainGroup = searchWindow.GetMainGroup();
-                    var renderers = ActionClipService.FindRenderers(
-                        affectAllMeshesProp.boolValue,
-                        rendererProp.GetComponent<Renderer>(),
-                        avatarObject
-                    );
-                    if (renderers.Count == 0) return;
-
-                    foreach (var renderer in renderers) {
-                        if (renderer == null) continue;
-                        var sharedMaterials = renderer.sharedMaterials;
-                        if (sharedMaterials.Length == 0) continue;
-
-                        var rendererGroup = renderers.Count > 1
-                            ? mainGroup.AddGroup("Mesh: " + GetPath(renderer.owner()))
-                            : mainGroup;
-                        foreach (var material in sharedMaterials) {
-                            if (material == null) continue;
-
-                            var matGroup = sharedMaterials.Length > 1
-                                ? rendererGroup.AddGroup("Material: " + material.name)
-                                : rendererGroup;
-                            var shader = material.shader;
-                            
-                            if (shader == null) continue;
-                            
-                            var count = ShaderUtil.GetPropertyCount(shader);
-                            var materialProperties = MaterialEditor.GetMaterialProperties(new Object[]{ material });
-                            for (var i = 0; i < count; i++) {
-                                var propertyName = ShaderUtil.GetPropertyName(shader, i);
-                                var readableName = ShaderUtil.GetPropertyDescription(shader, i);
-                                var propType = ShaderUtil.GetPropertyType(shader, i);
-                                if (propType != ShaderUtil.ShaderPropertyType.Float &&
-                                    propType != ShaderUtil.ShaderPropertyType.Range &&
-                                    propType != ShaderUtil.ShaderPropertyType.Color &&
-                                    propType != ShaderUtil.ShaderPropertyType.Vector &&
-                                    propType != ShaderUtil.ShaderPropertyType.TexEnv
-                                ) continue;
-                                var matProp = System.Array.Find(materialProperties, p => p.name == propertyName);
-                                if ((matProp.flags & MaterialProperty.PropFlags.HideInInspector) != 0) continue;
-
-                                if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
-                                    propertyName += "_ST";
-                                }
-
-                                var prioritizePropName = readableName.Length > 25f;
-                                var entryName = prioritizePropName ? propertyName : readableName;
-                                if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
-                                    entryName += " (Offset/Scale)";
-                                }
-                                if (renderers.Count > 1) {
-                                    entryName += $" (Mesh: {GetPath(renderer.owner())})";
-                                }
-                                if (sharedMaterials.Length > 1) {
-                                    entryName += $" (Mat: {material.name})";
-                                }
-                                entryName += prioritizePropName ? $" ({readableName})" : $" ({propertyName})";
-                                matGroup.Add(entryName, propertyName);
-                            }
-                        }    
-                    }
-                }
-            }
             case nameof(ScaleAction): {
                 var row = new VisualElement();
                 row.Add(Title("Scale"));
                 row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"), "Object"));
                 row.Add( VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("scale"), "Multiplier"));
-                return row;
-            }
-            case nameof(ObjectToggleAction): {
-                var row = new VisualElement().Row();
-
-                row.Add(VRCFuryEditorUtils.Prop(
-                    prop.FindPropertyRelative("mode"),
-                    formatEnum: str => {
-                        if (str == "Toggle") return "Flip State (Deprecated)";
-                        return str;
-                    }
-                ).FlexBasis(100));
-
-                row.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj")).FlexGrow(1));
-
                 return row;
             }
             case nameof(SpsOnAction): {
@@ -373,7 +209,7 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
 
                 var allRenderersProp = prop.FindPropertyRelative("allRenderers");
                 var rendererProp = prop.FindPropertyRelative("renderer");
-                content.Add(RendererSelector(allRenderersProp, rendererProp));
+                content.Add(MaterialPropertyActionBuilder.RendererSelector(allRenderersProp, rendererProp));
 
                 var row = new VisualElement().Row();
                 var blendshapeProp = prop.FindPropertyRelative("blendShape");
@@ -472,37 +308,6 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
         var label = new Label(title);
         label.style.unityFontStyleAndWeight = FontStyle.Bold;
         return label;
-    }
-
-    private static VisualElement RendererSelector(SerializedProperty allRenderersProp, SerializedProperty rendererProp) {
-        var content = new VisualElement();
-
-        var allRenderersField = VRCFuryEditorUtils.Prop(allRenderersProp, "Apply to all renderers");
-        content.Add(allRenderersField);
-
-        VisualElement rendererField;
-        if (VRCFuryEditorUtils.GetPropertyType(rendererProp) == typeof(GameObject)) {
-            rendererField = VRCFuryEditorUtils.Prop(
-                null,
-                "Renderer",
-                fieldOverride: VRCFuryEditorUtils.FilteredGameObjectProp<Renderer>(rendererProp)
-            );
-        } else {
-            rendererField = VRCFuryEditorUtils.Prop(rendererProp, "Renderer");
-        }
-        content.Add(rendererField);
-
-        void UpdateVisibility() {
-            var visible = !allRenderersProp.boolValue;
-            rendererField.SetVisible(visible);
-            if (!visible) {
-                rendererProp.objectReferenceValue = null;
-                rendererProp.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            }
-        }
-        UpdateVisibility();
-        content.Add(VRCFuryEditorUtils.OnChange(allRenderersProp, UpdateVisibility));
-        return content;
     }
 
     [CustomPropertyDrawer(typeof(FlipBookBuilderAction.FlipBookPage))]

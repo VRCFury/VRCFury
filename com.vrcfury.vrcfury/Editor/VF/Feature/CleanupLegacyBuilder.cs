@@ -5,11 +5,13 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Menu;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Feature {
+    [VFService]
     internal class CleanupLegacyBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.CleanupLegacy)]
         public void Apply() {

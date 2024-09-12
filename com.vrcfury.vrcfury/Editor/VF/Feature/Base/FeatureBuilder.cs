@@ -1,20 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Newtonsoft.Json;
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
-using VF.Component;
 using VF.Injector;
 using VF.Inspector;
-using VF.Model;
 using VF.Model.Feature;
-using VF.Model.StateAction;
 using VF.Service;
-using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature.Base {
@@ -76,7 +70,7 @@ namespace VF.Feature.Base {
         }
     }
 
-    internal abstract class FeatureBuilder<ModelType> : FeatureBuilder where ModelType : FeatureModel {
+    internal abstract class FeatureBuilder<ModelType> : FeatureBuilder, IVRCFuryBuilder<ModelType> where ModelType : FeatureModel {
         [NonSerialized] [JsonIgnore] public ModelType model;
     }
 }

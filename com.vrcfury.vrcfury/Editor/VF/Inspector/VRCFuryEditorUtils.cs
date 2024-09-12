@@ -558,7 +558,7 @@ internal static class VRCFuryEditorUtils {
                     holder.Add(DebugBox("Error rendering debug info: " + e.Message));
                     if (!loggedError) {
                         loggedError = true;
-                        UnityEngine.Debug.LogError(e);
+                        UnityEngine.Debug.LogException(e);
                     }
                 }
             }

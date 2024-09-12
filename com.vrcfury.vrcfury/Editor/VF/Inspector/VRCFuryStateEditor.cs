@@ -5,9 +5,11 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Actions;
 using VF.Builder;
 using VF.Component;
 using VF.Feature;
+using VF.Injector;
 using VF.Model;
 using VF.Model.StateAction;
 using VF.Service;
@@ -121,7 +123,13 @@ internal class VRCFuryStateEditor : PropertyDrawer {
             var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
             if (avatarObject == null) return debugInfo;
 
-            var test = ActionClipService.LoadStateAdv("test", actionSet, avatarObject, gameObject);
+            var injector = new VRCFuryInjector();
+            injector.ImportOne(typeof(ActionClipService));
+            injector.ImportScan(typeof(ActionBuilder));
+            injector.Set("avatarObject", avatarObject);
+            injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
+            var mainBuilder = injector.GetService<ActionClipService>();
+            var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject);
             var bindings = test.onClip.GetAllBindings().ToImmutableHashSet();
             var warnings =
                 VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject, avatarObject);
