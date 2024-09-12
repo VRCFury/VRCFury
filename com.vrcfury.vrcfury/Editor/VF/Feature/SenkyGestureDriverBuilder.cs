@@ -104,18 +104,18 @@ internal class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
         
         content.Add(VRCFuryEditorUtils.Info("This feature is designed to be used by Senky only. Implementation may change at any time. If you are not Senky, please use the 'Gesture' feature instead."));
 
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("eyesClosed"), "Eyes Closed"));
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("eyesHappy"), "Eyes Happy"));
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("eyesSad"), "Eyes Sad"));
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("eyesAngry"), "Eyes Angry"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("eyesClosed"), "Eyes Closed"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("eyesHappy"), "Eyes Happy"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("eyesSad"), "Eyes Sad"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("eyesAngry"), "Eyes Angry"));
 
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("mouthBlep"), "Mouth Blep"));
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("mouthSuck"), "Mouth Suck"));
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("mouthSad"), "Mouth Sad"));
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("mouthAngry"), "Mouth Angry"));
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("mouthHappy"), "Mouth Happy"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("mouthBlep"), "Mouth Blep"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("mouthSuck"), "Mouth Suck"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("mouthSad"), "Mouth Sad"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("mouthAngry"), "Mouth Angry"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("mouthHappy"), "Mouth Happy"));
 
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("earsBack"), "Ears Back"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("earsBack"), "Ears Back"));
         
         var adv = new Foldout {
             text = "Advanced",

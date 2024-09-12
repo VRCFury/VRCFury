@@ -91,7 +91,7 @@ namespace VF.Hooks {
                 );
             }
 
-            foreach (var (title,modelType,builderType) in FeatureFinder.GetAllFeaturesForMenu()) {
+            foreach (var (title,modelType,builderType) in FeatureFinder.GetAllFeaturesForMenu<FeatureBuilder>()) {
                 if (title != null) {
                     Add(
                         $"Component/VRCFury/{title} (VRCFury)",

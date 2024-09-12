@@ -496,7 +496,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                     ));
                     single.Add(MakeTabbed(
                         "Then do this until turned off:",
-                        VRCFuryStateEditor.render(prop.FindPropertyRelative(state))
+                        VRCFuryActionSetDrawer.render(prop.FindPropertyRelative(state))
                     ));
                     single.Add(MakeTabbed(
                         "Then blend for this much time:",
@@ -508,7 +508,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                         cout.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(tout)));
                     single.Add(MakeTabbed("Then play this transition out:", cout));
                 } else {
-                    single.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative(state)));
+                    single.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative(state)));
                 }
                 return single;
             }

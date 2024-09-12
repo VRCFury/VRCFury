@@ -49,11 +49,11 @@ internal static class FeatureFinder {
             .All(c => c is VRCFuryComponent || c is Transform);
     }
 
-    public static IEnumerable<Tuple<string,Type, Type>> GetAllFeaturesForMenu() {
+    public static IList<Tuple<string,Type, Type>> GetAllFeaturesForMenu<BaseType>() {
         return modelToBuilder.Value
             .Select(e => {
                 var builderType = e.Value;
-                if (!typeof(FeatureBuilder).IsAssignableFrom(builderType)) {
+                if (!typeof(BaseType).IsAssignableFrom(builderType)) {
                     return null;
                 }
                 if (builderType.GetCustomAttribute<FeatureHideInMenuAttribute>() != null) {
@@ -67,7 +67,8 @@ internal static class FeatureFinder {
                 return Tuple.Create(titleAttribute.Title, e.Key, e.Value);
             })
             .Where(tuple => tuple != null)
-            .OrderBy(tuple => tuple.Item1);
+            .OrderBy(tuple => tuple.Item1)
+            .ToArray();
     }
 
     public static FeatureModel GetFeature(SerializedProperty prop) {

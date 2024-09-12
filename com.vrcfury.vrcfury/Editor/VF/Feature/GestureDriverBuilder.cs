@@ -174,7 +174,7 @@ namespace VF.Feature {
             row.Add(handSigns);
             wrapper.Add(row);
 
-            wrapper.Add(VRCFuryStateEditor.render(gesture.FindPropertyRelative("state")));
+            wrapper.Add(VRCFuryActionSetDrawer.render(gesture.FindPropertyRelative("state")));
 
             var customTransitionTimeProp = gesture.FindPropertyRelative("customTransitionTime");
             var transitionTimeProp = gesture.FindPropertyRelative("transitionTime");

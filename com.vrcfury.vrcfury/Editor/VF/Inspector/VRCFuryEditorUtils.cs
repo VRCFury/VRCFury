@@ -309,7 +309,7 @@ internal static class VRCFuryEditorUtils {
                 }
                 case SerializedPropertyType.Generic: {
                     if (prop.type == "State") {
-                        return VRCFuryStateEditor.render(prop, label, labelWidth, tooltip);
+                        return VRCFuryActionSetDrawer.render(prop, label, labelWidth, tooltip);
                     }
 
                     break;

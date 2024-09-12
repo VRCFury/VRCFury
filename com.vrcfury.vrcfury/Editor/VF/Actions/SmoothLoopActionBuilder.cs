@@ -43,8 +43,8 @@ namespace VF.Actions {
             output.Add(VRCFuryEditorUtils.Info(
                 "This will create an animation smoothly looping between two states." +
                 " You can use this for a breathing cycle or any other type of smooth two-state loop."));
-            output.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state1"), "State A"));
-            output.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("state2"), "State B"));
+            output.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("state1"), "State A"));
+            output.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("state2"), "State B"));
             output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("loopTime"), "Loop time (seconds)"));
             return output;
         }
