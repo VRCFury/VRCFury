@@ -171,7 +171,7 @@ namespace VF.Feature {
 
                     var remoteState = layer.NewState("Recieve Bool Index " + (i + 1));
 
-                    remoteState.TransitionsToExit().When(fx.True().IsTrue());
+                    remoteState.TransitionsToExit().When(fx.Always());
                     remoteState.TransitionsFromEntry().When(fx.IsLocal().IsFalse().And(syncPointer.IsEqualTo(i + 1)));
 
                     for (int j = 0; j < boolsPerSet; j++) {
@@ -182,7 +182,7 @@ namespace VF.Feature {
                 }
                 
                 lastLocalState.TransitionsTo(firstLocal).When(fx.IsLocal().IsTrue());
-                entry.TransitionsToExit().When(fx.True().IsTrue());
+                entry.TransitionsToExit().When(fx.Always());
 
                 Debug.Log($"Bool Toggle Optimizer: Reduced {paramsToOptimize.Count()} bits into {boolsPerSet + 8} bits ({setCount} sets).");
             }
