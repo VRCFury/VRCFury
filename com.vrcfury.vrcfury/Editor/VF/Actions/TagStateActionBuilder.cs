@@ -17,13 +17,13 @@ namespace VF.Actions {
         [VFAutowired] [CanBeNull] private readonly GlobalsService globals;
         [VFAutowired] [CanBeNull] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
         
-        public AnimationClip Build(TagStateAction model, AnimationClip offClip) {
+        public AnimationClip Build(TagStateAction model, string actionName) {
             var onClip = NewClip();
 
             if (globals == null) return onClip;
 
             if (globals.currentTriggerParam == null) {
-                globals.currentTriggerParam = manager.GetFx().NewFloat(globals.currentAnimationClipName + " (Param Trigger)");
+                globals.currentTriggerParam = manager.GetFx().NewFloat(actionName + " (Param Trigger)");
                 onClip.SetAap(globals.currentTriggerParam, 1);
             }
 
