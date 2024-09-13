@@ -27,7 +27,7 @@ namespace VF.Actions {
                 onClip.SetAap(globals.currentTriggerParam, 1);
             }
 
-            driveOtherTypesFromFloatService.DriveTag(globals.currentTriggerParam, model.tag, model.value, globals.currentToggle);
+            driveOtherTypesFromFloatService.DriveTag(globals.currentTriggerParam, model.tag, model.value, globals.currentFeature);
             return onClip;
         }
 

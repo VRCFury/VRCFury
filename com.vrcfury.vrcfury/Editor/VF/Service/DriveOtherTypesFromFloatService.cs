@@ -34,8 +34,8 @@ namespace VF.Service {
             drivenToggles.Add((src, toggle, value));
         }
 
-        public void DriveTag(VFAFloat src, string tag, float value, FeatureBuilder originToggle) {
-            drivenTags.Add((src, tag, value, originToggle));
+        public void DriveTag(VFAFloat src, string tag, float value, FeatureBuilder originFeature) {
+            drivenTags.Add((src, tag, value, originFeature));
         }
 
         public void Drive(VFAFloat input, string output, float value, bool reset = true) {

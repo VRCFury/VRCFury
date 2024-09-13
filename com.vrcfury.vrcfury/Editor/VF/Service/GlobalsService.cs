@@ -23,6 +23,6 @@ namespace VF.Service {
         public Func<int> currentMenuSortPosition;
         public Func<VFGameObject> currentComponentObject;
         public VFAFloat currentTriggerParam;
-        public ToggleBuilder currentToggle;
+        public FeatureBuilder currentFeature;
     }
 }
