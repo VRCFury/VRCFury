@@ -12,6 +12,7 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Feature.Base {
 
@@ -71,23 +72,17 @@ internal static class FeatureFinder {
             .ToArray();
     }
 
-    public static FeatureModel GetFeature(SerializedProperty prop) {
-        var component = (VRCFury)prop.serializedObject.targetObject;
-        return component.content;
-    }
-
-    public delegate VisualElement RenderTitleAndBody(string title, VisualElement bodyContent);
+    public delegate VisualElement RenderTitleAndBody(string title, VisualElement bodyContent, [CanBeNull] Type builderType);
     public static VisualElement RenderFeatureEditor(SerializedProperty prop, RenderTitleAndBody RenderFeatureEditor) {
         var title = "???";
         
         try {
-            var component = (VRCFury)prop.serializedObject.targetObject;
-
-            VFGameObject gameObject = component.gameObject;
+            var gameObject = prop.serializedObject.GetGameObject();
             if (gameObject == null) {
                 return RenderFeatureEditor(
                     title,
-                    VRCFuryEditorUtils.Error("Failed to find game object")
+                    VRCFuryEditorUtils.Error("Failed to find game object"),
+                    null
                 );
             }
             var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject) ?? gameObject.root;
@@ -96,18 +91,21 @@ internal static class FeatureFinder {
             if (modelType == null) {
                 return RenderFeatureEditor(
                     title,
-                    VRCFuryEditorUtils.Error("VRCFury doesn't have code for this feature. Is your VRCFury up to date?")
+                    VRCFuryEditorUtils.Error("VRCFury doesn't have code for this feature. Is your VRCFury up to date?"),
+                    null
                 );
             }
             title = modelType.Name;
-            var found = modelToBuilder.Value.TryGetValue(modelType, out var builderType);
-            if (!found) {
+
+            var builderType = GetBuilderType(modelType);
+            if (builderType == null) {
                 return RenderFeatureEditor(
                     title,
                     VRCFuryEditorUtils.Error(
                         "This feature has been removed in your " +
                         "version of VRCFury. It may have been replaced with a new feature, check the + menu."
-                    )
+                    ),
+                    null
                 );
             }
 
@@ -120,7 +118,8 @@ internal static class FeatureFinder {
             if (builderType.GetCustomAttribute<FeatureRootOnlyAttribute>() != null && !allowRootFeatures) {
                 return RenderFeatureEditor(title, VRCFuryEditorUtils.Error( 
                     "To avoid abuse by prefab creators, this component can only be placed on the root object" +
-                    " containing the avatar descriptor, OR a child object containing ONLY vrcfury components.")
+                    " containing the avatar descriptor, OR a child object containing ONLY vrcfury components."),
+                    builderType
                 );
             }
 
@@ -129,21 +128,26 @@ internal static class FeatureFinder {
                 .DefaultIfEmpty(null)
                 .First();
             if (staticEditorMethod == null) {
-                return RenderFeatureEditor(title, VRCFuryEditorUtils.Error("Failed to find Editor method"));
+                return RenderFeatureEditor(
+                    title,
+                    VRCFuryEditorUtils.Error("Failed to find Editor method"),
+                    builderType
+                );
             }
             
             var injector = new VRCFuryInjector();
-            injector.Set(GetFeature(prop));
+            injector.Set(prop.GetObject());
             injector.Set(prop);
             injector.Set("avatarObject", avatarObject);
             injector.Set("componentObject", gameObject);
             var body = (VisualElement)injector.FillMethod(staticEditorMethod);
-            return RenderFeatureEditor(title, body);
+            return RenderFeatureEditor(title, body, builderType);
         } catch(Exception e) {
             Debug.LogException(e);
             return RenderFeatureEditor(
                 title,
-                VRCFuryEditorUtils.Error("Editor threw an exception, check the unity console")
+                VRCFuryEditorUtils.Error("Editor threw an exception, check the unity console"),
+                null
             );
         }
     }

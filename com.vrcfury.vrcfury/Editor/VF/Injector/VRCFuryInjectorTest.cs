@@ -54,7 +54,7 @@ namespace VF.Injector {
 
                 try {
                     var injector = new VRCFuryInjector();
-                    injector.Set(Activator.CreateInstance(modelType));
+                    injector.Set(modelType, null);
                     injector.Set(typeof(SerializedProperty), null);
                     injector.Set("avatarObject", null);
                     injector.Set("componentObject", null);

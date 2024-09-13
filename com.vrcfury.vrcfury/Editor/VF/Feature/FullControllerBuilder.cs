@@ -392,9 +392,8 @@ namespace VF.Feature {
 
                 void SelectButtonPress() {
                     var menu = new GenericMenu();
-                    
-                    var model = FeatureFinder.GetFeature(prop) as FullController;
-                    if (model == null) return;
+
+                    if (!(prop.serializedObject.GetVrcFuryFeature() is FullController model)) return;
                     var alreadySmoothedParams = model.smoothedPrms
                         .Select(s => s.name)
                         .ToImmutableHashSet();

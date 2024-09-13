@@ -70,27 +70,13 @@ internal class VRCFuryActionDrawer : PropertyDrawer {
     }
     
     private static VisualElement RenderInner(SerializedProperty prop) {
-        var modelType = VRCFuryEditorUtils.GetManagedReferenceType(prop);
-        var builderType = FeatureFinder.GetBuilderType(modelType);
-        if (builderType != null) {
-            return FeatureFinder.RenderFeatureEditor(prop, (title, body) => {
-                var output = new VisualElement();
-                if (builderType.GetCustomAttribute<FeatureHideTitleInEditorAttribute>() == null)
-                    output.Add(Title(title));
-                output.Add(body);
-                return output;
-            });
-        }
-        
-        var type = VRCFuryEditorUtils.GetManagedReferenceTypeName(prop);
-
-        var component = prop.serializedObject.targetObject as UnityEngine.Component;
-        var avatarObject = VRCAvatarUtils.GuessAvatarObject(component);
-        if (avatarObject == null) {
-            avatarObject = component.owner().root;
-        }
-
-        return VRCFuryEditorUtils.WrappedLabel($"Unknown action type: {type}");
+        return FeatureFinder.RenderFeatureEditor(prop, (title, body, builderType) => {
+            var output = new VisualElement();
+            if (builderType?.GetCustomAttribute<FeatureHideTitleInEditorAttribute>() == null)
+                output.Add(Title(title));
+            output.Add(body);
+            return output;
+        });
     }
 
     public static VisualElement Title(string title) {
