@@ -242,7 +242,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
 
         AnimationClip restingClip;
         if (weight != null) {
-            var clip = actionClipService.LoadState(onName, action, null, ActionClipService.MotionTimeMode.Always, toggleFeature: this);
+            var clip = actionClipService.LoadState(onName, action, null, ActionClipService.MotionTimeMode.Always);
             inState = onState = layer.NewState(onName);
             onState.WithAnimation(clip).MotionTime(weight);
             onState.TransitionsToExit().When(onCase.Not());
@@ -286,7 +286,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
             restingClip = clip;
         } else {
-            var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
+            var clip = actionClipService.LoadState(onName, action);
             inState = onState = layer.NewState(onName).WithAnimation(clip);
             onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
             restingClip = clip;

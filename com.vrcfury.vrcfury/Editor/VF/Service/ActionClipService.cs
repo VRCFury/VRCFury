@@ -41,8 +41,8 @@ namespace VF.Service {
             Always
         }
 
-        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never, ToggleBuilder toggleFeature = null) {
-            return LoadStateAdv(name, state, animObjectOverride, motionTime, toggleFeature).onClip;
+        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
+            return LoadStateAdv(name, state, animObjectOverride, motionTime).onClip;
         }
         
         public class BuiltAction {

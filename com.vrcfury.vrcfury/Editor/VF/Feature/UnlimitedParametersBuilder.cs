@@ -256,19 +256,6 @@ namespace VF.Feature {
             return paramsToOptimize.ToList();
         }
 
-        public override string GetEditorTitle() {
-            return "Unlimited Params (BETA)";
-        }
-
-        public override bool OnlyOneAllowed() {
-            return true;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
         [FeatureEditor]
         public static VisualElement Editor() {
             var content = new VisualElement();
