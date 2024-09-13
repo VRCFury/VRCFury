@@ -19,6 +19,7 @@ using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
+[FeatureTitle("Toggle")]
 internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ObjectMoveService mover;
     [VFAutowired] private readonly ActionClipService actionClipService;
@@ -27,6 +28,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ClipRewriteService clipRewriteService;
     [VFAutowired] private readonly ClipFactoryService clipFactory;
     [VFAutowired] private readonly ClipBuilderService clipBuilder;
+    [VFAutowired] private readonly GlobalsService globals;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFCondition isOn;
@@ -102,6 +104,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction]
     public void Apply() {
+        globals.currentToggle = this;
         var fx = GetFx();
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
@@ -245,14 +248,14 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             onState.TransitionsToExit().When(onCase.Not());
             restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
         } else if (model.hasTransition) {
-            var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
-            var inClip = actionClipService.LoadState(onName + " In", inAction, toggleFeature: this);
+            var clip = actionClipService.LoadState(onName, action);
+            var inClip = actionClipService.LoadState(onName + " In", inAction);
             // if clip is empty, copy last frame of transition
             if (clip.GetAllBindings().Length == 0) {
                 clip = inClip.GetLastFrame();
             }
             
-            var outClip = model.simpleOutTransition ? (originalInAction == null ? inClip.Clone() : actionClipService.LoadState(onName + " Out", originalInAction, toggleFeature: this))  : actionClipService.LoadState(onName + " Out", outAction, toggleFeature: this);
+            var outClip = model.simpleOutTransition ? (originalInAction == null ? inClip.Clone() : actionClipService.LoadState(onName + " Out", originalInAction))  : actionClipService.LoadState(onName + " Out", outAction);
             var outSpeed = model.simpleOutTransition ? -1 : 1;
             
             // Copy "object enabled" and "material" states to in and out clips if they don't already have them
@@ -371,11 +374,8 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         restingState.ApplyClipToRestingState(savedRestingClip);
     }
 
-    public override string GetEditorTitle() {
-        return "Toggle";
-    }
-
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject, VFGameObject componentObject, Toggle model) {
         var content = new VisualElement();
 
         var savedProp = prop.FindPropertyRelative("saved");
@@ -564,7 +564,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                     ));
                     single.Add(MakeTabbed(
                         "Then do this until turned off:",
-                        VRCFuryStateEditor.render(prop.FindPropertyRelative(state))
+                        VRCFuryActionSetDrawer.render(prop.FindPropertyRelative(state))
                     ));
                     single.Add(MakeTabbed(
                         "Then blend for this much time:",
@@ -576,7 +576,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                         cout.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(tout)));
                     single.Add(MakeTabbed("Then play this transition out:", cout));
                 } else {
-                    single.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative(state)));
+                    single.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative(state)));
                 }
                 return single;
             }
@@ -594,7 +594,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             var output = new VisualElement();
             if (sliderProp.boolValue) {
                 var sliderOptions = new VisualElement();
-                sliderOptions.Add(VRCFuryEditorUtils.Prop(null, "Default %", fieldOverride: VRCFuryEditorUtils.PercentSlider(prop.FindPropertyRelative("defaultSliderValue"))));
+                sliderOptions.Add(VRCFuryEditorUtils.Prop(null, "Default %", fieldOverride: new PercentSlider2(prop.FindPropertyRelative("defaultSliderValue"))));
                 sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("sliderInactiveAtZero"), "Passthrough at 0% (Unusual)", tooltip: "" +
                     "When checked, the slider will be bypassed when set to 0%, meaning that it will not control any properties at all, allowing the properties to resume" +
                     " being controlled by some other toggle or animator layer." +
@@ -656,7 +656,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         ));
 
         content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-            var baseObject = avatarObject != null ? avatarObject : featureBaseObject.root;
+            var baseObject = avatarObject != null ? avatarObject : componentObject.root;
 
             var turnsOff = model.state.actions
                 .OfType<ObjectToggleAction>()
@@ -687,7 +687,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         return content;
     }
 
-    private VisualElement MakeTabbed(string label, VisualElement child) {
+    private static VisualElement MakeTabbed(string label, VisualElement child) {
         var output = new VisualElement();
         output.Add(VRCFuryEditorUtils.WrappedLabel(label).Bold());
         var tabbed = new VisualElement { style = { paddingLeft = 10 } };

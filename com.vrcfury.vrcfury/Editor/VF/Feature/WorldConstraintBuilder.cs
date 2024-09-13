@@ -16,6 +16,7 @@ using VRC.SDK3.Dynamics.Constraint.Components;
 #endif
 
 namespace VF.Feature {
+    [FeatureTitle("Droppable (World Constraint)")]
     internal class WorldConstraintBuilder : FeatureBuilder<WorldConstraint> {
 
         [VFAutowired] private readonly DirectBlendTreeService directTree;
@@ -73,11 +74,8 @@ namespace VF.Feature {
 #endif
         }
 
-        public override string GetEditorTitle() {
-            return "Droppable (World Constraint)";
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info("This component will allow you to 'drop' this object in the world, whenever you enable the toggle added in your menu."));
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("menuPath"), "Menu Path", tooltip: ToggleBuilder.menuPathTooltip));

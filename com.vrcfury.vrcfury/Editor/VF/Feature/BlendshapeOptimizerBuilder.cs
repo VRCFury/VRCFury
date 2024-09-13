@@ -16,15 +16,13 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
 namespace VF.Feature {
+    [FeatureTitle("Blendshape Optimizer")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class BlendshapeOptimizerBuilder : FeatureBuilder<BlendshapeOptimizer> {
-        
-        static string logOutput = "";
-        
-        public override string GetEditorTitle() {
-            return "Blendshape Optimizer";
-        }
-        
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will automatically bake all non-animated blendshapes into the mesh," +
@@ -33,18 +31,11 @@ namespace VF.Feature {
             return content;
         }
 
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-        
-        public override bool OnlyOneAllowed() {
-            return true;
-        }
-
         [FeatureBuilderAction(FeatureOrder.BlendshapeOptimizer)]
         public void Apply() {
             var keepMmdShapes = allFeaturesInRun.Any(f => f is MmdCompatibility);
 
+            var logOutput = "";
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 var mesh = skin.GetMesh();
                 if (mesh == null) continue;

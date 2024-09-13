@@ -15,6 +15,7 @@ using VRC.SDKBase;
 
 namespace VF.Feature {
 
+[FeatureTitle("Advanced Visemes")]
 internal class VisemesBuilder : FeatureBuilder<Visemes> {
     [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
     [VFAutowired] private readonly ActionClipService actionClipService;
@@ -23,7 +24,7 @@ internal class VisemesBuilder : FeatureBuilder<Visemes> {
     [VFAutowired] private readonly SmoothingService smooth;
     [VFAutowired] private readonly ClipFactoryService clipFactory;
 
-    private readonly string[] visemeNames = {
+    private static readonly string[] visemeNames = {
         "sil", "PP", "FF", "TH", "DD", "kk", "CH", "SS", "nn", "RR", "aa", "E", "I", "O", "U"
     };
     
@@ -99,11 +100,8 @@ internal class VisemesBuilder : FeatureBuilder<Visemes> {
         });
     }
 
-    public override string GetEditorTitle() {
-        return "Advanced Visemes";
-    }
-
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop) {
         var content = new VisualElement();
         content.Add(VRCFuryEditorUtils.Info(
             "This feature will allow you to use animations for your avatar's visemes."

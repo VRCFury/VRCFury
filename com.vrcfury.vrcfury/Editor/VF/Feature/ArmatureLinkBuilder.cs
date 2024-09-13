@@ -13,14 +13,11 @@ using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
-
+    [FeatureTitle("Armature Link")]
     internal class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
 
-        public override string GetEditorTitle() {
-            return "Armature Link";
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop, ArmatureLink model, VFGameObject avatarObject) {
             var container = new VisualElement();
             
             container.Add(VRCFuryEditorUtils.Info(

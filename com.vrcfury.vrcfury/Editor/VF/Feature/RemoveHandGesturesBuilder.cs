@@ -8,6 +8,9 @@ using VF.Model.Feature;
 using VF.Utils;
 
 namespace VF.Feature {
+    [FeatureTitle("Remove Built-in Hand Gestures")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class RemoveHandGesturesBuilder : FeatureBuilder<RemoveHandGestures2> {
         [FeatureBuilderAction]
         public void Apply() {
@@ -40,23 +43,12 @@ namespace VF.Feature {
             });
         }
 
-        public override string GetEditorTitle() {
-            return "Remove Built-in Hand Gestures";
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             return VRCFuryEditorUtils.Info(
                 "This feature will remove all usages of hand gestures within the avatar's default animator controllers." +
                 " This is useful if you are using VRCFury to modify a base avatar, and want to disable their default gestures without messing" +
                 " with the stock controllers.");
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-        
-        public override bool OnlyOneAllowed() {
-            return true;
         }
     }
 }

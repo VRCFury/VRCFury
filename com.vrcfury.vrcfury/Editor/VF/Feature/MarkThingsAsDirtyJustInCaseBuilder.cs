@@ -1,7 +1,9 @@
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 
 namespace VF.Feature {
+    [VFService]
     internal class MarkThingsAsDirtyJustInCaseBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.MarkThingsAsDirtyJustInCase)]
         public void Apply() {

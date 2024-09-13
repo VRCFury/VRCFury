@@ -65,10 +65,14 @@ namespace VF.Builder {
             var controls = FindControlsWithName(parentMenu, controlName);
             if (controls.Length == 0) return false;
 
+            var changed = false;
             foreach (var control in controls) {
-                control.icon = icon;
+                if (control.icon != icon) {
+                    changed = true;
+                    control.icon = icon;
+                }
             }
-            return true;
+            return changed;
         }
 
         public bool Move(string from, string to) {

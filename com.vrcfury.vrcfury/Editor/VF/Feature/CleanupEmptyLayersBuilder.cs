@@ -6,6 +6,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Hooks;
+using VF.Injector;
 using VF.Service;
 using VF.Utils;
 
@@ -14,6 +15,7 @@ namespace VF.Feature {
      * This builder removes animation bindings that do nothing, for cleanliness, to save space,
      * and to avoid including assets (like materials) that are referenced in animations but not actually used
      */
+    [VFService]
     internal class CleanupEmptyLayersBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.CleanupEmptyLayers)]
         public void Apply() {

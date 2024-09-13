@@ -15,6 +15,9 @@ using Object = UnityEngine.Object;
 
 namespace VF.Feature {
 
+[FeatureTitle("Zawoo Integration")]
+[FeatureRootOnly]
+[FeatureHideInMenu]
 internal class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
 
     private enum Type { Canine, Anthro }
@@ -112,11 +115,8 @@ internal class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         return asset;
     }
 
-    public override string GetEditorTitle() {
-        return "Zawoo Integration";
-    }
-
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop) {
         var content = new VisualElement();
 
         content.Add(VRCFuryEditorUtils.Error(
@@ -131,14 +131,6 @@ internal class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
         foldout.contentContainer.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("submenu"), "Folder name in menu"));
 
         return content;
-    }
-    
-    public override bool AvailableOnRootOnly() {
-        return true;
-    }
-
-    public override bool ShowInMenu() {
-        return false;
     }
 }
 
