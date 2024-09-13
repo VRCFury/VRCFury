@@ -26,10 +26,13 @@ using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
+    [FeatureTitle("Full Controller")]
     internal class FullControllerBuilder : FeatureBuilder<FullController> {
         [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
+
+        public string injectSpsDepthParam = null;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -88,12 +91,12 @@ namespace VF.Feature {
                 manager.GetMenu().MergeMenu(prefix, copy);
             }
 
-            foreach (var receiver in GetBaseObject().GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
+            foreach (var receiver in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                 if (rewrittenParams.ContainsKey(receiver.parameter)) {
                     receiver.parameter = RewriteParamName(receiver.parameter);
                 }
             }
-            foreach (var physbone in GetBaseObject().GetComponentsInSelfAndChildren<VRCPhysBone>()) {
+            foreach (var physbone in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCPhysBone>()) {
                 if (rewrittenParams.ContainsKey(physbone.parameter + "_IsGrabbed")
                     || rewrittenParams.ContainsKey(physbone.parameter + "_Angle")
                     || rewrittenParams.ContainsKey(physbone.parameter + "_Stretch")
@@ -158,7 +161,7 @@ namespace VF.Feature {
             addOtherFeature(new Toggle {
                 name = toggleParam,
                 state = new State {
-                    actions = { new ObjectToggleAction { obj = GetBaseObject(), mode = ObjectToggleAction.Mode.TurnOn} }
+                    actions = { new ObjectToggleAction { obj = GetBaseObject(model, featureBaseObject), mode = ObjectToggleAction.Mode.TurnOn} }
                 },
                 addMenuItem = false,
                 paramOverride = toggleParam,
@@ -177,6 +180,12 @@ namespace VF.Feature {
         private string RewriteParamNameUncached(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (VRChatGlobalParams.Contains(name)) return name;
+            if (name == model.injectSpsDepthParam) {
+                if (injectSpsDepthParam == null) {
+                    injectSpsDepthParam = manager.MakeUniqueParamName(name);
+                }
+                return injectSpsDepthParam;
+            }
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
                     var prms = p.parameters.Get();
@@ -207,7 +216,7 @@ namespace VF.Feature {
             return manager.MakeUniqueParamName(name);
         }
 
-        private string RewritePath(string path) {
+        private static string RewritePath(FullController model, string path) {
             foreach (var rewrite in model.rewriteBindings) {
                 var from = rewrite.from;
                 if (from == null) from = "";
@@ -245,9 +254,9 @@ namespace VF.Feature {
 
             // Rewrite clips
             ((AnimatorController)from).Rewrite(AnimationRewriter.Combine(
-                AnimationRewriter.RewritePath(RewritePath),
+                AnimationRewriter.RewritePath(path => RewritePath(model, path)),
                 ClipRewriter.CreateNearestMatchPathRewriter(
-                    animObject: GetBaseObject(),
+                    animObject: GetBaseObject(model, featureBaseObject),
                     rootObject: avatarObject,
                     rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
                 ),
@@ -258,17 +267,6 @@ namespace VF.Feature {
             // Rewrite params
             // (we do this after rewriting paths to ensure animator bindings all hit "")
             from.RewriteParameters(RewriteParamName);
-
-            if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                var layer0 = from.GetLayer(0);
-                if (layer0 != null && layer0.mask == null) {
-                    throw new VRCFBuilderException(
-                        "A VRCFury full controller is configured to merge in a Gesture controller," +
-                        " but the controller does not have a Base Mask set. Beware that Gesture controllers" +
-                        " should typically be used for animating FINGERS ONLY. If your controller animates" +
-                        " non-humanoid transforms, they should typically be merged into FX instead!");
-                }
-            }
 
             var myLayers = from.GetLayers();
 
@@ -323,13 +321,9 @@ namespace VF.Feature {
             }
         }
 
-        VFGameObject GetBaseObject() {
+        private static VFGameObject GetBaseObject(FullController model, VFGameObject componentObject) {
             if (model.rootObjOverride) return model.rootObjOverride;
-            return featureBaseObject;
-        }
-
-        public override string GetEditorTitle() {
-            return "Full Controller";
+            return componentObject;
         }
         
         [CustomPropertyDrawer(typeof(FullController.ControllerEntry))]
@@ -398,9 +392,8 @@ namespace VF.Feature {
 
                 void SelectButtonPress() {
                     var menu = new GenericMenu();
-                    
-                    var model = FeatureFinder.GetFeature(prop) as FullController;
-                    if (model == null) return;
+
+                    if (!(prop.serializedObject.GetVrcFuryFeature() is FullController model)) return;
                     var alreadySmoothedParams = model.smoothedPrms
                         .Select(s => s.name)
                         .ToImmutableHashSet();
@@ -450,7 +443,8 @@ namespace VF.Feature {
             }
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject, VFGameObject componentObject, FullController model) {
             var content = new VisualElement();
             
             content.Add(VRCFuryEditorUtils.Info(
@@ -518,6 +512,7 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootObjOverride"), "(Deprecated) Root object override"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "(Deprecated) Make all unsynced params global"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allowMissingAssets"), "(Deprecated) Don't fail if assets are missing"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsDepthParam"), "Inject nearest SPS depth (in plug lengths) as a parameter"));
 
             content.Add(adv);
 
@@ -525,7 +520,7 @@ namespace VF.Feature {
                 var debug = new VisualElement();
                 if (avatarObject == null) return debug;
                 
-                var baseObject = GetBaseObject();
+                var baseObject = GetBaseObject(model, componentObject);
                 var controllers = model.controllers
                     .Select(c => c?.controller?.Get() as AnimatorController)
                     .NotNull()
@@ -533,7 +528,7 @@ namespace VF.Feature {
                 var usesWdOff = controllers
                     .SelectMany(c => new AnimatorIterator.States().From(c))
                     .Any(state => !state.writeDefaultValues);
-                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(controllers, avatarObject, baseObject, RewritePath, suggestPathRewrites: true).ToList();
+                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(controllers, avatarObject, baseObject, path => RewritePath(model, path), suggestPathRewrites: true).ToList();
                 if (usesWdOff) {
                     warnings.Add(VRCFuryEditorUtils.Warn(
                         "This controller uses WD off!" +

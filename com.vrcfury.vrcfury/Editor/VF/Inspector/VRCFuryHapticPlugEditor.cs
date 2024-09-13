@@ -165,30 +165,21 @@ namespace VF.Inspector {
                 return c;
             }, enableSps));
 
-            var enableDepthAnimationsProp = serializedObject.FindProperty("enableDepthAnimations");
-            container.Add(VRCFuryEditorUtils.BetterProp(
-                enableDepthAnimationsProp,
+            // Depth Animations
+            var list = serializedObject.FindProperty("depthActions2");
+            container.Add(VRCFuryEditorUtils.CheckboxList(
+                list,
                 "Enable Depth Animations",
-                tooltip: "Allows you to animate anything based on the proximity of a socket near this plug"
+                "Allows you to animate anything based on the proximity of a socket near this plug",
+                "Depth Animations",
+                VRCFuryEditorUtils.List(list, () => {
+                    VRCFuryEditorUtils.AddToList(list, newAction => {
+                        newAction.FindPropertyRelative("range").vector2Value = new Vector2(-1, 0);
+                        newAction.FindPropertyRelative("units").enumValueIndex =
+                            (int)VRCFuryHapticSocket.DepthActionUnits.Plugs;
+                    });
+                })
             ));
-            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (!enableDepthAnimationsProp.boolValue) return new VisualElement();
-                var da = VRCFuryEditorUtils.Section("Depth Animations");
-                
-                da.Add(VRCFuryEditorUtils.Info(
-                    "If you provide a non-static (moving) animation clip, the clip will run from start " +
-                    "to end depending on penetration depth. Otherwise, it will animate from 'off' to 'on' depending on depth."));
-                da.Add(VRCFuryEditorUtils.Info(
-                    "Distance = 0 : Plug is entirely inside socket\n" +
-                    "Distance = 1 : Tip of plug is touching socket\n" +
-                    "Distance > 1 : Plug is approaching socket\n" +
-                    "1 Unit is the length of the plug"
-                ));
-                
-                da.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("depthActions")));
-
-                return da;
-            }, enableDepthAnimationsProp));
 
             container.Add(GetHapticsSection());
 
@@ -215,19 +206,6 @@ namespace VF.Inspector {
             var el = VRCFuryEditorUtils.Section("Haptics");
             el.Add(VRCFuryEditorUtils.Error("Haptics have been disabled in the VRCFury unity settings"));
             return el;
-        }
-        
-        [CustomPropertyDrawer(typeof(VRCFuryHapticPlug.PlugDepthAction))]
-        public class PlugDepthActionDrawer : PropertyDrawer {
-            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var c = new VisualElement();
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("state")));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("startDistance"), "Distance when animation begins"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("endDistance"), "Distance when animation is maxed"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
-                return c;
-            }
         }
 
         public static VisualElement ConstraintWarning(UnityEngine.Component c, bool isSocket = false) {
@@ -452,18 +430,48 @@ namespace VF.Inspector {
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
-            var bakeRoot = GameObjects.Create("BakedSpsPlug", transform);
-            bakeRoot.localPosition = localPosition;
-            bakeRoot.localRotation = localRotation;
+            var localSpace = GameObjects.Create("BakedSpsPlug", transform);
+            localSpace.localPosition = localPosition;
+            localSpace.localRotation = localRotation;
+
+            var worldSpace = GameObjects.Create("WorldSpace", localSpace);
+            ConstraintUtils.MakeWorldSpace(worldSpace);
 
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
-            var senders = GameObjects.Create("Senders", bakeRoot);
-            hapticContactsService.AddSender(senders, Vector3.zero, "Length", worldLength, new [] { HapticUtils.CONTACT_PEN_MAIN }, useHipAvoidance: plug.useHipAvoidance);
-            hapticContactsService.AddSender(senders, Vector3.zero, "WidthHelper", Mathf.Max(0.01f, worldLength - worldRadius*2), new [] { HapticUtils.CONTACT_PEN_WIDTH }, useHipAvoidance: plug.useHipAvoidance);
-            hapticContactsService.AddSender(senders, halfWay, "Envelope", worldRadius, new [] { HapticUtils.CONTACT_PEN_CLOSE }, rotation: capsuleRotation, height: worldLength, useHipAvoidance: plug.useHipAvoidance);
-            hapticContactsService.AddSender(senders, Vector3.zero, "Root", 0.01f, new [] { HapticUtils.CONTACT_PEN_ROOT }, useHipAvoidance: plug.useHipAvoidance);
-            
+            var senders = GameObjects.Create("Senders", localSpace);
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = senders,
+                objName = "Length",
+                radius = worldLength,
+                tags = new [] { HapticUtils.CONTACT_PEN_MAIN },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = senders,
+                objName = "WidthHelper",
+                radius = Mathf.Max(0.01f, worldLength - worldRadius*2),
+                tags = new [] { HapticUtils.CONTACT_PEN_WIDTH },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = senders,
+                pos = halfWay,
+                objName = "Envelope",
+                radius = worldRadius,
+                tags = new [] { HapticUtils.CONTACT_PEN_CLOSE },
+                rotation = capsuleRotation,
+                height = worldLength,
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                obj = worldSpace,
+                objName = "Sender - Root",
+                radius = 0.01f,
+                tags = new [] { HapticUtils.CONTACT_PEN_ROOT },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+
             // TODO: Check if there are 0 renderers,
             // or if there are 0 materials on any of the renderers
 
@@ -479,7 +487,7 @@ namespace VF.Inspector {
                 rendererResults = renderers.Select(renderer => {
                     var owner = renderer.owner();
                     try {
-                        var skin = TpsConfigurer.NormalizeRenderer(renderer, bakeRoot, worldLength);
+                        var skin = TpsConfigurer.NormalizeRenderer(renderer, localSpace, worldLength);
 
                         var spsBlendshapes = plug.spsBlendshapes
                             .Where(b => skin.HasBlendshape(b))
@@ -489,7 +497,7 @@ namespace VF.Inspector {
 
                         var activeFromMask = PlugMaskGenerator.GetMask(skin, plug);
                         if (plug.enableSps && plug.spsAutorig) {
-                            SpsAutoRigger.AutoRig(skin, bakeRoot, worldLength, worldRadius, activeFromMask);
+                            SpsAutoRigger.AutoRig(skin, localSpace, worldLength, worldRadius, activeFromMask);
                         }
 
                         var spsBaked = plug.enableSps ? SpsBaker.Bake(skin, tmpDir, activeFromMask, false, spsBlendshapes) : null;
@@ -504,16 +512,16 @@ namespace VF.Inspector {
                                 if (!BuildTargetUtils.IsDesktop()) return mat;
 
                                 if (plug.enableSps) {
-                                    var copy = mat.Clone();
+                                    var copy = mat.Clone("Needed to swap shader to SPS");
                                     if (finishedCopies.Contains(copy)) return copy;
                                     finishedCopies.Add(copy);
                                     SpsConfigurer.ConfigureSpsMaterial(skin, copy, worldLength,
                                         spsBaked,
-                                        plug, bakeRoot, spsBlendshapes);
+                                        plug, localSpace, spsBlendshapes);
                                     return copy;
                                 }
                                 if (plug.configureTps && TpsConfigurer.IsTps(mat)) {
-                                    var copy = mat.Clone();
+                                    var copy = mat.Clone("Needed to change properties for TPS autoconfiguration");
                                     if (finishedCopies.Contains(copy)) return copy;
                                     finishedCopies.Add(copy);
                                     TpsConfigurer.ConfigureTpsMaterial(skin, copy, worldLength,
@@ -544,15 +552,6 @@ namespace VF.Inspector {
                 }).ToArray();
             }
 
-            if (EditorApplication.isPlaying) {
-                foreach (var light in bakeRoot.GetComponentsInSelfAndChildren<Light>()) {
-                    light.hideFlags |= HideFlags.HideInHierarchy;
-                }
-                foreach (var contact in bakeRoot.GetComponentsInSelfAndChildren<ContactBase>()) {
-                    contact.hideFlags |= HideFlags.HideInHierarchy;
-                }
-            }
-
             if (!deferMaterialConfig) {
                 foreach (var r in rendererResults) {
                     r.renderer.sharedMaterials = r.renderer.sharedMaterials.Select((mat,slotNum) => r.configureMaterial(slotNum, mat)).ToArray();
@@ -560,7 +559,8 @@ namespace VF.Inspector {
             }
 
             return new BakeResult {
-                bakeRoot = bakeRoot,
+                bakeRoot = localSpace,
+                worldSpace = worldSpace,
                 renderers = rendererResults,
                 worldLength = worldLength,
                 worldRadius = worldRadius,
@@ -569,6 +569,7 @@ namespace VF.Inspector {
 
         public class BakeResult {
             public VFGameObject bakeRoot;
+            public VFGameObject worldSpace;
             public ICollection<RendererResult> renderers;
             public float worldLength;
             public float worldRadius;

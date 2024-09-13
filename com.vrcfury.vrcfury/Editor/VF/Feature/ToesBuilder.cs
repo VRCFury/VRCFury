@@ -6,6 +6,8 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
 
+[FeatureTitle("Toes Puppet")]
+[FeatureRootOnly]
 internal class ToesBuilder : FeatureBuilder<Toes> {
     [FeatureBuilderAction]
     public void Apply() {
@@ -21,20 +23,13 @@ internal class ToesBuilder : FeatureBuilder<Toes> {
         }
     }
 
-    public override string GetEditorTitle() {
-        return "Toes Puppet";
-    }
-
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop) {
         var content = new VisualElement();
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("down"), "Down"));
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("up"), "Up"));
-        content.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative("splay"), "Splay"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("down"), "Down"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("up"), "Up"));
+        content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("splay"), "Splay"));
         return content;
-    }
-    
-    public override bool AvailableOnRootOnly() {
-        return true;
     }
 }
 

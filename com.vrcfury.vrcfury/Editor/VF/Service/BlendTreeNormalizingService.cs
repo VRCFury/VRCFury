@@ -35,9 +35,11 @@ namespace VF.Service {
                     return (binding, curve.GetLast(), true);
                 }));
                 if (!clip.GetAllBindings().Any()) {
-                    clip.SetFloatCurve(
-                        EditorCurveBinding.FloatCurve("__ignored", typeof(GameObject), "m_IsActive"),
-                        AnimationCurve.Constant(0, 0, 0)
+                    clip.SetCurve(
+                        "__ignored",
+                        typeof(GameObject),
+                        "m_IsActive",
+                        0
                     );
                 }
             } else {

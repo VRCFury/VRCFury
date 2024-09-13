@@ -696,7 +696,12 @@ namespace VF.Builder.Haptics {
         }
 
         private static string GetPathToSps() {
-            return AssetDatabase.GUIDToAssetPath("6cf9adf85849489b97305dfeecc74768");
+            var path = AssetDatabase.GUIDToAssetPath("6cf9adf85849489b97305dfeecc74768");
+            if (string.IsNullOrWhiteSpace(path)) {
+                throw new Exception(
+                    "Failed to find the file path to SPS includes. This usually means the unity asset database is confused. Try removing and then re-adding VRCFury.");
+            }
+            return path;
         }
         private static (string,bool) ReadFile(Shader shader) {
             var path = AssetDatabase.GetAssetPath(shader);

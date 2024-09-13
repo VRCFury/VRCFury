@@ -183,6 +183,7 @@ namespace VF.Model.Feature {
         public bool rootBindingsApplyToAvatar;
         public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
         public bool allowMissingAssets = false;
+        public string injectSpsDepthParam;
 
         [Obsolete] public GuidController controller;
         [Obsolete] public GuidMenu menu;
@@ -548,6 +549,8 @@ namespace VF.Model.Feature {
         public string removeBoneSuffix;
         public float skinRewriteScalingFactor = 0;
         public bool scalingFactorPowersOf10Only = true;
+        public bool removeParentConstraints = true;
+        public string forceMergedName = "";
         [NonSerialized] public Func<bool> onlyIf;
         
         // legacy

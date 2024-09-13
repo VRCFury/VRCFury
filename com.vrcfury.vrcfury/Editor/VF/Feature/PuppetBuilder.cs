@@ -1,5 +1,6 @@
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Model.Feature;
@@ -31,7 +32,7 @@ internal class PuppetBuilder : FeatureBuilder<Puppet> {
         tree.Add(new Vector2(0,0), clipFactory.GetEmptyClip());
         var i = 0;
         foreach (var stop in model.stops) {
-            tree.Add(new Vector2(stop.x,stop.y), actionClipService.LoadState(model.name + "_" + i++, stop.state));
+            tree.Add(new Vector2(stop.x,stop.y), actionClipService.LoadState(model.name + "_" + i++, stop.state).GetLastFrame());
         }
         layer.NewState("Blend").WithAnimation(tree);
 
@@ -49,6 +50,11 @@ internal class PuppetBuilder : FeatureBuilder<Puppet> {
                 icon: model.enableIcon ? model.icon.Get() : null
             );
         }
+    }
+    
+    [FeatureEditor]
+    public static VisualElement Editor() {
+        return new VisualElement();
     }
 }
 

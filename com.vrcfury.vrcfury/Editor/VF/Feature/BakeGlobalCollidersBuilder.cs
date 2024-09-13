@@ -12,6 +12,7 @@ using VF.Service;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [VFService]
     internal class BakeGlobalCollidersBuilder : FeatureBuilder {
         [VFAutowired] private readonly FakeHeadService fakeHead;
         

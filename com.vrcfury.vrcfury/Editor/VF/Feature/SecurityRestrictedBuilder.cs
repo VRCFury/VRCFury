@@ -13,6 +13,7 @@ using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
+    [FeatureTitle("Security Restricted")]
     internal class SecurityRestrictedBuilder : FeatureBuilder<SecurityRestricted> {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
@@ -51,15 +52,12 @@ namespace VF.Feature {
             wrapper.active = false;
 
             var clip = clipFactory.NewClip("Unlock");
-            clipBuilder.Enable(clip, wrapper);
+            clip.SetEnabled(wrapper, true);
             directTree.Add(security.GetEnabled().AsFloat(), clip);
         }
 
-        public override string GetEditorTitle() {
-            return "Security Restricted";
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             return VRCFuryEditorUtils.Info(
                 "This object will be forcefully disabled until a Security Pin is entered in your avatar's menu." +
                 "Note: You MUST have a Security Pin Number component on your avatar root with a pin number set, or this will not do anything!"

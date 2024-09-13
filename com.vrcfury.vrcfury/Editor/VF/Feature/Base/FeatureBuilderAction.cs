@@ -1,6 +1,5 @@
 using System;
 using System.Reflection;
-using JetBrains.Annotations;
 using VF.Builder;
 
 namespace VF.Feature.Base {

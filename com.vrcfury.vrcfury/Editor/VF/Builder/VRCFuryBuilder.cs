@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using VF.Actions;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature;
@@ -125,9 +126,10 @@ internal class VRCFuryBuilder {
         var collectedBuilders = new List<FeatureBuilder>();
 
         var injector = new VRCFuryInjector();
-        injector.OnCachedServiceBuilt(service => {
-            AddActionsFromObject(service, avatarObject);
-        });
+        injector.ImportScan(typeof(VFServiceAttribute));
+        injector.ImportScan(typeof(ActionBuilder));
+        injector.Set("avatarObject", avatarObject);
+        injector.Set("componentObject", new Func<VFGameObject>(() => currentServiceGameObject));
         
         var globals = new GlobalsService {
             tmpDirParent = tmpDirParent,
@@ -142,23 +144,11 @@ internal class VRCFuryBuilder {
             currentMenuSortPosition = () => currentServiceNumber,
             currentComponentObject = () => currentServiceGameObject,
         };
-        injector.SetService(globals);
+        injector.Set(globals);
         
-        foreach (var serviceType in ReflectionUtils.GetTypesWithAttributeFromAnyAssembly<VFServiceAttribute>()) {
-            injector.GetService(serviceType);
+        foreach (var service in injector.GetServices<object>()) {
+            AddActionsFromObject(service, avatarObject);
         }
-        injector.GetService(typeof(CleanupLegacyBuilder));
-        injector.GetService(typeof(RemoveJunkAnimatorsBuilder));
-        injector.GetService(typeof(FixDoubleFxBuilder));
-        injector.GetService(typeof(FixWriteDefaultsBuilder));
-        injector.GetService(typeof(BakeGlobalCollidersBuilder));
-        injector.GetService(typeof(AnimatorLayerControlOffsetBuilder));
-        injector.GetService(typeof(CleanupEmptyLayersBuilder));
-        injector.GetService(typeof(ResetAnimatorBuilder));
-        injector.GetService(typeof(FinalizeMenuBuilder));
-        injector.GetService(typeof(FinalizeControllerBuilder));
-        injector.GetService(typeof(MarkThingsAsDirtyJustInCaseBuilder));
-        injector.GetService(typeof(FixEmptyMotionBuilder));
 
         void AddComponent(FeatureModel component, VFGameObject configObject, int? serviceNumOverride = null) {
             collectedModels.Add(component);
@@ -225,9 +215,13 @@ internal class VRCFuryBuilder {
 
         foreach (var type in collectedBuilders.Select(builder => builder.GetType()).ToImmutableHashSet()) {
             var buildersOfType = collectedBuilders.Where(builder => builder.GetType() == type).ToArray();
-            if (buildersOfType[0].OnlyOneAllowed() && buildersOfType.Length > 1) {
-                throw new Exception(
-                    $"This avatar contains multiple VRCFury '{buildersOfType[0].GetEditorTitle()}' components, but only one is allowed.");
+            if (buildersOfType.Length > 1) {
+                var first = buildersOfType[0];
+                if (first.GetType().GetCustomAttribute<FeatureOnlyOneAllowedAttribute>() != null) {
+                    var title = first.GetType().GetCustomAttribute<FeatureTitleAttribute>().Title;
+                    throw new Exception(
+                        $"This avatar contains multiple VRCFury '{title}' components, but only one is allowed.");
+                }
             }
         }
 

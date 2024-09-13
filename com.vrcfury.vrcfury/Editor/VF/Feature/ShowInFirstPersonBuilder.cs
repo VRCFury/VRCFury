@@ -13,6 +13,7 @@ using VF.Service;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [FeatureTitle("Show In First Person")]
     internal class ShowInFirstPersonBuilder : FeatureBuilder<ShowInFirstPerson> {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FakeHeadService fakeHead;
@@ -60,11 +61,8 @@ namespace VF.Feature {
             });
         }
 
-        public override string GetEditorTitle() {
-            return "Show In First Person";
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             return VRCFuryEditorUtils.Info(
                 "This component will automatically make this GameObject a child of the head bone, and will" +
                 " use constraint tricks to make it visible in first person.\n\n" +

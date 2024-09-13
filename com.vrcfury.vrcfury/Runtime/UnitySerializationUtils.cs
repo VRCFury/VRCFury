@@ -7,59 +7,51 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace VF {
-    public static class UnitySerializationUtils {
+    internal static class UnitySerializationUtils {
         public class IterateVisit {
-            public string path;
+            public string path = "";
             [CanBeNull] public FieldInfo field;
             public bool isArrayElement = false;
             [CanBeNull] public object value;
             public Action<object> set;
+            public bool outgoingLink = false;
         }
         public enum IterateResult {
             Skip,
             Continue
         }
-        public static void Iterate([CanBeNull] object obj, Func<IterateVisit,IterateResult> forEach, bool isRoot = true, string path = "") {
-            if (obj == null) return;
-            if (isRoot) {
-                var r = forEach(new IterateVisit {
-                    path = "",
-                    value = obj,
-                });
-                if (r == IterateResult.Skip) return;
-            }
-            foreach (var field in GetAllSerializableFields(obj.GetType())) {
-                var value = field.GetValue(obj);
-                var newPath = path;
-                if (newPath != "") newPath += ".";
-                newPath += field.Name;
-                var r = forEach(new IterateVisit {
-                    path = newPath,
-                    field = field,
-                    value = value,
-                    set = v => {
-                        value = v;
-                        field.SetValue(obj, v);
-                    },
-                });
-                if (r == IterateResult.Skip) continue;
-                if (value is IList list) {
-                    for (var i = 0; i < list.Count; i++) {
-                        var r2 = forEach(new IterateVisit {
-                            field = field,
-                            isArrayElement = true,
-                            value = list[i],
-                            set = v => {
-                                list[i] = v;
-                            }
-                        });
-                        if (r2 == IterateResult.Skip) continue;
-                        if (SerializionEnters(list[i])) {
-                            Iterate(list[i], forEach, false, newPath + "[" + i + "]");
-                        }
-                    }
-                } else if (SerializionEnters(value)) {
-                    Iterate(value, forEach, false, newPath);
+        public static void Iterate([CanBeNull] object obj, Func<IterateVisit,IterateResult> forEach) {
+            Iterate_(new IterateVisit {
+                path = "",
+                value = obj
+            }, forEach);
+        }
+
+        private static void Iterate_(IterateVisit visit, Func<IterateVisit,IterateResult> forEach) {
+            visit.outgoingLink = visit.path != "" && visit.value is Object;
+
+            var r = forEach(visit);
+            if (r == IterateResult.Skip) return;
+            if (visit.path != "" && !SerializionEnters(visit.value)) return;
+
+            if (visit.value is IList list) {
+                for (var i = 0; i < list.Count; i++) {
+                    Iterate_(new IterateVisit {
+                        path = visit.path + "[" + i + "]",
+                        field = visit.field,
+                        isArrayElement = true,
+                        value = list[i],
+                        set = v => list[i] = v
+                    }, forEach);
+                }
+            } else if (visit.value != null) {
+                foreach (var field in GetAllSerializableFields(visit.value.GetType())) {
+                    Iterate_(new IterateVisit {
+                        path = visit.path + "." + field.Name,
+                        field = field,
+                        value = field.GetValue(visit.value),
+                        set = v => field.SetValue(visit.value, v)
+                    }, forEach);
                 }
             }
         }

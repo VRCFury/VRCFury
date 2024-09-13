@@ -6,10 +6,9 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
+    [FeatureTitle("Customizer")]
+    [FeatureHideInMenu]
     internal class CustomizerBuilder : FeatureBuilder<Customizer> {
-        public override string GetEditorTitle() {
-            return "Customizer";
-        }
         
         [CustomPropertyDrawer(typeof(Customizer.CustomizerItem))]
         public class CustomizerItemDrawer : PropertyDrawer {
@@ -33,7 +32,8 @@ namespace VF.Feature {
             }
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Info(
                 "This feature lets you define things in your prefab which" +
@@ -50,10 +50,6 @@ namespace VF.Feature {
             }
             c.Add(VRCFuryEditorUtils.List(list, OnPlus));
             return c;
-        }
-
-        public override bool ShowInMenu() {
-            return false;
         }
     }
 }

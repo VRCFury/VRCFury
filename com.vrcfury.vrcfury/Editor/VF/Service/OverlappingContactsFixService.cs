@@ -11,9 +11,10 @@ using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Service {
     /**
-     * If a receiver is off when the avatar loads, but is immediately animated on (by a saved toggle or after changing avatar scale),
-     * the receiver parameter will be 0 until the overlap is cleared and reset. This service fixes that issue by detecting the error
-     * condition and resetting all receivers on the avatar.
+     * This attempts to resolve this issue:
+     * https://feedback.vrchat.com/feature-requests/p/overlapping-on-load-receivers-are-still-broken
+     *
+     * It does so by disabling all avatar receivers for the first 10 frames after load-in or re-scaling.
      */
     [VFService]
     internal class OverlappingContactsFixService {
@@ -22,7 +23,6 @@ namespace VF.Service {
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        [VFAutowired] private readonly ClipBuilderService clipBuilder;
 
         private bool activate = false;
 
@@ -34,42 +34,28 @@ namespace VF.Service {
         public void Fix() {
             if (!activate) return;
 
-            var testObject = GameObjects.Create("OverlappingContactsFix", avatarObject);
-            testObject.active = false;
-            testObject.worldScale = Vector3.one;
-
-            var sender = testObject.AddComponent<VRCContactSender>();
-            sender.radius = 0.01f;
-            sender.collisionTags.Add("__vrcf_overlappingcontactsfix");
-            sender.shapeType = ContactBase.ShapeType.Sphere;
-
-            var receiver = testObject.AddComponent<VRCContactReceiver>();
-            receiver.radius = 0.01f;
-            receiver.collisionTags.Add("__vrcf_overlappingcontactsfix");
-            receiver.shapeType = ContactBase.ShapeType.Sphere;
-            receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
-            var param = manager.GetFx().NewFloat("overlappingcontactsfix");
-            receiver.parameter = param;
-            
-            var testObjectOn = clipFactory.NewClip("TestObjectOn");
-            clipBuilder.Enable(testObjectOn, testObject);
-            directTree.Add(testObjectOn);
-
             var allOffClip = clipFactory.NewClip("AllReceiversOff");
             foreach (var r in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                allOffClip.SetCurve(EditorCurveBinding.FloatCurve(r.owner().GetPath(avatarObject), r.GetType(), "m_Enabled"), 0);
+                allOffClip.SetEnabled(r, false);
             }
 
             var counter = math.MakeAap("counter");
 
+            var counterSetToZero = math.MakeSetter(counter, 0);
             var counterAddOne = clipFactory.NewDBT("addToCounter");
             var counterEqualsOne = clipFactory.NewClip("counter=1");
-            counterEqualsOne.SetAap(counter.Name(), 1);
+            counterEqualsOne.SetAap(counter, 1);
             counterAddOne.Add(manager.GetFx().One(), counterEqualsOne);
-            counterAddOne.Add(counter.Name(), counterEqualsOne);
+            counterAddOne.Add(counter, counterEqualsOne);
 
-            directTree.Add(math.And(math.LessThan(param, 0.5f), math.GreaterThan(counter, 20)).create(
-                math.MakeSetter(counter, 0), counterAddOne));
+            var scaleFactor = manager.GetFx().NewFloat("ScaleFactor", usePrefix: false);
+            var scaleFactorBuffered = math.Buffer(scaleFactor);
+            var scaleFactorDiff = math.Add("ScaleFactorDiff", (scaleFactor, 1), (scaleFactorBuffered, -1));
+
+            directTree.Add(
+                math.Not(math.Equals(scaleFactorDiff, 0f))
+                .create(counterSetToZero, counterAddOne)
+            );
 
             directTree.Add(math.LessThan(counter, 10).create(allOffClip, null));
         }

@@ -12,6 +12,7 @@ using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Feature {
+    [VFService]
     internal class FinalizeMenuBuilder : FeatureBuilder {
         
         [FeatureBuilderAction(FeatureOrder.FinalizeMenu)]

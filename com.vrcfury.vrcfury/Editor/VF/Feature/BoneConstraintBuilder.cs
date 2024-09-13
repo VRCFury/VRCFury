@@ -6,6 +6,8 @@ using VF.Model.Feature;
 
 namespace VF.Feature {
 
+    [FeatureTitle("Bone Constraint")]
+    [FeatureHideInMenu]
     internal class BoneConstraintBuilder : FeatureBuilder<BoneConstraint> {
         [FeatureBuilderAction]
         public void Link() {
@@ -17,15 +19,8 @@ namespace VF.Feature {
             });
         }
 
-        public override bool ShowInMenu() {
-            return false;
-        }
-
-        public override string GetEditorTitle() {
-            return "Bone Constraint";
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             var container = new VisualElement();
             
             container.Add(VRCFuryEditorUtils.Error(

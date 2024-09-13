@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Inspector;
 using VF.Model;
+using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     internal static class VRCFPrefabFixer {
@@ -29,7 +31,7 @@ namespace VF.Builder {
             }
             foreach (var sceneVrcf in objs.SelectMany(o => o.GetComponentsInSelfAndChildren<VRCFury>())) {
                 string childPath = null;
-                for (var vrcf = sceneVrcf; vrcf != null; vrcf = PrefabUtility.GetCorrespondingObjectFromSource(vrcf)) {
+                for (var vrcf = sceneVrcf; vrcf != null; vrcf = GetCorrespondingObjectFromSource(vrcf)) {
                     var path = AssetDatabase.GetAssetPath(vrcf);
                     if (string.IsNullOrWhiteSpace(path)) continue;
                     if (childPath != null) {
@@ -66,7 +68,7 @@ namespace VF.Builder {
             }
             
             foreach (var sceneVrcf in objs.SelectMany(o => o.GetComponentsInSelfAndChildren<VRCFury>())) {
-                for (var vrcf = sceneVrcf; vrcf != null; vrcf = PrefabUtility.GetCorrespondingObjectFromSource(vrcf)) {
+                for (var vrcf = sceneVrcf; vrcf != null; vrcf = GetCorrespondingObjectFromSource(vrcf)) {
                     var mods = GetModifications(vrcf);
                     if (mods.Count > 0) {
                         Debug.Log($"Reverting overrides on {vrcf}: {string.Join(", ", mods.Select(m => m.propertyPath))}");
@@ -81,12 +83,21 @@ namespace VF.Builder {
 
         public static ICollection<PropertyModification> GetModifications(Object obj) {
             var parents = new HashSet<Object>();
-            for (var i = obj; i != null; i = PrefabUtility.GetCorrespondingObjectFromSource(i)) {
+            for (var i = obj; i != null; i = GetCorrespondingObjectFromSource(i)) {
                 parents.Add(i);
             }
             var mods = PrefabUtility.GetPropertyModifications(obj);
             if (mods == null) return new PropertyModification[] { };
             return mods.Where(mod => parents.Contains(mod.target)).ToArray();
+        }
+
+        private static T GetCorrespondingObjectFromSource<T>(T obj) where T : Object {
+            // For some reason, this method in unity occasionally throws a random "Specified cast is not valid" exception
+            try {
+                return PrefabUtility.GetCorrespondingObjectFromSource(obj);
+            } catch (Exception) {
+                return null;
+            }
         }
     }
 }
