@@ -3,6 +3,7 @@ using JetBrains.Annotations;
 using UnityEngine;
 using VF.Component;
 using VF.Model;
+using VF.Utils;
 
 namespace com.vrcfury.api.Components {
     /** Create an instance using <see cref="FuryComponents"/> */
@@ -26,24 +27,22 @@ namespace com.vrcfury.api.Components {
             s.enableAuto = false;
         }
 
-        public FuryActionSet AddDepthActions(float startDistance, float endDistance, float smoothingSeconds, bool enableSelf = false) {
-            s.enableDepthAnimations = true;
-            var a = new VRCFuryHapticSocket.DepthAction();
-            a.state = new State();
-            a.startDistance = startDistance;
-            a.endDistance = endDistance;
-            a.smoothingSeconds = smoothingSeconds;
-            a.enableSelf = enableSelf;
-            s.depthActions.Add(a);
-            return new FuryActionSet(a.state);
+        public FuryActionSet AddDepthActions(Vector2 range, float smoothingSeconds, bool enableSelf = false) {
+            var a = new VRCFuryHapticSocket.DepthActionNew {
+                actionSet = new State(),
+                range = range.Ordered(),
+                smoothingSeconds = smoothingSeconds,
+                enableSelf = enableSelf
+            };
+            s.depthActions2.Add(a);
+            return new FuryActionSet(a.actionSet);
         }
 
         public FuryActionSet GetActiveActions() {
-            s.enableActiveAnimation = true;
-            if (s.activeActions == null) s.activeActions = new State();
             return new FuryActionSet(s.activeActions);
         }
 
+        [PublicAPI]
         public enum Mode {
             None = VRCFuryHapticSocket.AddLight.None,
             Hole = VRCFuryHapticSocket.AddLight.Hole,

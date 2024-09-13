@@ -9,5 +9,8 @@ namespace VF.Utils {
         public static float Max(this Vector2 v) {
             return Math.Max(v.x, v.y);
         }
+        public static Vector2 Ordered(this Vector2 v) {
+            return new Vector2(v.Min(), v.Max());
+        }
     }
 }
