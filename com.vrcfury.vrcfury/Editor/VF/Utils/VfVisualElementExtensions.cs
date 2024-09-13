@@ -8,6 +8,16 @@ namespace VF.Utils {
             el.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
             return el;
         }
+        
+        public static T Toggle<T>(this T el) where T : VisualElement {
+            el.style.display = el.style.display == DisplayStyle.None ? DisplayStyle.Flex : DisplayStyle.None;
+            return el;
+        }
+        
+        public static T AddTo<T>(this T el, VisualElement parent) where T : VisualElement {
+            parent.Add(el);
+            return el;
+        }
 
         public static T FlexBasis<T>(this T el, StyleLength v) where T : VisualElement {
             el.style.flexBasis = v;

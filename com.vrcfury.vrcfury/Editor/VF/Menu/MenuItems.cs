@@ -50,6 +50,8 @@ namespace VF.Menu {
         public const int dpsAutoUpgradePriority = 1325;
         public const string boundingBoxFix = prefix + "Settings/Automatically fix bounding boxes";
         public const int boundingBoxFixPriority = 1326;
+        public const string autoUpgradeConstraints = prefix + "Settings/Automatically upgrade to VRC Constraints";
+        public const int autoUpgradeConstraintsPriority = 1327;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {

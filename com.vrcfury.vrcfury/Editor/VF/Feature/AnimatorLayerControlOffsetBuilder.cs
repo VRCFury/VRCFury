@@ -5,6 +5,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
@@ -16,6 +17,7 @@ namespace VF.Feature {
      * the animators which may have been broken by VRCFury adding / deleting layers
      * while doing other things.
      */
+    [VFService]
     internal class AnimatorLayerControlOffsetBuilder : FeatureBuilder {
         private readonly VFMultimapList<VRCAnimatorLayerControl, AnimatorStateMachine> mapping
             = new VFMultimapList<VRCAnimatorLayerControl, AnimatorStateMachine>();

@@ -55,13 +55,8 @@
         },
         {
             "name": "com.vrchat.base",
-            "expression": "3.7.0-aa",
-            "define": "VRCSDK_HAS_VRCCONSTRAINTS"
-        },
-        {
-            "name": "com.vrchat.base",
             "expression": "3.7.0",
-            "define": "VRCSDK_UPGRADE_CONSTRAINTS"
+            "define": "VRCSDK_HAS_VRCCONSTRAINTS"
         }
     ],
     "noEngineReferences": false

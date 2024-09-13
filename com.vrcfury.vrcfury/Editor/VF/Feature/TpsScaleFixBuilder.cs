@@ -15,6 +15,10 @@ using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
+    [FeatureTitle("TPS Scale Fix (Deprecated)")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
+    [FeatureHideInMenu]
     internal class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         
@@ -41,7 +45,7 @@ namespace VF.Feature {
                     foreach (var binding in clip.GetFloatBindings()) {
                         if (binding.propertyName.Contains("_TPS_PenetratorLength") ||
                             binding.propertyName.Contains("_TPS_PenetratorScale")) {
-                            clip.SetFloatCurve(binding, null);
+                            clip.SetCurve(binding, null);
                         }
                     }
                 }
@@ -55,26 +59,17 @@ namespace VF.Feature {
 
                 renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                     var isTps = TpsConfigurer.IsTps(mat);
-                    var isSps = SpsConfigurer.IsSps(mat);
 
-                    if (!isTps && !isSps) return mat;
+                    if (!isTps) return mat;
 
-                    mat = mat.Clone();
-                    if (isTps) {
-                        if (TpsConfigurer.IsLocked(mat)) {
-                            throw new VRCFBuilderException(
-                                "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
-                                $"Please unlock the material on {renderer.owner().GetPath()}");
-                        }
-                        mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
-                        mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
+                    mat = mat.Clone("Needed to mark TPS parameters as animated for TPS Scale Fix");
+                    if (TpsConfigurer.IsLocked(mat)) {
+                        throw new VRCFBuilderException(
+                            "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
+                            $"Please unlock the material on {renderer.owner().GetPath()}");
                     }
-                    if (isSps) {
-                        // We can assume that SPS-patched poiyomi is always unlocked at this point, since either:
-                        // 1. The mat was unlocked before the build, we patched it and it's still unlocked (poi will lock it after vrcf)
-                        // 2. The mat was locked before the build, we patched it and now our fields are unlocked even though everything else is locked
-                        mat.SetOverrideTag("_SPS_LengthAnimated", "1");
-                    }
+                    mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
+                    mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
                     return mat;
                 }).ToArray();
 
@@ -83,7 +78,11 @@ namespace VF.Feature {
                     rootBone = skin.rootBone;
                 }
 
-                var props = scaledProps.Select(p => (renderer.owner(), renderer.GetType(), $"material.{p.Key}", p.Value));
+                var props = scaledProps.Select(p => (
+                    (UnityEngine.Component)renderer,
+                    $"material.{p.Key}",
+                    p.Value / rootBone.worldScale.x
+                )).ToList();
                 scaleCompensationService.AddScaledProp(rootBone, props);
             }
         }
@@ -114,14 +113,13 @@ namespace VF.Feature {
                 if (TpsConfigurer.IsTps(mat)) {
                     AddFloat("_TPS_PenetratorLength");
                     AddVector("_TPS_PenetratorScale");
-                } else if (SpsConfigurer.IsSps(mat)) {
-                    AddFloat("_SPS_Length");
                 }
             }
             return scaledProps;
         }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Error(
                 "This component is deprecated. It still works, but you may wish to migrate from TPS to SPS for" +
@@ -130,22 +128,6 @@ namespace VF.Feature {
                 "This feature will allow Poiyomi TPS to work properly with scaling. While active, avatar scaling, " +
                 "object scaling, or any combination of the two may be used in conjunction with TPS."));
             return c;
-        }
-        
-        public override string GetEditorTitle() {
-            return "TPS Scale Fix (Deprecated)";
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-
-        public override bool ShowInMenu() {
-            return false;
-        }
-
-        public override bool OnlyOneAllowed() {
-            return true;
         }
     }
 }

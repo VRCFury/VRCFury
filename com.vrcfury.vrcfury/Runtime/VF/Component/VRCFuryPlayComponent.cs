@@ -1,34 +1,16 @@
-using System;
+using UnityEditor;
 using UnityEngine;
 
 namespace VF.Component {
-    [AddComponentMenu("")]
-    internal class VRCFuryPlayComponent : MonoBehaviour {
-    }
-
-    internal class VRCFurySocketGizmo : VRCFuryPlayComponent {
-        public VRCFuryHapticSocket.AddLight type;
-        public Vector3 pos;
-        public Quaternion rot;
-        public bool show = true;
-
-        bool lastShow = false;
-
-        private void Update() {
-            if (show && !lastShow) {
-                try { EnableSceneLighting?.Invoke(); } catch (Exception) {}
+    internal abstract class VRCFuryPlayComponent : MonoBehaviour {
+#if UNITY_EDITOR
+        private void OnValidate() {
+            hideFlags |= HideFlags.DontSaveInBuild | HideFlags.DontSaveInEditor | HideFlags.NotEditable;
+            // Ensure this deletes itself if it ever winds up outside play mode
+            if (!Application.isPlaying) {
+                EditorApplication.delayCall += () => DestroyImmediate(this);
             }
-            lastShow = show;
         }
-
-        public static Action EnableSceneLighting;
-    }
-
-    internal class VRCFuryNoUpdateWhenOffscreen : VRCFuryPlayComponent {
-        private void Update() {
-            var skin = GetComponent<SkinnedMeshRenderer>();
-            if (skin == null) return;
-            skin.updateWhenOffscreen = false;
-        }
+#endif
     }
 }

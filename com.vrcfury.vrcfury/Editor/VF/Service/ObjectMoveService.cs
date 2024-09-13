@@ -18,7 +18,6 @@ namespace VF.Service {
      */
     [VFService]
     internal class ObjectMoveService {
-        [VFAutowired] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly ClipRewriteService clipRewriteService;
 
@@ -45,13 +44,13 @@ namespace VF.Service {
                     $" You are probably trying to do something weird in one of your VRCFury components. Don't do that.");
             }
             
-            var oldPath = clipBuilder.GetPath(obj);
+            var oldPath = obj.GetAnimatedPath();
             if (newParent != null)
                 obj.SetParent(newParent, worldPositionStays);
             if (newName != null)
                 obj.name = newName;
             obj.EnsureAnimationSafeName();
-            var newPath = clipBuilder.GetPath(obj);
+            var newPath = obj.GetAnimatedPath();
             PhysboneUtils.RemoveFromPhysbones(obj, true);
             deferred.Add((oldPath, newPath));
             if (!defer) {

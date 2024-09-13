@@ -3,9 +3,11 @@ using System.Linq;
 using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
+using VF.Injector;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [VFService]
     internal class FixDoubleFxBuilder : FeatureBuilder {
         [FeatureBuilderAction(FeatureOrder.FixDoubleFx)]
         public void Apply() {

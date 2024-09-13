@@ -13,6 +13,7 @@ namespace VF.Hooks {
             DoSafe(DisableErrorPause);
             DoSafe(TurnOffPause);
             DoSafe(EnableErrorLogs);
+            DoSafe(ExitPlayWhenCompiling);
         }
 
         private static void DoSafe(Action with) {
@@ -24,29 +25,29 @@ namespace VF.Hooks {
         }
 
         private static void DisableErrorPause() {
-            var ConsoleWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ConsoleWindow");
-            if (ConsoleWindow == null) return;
-            var SetConsoleErrorPause = ConsoleWindow.GetMethod("SetConsoleErrorPause",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            if (SetConsoleErrorPause == null) return;
-            SetConsoleErrorPause.Invoke(null, new object[] { false });
+            UnityReflection.Console.SetConsoleErrorPause?.Invoke(false);
         }
-
+ 
         private static void TurnOffPause() {
             EditorApplication.isPaused = false;
         }
         
         private static void EnableErrorLogs() {
-            var ConsoleWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ConsoleWindow");
-            if (ConsoleWindow == null) return;
-            var SetFlag = ConsoleWindow.GetMethod("SetFlag",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            if (SetFlag == null) return;
-            var ConsoleFlags = ConsoleWindow.GetNestedType("ConsoleFlags", BindingFlags.Public | BindingFlags.NonPublic);
-            if (ConsoleFlags == null) return;
-            var LogLevelError = Enum.Parse(ConsoleFlags, "LogLevelError");
-            if (LogLevelError == null) return;
-            SetFlag.Invoke(null, new object[] { LogLevelError, true });
+            if (UnityReflection.Console.LogLevelError != null) {
+                UnityReflection.Console.SetFlag?.Invoke(null, new object[] { UnityReflection.Console.LogLevelError, true });
+            }
+        }
+   
+        /**
+         * If you recompile while in play mode, the VRCSDK freaks out and starts
+         * spamming console errors regarding physbones
+         */
+        private static void ExitPlayWhenCompiling() {
+            // If "Compilation During Play" is set to "Recompile And Continue Playing",
+            // change it to "Recompile After Finished Playing"
+            if (EditorPrefs.GetInt("ScriptCompilationDuringPlay", 0) == 0) {
+                EditorPrefs.SetInt("ScriptCompilationDuringPlay", 1);
+            }
         }
     }
 }

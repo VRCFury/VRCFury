@@ -47,11 +47,6 @@ namespace VF {
             infoBox.Add(label);
             label.AddToClassList("label");
 
-            var ty = VRCFuryEditorUtils.WrappedLabel(
-                "\nThere have been 1000 released versions of VRCFury!\nThank you for your support, here's to 1000 more.");
-            infoBox.Add(ty);
-            ty.AddToClassList("label");
-
             var logo = new Image();
             logo.image = VRCFuryEditorUtils.GetResource<Texture>("logo.png");
             logo.scaleMode = ScaleMode.ScaleToFit;

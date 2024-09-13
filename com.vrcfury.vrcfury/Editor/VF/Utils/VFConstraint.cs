@@ -113,6 +113,10 @@ namespace VF.Utils {
             return Vector3.zero;
         }
 
+        public UnityEngine.Component GetComponent() {
+            return component;
+        }
+
         public void Destroy() {
             Object.DestroyImmediate(component);
         }

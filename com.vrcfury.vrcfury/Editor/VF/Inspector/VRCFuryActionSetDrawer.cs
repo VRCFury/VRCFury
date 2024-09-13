@@ -5,9 +5,12 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Actions;
 using VF.Builder;
 using VF.Component;
 using VF.Feature;
+using VF.Feature.Base;
+using VF.Injector;
 using VF.Model;
 using VF.Model.StateAction;
 using VF.Service;
@@ -16,7 +19,7 @@ using VF.Utils;
 namespace VF.Inspector {
 
 [CustomPropertyDrawer(typeof(VF.Model.State))]
-internal class VRCFuryStateEditor : PropertyDrawer {
+internal class VRCFuryActionSetDrawer : PropertyDrawer {
     public override VisualElement CreatePropertyGUI(SerializedProperty property) {
         return render(property);
     }
@@ -33,29 +36,10 @@ internal class VRCFuryStateEditor : PropertyDrawer {
         var list = prop.FindPropertyRelative("actions");
 
         void OnPlus() {
-            var entries = new Dictionary<string, Type>() {
-                { "Object Toggle", typeof(ObjectToggleAction) },
-                { "BlendShape", typeof(BlendShapeAction) },
-                { "Animation Clip", typeof(AnimationClipAction) },
-                { "Poiyomi Flipbook Frame", typeof(FlipbookAction) },
-                { "Poiyomi UV Tile", typeof(PoiyomiUVTileAction) },
-                { "SCSS Shader Inventory", typeof(ShaderInventoryAction) },
-                { "Material Property", typeof(MaterialPropertyAction) },
-                { "Scale", typeof(ScaleAction) },
-                { "Material Swap", typeof(MaterialAction) },
-                { "Enable SPS", typeof(SpsOnAction) },
-                { "Set an FX Float", typeof(FxFloatAction) },
-                { "Disable Blinking", typeof(BlockBlinkingAction) },
-                { "Disable Visemes", typeof(BlockVisemesAction) },
-                { "Reset Physbone", typeof(ResetPhysboneAction) },
-                { "Flipbook Builder", typeof(FlipBookBuilderAction) },
-                { "Smooth Loop Builder (Breathing, etc)", typeof(SmoothLoopAction) },
-            };
-            var sorted = entries.OrderBy(entry => entry.Key).ToList();
             var menu = new GenericMenu();
-            foreach (var pair in sorted) {
-                menu.AddItem(new GUIContent(pair.Key), false, () => {
-                    var instance = Activator.CreateInstance(pair.Value);
+            foreach (var (title,modelType,builderType) in FeatureFinder.GetAllFeaturesForMenu<ActionBuilder>()) {
+                menu.AddItem(new GUIContent(title), false, () => {
+                    var instance = Activator.CreateInstance(modelType);
                     VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = instance);
                 });
             }
@@ -115,13 +99,17 @@ internal class VRCFuryStateEditor : PropertyDrawer {
 
             var actionSet = prop.GetObject() as State;
             if (actionSet == null) return debugInfo;
-            var component = prop.serializedObject.targetObject as VRCFuryComponent;
-            if (component == null) return debugInfo;
-            var gameObject = component.gameObject;
+            var gameObject = prop.serializedObject.GetGameObject();
             var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
             if (avatarObject == null) return debugInfo;
 
-            var test = ActionClipService.LoadStateAdv("test", actionSet, avatarObject, gameObject);
+            var injector = new VRCFuryInjector();
+            injector.ImportOne(typeof(ActionClipService));
+            injector.ImportScan(typeof(ActionBuilder));
+            injector.Set("avatarObject", avatarObject);
+            injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
+            var mainBuilder = injector.GetService<ActionClipService>();
+            var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject);
             var bindings = test.onClip.GetAllBindings().ToImmutableHashSet();
             var warnings =
                 VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject, avatarObject);

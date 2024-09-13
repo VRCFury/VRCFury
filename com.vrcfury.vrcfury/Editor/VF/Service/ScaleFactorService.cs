@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -25,47 +26,40 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
-        [VFAutowired] private readonly ClipBuilderService clipBuilder;
+        private ControllerManager fx => manager.GetFx();
         [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
 
         private int scaleIndex = 0;
 
+        /**
+         * localSpace and worldSpace MUST be at identical positions
+         */
         [CanBeNull]
-        public VFAFloat Get(VFGameObject obj) {
-            var fx = manager.GetFx();
+        public VFAFloat Get(VFGameObject localSpace, VFGameObject worldSpace) {
             if (!BuildTargetUtils.IsDesktop()) {
                 return null;
             }
 
-            var holder = GameObjects.Create("vrcf_ScaleDetector", obj);
-            holder.worldScale = Vector3.one;
-
-            var senderObj = GameObjects.Create("Sender", holder);
-            var sender = senderObj.AddComponent<VRCContactSender>();
-            sender.radius = 0.001f;
+            var localContactObj = GameObjects.Create("Scale Detector (Sender)", localSpace);
+            localContactObj.worldScale = Vector3.one;
+            var localContact = localContactObj.AddComponent<VRCContactSender>();
+            localContact.radius = 0.001f;
             var tag = $"VRCF_SCALEFACTORFIX_AA_{scaleIndex++}";
-            sender.collisionTags.Add(tag);
+            localContact.collisionTags.Add(tag);
 
-            var receiverObj = GameObjects.Create("Receiver", holder);
+            var worldContactObj = GameObjects.Create("Scale Detector (Receiver)", worldSpace);
             overlappingService.Activate();
-            var receiver = receiverObj.AddComponent<VRCContactReceiver>();
-            receiver.allowOthers = false;
-            receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
-            receiver.collisionTags.Add(tag);
-            receiver.radius = 0.1f;
-            receiver.position = new Vector3(0.1f, 0, 0);
-            var receiverParam = fx.NewFloat($"SFFix {obj.name} - Rcv");
-            receiver.parameter = receiverParam;
-            var p = receiverObj.AddComponent<ScaleConstraint>();
-            p.AddSource(new ConstraintSource() {
-                sourceTransform = VRCFuryEditorUtils.GetResource<Transform>("world.prefab"),
-                weight = 1
-            });
-            p.weight = 1;
-            p.constraintActive = true;
-            p.locked = true;
+            var worldContact = worldContactObj.AddComponent<VRCContactReceiver>();
+            worldContact.allowOthers = false;
+            worldContact.receiverType = ContactReceiver.ReceiverType.Proximity;
+            worldContact.collisionTags.Add(tag);
+            worldContact.radius = 0.1f;
+            worldContact.position = new Vector3(0.1f, 0, 0);
+            var receiverParam = fx.NewFloat($"SFFix {localSpace.name} - Rcv");
+            worldContact.parameter = receiverParam;
 
-            return math.Multiply($"SFFix {obj.name} - Final", receiverParam, 100);
+            var final = math.Multiply($"SFFix {localSpace.name} - Final", receiverParam, 100 * localSpace.worldScale.x);
+            return final;
         }
     }
 }

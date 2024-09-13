@@ -5,6 +5,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Service;
+using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Feature {
@@ -30,7 +31,7 @@ namespace VF.Feature {
             var clip = clipFactory.NewClip("Force On");
             directTree.Add(clip);
             foreach (var obj in _forceEnable) {
-                clipBuilder.Enable(clip, obj);
+                clip.SetEnabled(obj, true);
             }
         }
     }
