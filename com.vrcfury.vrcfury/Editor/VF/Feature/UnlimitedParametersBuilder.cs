@@ -47,8 +47,8 @@ namespace VF.Feature {
             var syncData = fx.NewInt("SyncData", addToParamFile: true);
 
             var layer = fx.NewLayer("Unlimited Parameters");
-            var entry = layer.NewState("Entry");
-            var local = layer.NewState("Local");
+            var entry = layer.NewState("Entry").Move(-3, -1);
+            var local = layer.NewState("Local").Move(0, 2);
             entry.TransitionsTo(local).When(fx.IsLocal().IsTrue());
 
             Action addRoundRobins = () => { };
@@ -97,15 +97,16 @@ namespace VF.Feature {
             addDefault();
 
             // Receive
-            var remote = layer.NewState("Remote").Move(local, 2, 0);
-            entry.TransitionsTo(remote).When(fx.Always());
+            entry.TransitionsToExit().When(fx.Always());
             for (int i = 0; i < paramsToOptimize.Count; i++) {
                 var syncIndex = i + 1;
                 var dst = paramsToOptimize[i];
                 var receiveState = layer.NewState($"Receive {dst.name}");
-                if (i == 0) receiveState.Move(remote, 1, 0);
+                if (i == 0) {
+                    receiveState.Move(local, 3, 0);
+                }
                 receiveState
-                    .TransitionsTo(remote)
+                    .TransitionsToExit()
                     .When(fx.Always());
                 if (dst.type == VRCExpressionParameters.ValueType.Float) {
                     receiveState.DrivesCopy(syncData, dst.name, 0, 254, -1, 1);
@@ -114,7 +115,7 @@ namespace VF.Feature {
                 } else {
                     throw new Exception("Unknown type?");
                 }
-                remote.TransitionsTo(receiveState).When(syncPointer.IsEqualTo(syncIndex));
+                receiveState.TransitionsFromEntry().When(syncPointer.IsEqualTo(syncIndex));
             }
 
             Debug.Log($"Radial Toggle Optimizer: Reduced {bits} bits into 16 bits.");

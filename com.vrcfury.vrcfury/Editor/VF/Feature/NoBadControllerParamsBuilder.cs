@@ -112,6 +112,13 @@ namespace VF.Feature {
                 if (state.cycleOffsetParameterActive && !IsFloat(state.cycleOffsetParameter))
                     state.cycleOffsetParameter = badFloat.Value;
             }
+            
+            controller.GetRaw().Rewrite(AnimationRewriter.RewriteBinding(binding => {
+                if (binding.GetPropType() == EditorCurveBindingType.Aap && !IsFloat(binding.propertyName)) {
+                    return null;
+                }
+                return binding;
+            }));
         }
 
         /**
@@ -160,6 +167,13 @@ namespace VF.Feature {
                     UpgradeType(state.timeParameter, AnimatorControllerParameterType.Float);
                 if (state.cycleOffsetParameterActive)
                     UpgradeType(state.cycleOffsetParameter, AnimatorControllerParameterType.Float);
+            }
+            foreach (var clip in new AnimatorIterator.Clips().From(controller)) {
+                foreach (var binding in clip.GetFloatBindings()) {
+                    if (binding.GetPropType() == EditorCurveBindingType.Aap) {
+                        UpgradeType(binding.propertyName, AnimatorControllerParameterType.Float);
+                    }
+                }
             }
             
             // Change the param types

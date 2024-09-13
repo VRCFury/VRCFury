@@ -125,13 +125,9 @@ namespace VF.Service {
 
         public bool TryParseMaterialSlot(EditorCurveBinding binding, out Renderer renderer, out int slotNum) {
             renderer = null;
-            slotNum = 0;
-            var prefix = "m_Materials.Array.data[";
-            if (!binding.propertyName.StartsWith(prefix)) return false;
-            var start = prefix.Length;
-            var end = binding.propertyName.Length - 1;
-            var str = binding.propertyName.Substring(start, end - start);
-            if (!int.TryParse(str, out slotNum)) return false;
+            if (!binding.TryParseArraySlot(out var prefix, out slotNum, out var suffix)) return false;
+            if (prefix != "m_Materials") return false;
+            if (suffix != "") return false;
             if (!TryFindComponent(binding, out renderer)) return false;
             if (slotNum < 0 || slotNum >= renderer.sharedMaterials.Length) return false;
             return true;

@@ -6,6 +6,7 @@ using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Inspector;
@@ -170,6 +171,18 @@ namespace VF.Utils {
                 msg += "\n";
                 msg += string.Join("\n", missingFromBase.OrderBy(path => path));
                 warnings.Add(VRCFuryEditorUtils.Warn(msg));
+            }
+
+            var overLimitConstraints = new HashSet<string>();
+            foreach (var binding in usedBindings) {
+                if (binding.IsOverLimitConstraint(out var slotNum)) {
+                    overLimitConstraints.Add($"Source {slotNum} on {binding.path}");
+                }
+            }
+            if (overLimitConstraints.Any()) {
+                warnings.Add(VRCFuryEditorUtils.Warn(
+                    "VRC Constraints can only have the first 16 source animated, but you are animating a constraint source above this limit!" +
+                    " This will break these animations if this avatar is upgraded to VRC Constraints.\n" + string.Join("\n", overLimitConstraints)));
             }
 
             return warnings;

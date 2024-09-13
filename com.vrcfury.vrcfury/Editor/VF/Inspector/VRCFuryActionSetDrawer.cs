@@ -99,9 +99,7 @@ internal class VRCFuryActionSetDrawer : PropertyDrawer {
 
             var actionSet = prop.GetObject() as State;
             if (actionSet == null) return debugInfo;
-            var component = prop.serializedObject.targetObject as VRCFuryComponent;
-            if (component == null) return debugInfo;
-            var gameObject = component.gameObject;
+            var gameObject = prop.serializedObject.GetGameObject();
             var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
             if (avatarObject == null) return debugInfo;
 

@@ -386,7 +386,7 @@ namespace VF.Feature {
                         }
                     }
                 }
-                clipRewriteService.ForAllClips(RewriteClip);
+                clipRewriteService.GetAllClips().ForEach(RewriteClip);
 
                 rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials
                     .Select((mat,slotNum) => rewrite.configureMaterial(slotNum, mat))
