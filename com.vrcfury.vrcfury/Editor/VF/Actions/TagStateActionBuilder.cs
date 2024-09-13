@@ -23,7 +23,7 @@ namespace VF.Actions {
             if (globals == null) return onClip;
 
             if (globals.currentTriggerParam == null) {
-                globals.currentTriggerParam = manager.GetFx().NewFloat(globals.currentToggle.model.name + " (Param Trigger)");
+                globals.currentTriggerParam = manager.GetFx().NewFloat(globals.currentAnimationClipName + " (Param Trigger)");
                 onClip.SetAap(globals.currentTriggerParam, 1);
             }
 
