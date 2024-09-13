@@ -89,7 +89,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction]
     public void Apply() {
-        globals.currentToggle = this;
+        globals.currentFeature = this;
         var fx = GetFx();
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
