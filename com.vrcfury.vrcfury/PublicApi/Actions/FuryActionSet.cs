@@ -40,5 +40,18 @@ namespace com.vrcfury.api.Actions {
             a.blendShapeValue = value;
             s.actions.Add(a);
         }
+
+        /**
+         * Sets an Animator Animated Parameter to the specified value when the toggle is on
+         * Note: When an AAP is controlled from a controller like this, it can no longer be
+         * controlled by VRChat or seen in VRChat (menu or OSC). It essentially becomes
+         * detached, accessible only within the controller.
+         */
+        public void AddAap(string name, float value) {
+            var a = new FxFloatAction();
+            a.name = name;
+            a.value = value;
+            s.actions.Add(a);
+        }
     }
 }
