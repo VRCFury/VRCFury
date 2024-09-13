@@ -13,12 +13,13 @@ using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [FeatureTitle("Fix Write Defaults")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class FixWriteDefaultsEditor : FeatureBuilder<FixWriteDefaults> {
-        public override string GetEditorTitle() {
-            return "Fix Write Defaults";
-        }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject) {
             var container = new VisualElement();
             container.Add(VRCFuryEditorUtils.Info(
                 "This feature attempt to fix an avatar with a broken mix of Write Defaults."));
@@ -69,16 +70,5 @@ namespace VF.Feature {
             
             return container;
         }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-        
-        public override bool OnlyOneAllowed() {
-            return true;
-        }
-        
-        [FeatureBuilderAction]
-        public void Apply() { }
     }
 }

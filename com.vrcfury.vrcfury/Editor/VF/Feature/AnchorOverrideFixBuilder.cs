@@ -8,6 +8,9 @@ using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
+    [FeatureTitle("Anchor Override Fix")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
         [FeatureBuilderAction(FeatureOrder.AnchorOverrideFix)]
         public void Apply() {
@@ -22,19 +25,8 @@ namespace VF.Feature {
             }
         }
         
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-        
-        public override bool OnlyOneAllowed() {
-            return true;
-        }
-        
-        public override string GetEditorTitle() {
-            return "Anchor Override Fix";
-        }
-        
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will set the anchor override for every mesh on your avatar to your chest. " +

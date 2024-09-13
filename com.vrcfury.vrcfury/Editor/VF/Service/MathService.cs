@@ -7,6 +7,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Injector;
 using VF.Inspector;
+using VF.Model.StateAction;
 using VF.Utils;
 using VF.Utils.Controller;
 
@@ -44,10 +45,11 @@ namespace VF.Service {
         }
 
         public class VFAap {
-            private VFAFloat value;
+            private readonly VFAFloat value;
             public VFAap(VFAFloat value) {
                 this.value = value;
             }
+            public static implicit operator string(VFAap d) => d.value;
             public static implicit operator VFAFloat(VFAap d) => d.value;
             public static implicit operator VFAFloatOrConst(VFAap d) => d.value;
             public string Name() => value.Name();
@@ -70,21 +72,30 @@ namespace VF.Service {
 
             var output = MakeAap(name, def: defaultValue);
 
-            // The "fall through" (if all conditions are false) is to maintain the current output value
-            var elseTree = MakeCopier(output, output);
+            var targetMotions = targets
+                .Select(target => (MakeCopier(target.value, output), target.condition))
+                // The "fall through" (if all conditions are false) is to maintain the current output value
+                .Append((MakeCopier(output, output), null))
+                .ToArray();
+            SetValueWithConditions(targetMotions);
+
+            return output;
+        }
+        
+        public void SetValueWithConditions(
+            params (Motion whenTrue,VFAFloatBool condition)[] targets
+        ) {
+            Motion elseTree = null;
 
             foreach (var target in targets.Reverse()) {
-                var doWhenTrue = MakeCopier(target.value, output);
-
                 if (target.condition == null) {
-                    elseTree = doWhenTrue;
+                    elseTree = target.whenTrue;
                     continue;
                 }
 
-                elseTree = target.condition.create(doWhenTrue, elseTree);
+                elseTree = target.condition.create(target.whenTrue, elseTree);
             }
             directTree.Add(elseTree);
-            return output;
         }
 
         public VFAFloatBool False() {
@@ -215,27 +226,50 @@ namespace VF.Service {
             }
 
             var output = MakeAap(name, def: def);
+            directTree.Add(Add(name, output, components));
+            return output;
+        }
 
+        /**
+         * input : [0,Infinity)
+         * multiplier : (-Infinity,Infinity)
+         */
+        public Motion Add(string name, VFAap output, params (VFAFloatOrConst input,float multiplier)[] components) {
             var clipCache = new Dictionary<float, AnimationClip>();
-            AnimationClip MakeCachedSetter(float multiplier) {
+            Motion MakeCachedSetter(float multiplier) {
                 if (clipCache.TryGetValue(multiplier, out var cached)) return cached;
                 return clipCache[multiplier] = MakeSetter(output, multiplier);
             }
-            
-            foreach (var (input,multiplier) in components) {
-                if (input.param != null) {
-                    directTree.Add(input.param, MakeCachedSetter(multiplier));
-                } else {
-                    directTree.Add(MakeCachedSetter(input.constt * multiplier));
-                }
-            }
 
-            return output;
+            var motionComponents = components.Select(pair => {
+                if (pair.input.param != null) {
+                    return (pair.input.param, MakeCachedSetter(pair.multiplier));
+                } else {
+                    return (fx.One(), MakeCachedSetter(pair.input.constt * pair.multiplier));
+                }
+            }).ToArray();
+
+            return Add(name, motionComponents);
+        }
+        
+        /**
+         * input : [0,Infinity)
+         */
+        public Motion Add(string name, params (VFAFloat input,Motion motion)[] components) {
+            var tree = clipFactory.NewDBT(name);
+            foreach (var (input,motion) in components) {
+                tree.Add(input, motion);
+            }
+            return tree;
+        }
+
+        public VFAFloat One() {
+            return fx.One();
         }
 
         public AnimationClip MakeSetter(VFAap param, float value) {
             var clip = clipFactory.NewClip($"{CleanName(param)} = {value}");
-            clip.SetAap(param.Name(), value);
+            clip.SetAap(param, value);
             return clip;
         }
 
@@ -245,6 +279,17 @@ namespace VF.Service {
                 tree.Add(threshold, (motion != null) ? motion : clipFactory.GetEmptyClip());
             }
             return tree;
+        }
+
+        public VFAap Invert(string name, VFAFloat input) {
+            var output = MakeAap(name);
+            var tmp = Add($"{name}/Tmp", (input, 10000), (-1, 1));
+            var tree = clipFactory.NewDBT(name);
+            tree.SetNormalizedBlendValues(true);
+            tree.Add(tmp, VrcfObjectFactory.Create<AnimationClip>());
+            tree.Add(fx.One(), MakeSetter(output, 10000));
+            directTree.Add(tree);
+            return output;
         }
 
         /*
@@ -382,6 +427,41 @@ namespace VF.Service {
          */
         public void MakeAapSafe(VFBlendTreeDirect blendTree, VFAap aap) {
             blendTree.Add(fx.One(), MakeSetter(aap, 0));
+        }
+
+        public void MultiplyInPlace(VFAap output, VFAFloat multiplier, VFAFloat existing) {
+            var oldBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), existing.Name());
+            var newBinding = oldBinding;
+            newBinding.propertyName = output;
+            foreach (var tree in new AnimatorIterator.Trees().From(directTree.GetTree())) {
+                tree.RewriteChildren(child => {
+                    if (!(child.motion is AnimationClip oldClip)) return child;
+                    var oldCurve = oldClip.GetCurve(oldBinding, true);
+                    if (oldCurve == null) return child;
+                    if (oldCurve.FloatCurve.keys.Length == 1 && oldCurve.FloatCurve.keys[0].value == 0) return child;
+
+                    var newClip = VrcfObjectFactory.Create<AnimationClip>();
+                    newClip.name = $"{output.Name()} = {oldCurve.FloatCurve.keys[0].value}";
+                    var newCurve = oldCurve.Clone();
+                    newClip.SetCurve(newBinding, newCurve);
+                    var newTree = clipFactory.NewDBT(oldClip.name);
+                    newTree.Add(fx.One(), oldClip);
+                    newTree.Add(multiplier, newClip);
+
+                    child.motion = newTree;
+                    return child;
+                });
+            }
+        }
+        
+        public void CopyInPlace(string output, VFAFloat existing) {
+            var oldBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), existing.Name());
+            var newBinding = oldBinding;
+            newBinding.propertyName = output;
+            foreach (var clip in new AnimatorIterator.Clips().From(directTree.GetTree())) {
+                var curve = clip.GetCurve(oldBinding, true);
+                if (curve != null) clip.SetCurve(newBinding, curve);
+            }
         }
     }
 }

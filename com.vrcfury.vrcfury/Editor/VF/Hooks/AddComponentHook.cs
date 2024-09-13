@@ -91,9 +91,7 @@ namespace VF.Hooks {
                 );
             }
 
-            foreach (var feature in FeatureFinder.GetAllFeaturesForMenu()) {
-                var editorInst = (FeatureBuilder)Activator.CreateInstance(feature.Value);
-                var title = editorInst.GetEditorTitle();
+            foreach (var (title,modelType,builderType) in FeatureFinder.GetAllFeaturesForMenu<FeatureBuilder>()) {
                 if (title != null) {
                     Add(
                         $"Component/VRCFury/{title} (VRCFury)",
@@ -101,14 +99,14 @@ namespace VF.Hooks {
                         false,
                         0,
                         () => {
-                            var failureMsg = editorInst.FailWhenAdded();
+                            var failureMsg = builderType.GetCustomAttribute<FeatureFailWhenAddedAttribute>()?.Message;
                             if (failureMsg != null) {
                                 EditorUtility.DisplayDialog($"Error adding {title}", failureMsg, "Ok");
                                 return;
                             }
                             foreach (var obj in Selection.gameObjects) {
                                 if (obj == null) continue;
-                                var modelInst = Activator.CreateInstance(feature.Key) as FeatureModel;
+                                var modelInst = Activator.CreateInstance(modelType) as FeatureModel;
                                 if (modelInst == null) continue;
                                 if (modelInst is ArmatureLink al) {
                                     al.propBone = ArmatureLinkBuilder.GuessLinkFrom(obj);

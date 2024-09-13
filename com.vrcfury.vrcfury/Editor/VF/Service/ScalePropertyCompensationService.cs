@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -21,26 +22,31 @@ namespace VF.Service {
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
-        public void AddScaledProp(VFGameObject scaleReference, IEnumerable<(VFGameObject obj, Type ComponentType, string PropertyName, float InitialValue)> properties) {
-            var scaleFactor = scaleFactorService.Get(scaleReference);
-            if (scaleFactor == null) {
-                return;
-            }
+        public void AddScaledProp(VFGameObject scaleReference, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
+            var worldSpace = GameObjects.Create("WorldSpace", scaleReference);
+            ConstraintUtils.MakeWorldSpace(worldSpace);
+            var scaleFactor = scaleFactorService.Get(scaleReference, worldSpace);
+            if (scaleFactor == null) return;
+            AddScaledProp(scaleFactor, properties);
+        }
 
-            var zeroClip = clipFactory.NewClip($"scaleComp_{scaleReference.name}_zero");
+        public void AddScaledProp(VFAFloat scaleFactor, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
+            if (scaleFactor == null) return;
+            var zeroClip = clipFactory.NewClip($"scaleComp_zero");
             directTree.Add(zeroClip);
 
-            var scaleClip = clipFactory.NewClip($"scaleComp_{scaleReference.name}_one");
+            var scaleClip = clipFactory.NewClip($"scaleComp_one");
             directTree.Add(scaleFactor, scaleClip);
 
             foreach (var prop in properties) {
-                var objectPath = prop.obj.GetPath(manager.AvatarObject);
                 scaleClip.SetCurve(
-                    EditorCurveBinding.FloatCurve(objectPath, prop.ComponentType, prop.PropertyName),
-                    prop.InitialValue
+                    prop.component,
+                    prop.PropertyName,
+                    prop.LocalValue
                 );
                 zeroClip.SetCurve(
-                    EditorCurveBinding.FloatCurve(objectPath, prop.ComponentType, prop.PropertyName),
+                    prop.component,
+                    prop.PropertyName,
                     0
                 );
             }

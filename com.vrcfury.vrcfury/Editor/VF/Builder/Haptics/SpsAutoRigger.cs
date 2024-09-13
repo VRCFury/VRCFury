@@ -17,7 +17,7 @@ namespace VF.Builder.Haptics {
                 return;
             }
 
-            var mesh = skin.GetMutableMesh();
+            var mesh = skin.GetMutableMesh("Needed to add rig for SPS auto-rig");
             if (mesh == null) throw new Exception("Missing mesh");
             var bake = MeshBaker.BakeMesh(skin, skin.rootBone);
             const int boneCount = 10;

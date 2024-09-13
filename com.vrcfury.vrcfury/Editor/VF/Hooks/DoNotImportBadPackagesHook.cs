@@ -12,12 +12,6 @@ namespace VF.Hooks {
      * from unitypackages when they are already installed in the project.
      */
     internal static class DoNotImportBadPackagesHook {
-        private static readonly Type PackageImportWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.PackageImport");
-        private static readonly FieldInfo m_ImportPackageItems = PackageImportWindow?.GetField("m_ImportPackageItems", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        private static readonly FieldInfo m_Tree = PackageImportWindow?.GetField("m_Tree", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        private static readonly FieldInfo m_TreeViewState = PackageImportWindow?.GetField("m_TreeViewState", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        private static readonly Type ImportPackageItem = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ImportPackageItem");
-        private static readonly FieldInfo AssetPath = ImportPackageItem?.GetField("exportedAssetPath");
         private static readonly string WarningDialogTitle = "Asset Import Warning from VRCFury";
 
         private static readonly string[] vrcsdkLocations = {
@@ -35,18 +29,18 @@ namespace VF.Hooks {
 
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (PackageImportWindow == null || m_ImportPackageItems == null || ImportPackageItem == null || AssetPath == null) return;
+            if (!UnityReflection.IsReady(typeof(UnityReflection.PackageImport))) return;
             Scheduler.Schedule(Check, 0);
         }
 
         private static EditorWindow lastCheckedWindow = null;
         private static void Check() {
             var importWindow = EditorWindow.focusedWindow;
-            if (!PackageImportWindow.IsInstanceOfType(importWindow)) return;
+            if (!UnityReflection.PackageImport.PackageImportWindow.IsInstanceOfType(importWindow)) return;
             if (importWindow == lastCheckedWindow) return;
             lastCheckedWindow = importWindow;
 
-            var items = m_ImportPackageItems.GetValue(importWindow) as object[];
+            var items = UnityReflection.PackageImport.m_ImportPackageItems.GetValue(importWindow) as object[];
             if (items == null) return;
 
             var vrcsdkProjectPath = vrcsdkLocations.FirstOrDefault(path => Directory.Exists(path));
@@ -55,7 +49,7 @@ namespace VF.Hooks {
             // Some poi plugins (dps) are allowed to import into the poi location even if it's already installed,
             // as long as they don't contain their own full shader files
             var packageIncludesPoiShaderFile = items.Any(item => {
-                var path = AssetPath.GetValue(item) as string;
+                var path = UnityReflection.PackageImport.AssetPath.GetValue(item) as string;
                 if (path == null) return false;
                 return path.EndsWith(".shader") && poiyomiLocations.Any(p => path.StartsWith(p + "/"));
             });
@@ -63,7 +57,7 @@ namespace VF.Hooks {
             var removedPoiFile = false;
             var removedVrcsdkFile = false;
             var newItems = items.Where(item => {
-                var path = AssetPath.GetValue(item) as string;
+                var path = UnityReflection.PackageImport.AssetPath.GetValue(item) as string;
                 if (path == null) return true;
                 if (vrcsdkProjectPath != null) {
                     var isVrcsdkFile = vrcsdkLocations.Any(p => path == p || path.StartsWith(p + "/"));
@@ -84,12 +78,12 @@ namespace VF.Hooks {
 
             if (newItems.Length == items.Length) return;
 
-            var arr = Array.CreateInstance(ImportPackageItem, newItems.Length);
+            var arr = Array.CreateInstance(UnityReflection.PackageImport.ImportPackageItem, newItems.Length);
             newItems.CopyTo(arr, 0);
-            m_ImportPackageItems.SetValue(importWindow, arr);
-            if (m_TreeViewState != null && m_Tree != null) {
-                m_TreeViewState?.SetValue(importWindow, null);
-                m_Tree?.SetValue(importWindow, null);
+            UnityReflection.PackageImport.m_ImportPackageItems.SetValue(importWindow, arr);
+            if (UnityReflection.PackageImport.m_TreeViewState != null && UnityReflection.PackageImport.m_Tree != null) {
+                UnityReflection.PackageImport.m_TreeViewState?.SetValue(importWindow, null);
+                UnityReflection.PackageImport.m_Tree?.SetValue(importWindow, null);
             }
 
             if (newItems.Length == 0) {

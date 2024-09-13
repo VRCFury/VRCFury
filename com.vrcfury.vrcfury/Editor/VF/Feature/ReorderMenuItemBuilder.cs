@@ -1,17 +1,18 @@
 ﻿using UnityEditor;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Utils;
 
 namespace VF.Feature {
+    [FeatureTitle("Reorder Menu Item")]
+    [FeatureRootOnly]
     internal class ReorderMenuItemBuilder : FeatureBuilder<ReorderMenuItem> {
-        public override string GetEditorTitle() {
-            return "Reorder Menu Item";
-        }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject) {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info("This feature will change the position of a menu item within its folder."));
 
@@ -29,10 +30,6 @@ namespace VF.Feature {
                         "etc"
             ));
             return content;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
         }
     }
 }

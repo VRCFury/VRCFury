@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -10,6 +11,12 @@ namespace VF.Utils {
                 dynamic d = e;
                 return d != null;
             });
+        }
+        
+        public static void ForEach<T>(this IEnumerable<T> source, Action<T> with) {
+            foreach (var item in source) {
+                with(item);
+            }
         }
     }
 }

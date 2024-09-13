@@ -8,7 +8,7 @@ namespace VF.Utils {
             // For materials and mats, we only make a clone once, and then reuse that clone for the rest of the build
             // to avoid making copies over and over
             if (original is Material || original is Mesh) {
-                if (VrcfObjectFactory.DidCreate(original)) {
+                if (VrcfObjectFactory.DidCreate(original) && !VrcfObjectFactory.IsMarkedAsDoNotReuse(original)) {
                     return original;
                 }
             }
@@ -18,7 +18,7 @@ namespace VF.Utils {
             }
 
             T copy;
-            if (original is Material || original is Mesh || original is Texture2D) {
+            if (original is Material || original is Mesh || original is Texture2D || original is AudioClip) {
                 if (original is Texture2D t && !t.isReadable) {
                     t.ForceReadable();
                     copy = Object.Instantiate(original);

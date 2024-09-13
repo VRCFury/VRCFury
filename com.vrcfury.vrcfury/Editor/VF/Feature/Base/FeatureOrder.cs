@@ -1,11 +1,13 @@
 namespace VF.Feature.Base {
     internal enum FeatureOrder {
 
+        CollectExistingComponents,
         CleanupLegacy,
 
         // Needs to happen before everything
         FixDoubleFx,
         RemoveDefaultControllers,
+        RemoveExtraDescriptors,
 
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore,
@@ -62,7 +64,6 @@ namespace VF.Feature.Base {
         // Needs to run after toggles are in place
         // Needs to run after HapticsAnimationRewrites
         TpsScaleFix,
-        DpsTipScaleFix,
         
         FixTouchingContacts,
 
@@ -99,6 +100,7 @@ namespace VF.Feature.Base {
         MoveMenuItems,
         FinalizeMenu,
         FixMipmapStreaming,
+        FixAudio,
         FixMenuIconTextures,
 
         MarkThingsAsDirtyJustInCase,
@@ -111,5 +113,6 @@ namespace VF.Feature.Base {
         ResetAnimatorAfter,
         
         Validation,
+        HideAddedComponents,
     }
 }

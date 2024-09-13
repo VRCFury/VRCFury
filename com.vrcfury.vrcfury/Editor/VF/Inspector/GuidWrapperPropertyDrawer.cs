@@ -9,27 +9,41 @@ using VF.Utils;
 namespace VF.Inspector {
     [CustomPropertyDrawer(typeof(GuidWrapper<>), true)]
     internal class GuidWrapperPropertyDrawer : PropertyDrawer {
+        private static SerializedProperty GetIdProp(SerializedProperty wrapper) {
+            return wrapper.FindPropertyRelative("id");
+        }
+        private static SerializedProperty GetObjRefProp(SerializedProperty wrapper) {
+            return wrapper.FindPropertyRelative("objRef");
+        }
+        public static void SetValue(SerializedProperty prop, Object val) {
+            GetIdProp(prop).stringValue = VrcfObjectId.ObjectToId(val);
+            GetObjRefProp(prop).objectReferenceValue = val;
+        }
+        public static Object GetValue(SerializedProperty prop) {
+            return VrcfObjectId.IdToObject<Object>(GetIdProp(prop).stringValue);
+        }
+        public static VrcfObjectId GetId(SerializedProperty prop) {
+            return VrcfObjectId.FromId(GetIdProp(prop).stringValue);
+        }
+
         public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-            var id = prop.FindPropertyRelative("id");
-            var objRef = prop.FindPropertyRelative("objRef");
             var output = new VisualElement();
 
             var objField = new ObjectField();
             var type = fieldInfo.FieldType.GetField("typeDetector").FieldType;
             objField.objectType = type;
-            objField.SetValueWithoutNotify(VrcfObjectId.IdToObject<Object>(id.stringValue));
+            objField.SetValueWithoutNotify(GetValue(prop));
             output.Add(objField);
 
             objField.RegisterValueChangedCallback(change => {
-                id.stringValue = VrcfObjectId.ObjectToId(change.newValue);
-                objRef.objectReferenceValue = change.newValue;
-                id.serializedObject.ApplyModifiedProperties();
+                SetValue(prop, change.newValue);
+                prop.serializedObject.ApplyModifiedProperties();
             });
 
             output.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (objField.value != null) return new VisualElement();
 
-                var parsed = VrcfObjectId.FromId(id.stringValue);
+                var parsed = GetId(prop);
                 var missingId = "";
                 if (!string.IsNullOrWhiteSpace(parsed.objectName)) {
                     missingId = $"{parsed.objectName} from {parsed.fileName}";
@@ -41,7 +55,7 @@ namespace VF.Inspector {
                     return new VisualElement();
                 }
                 return VRCFuryEditorUtils.WrappedLabel($"Missing asset: {missingId}");
-            }, id));
+            }, GetIdProp(prop)));
             return output;
         }
     }

@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
+using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
@@ -34,6 +35,7 @@ namespace VF.Service {
                 .Where(p => p.type == AnimatorControllerParameterType.Float)
                 .Where(p => p.defaultFloat == 1)
                 .Where(p => !animatedParams.Contains(p.name))
+                .Where(p => !FullControllerBuilder.VRChatGlobalParams.Contains(p.name))
                 .Select(p => p.name)
                 .ToImmutableHashSet();
         }

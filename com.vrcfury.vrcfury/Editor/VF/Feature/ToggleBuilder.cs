@@ -19,6 +19,7 @@ using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
+[FeatureTitle("Toggle")]
 internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ObjectMoveService mover;
     [VFAutowired] private readonly ActionClipService actionClipService;
@@ -26,6 +27,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
     [VFAutowired] private readonly ClipRewriteService clipRewriteService;
     [VFAutowired] private readonly ClipFactoryService clipFactory;
+    [VFAutowired] private readonly ClipBuilderService clipBuilder;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFCondition isOn;
@@ -164,8 +166,6 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         float inTime,
         float outTime
     ) {
-        var clip = actionClipService.LoadState(onName, action);
-
         if (model.securityEnabled) {
             var securityLockUnlocked = allBuildersInRun
                 .OfType<SecurityLockBuilder>()
@@ -183,21 +183,13 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
 
         AnimationClip restingClip;
         if (weight != null) {
+            var clip = actionClipService.LoadState(onName, action, null, ActionClipService.MotionTimeMode.Always);
             inState = onState = layer.NewState(onName);
-            if (clip.IsStatic()) {
-                var motionClip = clipBuilder.MergeSingleFrameClips(
-                    (0, clipFactory.GetEmptyClip()),
-                    (1, clip)
-                );
-                motionClip.UseLinearTangents();
-                motionClip.name = clip.name;
-                clip = motionClip;
-            }
-            clip.SetLooping(false);
             onState.WithAnimation(clip).MotionTime(weight);
             onState.TransitionsToExit().When(onCase.Not());
             restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
         } else if (model.hasTransition) {
+            var clip = actionClipService.LoadState(onName, action);
             var inClip = actionClipService.LoadState(onName + " In", inAction);
             // if clip is empty, copy last frame of transition
             if (clip.GetAllBindings().Length == 0) {
@@ -234,6 +226,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
             restingClip = clip;
         } else {
+            var clip = actionClipService.LoadState(onName, action);
             inState = onState = layer.NewState(onName).WithAnimation(clip);
             onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
             restingClip = clip;
@@ -327,11 +320,8 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         restingState.ApplyClipToRestingState(savedRestingClip);
     }
 
-    public override string GetEditorTitle() {
-        return "Toggle";
-    }
-
-    public override VisualElement CreateEditor(SerializedProperty prop) {
+    [FeatureEditor]
+    public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject, VFGameObject componentObject, Toggle model) {
         var content = new VisualElement();
 
         var savedProp = prop.FindPropertyRelative("saved");
@@ -506,7 +496,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                     ));
                     single.Add(MakeTabbed(
                         "Then do this until turned off:",
-                        VRCFuryStateEditor.render(prop.FindPropertyRelative(state))
+                        VRCFuryActionSetDrawer.render(prop.FindPropertyRelative(state))
                     ));
                     single.Add(MakeTabbed(
                         "Then blend for this much time:",
@@ -518,7 +508,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
                         cout.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(tout)));
                     single.Add(MakeTabbed("Then play this transition out:", cout));
                 } else {
-                    single.Add(VRCFuryStateEditor.render(prop.FindPropertyRelative(state)));
+                    single.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative(state)));
                 }
                 return single;
             }
@@ -536,7 +526,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             var output = new VisualElement();
             if (sliderProp.boolValue) {
                 var sliderOptions = new VisualElement();
-                sliderOptions.Add(VRCFuryEditorUtils.Prop(null, "Default %", fieldOverride: VRCFuryEditorUtils.PercentSlider(prop.FindPropertyRelative("defaultSliderValue"))));
+                sliderOptions.Add(VRCFuryEditorUtils.Prop(null, "Default %", fieldOverride: new PercentSlider2(prop.FindPropertyRelative("defaultSliderValue"))));
                 sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("sliderInactiveAtZero"), "Passthrough at 0% (Unusual)", tooltip: "" +
                     "When checked, the slider will be bypassed when set to 0%, meaning that it will not control any properties at all, allowing the properties to resume" +
                     " being controlled by some other toggle or animator layer." +
@@ -598,7 +588,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         ));
 
         content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-            var baseObject = avatarObject != null ? avatarObject : featureBaseObject.root;
+            var baseObject = avatarObject != null ? avatarObject : componentObject.root;
 
             var turnsOff = model.state.actions
                 .OfType<ObjectToggleAction>()
@@ -629,7 +619,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         return content;
     }
 
-    private VisualElement MakeTabbed(string label, VisualElement child) {
+    private static VisualElement MakeTabbed(string label, VisualElement child) {
         var output = new VisualElement();
         output.Add(VRCFuryEditorUtils.WrappedLabel(label).Bold());
         var tabbed = new VisualElement { style = { paddingLeft = 10 } };
