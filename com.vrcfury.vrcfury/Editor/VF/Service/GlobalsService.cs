@@ -24,5 +24,6 @@ namespace VF.Service {
         public Func<VFGameObject> currentComponentObject;
         public VFAFloat currentTriggerParam;
         public ToggleBuilder currentToggle;
+        public string currentAnimationClipName;
     }
 }

@@ -53,7 +53,10 @@ namespace VF.Service {
         }
         
         public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
-            if (globals != null) globals.currentTriggerParam = null; // always reset when making an animation
+            if (globals != null) {
+                 globals.currentTriggerParam = null; // always reset when making an animation
+                 globals.currentAnimationClipName = name;
+            }
             var animObject = animObjectOverride ?? componentObject();
 
             if (state == null) {
