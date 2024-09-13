@@ -29,9 +29,10 @@ namespace VF.Actions {
             }
 
             if (manager != null && driveOtherTypesFromFloatService != null) {
-                var myFloat = manager.GetFx().NewFloat("vrcfParamDriver");
-                onClip.SetAap(myFloat, model.value);
-                driveOtherTypesFromFloatService.DriveAutoLater(myFloat, model.name, model.value);
+                //var myFloat = manager.GetFx().NewFloat("vrcfParamDriver");
+                //onClip.SetAap(myFloat, model.value);
+                //driveOtherTypesFromFloatService.DriveAutoLater(myFloat, model.name, model.value);
+                onClip.SetAap(model.name, model.value);
             }
             return onClip;
         }
