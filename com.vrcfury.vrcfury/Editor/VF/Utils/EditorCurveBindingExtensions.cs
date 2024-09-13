@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Animations;
 using VF.Builder;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase.Validation.Performance;
 
 namespace VF.Utils {
     internal static class EditorCurveBindingExtensions {
@@ -87,6 +89,12 @@ namespace VF.Utils {
             }
             if (obj.GetComponent(binding.type) != null) return true;
             if (binding.type == typeof(BoxCollider) && obj.GetComponent<VRCStation>() != null) return true;
+#if VRCSDK_HAS_VRCCONSTRAINTS
+            // Due to "half-upgraded" assets, animations may point to the wrong kind of constraint
+            // This will be fixed later in the build in UpgradeToVrcConstraintsService
+            if (typeof(IConstraint).IsAssignableFrom(binding.type) && obj.GetComponent<IVRCConstraint>() != null) return true;
+            if (typeof(IVRCConstraint).IsAssignableFrom(binding.type) && obj.GetComponent<IConstraint>() != null) return true;
+#endif
             return false;
         }
 
