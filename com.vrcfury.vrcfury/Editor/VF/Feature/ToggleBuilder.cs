@@ -28,6 +28,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
     [VFAutowired] private readonly ClipRewriteService clipRewriteService;
     [VFAutowired] private readonly ClipFactoryService clipFactory;
     [VFAutowired] private readonly ClipBuilderService clipBuilder;
+    [VFAutowired] private readonly GlobalsService globals;
 
     private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
     private VFCondition isOn;
@@ -88,6 +89,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
 
     [FeatureBuilderAction]
     public void Apply() {
+        globals.currentToggle = this;
         var fx = GetFx();
         var hasTitle = !string.IsNullOrEmpty(model.name);
         var hasIcon = model.enableIcon && model.icon?.Get() != null;
@@ -223,20 +225,20 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
 
         AnimationClip restingClip;
         if (weight != null) {
-            var clip = actionClipService.LoadState(onName, action, null, ActionClipService.MotionTimeMode.Always, toggleFeature: this);
+            var clip = actionClipService.LoadState(onName, action, null, ActionClipService.MotionTimeMode.Always);
             inState = onState = layer.NewState(onName);
             onState.WithAnimation(clip).MotionTime(weight);
             onState.TransitionsToExit().When(onCase.Not());
             restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
         } else if (model.hasTransition) {
-            var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
-            var inClip = actionClipService.LoadState(onName + " In", inAction, toggleFeature: this);
+            var clip = actionClipService.LoadState(onName, action);
+            var inClip = actionClipService.LoadState(onName + " In", inAction);
             // if clip is empty, copy last frame of transition
             if (clip.GetAllBindings().Length == 0) {
                 clip = inClip.GetLastFrame();
             }
             
-            var outClip = model.simpleOutTransition ? (originalInAction == null ? inClip.Clone() : actionClipService.LoadState(onName + " Out", originalInAction, toggleFeature: this))  : actionClipService.LoadState(onName + " Out", outAction, toggleFeature: this);
+            var outClip = model.simpleOutTransition ? (originalInAction == null ? inClip.Clone() : actionClipService.LoadState(onName + " Out", originalInAction))  : actionClipService.LoadState(onName + " Out", outAction);
             var outSpeed = model.simpleOutTransition ? -1 : 1;
             
             // Copy "object enabled" and "material" states to in and out clips if they don't already have them
@@ -267,7 +269,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
             restingClip = clip;
         } else {
-            var clip = actionClipService.LoadState(onName, action, toggleFeature: this);
+            var clip = actionClipService.LoadState(onName, action);
             inState = onState = layer.NewState(onName).WithAnimation(clip);
             onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
             restingClip = clip;

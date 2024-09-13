@@ -13,9 +13,6 @@ using VF.Injector;
 using VF.Model;
 using VF.Model.StateAction;
 using VF.Utils;
-using VF.Utils.Controller;
-using VRC.SDK3.Avatars.Components;
-using static VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu.Control;
 using Action = VF.Model.StateAction.Action;
 
 namespace VF.Service {
@@ -31,13 +28,6 @@ namespace VF.Service {
         [VFAutowired] [CanBeNull] private readonly GlobalsService globals;
         private readonly IDictionary<Type,ActionBuilder> modelTypeToBuilder;
 
-        private readonly List<(VFAFloat,string,float)> drivenParams = new List<(VFAFloat,string,float)>();
-        private readonly List<(VFAFloat,string,float)> drivenSyncParams = new List<(VFAFloat,string,float)>();
-        private readonly List<(VFAFloat,string,float)> drivenToggles = new List<(VFAFloat,string,float)>();
-        private readonly List<(VFAFloat,string,float,FeatureBuilder)> drivenTags = new List<(VFAFloat,string,float,FeatureBuilder)>();
-
-        private static VFAFloat triggerParam = null; // may be used across multiple actions
-
         public ActionClipService(List<ActionBuilder> actionBuilders) {
             modelTypeToBuilder = actionBuilders.ToImmutableDictionary(
                 builder => ReflectionUtils.GetGenericArgument(builder.GetType(), typeof(IVRCFuryBuilder<>)),
@@ -51,8 +41,8 @@ namespace VF.Service {
             Always
         }
 
-        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never, ToggleBuilder toggleFeature = null) {
-            return LoadStateAdv(name, state, animObjectOverride, motionTime, toggleFeature).onClip;
+        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
+            return LoadStateAdv(name, state, animObjectOverride, motionTime).onClip;
         }
         
         public class BuiltAction {
@@ -62,8 +52,8 @@ namespace VF.Service {
             public bool useMotionTime = false;
         }
         
-        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never, ToggleBuilder toggleFeature = null) {
-            triggerParam = null; // always reset when making an animation
+        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
+            if (globals != null) globals.currentTriggerParam = null; // always reset when making an animation
             var animObject = animObjectOverride ?? componentObject();
 
             if (state == null) {
@@ -89,7 +79,7 @@ namespace VF.Service {
             var offClip = VrcfObjectFactory.Create<AnimationClip>();
 
             var outputClips = actions
-                .Select(a => LoadAction(name, a, offClip, animObject, toggleFeature))
+                .Select(a => LoadAction(name, a, offClip, animObject))
                 .ToList();
 
             bool useMotionTime;
@@ -150,7 +140,7 @@ namespace VF.Service {
             };
         }
 
-        private AnimationClip LoadAction(string name, Action action, AnimationClip offClip, VFGameObject animObject, ToggleBuilder toggleFeature = null) {
+        private AnimationClip LoadAction(string name, Action action, AnimationClip offClip, VFGameObject animObject) {
             if (action == null) {
                 throw new Exception("Action is corrupt");
             }
