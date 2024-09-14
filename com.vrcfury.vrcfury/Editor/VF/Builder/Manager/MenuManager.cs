@@ -169,6 +169,13 @@ namespace VF.Builder {
             return GetSubmenu(SplitPath(path));
         }
 
+        public VRCExpressionsMenu.Control[] FindControlsAtPath(string path) {
+            GetSubmenuAndItem(path, false, out _, out _, out var controlName, out var parentMenu);
+            if (!parentMenu) return null;
+
+            return FindControlsWithName(parentMenu, controlName);
+        }
+
         /**
          * Gets the VRC menu for the path specified, recursively creating if it doesn't exist.
          * If createFromControl is set, we will use it as the basis if creating the folder control is needed.

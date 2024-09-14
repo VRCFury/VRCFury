@@ -1025,6 +1025,11 @@ namespace VF.Model.Feature {
     [Serializable]
     internal class UnlimitedParameters : NewFeatureModel {
     }
+	
+	[Serializable]
+    internal class UnlimitedParametersExclude : NewFeatureModel {
+		public string path;
+    }
     
     [Serializable]
     internal class DescriptorDebug : NewFeatureModel {

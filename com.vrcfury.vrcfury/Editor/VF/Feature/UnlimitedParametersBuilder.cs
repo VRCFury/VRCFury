@@ -122,9 +122,44 @@ namespace VF.Feature {
         }
 
         private IList<(string name,VRCExpressionParameters.ValueType type)> GetParamsToOptimize() {
+            // Calculate from all UnlimitedParametersExcludeBuilder components what variables should be excluded from optimization
+            var paramsToExclude = new HashSet<string>();
+            foreach (var excludePath in allFeaturesInRun.OfType<UnlimitedParametersExclude>()) {
+                var controls = manager.GetMenu().FindControlsAtPath(excludePath.path);
+
+                Debug.Log($"Excluding {controls.Length} items at {excludePath.path}");
+
+                if (controls.Length == 0) {
+                    Debug.Log($"Did not find menu items to exclude at {excludePath.path}");
+                }
+                else {
+                    foreach (var control in controls) {
+                        if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet) {
+                            paramsToExclude.Add(control.GetSubParameter(0)?.name);
+                        }
+                        if (control.type == VRCExpressionsMenu.Control.ControlType.Button
+                            || control.type == VRCExpressionsMenu.Control.ControlType.Toggle) {
+                            paramsToExclude.Add(control.parameter?.name);
+                        }
+                        if (control.type == VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet) {
+                            paramsToExclude.Add(control.GetSubParameter(0)?.name);
+                            paramsToExclude.Add(control.GetSubParameter(1)?.name);
+                        }
+                        if (control.type == VRCExpressionsMenu.Control.ControlType.FourAxisPuppet) {
+                            paramsToExclude.Add(control.GetSubParameter(0)?.name);
+                            paramsToExclude.Add(control.GetSubParameter(1)?.name);
+                            paramsToExclude.Add(control.GetSubParameter(2)?.name);
+                            paramsToExclude.Add(control.GetSubParameter(3)?.name);
+                        }
+                    }
+                }
+            }
+
             var paramsToOptimize = new HashSet<(string,VRCExpressionParameters.ValueType)>();
+
             void AttemptToAdd(string paramName) {
                 if (string.IsNullOrEmpty(paramName)) return;
+                if (paramsToExclude.Contains(paramName)) return;
                 
                 var vrcParam = manager.GetParams().GetParam(paramName);
                 if (vrcParam == null) return;
