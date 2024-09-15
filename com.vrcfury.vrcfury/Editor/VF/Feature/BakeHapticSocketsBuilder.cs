@@ -254,22 +254,22 @@ namespace VF.Feature {
                         obj.active = true;
                         _forceStateInAnimatorService.ForceEnable(obj);
 
-                        foreach (var child in new []{bakeResult.senders, haptics, bakeResult.lights}.Concat(animObjects).NotNull()) {
+                        foreach (var child in new []{bakeResult.bakeRoot, bakeResult.senders, haptics, bakeResult.lights}.Concat(animObjects).NotNull()) {
                             child.active = false;
                         }
 
                         var onLocalClip = clipFactory.NewClip($"{name} (Local)");
-                        foreach (var child in new []{bakeResult.senders, haptics, bakeResult.lights}.Concat(animObjects).NotNull()) {
+                        foreach (var child in new []{bakeResult.bakeRoot, bakeResult.senders, haptics, bakeResult.lights}.Concat(animObjects).NotNull()) {
                             onLocalClip.SetEnabled(child, true);
                         }
 
                         var onRemoteClip = clipFactory.NewClip($"{name} (Remote)");
-                        foreach (var child in new []{bakeResult.senders, bakeResult.lights}.Concat(animObjects).NotNull()) {
+                        foreach (var child in new []{bakeResult.bakeRoot, bakeResult.senders, bakeResult.lights}.Concat(animObjects).NotNull()) {
                             onRemoteClip.SetEnabled(child, true);
                         }
                         
                         var onStealthClip = clipFactory.NewClip($"{name} (Stealth)");
-                        foreach (var child in new []{haptics}.NotNull()) {
+                        foreach (var child in new []{bakeResult.bakeRoot, haptics}.NotNull()) {
                             onStealthClip.SetEnabled(child.gameObject, true);
                         }
 
@@ -316,7 +316,9 @@ namespace VF.Feature {
                                 useHipAvoidance = socket.useHipAvoidance
                             });
                             autoReceiverObj.active = false;
-                            autoOnClip.SetEnabled(autoReceiverObj, true);
+                            foreach (var child in new []{bakeResult.bakeRoot, autoReceiverObj}.NotNull()) {
+                                autoOnClip.SetEnabled(child.gameObject, true);
+                            }
                             autoSockets.Add(Tuple.Create(name, toggleParam, distParam));
                         }
                     }
