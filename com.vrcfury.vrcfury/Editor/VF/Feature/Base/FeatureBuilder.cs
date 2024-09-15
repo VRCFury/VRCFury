@@ -36,6 +36,6 @@ namespace VF.Feature.Base {
     }
 
     internal abstract class FeatureBuilder<ModelType> : FeatureBuilder, IVRCFuryBuilder<ModelType> where ModelType : FeatureModel {
-        protected ModelType model;
+        public ModelType model;
     }
 }
