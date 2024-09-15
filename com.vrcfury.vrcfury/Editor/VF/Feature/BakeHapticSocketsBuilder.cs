@@ -270,7 +270,7 @@ namespace VF.Feature {
                         
                         var onStealthClip = clipFactory.NewClip($"{name} (Stealth)");
                         foreach (var child in new []{bakeResult.bakeRoot, haptics}.NotNull()) {
-                            onStealthClip.SetEnabled(child.gameObject, true);
+                            onStealthClip.SetEnabled(child, true);
                         }
 
                         var activeClip = actionClipService.LoadState($"SPS - Active Animation for {name}", socket.activeActions);
@@ -317,7 +317,7 @@ namespace VF.Feature {
                             });
                             autoReceiverObj.active = false;
                             foreach (var child in new []{bakeResult.bakeRoot, autoReceiverObj}.NotNull()) {
-                                autoOnClip.SetEnabled(child.gameObject, true);
+                                autoOnClip.SetEnabled(child, true);
                             }
                             autoSockets.Add(Tuple.Create(name, toggleParam, distParam));
                         }
