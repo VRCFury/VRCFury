@@ -27,7 +27,6 @@ namespace VF.Service {
                     clip.Rewrite(AnimationRewriter.RewriteObject(obj => {
                         if (obj is Material m && !IsMobileMat(m)) {
                             removedMats.Add($"{m.name} in animation {clip.name}");
-                            return null;
                         }
                         return obj;
                     }));
@@ -35,16 +34,14 @@ namespace VF.Service {
             }
 
             foreach (var renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
-                renderer.sharedMaterials = renderer.sharedMaterials.Select(m => {
+                foreach(var m in renderer.sharedMaterials) {
                     if (!IsMobileMat(m)) {
                         removedMats.Add($"{m.name} in {renderer.owner().GetPath(avatarObject, true)}");
                         if (renderer.owner().active && renderer.owner().parent == avatarObject) {
                             removedFromActiveRootRenderer = true;
                         }
-                        return null;
                     }
-                    return m;
-                }).ToArray();
+                }
             }
 
             foreach (var light in avatarObject.GetComponentsInSelfAndChildren<Light>()) {
@@ -58,7 +55,8 @@ namespace VF.Service {
                 EditorUtility.DisplayDialog("Invalid Mobile Materials", 
                                             "You are currently building an avatar for Android/Quest/iOS and are using shaders that are not mobile compatible. " + 
                                             "You have likely switched build target by mistake and simply need to switch back to Windows mode using the VRChat SDK Control Panel. " + 
-                                            "If you have not switched by mistake and want to build for mobile, you will need to change your materials to use shaders found in VRChat/Mobile.\n" +
+                                            "If you have not switched by mistake and want to build for mobile, you will need to change your materials to use shaders found in VRChat/Mobile. " +
+                                            "You can ignore this message if other tools will process your materials for mobile.\n" +
                                             "\n" +
                                             string.Join("\n", sorted) + moreText, 
                                             "OK" );
