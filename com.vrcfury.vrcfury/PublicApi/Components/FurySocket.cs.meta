@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<<< HEAD:com.vrcfury.vrcfury/Editor/VF/Actions/SyncParamActionBuilder.cs.meta
+guid: 3ff268392756ba94f9142f572326f3ee
+========
 guid: ac4aa89528bac6f4b96ff110c7b3c2ba
+>>>>>>>> 18856025ced36846ad9409fceddba07f3019ec29:com.vrcfury.vrcfury/PublicApi/Components/FurySocket.cs.meta
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2

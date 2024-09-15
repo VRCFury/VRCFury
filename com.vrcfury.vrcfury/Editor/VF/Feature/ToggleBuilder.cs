@@ -687,7 +687,6 @@ namespace VF.Feature {
 
             return content;
         }
-
         private static VisualElement MakeTabbed(string label, VisualElement child) {
             var output = new VisualElement();
             output.Add(VRCFuryEditorUtils.WrappedLabel(label).Bold());
@@ -699,5 +698,4 @@ namespace VF.Feature {
     }
 
 }
-
 
