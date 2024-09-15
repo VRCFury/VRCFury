@@ -36,6 +36,14 @@ namespace VF.Service {
          */
         [CanBeNull]
         public VFAFloat Get(VFGameObject localSpace, VFGameObject worldSpace) {
+            return GetAdv(localSpace, worldSpace)?.worldScale;
+        }
+
+        /**
+         * localSpace and worldSpace MUST be at identical positions
+         */
+        [CanBeNull]
+        public (VFAFloat worldScale,VFGameObject localContact,VFGameObject worldContact)? GetAdv(VFGameObject localSpace, VFGameObject worldSpace) {
             if (!BuildTargetUtils.IsDesktop()) {
                 return null;
             }
@@ -59,7 +67,7 @@ namespace VF.Service {
             worldContact.parameter = receiverParam;
 
             var final = math.Multiply($"SFFix {localSpace.name} - Final", receiverParam, 100 * localSpace.worldScale.x);
-            return final;
+            return (final, localContactObj, worldContactObj);
         }
     }
 }

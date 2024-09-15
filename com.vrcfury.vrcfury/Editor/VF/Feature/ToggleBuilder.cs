@@ -19,150 +19,150 @@ using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
-[FeatureTitle("Toggle")]
-internal class ToggleBuilder : FeatureBuilder<Toggle> {
-    [VFAutowired] private readonly ObjectMoveService mover;
-    [VFAutowired] private readonly ActionClipService actionClipService;
-    [VFAutowired] private readonly RestingStateService restingState;
-    [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
-    [VFAutowired] private readonly ClipRewriteService clipRewriteService;
-    [VFAutowired] private readonly ClipFactoryService clipFactory;
-    [VFAutowired] private readonly ClipBuilderService clipBuilder;
-    [VFAutowired] private readonly GlobalsService globals;
+    [FeatureTitle("Toggle")]
+    internal class ToggleBuilder : FeatureBuilder<Toggle> {
+        [VFAutowired] private readonly ObjectMoveService mover;
+        [VFAutowired] private readonly ActionClipService actionClipService;
+        [VFAutowired] private readonly RestingStateService restingState;
+        [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
+        [VFAutowired] private readonly ClipRewriteService clipRewriteService;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] private readonly GlobalsService globals;
 
-    private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
-    private VFCondition isOn;
-    private Action<VFState, bool> drive;
-    private AnimationClip savedRestingClip;
-    private VFAParam param;
+        private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
+        private VFCondition isOn;
+        private Action<VFState, bool> drive;
+        private AnimationClip savedRestingClip;
+        private VFAParam param;
 
-    public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
-        + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
-        + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
-        + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
+        public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
+            + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
+            + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
+            + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
 
-    private static ISet<string> SeparateList(string str) {
-        return str.Split(',')
-            .Select(tag => tag.Trim())
-            .Where(tag => !string.IsNullOrWhiteSpace(tag))
-            .ToImmutableHashSet();
-    }
-
-    public ISet<string> GetTags() {
-        var output = new HashSet<string>();
-        if (model.enableExclusiveTag) {
-            output.UnionWith(SeparateList(model.exclusiveTag));
-        }
-        if (model.enableTags) {
-            output.UnionWith(SeparateList(model.tags));
-        }
-        return output;
-    }
-
-    private ISet<string> GetExclusiveTags() {
-        if (model.enableExclusiveTag) {
-            return SeparateList(model.exclusiveTag);
-        }
-        return new HashSet<string>(); 
-    }
-
-    private ISet<string> GetDriveGlobalParams() {
-        if (model.enableDriveGlobalParam) {
-            return SeparateList(model.driveGlobalParam);
-        }
-        return new HashSet<string>(); 
-    }
-
-    private (string,bool,bool) GetParamName() {
-        if (model.paramOverride != null) {
-            return (model.paramOverride, false, false);
-        }
-        if (model.useGlobalParam && !string.IsNullOrWhiteSpace(model.globalParam)) {
-            return (model.globalParam, false, false);
-        }
-        var existingParam = manager.GetMenu().GetMenuParam(model.name, model.slider);
-        if (existingParam != null) {
-            return (existingParam, false, true);
-        }
-        return (model.name, model.usePrefixOnParam, false);
-    }
-
-    private bool getIsOnlyLocalToggle() {
-        if (model.state.actions.Count() > 0) return false;
-        if (model.hasTransition) {
-            if (model.transitionStateIn.actions.Count() > 0) return false;
-            if (model.transitionStateOut.actions.Count() > 0) return false;
-        }
-        if (model.enableExclusiveTag && !string.IsNullOrWhiteSpace(model.exclusiveTag)) return false;
-        if (model.useGlobalParam) return false;
-        return true;
-    }
-
-    public VFAParam getParam() {
-        return param;
-    }
-
-    [FeatureBuilderAction]
-    public void Apply() {
-        globals.currentFeature = this;
-        var fx = GetFx();
-        var hasTitle = !string.IsNullOrEmpty(model.name);
-        var hasIcon = model.enableIcon && model.icon?.Get() != null;
-        var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
-        var networkSyncParam = !getIsOnlyLocalToggle();
-
-        var addToParamFile = addMenuItem || networkSyncParam;
-        if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
-            addToParamFile = false;
+        private static ISet<string> SeparateList(string str) {
+            return str.Split(',')
+                .Select(tag => tag.Trim())
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .ToImmutableHashSet();
         }
 
-        var (paramName, usePrefixOnParam, menuItemAlreadyMade) = GetParamName();
-        VFCondition onCase;
-        VFAFloat weight = null;
-        bool defaultOn;
-        if (model.slider) {
-            var param = fx.NewFloat(
-                paramName,
-                addToParamFile: addToParamFile,
-                networkSynced: networkSyncParam,
-                saved: model.saved,
-                def: model.defaultSliderValue,
-                usePrefix: usePrefixOnParam
-            );
-            onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
-            if (model.sliderInactiveAtZero) {
-                drive = (state,on) => { if (!on) state.Drives(param, 0); };
+        public ISet<string> GetTags() {
+            var output = new HashSet<string>();
+            if (model.enableExclusiveTag) {
+                output.UnionWith(SeparateList(model.exclusiveTag));
             }
-            defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
-            weight = param;
-            if (addMenuItem && !menuItemAlreadyMade) {
-                manager.GetMenu().NewMenuSlider(
-                    model.name,
-                    param,
-                    icon: model.enableIcon ? model.icon?.Get() : null
+            if (model.enableTags) {
+                output.UnionWith(SeparateList(model.tags));
+            }
+            return output;
+        }
+
+        private ISet<string> GetExclusiveTags() {
+            if (model.enableExclusiveTag) {
+                return SeparateList(model.exclusiveTag);
+            }
+            return new HashSet<string>(); 
+        }
+
+        private ISet<string> GetDriveGlobalParams() {
+            if (model.enableDriveGlobalParam) {
+                return SeparateList(model.driveGlobalParam);
+            }
+            return new HashSet<string>(); 
+        }
+
+        private (string,bool,bool) GetParamName() {
+            if (model.paramOverride != null) {
+                return (model.paramOverride, false, false);
+            }
+            if (model.useGlobalParam && !string.IsNullOrWhiteSpace(model.globalParam)) {
+                return (model.globalParam, false, false);
+            }
+            var existingParam = manager.GetMenu().GetMenuParam(model.name, model.slider);
+            if (existingParam != null) {
+                return (existingParam, false, true);
+            }
+            return (model.name, model.usePrefixOnParam, false);
+        }
+
+        private bool getIsOnlyLocalToggle() {
+            if (model.state.actions.Count() > 0) return false;
+            if (model.hasTransition) {
+                if (model.transitionStateIn.actions.Count() > 0) return false;
+                if (model.transitionStateOut.actions.Count() > 0) return false;
+            }
+            if (model.enableExclusiveTag && !string.IsNullOrWhiteSpace(model.exclusiveTag)) return false;
+            if (model.useGlobalParam) return false;
+            return true;
+        }
+
+        public VFAParam getParam() {
+            return param;
+        }
+
+        [FeatureBuilderAction]
+        public void Apply() {
+            globals.currentFeature = this;
+            var fx = GetFx();
+            var hasTitle = !string.IsNullOrEmpty(model.name);
+            var hasIcon = model.enableIcon && model.icon?.Get() != null;
+            var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
+            var networkSyncParam = !getIsOnlyLocalToggle();
+
+            var addToParamFile = addMenuItem || networkSyncParam;
+            if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
+                addToParamFile = false;
+            }
+
+            var (paramName, usePrefixOnParam, menuItemAlreadyMade) = GetParamName();
+            VFCondition onCase;
+            VFAFloat weight = null;
+            bool defaultOn;
+            if (model.slider) {
+                var param = fx.NewFloat(
+                    paramName,
+                    addToParamFile: addToParamFile,
+                    networkSynced: networkSyncParam,
+                    saved: model.saved,
+                    def: model.defaultSliderValue,
+                    usePrefix: usePrefixOnParam
                 );
-            }
-            this.param = param;
-        } else if (model.useInt) {
-            var param = fx.NewInt(paramName, addToParamFile: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
-            onCase = param.IsNotEqualTo(0);
-            drive = (state,on) => state.Drives(param, on ? 1 : 0);
-            defaultOn = model.defaultOn;
-            this.param = param;
-        } else {
-            var param = fx.NewBool(paramName, addToParamFile: addToParamFile, networkSynced: networkSyncParam, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
-            onCase = param.IsTrue();
-            drive = (state,on) => state.Drives(param, on ? 1 : 0);
-            defaultOn = model.defaultOn;
-            if (addMenuItem && !menuItemAlreadyMade) {
-                if (model.holdButton) {
-                    manager.GetMenu().NewMenuButton(
+                onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
+                if (model.sliderInactiveAtZero) {
+                    drive = (state,on) => { if (!on) state.Drives(param, 0); };
+                }
+                defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
+                weight = param;
+                if (addMenuItem && !menuItemAlreadyMade) {
+                    manager.GetMenu().NewMenuSlider(
                         model.name,
                         param,
                         icon: model.enableIcon ? model.icon?.Get() : null
                     );
-                } else {
-                    manager.GetMenu().NewMenuToggle(
+                }
+                this.param = param;
+            } else if (model.useInt) {
+                var param = fx.NewInt(paramName, addToParamFile: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+                onCase = param.IsNotEqualTo(0);
+                drive = (state,on) => state.Drives(param, on ? 1 : 0);
+                defaultOn = model.defaultOn;
+                this.param = param;
+            } else {
+                var param = fx.NewBool(paramName, addToParamFile: addToParamFile, networkSynced: networkSyncParam, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+                onCase = param.IsTrue();
+                drive = (state,on) => state.Drives(param, on ? 1 : 0);
+                defaultOn = model.defaultOn;
+                if (addMenuItem && !menuItemAlreadyMade) {
+                    if (model.holdButton) {
+                        manager.GetMenu().NewMenuButton(
+                            model.name,
+                            param,
+                            icon: model.enableIcon ? model.icon?.Get() : null
+                        );
+                    } else {
+                        manager.GetMenu().NewMenuToggle(
                         model.name,
                         param,
                         icon: model.enableIcon ? model.icon?.Get() : null
@@ -257,7 +257,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             
             var outClip = model.simpleOutTransition ? (originalInAction == null ? inClip.Clone() : actionClipService.LoadState(onName + " Out", originalInAction))  : actionClipService.LoadState(onName + " Out", outAction);
             var outSpeed = model.simpleOutTransition ? -1 : 1;
-            
+
             // Copy "object enabled" and "material" states to in and out clips if they don't already have them
             // This is a convenience feature, so that people don't need to turn on objects in their transitions
             // if it's already on in the main clip.
@@ -404,103 +404,104 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
         flex.Add(VRCFuryEditorUtils.Prop(pathProp, "Menu Path", tooltip: menuPathTooltip).FlexGrow(1));
 
         var button = new Button()
-            .Text("Options")
-            .OnClick(() => {
-                var advMenu = new GenericMenu();
-                var pos = Event.current.mousePosition;
-                
-                advMenu.AddItem(new GUIContent("Select Menu Folder"), false, () => {
-                    MoveMenuItemBuilder.SelectButton(
-                        avatarObject,
-                        true,
-                        pathProp,
-                        append: () => MoveMenuItemBuilder.GetLastMenuSlug(pathProp.stringValue, "New Toggle"),
-                        immediate: true,
-                        pos: pos
-                    );
-                });
+        .Text("Options")
+        .OnClick(() => {
+            var advMenu = new GenericMenu();
+            var pos = Event.current.mousePosition;
+                    
+            advMenu.AddItem(new GUIContent("Select Menu Folder"), false, () => {
+                MoveMenuItemBuilder.SelectButton(
+                    avatarObject,
+                    true,
+                    pathProp,
+                    append: () => MoveMenuItemBuilder.GetLastMenuSlug(pathProp.stringValue, "New Toggle"),
+                    immediate: true,
+                    pos: pos
+                );
+            });
 
-                advMenu.AddItem(new GUIContent("Saved Between Worlds"), savedProp.boolValue, () => {
-                    savedProp.boolValue = !savedProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
+            advMenu.AddItem(new GUIContent("Saved Between Worlds"), savedProp.boolValue, () => {
+                savedProp.boolValue = !savedProp.boolValue;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
 
-                advMenu.AddItem(new GUIContent("Use a Slider (Radial)"), sliderProp.boolValue, () => {
-                    sliderProp.boolValue = !sliderProp.boolValue;
+            advMenu.AddItem(new GUIContent("Use a Slider (Radial)"), sliderProp.boolValue, () => {
+                sliderProp.boolValue = !sliderProp.boolValue;
+                invertRestLogicProp.boolValue = false;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
+
+            advMenu.AddItem(new GUIContent("Protect with Security"), securityEnabledProp.boolValue, () => {
+                securityEnabledProp.boolValue = !securityEnabledProp.boolValue;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
+
+            if (!sliderProp.boolValue) {
+                advMenu.AddItem(new GUIContent("Default On"), defaultOnProp.boolValue, () => {
+                    defaultOnProp.boolValue = !defaultOnProp.boolValue;
                     invertRestLogicProp.boolValue = false;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
-
-                advMenu.AddItem(new GUIContent("Protect with Security"), securityEnabledProp.boolValue, () => {
-                    securityEnabledProp.boolValue = !securityEnabledProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                if (!sliderProp.boolValue) {
-                    advMenu.AddItem(new GUIContent("Default On"), defaultOnProp.boolValue, () => {
-                        defaultOnProp.boolValue = !defaultOnProp.boolValue;
-                        invertRestLogicProp.boolValue = false;
-                        prop.serializedObject.ApplyModifiedProperties();
-                    });
                     
-                    advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
-                        hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
-                        prop.serializedObject.ApplyModifiedProperties();
-                    });
+                advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
+                    hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
                     
-                    advMenu.AddItem(new GUIContent("Hold Button"), holdButtonProp.boolValue, () => {
-                        holdButtonProp.boolValue = !holdButtonProp.boolValue;
-                        prop.serializedObject.ApplyModifiedProperties();
-                    });
-                }
-
-                advMenu.AddItem(new GUIContent((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled"), invertRestLogicProp.boolValue, () => {
-                    invertRestLogicProp.boolValue = !invertRestLogicProp.boolValue;
+                advMenu.AddItem(new GUIContent("Hold Button"), holdButtonProp.boolValue, () => {
+                    holdButtonProp.boolValue = !holdButtonProp.boolValue;
                     prop.serializedObject.ApplyModifiedProperties();
                 });
+            }
 
-                advMenu.AddItem(new GUIContent("Enable Tags"), enableTagsProp.boolValue, () => {
-                    enableTagsProp.boolValue = !enableTagsProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
-                    enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
-                    exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Set Custom Menu Icon"), enableIconProp.boolValue, () => {
-                    enableIconProp.boolValue = !enableIconProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Drive a Global Parameter"), enableDriveGlobalParamProp.boolValue, () => {
-                    enableDriveGlobalParamProp.boolValue = !enableDriveGlobalParamProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Separate Local State"), separateLocalProp.boolValue, () => {
-                    separateLocalProp.boolValue = !separateLocalProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
-                    hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Use a Global Parameter"), useGlobalParamProp.boolValue, () => {
-                    useGlobalParamProp.boolValue = !useGlobalParamProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.ShowAsContext();
+            advMenu.AddItem(new GUIContent((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled"), invertRestLogicProp.boolValue, () => {
+                invertRestLogicProp.boolValue = !invertRestLogicProp.boolValue;
+                prop.serializedObject.ApplyModifiedProperties();
             });
+
+                
+            advMenu.AddItem(new GUIContent("Enable Tags"), enableTagsProp.boolValue, () => {
+                enableTagsProp.boolValue = !enableTagsProp.boolValue;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
+
+            advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
+                enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
+
+            advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
+                exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
+
+            advMenu.AddItem(new GUIContent("Set Custom Menu Icon"), enableIconProp.boolValue, () => {
+                enableIconProp.boolValue = !enableIconProp.boolValue;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
+
+            advMenu.AddItem(new GUIContent("Drive a Global Parameter"), enableDriveGlobalParamProp.boolValue, () => {
+                enableDriveGlobalParamProp.boolValue = !enableDriveGlobalParamProp.boolValue;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
+
+            advMenu.AddItem(new GUIContent("Separate Local State"), separateLocalProp.boolValue, () => {
+                separateLocalProp.boolValue = !separateLocalProp.boolValue;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
+
+            advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
+                hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
+
+            advMenu.AddItem(new GUIContent("Use a Global Parameter"), useGlobalParamProp.boolValue, () => {
+                useGlobalParamProp.boolValue = !useGlobalParamProp.boolValue;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
+
+            advMenu.ShowAsContext();
+        });
         flex.Add(button);
 
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
@@ -590,7 +591,7 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             } else {
                 c = remoteSingle;
             }
-            
+                
             var output = new VisualElement();
             if (sliderProp.boolValue) {
                 var sliderOptions = new VisualElement();
@@ -615,44 +616,44 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
 
         // Tags
         content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var tags = new List<string>();
-                if (savedProp.boolValue)
-                    tags.Add("Saved");
-                if (securityEnabledProp.boolValue)
-                    tags.Add("Security");
-                if (!sliderProp.boolValue) {
-                    if (defaultOnProp.boolValue)
-                        tags.Add("Default On");
-                    if (holdButtonProp.boolValue)
-                        tags.Add("Hold Button");
-                    if (hasExitTimeProp.boolValue)
-                        tags.Add("Run to Completion");
-                }
-                if (invertRestLogicProp.boolValue)
-                    tags.Add((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled");
-                if (exclusiveOffStateProp.boolValue)
-                    tags.Add("This is the Exclusive Off State");
+            var tags = new List<string>();
+            if (savedProp.boolValue)
+                tags.Add("Saved");
+            if (securityEnabledProp.boolValue)
+                tags.Add("Security");
+            if (!sliderProp.boolValue) {
+                if (defaultOnProp.boolValue)
+                    tags.Add("Default On");
+                if (holdButtonProp.boolValue)
+                    tags.Add("Hold Button");
+                if (hasExitTimeProp.boolValue)
+                    tags.Add("Run to Completion");
+            }
+            if (invertRestLogicProp.boolValue)
+                tags.Add((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled");
+            if (exclusiveOffStateProp.boolValue)
+                tags.Add("This is the Exclusive Off State");
 
-                var row = new VisualElement().Row().FlexWrap();
-                foreach (var tag in tags) {
-                    var flag = new Label(tag).Padding(2,4);
-                    flag.style.width = StyleKeyword.Auto;
-                    flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
-                    flag.style.borderTopRightRadius = 5;
-                    flag.style.marginRight = 5;
-                    row.Add(flag);
-                }
+            var row = new VisualElement().Row().FlexWrap();
+            foreach (var tag in tags) {
+                var flag = new Label(tag).Padding(2,4);
+                flag.style.width = StyleKeyword.Auto;
+                flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
+                flag.style.borderTopRightRadius = 5;
+                flag.style.marginRight = 5;
+                row.Add(flag);
+            }
 
-                return row;
-            },
-            savedProp,
-            securityEnabledProp,
-            defaultOnProp,
-            invertRestLogicProp,
-            exclusiveOffStateProp,
-            holdButtonProp,
-            hasExitTimeProp,
-            sliderProp
+            return row;
+        },
+        savedProp,
+        securityEnabledProp,
+        defaultOnProp,
+        invertRestLogicProp,
+        exclusiveOffStateProp,
+        holdButtonProp,
+        hasExitTimeProp,
+        sliderProp
         ));
 
         content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
@@ -684,18 +685,18 @@ internal class ToggleBuilder : FeatureBuilder<Toggle> {
             return new VisualElement();
         }));
 
-        return content;
-    }
+            return content;
+        }
 
-    private static VisualElement MakeTabbed(string label, VisualElement child) {
-        var output = new VisualElement();
-        output.Add(VRCFuryEditorUtils.WrappedLabel(label).Bold());
-        var tabbed = new VisualElement { style = { paddingLeft = 10 } };
-        tabbed.Add(child);
-        output.Add(tabbed);
-        return output;
+        private static VisualElement MakeTabbed(string label, VisualElement child) {
+            var output = new VisualElement();
+            output.Add(VRCFuryEditorUtils.WrappedLabel(label).Bold());
+            var tabbed = new VisualElement { style = { paddingLeft = 10 } };
+            tabbed.Add(child);
+            output.Add(tabbed);
+            return output;
+        }
     }
-}
 
 }
 

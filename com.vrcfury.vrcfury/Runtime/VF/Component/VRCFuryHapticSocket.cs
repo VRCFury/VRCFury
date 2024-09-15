@@ -5,8 +5,7 @@ using VF.Model;
 
 namespace VF.Component {
     [AddComponentMenu("VRCFury/SPS Socket (VRCFury)")]
-    // Temporarily public for SPS Configurator
-    public class VRCFuryHapticSocket : VRCFuryComponent {
+    internal class VRCFuryHapticSocket : VRCFuryComponent {
         public enum AddLight {
             None,
             Hole,
@@ -52,7 +51,6 @@ namespace VF.Component {
         
         [Serializable]
         [Obsolete]
-        // Named DepthAction because changing the name breaks SPS Configurator
         public class DepthAction {
             [Obsolete] public State state;
             [Obsolete] public float startDistance = 0;
