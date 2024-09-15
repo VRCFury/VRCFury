@@ -4,9 +4,7 @@ using System.Linq;
 using UnityEngine;
 using VF.Component;
 using VF.Model.Feature;
-using VF.Model.StateAction;
 using VF.Upgradeable;
-using Action = VF.Model.StateAction.Action;
 
 namespace VF.Model {
     [AddComponentMenu("")]
@@ -90,15 +88,5 @@ namespace VF.Model {
         public static void MarkDirty(UnityEngine.Component obj) {
             markDirty?.Invoke(obj.gameObject);
         }
-    }
-    
-    [Serializable]
-    internal class VRCFuryConfig {
-        [SerializeReference] public List<FeatureModel> features = new List<FeatureModel>();
-    }
-
-    [Serializable]
-    internal class State {
-        [SerializeReference] public List<Action> actions = new List<Action>();
     }
 }
