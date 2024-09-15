@@ -12,6 +12,7 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Feature.Base {
 

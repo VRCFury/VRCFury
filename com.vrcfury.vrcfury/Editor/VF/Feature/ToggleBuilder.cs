@@ -74,247 +74,235 @@ namespace VF.Feature {
         }
 
         private (string,bool) GetParamName() {
-            if (model.paramOverride != null) {
-                return (model.paramOverride, false);
-            }
-            if (model.useGlobalParam && !string.IsNullOrWhiteSpace(model.globalParam)) {
-                return (model.globalParam, false);
-            }
-            return (model.name, model.usePrefixOnParam);
+        if (model.paramOverride != null) {
+            return (model.paramOverride, false);
         }
+        if (model.useGlobalParam && !string.IsNullOrWhiteSpace(model.globalParam)) {
+            return (model.globalParam, false);
+        }
+        return (model.name, model.usePrefixOnParam);
+    }
 
-        private bool getIsOnlyLocalToggle() {
-            if (model.state.actions.Count() > 0) return false;
-            if (model.hasTransition) {
-                if (model.transitionStateIn.actions.Count() > 0) return false;
-                if (model.transitionStateOut.actions.Count() > 0) return false;
-            }
-            if (model.enableExclusiveTag && !string.IsNullOrWhiteSpace(model.exclusiveTag)) return false;
-            if (model.useGlobalParam) return false;
-            return true;
-        }
+    public VFAParam getParam() {
+        return param;
+    }
 
-        public VFAParam getParam() {
-            return param;
-        }
 
         [FeatureBuilderAction]
         public void Apply() {
             globals.currentFeature = this;
-            var fx = GetFx();
-            var hasTitle = !string.IsNullOrEmpty(model.name);
-            var hasIcon = model.enableIcon && model.icon?.Get() != null;
-            var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
-            var networkSyncParam = !getIsOnlyLocalToggle();
+        var fx = GetFx();
+        var hasTitle = !string.IsNullOrEmpty(model.name);
+        var hasIcon = model.enableIcon && model.icon?.Get() != null;
+        var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
 
-            var addToParamFile = addMenuItem || networkSyncParam;
-            if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
-                addToParamFile = false;
+        var addToParamFile = true;
+        if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
+            addToParamFile = false;
+        }
+
+        var (paramName, usePrefixOnParam) = GetParamName();
+        VFCondition onCase;
+        VFAFloat weight = null;
+        bool defaultOn;
+        if (model.slider) {
+            var param = fx.NewFloat(
+                paramName,
+                synced: addToParamFile,
+                saved: model.saved,
+                def: model.defaultSliderValue,
+                usePrefix: usePrefixOnParam
+            );
+            onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
+            if (model.sliderInactiveAtZero) {
+                drive = (state,on) => { if (!on) state.Drives(param, 0); };
             }
-
-            var (paramName, usePrefixOnParam) = GetParamName();
-            VFCondition onCase;
-            VFAFloat weight = null;
-            bool defaultOn;
-            if (model.slider) {
-                var param = fx.NewFloat(
-                    paramName,
-                    synced: addToParamFile,
-                    saved: model.saved,
-                    def: model.defaultSliderValue,
-                    usePrefix: usePrefixOnParam
+            defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
+            weight = param;
+            if (addMenuItem) {
+                manager.GetMenu().NewMenuSlider(
+                    model.name,
+                    param,
+                    icon: model.enableIcon ? model.icon?.Get() : null
                 );
-                onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
-                if (model.sliderInactiveAtZero) {
-                    drive = (state,on) => { if (!on) state.Drives(param, 0); };
-                }
-                defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
-                weight = param;
-                if (addMenuItem) {
-                    manager.GetMenu().NewMenuSlider(
+            }
+            this.param = param;
+        } else if (model.useInt) {
+            var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
+            onCase = param.IsNotEqualTo(0);
+            drive = (state,on) => state.Drives(param, on ? 1 : 0);
+            defaultOn = model.defaultOn;
+            this.param = param;
+        } else {
+            var param = fx.NewBool(paramName, synced: addToParamFile, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+            onCase = param.IsTrue();
+            drive = (state,on) => state.Drives(param, on ? 1 : 0);
+            defaultOn = model.defaultOn;
+            if (addMenuItem) {
+                if (model.holdButton) {
+                    manager.GetMenu().NewMenuButton(
+                        model.name,
+                        param,
+                        icon: model.enableIcon ? model.icon?.Get() : null
+                    );
+                } else {
+                    manager.GetMenu().NewMenuToggle(
                         model.name,
                         param,
                         icon: model.enableIcon ? model.icon?.Get() : null
                     );
                 }
-                this.param = param;
-            } else if (model.useInt) {
-                var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
-                onCase = param.IsNotEqualTo(0);
-                drive = (state,on) => state.Drives(param, on ? 1 : 0);
-                defaultOn = model.defaultOn;
-                this.param = param;
+            }
+            this.param = param;
+        }
+        
+        this.isOn = onCase;
+
+        var layerName = model.name;
+        if (string.IsNullOrEmpty(layerName) && model.useGlobalParam) layerName = model.globalParam;
+        if (string.IsNullOrEmpty(layerName)) layerName = "Toggle";
+
+        var layer = fx.NewLayer(layerName);
+        var off = layer.NewState("Off");
+
+        if (model.separateLocal) {
+            var isLocal = fx.IsLocal().IsTrue();
+            Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, defaultOn, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
+            Apply(fx, layer, off, onCase.And(isLocal), weight, defaultOn, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
+        } else {
+            Apply(fx, layer, off, onCase, weight, defaultOn, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
+        }
+    }
+
+    private void Apply(
+        ControllerManager fx,
+        VFLayer layer,
+        VFState off,
+        VFCondition onCase,
+        VFAFloat weight,
+        bool defaultOn,
+        string onName,
+        State action,
+        State inAction,
+        State outAction,
+        float inTime,
+        float outTime
+    ) {
+
+        State originalInAction = null;
+
+        if (GetExclusiveTags().Count() > 0) {
+            originalInAction = new State();
+            foreach (var a in inAction.actions) {
+                originalInAction.actions.Add(a);
+            }
+        }
+
+        foreach(var tag in GetExclusiveTags()) {
+            var tagAction = new TagStateAction();
+            tagAction.tag = tag;
+            tagAction.value = 0;
+            if (model.hasTransition) {
+                inAction.actions.Add(tagAction);
             } else {
-                var param = fx.NewBool(paramName, synced: addToParamFile, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
-                onCase = param.IsTrue();
-                drive = (state,on) => state.Drives(param, on ? 1 : 0);
-                defaultOn = model.defaultOn;
-                if (addMenuItem) {
-                    if (model.holdButton) {
-                        manager.GetMenu().NewMenuButton(
-                            model.name,
-                            param,
-                            icon: model.enableIcon ? model.icon?.Get() : null
-                        );
-                    } else {
-                        manager.GetMenu().NewMenuToggle(
-                            model.name,
-                            param,
-                            icon: model.enableIcon ? model.icon?.Get() : null
-                        );
-                    }
-                }
-                this.param = param;
+                action.actions.Add(tagAction);
+            }
+        }
+
+        if (model.securityEnabled) {
+            var securityLockUnlocked = allBuildersInRun
+                .OfType<SecurityLockBuilder>()
+                .Select(f => f.GetEnabled())
+                .FirstOrDefault();
+            if (securityLockUnlocked != null) {
+                onCase = onCase.And(securityLockUnlocked.IsTrue());
+            } else {
+                Debug.LogWarning("Security pin not set, restriction disabled");
+            }
+        }
+
+        VFState inState;
+        VFState onState;
+
+        AnimationClip restingClip;
+        if (weight != null) {
+            var clip = actionClipService.LoadState(onName, action, null, ActionClipService.MotionTimeMode.Always);
+            inState = onState = layer.NewState(onName);
+            onState.WithAnimation(clip).MotionTime(weight);
+            onState.TransitionsToExit().When(onCase.Not());
+            restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
+        } else if (model.hasTransition) {
+            var clip = actionClipService.LoadState(onName, action);
+            var inClip = actionClipService.LoadState(onName + " In", inAction);
+            // if clip is empty, copy last frame of transition
+            if (clip.GetAllBindings().Length == 0) {
+                clip = inClip.GetLastFrame();
             }
             
-            this.isOn = onCase;
+            var outClip = model.simpleOutTransition ? (originalInAction == null ? inClip.Clone() : actionClipService.LoadState(onName + " Out", originalInAction))  : actionClipService.LoadState(onName + " Out", outAction);
+            var outSpeed = model.simpleOutTransition ? -1 : 1;
 
-            var layerName = model.name;
-            if (string.IsNullOrEmpty(layerName) && model.useGlobalParam) layerName = model.globalParam;
-            if (string.IsNullOrEmpty(layerName)) layerName = "Toggle";
-
-            var layer = fx.NewLayer(layerName);
-            var off = layer.NewState("Off");
-
-            if (model.separateLocal) {
-                var isLocal = fx.IsLocal().IsTrue();
-                Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, defaultOn, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
-                Apply(fx, layer, off, onCase.And(isLocal), weight, defaultOn, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
-            } else {
-                Apply(fx, layer, off, onCase, weight, defaultOn, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
-            }
-        }
-
-        private void Apply(
-            ControllerManager fx,
-            VFLayer layer,
-            VFState off,
-            VFCondition onCase,
-            VFAFloat weight,
-            bool defaultOn,
-            string onName,
-            State action,
-            State inAction,
-            State outAction,
-            float inTime,
-            float outTime
-        ) {
-
-            State originalInAction = null;
-
-            if (GetExclusiveTags().Count() > 0) {
-                originalInAction = new State();
-                foreach (var a in inAction.actions) {
-                    originalInAction.actions.Add(a);
-                }
-            }
-
-            foreach(var tag in GetExclusiveTags()) {
-                var tagAction = new TagStateAction();
-                tagAction.tag = tag;
-                tagAction.value = 0;
-                if (model.hasTransition) {
-                    inAction.actions.Add(tagAction);
-                } else {
-                    action.actions.Add(tagAction);
-                }
-            }
-
-            if (model.securityEnabled) {
-                var securityLockUnlocked = allBuildersInRun
-                    .OfType<SecurityLockBuilder>()
-                    .Select(f => f.GetEnabled())
-                    .FirstOrDefault();
-                if (securityLockUnlocked != null) {
-                    onCase = onCase.And(securityLockUnlocked.IsTrue());
-                } else {
-                    Debug.LogWarning("Security pin not set, restriction disabled");
-                }
-            }
-
-            VFState inState;
-            VFState onState;
-
-            AnimationClip restingClip;
-            if (weight != null) {
-                var clip = actionClipService.LoadState(onName, action, null, ActionClipService.MotionTimeMode.Always);
-                inState = onState = layer.NewState(onName);
-                onState.WithAnimation(clip).MotionTime(weight);
-                onState.TransitionsToExit().When(onCase.Not());
-                restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
-            } else if (model.hasTransition) {
-                var clip = actionClipService.LoadState(onName, action);
-                var inClip = actionClipService.LoadState(onName + " In", inAction);
-                // if clip is empty, copy last frame of transition
-                if (clip.GetAllBindings().Length == 0) {
-                    clip = inClip.GetLastFrame();
-                }
-                
-                var outClip = model.simpleOutTransition ? (originalInAction == null ? inClip.Clone() : actionClipService.LoadState(onName + " Out", originalInAction))  : actionClipService.LoadState(onName + " Out", outAction);
-                var outSpeed = model.simpleOutTransition ? -1 : 1;
-                
-                // Copy "object enabled" and "material" states to in and out clips if they don't already have them
-                // This is a convenience feature, so that people don't need to turn on objects in their transitions
-                // if it's already on in the main clip.
-                foreach (var (binding,curve) in clip.GetAllCurves()) {
-                    if (!curve.IsFloat) {
-                        if (inClip.GetObjectCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
-                        if (outClip.GetObjectCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
-                    } else if (binding.type == typeof(GameObject)) {
-                        // Only expand gameobject "enabled" into intro and outro if we're turning something "on"
-                        // If we're turning it off, it probably shouldn't be off during the transition.
-                        var first = curve.GetFirst().GetFloat();
-                        var last = curve.GetLast().GetFloat();
-                        if (first > 0.99 && last > 0.99) {
-                            if (inClip.GetFloatCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
-                            if (outClip.GetFloatCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
-                        }
+            // Copy "object enabled" and "material" states to in and out clips if they don't already have them
+            // This is a convenience feature, so that people don't need to turn on objects in their transitions
+            // if it's already on in the main clip.
+            foreach (var (binding,curve) in clip.GetAllCurves()) {
+                if (!curve.IsFloat) {
+                    if (inClip.GetObjectCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
+                    if (outClip.GetObjectCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
+                } else if (binding.type == typeof(GameObject)) {
+                    // Only expand gameobject "enabled" into intro and outro if we're turning something "on"
+                    // If we're turning it off, it probably shouldn't be off during the transition.
+                    var first = curve.GetFirst().GetFloat();
+                    var last = curve.GetLast().GetFloat();
+                    if (first > 0.99 && last > 0.99) {
+                        if (inClip.GetFloatCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
+                        if (outClip.GetFloatCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
                     }
                 }
-
-                inState = layer.NewState(onName + " In").WithAnimation(inClip);
-                onState = layer.NewState(onName).WithAnimation(clip);
-                inState.TransitionsTo(onState).When(fx.Always()).WithTransitionExitTime(inClip.IsEmptyOrZeroLength() ? -1 : 1).WithTransitionDurationSeconds(inTime);
-
-                var outState = layer.NewState(onName + " Out").WithAnimation(outClip).Speed(outSpeed);
-                onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(outTime);
-                outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
-                restingClip = clip;
-            } else {
-                var clip = actionClipService.LoadState(onName, action);
-                inState = onState = layer.NewState(onName).WithAnimation(clip);
-                onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
-                restingClip = clip;
             }
 
-            off.TransitionsTo(inState).When(onCase);
+            inState = layer.NewState(onName + " In").WithAnimation(inClip);
+            onState = layer.NewState(onName).WithAnimation(clip);
+            inState.TransitionsTo(onState).When(fx.Always()).WithTransitionExitTime(inClip.IsEmptyOrZeroLength() ? -1 : 1).WithTransitionDurationSeconds(inTime);
 
-            if (model.enableDriveGlobalParam) {
-                foreach(var p in GetDriveGlobalParams()) {
-                    var driveGlobal = fx.NewBool(
-                        p,
-                        synced: false,
-                        saved: false,
-                        def: false,
-                        usePrefix: false
-                    );
-                    off.Drives(driveGlobal, false);
-                    inState.Drives(driveGlobal, true);
-                }
-            }
+            var outState = layer.NewState(onName + " Out").WithAnimation(outClip).Speed(outSpeed);
+            onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(outTime);
+            outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
+            restingClip = clip;
+        } else {
+            var clip = actionClipService.LoadState(onName, action);
+            inState = onState = layer.NewState(onName).WithAnimation(clip);
+            onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
+            restingClip = clip;
+        }
 
-            if (defaultOn && !model.separateLocal && !model.securityEnabled) {
-                layer.GetRawStateMachine().defaultState = onState.GetRaw();
-                off.TransitionsFromEntry().When();
-            }
+        off.TransitionsTo(inState).When(onCase);
 
-            if (savedRestingClip == null) {
-                var copy = restingClip.Clone();
-                savedRestingClip = copy;
-                clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
+        if (model.enableDriveGlobalParam) {
+            foreach(var p in GetDriveGlobalParams()) {
+                var driveGlobal = fx.NewBool(
+                    p,
+                    synced: false,
+                    saved: false,
+                    def: false,
+                    usePrefix: false
+                );
+                off.Drives(driveGlobal, false);
+                inState.Drives(driveGlobal, true);
             }
         }
 
+        if (defaultOn && !model.separateLocal && !model.securityEnabled) {
+            layer.GetRawStateMachine().defaultState = onState.GetRaw();
+            off.TransitionsFromEntry().When();
+        }
+
+        if (savedRestingClip == null) {
+            var copy = restingClip.Clone();
+            savedRestingClip = copy;
+            clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
+        }
+    }
 
     [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
     public void ApplyExclusiveTags() {
@@ -695,5 +683,4 @@ namespace VF.Feature {
     }
 
 }
-
 
