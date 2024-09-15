@@ -17,8 +17,7 @@ namespace VF.Model.StateAction {
     }
     
     [Serializable]
-    // Temporarily public for SPS Configurator
-    public class Action : VrcfUpgradeable {
+    internal class Action : VrcfUpgradeable {
         public bool desktopActive = false;
         public bool androidActive = false;
     }

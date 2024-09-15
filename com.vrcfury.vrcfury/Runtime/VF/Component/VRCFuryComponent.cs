@@ -3,8 +3,7 @@ using UnityEngine;
 using VF.Upgradeable;
 
 namespace VF.Component {
-    // Temporarily public for SPS Configurator
-    public abstract class VRCFuryComponent : VrcfUpgradeableMonoBehaviour, IVrcfEditorOnly {
+    internal abstract class VRCFuryComponent : VrcfUpgradeableMonoBehaviour, IVrcfEditorOnly {
         [NonSerialized] public GameObject gameObjectOverride;
         public new GameObject gameObject {
             get {
