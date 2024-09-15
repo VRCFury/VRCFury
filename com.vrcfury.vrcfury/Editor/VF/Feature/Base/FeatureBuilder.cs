@@ -1,20 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Newtonsoft.Json;
-using UnityEditor;
-using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Injector;
-using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
-using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature.Base {
     internal abstract class FeatureBuilder {
-        [JsonProperty(Order = -2)] public string type;
-
         [VFAutowired] protected readonly AvatarManager manager;
         protected ControllerManager GetFx() => manager.GetFx();
         protected ControllerManager fx => manager.GetFx();
@@ -29,8 +22,8 @@ namespace VF.Feature.Base {
             globals.addOtherFeature(model);
         }
 
-        [NonSerialized] [JsonIgnore] public VFGameObject featureBaseObject;
-        [NonSerialized] [JsonIgnore] public int uniqueModelNum;
+        public VFGameObject featureBaseObject;
+        public int uniqueModelNum;
 
         public virtual string GetClipPrefix() {
             return null;
@@ -43,6 +36,6 @@ namespace VF.Feature.Base {
     }
 
     internal abstract class FeatureBuilder<ModelType> : FeatureBuilder, IVRCFuryBuilder<ModelType> where ModelType : FeatureModel {
-        [NonSerialized] [JsonIgnore] public ModelType model;
+        protected ModelType model;
     }
 }

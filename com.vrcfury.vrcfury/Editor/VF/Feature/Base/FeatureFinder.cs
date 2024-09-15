@@ -180,7 +180,7 @@ namespace VF.Feature.Base {
             }
 
             var builder = (FeatureBuilder)injector.CreateAndFillObject(builderType);
-            builder.GetType().GetField("model").SetValue(builder, model);
+            builder.GetType().GetField("model", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.SetValue(builder, model);
             return builder;
         }
     }
