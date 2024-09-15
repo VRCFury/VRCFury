@@ -388,104 +388,103 @@ namespace VF.Feature {
             flex.Add(VRCFuryEditorUtils.Prop(pathProp, "Menu Path", tooltip: menuPathTooltip).FlexGrow(1));
 
             var button = new Button()
-            .Text("Options")
-            .OnClick(() => {
-                var advMenu = new GenericMenu();
-                var pos = Event.current.mousePosition;
+                .Text("Options")
+                .OnClick(() => {
+                    var advMenu = new GenericMenu();
+                    var pos = Event.current.mousePosition;
                     
-                advMenu.AddItem(new GUIContent("Select Menu Folder"), false, () => {
-                    MoveMenuItemBuilder.SelectButton(
-                        avatarObject,
-                        true,
-                        pathProp,
-                        append: () => MoveMenuItemBuilder.GetLastMenuSlug(pathProp.stringValue, "New Toggle"),
-                        immediate: true,
-                        pos: pos
-                    );
-                });
+                    advMenu.AddItem(new GUIContent("Select Menu Folder"), false, () => {
+                        MoveMenuItemBuilder.SelectButton(
+                            avatarObject,
+                            true,
+                            pathProp,
+                            append: () => MoveMenuItemBuilder.GetLastMenuSlug(pathProp.stringValue, "New Toggle"),
+                            immediate: true,
+                            pos: pos
+                        );
+                    });
 
-                advMenu.AddItem(new GUIContent("Saved Between Worlds"), savedProp.boolValue, () => {
-                    savedProp.boolValue = !savedProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
+                    advMenu.AddItem(new GUIContent("Saved Between Worlds"), savedProp.boolValue, () => {
+                        savedProp.boolValue = !savedProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
 
-                advMenu.AddItem(new GUIContent("Use a Slider (Radial)"), sliderProp.boolValue, () => {
-                    sliderProp.boolValue = !sliderProp.boolValue;
-                    invertRestLogicProp.boolValue = false;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Protect with Security"), securityEnabledProp.boolValue, () => {
-                    securityEnabledProp.boolValue = !securityEnabledProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                if (!sliderProp.boolValue) {
-                    advMenu.AddItem(new GUIContent("Default On"), defaultOnProp.boolValue, () => {
-                        defaultOnProp.boolValue = !defaultOnProp.boolValue;
+                    advMenu.AddItem(new GUIContent("Use a Slider (Radial)"), sliderProp.boolValue, () => {
+                        sliderProp.boolValue = !sliderProp.boolValue;
                         invertRestLogicProp.boolValue = false;
                         prop.serializedObject.ApplyModifiedProperties();
                     });
-                    
-                    advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
-                        hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
+
+                    advMenu.AddItem(new GUIContent("Protect with Security"), securityEnabledProp.boolValue, () => {
+                        securityEnabledProp.boolValue = !securityEnabledProp.boolValue;
                         prop.serializedObject.ApplyModifiedProperties();
                     });
-                    
-                    advMenu.AddItem(new GUIContent("Hold Button"), holdButtonProp.boolValue, () => {
-                        holdButtonProp.boolValue = !holdButtonProp.boolValue;
+
+                    if (!sliderProp.boolValue) {
+                        advMenu.AddItem(new GUIContent("Default On"), defaultOnProp.boolValue, () => {
+                            defaultOnProp.boolValue = !defaultOnProp.boolValue;
+                            invertRestLogicProp.boolValue = false;
+                            prop.serializedObject.ApplyModifiedProperties();
+                        });
+                        
+                        advMenu.AddItem(new GUIContent("Run Animation to Completion"), hasExitTimeProp.boolValue, () => {
+                            hasExitTimeProp.boolValue = !hasExitTimeProp.boolValue;
+                            prop.serializedObject.ApplyModifiedProperties();
+                        });
+                        
+                        advMenu.AddItem(new GUIContent("Hold Button"), holdButtonProp.boolValue, () => {
+                            holdButtonProp.boolValue = !holdButtonProp.boolValue;
+                            prop.serializedObject.ApplyModifiedProperties();
+                        });
+                    }
+
+                    advMenu.AddItem(new GUIContent((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled"), invertRestLogicProp.boolValue, () => {
+                        invertRestLogicProp.boolValue = !invertRestLogicProp.boolValue;
                         prop.serializedObject.ApplyModifiedProperties();
                     });
-                }
 
-                advMenu.AddItem(new GUIContent((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled"), invertRestLogicProp.boolValue, () => {
-                    invertRestLogicProp.boolValue = !invertRestLogicProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
+                    advMenu.AddItem(new GUIContent("Enable Tags"), enableTagsProp.boolValue, () => {
+                        enableTagsProp.boolValue = !enableTagsProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
+                    advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
+                        enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
+                    advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
+                        exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
+                    advMenu.AddItem(new GUIContent("Set Custom Menu Icon"), enableIconProp.boolValue, () => {
+                        enableIconProp.boolValue = !enableIconProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
+                    advMenu.AddItem(new GUIContent("Drive a Global Parameter"), enableDriveGlobalParamProp.boolValue, () => {
+                        enableDriveGlobalParamProp.boolValue = !enableDriveGlobalParamProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
+                    advMenu.AddItem(new GUIContent("Separate Local State"), separateLocalProp.boolValue, () => {
+                        separateLocalProp.boolValue = !separateLocalProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
+                    advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
+                        hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
+                    advMenu.AddItem(new GUIContent("Use a Global Parameter"), useGlobalParamProp.boolValue, () => {
+                        useGlobalParamProp.boolValue = !useGlobalParamProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
+                    advMenu.ShowAsContext();
                 });
-
-                
-                advMenu.AddItem(new GUIContent("Enable Tags"), enableTagsProp.boolValue, () => {
-                    enableTagsProp.boolValue = !enableTagsProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
-                    enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
-                    exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Set Custom Menu Icon"), enableIconProp.boolValue, () => {
-                    enableIconProp.boolValue = !enableIconProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Drive a Global Parameter"), enableDriveGlobalParamProp.boolValue, () => {
-                    enableDriveGlobalParamProp.boolValue = !enableDriveGlobalParamProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Separate Local State"), separateLocalProp.boolValue, () => {
-                    separateLocalProp.boolValue = !separateLocalProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
-                    hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.AddItem(new GUIContent("Use a Global Parameter"), useGlobalParamProp.boolValue, () => {
-                    useGlobalParamProp.boolValue = !useGlobalParamProp.boolValue;
-                    prop.serializedObject.ApplyModifiedProperties();
-                });
-
-                advMenu.ShowAsContext();
-            });
             flex.Add(button);
 
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
@@ -600,44 +599,44 @@ namespace VF.Feature {
 
             // Tags
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var tags = new List<string>();
-                if (savedProp.boolValue)
-                    tags.Add("Saved");
-                if (securityEnabledProp.boolValue)
-                    tags.Add("Security");
-                if (!sliderProp.boolValue) {
-                    if (defaultOnProp.boolValue)
-                        tags.Add("Default On");
-                    if (holdButtonProp.boolValue)
-                        tags.Add("Hold Button");
-                    if (hasExitTimeProp.boolValue)
-                        tags.Add("Run to Completion");
-                }
-                if (invertRestLogicProp.boolValue)
-                    tags.Add((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled");
-                if (exclusiveOffStateProp.boolValue)
-                    tags.Add("This is the Exclusive Off State");
+                    var tags = new List<string>();
+                    if (savedProp.boolValue)
+                        tags.Add("Saved");
+                    if (securityEnabledProp.boolValue)
+                        tags.Add("Security");
+                    if (!sliderProp.boolValue) {
+                        if (defaultOnProp.boolValue)
+                            tags.Add("Default On");
+                        if (holdButtonProp.boolValue)
+                            tags.Add("Hold Button");
+                        if (hasExitTimeProp.boolValue)
+                            tags.Add("Run to Completion");
+                    }
+                    if (invertRestLogicProp.boolValue)
+                        tags.Add((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled");
+                    if (exclusiveOffStateProp.boolValue)
+                        tags.Add("This is the Exclusive Off State");
 
-                var row = new VisualElement().Row().FlexWrap();
-                foreach (var tag in tags) {
-                    var flag = new Label(tag).Padding(2,4);
-                    flag.style.width = StyleKeyword.Auto;
-                    flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
-                    flag.style.borderTopRightRadius = 5;
-                    flag.style.marginRight = 5;
-                    row.Add(flag);
-                }
+                    var row = new VisualElement().Row().FlexWrap();
+                    foreach (var tag in tags) {
+                        var flag = new Label(tag).Padding(2,4);
+                        flag.style.width = StyleKeyword.Auto;
+                        flag.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
+                        flag.style.borderTopRightRadius = 5;
+                        flag.style.marginRight = 5;
+                        row.Add(flag);
+                    }
 
-                return row;
-            },
-            savedProp,
-            securityEnabledProp,
-            defaultOnProp,
-            invertRestLogicProp,
-            exclusiveOffStateProp,
-            holdButtonProp,
-            hasExitTimeProp,
-            sliderProp
+                    return row;
+                },
+                savedProp,
+                securityEnabledProp,
+                defaultOnProp,
+                invertRestLogicProp,
+                exclusiveOffStateProp,
+                holdButtonProp,
+                hasExitTimeProp,
+                sliderProp
             ));
 
             content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
@@ -671,7 +670,6 @@ namespace VF.Feature {
 
             return content;
         }
-
         private static VisualElement MakeTabbed(string label, VisualElement child) {
             var output = new VisualElement();
             output.Add(VRCFuryEditorUtils.WrappedLabel(label).Bold());
