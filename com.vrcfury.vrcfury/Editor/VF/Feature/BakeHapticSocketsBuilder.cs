@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
@@ -211,25 +212,65 @@ namespace VF.Feature {
                         hapticContacts.AddReceiver(req);
                     }
 
-                    // This needs to be created before we make the menu item, because it turns this off.
-                    var animRoot = GameObjects.Create("Animations", bakeResult.worldSpace);
+                    var animObjects = new List<VFGameObject>();
+                    var Contacts = new Lazy<SpsDepthContacts>(() => {
+                        var scale = scaleFactorService.GetAdv(bakeResult.bakeRoot, bakeResult.worldSpace);
+                        if (scale == null) throw new Exception("Scale cannot be null at this point. Is this a mobile build somehow?");
+                        var (scaleFactor, scaleFactorContact1, scaleFactorContact2) = scale.Value;
+                        var animRoot = GameObjects.Create("Animations", bakeResult.worldSpace);
+                        animObjects.Add(animRoot);
+                        animObjects.Add(scaleFactorContact1);
+                        animObjects.Add(scaleFactorContact2);
+                        return new SpsDepthContacts(animRoot, name, hapticContacts, directTree, math, socket.useHipAvoidance, scaleFactor);
+                    });
 
+                    if (socket.depthActions2.Count > 0) {
+                        _hapticAnimContactsService.CreateAnims(
+                            socket.depthActions2,
+                            socket.owner(),
+                            name,
+                            Contacts.Value
+                        );
+                    }
+                    
+                    var injectDepthToFullControllerParams = allBuildersInRun
+                        .OfType<FullControllerBuilder>()
+                        .Where(fc => fc.featureBaseObject.IsChildOf(socket.owner()))
+                        .Select(fc => fc.injectSpsDepthParam)
+                        .NotNull()
+                        .ToList();
+                    if (socket.IsValidPlugLength) {
+                        math.CopyInPlace(socket.plugLengthParameterName, Contacts.Value.closestLength.Value);
+                    }
+                    foreach (var i in injectDepthToFullControllerParams) {
+                        math.CopyInPlace(i, Contacts.Value.closestDistancePlugLengths.Value);
+                    }
+                    if (socket.IsValidPlugWidth) {
+                        math.Buffer(Contacts.Value.closestRadius.Value, socket.plugWidthParameterName, usePrefix: false);
+                    }
+
+                    // Do the toggle last so all the objects have been generated and can be toggled on/off
                     if (toggleParam != null) {
                         obj.active = true;
                         _forceStateInAnimatorService.ForceEnable(obj);
 
-                        foreach (var child in new []{bakeResult.senders, haptics, bakeResult.lights, animRoot}.NotNull()) {
+                        foreach (var child in new []{bakeResult.bakeRoot, bakeResult.senders, haptics, bakeResult.lights}.Concat(animObjects).NotNull()) {
                             child.active = false;
                         }
 
                         var onLocalClip = clipFactory.NewClip($"{name} (Local)");
-                        foreach (var child in new []{bakeResult.senders, haptics, bakeResult.lights, animRoot}.NotNull()) {
+                        foreach (var child in new []{bakeResult.bakeRoot, bakeResult.senders, haptics, bakeResult.lights}.Concat(animObjects).NotNull()) {
                             onLocalClip.SetEnabled(child, true);
                         }
 
                         var onRemoteClip = clipFactory.NewClip($"{name} (Remote)");
-                        foreach (var child in new []{bakeResult.senders, bakeResult.lights, animRoot}.NotNull()) {
+                        foreach (var child in new []{bakeResult.bakeRoot, bakeResult.senders, bakeResult.lights}.Concat(animObjects).NotNull()) {
                             onRemoteClip.SetEnabled(child, true);
+                        }
+                        
+                        var onStealthClip = clipFactory.NewClip($"{name} (Stealth)");
+                        foreach (var child in new []{bakeResult.bakeRoot, haptics}.NotNull()) {
+                            onStealthClip.SetEnabled(child, true);
                         }
 
                         var activeClip = actionClipService.LoadState($"SPS - Active Animation for {name}", socket.activeActions);
@@ -244,11 +285,6 @@ namespace VF.Feature {
 
                             onLocalClip.SetAap(activeAnimParam, 1);
                             onRemoteClip.SetAap(activeAnimParam, 1);
-                        }
-
-                        var onStealthClip = clipFactory.NewClip($"{name} (Stealth)");
-                        foreach (var child in new []{haptics}.NotNull()) {
-                            onStealthClip.SetEnabled(child.gameObject, true);
                         }
 
                         var gizmo = obj.GetComponent<VRCFurySocketGizmo>();
@@ -280,36 +316,11 @@ namespace VF.Feature {
                                 useHipAvoidance = socket.useHipAvoidance
                             });
                             autoReceiverObj.active = false;
-                            autoOnClip.SetEnabled(autoReceiverObj, true);
+                            foreach (var child in new []{bakeResult.bakeRoot, autoReceiverObj}.NotNull()) {
+                                autoOnClip.SetEnabled(child, true);
+                            }
                             autoSockets.Add(Tuple.Create(name, toggleParam, distParam));
                         }
-                    }
-
-                    var scaleFactor = scaleFactorService.Get(bakeResult.bakeRoot, bakeResult.worldSpace);
-                    var contacts = new SpsDepthContacts(animRoot, name, hapticContacts, directTree, math, socket.useHipAvoidance, scaleFactor);
-                    if (socket.depthActions2.Count > 0) {
-                        _hapticAnimContactsService.CreateAnims(
-                            socket.depthActions2,
-                            socket.owner(),
-                            name,
-                            contacts
-                        );
-                    }
-
-                    var injectDepthToFullControllerParams = allBuildersInRun
-                        .OfType<FullControllerBuilder>()
-                        .Where(fc => fc.featureBaseObject.IsChildOf(socket.owner()))
-                        .Select(fc => fc.injectSpsDepthParam)
-                        .NotNull()
-                        .ToList();
-                    if (socket.IsValidPlugLength) {
-                        math.CopyInPlace(socket.plugLengthParameterName, contacts.closestLength.Value);
-                    }
-                    foreach (var i in injectDepthToFullControllerParams) {
-                        math.CopyInPlace(i, contacts.closestDistancePlugLengths.Value);
-                    }
-                    if (socket.IsValidPlugWidth) {
-                        math.Buffer(contacts.closestRadius.Value, socket.plugWidthParameterName, usePrefix: false);
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath(avatarObject)}", e);
