@@ -82,8 +82,8 @@ namespace VF.Feature {
 
             var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
             
-            var clip = actionClipService.LoadState(uid, gesture.state);
             if (weight != null) {
+                var clip = actionClipService.LoadState(uid, gesture.state, motionTime: ActionClipService.MotionTimeMode.Always);
                 var smoothedWeight = MakeWeightLayer(
                     weight,
                     onCondition
@@ -95,6 +95,7 @@ namespace VF.Feature {
                 tree.Add(1, clip.GetLastFrame());
                 on.WithAnimation(tree);
             } else {
+                var clip = actionClipService.LoadState(uid, gesture.state);
                 on.WithAnimation(clip);
             }
 
