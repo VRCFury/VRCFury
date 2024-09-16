@@ -5,16 +5,18 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 
 namespace VF.Feature {
 
     [FeatureTitle("When-Talking State")]
     internal class TalkingBuilder : FeatureBuilder<Talking> {
         [VFAutowired] private readonly ActionClipService actionClipService;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
 
         [FeatureBuilderAction]
         public void Apply() {
-            var fx = GetFx();
             var layer = fx.NewLayer("Talk Glow");
             var clip = actionClipService.LoadState("TalkGlow", model.state);
             var off = layer.NewState("Off");

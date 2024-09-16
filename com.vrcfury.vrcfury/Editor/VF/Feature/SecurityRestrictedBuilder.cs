@@ -15,9 +15,11 @@ using VF.Utils;
 namespace VF.Feature {
     [FeatureTitle("Security Restricted")]
     internal class SecurityRestrictedBuilder : FeatureBuilder<SecurityRestricted> {
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly GlobalsService globals;
         
         [FeatureBuilderAction(FeatureOrder.SecurityRestricted)]
         public void Apply() {
@@ -36,7 +38,7 @@ namespace VF.Feature {
                 parent = parent.parent;
             }
 
-            var security = allBuildersInRun.OfType<SecurityLockBuilder>().FirstOrDefault();
+            var security = globals.allBuildersInRun.OfType<SecurityLockBuilder>().FirstOrDefault();
             if (security == null) {
                 Debug.LogWarning("Security pin not set, restriction disabled");
                 return;

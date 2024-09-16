@@ -8,6 +8,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature;
 using VF.Inspector;
+using VF.Service;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils.Controller {
@@ -172,7 +173,7 @@ namespace VF.Utils.Controller {
             
             output.FixLayer0Weight();
             output.ApplyBaseMask(type);
-            NoBadControllerParamsBuilder.RemoveWrongParamTypes(output);
+            NoBadControllerParamsService.RemoveWrongParamTypes(output);
             return output;
         }
 

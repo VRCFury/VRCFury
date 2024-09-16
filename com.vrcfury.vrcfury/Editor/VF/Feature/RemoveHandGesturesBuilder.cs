@@ -3,8 +3,10 @@ using UnityEditor.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
@@ -12,9 +14,11 @@ namespace VF.Feature {
     [FeatureOnlyOneAllowed]
     [FeatureRootOnly]
     internal class RemoveHandGesturesBuilder : FeatureBuilder<RemoveHandGestures2> {
+        [VFAutowired] private readonly ControllersService controllers;
+
         [FeatureBuilderAction]
         public void Apply() {
-            foreach (var controller in manager.GetAllUsedControllers()) {
+            foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetUnmanagedLayers()) {
                     foreach (var t in new AnimatorIterator.Transitions().From(layer)) {
                         AdjustTransition(controller, t);

@@ -15,8 +15,9 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Feature {
     [FeatureTitle("Show In First Person")]
     internal class ShowInFirstPersonBuilder : FeatureBuilder<ShowInFirstPerson> {
-        [VFAutowired] private readonly ObjectMoveService mover;
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly FakeHeadService fakeHead;
+        [VFAutowired] private readonly GlobalsService globals;
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -26,7 +27,7 @@ namespace VF.Feature {
             var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
             if (head == null) return;
 
-            addOtherFeature(new ArmatureLink {
+            globals.addOtherFeature(new ArmatureLink {
                 propBone = obj,
                 linkTo = new List<ArmatureLink.LinkTo> {
                     new ArmatureLink.LinkTo {

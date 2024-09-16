@@ -8,8 +8,10 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
@@ -20,6 +22,10 @@ namespace VF.Feature {
     [FeatureOnlyOneAllowed]
     [FeatureRootOnly]
     internal class BlendshapeOptimizerBuilder : FeatureBuilder<BlendshapeOptimizer> {
+        [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+        [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly GlobalsService globals;
 
         [FeatureEditor]
         public static VisualElement Editor() {
@@ -33,7 +39,7 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.BlendshapeOptimizer)]
         public void Apply() {
-            var keepMmdShapes = allFeaturesInRun.Any(f => f is MmdCompatibility);
+            var keepMmdShapes = globals.allFeaturesInRun.Any(f => f is MmdCompatibility);
 
             var logOutput = "";
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
@@ -86,8 +92,6 @@ namespace VF.Feature {
                     logOutput += (id != blendshapeCount-1 ? "\u251c" : "\u2514") + logOutputDetail;
                 }
                 VRCFuryEditorUtils.MarkDirty(mesh);
-
-                var avatar = manager.Avatar;
 
                 var newId = 0;
                 for (var id = 0; id < blendshapeCount; id++) {
@@ -196,7 +200,7 @@ namespace VF.Feature {
         }
 
         private ICollection<string> CollectAnimatedBlendshapesForMesh(SkinnedMeshRenderer skin) {
-            var animatedBindings = manager.GetAllUsedControllers()
+            var animatedBindings = controllers.GetAllUsedControllers()
                 .Select(c => c.GetRaw())
                 .SelectMany(controller => GetBindings(avatarObject, controller))
                 .Concat(avatarObject.GetComponentsInSelfAndChildren<Animator>()
@@ -227,7 +231,6 @@ namespace VF.Feature {
                 }
             }
 
-            var avatar = manager.Avatar;
             if (avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes) {
                 if (skin == avatar.customEyeLookSettings.eyelidsSkinnedMesh) {
                     foreach (var b in avatar.customEyeLookSettings.eyelidsBlendshapes) {

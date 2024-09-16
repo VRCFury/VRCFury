@@ -18,6 +18,7 @@ namespace VF.Feature {
     [FeatureRootOnly]
     internal class CrossEyeFixBuilder : FeatureBuilder<CrossEyeFix2> {
         [VFAutowired] private readonly ObjectMoveService mover;
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -25,7 +26,6 @@ namespace VF.Feature {
                 return;
             }
 
-            var avatar = manager.Avatar;
             if (!avatar.enableEyeLook) return;
             var eyeLeft = avatar.customEyeLookSettings.leftEye;
             var eyeRight = avatar.customEyeLookSettings.rightEye;

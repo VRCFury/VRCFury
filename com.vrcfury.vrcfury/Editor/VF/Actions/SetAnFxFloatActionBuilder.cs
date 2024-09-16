@@ -15,9 +15,6 @@ using VF.Utils;
 namespace VF.Actions {
     [FeatureTitle("Set an FX Float")]
     internal class SetAnFxFloatActionBuilder : ActionBuilder<FxFloatAction> {
-        [VFAutowired] [CanBeNull] private readonly AvatarManager manager;
-        [VFAutowired] [CanBeNull] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
-        
         public AnimationClip Build(FxFloatAction model, AnimationClip offClip) {
             var onClip = NewClip();
             if (string.IsNullOrWhiteSpace(model.name)) {
@@ -28,12 +25,7 @@ namespace VF.Actions {
                 throw new Exception("Set an FX Float cannot set built-in vrchat parameters");
             }
 
-            if (manager != null && driveOtherTypesFromFloatService != null) {
-                //var myFloat = manager.GetFx().NewFloat("vrcfParamDriver");
-                //onClip.SetAap(myFloat, model.value);
-                //driveOtherTypesFromFloatService.DriveAutoLater(myFloat, model.name, model.value);
-                onClip.SetAap(model.name, model.value);
-            }
+            onClip.SetAap(model.name, model.value);
             return onClip;
         }
 

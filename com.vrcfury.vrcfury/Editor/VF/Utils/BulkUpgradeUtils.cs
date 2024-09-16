@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
-using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 
-namespace VF.Menu {
+namespace VF.Utils {
     internal static class BulkUpgradeUtils {
         public static void WithAllScenesOpen(Action fn) {
             EditorSceneManager.SaveOpenScenes();

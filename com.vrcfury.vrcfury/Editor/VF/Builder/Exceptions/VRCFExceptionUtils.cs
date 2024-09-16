@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEditor;
 using VF.Inspector;
+using VF.Utils;
 using Debug = UnityEngine.Debug;
 
 namespace VF.Builder.Exceptions {

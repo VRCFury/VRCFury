@@ -5,6 +5,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
@@ -12,14 +13,14 @@ using VRC.SDKBase;
 namespace VF.Service {
     [VFService]
     internal class DriveOtherTypesFromFloatService {
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         private VFLayer layer;
         private VFState idle;
 
         private readonly Dictionary<string, (VFAInteger,int,VFTransition)> currentSettings = new Dictionary<string, (VFAInteger,int,VFTransition)>();
 
         public void Drive(VFAFloat input, string output, float value) {
-            var fx = manager.GetFx();
             if (layer == null) {
                 layer = fx.NewLayer("Cross-Type Param Driver");
                 idle = layer.NewState("Idle");
@@ -78,7 +79,7 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.DriveNonFloatTypes)]
         public void DriveNonFloatTypes() {
             var nonFloatParams = new HashSet<string>();
-            foreach (var c in manager.GetAllUsedControllers()) {
+            foreach (var c in controllers.GetAllUsedControllers()) {
                 nonFloatParams.UnionWith(c.GetRaw().parameters
                     .Where(p => p.type != AnimatorControllerParameterType.Float || c.GetType() != VRCAvatarDescriptor.AnimLayerType.FX)
                     .Select(p => p.name));
@@ -94,7 +95,7 @@ namespace VF.Service {
             }
 
             if (rewrites.Count > 0) {
-                foreach (var c in manager.GetAllUsedControllers()) {
+                foreach (var c in controllers.GetAllUsedControllers()) {
                     c.GetRaw().RewriteParameters(from =>
                         rewrites.TryGetValue(from, out var to) ? to : from
                     );

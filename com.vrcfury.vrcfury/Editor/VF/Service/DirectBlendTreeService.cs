@@ -14,7 +14,8 @@ namespace VF.Service {
     [VFService]
     [VFPrototypeScope]
     internal class DirectBlendTreeService {
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly VFInjectorParent parent;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
@@ -25,7 +26,6 @@ namespace VF.Service {
                 if (parent.parent is FeatureBuilder builder) {
                     name += $" #{builder.uniqueModelNum}";
                 }
-                var fx = manager.GetFx();
                 var directLayer = fx.NewLayer(name);
                 _tree = clipFactory.NewDBT(name);
                 directLayer.NewState("DBT").WithAnimation(_tree);
@@ -34,7 +34,7 @@ namespace VF.Service {
         }
 
         public void Add(Motion motion) {
-            Add(manager.GetFx().One(), motion);
+            Add(fx.One(), motion);
         }
         
         public void Add(VFAFloat param, Motion motion) {

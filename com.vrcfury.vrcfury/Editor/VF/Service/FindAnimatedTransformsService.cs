@@ -10,7 +10,8 @@ using VRC.Dynamics;
 namespace VF.Service {
     [VFService]
     internal class FindAnimatedTransformsService {
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly VFGameObject avatarObject;
         
         public class AnimatedTransforms {
             public readonly HashSet<VFGameObject> scaleIsAnimated = new HashSet<VFGameObject>();
@@ -33,7 +34,6 @@ namespace VF.Service {
 
         public AnimatedTransforms Find() {
             var output = new AnimatedTransforms();
-            var avatarObject = manager.AvatarObject;
             
             // Physbones
             foreach (var physBone in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
@@ -59,7 +59,7 @@ namespace VF.Service {
             }
 
             // Animation clips
-            foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
+            foreach (var clip in controllers.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
                 foreach (var binding in clip.GetAllBindings()) {
                     if (binding.type == typeof(Transform)) {
                         var transform = avatarObject.Find(binding.path);

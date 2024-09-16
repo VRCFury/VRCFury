@@ -14,9 +14,8 @@ namespace VF.Service {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly AvatarManager avatarManager;
-        private ControllerManager fx => avatarManager.GetFx();
-        [VFAutowired] private readonly HapticContactsService hapticContacts;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public void CreateAnims(

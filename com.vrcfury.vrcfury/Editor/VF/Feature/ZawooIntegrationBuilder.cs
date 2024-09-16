@@ -7,9 +7,11 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Service;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
@@ -19,6 +21,8 @@ namespace VF.Feature {
     [FeatureRootOnly]
     [FeatureHideInMenu]
     internal class ZawooIntegrationBuilder : FeatureBuilder<ZawooIntegration> {
+        [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly GlobalsService globals;
 
         private enum Type { Canine, Anthro }
         
@@ -27,7 +31,7 @@ namespace VF.Feature {
             foreach (var (type,root) in GetZawooRoots()) {
                 ApplyZawoo(type, root);
             }
-            addOtherFeature(new OGBIntegration2());
+            globals.addOtherFeature(new OGBIntegration2());
         }
 
         private List<(Type, VFGameObject)> GetZawooRoots() {
@@ -78,7 +82,7 @@ namespace VF.Feature {
                 return;
             }
 
-            addOtherFeature(new FullController {
+            globals.addOtherFeature(new FullController {
                 controllers = { new FullController.ControllerEntry {
                     controller = fx
                 } },

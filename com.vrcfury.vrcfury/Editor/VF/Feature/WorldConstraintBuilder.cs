@@ -22,13 +22,17 @@ namespace VF.Feature {
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly MenuService menuService;
+        private MenuManager menu => menuService.GetMenu();
 
         private VFABool toggle;
         
         [FeatureBuilderAction]
         public void ApplyToggle() {
             toggle = fx.NewBool($"{model.menuPath}", true);
-            manager.GetMenu().NewMenuToggle(model.menuPath, toggle);
+            menu.NewMenuToggle(model.menuPath, toggle);
         }
         
         [FeatureBuilderAction(FeatureOrder.WorldConstraintBuilder)]

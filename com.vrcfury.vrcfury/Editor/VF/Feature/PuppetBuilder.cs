@@ -12,10 +12,13 @@ namespace VF.Feature {
     internal class PuppetBuilder : FeatureBuilder<Puppet> {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly MenuService menuService;
+        private MenuManager menu => menuService.GetMenu();
 
         [FeatureBuilderAction]
         public void Apply() {
-            var fx = GetFx();
             var layerName = model.name;
             var layer = fx.NewLayer(layerName);
             
@@ -37,13 +40,13 @@ namespace VF.Feature {
             layer.NewState("Blend").WithAnimation(tree);
 
             if (model.slider) {
-                if (usesX) manager.GetMenu().NewMenuSlider(
+                if (usesX) menu.NewMenuSlider(
                     model.name,
                     x,
                     icon: model.enableIcon ? model.icon.Get() : null
                 );
             } else {
-                manager.GetMenu().NewMenuPuppet(
+                menu.NewMenuPuppet(
                     model.name,
                     x: usesX ? x : null,
                     y: usesY ? y : null,

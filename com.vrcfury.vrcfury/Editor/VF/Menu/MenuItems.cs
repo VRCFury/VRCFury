@@ -7,6 +7,7 @@ using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Model;
+using VF.Utils;
 
 namespace VF.Menu {
     internal static class MenuItems {

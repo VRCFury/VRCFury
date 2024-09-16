@@ -121,7 +121,7 @@ namespace VF {
                             var hapticContactsService = new HapticContactsService();
                             var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService, tmpDir);
                             foreach (var renderer in bakeResult.renderers) {
-                                SaveAssetsBuilder.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
+                                SaveAssetsService.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
                             }
                             HideAnnoyingGizmosService.Hide(bakeResult.bakeRoot);
                         } catch (Exception e) {

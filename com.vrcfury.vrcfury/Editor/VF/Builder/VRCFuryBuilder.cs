@@ -18,6 +18,7 @@ using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -125,9 +126,15 @@ namespace VF.Builder {
             var collectedModels = new List<FeatureModel>();
             var collectedBuilders = new List<FeatureBuilder>();
 
+            var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+            if (avatar == null) {
+                throw new Exception("Failed to find VRCAvatarDescriptor on avatar object");
+            }
+
             var injector = new VRCFuryInjector();
             injector.ImportScan(typeof(VFServiceAttribute));
             injector.ImportScan(typeof(ActionBuilder));
+            injector.Set(avatar);
             injector.Set("avatarObject", avatarObject);
             injector.Set("componentObject", new Func<VFGameObject>(() => currentServiceGameObject));
             

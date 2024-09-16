@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 
@@ -12,6 +13,8 @@ namespace VF.Feature {
     [FeatureOnlyOneAllowed]
     [FeatureRootOnly]
     internal class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
+        [VFAutowired] private readonly VFGameObject avatarObject;
+
         [FeatureBuilderAction(FeatureOrder.AnchorOverrideFix)]
         public void Apply() {
             VFGameObject root;

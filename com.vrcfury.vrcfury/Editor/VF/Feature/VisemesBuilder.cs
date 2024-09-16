@@ -17,12 +17,15 @@ namespace VF.Feature {
 
     [FeatureTitle("Advanced Visemes")]
     internal class VisemesBuilder : FeatureBuilder<Visemes> {
-        [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
+        [VFAutowired] private readonly TrackingConflictResolverService trackingConflictResolverService;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly SmoothingService smooth;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
 
         private static readonly string[] visemeNames = {
             "sil", "PP", "FF", "TH", "DD", "kk", "CH", "SS", "nn", "RR", "aa", "E", "I", "O", "U"
@@ -30,7 +33,6 @@ namespace VF.Feature {
         
         [FeatureBuilderAction]
         public void Apply() {
-            var avatar = manager.Avatar;
             if (avatar.lipSync != VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape) {
                 avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
             }
@@ -84,9 +86,9 @@ namespace VF.Feature {
                 addViseme(i, name, (State)model.GetType().GetField(fieldName).GetValue(model));
             }
 
-            trackingConflictResolverBuilder.WhenCollected(() => {
+            trackingConflictResolverService.WhenCollected(() => {
                 var inhibitors =
-                    trackingConflictResolverBuilder.GetInhibitors(TrackingConflictResolverBuilder.TrackingMouth);
+                    trackingConflictResolverService.GetInhibitors(TrackingConflictResolverService.TrackingMouth);
 
                 var enabledWhen = math.True();
                 foreach (var inhibitor in inhibitors) {

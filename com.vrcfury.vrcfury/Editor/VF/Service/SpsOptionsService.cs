@@ -11,7 +11,7 @@ using VF.Model.Feature;
 namespace VF.Service {
     [VFService]
     internal class SpsOptionsService {
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly MenuChangesService menuChanges;
 
@@ -67,7 +67,7 @@ namespace VF.Service {
         }
 
         public string GetOptionsPath() {
-            if (manager.AvatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Length == 0) {
+            if (avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Length == 0) {
                 return GetMenuPath();
             }
             return GetMenuPath() + "/<b>Options";

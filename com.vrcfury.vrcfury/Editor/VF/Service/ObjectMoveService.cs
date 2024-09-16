@@ -18,21 +18,21 @@ namespace VF.Service {
      */
     [VFService]
     internal class ObjectMoveService {
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ClipRewriteService clipRewriteService;
 
         private readonly List<(string, string)> deferred = new List<(string, string)>();
 
         public void Move(VFGameObject obj, VFGameObject newParent = null, string newName = null, bool worldPositionStays = true, bool defer = false) {
             var immovableBones = new HashSet<VFGameObject>();
-            immovableBones.Add(manager.AvatarObject);
+            immovableBones.Add(avatarObject);
             // Eyes are weird, because vrc takes full control of them, and we move them as part of the crosseye fix, so ignore them
-            foreach (var pair in VRCFArmatureUtils.GetAllBones(manager.AvatarObject)) {
+            foreach (var pair in VRCFArmatureUtils.GetAllBones(avatarObject)) {
                 var bone = pair.Key;
                 var boneObj = pair.Value;
                 if (bone == HumanBodyBones.LeftEye || bone == HumanBodyBones.RightEye) continue;
                 var current = boneObj;
-                while (current != null && current != manager.AvatarObject) {
+                while (current != null && current != avatarObject) {
                     immovableBones.Add(current);
                     current = current.parent;
                 }

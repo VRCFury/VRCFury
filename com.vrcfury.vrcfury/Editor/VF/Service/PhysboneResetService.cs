@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using JetBrains.Annotations;
-using UnityEngine;
 using VF.Builder;
 using VF.Injector;
 using VF.Utils;
@@ -12,13 +10,13 @@ namespace VF.Service {
      */
     [VFService]
     internal class PhysboneResetService {
-        [VFAutowired] private readonly AvatarManager avatarManager;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MathService mathService;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public VFAFloat CreatePhysBoneResetter(ICollection<VFGameObject> resetPhysbones, string name) {
-            var fx = avatarManager.GetFx();
             var param = fx.NewFloat(name + "_PhysBoneReset");
             var buffer1 = mathService.Buffer(param);
             var buffer2 = mathService.Buffer(buffer1);

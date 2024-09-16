@@ -21,13 +21,15 @@ namespace VF.Feature {
 
     [FeatureTitle("Toggle")]
     internal class ToggleBuilder : FeatureBuilder<Toggle> {
-        [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateService restingState;
-        [VFAutowired] private readonly FixWriteDefaultsBuilder writeDefaultsManager;
+        [VFAutowired] private readonly FixWriteDefaultsService writeDefaultsManager;
         [VFAutowired] private readonly ClipRewriteService clipRewriteService;
-        [VFAutowired] private readonly ClipFactoryService clipFactory;
-        [VFAutowired] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly MenuService menuService;
+        private MenuManager menu => menuService.GetMenu();
+        [VFAutowired] private readonly GlobalsService globals;
 
         private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
         private VFCondition isOn;
@@ -72,7 +74,6 @@ namespace VF.Feature {
 
         [FeatureBuilderAction]
         public void Apply() {
-            var fx = GetFx();
             var hasTitle = !string.IsNullOrEmpty(model.name);
             var hasIcon = model.enableIcon && model.icon?.Get() != null;
             var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
@@ -101,7 +102,7 @@ namespace VF.Feature {
                 defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
                 weight = param;
                 if (addMenuItem) {
-                    manager.GetMenu().NewMenuSlider(
+                    menu.NewMenuSlider(
                         model.name,
                         param,
                         icon: model.enableIcon ? model.icon?.Get() : null
@@ -119,13 +120,13 @@ namespace VF.Feature {
                 defaultOn = model.defaultOn;
                 if (addMenuItem) {
                     if (model.holdButton) {
-                        manager.GetMenu().NewMenuButton(
+                        menu.NewMenuButton(
                             model.name,
                             param,
                             icon: model.enableIcon ? model.icon?.Get() : null
                         );
                     } else {
-                        manager.GetMenu().NewMenuToggle(
+                        menu.NewMenuToggle(
                             model.name,
                             param,
                             icon: model.enableIcon ? model.icon?.Get() : null
@@ -145,15 +146,14 @@ namespace VF.Feature {
 
             if (model.separateLocal) {
                 var isLocal = fx.IsLocal().IsTrue();
-                Apply(fx, layer, off, onCase.And(isLocal.Not()), weight, defaultOn, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
-                Apply(fx, layer, off, onCase.And(isLocal), weight, defaultOn, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
+                Apply(layer, off, onCase.And(isLocal.Not()), weight, defaultOn, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
+                Apply(layer, off, onCase.And(isLocal), weight, defaultOn, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
             } else {
-                Apply(fx, layer, off, onCase, weight, defaultOn, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
+                Apply(layer, off, onCase, weight, defaultOn, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
             }
         }
 
         private void Apply(
-            ControllerManager fx,
             VFLayer layer,
             VFState off,
             VFCondition onCase,
@@ -167,7 +167,7 @@ namespace VF.Feature {
             float outTime
         ) {
             if (model.securityEnabled) {
-                var securityLockUnlocked = allBuildersInRun
+                var securityLockUnlocked = globals.allBuildersInRun
                     .OfType<SecurityLockBuilder>()
                     .Select(f => f.GetEnabled())
                     .FirstOrDefault();
@@ -265,11 +265,10 @@ namespace VF.Feature {
         public void ApplyExclusiveTags() {
             if (exclusiveTagTriggeringStates.Count == 0) return;
 
-            var fx = GetFx();
             var allOthersOffCondition = fx.Always();
 
             var myTags = GetExclusiveTags();
-            foreach (var other in allBuildersInRun
+            foreach (var other in globals.allBuildersInRun
                          .OfType<ToggleBuilder>()
                          .Where(b => b != this)) {
                 var otherTags = other.GetExclusiveTags();
