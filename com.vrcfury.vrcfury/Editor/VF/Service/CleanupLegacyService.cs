@@ -1,5 +1,6 @@
 using System;
 using UnityEditor;
+using UnityEditor.Animations;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
@@ -24,7 +25,7 @@ namespace VF.Service {
             tempAsset = null;
 #else
             tempAsset = VrcfObjectFactory.Create<AnimatorController>();
-            VRCFuryAssetDatabase.SaveAsset(tempAsset, tmpDir, "tempStorage");
+            VRCFuryAssetDatabase.SaveAsset(tempAsset, globals.tmpDir, "tempStorage");
 #endif
         }
 
