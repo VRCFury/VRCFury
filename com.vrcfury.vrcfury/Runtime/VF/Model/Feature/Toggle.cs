@@ -29,6 +29,7 @@ namespace VF.Model.Feature {
         public bool enableDriveGlobalParam;
         public string driveGlobalParam = "";
         public bool separateLocal;
+        public bool localIncludeFriends;
         public State localState;
         public bool hasTransition;
         public State transitionStateIn;
