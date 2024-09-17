@@ -6,13 +6,12 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Inspector;
-using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
-namespace VF.Menu {
+namespace VF.Utils {
     internal static class AvatarCleaner {
         public static List<string> Cleanup(
             VFGameObject avatarObj,

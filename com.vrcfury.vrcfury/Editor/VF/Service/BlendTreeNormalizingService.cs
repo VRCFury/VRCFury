@@ -14,13 +14,13 @@ namespace VF.Service {
      */
     [VFService]
     internal class BlendTreeNormalizingService {
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ClipFactoryTrackingService clipFactoryTracking;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         [FeatureBuilderAction(FeatureOrder.NormalizeBlendTrees)]
         public void Optimize() {
-            var fx = manager.GetFx();
             foreach (var state in new AnimatorIterator.States().From(fx.GetRaw())) {
                 if (state.motion is BlendTree tree && clipFactoryTracking.Created(tree)) {
                     MakeZeroLength(tree);

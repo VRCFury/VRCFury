@@ -5,8 +5,11 @@ using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
+using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Feature {
@@ -15,7 +18,10 @@ namespace VF.Feature {
     [FeatureOnlyOneAllowed]
     [FeatureRootOnly]
     internal class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
-        private MenuManager menu => manager.GetMenu();
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly MenuService menuService;
+        private MenuManager menu => menuService.GetMenu();
         
         private VFABool _unlockedParam = null;
         public VFABool GetEnabled() {
@@ -42,7 +48,7 @@ namespace VF.Feature {
             var numDigits = digits.Length;
             var numDigitSlots = 10;
 
-            var paramSecuritySync = GetFx().NewBool("SecurityLockSync", synced: true);
+            var paramSecuritySync = fx.NewBool("SecurityLockSync", synced: true);
             // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
             var paramInput = fx.NewInt("SecurityInput", synced: true, networkSynced: false);
             
@@ -50,9 +56,9 @@ namespace VF.Feature {
             // to be based on where this security lock was placed
             menu.OverrideSortPosition(uniqueModelNum, () => {
                 for (var i = 1; i < 8; i++) {
-                    manager.GetMenu().NewMenuToggle("Security/" + i, paramInput, i);
+                    menu.NewMenuToggle("Security/" + i, paramInput, i);
                 }
-                manager.GetMenu().NewMenuToggle("Security/Unlocked", paramInput, 8);
+                menu.NewMenuToggle("Security/Unlocked", paramInput, 8);
             });
 
             var layer = fx.NewLayer("Security Lock");

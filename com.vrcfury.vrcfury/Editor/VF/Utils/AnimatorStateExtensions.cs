@@ -1,15 +1,14 @@
 using System;
 using UnityEditor.Animations;
 using UnityEngine;
-using VF.Feature;
-using VF.Utils;
+using VF.Service;
 
-namespace VF.Builder {
+namespace VF.Utils {
     internal static class AnimatorStateExtensions {
         public static StateMachineBehaviour VAddStateMachineBehaviour(this AnimatorState state, Type type) {
             // Unity 2019 and lower log an error if this isn't persistent
             StateMachineBehaviour added = null;
-            CleanupLegacyBuilder.WithTemporaryPersistence(state, () => {
+            CleanupLegacyService.WithTemporaryPersistence(state, () => {
                 added = state.AddStateMachineBehaviour(type);
             });
             if (added == null) {

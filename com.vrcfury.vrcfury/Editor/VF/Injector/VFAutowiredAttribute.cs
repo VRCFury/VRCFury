@@ -3,7 +3,7 @@ using JetBrains.Annotations;
 
 namespace VF.Injector {
     [AttributeUsage(AttributeTargets.Field)]
-    [MeansImplicitUse]
+    [MeansImplicitUse(ImplicitUseKindFlags.Assign)]
     internal class VFAutowiredAttribute : Attribute {
         
     }

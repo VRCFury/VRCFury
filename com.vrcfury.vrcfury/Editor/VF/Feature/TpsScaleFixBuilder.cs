@@ -20,7 +20,11 @@ namespace VF.Feature {
     [FeatureRootOnly]
     [FeatureHideInMenu]
     internal class TpsScaleFixBuilder : FeatureBuilder<TpsScaleFix> {
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
+        [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly GlobalsService globals;
+        private ControllerManager fx => controllers.GetFx();
         
         [FeatureBuilderAction(FeatureOrder.TpsScaleFix)]
         public void Apply() {
@@ -30,7 +34,7 @@ namespace VF.Feature {
 
             var allRenderers = false;
             var renderers = new HashSet<Renderer>();
-            foreach (var component in allFeaturesInRun.OfType<TpsScaleFix>()) {
+            foreach (var component in globals.allFeaturesInRun.OfType<TpsScaleFix>()) {
                 if (component.singleRenderer) {
                     renderers.Add(component.singleRenderer);
                 } else {
@@ -41,7 +45,7 @@ namespace VF.Feature {
 
             if (allRenderers) {
                 // Remove old fix attempts
-                foreach (var clip in GetFx().GetClips()) {
+                foreach (var clip in fx.GetClips()) {
                     foreach (var binding in clip.GetFloatBindings()) {
                         if (binding.propertyName.Contains("_TPS_PenetratorLength") ||
                             binding.propertyName.Contains("_TPS_PenetratorScale")) {

@@ -13,7 +13,8 @@ using VF.Utils;
 namespace VF.Actions {
     [FeatureTitle("Set a Synced Param")]
     internal class SyncParamActionBuilder : ActionBuilder<SyncParamAction> {
-        [VFAutowired] [CanBeNull] private readonly AvatarManager manager;
+        [VFAutowired] [CanBeNull] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         [VFAutowired] [CanBeNull] private readonly GlobalsService globals;
         [VFAutowired] [CanBeNull] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
         
@@ -23,7 +24,7 @@ namespace VF.Actions {
             if (globals == null) return onClip;
 
             if (globals.currentTriggerParam == null) {
-                globals.currentTriggerParam = manager.GetFx().NewFloat(actionName + " (Param Trigger)");
+                globals.currentTriggerParam = fx.NewFloat(actionName + " (Param Trigger)");
                 onClip.SetAap(globals.currentTriggerParam, 1);
             }
 

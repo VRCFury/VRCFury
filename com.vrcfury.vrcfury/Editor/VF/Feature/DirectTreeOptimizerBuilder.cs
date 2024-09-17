@@ -20,16 +20,20 @@ namespace VF.Feature {
     [FeatureOnlyOneAllowed]
     [FeatureRootOnly]
     internal class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
-        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
-        [VFAutowired] private readonly FixWriteDefaultsBuilder fixWriteDefaults;
+        [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly AnimatorLayerControlOffsetService layerControlService;
+        [VFAutowired] private readonly FixWriteDefaultsService fixWriteDefaults;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly MathService math;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         
         [FeatureBuilderAction(FeatureOrder.DirectTreeOptimizer)]
         public void Apply() {
             if (!IsFirst()) return;
-            var applyToUnmanaged = allFeaturesInRun
+            var applyToUnmanaged = globals.allFeaturesInRun
                 .OfType<DirectTreeOptimizer>()
                 .Any(m => !m.managedOnly);
 
@@ -71,7 +75,7 @@ namespace VF.Feature {
                 throw new DoNotOptimizeException($"Layer is additive");
             }
             
-            if (layerControlBuilder.IsLayerTargeted(layer)) {
+            if (layerControlService.IsLayerTargeted(layer)) {
                 throw new DoNotOptimizeException($"Layer is targeted by an Animator Layer Control");
             }
 

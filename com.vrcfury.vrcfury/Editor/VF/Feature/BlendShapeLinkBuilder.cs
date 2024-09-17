@@ -10,13 +10,17 @@ using UnityEngine.UIElements;
 using VF.Actions;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 using VF.Utils;
 
 namespace VF.Feature {
     [FeatureTitle("BlendShape Link")]
     internal class BlendShapeLinkBuilder : FeatureBuilder<BlendShapeLink> {
+        [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly ControllersService controllers;
 
         [CustomPropertyDrawer(typeof(BlendShapeLink.Exclude))]
         public class ExcludeDrawer : PropertyDrawer {
@@ -273,7 +277,7 @@ namespace VF.Feature {
                     linked.SetBlendShapeWeight(linkedI, baseWeight);
                 }
 
-                foreach (var c in manager.GetAllUsedControllers()) {
+                foreach (var c in controllers.GetAllUsedControllers()) {
                     c.ForEachClip(clip => {
                         foreach (var binding in clip.GetFloatBindings()) {
                             if (binding.type != typeof(SkinnedMeshRenderer)) continue;

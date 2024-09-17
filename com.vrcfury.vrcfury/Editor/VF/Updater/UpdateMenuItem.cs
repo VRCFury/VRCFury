@@ -10,6 +10,7 @@ using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder.Exceptions;
+using VF.Utils;
 
 namespace VF.Updater {
     internal static class UpdateMenuItem {

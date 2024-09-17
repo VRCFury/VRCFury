@@ -1,14 +1,18 @@
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 
 namespace VF.Feature {
 
     [FeatureTitle("Toes Puppet")]
     [FeatureRootOnly]
     internal class ToesBuilder : FeatureBuilder<Toes> {
+        [VFAutowired] private readonly GlobalsService globals;
+
         [FeatureBuilderAction]
         public void Apply() {
             var toes = new Puppet {
@@ -19,7 +23,7 @@ namespace VF.Feature {
             toes.stops.Add(new Puppet.Stop(-1,0,model.splay));
             toes.stops.Add(new Puppet.Stop(1,0,model.splay));
             if (toes.stops.Count > 0) {
-                addOtherFeature(toes);
+                globals.addOtherFeature(toes);
             }
         }
 

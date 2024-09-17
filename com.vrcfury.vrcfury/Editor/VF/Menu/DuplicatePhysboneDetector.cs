@@ -8,6 +8,7 @@ using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Inspector;
+using VF.Utils;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 

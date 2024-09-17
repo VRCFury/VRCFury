@@ -1,11 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using JetBrains.Annotations;
-using UnityEditor;
-using UnityEditor.Animations;
-using UnityEngine;
 using VF.Builder;
 using VF.Injector;
 using VF.Utils;
@@ -17,7 +10,6 @@ namespace VF.Service {
      */
     [VFService]
     internal class ScalePropertyCompensationService {
-        [VFAutowired] private readonly AvatarManager manager;
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ClipFactoryService clipFactory;

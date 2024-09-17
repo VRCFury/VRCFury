@@ -23,8 +23,8 @@ namespace VF.Service {
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly FindAnimatedTransformsService findAnimatedTransformsService;
         [VFAutowired] private readonly GlobalsService globals;
-        [VFAutowired] private readonly AvatarManager manager;
-        private VFGameObject avatarObject => manager.AvatarObject;
+        [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly ControllersService controllers;
         
         [FeatureBuilderAction(FeatureOrder.ArmatureLink)]
         public void Apply() {
@@ -80,7 +80,7 @@ namespace VF.Service {
             }
 
             // Rewrite animations that turn off parents
-            foreach (var clip in manager.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
+            foreach (var clip in controllers.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
                 foreach (var binding in clip.GetFloatBindings()) {
                     if (binding.type != typeof(GameObject)) continue;
                     var transform = avatarObject.Find(binding.path);

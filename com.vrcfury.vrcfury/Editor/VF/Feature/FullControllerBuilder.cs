@@ -28,9 +28,17 @@ namespace VF.Feature {
 
     [FeatureTitle("Full Controller")]
     internal class FullControllerBuilder : FeatureBuilder<FullController> {
-        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+        [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+        [VFAutowired] private readonly ParamsService paramsService;
+        private ParamManager paramz => paramsService.GetParams();
+        [VFAutowired] private readonly MenuService menuService;
+        private MenuManager avatarMenu => menuService.GetMenu();
+        [VFAutowired] private readonly ControllersService controllers;
 
         public string injectSpsDepthParam = null;
 
@@ -51,7 +59,7 @@ namespace VF.Feature {
                     if (model.ignoreSaved) {
                         param.saved = false;
                     }
-                    manager.GetParams().AddSyncedParam(param);
+                    paramz.AddSyncedParam(param);
                 }
             }
 
@@ -72,7 +80,7 @@ namespace VF.Feature {
             animatorLayerControlManager.RegisterControllerSet(toMerge);
 
             foreach (var (type, from) in toMerge) {
-                var targetController = manager.GetController(type);
+                var targetController = controllers.GetController(type);
                 Merge(from, targetController);
             }
 
@@ -88,7 +96,7 @@ namespace VF.Feature {
                 var copy = MutableManager.CopyRecursive(menu);
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
-                manager.GetMenu().MergeMenu(prefix, copy);
+                avatarMenu.MergeMenu(prefix, copy);
             }
 
             foreach (var receiver in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
@@ -125,7 +133,7 @@ namespace VF.Feature {
             var failedParams = new List<string>();
             void CheckParam(string param, IList<string> path) {
                 if (string.IsNullOrEmpty(param)) return;
-                if (manager.GetParams().GetParam(RewriteParamName(param)) != null) return;
+                if (paramz.GetParam(RewriteParamName(param)) != null) return;
                 failedParams.Add($"{param} (used by {string.Join("/", path)})");
             }
             menu.ForEachMenu(ForEachItem: (item, path) => {
@@ -158,7 +166,7 @@ namespace VF.Feature {
                 .Any(param => param.name == model.toggleParam);
 
             var toggleParam = RewriteParamName(model.toggleParam);
-            addOtherFeature(new Toggle {
+            globals.addOtherFeature(new Toggle {
                 name = toggleParam,
                 state = new State {
                     actions = { new ObjectToggleAction { obj = GetBaseObject(model, featureBaseObject), mode = ObjectToggleAction.Mode.TurnOn} }
@@ -182,7 +190,7 @@ namespace VF.Feature {
             if (VRChatGlobalParams.Contains(name)) return name;
             if (name == model.injectSpsDepthParam) {
                 if (injectSpsDepthParam == null) {
-                    injectSpsDepthParam = manager.MakeUniqueParamName(name);
+                    injectSpsDepthParam = controllers.MakeUniqueParamName(name);
                 }
                 return injectSpsDepthParam;
             }
@@ -209,11 +217,11 @@ namespace VF.Feature {
             }
 
             if (model.globalParams.Contains("*")) {
-                if (model.globalParams.Contains("!" + name)) return manager.MakeUniqueParamName(name);
+                if (model.globalParams.Contains("!" + name)) return controllers.MakeUniqueParamName(name);
                 return name;
             }
             if (model.globalParams.Contains(name)) return name;
-            return manager.MakeUniqueParamName(name);
+            return controllers.MakeUniqueParamName(name); 
         }
 
         private static string RewritePath(FullController model, string path) {
@@ -248,7 +256,7 @@ namespace VF.Feature {
             // Check for gogoloco
             foreach (var p in from.parameters) {
                 if (p.name == "Go/Locomotion") {
-                    manager.Avatar.autoLocomotion = false;
+                    avatar.autoLocomotion = false;
                 }
             }
 

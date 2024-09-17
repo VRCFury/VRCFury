@@ -1,17 +1,21 @@
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 
 namespace VF.Feature {
 
     [FeatureTitle("Bone Constraint")]
     [FeatureHideInMenu]
     internal class BoneConstraintBuilder : FeatureBuilder<BoneConstraint> {
+        [VFAutowired] private readonly GlobalsService globals;
+
         [FeatureBuilderAction]
         public void Link() {
-            addOtherFeature(new ArmatureLink {
+            globals.addOtherFeature(new ArmatureLink {
                 linkTo = { new ArmatureLink.LinkTo { bone = model.bone }},
                 keepBoneOffsets2 = ArmatureLink.KeepBoneOffsets.No,
                 linkMode = ArmatureLink.ArmatureLinkMode.ParentConstraint,

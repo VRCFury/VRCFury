@@ -7,6 +7,7 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature;
 using VF.Service;
+using VF.Utils;
 
 namespace VF.Menu {
     internal static class UnusedBoneCleaner {

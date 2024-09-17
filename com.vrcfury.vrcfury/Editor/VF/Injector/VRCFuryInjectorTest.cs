@@ -7,6 +7,8 @@ using VF.Actions;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Service;
+using VF.Utils;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Injector {
     internal static class VRCFuryInjectorTest {
@@ -26,7 +28,8 @@ namespace VF.Injector {
                 injector.ImportScan(typeof(ActionBuilder));
                 injector.Set("avatarObject", null);
                 injector.Set("componentObject", null);
-                injector.Set(new GlobalsService());
+                injector.Set(typeof(GlobalsService), null);
+                injector.Set(typeof(VRCAvatarDescriptor), null); 
                 injector.GetServices<object>();
             } catch (Exception e) {
                 throw new Exception("Failed to verify main component build context", e);

@@ -13,6 +13,7 @@ namespace VF.Feature {
     [FeatureTitle("Senky Gesture Driver")]
     internal class SenkyGestureDriverBuilder : FeatureBuilder<SenkyGestureDriver> {
         [VFAutowired] private readonly ActionClipService actionClipService;
+        [VFAutowired] private readonly GlobalsService globals;
         
         [FeatureBuilderAction(FeatureOrder.SenkyGestureDriver)]
         public void Apply() {
@@ -85,7 +86,7 @@ namespace VF.Feature {
                 gesture.transitionTime = model.transitionTime;
             }
 
-            addOtherFeature(feature);
+            globals.addOtherFeature(feature);
         }
 
         private State WithBlinkingDisabled(State input) {

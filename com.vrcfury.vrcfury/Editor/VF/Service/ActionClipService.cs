@@ -19,7 +19,6 @@ namespace VF.Service {
     [VFService]
     [VFPrototypeScope]
     internal class ActionClipService {
-        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly Func<VFGameObject> componentObject;
 
         [VFAutowired] [CanBeNull] private readonly ClipFactoryService clipFactory;

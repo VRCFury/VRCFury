@@ -12,7 +12,9 @@ namespace VF.Feature {
     [FeatureTitle("Blink Controller")]
     internal class BlinkingBuilder : FeatureBuilder<Blinking> {
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly TrackingConflictResolverBuilder trackingConflictResolverBuilder;
+        [VFAutowired] private readonly TrackingConflictResolverService trackingConflictResolverService;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
 
         [FeatureBuilderAction]
         public void Apply() {
@@ -66,9 +68,9 @@ namespace VF.Feature {
                 waitFalse.TransitionsTo(checkActive).When(blinkTriggerSynced.IsTrue());
                 waitTrue.TransitionsTo(checkActive).When(blinkTriggerSynced.IsFalse());
 
-                trackingConflictResolverBuilder.WhenCollected(() => {
+                trackingConflictResolverService.WhenCollected(() => {
                     if (!layer.Exists()) return; // Deleted by empty layer builder
-                    foreach (var inhibitorParam in trackingConflictResolverBuilder.GetInhibitors(TrackingConflictResolverBuilder.TrackingEyes)) {
+                    foreach (var inhibitorParam in trackingConflictResolverService.GetInhibitors(TrackingConflictResolverService.TrackingEyes)) {
                         checkActive.TransitionsTo(idle).When(inhibitorParam.IsGreaterThan(0));
                     }
                     checkActive.TransitionsTo(blinkStart).When(fx.Always());

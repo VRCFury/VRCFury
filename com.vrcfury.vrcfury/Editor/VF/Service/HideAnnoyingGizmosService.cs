@@ -13,17 +13,18 @@ namespace VF.Service {
      */
     [VFService]
     internal class HideAnnoyingGizmosService {
-        [VFAutowired] private readonly AvatarManager avatarManager;
+        [VFAutowired] private readonly VFGameObject avatarObject;
+
         private readonly HashSet<UnityEngine.Component> existingComponents = new HashSet<UnityEngine.Component>();
         
         [FeatureBuilderAction(FeatureOrder.CollectExistingComponents)]
         public void CollectExistingComponents() {
-            existingComponents.UnionWith(avatarManager.AvatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>());
+            existingComponents.UnionWith(avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>());
         }
         
         [FeatureBuilderAction(FeatureOrder.HideAddedComponents)]
         public void HideAddedComponents() {
-            Hide(avatarManager.AvatarObject, existingComponents);
+            Hide(avatarObject, existingComponents);
         }
 
         public static void Hide(VFGameObject root, ISet<UnityEngine.Component> ignore = null) {

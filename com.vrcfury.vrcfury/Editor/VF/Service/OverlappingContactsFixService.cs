@@ -18,8 +18,9 @@ namespace VF.Service {
      */
     [VFService]
     internal class OverlappingContactsFixService {
-        [VFAutowired] private readonly AvatarManager manager;
-        private VFGameObject avatarObject => manager.AvatarObject;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
@@ -45,10 +46,10 @@ namespace VF.Service {
             var counterAddOne = clipFactory.NewDBT("addToCounter");
             var counterEqualsOne = clipFactory.NewClip("counter=1");
             counterEqualsOne.SetAap(counter, 1);
-            counterAddOne.Add(manager.GetFx().One(), counterEqualsOne);
+            counterAddOne.Add(fx.One(), counterEqualsOne);
             counterAddOne.Add(counter, counterEqualsOne);
 
-            var scaleFactor = manager.GetFx().NewFloat("ScaleFactor", usePrefix: false);
+            var scaleFactor = fx.NewFloat("ScaleFactor", usePrefix: false);
             var scaleFactorBuffered = math.Buffer(scaleFactor);
             var scaleFactorDiff = math.Add("ScaleFactorDiff", (scaleFactor, 1), (scaleFactorBuffered, -1));
 

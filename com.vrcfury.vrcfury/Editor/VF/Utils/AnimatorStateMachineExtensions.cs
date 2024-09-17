@@ -3,15 +3,14 @@ using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder.Exceptions;
-using VF.Feature;
-using VF.Utils;
+using VF.Service;
 
-namespace VF.Builder {
+namespace VF.Utils {
     internal static class AnimatorStateMachineExtensions {
         public static StateMachineBehaviour VAddStateMachineBehaviour(this AnimatorStateMachine machine, Type type) {
             // Unity 2019 and lower log an error if this isn't persistent
             StateMachineBehaviour added = null;
-            CleanupLegacyBuilder.WithTemporaryPersistence(machine, () => {
+            CleanupLegacyService.WithTemporaryPersistence(machine, () => {
                 added = machine.AddStateMachineBehaviour(type);
             });
             if (added == null) {

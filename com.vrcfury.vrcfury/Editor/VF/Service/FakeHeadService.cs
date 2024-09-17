@@ -17,14 +17,14 @@ namespace VF.Service {
     [VFService]
     internal class FakeHeadService {
 
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly VFGameObject avatarObject;
 
         private readonly Lazy<VFGameObject> fakeHead;
         private readonly Lazy<VFGameObject> headChopObj;
         public FakeHeadService() {
             fakeHead = new Lazy<VFGameObject>(MakeFakeHead);
             headChopObj = new Lazy<VFGameObject>(() => {
-                var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(manager.AvatarObject, HumanBodyBones.Head);
+                var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Head);
                 return GameObjects.Create("vrcfHeadChop", head);
             });
         }
@@ -38,7 +38,7 @@ namespace VF.Service {
         }
 
         private VFGameObject MakeFakeHead() {
-            var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(manager.AvatarObject, HumanBodyBones.Head);
+            var head = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Head);
             if (!BuildTargetUtils.IsDesktop()) {
                 return head;
             }

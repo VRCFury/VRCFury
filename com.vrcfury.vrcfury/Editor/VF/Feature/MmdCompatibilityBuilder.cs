@@ -18,9 +18,10 @@ namespace VF.Feature {
     [FeatureOnlyOneAllowed]
     [FeatureRootOnly]
     internal class MmdCompatibilityBuilder : FeatureBuilder<MmdCompatibility> {
-        [VFAutowired] private readonly MathService mathService;
-        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
+        [VFAutowired] private readonly AnimatorLayerControlOffsetService layerControlService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
 
         [FeatureEditor]
         public static VisualElement Editor(SerializedProperty prop) {
@@ -51,7 +52,6 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.AvoidMmdLayers)]
         public void Apply() {
-            var fx = GetFx();
             if (fx.GetLayers().Count() <= 1) {
                 return;
             }
@@ -89,10 +89,10 @@ namespace VF.Feature {
             if (layersToDisable.Length > 0) {
                 foreach (var l in layersToDisable) {
                     var driveOff = detected.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
-                    layerControlBuilder.Register(driveOff, l);
+                    layerControlService.Register(driveOff, l);
                     driveOff.goalWeight = 0;
                     var driveOn = notDetected.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
-                    layerControlBuilder.Register(driveOn, l);
+                    layerControlService.Register(driveOn, l);
                     driveOn.goalWeight = 1;
                 }
             }

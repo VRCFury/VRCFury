@@ -23,7 +23,12 @@ namespace VF.Feature {
     [FeatureRootOnly]
     internal class UnlimitedParametersBuilder : FeatureBuilder<UnlimitedParameters> {
         [VFAutowired] private readonly MathService math;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly ParamsService paramsService;
+        private ParamManager paramz => paramsService.GetParams();
+        [VFAutowired] private readonly MenuService menuService;
+        private MenuManager menu => menuService.GetMenu();
 
         private static readonly FieldInfo networkSyncedField =
             typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
@@ -39,7 +44,7 @@ namespace VF.Feature {
             if (bits <= 16) return; // don't optimize 16 bits or less
 
             foreach (var param in paramsToOptimize) {
-                var vrcPrm = manager.GetParams().GetParam(param.name);
+                var vrcPrm = paramz.GetParam(param.name);
                 networkSyncedField.SetValue(vrcPrm, false);
             }
 
@@ -126,7 +131,7 @@ namespace VF.Feature {
             void AttemptToAdd(string paramName) {
                 if (string.IsNullOrEmpty(paramName)) return;
                 
-                var vrcParam = manager.GetParams().GetParam(paramName);
+                var vrcParam = paramz.GetParam(paramName);
                 if (vrcParam == null) return;
                 var networkSynced = (bool)networkSyncedField.GetValue(vrcParam);
                 if (!networkSynced) return;
@@ -139,7 +144,7 @@ namespace VF.Feature {
                 paramsToOptimize.Add((paramName, vrcParam.valueType));
             }
 
-            manager.GetMenu().GetRaw().ForEachMenu(ForEachItem: (control, list) => {
+            menu.GetRaw().ForEachMenu(ForEachItem: (control, list) => {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet) {
                     AttemptToAdd(control.GetSubParameter(0)?.name);
                 }

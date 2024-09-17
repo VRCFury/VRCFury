@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Menu;
+using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
 

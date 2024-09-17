@@ -13,9 +13,10 @@ using VRC.SDKBase;
 namespace VF.Service {
     [VFService]
     internal class FullBodyEmoteService {
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
-        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder animatorLayerControlManager;
+        [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         
         private readonly Dictionary<EditorCurveBindingExtensions.MuscleBindingType, Func<AnimationClip,VFAFloat>> addCache
             = new Dictionary<EditorCurveBindingExtensions.MuscleBindingType, Func<AnimationClip, VFAFloat>>();
@@ -23,13 +24,13 @@ namespace VF.Service {
         public VFAFloat AddClip(AnimationClip clip, EditorCurveBindingExtensions.MuscleBindingType type) {
             if (!addCache.ContainsKey(type)) {
                 if (type == EditorCurveBindingExtensions.MuscleBindingType.Body) {
-                    var action = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
+                    var action = controllers.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
                     var layer = action.NewLayer("VRCFury Actions");
                     addedLayers.Add(layer);
                     var idle = layer.NewState("Idle");
                     addCache[type] = c => AddClip(c, action, idle, layer, type);
                 } else {
-                    var gesture = manager.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
+                    var gesture = controllers.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
                     var isLeft = type == EditorCurveBindingExtensions.MuscleBindingType.LeftHand;
                     var layer = gesture.NewLayer(
                         "VRCFury " +
@@ -59,10 +60,9 @@ namespace VF.Service {
             clip = clip.Clone();
             var state = layer.NewState(clip.name).WithAnimation(clip);
 
-            var fx = manager.GetFx();
             var enableParam = fx.NewFloat(clip.name + " (Trigger)");
             VFCondition myCond;
-            if (ctrl == manager.GetFx()) {
+            if (ctrl == fx) {
                 myCond = enableParam.IsGreaterThan(0);
             } else {
                 var myParam = ctrl.NewBool(clip.name+" (Action)");
@@ -94,18 +94,18 @@ namespace VF.Service {
 
             var animOn = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
             var animOff = outState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
-            foreach (var trackingType in TrackingConflictResolverBuilder.allTypes) {
+            foreach (var trackingType in TrackingConflictResolverService.allTypes) {
                 if (type == EditorCurveBindingExtensions.MuscleBindingType.LeftHand) {
-                    if (trackingType != TrackingConflictResolverBuilder.TrackingLeftFingers) {
+                    if (trackingType != TrackingConflictResolverService.TrackingLeftFingers) {
                         continue;
                     }
                 } else if (type == EditorCurveBindingExtensions.MuscleBindingType.RightHand) {
-                    if (trackingType != TrackingConflictResolverBuilder.TrackingRightFingers) {
+                    if (trackingType != TrackingConflictResolverService.TrackingRightFingers) {
                         continue;
                     }
                 } else {
-                    if (trackingType == TrackingConflictResolverBuilder.TrackingEyes
-                        || trackingType == TrackingConflictResolverBuilder.TrackingMouth
+                    if (trackingType == TrackingConflictResolverService.TrackingEyes
+                        || trackingType == TrackingConflictResolverService.TrackingMouth
                     ) {
                         continue;
                     }

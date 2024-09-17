@@ -14,12 +14,11 @@ namespace VF.Service {
      */
     [VFService]
     internal class FixMenuIconTexturesService {
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly MenuService menuService;
+        private MenuManager menu => menuService.GetMenu();
 
         [FeatureBuilderAction(FeatureOrder.FixMenuIconTextures)]
         public void Apply() {
-            var menu = manager.GetMenu();
-            
             var cache = new Dictionary<Texture2D, Texture2D>();
             Texture2D Optimize(Texture2D original, string path) {
                 if (original == null) return original;
