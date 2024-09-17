@@ -35,6 +35,7 @@ namespace VF.Feature {
         private VFCondition isOn;
         private Action<VFState, bool> drive;
         private AnimationClip savedRestingClip;
+        private VFAParam param;
 
         public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
             + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -46,6 +47,17 @@ namespace VF.Feature {
                 .Select(tag => tag.Trim())
                 .Where(tag => !string.IsNullOrWhiteSpace(tag))
                 .ToImmutableHashSet();
+        }
+
+        public ISet<string> GetTags() {
+            var output = new HashSet<string>();
+            if (model.enableExclusiveTag) {
+                output.UnionWith(SeparateList(model.exclusiveTag));
+            }
+            if (model.enableTags) {
+                output.UnionWith(SeparateList(model.tags));
+            }
+            return output;
         }
 
         private ISet<string> GetExclusiveTags() {
@@ -72,15 +84,21 @@ namespace VF.Feature {
             return (model.name, model.usePrefixOnParam);
         }
 
+        public VFAParam getParam() {
+            return param;
+        }
+
+
         [FeatureBuilderAction]
         public void Apply() {
+            globals.currentFeature = this;
             var hasTitle = !string.IsNullOrEmpty(model.name);
             var hasIcon = model.enableIcon && model.icon?.Get() != null;
             var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
 
-            var synced = true;
+            var addToParamFile = true;
             if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
-                synced = false;
+                addToParamFile = false;
             }
 
             var (paramName, usePrefixOnParam) = GetParamName();
@@ -90,7 +108,7 @@ namespace VF.Feature {
             if (model.slider) {
                 var param = fx.NewFloat(
                     paramName,
-                    synced: synced,
+                    synced: addToParamFile,
                     saved: model.saved,
                     def: model.defaultSliderValue,
                     usePrefix: usePrefixOnParam
@@ -108,13 +126,15 @@ namespace VF.Feature {
                         icon: model.enableIcon ? model.icon?.Get() : null
                     );
                 }
+                this.param = param;
             } else if (model.useInt) {
                 var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
                 onCase = param.IsNotEqualTo(0);
                 drive = (state,on) => state.Drives(param, on ? 1 : 0);
                 defaultOn = model.defaultOn;
+                this.param = param;
             } else {
-                var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+                var param = fx.NewBool(paramName, synced: addToParamFile, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
                 onCase = param.IsTrue();
                 drive = (state,on) => state.Drives(param, on ? 1 : 0);
                 defaultOn = model.defaultOn;
@@ -133,8 +153,9 @@ namespace VF.Feature {
                         );
                     }
                 }
+                this.param = param;
             }
-            
+        
             this.isOn = onCase;
 
             var layerName = model.name;
@@ -166,6 +187,27 @@ namespace VF.Feature {
             float inTime,
             float outTime
         ) {
+
+            State originalInAction = null;
+
+            if (GetExclusiveTags().Count() > 0) {
+                originalInAction = new State();
+                foreach (var a in inAction.actions) {
+                    originalInAction.actions.Add(a);
+                }
+            }
+
+            foreach(var tag in GetExclusiveTags()) {
+                var tagAction = new TagStateAction();
+                tagAction.tag = tag;
+                tagAction.value = 0;
+                if (model.hasTransition) {
+                    inAction.actions.Add(tagAction);
+                } else {
+                    action.actions.Add(tagAction);
+                }
+            }
+
             if (model.securityEnabled) {
                 var securityLockUnlocked = globals.allBuildersInRun
                     .OfType<SecurityLockBuilder>()
@@ -195,9 +237,10 @@ namespace VF.Feature {
                 if (clip.GetAllBindings().Length == 0) {
                     clip = inClip.GetLastFrame();
                 }
-                var outClip = model.simpleOutTransition ? inClip.Clone() : actionClipService.LoadState(onName + " Out", outAction);
+            
+                var outClip = model.simpleOutTransition ? (originalInAction == null ? inClip.Clone() : actionClipService.LoadState(onName + " Out", originalInAction))  : actionClipService.LoadState(onName + " Out", outAction);
                 var outSpeed = model.simpleOutTransition ? -1 : 1;
-                
+
                 // Copy "object enabled" and "material" states to in and out clips if they don't already have them
                 // This is a convenience feature, so that people don't need to turn on objects in their transitions
                 // if it's already on in the main clip.
@@ -232,7 +275,6 @@ namespace VF.Feature {
                 restingClip = clip;
             }
 
-            exclusiveTagTriggeringStates.Add(inState);
             off.TransitionsTo(inState).When(onCase);
 
             if (model.enableDriveGlobalParam) {
@@ -263,7 +305,7 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
         public void ApplyExclusiveTags() {
-            if (exclusiveTagTriggeringStates.Count == 0) return;
+            if (!(model.exclusiveOffState && isOn != null && drive != null)) return;
 
             var allOthersOffCondition = fx.Always();
 
@@ -275,22 +317,17 @@ namespace VF.Feature {
                 var conflictsWithOther = myTags.Any(myTag => otherTags.Contains(myTag));
                 if (conflictsWithOther) {
                     if (other.isOn != null && other.drive != null) {
-                        foreach (var state in exclusiveTagTriggeringStates) {
-                            other.drive(state, false);
-                        }
                         allOthersOffCondition = allOthersOffCondition.And(other.isOn.Not());
                     }
                 }
             }
 
-            if (model.exclusiveOffState && isOn != null && drive != null) {
-                var layer = fx.NewLayer(model.name + " - Off Trigger");
-                var off = layer.NewState("Idle");
-                var on = layer.NewState("Trigger");
-                off.TransitionsTo(on).When(allOthersOffCondition);
-                on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(isOn.Not()));
-                drive(on, true);
-            }
+            var layer = fx.NewLayer(model.name + " - Off Trigger");
+            var off = layer.NewState("Idle");
+            var on = layer.NewState("Trigger");
+            off.TransitionsTo(on).When(allOthersOffCondition);
+            on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(isOn.Not()));
+            drive(on, true);
         }
 
         public override string GetClipPrefix() {
@@ -330,6 +367,7 @@ namespace VF.Feature {
             var invertRestLogicProp = prop.FindPropertyRelative("invertRestLogic");
             var exclusiveOffStateProp = prop.FindPropertyRelative("exclusiveOffState");
             var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
+            var enableTagsProp = prop.FindPropertyRelative("enableTags");
             var enableIconProp = prop.FindPropertyRelative("enableIcon");
             var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
             var separateLocalProp = prop.FindPropertyRelative("separateLocal");
@@ -403,6 +441,11 @@ namespace VF.Feature {
                         prop.serializedObject.ApplyModifiedProperties();
                     });
 
+                    advMenu.AddItem(new GUIContent("Enable Tags"), enableTagsProp.boolValue, () => {
+                        enableTagsProp.boolValue = !enableTagsProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
                     advMenu.AddItem(new GUIContent("Enable Exclusive Tags"), enableExclusiveTagProp.boolValue, () => {
                         enableExclusiveTagProp.boolValue = !enableExclusiveTagProp.boolValue;
                         prop.serializedObject.ApplyModifiedProperties();
@@ -441,6 +484,14 @@ namespace VF.Feature {
                     advMenu.ShowAsContext();
                 });
             flex.Add(button);
+
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (enableTagsProp.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("tags"), "Tags"));
+                }
+                return c;
+            }, enableTagsProp));
 
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
@@ -617,7 +668,6 @@ namespace VF.Feature {
 
             return content;
         }
-
         private static VisualElement MakeTabbed(string label, VisualElement child) {
             var output = new VisualElement();
             output.Add(VRCFuryEditorUtils.WrappedLabel(label).Bold());
@@ -629,5 +679,4 @@ namespace VF.Feature {
     }
 
 }
-
 

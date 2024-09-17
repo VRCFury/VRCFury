@@ -23,6 +23,7 @@ namespace VF.Service {
 
         [VFAutowired] [CanBeNull] private readonly ClipFactoryService clipFactory;
         [VFAutowired] [CanBeNull] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] [CanBeNull] private readonly GlobalsService globals;
         private readonly IDictionary<Type,ActionBuilder> modelTypeToBuilder;
 
         public ActionClipService(List<ActionBuilder> actionBuilders) {
@@ -50,6 +51,8 @@ namespace VF.Service {
         }
         
         public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
+            if (globals != null) globals.currentTriggerParam = null; // always reset when making an animation
+
             var animObject = animObjectOverride ?? componentObject();
 
             if (state == null) {
