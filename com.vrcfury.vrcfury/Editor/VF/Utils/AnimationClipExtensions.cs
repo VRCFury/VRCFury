@@ -230,6 +230,15 @@ namespace VF.Utils {
             var path = owner.GetPath(avatarObject);
             clip.SetCurve(path, componentOrObject.GetType(), propertyName, curve);
         }
+
+        public static void SetLengthHolder(this AnimationClip clip, float length) {
+            clip.SetCurve(
+                "__vrcf_length",
+                typeof(GameObject),
+                "m_IsActive",
+                FloatOrObjectCurve.DummyFloatCurve(length)
+            );
+        }
         
         public static void SetEnabled(this AnimationClip clip, Object componentOrObject, FloatOrObjectCurve enabledCurve) {
             string propertyName = (componentOrObject is GameObject) ? "m_IsActive" : "m_Enabled";

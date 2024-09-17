@@ -44,8 +44,7 @@ namespace VF.Service {
 
             var counterSetToZero = math.MakeSetter(counter, 0);
             var counterAddOne = clipFactory.NewDBT("addToCounter");
-            var counterEqualsOne = clipFactory.NewClip("counter=1");
-            counterEqualsOne.SetAap(counter, 1);
+            var counterEqualsOne = math.MakeSetter(counter, 1);
             counterAddOne.Add(fx.One(), counterEqualsOne);
             counterAddOne.Add(counter, counterEqualsOne);
 

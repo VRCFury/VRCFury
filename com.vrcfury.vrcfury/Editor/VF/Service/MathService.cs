@@ -267,9 +267,7 @@ namespace VF.Service {
         }
 
         public AnimationClip MakeSetter(VFAap param, float value) {
-            var clip = clipFactory.NewClip($"{CleanName(param)} = {value}");
-            clip.SetAap(param, value);
-            return clip;
+            return clipFactory.MakeAapSetter(param, value);
         }
 
         public VFBlendTree1D Make1D(string name, VFAFloat param, params (float, Motion)[] children) {
@@ -400,32 +398,8 @@ namespace VF.Service {
             return a.constt + "";
         }
 
-        /**
-         * WARNING: If your aap is animated from a direct blendtree OTHER THAN the main shared direct blendtree, you must set animatedFromDefaultTree to false
-         * and call MakeAapSafe in all of the blendtrees animating the aap.
-         */
-        public VFAap MakeAap(string name, float def = 0, bool usePrefix = true, bool animatedFromDefaultTree = true) {
-            var aap = new VFAap(fx.NewFloat(name, def: def, usePrefix: usePrefix));
-            if (animatedFromDefaultTree) MakeAapSafe(directTree.GetTree(), aap);
-            return aap;
-        }
-
-        /**
-         * When controlling an AAP using a blend tree, the "default value" of the parameter will be included (at least partially)
-         * in the calculated value UNLESS the weight of the inputs is >= 1. We can prevent it from being involved at all by animating the
-         * value to 0 with weight 1.
-         * 
-         * We CANNOT skip this even if the default value of the parameter is 0, because vrchat can cause the animator's parameter defaults
-         * to change unexpectedly in situations such as leaving a station.
-         * 
-         * In theory, we could skip the safety setter IF it's guaranteed that the weight will always be >= 1 in all other usages of the AAP
-         * but this is complicated to keep track of for limited benefit.
-         *         
-         * WARNING: If your aap is animated from a direct blendtree OUTSIDE of the main shared direct blendtree, you must set useWeightProtection to false
-         * and ensure that you weight protect the variable in your own tree.
-         */
-        public void MakeAapSafe(VFBlendTreeDirect blendTree, VFAap aap) {
-            blendTree.Add(fx.One(), MakeSetter(aap, 0));
+        public VFAap MakeAap(string name, float def = 0, bool usePrefix = true) {
+            return new VFAap(fx.NewFloat(name, def: def, usePrefix: usePrefix));
         }
 
         public void MultiplyInPlace(VFAap output, VFAFloat multiplier, VFAFloat existing) {

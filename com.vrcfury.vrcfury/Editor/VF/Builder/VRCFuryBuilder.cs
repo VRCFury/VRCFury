@@ -232,8 +232,6 @@ namespace VF.Builder {
                 }
             }
 
-            AddComponent(new DirectTreeOptimizer { managedOnly = true }, avatarObject);
-
             FeatureOrder? lastPriority = null;
             while (actions.Count > 0) {
                 var action = actions.Min();

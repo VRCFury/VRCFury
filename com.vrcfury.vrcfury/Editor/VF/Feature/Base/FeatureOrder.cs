@@ -79,20 +79,20 @@ namespace VF.Feature.Base {
         BlendshapeOptimizer, // Needs to run after RecordDefaults
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
         FixUnsetPlayableLayers,
+        FixPartiallyWeightedAaps, // Needs to run before PositionDefaultsLayer, before OptimizeBlendTrees, after everything setting AAPs
         PositionDefaultsLayer, // Needs to be right before FixMasks so it winds up at the top of FX, right under the base mask
         FixMasks,
         LocomotionConflictResolver,
         ActionConflictResolver,
         TrackingConflictResolver,
-        NormalizeBlendTrees, // Needs to happen before DirectTreeOptimizer (more trees may be eligible for optimization after normalizing)
-        DirectTreeOptimizer, // Needs to run after animations are done, including everything that makes its own DBT, including TrackingConflictResolver
+        LayerToTree, // Needs to run after animations are done, including everything that makes its own DBT, including TrackingConflictResolver
         AvoidMmdLayers, // Needs to be after CleanupEmptyLayers (which removes empty layers) and FixMasks and RecordAllDefaults (which may insert layers at the top)
         AdjustWriteDefaults,
         FixEmptyMotions,
         AnimatorLayerControlFix,
         RemoveNonQuestMaterials,
         UpgradeWrongParamTypes,
-        OptimizeBlendTrees,
+        TreeFlattening,
         FinalizeController,
 
         // Finalize Menus

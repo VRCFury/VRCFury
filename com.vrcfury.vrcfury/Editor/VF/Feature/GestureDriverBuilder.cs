@@ -125,7 +125,7 @@ namespace VF.Feature {
         private VFAFloat MakeWeightLayer(VFAFloat input, VFCondition enabled) {
             var layer = fx.NewLayer($"{input.Name()} Target");
 
-            var target = math.MakeAap($"{input.Name()}/Target", def: input.GetDefault(), animatedFromDefaultTree: false);
+            var target = math.MakeAap($"{input.Name()}/Target", def: input.GetDefault());
 
             var off = layer.NewState("Off").WithAnimation(math.MakeSetter(target, 0));
             var on = layer.NewState("On").WithAnimation(math.MakeCopier(input, target));

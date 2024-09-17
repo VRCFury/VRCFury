@@ -96,12 +96,7 @@ namespace VF.Utils {
             clip.SetCurves(output);
             var newLength = clip.GetLengthInSeconds();
             if (originalLength != newLength) {
-                clip.SetCurve(
-                    "__vrcf_length",
-                    typeof(GameObject),
-                    "m_IsActive",
-                    FloatOrObjectCurve.DummyFloatCurve(originalLength)
-                );
+                clip.SetLengthHolder(originalLength);
             }
         }
 

@@ -12,14 +12,14 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
     [VFService]
-    internal class BlendTreeOptimizingService {
+    internal class TreeFlatteningService {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ParamsService paramsService;
         private ParamManager paramz => paramsService.GetParams();
         [VFAutowired] private readonly ClipFactoryTrackingService clipFactoryTracking;
         
-        [FeatureBuilderAction(FeatureOrder.OptimizeBlendTrees)]
+        [FeatureBuilderAction(FeatureOrder.TreeFlattening)]
         public void Optimize() {
             var alwaysOneParams = GetAlwaysOneParams();
             foreach (var state in new AnimatorIterator.States().From(fx.GetRaw())) {
