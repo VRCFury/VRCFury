@@ -16,7 +16,7 @@ namespace VF.Feature {
 
         [FeatureBuilderAction]
         public void Apply() {
-            var blinkTriggerSynced = fx.NewBool("BlinkTriggerSynced", addToParamFile: true);
+            var blinkTriggerSynced = fx.NewBool("BlinkTriggerSynced", synced: true);
 
             // Generator
             {

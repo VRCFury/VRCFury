@@ -117,7 +117,7 @@ namespace VF.Feature {
 
             if (settings.ignoredBroken) {
                 var fx = manager.GetFx();
-                fx.NewBool($"VF/BrokenWd", usePrefix: false, addToParamFile: true, networkSynced: false);
+                fx.NewBool($"VF/BrokenWd", usePrefix: false, synced: true, networkSynced: false);
             }
 
             foreach (var controller in manager.GetAllUsedControllers()) {

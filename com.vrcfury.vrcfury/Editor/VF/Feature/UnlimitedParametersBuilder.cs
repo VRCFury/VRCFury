@@ -43,8 +43,8 @@ namespace VF.Feature {
                 networkSyncedField.SetValue(vrcPrm, false);
             }
 
-            var syncPointer = fx.NewInt("SyncPointer", addToParamFile: true);
-            var syncData = fx.NewInt("SyncData", addToParamFile: true);
+            var syncPointer = fx.NewInt("SyncPointer", synced: true);
+            var syncData = fx.NewInt("SyncData", synced: true);
 
             var layer = fx.NewLayer("Unlimited Parameters");
             var entry = layer.NewState("Entry").Move(-3, -1);
@@ -119,77 +119,6 @@ namespace VF.Feature {
             }
 
             Debug.Log($"Radial Toggle Optimizer: Reduced {bits} bits into 16 bits.");
-
-            var currentCount = manager.GetParams().GetRaw().CalcTotalCost();
-
-            var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
-            if (maxBits > 9999) {
-                // Some modified versions of the VRChat SDK have a broken value for this
-                maxBits = 256;
-            }
-
-            if (currentCount > maxBits) {
-                paramsToOptimize = GetBoolParamsToOptimize();
-
-                var boolCount = paramsToOptimize.Count();
-                var roomLeft = maxBits - (currentCount - boolCount);
-
-                if (roomLeft - 8 <= 0) return; // nothing we can do
-
-                var setCount = 2;
-
-                while (Math.Ceiling((double) boolCount / setCount) + 8 > roomLeft) {
-                    setCount++;
-                    if (setCount > 255) return; // nothing we can do
-                }
-
-                foreach (var param in paramsToOptimize) {
-                    var vrcPrm = manager.GetParams().GetParam(param.name);
-                    networkSyncedField.SetValue(vrcPrm, false);
-                }
-
-                var boolsPerSet = (int) Math.Ceiling((double) boolCount / setCount);
-
-                layer = fx.NewLayer("Unlimited Parameters (Bools)");
-                entry = layer.NewState("Entry");
-
-                syncPointer = fx.NewInt("SyncPointerBool", addToParamFile: true);
-                var syncDataList = new List<VFABool>();
-
-                for (int i = 0; i < boolsPerSet; i++)
-                {
-                    syncDataList.Add(fx.NewBool("SyncDataBool_" + i, addToParamFile: true));
-                }
-
-                var lastLocalState = entry;
-                VFState firstLocal = null;
-
-                for (int i = 0; i < setCount; i++) {
-                    var localState = layer.NewState("Send Bool Index " + (i + 1));
-                    lastLocalState.TransitionsTo(localState).When(fx.IsLocal().IsTrue());
-
-                    localState.Drives(syncPointer, i + 1);
-
-                    if (firstLocal == null) firstLocal = localState;
-                    lastLocalState = localState;
-
-                    var remoteState = layer.NewState("Recieve Bool Index " + (i + 1));
-
-                    remoteState.TransitionsToExit().When(fx.Always());
-                    remoteState.TransitionsFromEntry().When(fx.IsLocal().IsFalse().And(syncPointer.IsEqualTo(i + 1)));
-
-                    for (int j = 0; j < boolsPerSet; j++) {
-                        if (i * boolsPerSet + j >= paramsToOptimize.Count()) break;
-                        localState.DrivesCopy(paramsToOptimize[i * boolsPerSet + j].name, syncDataList[j]);
-                        remoteState.DrivesCopy(syncDataList[j], paramsToOptimize[i * boolsPerSet + j].name);
-                    }
-                }
-                
-                lastLocalState.TransitionsTo(firstLocal).When(fx.IsLocal().IsTrue());
-                entry.TransitionsToExit().When(fx.Always());
-
-                Debug.Log($"Bool Toggle Optimizer: Reduced {paramsToOptimize.Count()} bits into {boolsPerSet + 8} bits ({setCount} sets).");
-            }
         }
 
         private IList<(string name,VRCExpressionParameters.ValueType type)> GetParamsToOptimize() {
@@ -223,38 +152,6 @@ namespace VF.Feature {
             });
 
             return paramsToOptimize.Take(255).ToList();
-        }
-
-        private IList<(string name,VRCExpressionParameters.ValueType type)> GetBoolParamsToOptimize() {
-            var paramsToOptimize = new HashSet<(string,VRCExpressionParameters.ValueType)>();
-            void AttemptToAdd(string paramName) {
-                if (string.IsNullOrEmpty(paramName)) return;
-                
-                var vrcParam = manager.GetParams().GetParam(paramName);
-                if (vrcParam == null) return;
-                var networkSynced = (bool)networkSyncedField.GetValue(vrcParam);
-                if (!networkSynced) return;
-
-                if (vrcParam.valueType != VRCExpressionParameters.ValueType.Bool) {
-                    return;
-                }
-
-                paramsToOptimize.Add((paramName, vrcParam.valueType));
-            }
-
-            manager.GetMenu().GetRaw().ForEachMenu(ForEachItem: (control, list) => {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet) {
-                    AttemptToAdd(control.GetSubParameter(0)?.name);
-                }
-                if (control.type == VRCExpressionsMenu.Control.ControlType.Button
-                    || control.type == VRCExpressionsMenu.Control.ControlType.Toggle) {
-                    AttemptToAdd(control.parameter?.name);
-                }
-
-                return Continue;
-            });
-
-            return paramsToOptimize.ToList();
         }
 
         [FeatureEditor]

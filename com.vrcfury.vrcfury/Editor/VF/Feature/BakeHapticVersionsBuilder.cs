@@ -52,7 +52,7 @@ namespace VF.Builder.Haptics {
                 // Add a parameter to FX so it can be picked up by client apps
                 // Because of https://feedback.vrchat.com/bug-reports/p/oscquery-provides-wrong-values-for-avatar-parameters-until-they-are-changed
                 // we can't just use an int and set it to the version number.
-                fx.NewBool($"VFH/Version/{LocalVersion}", usePrefix: false, addToParamFile: true, networkSynced: false);
+                fx.NewBool($"VFH/Version/{LocalVersion}", usePrefix: false, synced: true, networkSynced: false);
                 
                 var receiveTags = new List<string>() { versionBeaconTag };
                 if (BeaconVersion == 7) receiveTags.Add("OGB_VERSION_6");

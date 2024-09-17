@@ -38,8 +38,6 @@ namespace VF.Feature.Base {
         SenkyGestureDriver,
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags,
-        // Needs to run before ArmatureLinkBuilder, which reads active state of objects
-        ApplyRestState3,
         
         // Needs to happen after all controller params (and their types) are in place
         DriveNonFloatTypes,
