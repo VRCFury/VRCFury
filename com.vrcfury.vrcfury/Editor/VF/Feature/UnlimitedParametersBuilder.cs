@@ -35,6 +35,17 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.UnlimitedParameters)]
         public void Apply() {
+            var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
+            if (maxBits > 9999) {
+                // Some modified versions of the VRChat SDK have a broken value for this
+                maxBits = 256;
+            }
+
+            if (paramz.GetRaw().CalcTotalCost() <= maxBits) {
+                Debug.Log($"No Parameter Optimization required");
+                return;
+            }
+
             if (networkSyncedField == null) {
                 throw new Exception("Your VRCSDK is too old to support the Unlimited Parameters component.");
             }
@@ -126,12 +137,6 @@ namespace VF.Feature {
             Debug.Log($"Radial Toggle Optimizer: Reduced {bits} bits into 16 bits.");
 
             var currentCount = paramz.GetRaw().CalcTotalCost();
-
-            var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
-            if (maxBits > 9999) {
-                // Some modified versions of the VRChat SDK have a broken value for this
-                maxBits = 256;
-            }
 
             if (currentCount > maxBits) {
                 paramsToOptimize = GetBoolParamsToOptimize();
