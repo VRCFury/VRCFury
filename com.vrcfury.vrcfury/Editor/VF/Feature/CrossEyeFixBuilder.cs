@@ -13,8 +13,12 @@ using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [FeatureTitle("Cross Eye Fix")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class CrossEyeFixBuilder : FeatureBuilder<CrossEyeFix2> {
         [VFAutowired] private readonly ObjectMoveService mover;
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -22,7 +26,6 @@ namespace VF.Feature {
                 return;
             }
 
-            var avatar = manager.Avatar;
             if (!avatar.enableEyeLook) return;
             var eyeLeft = avatar.customEyeLookSettings.leftEye;
             var eyeRight = avatar.customEyeLookSettings.rightEye;
@@ -54,24 +57,13 @@ namespace VF.Feature {
 
             return fakeEye;
         }
-        
-        public override string GetEditorTitle() {
-            return "Cross Eye Fix";
-        }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             return VRCFuryEditorUtils.Info(
                 "This feature automatically tweaks your avatar eyes so that they can't go cross-eyed in VRChat." +
                 " It does this by eliminating eye bone roll through fake eye bones and rotation constraints."
             );
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-        
-        public override bool OnlyOneAllowed() {
-            return true;
         }
     }
 }

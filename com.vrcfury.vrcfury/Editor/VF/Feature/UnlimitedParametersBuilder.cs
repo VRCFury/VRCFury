@@ -18,9 +18,17 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 using static VF.Utils.VRCExpressionsMenuExtensions.ForEachMenuItemResult;
 
 namespace VF.Feature {
+    [FeatureTitle("Unlimited Params (BETA)")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class UnlimitedParametersBuilder : FeatureBuilder<UnlimitedParameters> {
         [VFAutowired] private readonly MathService math;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly ParamsService paramsService;
+        private ParamManager paramz => paramsService.GetParams();
+        [VFAutowired] private readonly MenuService menuService;
+        private MenuManager menu => menuService.GetMenu();
 
         private static readonly FieldInfo networkSyncedField =
             typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
@@ -36,7 +44,7 @@ namespace VF.Feature {
             if (bits <= 16) return; // don't optimize 16 bits or less
 
             foreach (var param in paramsToOptimize) {
-                var vrcPrm = manager.GetParams().GetParam(param.name);
+                var vrcPrm = paramz.GetParam(param.name);
                 networkSyncedField.SetValue(vrcPrm, false);
             }
 
@@ -44,8 +52,8 @@ namespace VF.Feature {
             var syncData = fx.NewInt("SyncData", synced: true);
 
             var layer = fx.NewLayer("Unlimited Parameters");
-            var entry = layer.NewState("Entry");
-            var local = layer.NewState("Local");
+            var entry = layer.NewState("Entry").Move(-3, -1);
+            var local = layer.NewState("Local").Move(0, 2);
             entry.TransitionsTo(local).When(fx.IsLocal().IsTrue());
 
             Action addRoundRobins = () => { };
@@ -94,15 +102,16 @@ namespace VF.Feature {
             addDefault();
 
             // Receive
-            var remote = layer.NewState("Remote").Move(local, 2, 0);
-            entry.TransitionsTo(remote).When(fx.Always());
+            entry.TransitionsToExit().When(fx.Always());
             for (int i = 0; i < paramsToOptimize.Count; i++) {
                 var syncIndex = i + 1;
                 var dst = paramsToOptimize[i];
                 var receiveState = layer.NewState($"Receive {dst.name}");
-                if (i == 0) receiveState.Move(remote, 1, 0);
+                if (i == 0) {
+                    receiveState.Move(local, 3, 0);
+                }
                 receiveState
-                    .TransitionsTo(remote)
+                    .TransitionsToExit()
                     .When(fx.Always());
                 if (dst.type == VRCExpressionParameters.ValueType.Float) {
                     receiveState.DrivesCopy(syncData, dst.name, 0, 254, -1, 1);
@@ -111,12 +120,12 @@ namespace VF.Feature {
                 } else {
                     throw new Exception("Unknown type?");
                 }
-                remote.TransitionsTo(receiveState).When(syncPointer.IsEqualTo(syncIndex));
+                receiveState.TransitionsFromEntry().When(syncPointer.IsEqualTo(syncIndex));
             }
 
             Debug.Log($"Radial Toggle Optimizer: Reduced {bits} bits into 16 bits.");
 
-            var currentCount = manager.GetParams().GetRaw().CalcTotalCost();
+            var currentCount = paramz.GetRaw().CalcTotalCost();
 
             var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
             if (maxBits > 9999) {
@@ -140,7 +149,7 @@ namespace VF.Feature {
                 }
 
                 foreach (var param in paramsToOptimize) {
-                    var vrcPrm = manager.GetParams().GetParam(param.name);
+                    var vrcPrm = paramz.GetParam(param.name);
                     networkSyncedField.SetValue(vrcPrm, false);
                 }
 
@@ -149,12 +158,12 @@ namespace VF.Feature {
                 layer = fx.NewLayer("Unlimited Parameters (Bools)");
                 entry = layer.NewState("Entry");
 
-                syncPointer = fx.NewInt("SyncPointerBool", addToParamFile: true);
+                syncPointer = fx.NewInt("SyncPointerBool", synced: true);
                 var syncDataList = new List<VFABool>();
 
                 for (int i = 0; i < boolsPerSet; i++)
                 {
-                    syncDataList.Add(fx.NewBool("SyncDataBool_" + i, addToParamFile: true));
+                    syncDataList.Add(fx.NewBool("SyncDataBool_" + i, synced: true));
                 }
 
                 var lastLocalState = entry;
@@ -193,7 +202,7 @@ namespace VF.Feature {
             void AttemptToAdd(string paramName) {
                 if (string.IsNullOrEmpty(paramName)) return;
                 
-                var vrcParam = manager.GetParams().GetParam(paramName);
+                var vrcParam = paramz.GetParam(paramName);
                 if (vrcParam == null) return;
                 var networkSynced = (bool)networkSyncedField.GetValue(vrcParam);
                 if (!networkSynced) return;
@@ -206,7 +215,7 @@ namespace VF.Feature {
                 paramsToOptimize.Add((paramName, vrcParam.valueType));
             }
 
-            manager.GetMenu().GetRaw().ForEachMenu(ForEachItem: (control, list) => {
+            menu.GetRaw().ForEachMenu(ForEachItem: (control, list) => {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet) {
                     AttemptToAdd(control.GetSubParameter(0)?.name);
                 }
@@ -226,7 +235,7 @@ namespace VF.Feature {
             void AttemptToAdd(string paramName) {
                 if (string.IsNullOrEmpty(paramName)) return;
                 
-                var vrcParam = manager.GetParams().GetParam(paramName);
+                var vrcParam = paramz.GetParam(paramName);
                 if (vrcParam == null) return;
                 var networkSynced = (bool)networkSyncedField.GetValue(vrcParam);
                 if (!networkSynced) return;
@@ -238,7 +247,7 @@ namespace VF.Feature {
                 paramsToOptimize.Add((paramName, vrcParam.valueType));
             }
 
-            manager.GetMenu().GetRaw().ForEachMenu(ForEachItem: (control, list) => {
+           menu.GetRaw().ForEachMenu(ForEachItem: (control, list) => {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet) {
                     AttemptToAdd(control.GetSubParameter(0)?.name);
                 }
@@ -253,19 +262,8 @@ namespace VF.Feature {
             return paramsToOptimize.ToList();
         }
 
-        public override string GetEditorTitle() {
-            return "Unlimited Params (BETA)";
-        }
-
-        public override bool OnlyOneAllowed() {
-            return true;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
                 "This component will optimize all synced float parameters used in radial menu toggles into 16 total bits"));

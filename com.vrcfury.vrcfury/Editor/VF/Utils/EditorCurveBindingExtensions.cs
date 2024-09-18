@@ -1,8 +1,12 @@
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Animations;
 using VF.Builder;
+using VF.Service;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase.Validation.Performance;
 
 namespace VF.Utils {
     internal static class EditorCurveBindingExtensions {
@@ -87,11 +91,42 @@ namespace VF.Utils {
             }
             if (obj.GetComponent(binding.type) != null) return true;
             if (binding.type == typeof(BoxCollider) && obj.GetComponent<VRCStation>() != null) return true;
+#if VRCSDK_HAS_VRCCONSTRAINTS
+            // Due to "half-upgraded" assets, animations may point to the wrong kind of constraint
+            // This will be fixed later in the build in UpgradeToVrcConstraintsService
+            if (typeof(IConstraint).IsAssignableFrom(binding.type) && obj.GetComponent<IVRCConstraint>() != null) return true;
+            if (typeof(IVRCConstraint).IsAssignableFrom(binding.type) && obj.GetComponent<IConstraint>() != null) return true;
+#endif
             return false;
         }
 
         public static string PrettyString(this EditorCurveBinding binding) {
             return $"({binding.path} {binding.type?.Name} {binding.propertyName})";
+        }
+
+        public static bool IsOverLimitConstraint(this EditorCurveBinding binding, out int slotNum) {
+            slotNum = 0;
+            if (!typeof(IConstraint).IsAssignableFrom(binding.type)) return false;
+            if (!binding.TryParseArraySlot(out _, out slotNum, out _)) return false;
+            return slotNum >= 16;
+        }
+
+        public static bool TryParseArraySlot(this EditorCurveBinding binding, out string prefix, out int slotNum, out string suffix) {
+            var bindingPropertyName = binding.propertyName;
+            prefix = "";
+            slotNum = 0;
+            suffix = "";
+            var start = bindingPropertyName.IndexOf(".Array.data[", StringComparison.InvariantCulture);
+            if (start < 0) return false;
+            prefix = bindingPropertyName.Substring(0, start);
+            start += ".Array.data[".Length;
+            var end = bindingPropertyName.IndexOf("]", start, StringComparison.InvariantCulture);
+            if (end < 0) return false;
+            var slotNumStr = bindingPropertyName.Substring(start, end-start);
+            end += "]".Length;
+            suffix = bindingPropertyName.Substring(end);
+            if (!int.TryParse(slotNumStr, out slotNum)) return false;
+            return true;
         }
     }
 }

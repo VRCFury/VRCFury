@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
@@ -69,21 +68,23 @@ namespace VF.PlayMode {
             var text = EditorPrefs.GetString(Key);
             if (string.IsNullOrEmpty(text)) return new Data();
             try {
-                return JsonConvert.DeserializeObject<Data>(text);
+                return JsonUtility.FromJson<Data>(text);
             } catch (Exception) {
                 return new Data();
             }
         }
 
         private static void SetData(Data data) {
-            var str = JsonConvert.SerializeObject(data);
+            var str = JsonUtility.ToJson(data);
             EditorPrefs.SetString(Key, str);
         }
 
+        [Serializable]
         private class Data {
-            public readonly List<Entry> entries = new List<Entry>();
+            public List<Entry> entries = new List<Entry>();
         }
 
+        [Serializable]
         private class Entry {
             public string name;
             public bool auto;

@@ -11,9 +11,9 @@ namespace VF.Service {
      */
     [VFService]
     internal class FrameTimeService {
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MathService math;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         private VFAFloat cachedFrameTime;
@@ -32,7 +32,6 @@ namespace VF.Service {
         public VFAFloat GetTimeSinceLoad() {
             if (cachedLoadTime != null) return cachedLoadTime;
 
-            var fx = manager.GetFx();
             var timeSinceStart = fx.NewFloat("timeSinceLoad");
             var layer = fx.NewLayer("FrameTime Counter");
             var clip = clipFactory.NewClip("FrameTime Counter");

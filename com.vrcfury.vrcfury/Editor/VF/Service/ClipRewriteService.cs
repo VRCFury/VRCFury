@@ -6,31 +6,30 @@ using VF.Injector;
 using VF.Utils;
 
 namespace VF.Service {
+    [VFService]
     internal class ClipRewriteService {
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly ControllersService controllers;
         private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
 
         public void RewriteAllClips(AnimationRewriter rewriter) {
-            foreach (var c in manager.GetAllUsedControllers()) {
+            foreach (var c in controllers.GetAllUsedControllers()) {
                 c.GetRaw().GetRaw().Rewrite(rewriter);
             }
             foreach (var clip in additionalClips) {
                 clip.Rewrite(rewriter);
             }
         }
-        
+
         /**
          * Note: Does not update audio clip source paths
          */
-        public void ForAllClips(Action<AnimationClip> with) {
+        public ISet<AnimationClip> GetAllClips() {
             var clips = new HashSet<AnimationClip>();
-            foreach (var c in manager.GetAllUsedControllers()) {
+            foreach (var c in controllers.GetAllUsedControllers()) {
                 clips.UnionWith(c.GetClips());
             }
             clips.UnionWith(additionalClips);
-            foreach (var clip in clips) {
-                with(clip);
-            }
+            return clips;
         }
         
         public void AddAdditionalManagedClip(AnimationClip clip) {

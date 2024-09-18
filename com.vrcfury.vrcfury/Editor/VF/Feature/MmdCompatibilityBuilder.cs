@@ -14,16 +14,17 @@ using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [FeatureTitle("MMD Compatibility")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class MmdCompatibilityBuilder : FeatureBuilder<MmdCompatibility> {
-        [VFAutowired] private readonly MathService mathService;
-        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
+        [VFAutowired] private readonly AnimatorLayerControlOffsetService layerControlService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        
-        public override string GetEditorTitle() {
-            return "MMD Compatibility";
-        }
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Info(
                 "This component will improve MMD compatibility for your avatar, by maintaining MMD" +
@@ -49,17 +50,8 @@ namespace VF.Feature {
             }
         }
 
-        public override bool OnlyOneAllowed() {
-            return true;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-
         [FeatureBuilderAction(FeatureOrder.AvoidMmdLayers)]
         public void Apply() {
-            var fx = GetFx();
             if (fx.GetLayers().Count() <= 1) {
                 return;
             }
@@ -97,10 +89,10 @@ namespace VF.Feature {
             if (layersToDisable.Length > 0) {
                 foreach (var l in layersToDisable) {
                     var driveOff = detected.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
-                    layerControlBuilder.Register(driveOff, l);
+                    layerControlService.Register(driveOff, l);
                     driveOff.goalWeight = 0;
                     var driveOn = notDetected.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
-                    layerControlBuilder.Register(driveOn, l);
+                    layerControlService.Register(driveOn, l);
                     driveOn.goalWeight = 1;
                 }
             }

@@ -512,7 +512,7 @@ namespace VF.Inspector {
                                 if (!BuildTargetUtils.IsDesktop()) return mat;
 
                                 if (plug.enableSps) {
-                                    var copy = mat.Clone();
+                                    var copy = mat.Clone("Needed to swap shader to SPS");
                                     if (finishedCopies.Contains(copy)) return copy;
                                     finishedCopies.Add(copy);
                                     SpsConfigurer.ConfigureSpsMaterial(skin, copy, worldLength,
@@ -521,7 +521,7 @@ namespace VF.Inspector {
                                     return copy;
                                 }
                                 if (plug.configureTps && TpsConfigurer.IsTps(mat)) {
-                                    var copy = mat.Clone();
+                                    var copy = mat.Clone("Needed to change properties for TPS autoconfiguration");
                                     if (finishedCopies.Contains(copy)) return copy;
                                     finishedCopies.Add(copy);
                                     TpsConfigurer.ConfigureTpsMaterial(skin, copy, worldLength,

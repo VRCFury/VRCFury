@@ -10,12 +10,11 @@ using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [FeatureTitle("Descriptor Debugger")]
     internal class DescriptorDebugBuilder : FeatureBuilder<DescriptorDebug> {
-        public override string GetEditorTitle() {
-            return "Descriptor Debugger";
-        }
 
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(VFGameObject avatarObject) {
             var output = new VisualElement();
             output.Add(VRCFuryEditorUtils.Info(
                 "This component displays VRCFury's useful debug info about the controllers on your avatar's base avatar descriptor." +

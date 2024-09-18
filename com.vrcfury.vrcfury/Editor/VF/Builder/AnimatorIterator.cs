@@ -7,7 +7,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Utils;
 using VF.Utils.Controller;
-using AnimatorStateExtensions = VF.Builder.AnimatorStateExtensions;
+using AnimatorStateExtensions = VF.Utils.AnimatorStateExtensions;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {

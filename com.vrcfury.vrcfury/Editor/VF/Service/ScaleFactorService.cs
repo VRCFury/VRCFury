@@ -1,20 +1,11 @@
-using System;
-using System.Collections.Generic;
 using JetBrains.Annotations;
-using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
-using UnityEngine.Animations;
 using VF.Builder;
-using VF.Feature;
 using VF.Injector;
-using VF.Inspector;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Dynamics;
-using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
-using VRC.SDKBase;
 
 namespace VF.Service {
     /**
@@ -23,10 +14,9 @@ namespace VF.Service {
      */
     [VFService]
     internal class ScaleFactorService {
-        [VFAutowired] private readonly AvatarManager manager;
+        [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly MathService math;
-        [VFAutowired] private readonly ForceStateInAnimatorService forceStateInAnimatorService;
-        private ControllerManager fx => manager.GetFx();
+        private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
 
         private int scaleIndex = 0;
@@ -36,6 +26,14 @@ namespace VF.Service {
          */
         [CanBeNull]
         public VFAFloat Get(VFGameObject localSpace, VFGameObject worldSpace) {
+            return GetAdv(localSpace, worldSpace)?.worldScale;
+        }
+
+        /**
+         * localSpace and worldSpace MUST be at identical positions
+         */
+        [CanBeNull]
+        public (VFAFloat worldScale,VFGameObject localContact,VFGameObject worldContact)? GetAdv(VFGameObject localSpace, VFGameObject worldSpace) {
             if (!BuildTargetUtils.IsDesktop()) {
                 return null;
             }
@@ -59,7 +57,7 @@ namespace VF.Service {
             worldContact.parameter = receiverParam;
 
             var final = math.Multiply($"SFFix {localSpace.name} - Final", receiverParam, 100 * localSpace.worldScale.x);
-            return final;
+            return (final, localContactObj, worldContactObj);
         }
     }
 }

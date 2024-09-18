@@ -14,9 +14,8 @@ namespace VF.Service {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly AvatarManager avatarManager;
-        private ControllerManager fx => avatarManager.GetFx();
-        [VFAutowired] private readonly HapticContactsService hapticContacts;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public void CreateAnims(
@@ -63,10 +62,15 @@ namespace VF.Service {
                     tree.Add(1, action.onClip);
                     on.WithAnimation(tree);
                 }
-                
-                var onWhen = smoothed.IsGreaterThan(0.01f);
-                off.TransitionsTo(on).When(onWhen);
-                on.TransitionsTo(off).When(onWhen.Not());
+
+
+                if (depthAction.reverseClip) {
+                    off.TransitionsTo(on).When(fx.Always());
+                } else {
+                    var onWhen = smoothed.IsGreaterThan(0.01f);
+                    off.TransitionsTo(on).When(onWhen);
+                    on.TransitionsTo(off).When(onWhen.Not());
+                }
             }
         }
     }

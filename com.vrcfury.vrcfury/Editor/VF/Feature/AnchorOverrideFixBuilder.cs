@@ -4,11 +4,17 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
+    [FeatureTitle("Anchor Override Fix")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
+        [VFAutowired] private readonly VFGameObject avatarObject;
+
         [FeatureBuilderAction(FeatureOrder.AnchorOverrideFix)]
         public void Apply() {
             VFGameObject root;
@@ -22,19 +28,8 @@ namespace VF.Feature {
             }
         }
         
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-        
-        public override bool OnlyOneAllowed() {
-            return true;
-        }
-        
-        public override string GetEditorTitle() {
-            return "Anchor Override Fix";
-        }
-        
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will set the anchor override for every mesh on your avatar to your chest. " +

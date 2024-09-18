@@ -104,5 +104,6 @@ For more information, please refer to <https://unlicense.org>
 * wholesomevr
   * Made Armature Link work with Dynamic Bone Contacts
   * Made plug length and width available as global parameters for sockets
+  * Added public api for SPS Socket creation
 * Ximmer-VR
   * Made Toggle sliders work with global parameters

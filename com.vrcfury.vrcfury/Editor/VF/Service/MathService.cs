@@ -7,7 +7,6 @@ using UnityEngine;
 using VF.Builder;
 using VF.Injector;
 using VF.Inspector;
-using VF.Model.StateAction;
 using VF.Utils;
 using VF.Utils.Controller;
 
@@ -19,10 +18,10 @@ namespace VF.Service {
     [VFService]
     [VFPrototypeScope]
     internal class MathService {
-        [VFAutowired] private readonly AvatarManager avatarManager;
+        [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        private ControllerManager fx => avatarManager.GetFx();
+        private ControllerManager fx => controllers.GetFx();
         
         // A VFAFloat, but it's guaranteed to be 0 or 1
         public class VFAFloatBool {

@@ -19,7 +19,7 @@ namespace VF.Utils {
                 .FirstOrDefault();
         }
 
-        private static Dictionary<Mesh, Mesh> readWriteCache = new Dictionary<Mesh, Mesh>();
+        private static readonly Dictionary<Mesh, Mesh> readWriteCache = new Dictionary<Mesh, Mesh>();
 
         [InitializeOnLoadMethod]
         private static void Init() {
@@ -46,7 +46,7 @@ namespace VF.Utils {
             // while in play mode, so we make a copy that is readable and return that instead.
             if (mesh != null && !mesh.isReadable && Application.isPlaying) {
                 if (readWriteCache.TryGetValue(mesh, out var cached)) return cached;
-                var copy = mesh.Clone();
+                var copy = mesh.Clone("Needed to enable read/write flag");
                 copy.ForceReadable();
                 readWriteCache[mesh] = copy;
                 // Because this value is cached, and this mesh may be used in multiple places on the avatar,
@@ -60,10 +60,10 @@ namespace VF.Utils {
         }
         
         [CanBeNull]
-        public static Mesh GetMutableMesh(this Renderer renderer) {
+        public static Mesh GetMutableMesh(this Renderer renderer, string reason) {
             var mesh = renderer.GetMesh();
             if (mesh == null) return null;
-            var copy = mesh.Clone();
+            var copy = mesh.Clone(reason);
             renderer.SetMesh(copy);
             copy.ForceReadable();
             return copy;

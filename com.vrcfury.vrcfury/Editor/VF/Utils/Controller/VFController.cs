@@ -8,6 +8,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature;
 using VF.Inspector;
+using VF.Service;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils.Controller {
@@ -146,6 +147,7 @@ namespace VF.Utils.Controller {
             }
             
             var output = new VFController(ac);
+            output.RemoveInvalidParameters();
             output.FixNullStateMachines();
             output.CheckForBadBehaviours();
             output.ReplaceSyncedLayers();
@@ -171,7 +173,7 @@ namespace VF.Utils.Controller {
             
             output.FixLayer0Weight();
             output.ApplyBaseMask(type);
-            NoBadControllerParamsBuilder.RemoveWrongParamTypes(output);
+            NoBadControllerParamsService.RemoveWrongParamTypes(output);
             return output;
         }
 
@@ -207,19 +209,37 @@ namespace VF.Utils.Controller {
          * merging controllers and features much easier. Later on, we recalculate a new base mask in FixMasksBuilder. 
          */
         private void ApplyBaseMask(VRCAvatarDescriptor.AnimLayerType type) {
-            var isFx = type == VRCAvatarDescriptor.AnimLayerType.FX;
             var layer0 = GetLayer(0);
             if (layer0 == null) return;
 
             var baseMask = layer0.mask;
-            if (baseMask == null) {
-                if (isFx) {
+            if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
+                if (baseMask == null) {
                     baseMask = AvatarMaskExtensions.DefaultFxMask();
                 } else {
-                    return;
+                    baseMask = MutableManager.CopyRecursive(baseMask);
+                }
+            } else if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                if (baseMask == null) {
+                    // Technically, we should throw here. The VRCSDK will complain and prevent the user from uploading
+                    // until they fix this. But we fix it here for them temporarily so they can use play mode for now.
+                    // Gesture controllers merged using Full Controller with no base mask will slip through and be allowed
+                    // by this.
+                    baseMask = AvatarMaskExtensions.Empty();
+                    baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
+                    baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
+                } else {
+                    baseMask = MutableManager.CopyRecursive(baseMask);
+                    // If the base mask is just one hand, assume that they put in controller with just a left and right hand layer,
+                    // and meant to have both in the base mask.
+                    if (baseMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers))
+                        baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
+                    if (baseMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers))
+                        baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
                 }
             } else {
-                baseMask = MutableManager.CopyRecursive(baseMask);
+                // VRChat does not use the base mask on any other controller types
+                return;
             }
 
             // Because of some unity bug, ONLY the muscle part of the base mask is actually applied to the child layers
@@ -328,6 +348,15 @@ namespace VF.Utils.Controller {
                 }
                 return layer;
             }).NotNull().ToArray();
+        }
+        
+        /**
+         * Some tools add parameters with an invalid type (not bool, trigger, float, int, etc)
+         * This causes the VRCSDK to blow up and break the mirror clone and throw exceptions in console.
+         * https://feedback.vrchat.com/bug-reports/p/invalid-parameter-type-within-a-controller-breaks-mirror-clone-and-spams-output
+         */
+        private void RemoveInvalidParameters() {
+            ctrl.parameters = ctrl.parameters.Where(p => VRCFEnumUtils.IsValid(p.type)).ToArray();
         }
 
         public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<AnimatorStateMachine> limitToLayers = null) {

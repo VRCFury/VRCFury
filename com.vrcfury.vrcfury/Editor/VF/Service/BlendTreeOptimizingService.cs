@@ -13,11 +13,11 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Service {
     [VFService]
     internal class BlendTreeOptimizingService {
-        [VFAutowired] private readonly AvatarManager manager;
-        [VFAutowired] private readonly ClipFactoryService clipFactory;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly ParamsService paramsService;
+        private ParamManager paramz => paramsService.GetParams();
         [VFAutowired] private readonly ClipFactoryTrackingService clipFactoryTracking;
-        private ControllerManager fx => manager.GetFx();
         
         [FeatureBuilderAction(FeatureOrder.OptimizeBlendTrees)]
         public void Optimize() {
@@ -42,10 +42,10 @@ namespace VF.Service {
 
         private ISet<string> GetAnimatedParams() {
             var animatedParams = new HashSet<string>();
-            var vrcControlled = manager.GetParams().GetRaw().parameters
+            var vrcControlled = paramz.GetRaw().parameters
                 .Select(p => p.name);
             animatedParams.UnionWith(vrcControlled);
-            var driven = manager.GetAllUsedControllers()
+            var driven = controllers.GetAllUsedControllers()
                 .SelectMany(c => new AnimatorIterator.Behaviours().From(c.GetRaw()))
                 .OfType<VRCAvatarParameterDriver>()
                 .SelectMany(driver => driver.parameters.Select(p => p.name));

@@ -41,6 +41,22 @@ namespace VF.Hooks {
                     clips.UnionWith(scan.Item2);
                     if (component is IConstraint c) unityConstraints.Add(c);
                 }
+
+                var overLimit = new HashSet<string>();
+                foreach (var binding in clips.SelectMany(clip => clip.GetFloatBindings())) {
+                    if (binding.IsOverLimitConstraint(out _)) {
+                        overLimit.Add(binding.path);
+                    }
+                }
+
+                var overLimitWarning = "";
+                if (overLimit.Any()) {
+                    overLimitWarning =
+                        "WARNING! You have a constraint with more than 16 sources. If this is upgraded to a" +
+                        " VRC Constraint, it will fail to be able to turn on those higher sources.\n" +
+                        string.Join("\n", overLimit) +
+                        "\n\n";
+                }
                 
                 var ok = EditorUtility.DisplayDialog("Auto Convert Constraints",
                     $"This object uses VRCFury.\n\n" +
@@ -48,6 +64,7 @@ namespace VF.Hooks {
                     $"Scanned {controllers.Count} controllers\n" +
                     $"Will upgrade {unityConstraints.Count} constraint components\n" +
                     $"Will upgrade {clips.Count} animation clips\n\n" +
+                    overLimitWarning +
                     "If your animator setup is very complex, you may want to back up your project first!",
                     "Proceed", "Cancel");
                 if (!ok) return true;

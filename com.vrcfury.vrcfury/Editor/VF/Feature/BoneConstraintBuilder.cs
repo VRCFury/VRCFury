@@ -1,15 +1,21 @@
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
+using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
 
 namespace VF.Feature {
 
+    [FeatureTitle("Bone Constraint")]
+    [FeatureHideInMenu]
     internal class BoneConstraintBuilder : FeatureBuilder<BoneConstraint> {
+        [VFAutowired] private readonly GlobalsService globals;
+
         [FeatureBuilderAction]
         public void Link() {
-            addOtherFeature(new ArmatureLink {
+            globals.addOtherFeature(new ArmatureLink {
                 linkTo = { new ArmatureLink.LinkTo { bone = model.bone }},
                 keepBoneOffsets2 = ArmatureLink.KeepBoneOffsets.No,
                 linkMode = ArmatureLink.ArmatureLinkMode.ParentConstraint,
@@ -17,15 +23,8 @@ namespace VF.Feature {
             });
         }
 
-        public override bool ShowInMenu() {
-            return false;
-        }
-
-        public override string GetEditorTitle() {
-            return "Bone Constraint";
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             var container = new VisualElement();
             
             container.Add(VRCFuryEditorUtils.Error(

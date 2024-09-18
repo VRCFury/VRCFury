@@ -13,9 +13,11 @@ using VF.Service;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
+    [FeatureTitle("Show In First Person")]
     internal class ShowInFirstPersonBuilder : FeatureBuilder<ShowInFirstPerson> {
-        [VFAutowired] private readonly ObjectMoveService mover;
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly FakeHeadService fakeHead;
+        [VFAutowired] private readonly GlobalsService globals;
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -25,7 +27,7 @@ namespace VF.Feature {
             var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
             if (head == null) return;
 
-            addOtherFeature(new ArmatureLink {
+            globals.addOtherFeature(new ArmatureLink {
                 propBone = obj,
                 linkTo = new List<ArmatureLink.LinkTo> {
                     new ArmatureLink.LinkTo {
@@ -60,11 +62,8 @@ namespace VF.Feature {
             });
         }
 
-        public override string GetEditorTitle() {
-            return "Show In First Person";
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             return VRCFuryEditorUtils.Info(
                 "This component will automatically make this GameObject a child of the head bone, and will" +
                 " use constraint tricks to make it visible in first person.\n\n" +

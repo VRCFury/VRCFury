@@ -18,5 +18,9 @@ namespace com.vrcfury.api {
         public static FuryToggle CreateToggle(GameObject obj) {
             return new FuryToggle(obj);
         }
+
+        public static FurySocket CreateSocket(GameObject obj) {
+            return new FurySocket(obj);
+        }
     }
 }

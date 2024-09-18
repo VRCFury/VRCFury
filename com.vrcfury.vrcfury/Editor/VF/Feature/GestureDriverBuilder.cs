@@ -1,11 +1,8 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
-using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
@@ -13,10 +10,10 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
-using VRC.SDK3.Avatars.Components;
-using VRC.SDKBase;
 
 namespace VF.Feature {
+    
+    [FeatureTitle("Gestures")]
     internal class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
@@ -24,8 +21,12 @@ namespace VF.Feature {
         [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly MenuService menuService;
+        private MenuManager menu => menuService.GetMenu();
+        [VFAutowired] private readonly GlobalsService globals;
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -37,7 +38,6 @@ namespace VF.Feature {
         private void MakeGesture(GestureDriver.Gesture gesture, GestureDriver.Hand handOverride = GestureDriver.Hand.EITHER) {
             var hand = handOverride == GestureDriver.Hand.EITHER ? gesture.hand : handOverride;
 
-            var fx = GetFx();
             var uniqueNum = i++;
             var name = "Gesture " + uniqueNum + " - " + hand + " " + gesture.sign;
             if (hand == GestureDriver.Hand.COMBO) {
@@ -53,7 +53,7 @@ namespace VF.Feature {
             if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
                 if (!lockMenuItems.TryGetValue(gesture.lockMenuItem, out lockMenuParam)) {
                     lockMenuParam = fx.NewBool(uid + "_lock", synced: true);
-                    manager.GetMenu().NewMenuToggle(gesture.lockMenuItem, lockMenuParam);
+                    menu.NewMenuToggle(gesture.lockMenuItem, lockMenuParam);
                     lockMenuItems[gesture.lockMenuItem] = lockMenuParam;
                 }
             }
@@ -82,8 +82,8 @@ namespace VF.Feature {
 
             var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
             
-            var clip = actionClipService.LoadState(uid, gesture.state);
             if (weight != null) {
+                var clip = actionClipService.LoadState(uid, gesture.state, motionTime: ActionClipService.MotionTimeMode.Always);
                 var smoothedWeight = MakeWeightLayer(
                     weight,
                     onCondition
@@ -95,6 +95,7 @@ namespace VF.Feature {
                 tree.Add(1, clip.GetLastFrame());
                 on.WithAnimation(tree);
             } else {
+                var clip = actionClipService.LoadState(uid, gesture.state);
                 on.WithAnimation(clip);
             }
 
@@ -106,7 +107,7 @@ namespace VF.Feature {
                 foreach (var tag in gesture.exclusiveTag.Split(',')) {
                     var trimmedTag = tag.Trim();
                     if (!string.IsNullOrWhiteSpace(trimmedTag)) {
-                        var main = allBuildersInRun.OfType<GestureDriverBuilder>().First();
+                        var main = globals.allBuildersInRun.OfType<GestureDriverBuilder>().First();
                         if (main.excludeConditions.TryGetValue(trimmedTag, out var excludeCondition)) {
                             main.excludeConditions[trimmedTag] = excludeCondition.Or(onCondition);
                             onCondition = onCondition.And(excludeCondition.Not());
@@ -122,7 +123,6 @@ namespace VF.Feature {
         }
 
         private VFAFloat MakeWeightLayer(VFAFloat input, VFCondition enabled) {
-            var fx = GetFx();
             var layer = fx.NewLayer($"{input.Name()} Target");
 
             var target = math.MakeAap($"{input.Name()}/Target", def: input.GetDefault(), animatedFromDefaultTree: false);
@@ -135,11 +135,8 @@ namespace VF.Feature {
             return smoothing.Smooth($"{input.Name()}/Smoothed", target, 0.15f);
         }
 
-        public override string GetEditorTitle() {
-            return "Gestures";
-        }
-
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor(SerializedProperty prop) {
             return VRCFuryEditorUtils.List(prop.FindPropertyRelative("gestures"));
         }
         
@@ -175,7 +172,7 @@ namespace VF.Feature {
             row.Add(handSigns);
             wrapper.Add(row);
 
-            wrapper.Add(VRCFuryStateEditor.render(gesture.FindPropertyRelative("state")));
+            wrapper.Add(VRCFuryActionSetDrawer.render(gesture.FindPropertyRelative("state")));
 
             var customTransitionTimeProp = gesture.FindPropertyRelative("customTransitionTime");
             var transitionTimeProp = gesture.FindPropertyRelative("transitionTime");

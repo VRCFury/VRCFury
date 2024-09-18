@@ -16,17 +16,24 @@ using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Feature {
+    [FeatureTitle("Direct Tree Optimizer")]
+    [FeatureOnlyOneAllowed]
+    [FeatureRootOnly]
     internal class DirectTreeOptimizerBuilder : FeatureBuilder<DirectTreeOptimizer> {
-        [VFAutowired] private readonly AnimatorLayerControlOffsetBuilder layerControlBuilder;
-        [VFAutowired] private readonly FixWriteDefaultsBuilder fixWriteDefaults;
+        [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly AnimatorLayerControlOffsetService layerControlService;
+        [VFAutowired] private readonly FixWriteDefaultsService fixWriteDefaults;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly DirectBlendTreeService directTree;
         [VFAutowired] private readonly MathService math;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         
         [FeatureBuilderAction(FeatureOrder.DirectTreeOptimizer)]
         public void Apply() {
             if (!IsFirst()) return;
-            var applyToUnmanaged = allFeaturesInRun
+            var applyToUnmanaged = globals.allFeaturesInRun
                 .OfType<DirectTreeOptimizer>()
                 .Any(m => !m.managedOnly);
 
@@ -68,7 +75,7 @@ namespace VF.Feature {
                 throw new DoNotOptimizeException($"Layer is additive");
             }
             
-            if (layerControlBuilder.IsLayerTargeted(layer)) {
+            if (layerControlService.IsLayerTargeted(layer)) {
                 throw new DoNotOptimizeException($"Layer is targeted by an Animator Layer Control");
             }
 
@@ -297,25 +304,14 @@ namespace VF.Feature {
             return allConditions[0];
         }
         
-        public override string GetEditorTitle() {
-            return "Direct Tree Optimizer";
-        }
-        
-        public override VisualElement CreateEditor(SerializedProperty prop) {
+        [FeatureEditor]
+        public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will automatically convert all non-conflicting toggle layers into a single direct blend tree layer." +
                 "\n\nWarning: Toggles may not work in Av3 emulator when using this feature. This is a bug in Av3 emulator. Use Gesture Manager for testing instead."
             ));
             return content;
-        }
-
-        public override bool AvailableOnRootOnly() {
-            return true;
-        }
-        
-        public override bool OnlyOneAllowed() {
-            return true;
         }
     }
 }
