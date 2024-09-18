@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 
@@ -39,6 +40,36 @@ namespace VF.Utils {
         private static bool HasValidBinding(AnimationClip clip, VFGameObject avatarRoot) {
             return clip.GetAllBindings()
                 .Any(binding => binding.IsValid(avatarRoot));
+        }
+        
+        public static Motion GetLastFrame(this Motion motion) {
+            var clone = motion.Clone();
+            foreach (var clip in new AnimatorIterator.Clips().From(motion)) {
+                clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+                    if (curve.lengthInSeconds == 0) return (binding, curve, false);
+                    return (binding, curve.GetLast(), true);
+                }));
+            }
+            return clone;
+        }
+
+        public static AnimationClip FlattenAll(this Motion motion) {
+            if (motion is AnimationClip c) return c;
+            var flat = VrcfObjectFactory.Create<AnimationClip>();
+            foreach (var clip in new AnimatorIterator.Clips().From(motion)) {
+                flat.CopyFrom(clip);
+            }
+            return flat;
+        }
+        
+        public static AnimationClip Flatten(this Motion motion, HashSet<string> onParams) {
+            if (motion is AnimationClip c) return c;
+            var flat = VrcfObjectFactory.Create<AnimationClip>();
+            
+            foreach (var clip in new AnimatorIterator.Clips().From(motion)) {
+                flat.CopyFrom(clip);
+            }
+            return flat;
         }
     }
 }

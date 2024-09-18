@@ -189,6 +189,7 @@ namespace VF.Utils {
         }
 
         private static bool IsProbablyIgnoredBinding(string bindingPath) {
+            if (bindingPath == "__vrcf_length") return true;
             if (bindingPath == "_buffer") return true;
             if (bindingPath.EndsWith("/Idle Camera")) return true; // dumb gogoloco thing that we don't want to show warnings for
             if (bindingPath.Contains("/")) return false;

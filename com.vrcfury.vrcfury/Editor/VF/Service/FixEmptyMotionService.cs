@@ -17,7 +17,6 @@ namespace VF.Service {
     [VFService]
     internal class FixEmptyMotionService {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        [VFAutowired] private readonly ClipFactoryTrackingService clipFactoryTracking;
         [VFAutowired] private readonly ControllersService controllers;
 
         [FeatureBuilderAction(FeatureOrder.FixEmptyMotions)]
@@ -34,15 +33,14 @@ namespace VF.Service {
         }
 
         private void CheckState(ControllerManager controller, VFLayer layer, AnimatorState state, AnimationClip noopClip) {
+            // ReSharper disable once ReplaceWithSingleAssignment.True
             var replaceNulls = true;
-            if (state.writeDefaultValues) {
+            if (state.writeDefaultValues && !VFLayer.Created(state)) {
                 // Interestingly, inserting noop clips into WD on states HAS SIDE EFFECTS for some reason
                 // so... don't do that. (Doing so breaks the rex eye pupil animations, because it seemingly
                 // doesn't properly propagate higher layer states while transitioning from a noop clip into
                 // a clip with content)
-                if (state.motion == null || !clipFactoryTracking.Created(state.motion)) {
-                    replaceNulls = false;
-                }
+                replaceNulls = false;
             }
             if (controller.GetType() != VRCAvatarDescriptor.AnimLayerType.FX) {
                 // The same also seems to happen in layers with muscle animations, so we also skip this on all controllers that aren't FX

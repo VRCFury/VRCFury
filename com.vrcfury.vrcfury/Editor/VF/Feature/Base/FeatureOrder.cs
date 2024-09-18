@@ -92,6 +92,7 @@ namespace VF.Feature.Base {
         AnimatorLayerControlFix,
         RemoveNonQuestMaterials,
         UpgradeWrongParamTypes,
+        FixTreeLength,
         TreeFlattening,
         FinalizeController,
 

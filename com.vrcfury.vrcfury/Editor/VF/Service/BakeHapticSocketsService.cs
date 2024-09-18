@@ -278,7 +278,7 @@ namespace VF.Service {
                         }
 
                         var activeClip = actionClipService.LoadState($"SPS - Active Animation for {name}", socket.activeActions);
-                        if (activeClip.GetAllBindings().Any()) {
+                        if (new AnimatorIterator.Clips().From(activeClip).SelectMany(clip => clip.GetAllBindings()).Any()) {
                             var activeAnimParam = fx.NewFloat($"SPS - Active Animation for {name}");
                             var activeAnimLayer = fx.NewLayer($"SPS - Active Animation for {name}");
                             var off = activeAnimLayer.NewState("Off");

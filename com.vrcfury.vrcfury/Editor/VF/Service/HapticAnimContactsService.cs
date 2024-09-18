@@ -54,7 +54,9 @@ namespace VF.Service {
                 if (action.useMotionTime) {
                     on.WithAnimation(action.onClip).MotionTime(smoothed);
                     if (depthAction.reverseClip) {
-                        action.onClip.Reverse();
+                        foreach (var clip in new AnimatorIterator.Clips().From(action.onClip)) {
+                            clip.Reverse();
+                        }
                     }
                 } else {
                     var tree = clipFactory.New1D(prefix + " tree", smoothed);
@@ -62,7 +64,6 @@ namespace VF.Service {
                     tree.Add(1, action.onClip);
                     on.WithAnimation(tree);
                 }
-
 
                 if (depthAction.reverseClip) {
                     off.TransitionsTo(on).When(fx.Always());

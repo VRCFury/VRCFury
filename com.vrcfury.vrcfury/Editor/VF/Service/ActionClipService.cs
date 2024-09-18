@@ -21,8 +21,11 @@ namespace VF.Service {
     internal class ActionClipService {
         [VFAutowired] private readonly Func<VFGameObject> componentObject;
 
-        [VFAutowired] [CanBeNull] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] [CanBeNull] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] [CanBeNull] private readonly ControllersService controllers;
+        [VFAutowired] [CanBeNull] private readonly MathService math;
+        [CanBeNull] private ControllerManager fx => controllers?.GetFx();
         private readonly IDictionary<Type,ActionBuilder> modelTypeToBuilder;
 
         public ActionClipService(List<ActionBuilder> actionBuilders) {
@@ -38,13 +41,13 @@ namespace VF.Service {
             Always
         }
 
-        public AnimationClip LoadState(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
+        public Motion LoadState(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
             return LoadStateAdv(name, state, animObjectOverride, motionTime).onClip;
         }
         
         public class BuiltAction {
-            // Don't use fx.GetEmptyClip(), since this clip may be mutated later
-            public AnimationClip onClip = VrcfObjectFactory.Create<AnimationClip>();
+            public Motion onClip = VrcfObjectFactory.Create<AnimationClip>();
+            public AnimationClip bakingClip = VrcfObjectFactory.Create<AnimationClip>();
             public AnimationClip implicitRestingClip = VrcfObjectFactory.Create<AnimationClip>();
             public bool useMotionTime = false;
         }
@@ -60,83 +63,66 @@ namespace VF.Service {
                 throw new Exception("Action list contains a corrupt action");
             }
 
-            var actions = state.actions.Where(action => {
-                if (action.desktopActive || action.androidActive) {
-                    var isDesktop = BuildTargetUtils.IsDesktop();
-                    if (!isDesktop && !action.androidActive) return false;
-                    if (isDesktop && !action.desktopActive) return false;
-                }
-                return true;
-            }).ToArray();
-            if (actions.Length == 0) {
-                return new BuiltAction();
-            }
-
             var offClip = VrcfObjectFactory.Create<AnimationClip>();
+            var bakingClip = VrcfObjectFactory.Create<AnimationClip>();
 
-            var outputClips = actions
-                .Select(a => LoadAction(name, a, offClip, animObject))
+            var outputMotions = state.actions
+                .Select(a => LoadAction(name, a, offClip, bakingClip, animObject))
+                .Where(motion => new AnimatorIterator.Clips().From(motion).SelectMany(clip => clip.GetAllBindings()).Any())
                 .ToList();
 
             bool useMotionTime;
             if (motionTime == MotionTimeMode.Auto) {
-                useMotionTime = outputClips.Any(clip => !clip.IsStatic());
+                useMotionTime = outputMotions.Any(clip => !clip.IsStatic());
             } else if (motionTime == MotionTimeMode.Always) {
                 useMotionTime = true;
             } else {
                 useMotionTime = false;
             }
+            
+            var outputClips = outputMotions
+                .SelectMany(motion => new AnimatorIterator.Clips().From(motion))
+                .ToArray();
 
-            var useLoop = false;
             if (useMotionTime) {
-                var finalLength = outputClips.Where(clip => !clip.IsStatic()).Select(clip => clip.GetLengthInSeconds()).DefaultIfEmpty(0).Max();
-                if (finalLength == 0) finalLength = 1;
-                outputClips = outputClips.Select(clip => {
-                    var clipLength = clip.GetLengthInSeconds();
-                    if (clip.IsStatic() && clipBuilder != null) {
-                        var motionClip = clipBuilder.MergeSingleFrameClips(
-                            (0, VrcfObjectFactory.Create<AnimationClip>()),
-                            (finalLength, clip)
-                        );
-                        motionClip.UseLinearTangents();
-                        motionClip.name = clip.name;
-                        return motionClip;
-                    } else if (clipLength == finalLength) {
-                        return clip;
-                    } else {
-                        clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
-                            return (binding, curve.ScaleTime(finalLength / clipLength), true);
-                        }));
-                        return clip;
-                    }
-                }).ToList();
-            } else {
-                useLoop = outputClips.Any(clip => clip.IsLooping());
-            }
-
-            AnimationClip finalClip;
-            if (outputClips.Count == 1) {
-                finalClip = outputClips.First();
-            } else {
-                finalClip = VrcfObjectFactory.Create<AnimationClip>();
                 foreach (var clip in outputClips) {
-                    finalClip.CopyFrom(clip);
+                    if (clip.IsStatic()) {
+                        if (clipBuilder != null) {
+                            var motionClip = clipBuilder.MergeSingleFrameClips(
+                                (0, VrcfObjectFactory.Create<AnimationClip>()),
+                                (1, clip)
+                            );
+                            motionClip.UseLinearTangents();
+                            motionClip.name = clip.name;
+                            clip.Clear();
+                            clip.CopyFrom(motionClip);
+                        }
+                    } else {
+                        clip.SetLooping(false);
+                    }
                 }
             }
-            finalClip.SetLooping(useLoop);
 
-            if (clipFactory != null) {
-                finalClip.name = $"{clipFactory.GetPrefix()}/{name}";
+            Motion output;
+            if (outputMotions.Any()) {
+                var dbt = clipFactory.NewDBT(name);
+                output = dbt;
+                foreach (var motion in outputMotions) {
+                    dbt.Add(fx?.One() ?? "One", motion);
+                }
+            } else {
+                output = clipFactory.NewClip(name);
             }
 
             return new BuiltAction {
-                onClip = finalClip,
+                onClip = output,
+                bakingClip = bakingClip,
                 implicitRestingClip = offClip,
                 useMotionTime = useMotionTime
             };
         }
 
-        private AnimationClip LoadAction(string name, Action action, AnimationClip offClip, VFGameObject animObject) {
+        private Motion LoadAction(string name, Action action, AnimationClip offClip, AnimationClip bakingClip, VFGameObject animObject) {
             if (action == null) {
                 throw new Exception("Action is corrupt");
             }
@@ -149,18 +135,32 @@ namespace VF.Service {
                 if (isDesktop && !action.desktopActive) return onClip;
             }
 
-            if (modelTypeToBuilder.TryGetValue(action.GetType(), out var builder)) {
-                var methodInjector = new VRCFuryInjector();
-                methodInjector.Set(action);
-                methodInjector.Set(this);
-                methodInjector.Set("actionName", name);
-                methodInjector.Set("animObject", animObject);
-                methodInjector.Set("offClip", offClip);
-                var buildMethod = builder.GetType().GetMethod("Build");
-                return (AnimationClip)methodInjector.FillMethod(buildMethod, builder);
+            if (!modelTypeToBuilder.TryGetValue(action.GetType(), out var builder)) {
+                throw new Exception($"Unknown action type {action.GetType().Name}");
             }
 
-            throw new Exception($"Unknown action type {action.GetType().Name}");
+            var methodInjector = new VRCFuryInjector();
+            methodInjector.Set(action);
+            methodInjector.Set(this);
+            methodInjector.Set("actionName", name);
+            methodInjector.Set("animObject", animObject);
+            methodInjector.Set("offClip", offClip);
+            var buildMethod = builder.GetType().GetMethod("Build");
+            var clip = (AnimationClip)methodInjector.FillMethod(buildMethod, builder);
+
+            Motion output = clip;
+            if (fx != null && math != null && (action.localOnly || action.remoteOnly)) {
+                if (action.localOnly) {
+                    output = math.GreaterThan(fx.IsLocal().AsFloat(), 0).create(output, null);
+                } else {
+                    output = math.GreaterThan(fx.IsLocal().AsFloat(), 0).create(null, output);
+                    bakingClip.CopyFrom(clip);
+                }
+            } else {
+                bakingClip.CopyFrom(clip);
+            }
+
+            return output;
         }
     }
 }

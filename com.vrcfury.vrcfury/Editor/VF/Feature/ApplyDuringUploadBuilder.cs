@@ -14,8 +14,8 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.ApplyDuringUpload)]
         public void Apply() {
-            var clip = actionClipService.LoadState("applyDuringUpload", model.action);
-            restingState.ApplyClipToRestingState(clip);
+            var clip = actionClipService.LoadStateAdv("applyDuringUpload", model.action);
+            restingState.ApplyClipToRestingState(clip.bakingClip);
         }
 
         [FeatureEditor]

@@ -11,21 +11,18 @@ namespace VF.Service {
     [VFPrototypeScope]
     internal class ClipFactoryService {
         [VFAutowired] private readonly VFInjectorParent parent;
-        [VFAutowired] private readonly ClipFactoryTrackingService clipFactoryTracking;
 
         public AnimationClip GetEmptyClip() {
             return NewClip("Empty");
         }
-        public AnimationClip NewClip(string name) {
+        public AnimationClip NewClip(string name, bool usePrefix = true) {
             var clip = VrcfObjectFactory.Create<AnimationClip>();
-            clipFactoryTracking.MarkCreated(clip);
-            clip.name = $"{GetPrefix()}/{name}";
+            clip.name = usePrefix ? $"{GetPrefix()}/{name}" : name;
             return clip;
         }
 
         public AnimationClip MakeAapSetter(string param, float value) {
             var clip = VrcfObjectFactory.Create<AnimationClip>();
-            clipFactoryTracking.MarkCreated(clip);
             clip.name = $"AAP: {param} = {value}";
             clip.SetAap(param, value);
             return clip;
@@ -33,7 +30,6 @@ namespace VF.Service {
 
         private BlendTree NewBlendTree(string name, BlendTreeType type, bool usePrefix = true) {
             var tree = VrcfObjectFactory.Create<BlendTree>();
-            clipFactoryTracking.MarkCreated(tree);
             tree.name = usePrefix ? $"{GetPrefix()}/{name}" : name;
             tree.useAutomaticThresholds = false;
             tree.blendType = type;

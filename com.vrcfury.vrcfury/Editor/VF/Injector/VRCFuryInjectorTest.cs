@@ -37,10 +37,11 @@ namespace VF.Injector {
             try {
                 var injector = new VRCFuryInjector();
                 injector.ImportOne(typeof(ActionClipService));
+                injector.ImportOne(typeof(ClipFactoryService));
                 injector.ImportScan(typeof(ActionBuilder));
                 injector.Set("avatarObject", null);
                 injector.Set("componentObject", null);
-                injector.CreateAndFillObject<ActionClipService>();
+                injector.GetService<ActionClipService>();
             } catch (Exception e) {
                 throw new Exception("Failed to verify action debugger context", e);
             }

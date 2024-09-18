@@ -48,11 +48,11 @@ namespace VF.Feature {
 
             foreach (var p in model.prms) {
                 var prms = p.parameters.Get();
-                if (!prms) {
+                if (prms == null) {
                     missingAssets.Add(p.parameters);
                     continue;
                 }
-                var copy = MutableManager.CopyRecursive(prms);
+                var copy = prms.Clone();
                 copy.RewriteParameters(RewriteParamName);
                 foreach (var param in copy.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
@@ -93,7 +93,7 @@ namespace VF.Feature {
 
                 CheckMenuParams(menu);
 
-                var copy = MutableManager.CopyRecursive(menu);
+                var copy = menu.Clone();
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
                 avatarMenu.MergeMenu(prefix, copy);

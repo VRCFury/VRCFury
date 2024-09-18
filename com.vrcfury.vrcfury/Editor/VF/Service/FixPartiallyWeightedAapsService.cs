@@ -4,6 +4,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -24,14 +25,13 @@ namespace VF.Service {
     internal class FixPartiallyWeightedAapsService {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
-        [VFAutowired] private readonly ClipFactoryTrackingService clipFactoryTrackingService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly FixWriteDefaultsService writeDefaultsService;
         
         [FeatureBuilderAction(FeatureOrder.FixPartiallyWeightedAaps)]
         public void Apply() {
-            foreach (var state in new AnimatorIterator.States().From(fx.GetRaw())) {
-                if (state.motion is BlendTree tree && clipFactoryTrackingService.Created(tree)) {
+            foreach (var state in new AnimatorIterator.States().From(fx.GetRaw()).Where(VFLayer.Created)) {
+                if (state.motion is BlendTree tree) {
                     var aaps = new AnimatorIterator.Clips().From(tree)
                         .SelectMany(clip => clip.GetFloatBindings())
                         .Where(binding => binding.GetPropType() == EditorCurveBindingType.Aap)

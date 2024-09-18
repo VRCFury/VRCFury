@@ -22,15 +22,15 @@ namespace VF.Actions {
 
             if (clipBuilder != null) {
                 var built = clipBuilder.MergeSingleFrameClips(
-                    (0, clip1.onClip),
-                    (model.loopTime / 2, clip2.onClip),
-                    (model.loopTime, clip1.onClip)
+                    (0, clip1.onClip.FlattenAll()),
+                    (model.loopTime / 2, clip2.onClip.FlattenAll()),
+                    (model.loopTime, clip1.onClip.FlattenAll())
                 );
                 onClip.CopyFrom(built);
             } else {
                 // This is wrong, but it's fine because this branch is for debug info only
-                onClip.CopyFrom(clip1.onClip);
-                onClip.CopyFrom(clip2.onClip);
+                onClip.CopyFrom(clip1.onClip.FlattenAll());
+                onClip.CopyFrom(clip2.onClip.FlattenAll());
             }
 
             onClip.SetLooping(true);
