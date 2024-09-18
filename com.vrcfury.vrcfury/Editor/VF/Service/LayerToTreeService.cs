@@ -22,8 +22,7 @@ namespace VF.Service {
         [VFAutowired] private readonly AnimatorLayerControlOffsetService layerControlService;
         [VFAutowired] private readonly FixWriteDefaultsService fixWriteDefaults;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
-        [VFAutowired] private readonly MathService math;
+        [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
 
@@ -37,11 +36,13 @@ namespace VF.Service {
 
             var bindingsByLayer = fx.GetLayers()
                 .ToDictionary(layer => layer, GetBindingsAnimatedInLayer);
+
+            var directTree = new Lazy<VFBlendTreeDirect>(() => directTreeService.Create());
             
             var debugLog = new List<string>();
             foreach (var layer in applyToLayers) {
                 try {
-                    OptimizeLayer(layer, bindingsByLayer);
+                    OptimizeLayer(layer, bindingsByLayer, directTree);
                     debugLog.Add($"{layer.name} - OPTIMIZED");
                     layer.Remove();
                 } catch (DoNotOptimizeException e) {
@@ -52,7 +53,7 @@ namespace VF.Service {
             Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
         }
 
-        private void OptimizeLayer(VFLayer layer, Dictionary<VFLayer, ICollection<EditorCurveBinding>> bindingsByLayer) {
+        private void OptimizeLayer(VFLayer layer, Dictionary<VFLayer, ICollection<EditorCurveBinding>> bindingsByLayer, Lazy<VFBlendTreeDirect> directTree) {
             // We must never optimize the defaults layer.
             // While it may seem impossible for the defaults layer to be optimized (because it shares keys
             // with other layers), it's theoretically possible for the layer to be created early with bindings
@@ -130,7 +131,7 @@ namespace VF.Service {
                 var state = states[0].state;
                 var onClip = MakeClipForState(layer, state);
                 if (onClip != null) {
-                    directTree.Add(onClip);
+                    directTree.Value.Add(onClip);
                 }
                 return;
             }
@@ -169,7 +170,7 @@ namespace VF.Service {
             var state0Clip = MakeClipForState(layer, state0);
             var state1Clip = MakeClipForState(layer, state1);
 
-            Optimize(state0Condition.Value, state0Clip, state1Clip);
+            Optimize(state0Condition.Value, state0Clip, state1Clip, directTree);
         }
         
         private static bool IsEntryOnlyState(VFLayer layer, AnimatorState state) {
@@ -200,7 +201,7 @@ namespace VF.Service {
             return output.ToArray();
         }
 
-        private void Optimize(AnimatorCondition condition, Motion on, Motion off) {
+        private void Optimize(AnimatorCondition condition, Motion on, Motion off, Lazy<VFBlendTreeDirect> directTree) {
             if (on == null) on = clipFactory.GetEmptyClip();
             if (off == null) off = clipFactory.GetEmptyClip();
             
@@ -223,14 +224,14 @@ namespace VF.Service {
             var param = new VFAFloat(condition.parameter, 0);
             if (condition.mode == AnimatorConditionMode.If) {
                 if (!offValid) {
-                    directTree.Add(param, on);
+                    directTree.Value.Add(param, on);
                 } else {
-                    directTree.Add(math.GreaterThan(param, 0.5f).create(on, off));
+                    directTree.Value.Add(BlendtreeMath.GreaterThan(param, 0.5f).create(on, off));
                 }
             } else if (condition.mode == AnimatorConditionMode.Equals) {
-                directTree.Add(math.Equals(param, condition.threshold).create(on, off));
+                directTree.Value.Add(BlendtreeMath.Equals(param, condition.threshold).create(on, off));
             } else if (condition.mode == AnimatorConditionMode.Greater) {
-                directTree.Add(math.GreaterThan(param, condition.threshold).create(on, off));
+                directTree.Value.Add(BlendtreeMath.GreaterThan(param, condition.threshold).create(on, off));
             } else {
                 throw new DoNotOptimizeException($"Unknown condition type");
             }
@@ -256,7 +257,7 @@ namespace VF.Service {
                     if (string.IsNullOrWhiteSpace(state.timeParameter)) {
                         throw new DoNotOptimizeException($"{state.name} contains a motion time clip without a valid parameter");
                     }
-                    var subTree = clipFactory.New1D($"Layer {layer.name} - {state.name}", state.timeParameter);
+                    var subTree = VFBlendTree1D.Create($"Layer {layer.name} - {state.name}", state.timeParameter);
                     subTree.Add(0, dualState.Item1);
                     subTree.Add(1, dualState.Item2);
                     return subTree;

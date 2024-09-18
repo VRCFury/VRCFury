@@ -21,8 +21,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly VFGameObject avatarObject;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
-        [VFAutowired] private readonly MathService math;
+        [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         private bool activate = false;
@@ -31,7 +30,7 @@ namespace VF.Service {
             activate = true;
         }
         
-        [FeatureBuilderAction(FeatureOrder.FixTouchingContacts)]
+        [FeatureBuilderAction(FeatureOrder.ForceStateInAnimator)]
         public void Fix() {
             if (!activate) return;
 
@@ -40,24 +39,26 @@ namespace VF.Service {
                 allOffClip.SetEnabled(r, false);
             }
 
-            var counter = math.MakeAap("counter");
+            var directTree = directTreeService.Create();
+            var blendtreeMath = directTreeService.GetMath(directTree);
+            var counter = fx.MakeAap("counter");
 
-            var counterSetToZero = math.MakeSetter(counter, 0);
-            var counterAddOne = clipFactory.NewDBT("addToCounter");
-            var counterEqualsOne = math.MakeSetter(counter, 1);
+            var counterSetToZero = counter.MakeSetter(0);
+            var counterAddOne = VFBlendTreeDirect.Create("addToCounter");
+            var counterEqualsOne = counter.MakeSetter(1);
             counterAddOne.Add(fx.One(), counterEqualsOne);
             counterAddOne.Add(counter, counterEqualsOne);
 
             var scaleFactor = fx.NewFloat("ScaleFactor", usePrefix: false);
-            var scaleFactorBuffered = math.Buffer(scaleFactor);
-            var scaleFactorDiff = math.Add("ScaleFactorDiff", (scaleFactor, 1), (scaleFactorBuffered, -1));
+            var scaleFactorBuffered = blendtreeMath.Buffer(scaleFactor);
+            var scaleFactorDiff = blendtreeMath.Add("ScaleFactorDiff", (scaleFactor, 1), (scaleFactorBuffered, -1));
 
             directTree.Add(
-                math.Not(math.Equals(scaleFactorDiff, 0f))
+                BlendtreeMath.Not(BlendtreeMath.Equals(scaleFactorDiff, 0f))
                 .create(counterSetToZero, counterAddOne)
             );
 
-            directTree.Add(math.LessThan(counter, 10).create(allOffClip, null));
+            directTree.Add(BlendtreeMath.LessThan(counter, 10).create(allOffClip, null));
         }
     }
 }

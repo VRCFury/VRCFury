@@ -1,3 +1,4 @@
+using System;
 using JetBrains.Annotations;
 using UnityEngine;
 using VF.Builder;
@@ -15,11 +16,16 @@ namespace VF.Service {
     [VFService]
     internal class ScaleFactorService {
         [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly MathService math;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
+        [VFAutowired] private readonly DbtLayerService dbtLayerService;
 
         private int scaleIndex = 0;
+        private readonly Lazy<BlendtreeMath> math;
+
+        public ScaleFactorService() {
+            math = new Lazy<BlendtreeMath>(() => dbtLayerService.GetMath(dbtLayerService.Create()));
+        }
 
         /**
          * localSpace and worldSpace MUST be at identical positions
@@ -56,7 +62,7 @@ namespace VF.Service {
             var receiverParam = fx.NewFloat($"SFFix {localSpace.name} - Rcv");
             worldContact.parameter = receiverParam;
 
-            var final = math.Multiply($"SFFix {localSpace.name} - Final", receiverParam, 100 * localSpace.worldScale.x);
+            var final = math.Value.Multiply($"SFFix {localSpace.name} - Final", receiverParam, 100 * localSpace.worldScale.x);
             return (final, localContactObj, worldContactObj);
         }
     }

@@ -27,8 +27,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
-        [VFAutowired] private readonly MathService math;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
         [VFAutowired] private readonly ClipRewriteService clipRewriteService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
@@ -234,38 +233,42 @@ namespace VF.Service {
                     });
                 }
 
-                var plusRoot = GameObjects.Create("SpsPlus", worldSpace);
-                VFAFloat CreateReceiver(string tag, bool self) {
-                    return hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
-                        obj = plusRoot,
-                        paramName = $"spsll_{tag}_{(self ? "self" : "others")}",
-                        objName = $"{tag}{(self ? "Self" : "Others")}",
-                        radius = 3f,
-                        tags = new[] { tag },
-                        party = self ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others,
-                        useHipAvoidance = plug.useHipAvoidance
-                    });
-                }
-                void SendParam(string shaderParam, string tag) {
-                    var oneClip = clipFactory.NewClip($"{shaderParam}_one");
-                    foreach (var r in renderers.Select(r => r.renderer)) {
-                        oneClip.SetCurve(r, $"material.{shaderParam}", 1);
+                {
+                    var plusRoot = GameObjects.Create("SpsPlus", worldSpace);
+                    VFAFloat CreateReceiver(string tag, bool self) {
+                        return hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
+                            obj = plusRoot,
+                            paramName = $"spsll_{tag}_{(self ? "self" : "others")}",
+                            objName = $"{tag}{(self ? "Self" : "Others")}",
+                            radius = 3f,
+                            tags = new[] { tag },
+                            party = self ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others,
+                            useHipAvoidance = plug.useHipAvoidance
+                        });
+                    }
+                    var directTree = directTreeService.Create($"{name} - SPS Plus");
+                    void SendParam(string shaderParam, string tag) {
+                        var oneClip = clipFactory.NewClip($"{shaderParam}_one");
+                        foreach (var r in renderers.Select(r => r.renderer)) {
+                            oneClip.SetCurve(r, $"material.{shaderParam}", 1);
+                        }
+
+                        var self = CreateReceiver(tag, true);
+                        var selfBlend = VFBlendTreeDirect.Create("selfBlend");
+                        selfBlend.Add(self, oneClip);
+                        var others = CreateReceiver(tag, false);
+                        var othersBlend = VFBlendTreeDirect.Create("othersBlend");
+                        othersBlend.Add(others, oneClip);
+                        directTree.Add(BlendtreeMath.GreaterThan(self, others).create(selfBlend, othersBlend));
                     }
 
-                    var self = CreateReceiver(tag, true);
-                    var selfBlend = clipFactory.NewDBT("selfBlend");
-                    selfBlend.Add(self, oneClip);
-                    var others = CreateReceiver(tag, false);
-                    var othersBlend = clipFactory.NewDBT("othersBlend");
-                    othersBlend.Add(others, oneClip);
-                    directTree.Add(math.GreaterThan(self, others).create(selfBlend, othersBlend));
+                    SendParam("_SPS_Plus_Ring", HapticUtils.TagSpsSocketIsRing);
+                    SendParam("_SPS_Plus_Hole", HapticUtils.TagSpsSocketIsHole);
                 }
-
-                SendParam("_SPS_Plus_Ring", HapticUtils.TagSpsSocketIsRing);
-                SendParam("_SPS_Plus_Hole", HapticUtils.TagSpsSocketIsHole);
                 
                 if (enableSpsPlugClip == null) {
                     enableSpsPlugClip = clipFactory.NewClip("EnableSpsPlugs");
+                    var directTree = directTreeService.Create($"Enable Plugs");
                     directTree.Add(enableSpsPlugClip);
                 }
 
@@ -301,17 +304,21 @@ namespace VF.Service {
 
             // Depth Actions
             if (plug.depthActions2.Count > 0) {
+                var directTree = directTreeService.Create($"{name} - Depth Calculations");
+                var math = directTreeService.GetMath(directTree);
                 var contacts = new SpsDepthContacts(
                     worldSpace,
                     name,
                     hapticContacts,
                     directTree,
                     math,
+                    fx,
                     plug.useHipAvoidance,
                     scaleFactor.Value,
                     localLength
                 );
                 _hapticAnimContactsService.CreateAnims(
+                    $"{name} - Depth Animations",
                     plug.depthActions2,
                     plug.owner(),
                     name,

@@ -11,7 +11,7 @@ namespace VF.Service {
     [VFService]
     internal class ScalePropertyCompensationService {
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public void AddScaledProp(VFGameObject scaleReference, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
@@ -24,6 +24,9 @@ namespace VF.Service {
 
         public void AddScaledProp(VFAFloat scaleFactor, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
             if (scaleFactor == null) return;
+
+            var directTree = dbtLayerService.Create();
+            
             var zeroClip = clipFactory.NewClip($"scaleComp_zero");
             directTree.Add(zeroClip);
 

@@ -35,6 +35,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ParamsService paramsService;
+        [VFAutowired] private readonly DbtLayerService dbtLayerService;
         private ParamManager paramz => paramsService.GetParams();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager avatarMenu => menuService.GetMenu();
@@ -310,7 +311,9 @@ namespace VF.Feature {
                             maxSupported = float.MaxValue;
                             break;
                     }
+                    var directTree = dbtLayerService.Create("Smoothing for Full Controller");
                     var smoothed = smoothingService.Smooth(
+                        directTree,
                         $"{rewritten}/Smoothed",
                         target,
                         smoothedParam.smoothingDuration,

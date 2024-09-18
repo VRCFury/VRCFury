@@ -19,7 +19,7 @@ namespace VF.Feature {
     [FeatureTitle("Droppable (World Constraint)")]
     internal class WorldConstraintBuilder : FeatureBuilder<WorldConstraint> {
 
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ControllersService controllers;
@@ -43,6 +43,7 @@ namespace VF.Feature {
             }
 #endif
 
+            var directTree = directTreeService.Create(featureBaseObject.name);
             var dropClip = clipFactory.NewClip("Drop");
             directTree.Add(toggle.AsFloat(), dropClip);
             foreach (var constriant in featureBaseObject.GetConstraints()) {

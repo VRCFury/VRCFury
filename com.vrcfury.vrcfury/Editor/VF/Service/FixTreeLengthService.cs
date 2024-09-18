@@ -50,7 +50,7 @@ namespace VF.Service {
                             return child;
                         });
                     }
-                    var wrapper = clipFactory.NewDBT($"{tree.name} (Length Fixed)", usePrefix: false);
+                    var wrapper = VFBlendTreeDirect.Create($"{tree.name} (Length Fixed)");
                     var lenClip = clipFactory.NewClip($"{tree.name} Length", false);
                     lenClip.SetLengthCurve(maxLen);
                     wrapper.Add(fx.One(), lenClip);

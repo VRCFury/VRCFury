@@ -38,7 +38,7 @@ namespace VF.Service {
                         .Select(binding => binding.propertyName)
                         .ToArray();
                     if (aaps.Any()) {
-                        var wrapper = clipFactory.NewDBT(tree.name + " (AAP Fixed)", usePrefix: false);
+                        var wrapper = VFBlendTreeDirect.Create(tree.name + " (AAP Fixed)");
                         var zeroClip = clipFactory.NewClip("Set AAPs to 0");
                         wrapper.Add(fx.One(), zeroClip);
                         wrapper.Add(fx.One(), tree);

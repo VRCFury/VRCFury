@@ -24,7 +24,6 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] [CanBeNull] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] [CanBeNull] private readonly ControllersService controllers;
-        [VFAutowired] [CanBeNull] private readonly MathService math;
         [CanBeNull] private ControllerManager fx => controllers?.GetFx();
         private readonly IDictionary<Type,ActionBuilder> modelTypeToBuilder;
 
@@ -105,7 +104,7 @@ namespace VF.Service {
 
             Motion output;
             if (outputMotions.Any()) {
-                var dbt = clipFactory.NewDBT(name);
+                var dbt = VFBlendTreeDirect.Create(name);
                 output = dbt;
                 foreach (var motion in outputMotions) {
                     dbt.Add(fx?.One() ?? "One", motion);
@@ -149,11 +148,11 @@ namespace VF.Service {
             var clip = (AnimationClip)methodInjector.FillMethod(buildMethod, builder);
 
             Motion output = clip;
-            if (fx != null && math != null && (action.localOnly || action.remoteOnly)) {
+            if (fx != null && (action.localOnly || action.remoteOnly)) {
                 if (action.localOnly) {
-                    output = math.GreaterThan(fx.IsLocal().AsFloat(), 0).create(output, null);
+                    output = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0).create(output, null);
                 } else {
-                    output = math.GreaterThan(fx.IsLocal().AsFloat(), 0).create(null, output);
+                    output = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0).create(null, output);
                     bakingClip.CopyFrom(clip);
                 }
             } else {

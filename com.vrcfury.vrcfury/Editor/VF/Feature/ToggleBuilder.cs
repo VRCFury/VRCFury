@@ -21,7 +21,6 @@ namespace VF.Feature {
 
     [FeatureTitle("Toggle")]
     internal class ToggleBuilder : FeatureBuilder<Toggle> {
-        [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly FixWriteDefaultsService writeDefaultsManager;
@@ -229,7 +228,7 @@ namespace VF.Feature {
                         }));
                     }
                     if (keptOne) {
-                        var wrapper = clipFactory.NewDBT($"{motion.name} (with expanded on state)", false);
+                        var wrapper = VFBlendTreeDirect.Create($"{motion.name} (with expanded on state)");
                         wrapper.Add(fx.One(), onCopy);
                         wrapper.Add(fx.One(), transitionMotion);
                         return wrapper;
