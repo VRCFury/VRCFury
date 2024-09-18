@@ -25,6 +25,11 @@ namespace VF.Service {
             foreach (var state in new AnimatorIterator.States().From(fx.GetRaw()).Where(VFLayer.Created)) {
                 if (state.motion is BlendTree tree) {
                     Optimize(tree, alwaysOneParams);
+                    if (tree.blendType == BlendTreeType.Direct
+                        && tree.children.Length == 1
+                        && alwaysOneParams.Contains(tree.children[0].directBlendParameter)) {
+                        state.motion = tree.children[0].motion;
+                    }
                 }
             }
         }

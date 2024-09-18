@@ -87,13 +87,13 @@ namespace VF.Feature.Base {
         TrackingConflictResolver,
         LayerToTree, // Needs to run after animations are done, including everything that makes its own DBT, including TrackingConflictResolver
         AvoidMmdLayers, // Needs to be after CleanupEmptyLayers (which removes empty layers) and FixMasks and RecordAllDefaults (which may insert layers at the top)
-        AdjustWriteDefaults,
-        FixEmptyMotions,
         AnimatorLayerControlFix,
         RemoveNonQuestMaterials,
         UpgradeWrongParamTypes,
         FixTreeLength,
         TreeFlattening,
+        AdjustWriteDefaults, // Needs to be after TreeFlattening, since it can change whether or not a layer has a DBT
+        FixEmptyMotions, // Needs to be after AdjustWriteDefaults, since it changes behaviour if a state is WD on or off
         FinalizeController,
 
         // Finalize Menus
