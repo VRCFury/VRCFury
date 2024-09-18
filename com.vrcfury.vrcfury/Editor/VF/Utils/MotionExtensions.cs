@@ -44,7 +44,7 @@ namespace VF.Utils {
         
         public static Motion GetLastFrame(this Motion motion) {
             var clone = motion.Clone();
-            foreach (var clip in new AnimatorIterator.Clips().From(motion)) {
+            foreach (var clip in new AnimatorIterator.Clips().From(clone)) {
                 clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
                     if (curve.lengthInSeconds == 0) return (binding, curve, false);
                     return (binding, curve.GetLast(), true);
