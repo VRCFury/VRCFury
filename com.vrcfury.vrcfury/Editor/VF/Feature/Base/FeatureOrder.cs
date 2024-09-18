@@ -77,9 +77,9 @@ namespace VF.Feature.Base {
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
+        FixPartiallyWeightedAaps, // Needs to run before PositionDefaultsLayer, before OptimizeBlendTrees, after everything setting AAPs, before anything that would remove the defaults layer like CleanupEmptyLayers
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
         FixUnsetPlayableLayers,
-        FixPartiallyWeightedAaps, // Needs to run before PositionDefaultsLayer, before OptimizeBlendTrees, after everything setting AAPs
         PositionDefaultsLayer, // Needs to be right before FixMasks so it winds up at the top of FX, right under the base mask
         FixMasks,
         LocomotionConflictResolver,
