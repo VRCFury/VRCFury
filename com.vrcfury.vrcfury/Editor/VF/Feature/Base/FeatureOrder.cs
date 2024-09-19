@@ -90,11 +90,11 @@ namespace VF.Feature.Base {
         AvoidMmdLayers, // Needs to be after CleanupEmptyLayers (which removes empty layers) and FixMasks and RecordAllDefaults (which may insert layers at the top)
         AnimatorLayerControlFix,
         RemoveNonQuestMaterials,
-        UpgradeWrongParamTypes,
         FixTreeLength,
         TreeFlattening,
         AdjustWriteDefaults, // Needs to be after TreeFlattening, since it can change whether or not a layer has a DBT
         FixEmptyMotions, // Needs to be after AdjustWriteDefaults, since it changes behaviour if a state is WD on or off
+        UpgradeWrongParamTypes,
         FinalizeController,
 
         // Finalize Menus

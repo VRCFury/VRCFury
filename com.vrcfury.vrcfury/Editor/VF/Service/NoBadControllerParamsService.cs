@@ -23,6 +23,16 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.UpgradeWrongParamTypes)]
         public void Apply() {
             foreach (var c in controllers.GetAllUsedControllers()) {
+                foreach (var tree in new AnimatorIterator.Trees().From(c.GetRaw())) {
+                    if (tree.blendType == BlendTreeType.Direct) {
+                        tree.RewriteChildren(child => {
+                            if (child.directBlendParameter == VFBlendTreeDirect.AlwaysOneParam) {
+                                child.directBlendParameter = c.One();
+                            }
+                            return child;
+                        });
+                    }
+                }
                 UpgradeWrongParamTypes(c.GetRaw());
                 RemoveWrongParamTypes(c.GetRaw());
             }
