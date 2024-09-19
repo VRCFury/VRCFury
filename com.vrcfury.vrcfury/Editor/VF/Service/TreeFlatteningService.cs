@@ -42,6 +42,7 @@ namespace VF.Service {
                 .Where(p => !animatedParams.Contains(p.name))
                 .Where(p => !FullControllerBuilder.VRChatGlobalParams.Contains(p.name))
                 .Select(p => p.name)
+                .Append(VFBlendTreeDirect.AlwaysOneParam)
                 .ToImmutableHashSet();
         }
 
@@ -70,7 +71,7 @@ namespace VF.Service {
 
             ClaimSubtreesWithOneChild(tree, alwaysOneParams);
             MergeSubtreesWithOneWeight(tree, alwaysOneParams);
-            MergeClipsWithSameWeight(tree);
+            MergeClipsWithSameWeight(tree, alwaysOneParams);
         }
 
         private void MergeSubtreesWithOneWeight(BlendTree tree, ISet<string> alwaysOneParams) {
@@ -104,7 +105,7 @@ namespace VF.Service {
             });
         }
 
-        private void MergeClipsWithSameWeight(BlendTree tree) {
+        private void MergeClipsWithSameWeight(BlendTree tree, ISet<string> alwaysOneParams) {
             if (tree.blendType != BlendTreeType.Direct) return;
             if (tree.GetNormalizedBlendValues()) return;
 
@@ -115,6 +116,7 @@ namespace VF.Service {
                 if (clip.GetUseOriginalUserClip()) return new [] { child };
 
                 var param = child.directBlendParameter;
+                if (alwaysOneParams.Contains(param)) param = VFBlendTreeDirect.AlwaysOneParam;
                 if (!firstClipByWeightParam.TryGetValue(param, out var firstClip)) {
                     var clone = clip.Clone();
                     child.motion = clone;
