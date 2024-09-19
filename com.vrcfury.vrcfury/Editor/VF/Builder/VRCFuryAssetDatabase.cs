@@ -154,7 +154,11 @@ namespace VF.Builder {
         }
 
         public static void DeleteFolder(string path) {
-            if (Directory.Exists(path)) {
+            if (AssetDatabase.IsValidFolder(path)) {
+                // If you add and then remove an asset without calling SaveAssets first, unity tries to delete the folder
+                // first, and then tries to save the asset into the non-existant folder and throws an error.
+                // We can avoid this by always calling SaveAssets before ever deleting any folders
+                AssetDatabase.SaveAssets();
                 foreach (var asset in AssetDatabase.FindAssets("", new[] { path })) {
                     var assetPath = AssetDatabase.GUIDToAssetPath(asset);
                     AssetDatabase.DeleteAsset(assetPath);
@@ -178,9 +182,17 @@ namespace VF.Builder {
             }
             paths.Reverse();
             foreach (var p in paths) {
-                if (!Directory.Exists(p)) {
-                    Directory.CreateDirectory(p);
+                // AssetDatabase.IsValidFolder returns true if the directory was deleted earlier this frame,
+                // even if SaveAssets or ImportAsset or Refresh was called
+                if (AssetDatabase.IsValidFolder(p) && Directory.Exists(p)) continue;
+                var parent = Path.GetDirectoryName(p);
+                if (string.IsNullOrEmpty(parent)) continue;
+                var basename = Path.GetFileName(p);
+                var guid = AssetDatabase.CreateFolder(parent, basename);
+                if (string.IsNullOrEmpty(guid)) {
+                    throw new Exception("Failed to create directory " + p);
                 }
+                AssetDatabase.SaveAssets();
             }
         }
 
