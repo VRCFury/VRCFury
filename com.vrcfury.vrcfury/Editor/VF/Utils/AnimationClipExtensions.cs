@@ -316,16 +316,16 @@ namespace VF.Utils {
                 .ToImmutableHashSet();
         }
 
-        public static AnimationClip Evaluate(this AnimationClip clip, float time) {
+        public static AnimationClip EvaluateClip(this AnimationClip clip, float timeSeconds) {
             var output = clip.Clone();
-            output.name = $"{clip.name} (sampled at {time})";
+            output.name = $"{clip.name} (sampled at {timeSeconds}s)";
             output.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
                 if (curve.IsFloat) {
-                    return (binding, curve.FloatCurve.Evaluate(time), true);
+                    return (binding, curve.FloatCurve.Evaluate(timeSeconds), true);
                 } else {
                     var val = curve.ObjectCurve.Length > 0 ? curve.ObjectCurve[0].value : null;
                     foreach (var key in curve.ObjectCurve.Reverse()) {
-                        if (time >= key.time) {
+                        if (timeSeconds >= key.time) {
                             val = key.value;
                             break;
                         }

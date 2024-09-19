@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,22 +55,48 @@ namespace VF.Utils {
         }
 
         public static AnimationClip FlattenAll(this Motion motion) {
-            if (motion is AnimationClip c) return c;
+            if (motion is AnimationClip c) return c.Clone();
             var flat = VrcfObjectFactory.Create<AnimationClip>();
             foreach (var clip in new AnimatorIterator.Clips().From(motion)) {
                 flat.CopyFrom(clip);
             }
             return flat;
         }
-        
-        public static AnimationClip Flatten(this Motion motion, HashSet<string> onParams) {
-            if (motion is AnimationClip c) return c;
-            var flat = VrcfObjectFactory.Create<AnimationClip>();
-            
-            foreach (var clip in new AnimatorIterator.Clips().From(motion)) {
-                flat.CopyFrom(clip);
+
+        private static IList<AnimationClip> GetActiveClips(this Motion motion, HashSet<string> onParams) {
+            if (motion is AnimationClip c) {
+                return new [] { c };
             }
-            return flat;
+            if (motion is BlendTree tree) {
+                if (tree.children.Any()) {
+                    if (tree.blendType == BlendTreeType.Direct) {
+                        return tree.children
+                            .Where(child => onParams.Contains(child.directBlendParameter))
+                            .SelectMany(child => child.motion.GetActiveClips(onParams))
+                            .ToArray();
+                    } else if (tree.blendType == BlendTreeType.Simple1D) {
+                        if (onParams.Contains(tree.blendParameter)) {
+                            return tree.children.OrderBy(child => child.threshold).Last().motion.GetActiveClips(onParams);
+                        } else {
+                            return tree.children.OrderBy(child => child.threshold).First().motion.GetActiveClips(onParams);
+                        }
+                    }
+                }
+            }
+            return new AnimationClip[] { };
+        }
+
+        public static AnimationClip EvaluateMotion(this Motion motion, float fraction) {
+            var onParams = new HashSet<string>() {
+                // "IsLocal",
+                // "IsOnFriendsList",
+            };
+            var output = VrcfObjectFactory.Create<AnimationClip>();
+            output.name = $"{motion.name} (sampled at {Math.Round(fraction*100)}%)";
+            foreach (var clip in motion.GetActiveClips(onParams)) {
+                output.CopyFrom(clip.EvaluateClip(fraction * clip.GetLengthInSeconds()));
+            }
+            return output;
         }
     }
 }

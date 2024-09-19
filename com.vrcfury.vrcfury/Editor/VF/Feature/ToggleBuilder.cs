@@ -35,6 +35,7 @@ namespace VF.Feature {
         private VFCondition isOn;
         private Action<VFState, bool> drive;
         private AnimationClip savedRestingClip;
+        private bool loadedRestingClip = false;
 
         public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
             + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -181,13 +182,13 @@ namespace VF.Feature {
             VFState inState;
             VFState onState;
 
-            AnimationClip restingClip;
+            Motion restingClip = null;
             if (weight != null) {
                 var builtAction = actionClipService.LoadStateAdv(onName, action, null, ActionClipService.MotionTimeMode.Always);
                 inState = onState = layer.NewState(onName);
                 onState.WithAnimation(builtAction.onClip).MotionTime(weight);
                 onState.TransitionsToExit().When(onCase.Not());
-                restingClip = builtAction.bakingClip.Evaluate(model.defaultSliderValue * builtAction.bakingClip.GetLengthInSeconds());
+                restingClip = builtAction.onClip.EvaluateMotion(model.defaultSliderValue);
             } else if (model.hasTransition) {
                 var builtAction = actionClipService.LoadStateAdv(onName, action);
                 var motion = builtAction.onClip;
@@ -245,12 +246,12 @@ namespace VF.Feature {
                 var outState = layer.NewState(onName + " Out").WithAnimation(outClip).Speed(outSpeed);
                 onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(outTime);
                 outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
-                restingClip = builtAction.bakingClip;
+                restingClip = builtAction.onClip;
             } else {
                 var builtAction = actionClipService.LoadStateAdv(onName, action);
                 inState = onState = layer.NewState(onName).WithAnimation(builtAction.onClip);
                 onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
-                restingClip = builtAction.bakingClip;
+                restingClip = builtAction.onClip;
             }
 
             exclusiveTagTriggeringStates.Add(inState);
@@ -275,10 +276,12 @@ namespace VF.Feature {
                 off.TransitionsFromEntry().When();
             }
 
-            if (savedRestingClip == null) {
-                var copy = restingClip.Clone();
-                savedRestingClip = copy;
-                clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
+            if (!loadedRestingClip) {
+                loadedRestingClip = true;
+                if (restingClip.IsStatic()) {
+                    savedRestingClip = restingClip.EvaluateMotion(1);
+                    clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
+                }
             }
         }
 
