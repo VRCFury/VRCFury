@@ -240,16 +240,28 @@ namespace VF.Service {
         private Motion MakeClipForState(VFLayer layer, AnimatorState state) {
             var hasNonstaticClips = new AnimatorIterator.Clips().From(state).Any(clip => !clip.IsStatic());
             if (hasNonstaticClips) {
-                if (!(state.motion is AnimationClip clip)) {
-                    throw new DoNotOptimizeException($"{state.name} contains a blendtree that is not static");
-                }
-                if (clip.isLooping) {
-                    throw new DoNotOptimizeException($"{state.name} contains non-static clip set to loop");
+                var clipsInMotion = new AnimatorIterator.Clips().From(state.motion);
+                if (clipsInMotion.Any(clip => clip.isLooping)) {
+                    throw new DoNotOptimizeException($"{state.name} contains non-static motion that loops");
                 }
 
-                var dualState = clip.SplitRangeClip();
-                if (dualState == null) {
-                    throw new DoNotOptimizeException($"{state.name} contains a non-static clip with more than 2 keyframes");
+                var startMotion = state.motion.Clone();
+                foreach (var clip in new AnimatorIterator.Clips().From(startMotion)) {
+                    var dualState = clip.SplitRangeClip();
+                    if (dualState == null) {
+                        throw new DoNotOptimizeException($"{state.name} contains a non-static clip with more than 2 keyframes");
+                    }
+                    clip.Clear();
+                    clip.CopyFrom(dualState.Item1);
+                }
+                var endMotion = state.motion.Clone();
+                foreach (var clip in new AnimatorIterator.Clips().From(endMotion)) {
+                    var dualState = clip.SplitRangeClip();
+                    if (dualState == null) {
+                        throw new DoNotOptimizeException($"{state.name} contains a non-static clip with more than 2 keyframes");
+                    }
+                    clip.Clear();
+                    clip.CopyFrom(dualState.Item2);
                 }
 
                 if (state.timeParameterActive) {
@@ -258,21 +270,17 @@ namespace VF.Service {
                         throw new DoNotOptimizeException($"{state.name} contains a motion time clip without a valid parameter");
                     }
                     var subTree = VFBlendTree1D.Create($"Layer {layer.name} - {state.name}", state.timeParameter);
-                    subTree.Add(0, dualState.Item1);
-                    subTree.Add(1, dualState.Item2);
+                    subTree.Add(0, startMotion);
+                    subTree.Add(1, endMotion);
                     return subTree;
                 } else {
-                    if (clip.GetLengthInFrames() > 5) {
+                    if (clipsInMotion.Any(clip => clip.GetLengthInFrames() > 5)) {
                         throw new DoNotOptimizeException($"{state.name} contains a non-static clip that is long enough to notice the animation");
                     }
-                    AnimationClip single;
-                    if (state.speed >= 0.9) single = dualState.Item2;
-                    else if (state.speed <= -0.9) single = dualState.Item1;
-                    else if (Mathf.Approximately(state.speed, 0)) single = dualState.Item1;
-                    else {
-                        throw new DoNotOptimizeException($"{state.name} contains a non-static clip with a non-standard speed");
-                    }
-                    return single;
+                    if (state.speed >= 0.9) return endMotion;
+                    if (state.speed <= -0.9) return startMotion;
+                    if (Mathf.Approximately(state.speed, 0)) return startMotion;
+                    throw new DoNotOptimizeException($"{state.name} contains a non-static clip with a non-standard speed");
                 }
             } else {
                 return state.motion;
