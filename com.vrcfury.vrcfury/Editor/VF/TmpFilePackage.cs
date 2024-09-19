@@ -21,7 +21,7 @@ namespace VF {
             }
 
             if (!Directory.Exists(TmpDirPath)) {
-                VRCFuryAssetDatabase.CreateFolder(TmpDirPath); 
+                Directory.CreateDirectory(TmpDirPath); 
                 File.Create(LegacyPrefabsImportedMarker).Close();
             }
 
