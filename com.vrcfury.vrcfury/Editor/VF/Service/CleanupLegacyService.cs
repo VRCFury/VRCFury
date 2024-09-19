@@ -19,7 +19,6 @@ namespace VF.Service {
             CleanFromAvatar();
 
             VRCFuryAssetDatabase.DeleteFolder(globals.tmpDirParent);
-            VRCFuryAssetDatabase.CreateFolder(globals.tmpDir);
 
 #if UNITY_2022_1_OR_NEWER
             tempAsset = null;

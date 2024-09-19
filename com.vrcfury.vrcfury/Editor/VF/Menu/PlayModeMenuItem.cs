@@ -4,7 +4,7 @@ using UnityEditor;
 using VF.Builder;
 
 namespace VF.Menu {
-    internal class PlayModeMenuItem {
+    internal static class PlayModeMenuItem {
         private const string EditorPref = "com.vrcfury.playMode";
 
         [InitializeOnLoadMethod]

@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
 
 namespace VF.Menu {
-    internal class UseInUploadMenuItem {
+    internal static class UseInUploadMenuItem {
         private const string Key = "com.vrcfury.useInUpload";
 
         [InitializeOnLoadMethod]

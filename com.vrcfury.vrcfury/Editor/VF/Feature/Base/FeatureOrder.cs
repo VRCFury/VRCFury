@@ -1,8 +1,9 @@
 namespace VF.Feature.Base {
     internal enum FeatureOrder {
-
+        
         CollectExistingComponents,
         CleanupLegacy,
+        BackupBefore,
 
         // Needs to happen before everything
         FixDoubleFx,
@@ -115,5 +116,6 @@ namespace VF.Feature.Base {
         
         Validation,
         HideAddedComponents,
+        BackupAfter,
     }
 }

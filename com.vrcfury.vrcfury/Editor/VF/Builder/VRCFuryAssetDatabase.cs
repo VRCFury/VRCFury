@@ -57,6 +57,8 @@ namespace VF.Builder {
         }
 
         public static void SaveAsset(Object obj, string dir, string filename) {
+            CreateFolder(dir);
+            
             var reasons = ObjectExtensions.cloneReasons.Get(obj);
             if (reasons.Count > 0) {
                 var reasonsPath = GetUniquePath(dir, filename + "-reasons", "txt");
