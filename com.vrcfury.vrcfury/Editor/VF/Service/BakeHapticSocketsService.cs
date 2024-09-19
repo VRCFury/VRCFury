@@ -345,6 +345,7 @@ namespace VF.Service {
                     var (name, on) = exclusiveTriggers[i];
                     var state = exclusiveLayer.NewState(name);
                     var when = on.IsTrue();
+                    when = when.And(fx.IsLocal().IsTrue());
                     if (multiOn != null) when = when.And(multiOn.IsFalse());
                     if (stealthOn != null) when = when.And(stealthOn.IsFalse());
                     state.TransitionsFromAny().When(when);
