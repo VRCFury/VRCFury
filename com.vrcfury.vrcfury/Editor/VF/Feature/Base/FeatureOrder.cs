@@ -13,6 +13,8 @@ namespace VF.Feature.Base {
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore,
         
+        CloneAllControllers,
+        
         FixAmbiguousObjectNames,
         
         // Needs to happen before toggles begin getting processed
