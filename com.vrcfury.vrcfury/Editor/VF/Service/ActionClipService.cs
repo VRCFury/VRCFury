@@ -141,7 +141,7 @@ namespace VF.Service {
             methodInjector.Set("animObject", animObject);
             methodInjector.Set("offClip", offClip);
             var buildMethod = builder.GetType().GetMethod("Build");
-            var clip = (AnimationClip)methodInjector.FillMethod(buildMethod, builder);
+            var clip = (Motion)methodInjector.FillMethod(buildMethod, builder);
 
             Motion output = clip;
             if (fx != null && (action.localOnly || action.remoteOnly)) {
