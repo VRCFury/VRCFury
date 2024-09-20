@@ -24,7 +24,6 @@ using Object = UnityEngine.Object;
 namespace VF.Builder {
 
     internal class VRCFuryBuilder {
-
         internal enum Status {
             Success,
             Failed
@@ -110,10 +109,9 @@ namespace VF.Builder {
             VFGameObject avatarObject,
             VRCFProgressWindow progress
         ) {
-            var tmpDirParent = $"{TmpFilePackage.GetPath()}/{VRCFuryAssetDatabase.MakeFilenameSafe(avatarObject.name)}";
-            // Don't reuse subdirs, because if unity reuses an asset path, it randomly explodes and picks up changes from the
-            // old asset and messes with the new copy.
-            var tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
+            if (!Application.isPlaying) {
+                TmpFilePackage.Cleanup();
+            }
 
             var currentModelName = "";
             var currentModelClipPrefix = "?";
@@ -139,8 +137,6 @@ namespace VF.Builder {
             injector.Set("componentObject", new Func<VFGameObject>(() => currentServiceGameObject));
             
             var globals = new GlobalsService {
-                tmpDirParent = tmpDirParent,
-                tmpDir = tmpDir,
                 addOtherFeature = (feature) => AddComponent(feature, currentServiceGameObject, currentServiceNumber),
                 allFeaturesInRun = collectedModels,
                 allBuildersInRun = collectedBuilders,
@@ -149,7 +145,6 @@ namespace VF.Builder {
                 currentFeatureNameProvider = () => currentModelName,
                 currentFeatureClipPrefixProvider = () => currentModelClipPrefix,
                 currentMenuSortPosition = () => currentServiceNumber,
-                currentComponentObject = () => currentServiceGameObject,
             };
             injector.Set(globals);
             

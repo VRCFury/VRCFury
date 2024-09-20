@@ -12,7 +12,9 @@ using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     internal static class VRCFuryAssetDatabase {
-        public static string MakeFilenameSafe(string str) {
+        private static string MakeFilenameSafe(string str, int maxLen) {
+            if (maxLen < 4) maxLen = 4;
+
             var output = "";
             foreach (var c in str) {
                 if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == ' ' || c == '.') {
@@ -21,8 +23,14 @@ namespace VF.Builder {
                     output += '_';
                 }
             }
-            
-            if (output.Length > 64) output = output.Substring(0, 64);
+
+            if (output.Length > maxLen) {
+                var startLength = (maxLen - 1) / 2;
+                var endLength = (maxLen - 1) - startLength;
+                output = output.Substring(0, startLength)
+                    + "_"
+                    + output.Substring(output.Length - endLength, endLength);
+            }
 
             // Unity will reject importing folders / files that start or end with a dot (this is undocumented)
             while (output.StartsWith(" ") || output.StartsWith(".")) {
@@ -36,19 +44,28 @@ namespace VF.Builder {
             return output;
         }
 
-        public static string GetUniquePath(string dir, string filename, string ext) {
-            var safeFilename = MakeFilenameSafe(filename);
+        public static string GetUniquePath(string dir, string filename, string ext = "", string importantSuffix = "", int startMaxLen = 64) {
+            for (var maxLen = startMaxLen; maxLen > 4; maxLen--) {
+                var safeFilename = MakeFilenameSafe(filename, maxLen);
 
-            string fullPath;
-            for (var i = 0;; i++) {
-                fullPath = dir
-                           + "/"
-                           + safeFilename + (i > 0 ? "_" + i : "")
-                           + (filename.Contains("(VF_1_G_BAKED)") ? "(VF_1_G_BAKED)" : "")
-                           + (ext != "" ? "." + ext : "");
-                if (!File.Exists(fullPath)) break;
+                string fullPath;
+                for (var i = 0;; i++) {
+                    fullPath = dir
+                               + "/"
+                               + safeFilename + (i > 0 ? "_" + i : "")
+                               + importantSuffix
+                               + (ext != "" ? "." + ext : "");
+                    if (!File.Exists(fullPath) && !Directory.Exists(fullPath)) break;
+                }
+
+                if (Path.GetFullPath(fullPath).Length < 250) {
+                    return fullPath;
+                }
             }
-            return fullPath;
+
+            throw new Exception(
+                "Failed to find a path that can fit in Windows file length limits!" +
+                " The file path for your Unity project is probably too long.");
         }
 
         [PreferBinarySerialization]
@@ -94,7 +111,12 @@ namespace VF.Builder {
             }
 #endif
 
-            var fullPath = GetUniquePath(dir, filename, ext);
+            // If unity reuses an asset path, it randomly explodes and picks up changes from the
+            // old asset and messes with the new copy.
+            var assetNum = EditorPrefs.GetInt("com.vrcfury.lastAssetNum", 0) + 1;
+            EditorPrefs.SetInt("com.vrcfury.lastAssetNum", assetNum);
+
+            var fullPath = GetUniquePath(dir, filename, ext, "_" + assetNum);
             // If object was already part of another asset, or was recently deleted, we MUST
             // call this first, or unity will throw an exception
             AssetDatabase.RemoveObjectFromAsset(obj);
@@ -153,16 +175,23 @@ namespace VF.Builder {
             }
         }
 
-        public static void DeleteFolder(string path) {
+        public static void DeleteFolder(string path, Func<string,bool> shouldDelete = null) {
             if (AssetDatabase.IsValidFolder(path)) {
                 // If you add and then remove an asset without calling SaveAssets first, unity tries to delete the folder
                 // first, and then tries to save the asset into the non-existant folder and throws an error.
                 // We can avoid this by always calling SaveAssets before ever deleting any folders
                 AssetDatabase.SaveAssets();
-                foreach (var asset in AssetDatabase.FindAssets("", new[] { path })) {
-                    var assetPath = AssetDatabase.GUIDToAssetPath(asset);
-                    AssetDatabase.DeleteAsset(assetPath);
+                if (shouldDelete == null) {
+                    AssetDatabase.DeleteAsset(path);
+                } else {
+                    foreach (var asset in AssetDatabase.FindAssets("", new[] { path })) {
+                        var assetPath = AssetDatabase.GUIDToAssetPath(asset);
+                        if (shouldDelete(assetPath)) {
+                            AssetDatabase.DeleteAsset(assetPath);
+                        }
+                    }
                 }
+                AssetDatabase.SaveAssets();
             }
         }
 

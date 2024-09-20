@@ -60,7 +60,6 @@ namespace VF.Service {
             }
 
             var offClip = VrcfObjectFactory.Create<AnimationClip>();
-            var bakingClip = VrcfObjectFactory.Create<AnimationClip>();
 
             var outputMotions = state.actions
                 .Select(a => LoadAction(name, a, offClip, animObject))

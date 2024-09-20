@@ -16,7 +16,7 @@ using VF.Utils.Controller;
 
 namespace VF.Service {
     [VFService]
-    public class LayerToTreeService {
+    internal class LayerToTreeService {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService layerControlService;

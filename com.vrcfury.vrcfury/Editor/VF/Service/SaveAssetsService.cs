@@ -6,6 +6,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Service {
@@ -13,13 +14,15 @@ namespace VF.Service {
     internal class SaveAssetsService {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VFGameObject avatarObject;
-        [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly TmpDirService tmpDirService;
 
         [FeatureBuilderAction(FeatureOrder.SaveAssets)]
         public void Run() {
+            var tmpDir = tmpDirService.GetTempDir();
+
             // Save mats and meshes
             foreach (var component in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
-                SaveUnsavedComponentAssets(component, globals.tmpDir);
+                SaveUnsavedComponentAssets(component, tmpDir);
             }
             
             // Special handling for mask and controller names
@@ -31,23 +34,31 @@ namespace VF.Service {
                 }
                 SaveAssetAndChildren(
                     controller.GetRaw(),
-                    $"VRCFury {controller.GetType().ToString()} for {avatarObject.name}",
-                    globals.tmpDir,
+                    $"VRCFury {controller.GetType().ToString()}",
+                    tmpDir,
                     true
                 );
             }
 
             // Save everything else
             foreach (var component in avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                SaveUnsavedComponentAssets(component, globals.tmpDir);
+                SaveUnsavedComponentAssets(component, tmpDir);
             }
         }
 
         public static void SaveUnsavedComponentAssets(UnityEngine.Component component, string tmpDir) {
             foreach (var asset in GetUnsavedChildren(component, false, true)) {
+                string filename;
+                if (asset is VRCExpressionsMenu) {
+                    filename = "VRCFury Menu";
+                } else if (asset is VRCExpressionParameters) {
+                    filename = "VRCFury Params";
+                } else {
+                    filename = $"VRCFury {asset.GetType().Name} for {component.owner().name}";
+                }
                 SaveAssetAndChildren(
                     asset,
-                    $"VRCFury {asset.GetType().Name} for {component.owner().name}",
+                    filename,
                     tmpDir,
                     true
                 );

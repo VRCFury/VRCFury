@@ -21,9 +21,9 @@ namespace VF.Service {
      * then wrapping them with another 1 speed clip that defines the actual length.
      */
     [VFService]
-    public class FixTreeLengthService {
-        [VFAutowired] private ClipFactoryService clipFactory;
-        [VFAutowired] private ControllersService controllers;
+    internal class FixTreeLengthService {
+        [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         
         [FeatureBuilderAction(FeatureOrder.FixTreeLength)]

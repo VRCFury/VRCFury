@@ -9,8 +9,8 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Service {
     [VFService]
     internal class SaveDebugCopiesService {
-        [VFAutowired] private VRCAvatarDescriptor avatar;
-        [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+        [VFAutowired] private readonly TmpDirService tmpDirService;
         
         [FeatureBuilderAction(FeatureOrder.BackupBefore)]
         public void SaveBefore() {
@@ -29,7 +29,7 @@ namespace VF.Service {
                 SaveAssetsService.SaveAssetAndChildren(
                     c.controller.Clone(),
                     VRCFEnumUtils.GetName(c.type),
-                    $"{globals.tmpDir}/{folderName}",
+                    $"{tmpDirService.GetTempDir()}/{folderName}",
                     false
                 );
             }

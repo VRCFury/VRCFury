@@ -55,7 +55,6 @@ namespace VF.Service {
                     var bakeInfo = VRCFuryHapticPlugEditor.Bake(
                         plug,
                         hapticContacts,
-                        globals.tmpDir,
                         usedRenderers,
                         deferMaterialConfig: true
                     );
@@ -117,15 +116,7 @@ namespace VF.Service {
                 onlyIfChildOfHead = true
             });
 
-            var name = plug.name;
-            if (string.IsNullOrWhiteSpace(name)) {
-                if (renderers.Count > 0) {
-                    name = HapticUtils.GetName(renderers.First().renderer.owner());
-                } else {
-                    name = HapticUtils.GetName(plug.owner());
-                }
-            }
-            name = uniqueHapticNamesService.GetUniqueName(name);
+            var name = uniqueHapticNamesService.GetUniqueName(bakeInfo.name);
             Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
             
             // Haptics

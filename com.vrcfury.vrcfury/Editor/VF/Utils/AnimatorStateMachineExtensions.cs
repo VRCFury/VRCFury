@@ -10,7 +10,7 @@ namespace VF.Utils {
         public static StateMachineBehaviour VAddStateMachineBehaviour(this AnimatorStateMachine machine, Type type) {
             // Unity 2019 and lower log an error if this isn't persistent
             StateMachineBehaviour added = null;
-            CleanupLegacyService.WithTemporaryPersistence(machine, () => {
+            Unsaved2019FixUtils.WithTemporaryPersistence(machine, () => {
                 added = machine.AddStateMachineBehaviour(type);
             });
             if (added == null) {

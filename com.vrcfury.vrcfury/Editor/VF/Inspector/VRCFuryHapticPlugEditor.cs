@@ -396,7 +396,6 @@ namespace VF.Inspector {
         public static BakeResult Bake(
             VRCFuryHapticPlug plug,
             HapticContactsService hapticContactsService,
-            string tmpDir,
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
             bool deferMaterialConfig = false
         ) {
@@ -500,7 +499,7 @@ namespace VF.Inspector {
                             SpsAutoRigger.AutoRig(skin, localSpace, worldLength, worldRadius, activeFromMask);
                         }
 
-                        var spsBaked = plug.enableSps ? SpsBaker.Bake(skin, tmpDir, activeFromMask, false, spsBlendshapes) : null;
+                        var spsBaked = plug.enableSps ? SpsBaker.Bake(skin, activeFromMask, false, spsBlendshapes) : null;
 
                         var finishedCopies = new HashSet<Material>();
                         Material ConfigureMaterial(int slotNum, Material mat) {
@@ -524,9 +523,7 @@ namespace VF.Inspector {
                                     var copy = mat.Clone("Needed to change properties for TPS autoconfiguration");
                                     if (finishedCopies.Contains(copy)) return copy;
                                     finishedCopies.Add(copy);
-                                    TpsConfigurer.ConfigureTpsMaterial(skin, copy, worldLength,
-                                        activeFromMask,
-                                        tmpDir);
+                                    TpsConfigurer.ConfigureTpsMaterial(skin, copy, worldLength, activeFromMask);
                                     return copy;
                                 }
 
@@ -558,12 +555,22 @@ namespace VF.Inspector {
                 }
             }
 
+            var name = plug.name;
+            if (string.IsNullOrWhiteSpace(name)) {
+                if (renderers.Count > 0) {
+                    name = HapticUtils.GetName(rendererResults.First().renderer.owner());
+                } else {
+                    name = HapticUtils.GetName(plug.owner());
+                }
+            }
+
             return new BakeResult {
                 bakeRoot = localSpace,
                 worldSpace = worldSpace,
                 renderers = rendererResults,
                 worldLength = worldLength,
                 worldRadius = worldRadius,
+                name = name,
             };
         }
 
@@ -573,6 +580,7 @@ namespace VF.Inspector {
             public ICollection<RendererResult> renderers;
             public float worldLength;
             public float worldRadius;
+            public string name;
         }
 
         public class RendererResult {
