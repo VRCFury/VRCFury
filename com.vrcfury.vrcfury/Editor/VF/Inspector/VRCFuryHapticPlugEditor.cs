@@ -181,7 +181,13 @@ namespace VF.Inspector {
                 })
             ));
 
-            container.Add(GetHapticsSection());
+            var haptics = GetHapticsSection();
+            container.Add(haptics);
+            haptics.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("spsHaptic"),
+                        "Haptics",
+                        tooltip: "This is a hack."
+                    ));
 
             var adv = new Foldout {
                 text = "Advanced Plug Options",

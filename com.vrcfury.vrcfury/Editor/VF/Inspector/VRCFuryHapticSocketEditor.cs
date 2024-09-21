@@ -91,6 +91,11 @@ namespace VF.Inspector {
                 serializedObject.FindProperty("length"),
                 "Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not plug interaction."
             ));
+            haptics.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("spsHaptic"),
+                "Haptics",
+                tooltip: "This is a hack."
+            ));
             
             var adv = new Foldout {
                 text = "Advanced",
