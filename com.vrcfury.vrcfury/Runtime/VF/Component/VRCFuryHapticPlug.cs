@@ -11,6 +11,7 @@ namespace VF.Component {
         public bool autoPosition = true;
         public bool autoLength = true;
         public bool useBoneMask = true;
+        public bool spsHaptic = true;
         public GuidTexture2d textureMask = null;
         public float length;
         public bool autoRadius = true;
