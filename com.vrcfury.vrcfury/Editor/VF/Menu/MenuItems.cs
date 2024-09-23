@@ -115,10 +115,12 @@ namespace VF.Menu {
             return VRCFuryTestCopyMenuItem.CheckBuildTestCopy();
         }
         
+#if UNITY_2022_1_OR_NEWER
         [MenuItem(recompileAll, priority = recompileAllPriority)]
         private static void RecompileAll() {
             CompilationPipeline.RequestScriptCompilation(RequestScriptCompilationOptions.CleanBuildCache);
         }
+#endif
 
         [MenuItem(listComponents, priority = listComponentsPriority)]
         private static void ListChildComponents() {
