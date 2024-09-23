@@ -33,37 +33,15 @@ namespace VF.Service {
             var anim = findAnimatedTransformsService.Find();
             var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).Values.ToImmutableHashSet();
 
-            var doNotReparent = new VFMultimapSet<VFGameObject, string>();
+            var doNotReparent = new HashSet<VFGameObject>();
             // We still reparent scale-animated things, because some users take advantage of this to "scale to 0" every bone
-            foreach (var obj in anim.positionIsAnimated) {
-                foreach (var child in obj.Children()) {
-                    doNotReparent.Put(child, $"Position of {obj.GetPath(avatarObject)} is animated");
-                }
-            }
-            foreach (var obj in anim.rotationIsAnimated) {
-                foreach (var child in obj.Children()) {
-                    doNotReparent.Put(child, $"Rotation of {obj.GetPath(avatarObject)} is animated");
-                }
-            }
-            // Physbone roots are the same as rotation being animated
-            foreach (var obj in anim.physboneRoot) {
-                foreach (var child in obj.Children()) {
-                    doNotReparent.Put(child, $"{obj.GetPath(avatarObject)} is the root of a physbone");
-                }
-            }
-            // Physbone children can't be reparented, because they must remain as children of the physbone root
-            foreach (var child in anim.physboneChild) {
-                doNotReparent.Put(child, $"{child.GetPath(avatarObject)} is a child of a physbone");
-            }
+            doNotReparent.UnionWith(anim.positionIsAnimated.Children());
+            doNotReparent.UnionWith(anim.rotationIsAnimated.Children());
+            doNotReparent.UnionWith(anim.physboneRoot.Children()); // Physbone roots are the same as rotation being animated
+            doNotReparent.UnionWith(anim.physboneChild); // Physbone children can't be reparented, because they must remain as children of the physbone root
 
             // Expand the list to include all transitive children
-            foreach (var obj in doNotReparent.GetKeys().ToArray()) {
-                foreach (var child in obj.GetSelfAndAllChildren()) {
-                    foreach (var reason in doNotReparent.Get(obj)) {
-                        doNotReparent.Put(child, reason);
-                    }
-                }
-            }
+            doNotReparent.UnionWith(doNotReparent.AllChildren().ToArray());
 
             var pruneCheck = new HashSet<VFGameObject>();
             var saveDebugInfo = !IsActuallyUploadingHook.Get();
@@ -135,7 +113,7 @@ namespace VF.Service {
             bool saveDebugInfo,
             ISet<VFGameObject> avatarHumanoidBones,
             FindAnimatedTransformsService.AnimatedTransforms anim,
-            VFMultimapSet<VFGameObject, string> doNotReparent,
+            ISet<VFGameObject> doNotReparent,
             ObjectMoveService mover,
             ISet<VFGameObject> pruneCheck,
             VFMultimapList<VFGameObject, VFGameObject> animLink
@@ -186,10 +164,8 @@ namespace VF.Service {
                         AddDebugInfo("This object was forced to link because it is a humanoid bone on the avatar");
                         return true;
                     }
-
-                    var doNotReparentReasons = doNotReparent.Get(propBone);
-                    if (doNotReparentReasons.Any()) {
-                        AddDebugInfo("This object was not linked because:\n" + string.Join("\n", doNotReparentReasons));
+                    if (doNotReparent.Contains(propBone)) {
+                        AddDebugInfo("This object was not linked because a parent has its transform animated or is a physbone");
                         var animSources = anim.GetDebugSources(propBone);
                         if (animSources.Count > 0) {
                             AddDebugInfo(string.Join("\n", animSources.OrderBy(a => a)));
