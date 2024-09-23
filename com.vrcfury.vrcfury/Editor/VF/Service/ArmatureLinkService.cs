@@ -40,9 +40,6 @@ namespace VF.Service {
             doNotReparent.UnionWith(anim.physboneRoot.Children()); // Physbone roots are the same as rotation being animated
             doNotReparent.UnionWith(anim.physboneChild); // Physbone children can't be reparented, because they must remain as children of the physbone root
 
-            // Expand the list to include all transitive children
-            doNotReparent.UnionWith(doNotReparent.AllChildren().ToArray());
-
             var pruneCheck = new HashSet<VFGameObject>();
             var saveDebugInfo = !IsActuallyUploadingHook.Get();
             
@@ -141,6 +138,8 @@ namespace VF.Service {
 
             var rootName = GetRootName(links.propMain, avatarObject);
 
+            var didNotReparent = new HashSet<VFGameObject>();
+
             // Move over all the old components / children from the old location to a new child
             foreach (var (propBone, avatarBone) in links.mergeBones) {
                 VRCFuryDebugInfo debugInfo = null;
@@ -155,6 +154,11 @@ namespace VF.Service {
                              $"Aramature link root: {links.propMain.GetPath(avatarObject, true)} -> {links.avatarMain.GetPath(avatarObject, true)}\n" +
                              $"This object: {propBone.GetPath(avatarObject, true)} -> {avatarBone.GetPath(avatarObject, true)}");
 
+                var animSources = anim.GetDebugSources(propBone);
+                if (animSources.Count > 0) {
+                    AddDebugInfo("This object is animated:\n" + string.Join("\n", animSources.OrderBy(a => a)));
+                }
+
                 bool ShouldReparent() {
                     if (propBone == links.propMain) {
                         AddDebugInfo("This object was forced to link because it is the root of the armature link");
@@ -165,11 +169,12 @@ namespace VF.Service {
                         return true;
                     }
                     if (doNotReparent.Contains(propBone)) {
-                        AddDebugInfo("This object was not linked because a parent has its transform animated or is a physbone");
-                        var animSources = anim.GetDebugSources(propBone);
-                        if (animSources.Count > 0) {
-                            AddDebugInfo(string.Join("\n", animSources.OrderBy(a => a)));
-                        }
+                        AddDebugInfo("This object was not linked because it is animated");
+                        didNotReparent.Add(propBone);
+                        return false;
+                    }
+                    if (propBone.GetSelfAndAllParents().Any(parent => didNotReparent.Contains(parent))) {
+                        AddDebugInfo("This object was not linked because a parent object was not linked (check the parent's debug info)");
                         return false;
                     }
                     return true;
