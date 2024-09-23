@@ -57,7 +57,7 @@ namespace VF.Service {
             }
 
             // Expand the list to include all transitive children
-            foreach (var obj in doNotReparent.GetKeys()) {
+            foreach (var obj in doNotReparent.GetKeys().ToArray()) {
                 foreach (var child in obj.GetSelfAndAllChildren()) {
                     foreach (var reason in doNotReparent.Get(obj)) {
                         doNotReparent.Put(child, reason);
