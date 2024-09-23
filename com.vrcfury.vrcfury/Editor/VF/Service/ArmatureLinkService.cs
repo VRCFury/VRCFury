@@ -169,12 +169,12 @@ namespace VF.Service {
                         return true;
                     }
                     if (doNotReparent.Contains(propBone)) {
-                        AddDebugInfo("This object was not linked because it is animated");
+                        AddDebugInfo("This object was not linked because a parent object was animated or part of a physbone (check the parent's debug info)");
                         didNotReparent.Add(propBone);
                         return false;
                     }
                     if (propBone.GetSelfAndAllParents().Any(parent => didNotReparent.Contains(parent))) {
-                        AddDebugInfo("This object was not linked because a parent object was not linked (check the parent's debug info)");
+                        AddDebugInfo("This object was not linked because a parent object was animated or part of a physbone (check the parent's debug info)");
                         return false;
                     }
                     return true;
