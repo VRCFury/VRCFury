@@ -40,8 +40,8 @@ namespace VF.Service {
                     if (aaps.Any()) {
                         var wrapper = VFBlendTreeDirect.Create(tree.name + " (AAP Fixed)");
                         var zeroClip = clipFactory.NewClip("Set AAPs to 0");
-                        wrapper.Add(fx.One(), zeroClip);
-                        wrapper.Add(fx.One(), tree);
+                        wrapper.Add(zeroClip);
+                        wrapper.Add(tree);
                         state.motion = wrapper;
                         
                         foreach (var aap in aaps) {

@@ -230,8 +230,8 @@ namespace VF.Feature {
                     }
                     if (keptOne) {
                         var wrapper = VFBlendTreeDirect.Create($"{motion.name} (with expanded on state)");
-                        wrapper.Add(fx.One(), onCopy);
-                        wrapper.Add(fx.One(), transitionMotion);
+                        wrapper.Add(onCopy);
+                        wrapper.Add(transitionMotion);
                         return wrapper;
                     }
                     return transitionMotion;

@@ -90,6 +90,7 @@ namespace VF.Utils {
             var onParams = new HashSet<string>() {
                 // "IsLocal",
                 // "IsOnFriendsList",
+                VFBlendTreeDirect.AlwaysOneParam,
             };
             var output = VrcfObjectFactory.Create<AnimationClip>();
             output.name = $"{motion.name} (sampled at {Math.Round(fraction*100)}%)";

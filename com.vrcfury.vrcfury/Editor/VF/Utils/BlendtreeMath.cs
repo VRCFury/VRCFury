@@ -271,7 +271,7 @@ namespace VF.Utils {
             var tree = VFBlendTreeDirect.Create(name);
             tree.SetNormalizedBlendValues(true);
             tree.Add(tmp, VrcfObjectFactory.Create<AnimationClip>());
-            tree.Add(controller.One(), output.MakeSetter(10000));
+            tree.Add(output.MakeSetter(10000));
             directTree.Add(tree);
             return output;
         }
@@ -396,7 +396,7 @@ namespace VF.Utils {
                     var newCurve = oldCurve.Clone();
                     newClip.SetCurve(newBinding, newCurve);
                     var newTree = VFBlendTreeDirect.Create(oldClip.name);
-                    newTree.Add(controller.One(), oldClip);
+                    newTree.Add(oldClip);
                     newTree.Add(multiplier, newClip);
 
                     child.motion = newTree;

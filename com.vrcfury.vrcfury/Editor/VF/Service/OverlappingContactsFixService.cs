@@ -46,7 +46,7 @@ namespace VF.Service {
             var counterSetToZero = counter.MakeSetter(0);
             var counterAddOne = VFBlendTreeDirect.Create("addToCounter");
             var counterEqualsOne = counter.MakeSetter(1);
-            counterAddOne.Add(fx.One(), counterEqualsOne);
+            counterAddOne.Add(counterEqualsOne);
             counterAddOne.Add(counter, counterEqualsOne);
 
             var scaleFactor = fx.NewFloat("ScaleFactor", usePrefix: false);
