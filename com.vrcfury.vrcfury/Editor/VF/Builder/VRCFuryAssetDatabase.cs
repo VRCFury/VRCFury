@@ -131,6 +131,7 @@ namespace VF.Builder {
         }
 
         private static bool assetEditing = false;
+
         public static void WithAssetEditing(Action go) {
             if (!assetEditing) {
                 AssetDatabase.StartAssetEditing();
@@ -175,23 +176,31 @@ namespace VF.Builder {
             }
         }
 
-        public static void DeleteFolder(string path, Func<string,bool> shouldDelete = null) {
-            if (AssetDatabase.IsValidFolder(path)) {
-                // If you add and then remove an asset without calling SaveAssets first, unity tries to delete the folder
-                // first, and then tries to save the asset into the non-existant folder and throws an error.
-                // We can avoid this by always calling SaveAssets before ever deleting any folders
-                AssetDatabase.SaveAssets();
-                if (shouldDelete == null) {
-                    AssetDatabase.DeleteAsset(path);
-                } else {
-                    foreach (var asset in AssetDatabase.FindAssets("", new[] { path })) {
-                        var assetPath = AssetDatabase.GUIDToAssetPath(asset);
-                        if (shouldDelete(assetPath)) {
-                            AssetDatabase.DeleteAsset(assetPath);
-                        }
-                    }
+        public static void Delete(string path) {
+            // If we call DeleteAsset during AssetEditing, WEIRD things happen.
+            // AssetDatabase.IsValidFolder continues to return true,
+            // and if an asset is created with the same path, it will randomly share
+            // data with the old asset at that location.
+            Debug.Log("Deleting " + path);
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        public static void DeleteFiltered(string path, Func<string,bool> filter) {
+            var deleted = new List<string>();
+            var subPaths = AssetDatabase.FindAssets("", new[] { path })
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => !string.IsNullOrEmpty(p))
+                .OrderBy(p => p);
+            foreach (var subPath in subPaths) {
+                if (deleted.Any(d => subPath.StartsWith(d + "/"))) {
+                    // already deleted a parent folder
+                    continue;
                 }
-                AssetDatabase.SaveAssets();
+                if (!filter(subPath)) {
+                    continue;
+                }
+                deleted.Add(subPath);
+                Delete(subPath);
             }
         }
 
@@ -211,9 +220,7 @@ namespace VF.Builder {
             }
             paths.Reverse();
             foreach (var p in paths) {
-                // AssetDatabase.IsValidFolder returns true if the directory was deleted earlier this frame,
-                // even if SaveAssets or ImportAsset or Refresh was called
-                if (AssetDatabase.IsValidFolder(p) && Directory.Exists(p)) continue;
+                if (AssetDatabase.IsValidFolder(p)) continue;
                 var parent = Path.GetDirectoryName(p);
                 if (string.IsNullOrEmpty(parent)) continue;
                 var basename = Path.GetFileName(p);
@@ -221,7 +228,6 @@ namespace VF.Builder {
                 if (string.IsNullOrEmpty(guid)) {
                     throw new Exception("Failed to create directory " + p);
                 }
-                AssetDatabase.SaveAssets();
             }
         }
 

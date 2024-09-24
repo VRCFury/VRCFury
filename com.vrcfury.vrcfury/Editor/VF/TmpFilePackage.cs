@@ -16,13 +16,19 @@ namespace VF {
 
         public static void Cleanup() {
             var tmpDir = GetPath();
-            VRCFuryAssetDatabase.DeleteFolder(tmpDir, path => {
-                if (path.StartsWith(tmpDir + "/SPS")) return false;
-                if (path.StartsWith(tmpDir + "/package.json")) return false;
-                if (path.StartsWith(tmpDir + "/LegacyPrefabsImported")) return false;
-                return true;
+            VRCFuryAssetDatabase.WithAssetEditing(() => {
+                VRCFuryAssetDatabase.DeleteFiltered(tmpDir, path => {
+                    if (path.StartsWith(tmpDir + "/SPS")) return false;
+                    if (path.StartsWith(tmpDir + "/package.json")) return false;
+                    if (path.StartsWith(tmpDir + "/LegacyPrefabsImported")) return false;
+                    return true;
+                });
+                VRCFuryAssetDatabase.Delete("Assets/_VRCFury");
             });
-            VRCFuryAssetDatabase.DeleteFolder("Assets/_VRCFury");
+            // If we don't disable asset editing temporarily, the asset database does WEIRD things,
+            // like showing that the deleted directories still exist, and reusing data from the
+            // assets that used to be in those folders
+            VRCFuryAssetDatabase.WithoutAssetEditing(() => {});
         }
 
         public static string GetPath() {

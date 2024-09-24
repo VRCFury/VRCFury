@@ -109,10 +109,6 @@ namespace VF.Builder {
             VFGameObject avatarObject,
             VRCFProgressWindow progress
         ) {
-            if (!Application.isPlaying) {
-                TmpFilePackage.Cleanup();
-            }
-
             var currentModelName = "";
             var currentModelClipPrefix = "?";
             var currentServiceNumber = 0;
