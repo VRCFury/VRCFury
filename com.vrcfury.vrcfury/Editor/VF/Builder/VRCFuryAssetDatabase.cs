@@ -111,12 +111,7 @@ namespace VF.Builder {
             }
 #endif
 
-            // If unity reuses an asset path, it randomly explodes and picks up changes from the
-            // old asset and messes with the new copy.
-            var assetNum = EditorPrefs.GetInt("com.vrcfury.lastAssetNum", 0) + 1;
-            EditorPrefs.SetInt("com.vrcfury.lastAssetNum", assetNum);
-
-            var fullPath = GetUniquePath(dir, filename, ext, "_" + assetNum);
+            var fullPath = GetUniquePath(dir, filename, ext);
             // If object was already part of another asset, or was recently deleted, we MUST
             // call this first, or unity will throw an exception
             AssetDatabase.RemoveObjectFromAsset(obj);
@@ -177,10 +172,6 @@ namespace VF.Builder {
         }
 
         public static void Delete(string path) {
-            // If we call DeleteAsset during AssetEditing, WEIRD things happen.
-            // AssetDatabase.IsValidFolder continues to return true,
-            // and if an asset is created with the same path, it will randomly share
-            // data with the old asset at that location.
             Debug.Log("Deleting " + path);
             AssetDatabase.DeleteAsset(path);
         }
