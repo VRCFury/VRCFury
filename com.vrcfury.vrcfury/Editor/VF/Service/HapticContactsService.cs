@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
-using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
@@ -16,7 +15,6 @@ namespace VF.Service {
     [VFService]
     internal class HapticContactsService {
         [VFAutowired] [CanBeNull] private readonly ControllersService controllers;
-        [VFAutowired] [CanBeNull] private readonly MathService math;
         [VFAutowired] [CanBeNull] private readonly OverlappingContactsFixService overlappingService;
 
         public class SenderRequest {
@@ -79,7 +77,7 @@ namespace VF.Service {
         }
 
         public VFAFloat AddReceiver(ReceiverRequest req) {
-            if (controllers == null || math == null) {
+            if (controllers == null) {
                 throw new Exception("Receiver cannot be created in detached mode");
             }
 

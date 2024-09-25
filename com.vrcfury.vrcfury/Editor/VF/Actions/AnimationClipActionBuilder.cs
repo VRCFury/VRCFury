@@ -19,21 +19,26 @@ namespace VF.Actions {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] [CanBeNull] private readonly FullBodyEmoteService fullBodyEmoteService;
         
-        public AnimationClip Build(AnimationClipAction clipAction, VFGameObject animObject) {
-            var clipActionClip = clipAction.clip.Get();
-            if (clipActionClip == null) return NewClip();
+        public Motion Build(AnimationClipAction clipAction, VFGameObject animObject) {
+            var input = clipAction.motion;
+            if (input == null) input = clipAction.clip.Get();
+            if (input == null) return NewClip();
 
-            var copy = clipActionClip.Clone();
-            AddFullBodyClip(copy);
-            var rewriter = AnimationRewriter.Combine(
-                ClipRewriter.CreateNearestMatchPathRewriter(
-                    animObject: animObject,
-                    rootObject: avatarObject
-                ),
-                ClipRewriter.AdjustRootScale(avatarObject),
-                ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
-            );
-            copy.Rewrite(rewriter);
+            var copy = input.Clone();
+            foreach (var clip in new AnimatorIterator.Clips().From(copy)) {
+                AddFullBodyClip(clip);
+                
+                var rewriter = AnimationRewriter.Combine(
+                    ClipRewriter.CreateNearestMatchPathRewriter(
+                        animObject: animObject,
+                        rootObject: avatarObject
+                    ),
+                    ClipRewriter.AdjustRootScale(avatarObject),
+                    ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
+                );
+                clip.Rewrite(rewriter);
+            }
+
             return copy;
         }
 

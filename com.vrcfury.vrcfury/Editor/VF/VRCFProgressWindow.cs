@@ -38,7 +38,7 @@ namespace VF {
 
             var infoBox = new VisualElement().Padding(20);
             root.Add(infoBox);
-            
+
             progress = new ProgressBar();
             progress.value = 50;
             infoBox.Add(progress);

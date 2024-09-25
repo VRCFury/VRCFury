@@ -24,6 +24,8 @@ namespace VF.Actions {
             } else if (toggle.mode == ObjectToggleAction.Mode.Toggle) {
                 onState = !toggle.obj.activeSelf;
             }
+            
+            onClip.name = $"{(onState ? "Turn On" : "Turn Off")} {toggle.obj.name}";
 
             offClip.SetEnabled(toggle.obj, !onState);
             onClip.SetEnabled(toggle.obj, onState);

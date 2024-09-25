@@ -63,9 +63,11 @@ namespace VF.Builder {
                 Debug.Log("VRCFury is force re-importing: " + string.Join(", ", reloadOrder));
             }
 
-            foreach (var path in reloadOrder) {
-                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
-            }
+            VRCFuryAssetDatabase.WithAssetEditing(() => {
+                foreach (var path in reloadOrder) {
+                    AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                }
+            });
             
             foreach (var sceneVrcf in objs.SelectMany(o => o.GetComponentsInSelfAndChildren<VRCFury>())) {
                 for (var vrcf = sceneVrcf; vrcf != null; vrcf = GetCorrespondingObjectFromSource(vrcf)) {

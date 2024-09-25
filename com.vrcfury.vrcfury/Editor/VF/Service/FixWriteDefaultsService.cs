@@ -54,7 +54,7 @@ namespace VF.Service {
 
         private VFLayer _defaultLayer = null;
         private AnimationClip _defaultClip = null;
-        private AnimationClip GetDefaultClip() {
+        public AnimationClip GetDefaultClip() {
             if (_defaultClip == null) {
                 _defaultClip = clipFactory.NewClip("Defaults");
                 _defaultLayer = fx.NewLayer("Defaults", 0);

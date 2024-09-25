@@ -7,7 +7,6 @@ namespace VF.Builder.Haptics {
     internal static class SpsBaker {
         public static Texture2D Bake(
             SkinnedMeshRenderer skin,
-            string tmpDir,
             float[] activeFromMask,
             bool tpsCompatibility,
             ICollection<string> spsBlendshapes = null

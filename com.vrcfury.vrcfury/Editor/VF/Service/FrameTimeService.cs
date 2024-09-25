@@ -13,14 +13,16 @@ namespace VF.Service {
     internal class FrameTimeService {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
-        [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly DbtLayerService dbtLayerService;
 
         private VFAFloat cachedFrameTime;
         public VFAFloat GetFrameTime() {
             if (cachedFrameTime != null) return cachedFrameTime;
 
             var timeSinceLoad = GetTimeSinceLoad();
+            var dbt = dbtLayerService.Create();
+            var math = dbtLayerService.GetMath(dbt);
             var lastTimeSinceLoad = math.Buffer(timeSinceLoad, to: "lastTimeSinceLoad");
             var diff = math.Subtract(timeSinceLoad, lastTimeSinceLoad, name: "frameTime");
 

@@ -12,7 +12,9 @@ using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     internal static class VRCFuryAssetDatabase {
-        public static string MakeFilenameSafe(string str) {
+        private static string MakeFilenameSafe(string str, int maxLen) {
+            if (maxLen < 4) maxLen = 4;
+
             var output = "";
             foreach (var c in str) {
                 if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == ' ' || c == '.') {
@@ -21,8 +23,14 @@ namespace VF.Builder {
                     output += '_';
                 }
             }
-            
-            if (output.Length > 64) output = output.Substring(0, 64);
+
+            if (output.Length > maxLen) {
+                var startLength = (maxLen - 1) / 2;
+                var endLength = (maxLen - 1) - startLength;
+                output = output.Substring(0, startLength)
+                    + "_"
+                    + output.Substring(output.Length - endLength, endLength);
+            }
 
             // Unity will reject importing folders / files that start or end with a dot (this is undocumented)
             while (output.StartsWith(" ") || output.StartsWith(".")) {
@@ -36,19 +44,28 @@ namespace VF.Builder {
             return output;
         }
 
-        public static string GetUniquePath(string dir, string filename, string ext) {
-            var safeFilename = MakeFilenameSafe(filename);
+        public static string GetUniquePath(string dir, string filename, string ext = "", string importantSuffix = "", int startMaxLen = 64) {
+            for (var maxLen = startMaxLen; maxLen > 4; maxLen--) {
+                var safeFilename = MakeFilenameSafe(filename, maxLen);
 
-            string fullPath;
-            for (var i = 0;; i++) {
-                fullPath = dir
-                           + "/"
-                           + safeFilename + (i > 0 ? "_" + i : "")
-                           + (filename.Contains("(VF_1_G_BAKED)") ? "(VF_1_G_BAKED)" : "")
-                           + (ext != "" ? "." + ext : "");
-                if (!File.Exists(fullPath)) break;
+                string fullPath;
+                for (var i = 0;; i++) {
+                    fullPath = dir
+                               + "/"
+                               + safeFilename + (i > 0 ? "_" + i : "")
+                               + importantSuffix
+                               + (ext != "" ? "." + ext : "");
+                    if (!File.Exists(fullPath) && !Directory.Exists(fullPath)) break;
+                }
+
+                if (Path.GetFullPath(fullPath).Length < 250) {
+                    return fullPath;
+                }
             }
-            return fullPath;
+
+            throw new Exception(
+                "Failed to find a path that can fit in Windows file length limits!" +
+                " The file path for your Unity project is probably too long.");
         }
 
         [PreferBinarySerialization]
@@ -57,6 +74,8 @@ namespace VF.Builder {
         }
 
         public static void SaveAsset(Object obj, string dir, string filename) {
+            CreateFolder(dir);
+            
             var reasons = ObjectExtensions.cloneReasons.Get(obj);
             if (reasons.Count > 0) {
                 var reasonsPath = GetUniquePath(dir, filename + "-reasons", "txt");
@@ -107,6 +126,7 @@ namespace VF.Builder {
         }
 
         private static bool assetEditing = false;
+
         public static void WithAssetEditing(Action go) {
             if (!assetEditing) {
                 AssetDatabase.StartAssetEditing();
@@ -151,12 +171,27 @@ namespace VF.Builder {
             }
         }
 
-        public static void DeleteFolder(string path) {
-            if (Directory.Exists(path)) {
-                foreach (var asset in AssetDatabase.FindAssets("", new[] { path })) {
-                    var assetPath = AssetDatabase.GUIDToAssetPath(asset);
-                    AssetDatabase.DeleteAsset(assetPath);
+        public static void Delete(string path) {
+            Debug.Log("Deleting " + path);
+            AssetDatabase.DeleteAsset(path);
+        }
+
+        public static void DeleteFiltered(string path, Func<string,bool> filter) {
+            var deleted = new List<string>();
+            var subPaths = AssetDatabase.FindAssets("", new[] { path })
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => !string.IsNullOrEmpty(p))
+                .OrderBy(p => p);
+            foreach (var subPath in subPaths) {
+                if (deleted.Any(d => subPath.StartsWith(d + "/"))) {
+                    // already deleted a parent folder
+                    continue;
                 }
+                if (!filter(subPath)) {
+                    continue;
+                }
+                deleted.Add(subPath);
+                Delete(subPath);
             }
         }
 
@@ -176,8 +211,13 @@ namespace VF.Builder {
             }
             paths.Reverse();
             foreach (var p in paths) {
-                if (!Directory.Exists(p)) {
-                    Directory.CreateDirectory(p);
+                if (AssetDatabase.IsValidFolder(p)) continue;
+                var parent = Path.GetDirectoryName(p);
+                if (string.IsNullOrEmpty(parent)) continue;
+                var basename = Path.GetFileName(p);
+                var guid = AssetDatabase.CreateFolder(parent, basename);
+                if (string.IsNullOrEmpty(guid)) {
+                    throw new Exception("Failed to create directory " + p);
                 }
             }
         }

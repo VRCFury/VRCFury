@@ -20,15 +20,14 @@ namespace VF.Service {
             public readonly HashSet<VFGameObject> physboneRoot = new HashSet<VFGameObject>();
             public readonly HashSet<VFGameObject> physboneChild = new HashSet<VFGameObject>();
             public readonly HashSet<VFGameObject> activated = new HashSet<VFGameObject>();
-            private readonly Dictionary<VFGameObject, List<string>> debugSources = new Dictionary<VFGameObject, List<string>>();
+            private readonly VFMultimapSet<VFGameObject, string> debugSources = new VFMultimapSet<VFGameObject, string>();
 
             public void AddDebugSource(VFGameObject t, string source) {
-                if (debugSources.TryGetValue(t, out var list)) list.Add(source);
-                else debugSources[t] = new List<string> { source };
+                debugSources.Put(t,source);
             }
 
-            public IList<string> GetDebugSources(VFGameObject t) {
-                return debugSources.TryGetValue(t, out var output) ? output : new List<string>();
+            public ICollection<string> GetDebugSources(VFGameObject t) {
+                return debugSources.Get(t);
             }
         }
 

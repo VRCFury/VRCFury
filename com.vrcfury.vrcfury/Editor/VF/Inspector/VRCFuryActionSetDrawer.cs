@@ -105,12 +105,15 @@ namespace VF.Inspector {
 
                 var injector = new VRCFuryInjector();
                 injector.ImportOne(typeof(ActionClipService));
+                injector.ImportOne(typeof(ClipFactoryService));
                 injector.ImportScan(typeof(ActionBuilder));
                 injector.Set("avatarObject", avatarObject);
                 injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
                 var mainBuilder = injector.GetService<ActionClipService>();
                 var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject);
-                var bindings = test.onClip.GetAllBindings().ToImmutableHashSet();
+                var bindings = new AnimatorIterator.Clips().From(test.onClip)
+                    .SelectMany(clip => clip.GetAllBindings())
+                    .ToImmutableHashSet();
                 var warnings =
                     VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject, avatarObject);
 
