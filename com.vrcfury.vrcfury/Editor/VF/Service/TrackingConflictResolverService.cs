@@ -109,7 +109,7 @@ namespace VF.Service {
                         $"TC_merged_{type.fieldName}",
                         inhibitors.Get(type).Select(input => ((BlendtreeMath.VFAFloatOrConst)input,1f)).ToArray()
                     );
-                    whenAnimatedDict[type] = merged.AsFloat().IsGreaterThan(0.5f);
+                    whenAnimatedDict[type] = merged.AsFloat().IsGreaterThan(0);
                 }
             }
 

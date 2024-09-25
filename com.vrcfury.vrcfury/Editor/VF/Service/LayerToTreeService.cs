@@ -226,7 +226,7 @@ namespace VF.Service {
                 if (!offValid) {
                     directTree.Value.Add(param, on);
                 } else {
-                    directTree.Value.Add(BlendtreeMath.GreaterThan(param, 0.5f).create(on, off));
+                    directTree.Value.Add(BlendtreeMath.GreaterThan(param, 0).create(on, off));
                 }
             } else if (condition.mode == AnimatorConditionMode.Equals) {
                 directTree.Value.Add(BlendtreeMath.Equals(param, condition.threshold).create(on, off));

@@ -54,8 +54,8 @@ namespace VF.Service {
                 autoOnClip = clipFactory.NewClip("Enable SPS Auto Contacts");
                 var directTree = directTreeService.Create($"Auto Mode Toggle");
                 directTree.Add(BlendtreeMath.And(
-                    BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0.5f, name: "SPS: Auto Contacts"),
-                    BlendtreeMath.GreaterThan(autoOn.AsFloat(), 0.5f, name: "When Local")
+                    BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0, name: "SPS: Auto Contacts"),
+                    BlendtreeMath.GreaterThan(autoOn.AsFloat(), 0, name: "When Local")
                 ).create(autoOnClip, null));
             }
             
@@ -304,11 +304,11 @@ namespace VF.Service {
                             onRemoteClip.SetCurve(gizmo, "show", 1);
                         }
 
-                        var localTree = BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0.5f, name: "When Local")
+                        var localTree = BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0, name: "When Local")
                             .create(onStealthClip, onLocalClip);
-                        var remoteTree = BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0.5f, name: "When Remote")
+                        var remoteTree = BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0, name: "When Remote")
                             .create(null, onRemoteClip);
-                        var onTree = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0.5f, name: $"SPS: When {name} On")
+                        var onTree = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0, name: $"SPS: When {name} On")
                             .create(localTree, remoteTree);
                         var directTree = directTreeService.Create($"{name} - Toggle");
                         directTree.Add(toggleParam.AsFloat(), onTree);
