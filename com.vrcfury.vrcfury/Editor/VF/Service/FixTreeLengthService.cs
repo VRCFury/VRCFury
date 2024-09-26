@@ -5,6 +5,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -28,7 +29,7 @@ namespace VF.Service {
         
         [FeatureBuilderAction(FeatureOrder.FixTreeLength)]
         public void Apply() {
-            foreach (var state in new AnimatorIterator.States().From(fx.GetRaw())) {
+            foreach (var state in new AnimatorIterator.States().From(fx.GetRaw()).Where(VFLayer.Created)) {
                 if (state.timeParameterActive) {
                     // States using motion time don't need "fixed" because the length of the state doesn't matter!
                     continue;
