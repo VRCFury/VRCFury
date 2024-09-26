@@ -93,7 +93,7 @@ namespace VF.Feature {
 
                 var enabledWhen = BlendtreeMath.True();
                 foreach (var inhibitor in inhibitors) {
-                    enabledWhen = BlendtreeMath.And(enabledWhen, BlendtreeMath.LessThan(inhibitor, 0, true));
+                    enabledWhen = enabledWhen.And(BlendtreeMath.LessThan(inhibitor, 0, true));
                 }
 
                 directTree.Add(enabledWhen.create(

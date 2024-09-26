@@ -15,9 +15,9 @@ namespace VF.Actions {
     internal class BlockVisemesActionBuilder : ActionBuilder<BlockVisemesAction> {
         [VFAutowired] [CanBeNull] private readonly TrackingConflictResolverService trackingConflictResolverService;
 
-        public AnimationClip Build(string actionName) {
+        public AnimationClip Build(string actionName, bool useServices) {
             var onClip = NewClip();
-            if (trackingConflictResolverService == null) return onClip;
+            if (trackingConflictResolverService == null || !useServices) return onClip;
             var blockTracking = trackingConflictResolverService.AddInhibitor(
                 actionName, TrackingConflictResolverService.TrackingMouth);
             onClip.SetAap(blockTracking, 1);

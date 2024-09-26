@@ -65,10 +65,10 @@ namespace VF.Service {
             var output = fx.MakeAap(name, def: target.GetDefault());
             
             // Maintain tree - keeps the current value
-            var maintainTree = BlendtreeMath.MakeCopier(output, output, minSupported, maxSupported);
+            var maintainTree = output.MakeCopier(output, minSupported, maxSupported);
 
             // Target tree - uses the target (input) value
-            var targetTree = BlendtreeMath.MakeCopier(target, output, minSupported, maxSupported);
+            var targetTree = output.MakeCopier(target, minSupported, maxSupported);
 
             //The following two trees merge the update and the maintain tree together. The smoothParam controls 
             //how much from either tree should be applied during each tick

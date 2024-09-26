@@ -74,6 +74,7 @@ namespace VF.Injector {
                         injector.Set("actionName", null);
                         injector.Set("animObject", null);
                         injector.Set("offClip", null);
+                        injector.Set("useServices", null);
                         injector.Set(typeof(ActionClipService), null);
                         var buildMethod = builderType.GetMethod("Build");
                         injector.VerifyMethod(buildMethod);

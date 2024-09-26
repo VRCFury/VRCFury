@@ -30,6 +30,43 @@ namespace VF.Utils {
                 this.create = create;
                 this.defaultIsTrue = defaultIsTrue;
             }
+
+            public VFAFloatBool Or(VFAFloatBool b) {
+                return new VFAFloatBool(
+                    (whenTrue, whenFalse) => create(
+                        whenTrue,
+                        b.create(whenTrue, whenFalse)
+                    ),
+                    defaultIsTrue || b.defaultIsTrue
+                );
+            }
+        
+            public VFAFloatBool And(VFAFloatBool b) {
+                return new VFAFloatBool(
+                    (whenTrue, whenFalse) => create(
+                        b.create(whenTrue, whenFalse),
+                        whenFalse
+                    ),
+                    defaultIsTrue && b.defaultIsTrue
+                );
+            }
+        
+            public VFAFloatBool Xor(VFAFloatBool b) {
+                return new VFAFloatBool(
+                    (whenTrue, whenFalse) => create(
+                        b.create(whenFalse, whenTrue),
+                        b.create(whenTrue, whenFalse)
+                    ),
+                    defaultIsTrue ^ b.defaultIsTrue
+                );
+            }
+        
+            public VFAFloatBool Not() {
+                return new VFAFloatBool(
+                    (whenTrue, whenFalse) => create(whenFalse, whenTrue),
+                    !defaultIsTrue
+                );
+            }
         }
 
         public class VFAFloatOrConst {
@@ -51,11 +88,26 @@ namespace VF.Utils {
             public string Name() => value.Name();
             public float GetDefault() => value.GetDefault();
             public VFAFloat AsFloat() => value;
+
             public AnimationClip MakeSetter(float to) {
                 var clip = VrcfObjectFactory.Create<AnimationClip>();
                 clip.name = $"AAP: {Name()} = {to}";
                 clip.SetAap(Name(), to);
                 return clip;
+            }
+
+            public Motion MakeCopier(VFAFloat from, float minSupported = 0, float maxSupported = float.MaxValue) {
+                var name = $"AAP: {Name()} = {from.Name()}";
+                if (minSupported >= 0) {
+                    var direct = VFBlendTreeDirect.Create(name);
+                    direct.Add(from, MakeSetter(1));
+                    return direct;
+                }
+
+                return VFBlendTree1D.CreateWithData(name, from,
+                    (minSupported, MakeSetter(minSupported)),
+                    (maxSupported, MakeSetter(maxSupported))
+                );
             }
         }
 
@@ -75,9 +127,12 @@ namespace VF.Utils {
             var output = controller.MakeAap(name, def: defaultValue);
 
             var targetMotions = targets
-                .Select(target => (MakeCopier(target.value, output), target.condition))
+                .Select(target => (
+                    target.value.param != null ? output.MakeCopier(target.value.param) : output.MakeSetter(target.value.constt),
+                    target.condition
+                ))
                 // The "fall through" (if all conditions are false) is to maintain the current output value
-                .Append((MakeCopier(output, output), null))
+                .Append((output.MakeCopier(output), null))
                 .ToArray();
             SetValueWithConditions(targetMotions);
 
@@ -187,7 +242,7 @@ namespace VF.Utils {
          * a,b : (-Infinity,Infinity)
          */
         public static VFAFloatBool LessThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
-            return Not(GreaterThan(a, b, !orEqual, name));
+            return GreaterThan(a, b, !orEqual, name).Not();
         }
 
         private static float Up(float a) {
@@ -299,54 +354,8 @@ namespace VF.Utils {
         public VFAap Buffer(VFAFloat from, string to = null, bool usePrefix = true) {
             to = to ?? $"{CleanName(from)}_b";
             var output = controller.MakeAap(to, from.GetDefault(), usePrefix: usePrefix);
-            directTree.Add(MakeCopier(from, output));
+            directTree.Add(output.MakeCopier(from));
             return output;
-        }
-
-        public static Motion MakeCopier(VFAFloatOrConst from, VFAap to, float minSupported = 0, float maxSupported = float.MaxValue) {
-            if (from.param == null) {
-                return to.MakeSetter(from.constt);
-            }
-
-            var name = $"{CleanName(to)} = {CleanName(from)}";
-            if (minSupported >= 0) {
-                var direct = VFBlendTreeDirect.Create(name);
-                direct.Add(from.param, to.MakeSetter(1));
-                return direct;
-            }
-
-            return VFBlendTree1D.CreateWithData(name, from.param,
-                (minSupported, to.MakeSetter(minSupported)),
-                (maxSupported, to.MakeSetter(maxSupported))
-            );
-        }
-
-        public static VFAFloatBool Or(VFAFloatBool a, VFAFloatBool b) {
-            return new VFAFloatBool(
-                (whenTrue, whenFalse) => a.create(whenTrue, b.create(whenTrue, whenFalse)),
-                a.defaultIsTrue || b.defaultIsTrue
-            );
-        }
-        
-        public static VFAFloatBool And(VFAFloatBool a, VFAFloatBool b) {
-            return new VFAFloatBool(
-                (whenTrue, whenFalse) => a.create(b.create(whenTrue, whenFalse), whenFalse),
-                a.defaultIsTrue && b.defaultIsTrue
-            );
-        }
-        
-        public static VFAFloatBool Xor(VFAFloatBool a, VFAFloatBool b) {
-            return new VFAFloatBool(
-                (whenTrue, whenFalse) => a.create(b.create(whenFalse, whenTrue), b.create(whenTrue, whenFalse)),
-                a.defaultIsTrue ^ b.defaultIsTrue
-            );
-        }
-        
-        public static VFAFloatBool Not(VFAFloatBool a) {
-            return new VFAFloatBool(
-                (whenTrue, whenFalse) => a.create(whenFalse, whenTrue),
-                !a.defaultIsTrue
-            );
         }
 
         public VFAap Max(VFAFloat a, VFAFloat b, string name = null) {

@@ -132,7 +132,7 @@ namespace VF.Feature {
             var target = fx.MakeAap($"{input.Name()}/Target", def: input.GetDefault());
 
             var off = layer.NewState("Off").WithAnimation(target.MakeSetter(0));
-            var on = layer.NewState("On").WithAnimation(BlendtreeMath.MakeCopier(input, target));
+            var on = layer.NewState("On").WithAnimation(target.MakeCopier(input));
             off.TransitionsTo(on).When(enabled);
             on.TransitionsTo(off).When(enabled.Not());
 

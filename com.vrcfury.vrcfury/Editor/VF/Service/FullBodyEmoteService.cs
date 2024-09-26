@@ -15,7 +15,7 @@ namespace VF.Service {
     internal class FullBodyEmoteService {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
-        [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
+        [VFAutowired] private readonly FloatToDriverService floatToDriverService;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         
         private readonly Dictionary<EditorCurveBindingExtensions.MuscleBindingType, Func<AnimationClip,VFAFloat>> addCache
@@ -66,7 +66,8 @@ namespace VF.Service {
                 myCond = enableParam.IsGreaterThan(0);
             } else {
                 var myParam = ctrl.NewBool(clip.name+" (Action)");
-                driveOtherTypesFromFloatService.Drive(enableParam, myParam.Name(), 1);
+                floatToDriverService.Drive(enableParam, myParam.Name(), 1, false, true);
+                floatToDriverService.Drive(enableParam, myParam.Name(), 0, true, true);
                 myCond = myParam.IsTrue();
             }
             state.TransitionsFromEntry().When(myCond);

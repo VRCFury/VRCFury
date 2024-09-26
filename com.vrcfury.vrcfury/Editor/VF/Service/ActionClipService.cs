@@ -48,7 +48,7 @@ namespace VF.Service {
             public bool useMotionTime = false;
         }
         
-        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
+        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never, bool useServices = true) {
             var animObject = animObjectOverride ?? componentObject();
 
             if (state == null) {
@@ -62,7 +62,7 @@ namespace VF.Service {
             var offClip = VrcfObjectFactory.Create<AnimationClip>();
 
             var outputMotions = state.actions
-                .Select(a => LoadAction(name, a, offClip, animObject))
+                .Select(a => LoadAction(name, a, offClip, animObject, useServices))
                 .Where(motion => new AnimatorIterator.Clips().From(motion).SelectMany(clip => clip.GetAllBindings()).Any())
                 .ToList();
 
@@ -116,7 +116,7 @@ namespace VF.Service {
             };
         }
 
-        private Motion LoadAction(string name, Action action, AnimationClip offClip, VFGameObject animObject) {
+        private Motion LoadAction(string name, Action action, AnimationClip offClip, VFGameObject animObject, bool useServices) {
             if (action == null) {
                 throw new Exception("Action is corrupt");
             }
@@ -139,6 +139,7 @@ namespace VF.Service {
             methodInjector.Set("actionName", name);
             methodInjector.Set("animObject", animObject);
             methodInjector.Set("offClip", offClip);
+            methodInjector.Set("useServices", useServices);
             var buildMethod = builder.GetType().GetMethod("Build");
             var clip = (Motion)methodInjector.FillMethod(buildMethod, builder);
 
