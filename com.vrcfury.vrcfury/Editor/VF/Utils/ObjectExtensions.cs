@@ -29,7 +29,7 @@ namespace VF.Utils {
                 clone = MutableManager.CopyRecursive(original, new[] { typeof(Motion) });
             } else if (original is VRCExpressionsMenu) {
                 clone = MutableManager.CopyRecursive(original, new[] { typeof(VRCExpressionsMenu) });
-            } else if (original is AnimatorController || original is AnimatorStateMachine) {
+            } else if (original is RuntimeAnimatorController || original is AnimatorStateMachine) {
                 clone = MutableManager.CopyRecursive(original, new[] {
                     typeof(RuntimeAnimatorController),
                     typeof(AnimatorStateMachine),
