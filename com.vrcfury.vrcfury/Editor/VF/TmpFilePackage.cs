@@ -1,11 +1,16 @@
 using System;
+using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using UnityEditor;
 using UnityEditor.PackageManager;
+using UnityEditor.VersionControl;
 using UnityEngine;
 using VF.Builder;
+using VRC.SDK3.Avatars.Components;
+using Object = System.Object;
 
 namespace VF {
     internal static class TmpFilePackage {
@@ -15,9 +20,18 @@ namespace VF {
         private const string LegacyPrefabsImportedMarker = TmpDirPath + "/LegacyPrefabsImported";
 
         public static void Cleanup() {
+            var usedFolders = UnityEngine.Object.FindObjectsOfType<VRCAvatarDescriptor>()
+                .SelectMany(VRCAvatarUtils.GetAllControllers)
+                .Where(c => !c.isDefault && c.controller != null)
+                .Select(c => AssetDatabase.GetAssetPath(c.controller))
+                .Where(path => !string.IsNullOrEmpty(path))
+                .Select(VRCFuryAssetDatabase.GetDirectoryName)
+                .ToImmutableHashSet();
+
             var tmpDir = GetPath();
             VRCFuryAssetDatabase.WithAssetEditing(() => {
                 VRCFuryAssetDatabase.DeleteFiltered(tmpDir, path => {
+                    if (usedFolders.Any(used => path.StartsWith($"{used}/") || path == used || used.StartsWith($"{path}/"))) return false;
                     if (path.StartsWith(tmpDir + "/SPS")) return false;
                     if (path.StartsWith(tmpDir + "/package.json")) return false;
                     if (path.StartsWith(tmpDir + "/LegacyPrefabsImported")) return false;

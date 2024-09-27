@@ -12,6 +12,11 @@ using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     internal static class VRCFuryAssetDatabase {
+        public static string GetDirectoryName(string path) {
+            // Path.GetDirectoryName returns with backslashes on windows :(
+            return Path.GetDirectoryName(path)?.Replace("\\", "/");
+        }
+
         private static string MakeFilenameSafe(string str, int maxLen) {
             if (maxLen < 4) maxLen = 4;
 
@@ -207,12 +212,12 @@ namespace VF.Builder {
             var paths = new List<string>();
             while (!string.IsNullOrEmpty(path)) {
                 paths.Add(path);
-                path = Path.GetDirectoryName(path);
+                path = GetDirectoryName(path);
             }
             paths.Reverse();
             foreach (var p in paths) {
                 if (AssetDatabase.IsValidFolder(p)) continue;
-                var parent = Path.GetDirectoryName(p);
+                var parent = GetDirectoryName(p);
                 if (string.IsNullOrEmpty(parent)) continue;
                 var basename = Path.GetFileName(p);
                 var guid = AssetDatabase.CreateFolder(parent, basename);

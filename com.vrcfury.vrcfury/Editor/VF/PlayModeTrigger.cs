@@ -23,7 +23,7 @@ namespace VF {
         private static void Init() {
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
             VRCFuryComponent._OnValidate = () => {
-                if (Application.isPlaying && !addedTriggerObjectThisPlayMode) {
+                if (Application.isPlaying && !addedTriggerObjectThisPlayMode && PlayModeMenuItem.Get()) {
                     addedTriggerObjectThisPlayMode = true;
                     var obj = new GameObject(TriggerObjectName);
                     RescanOnStartComponent.AddToObject(obj, true);
@@ -36,7 +36,6 @@ namespace VF {
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
             if (state == PlayModeStateChange.ExitingEditMode) {
                 addedTriggerObjectThisPlayMode = false;
-                TmpFilePackage.Cleanup();
             }
         }
 
