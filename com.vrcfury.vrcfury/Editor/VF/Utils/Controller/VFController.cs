@@ -132,7 +132,7 @@ namespace VF.Utils.Controller {
             }
 
             // Make a copy of everything
-            ctrl = MutableManager.CopyRecursive(ctrl, $"Copied from {ctrl.name}/");
+            ctrl = ctrl.Clone(addPrefix: $"Copied from {ctrl.name}/");
 
             // Collect any override controllers wrapping the main controller
             var overrides = new List<AnimatorOverrideController>();
@@ -167,7 +167,7 @@ namespace VF.Utils.Controller {
             // Make sure all masks are unique, so we don't modify one and affect another
             foreach (var layer in output.GetLayers()) {
                 if (layer.mask != null) {
-                    layer.mask = MutableManager.CopyRecursive(layer.mask);
+                    layer.mask = layer.mask.Clone();
                 }
             }
             
@@ -217,7 +217,7 @@ namespace VF.Utils.Controller {
                 if (baseMask == null) {
                     baseMask = AvatarMaskExtensions.DefaultFxMask();
                 } else {
-                    baseMask = MutableManager.CopyRecursive(baseMask);
+                    baseMask = baseMask.Clone();
                 }
             } else if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
                 if (baseMask == null) {
@@ -229,7 +229,7 @@ namespace VF.Utils.Controller {
                     baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
                     baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
                 } else {
-                    baseMask = MutableManager.CopyRecursive(baseMask);
+                    baseMask = baseMask.Clone();
                     // If the base mask is just one hand, assume that they put in controller with just a left and right hand layer,
                     // and meant to have both in the base mask.
                     if (baseMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers))
@@ -248,7 +248,7 @@ namespace VF.Utils.Controller {
 
             foreach (var layer in GetLayers()) {
                 if (layer.mask == null) {
-                    layer.mask = MutableManager.CopyRecursive(baseMask);
+                    layer.mask = baseMask.Clone();
                 } else {
                     layer.mask.IntersectWith(baseMask);
                 }
@@ -315,11 +315,11 @@ namespace VF.Utils.Controller {
                     return layer;
                 }
 
-                var copy = MutableManager.CopyRecursiveAdv(layers[layer.syncedLayerIndex].stateMachine);
+                var copy = layers[layer.syncedLayerIndex].stateMachine.Clone();
                 layer.syncedLayerIndex = -1;
-                layer.stateMachine = copy.output;
+                layer.stateMachine = copy;
                 foreach (var state in new AnimatorIterator.States().From(new VFLayer(new VFController(ctrl), layer.stateMachine))) {
-                    var originalState = (AnimatorState)copy.copyToOriginal[state];
+                    var originalState = state.GetCloneSource();
                     state.motion = layer.GetOverrideMotion(originalState);
                     state.behaviours = layer.GetOverrideBehaviours(originalState);
                     layer.SetOverrideMotion(originalState, null);

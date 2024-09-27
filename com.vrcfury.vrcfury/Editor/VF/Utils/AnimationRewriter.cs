@@ -49,9 +49,6 @@ namespace VF.Utils {
                 return (binding, newCurve, changed);
             });
         }
-        public static AnimationRewriter DeleteAllBindings() {
-            return RewriteCurve((b, c) => (b, null, false));
-        }
         public static AnimationRewriter Combine(params AnimationRewriter[] rewriters) {
             if (rewriters.Length == 1) return rewriters[0];
             var output = RewriteCurve((b, c) => {
@@ -96,12 +93,7 @@ namespace VF.Utils {
             clip.SetCurves(output);
             var newLength = clip.GetLengthInSeconds();
             if (originalLength != newLength) {
-                clip.SetCurve(
-                    "__vrcf_length",
-                    typeof(GameObject),
-                    "m_IsActive",
-                    FloatOrObjectCurve.DummyFloatCurve(originalLength)
-                );
+                clip.SetLengthHolder(originalLength);
             }
         }
 

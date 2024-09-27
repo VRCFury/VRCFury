@@ -22,13 +22,13 @@ namespace VF.Feature {
     [FeatureOnlyOneAllowed]
     [FeatureRootOnly]
     internal class UnlimitedParametersBuilder : FeatureBuilder<UnlimitedParameters> {
-        [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ParamsService paramsService;
         private ParamManager paramz => paramsService.GetParams();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
+        [VFAutowired] private readonly DbtLayerService dbtLayerService;
 
         private static readonly FieldInfo networkSyncedField =
             typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
@@ -67,6 +67,8 @@ namespace VF.Feature {
             var local = layer.NewState("Local").Move(0, 2);
             entry.TransitionsTo(local).When(fx.IsLocal().IsTrue());
 
+            var math = dbtLayerService.GetMath(dbtLayerService.Create());
+
             Action addRoundRobins = () => { };
             Action addDefault = () => { };
             for (int i = 0; i < paramsToOptimize.Count; i++) {
@@ -95,7 +97,7 @@ namespace VF.Feature {
                     throw new Exception("Unknown type?");
                 }
                 var diff = math.Subtract(currentValue, lastValue);
-                
+
                 local.TransitionsTo(sendState)
                     .When(diff.AsFloat().IsLessThan(0).Or(diff.AsFloat().IsGreaterThan(0)));
                 if (i == 0) {

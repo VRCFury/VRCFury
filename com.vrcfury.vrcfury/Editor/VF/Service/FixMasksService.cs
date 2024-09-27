@@ -30,12 +30,10 @@ namespace VF.Service {
             var gesture = controllers.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
             var newFxLayers = new List<AnimatorControllerLayer>();
 
-            var copyForFx = MutableManager.CopyRecursiveAdv(gesture.GetRaw().GetRaw());
-            var copyForFxLayers = copyForFx.output.layers;
-            foreach (var pair in copyForFx.originalToCopy) {
-                if (pair.Key is VRCAnimatorLayerControl from && pair.Value is VRCAnimatorLayerControl to) {
-                    animatorLayerControlManager.Alias(from, to);
-                }
+            var copyForFx = gesture.GetRaw().GetRaw().Clone();
+            var copyForFxLayers = copyForFx.layers;
+            foreach (var to in new AnimatorIterator.Behaviours().From(copyForFx).OfType<VRCAnimatorLayerControl>()) {
+                animatorLayerControlManager.Alias(to.GetCloneSource(), to);
             }
 
             gesture.GetRaw().layers = gesture.GetRaw().layers.Select((layerForGesture,i) => {

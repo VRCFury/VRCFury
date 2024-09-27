@@ -1,7 +1,7 @@
 using UnityEditor;
 
 namespace VF.Menu {
-    internal class BoundingBoxMenuItem {
+    internal static class BoundingBoxMenuItem {
         private const string EditorPref = "com.vrcfury.boundingBoxFix";
 
         [InitializeOnLoadMethod]

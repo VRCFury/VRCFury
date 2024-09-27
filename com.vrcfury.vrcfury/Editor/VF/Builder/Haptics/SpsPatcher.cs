@@ -641,9 +641,9 @@ namespace VF.Builder.Haptics {
                 if (path.StartsWith("/")) path = path.Substring(1);
                 if (filePath != null && !File.Exists(fullPath)) {
                     var p = path;
-                    fullPath = Path.GetDirectoryName(filePath);
+                    fullPath = VRCFuryAssetDatabase.GetDirectoryName(filePath);
                     while (p.StartsWith("..")) {
-                        fullPath = Path.GetDirectoryName(fullPath);
+                        fullPath = VRCFuryAssetDatabase.GetDirectoryName(fullPath);
                         p = p.Substring(3);
                     }
                     fullPath = Path.Combine(fullPath, p);

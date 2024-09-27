@@ -35,6 +35,7 @@ namespace VF.Feature {
         private VFCondition isOn;
         private Action<VFState, bool> drive;
         private AnimationClip savedRestingClip;
+        private bool loadedRestingClip = false;
 
         public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
             + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -181,19 +182,20 @@ namespace VF.Feature {
             VFState inState;
             VFState onState;
 
-            AnimationClip restingClip;
+            Motion restingClip = null;
             if (weight != null) {
-                var clip = actionClipService.LoadState(onName, action, null, ActionClipService.MotionTimeMode.Always);
+                var builtAction = actionClipService.LoadStateAdv(onName, action, null, ActionClipService.MotionTimeMode.Always);
                 inState = onState = layer.NewState(onName);
-                onState.WithAnimation(clip).MotionTime(weight);
+                onState.WithAnimation(builtAction.onClip).MotionTime(weight);
                 onState.TransitionsToExit().When(onCase.Not());
-                restingClip = clip.Evaluate(model.defaultSliderValue * clip.GetLengthInSeconds());
+                restingClip = builtAction.onClip.EvaluateMotion(model.defaultSliderValue);
             } else if (model.hasTransition) {
-                var clip = actionClipService.LoadState(onName, action);
+                var builtAction = actionClipService.LoadStateAdv(onName, action);
+                var motion = builtAction.onClip;
                 var inClip = actionClipService.LoadState(onName + " In", inAction);
                 // if clip is empty, copy last frame of transition
-                if (clip.GetAllBindings().Length == 0) {
-                    clip = inClip.GetLastFrame();
+                if (!new AnimatorIterator.Clips().From(motion).SelectMany(clip => clip.GetAllBindings()).Any()) {
+                    motion = inClip.GetLastFrame();
                 }
                 var outClip = model.simpleOutTransition ? inClip.Clone() : actionClipService.LoadState(onName + " Out", outAction);
                 var outSpeed = model.simpleOutTransition ? -1 : 1;
@@ -201,35 +203,55 @@ namespace VF.Feature {
                 // Copy "object enabled" and "material" states to in and out clips if they don't already have them
                 // This is a convenience feature, so that people don't need to turn on objects in their transitions
                 // if it's already on in the main clip.
-                foreach (var (binding,curve) in clip.GetAllCurves()) {
-                    if (!curve.IsFloat) {
-                        if (inClip.GetObjectCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
-                        if (outClip.GetObjectCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
-                    } else if (binding.type == typeof(GameObject)) {
-                        // Only expand gameobject "enabled" into intro and outro if we're turning something "on"
-                        // If we're turning it off, it probably shouldn't be off during the transition.
-                        var first = curve.GetFirst().GetFloat();
-                        var last = curve.GetLast().GetFloat();
-                        if (first > 0.99 && last > 0.99) {
-                            if (inClip.GetFloatCurve(binding) == null) inClip.SetCurve(binding, curve.GetFirst());
-                            if (outClip.GetFloatCurve(binding) == null) outClip.SetCurve(binding, curve.GetLast());
+                Motion ExpandIntoTransition(Motion transitionMotion, bool useLast) {
+                    var bindingsInTransition = new AnimatorIterator.Clips().From(transitionMotion)
+                        .SelectMany(clip => clip.GetAllBindings())
+                        .ToArray();
+                    bool ShouldExpand(EditorCurveBinding binding, FloatOrObjectCurve curve) {
+                        if (bindingsInTransition.Contains(binding)) return false;
+                        if (!curve.IsFloat) return true;
+                        if (binding.type == typeof(GameObject)) {
+                            // Only expand gameobject state if it's turning something "on", not "off"
+                            // If we're turning it off, it probably shouldn't be off during the transition.
+                            return curve.GetFirst().GetFloat() > 0.99 && curve.GetLast().GetFloat() > 0.99;
                         }
+                        return false;
                     }
+                    var onCopy = motion.Clone();
+                    var keptOne = false;
+                    foreach (var clip in new AnimatorIterator.Clips().From(onCopy)) {
+                        clip.Rewrite(AnimationRewriter.RewriteCurve((binding,curve) => {
+                            if (ShouldExpand(binding, curve)) {
+                                keptOne = true;
+                                return (binding, curve, false);
+                            }
+                            return (binding, null, false);
+                        }));
+                    }
+                    if (keptOne) {
+                        var wrapper = VFBlendTreeDirect.Create($"{motion.name} (with expanded on state)");
+                        wrapper.Add(onCopy);
+                        wrapper.Add(transitionMotion);
+                        return wrapper;
+                    }
+                    return transitionMotion;
                 }
+                inClip = ExpandIntoTransition(inClip, false);
+                outClip = ExpandIntoTransition(outClip, true);
 
                 inState = layer.NewState(onName + " In").WithAnimation(inClip);
-                onState = layer.NewState(onName).WithAnimation(clip);
+                onState = layer.NewState(onName).WithAnimation(motion);
                 inState.TransitionsTo(onState).When(fx.Always()).WithTransitionExitTime(inClip.IsEmptyOrZeroLength() ? -1 : 1).WithTransitionDurationSeconds(inTime);
 
                 var outState = layer.NewState(onName + " Out").WithAnimation(outClip).Speed(outSpeed);
                 onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(outTime);
                 outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
-                restingClip = clip;
+                restingClip = builtAction.onClip;
             } else {
-                var clip = actionClipService.LoadState(onName, action);
-                inState = onState = layer.NewState(onName).WithAnimation(clip);
+                var builtAction = actionClipService.LoadStateAdv(onName, action);
+                inState = onState = layer.NewState(onName).WithAnimation(builtAction.onClip);
                 onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
-                restingClip = clip;
+                restingClip = builtAction.onClip;
             }
 
             exclusiveTagTriggeringStates.Add(inState);
@@ -254,10 +276,12 @@ namespace VF.Feature {
                 off.TransitionsFromEntry().When();
             }
 
-            if (savedRestingClip == null) {
-                var copy = restingClip.Clone();
-                savedRestingClip = copy;
-                clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
+            if (!loadedRestingClip) {
+                loadedRestingClip = true;
+                if (restingClip.IsStatic()) {
+                    savedRestingClip = restingClip.EvaluateMotion(1);
+                    clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
+                }
             }
         }
 

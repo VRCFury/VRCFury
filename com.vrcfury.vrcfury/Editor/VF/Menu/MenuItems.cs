@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Compilation;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
@@ -38,6 +39,10 @@ namespace VF.Menu {
         public const int reserializePriority = 1315;
         public const string uselessOverrides = prefix + "Utilites/Cleanup Useless Overrides";
         public const int uselessOverridesPriority = 1316;
+        public const string debugCopy = prefix + "Utilites/Make debug copy during build";
+        public const int debugCopyPriority = 1317;
+        public const string recompileAll = prefix + "Utilites/Recompile all scripts";
+        public const int recompileAllPriority = 1318;
         
         public const string playMode = prefix + "Settings/Enable VRCFury in play mode";
         public const int playModePriority = 1321;
@@ -109,6 +114,13 @@ namespace VF.Menu {
         private static bool CheckForceRun() {
             return VRCFuryTestCopyMenuItem.CheckBuildTestCopy();
         }
+        
+#if UNITY_2022_1_OR_NEWER
+        [MenuItem(recompileAll, priority = recompileAllPriority)]
+        private static void RecompileAll() {
+            CompilationPipeline.RequestScriptCompilation(RequestScriptCompilationOptions.CleanBuildCache);
+        }
+#endif
 
         [MenuItem(listComponents, priority = listComponentsPriority)]
         private static void ListChildComponents() {

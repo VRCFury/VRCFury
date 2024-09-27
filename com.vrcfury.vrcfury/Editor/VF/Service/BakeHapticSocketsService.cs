@@ -25,11 +25,10 @@ namespace VF.Service {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
-        [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
@@ -53,9 +52,10 @@ namespace VF.Service {
                 autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false, saved: saved);
                 menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
                 autoOnClip = clipFactory.NewClip("Enable SPS Auto Contacts");
-                directTree.Add(math.And(
-                    math.GreaterThan(fx.IsLocal().AsFloat(), 0.5f, name: "SPS: Auto Contacts"),
-                    math.GreaterThan(autoOn.AsFloat(), 0.5f, name: "When Local")
+                var directTree = directTreeService.Create($"Auto Mode Toggle");
+                directTree.Add(BlendtreeMath.And(
+                    BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0, name: "SPS: Auto Contacts"),
+                    BlendtreeMath.GreaterThan(autoOn.AsFloat(), 0, name: "When Local")
                 ).create(autoOnClip, null));
             }
             
@@ -225,11 +225,14 @@ namespace VF.Service {
                         animObjects.Add(animRoot);
                         animObjects.Add(scaleFactorContact1);
                         animObjects.Add(scaleFactorContact2);
-                        return new SpsDepthContacts(animRoot, name, hapticContacts, directTree, math, socket.useHipAvoidance, scaleFactor);
+                        var directTree = directTreeService.Create($"{name} - Depth Calculations");
+                        var math = directTreeService.GetMath(directTree);
+                        return new SpsDepthContacts(animRoot, name, hapticContacts, directTree, math, fx, socket.useHipAvoidance, scaleFactor);
                     });
 
                     if (socket.depthActions2.Count > 0) {
                         _hapticAnimContactsService.CreateAnims(
+                            $"{name} - Depth Animations",
                             socket.depthActions2,
                             socket.owner(),
                             name,
@@ -244,13 +247,16 @@ namespace VF.Service {
                         .NotNull()
                         .ToList();
                     if (socket.IsValidPlugLength) {
-                        math.CopyInPlace(socket.plugLengthParameterName, Contacts.Value.closestLength.Value);
+                        directTreeService.GetMath(Contacts.Value.directTree)
+                            .CopyInPlace(Contacts.Value.closestLength.Value, socket.plugLengthParameterName);
                     }
                     foreach (var i in injectDepthToFullControllerParams) {
-                        math.CopyInPlace(i, Contacts.Value.closestDistancePlugLengths.Value);
+                        directTreeService.GetMath(Contacts.Value.directTree)
+                            .CopyInPlace(Contacts.Value.closestDistancePlugLengths.Value, i);
                     }
                     if (socket.IsValidPlugWidth) {
-                        math.Buffer(Contacts.Value.closestRadius.Value, socket.plugWidthParameterName, usePrefix: false);
+                        directTreeService.GetMath(Contacts.Value.directTree)
+                            .CopyInPlace(Contacts.Value.closestRadius.Value, socket.plugWidthParameterName);
                     }
 
                     // Do the toggle last so all the objects have been generated and can be toggled on/off
@@ -278,7 +284,7 @@ namespace VF.Service {
                         }
 
                         var activeClip = actionClipService.LoadState($"SPS - Active Animation for {name}", socket.activeActions);
-                        if (activeClip.GetAllBindings().Any()) {
+                        if (new AnimatorIterator.Clips().From(activeClip).SelectMany(clip => clip.GetAllBindings()).Any()) {
                             var activeAnimParam = fx.NewFloat($"SPS - Active Animation for {name}");
                             var activeAnimLayer = fx.NewLayer($"SPS - Active Animation for {name}");
                             var off = activeAnimLayer.NewState("Off");
@@ -298,12 +304,13 @@ namespace VF.Service {
                             onRemoteClip.SetCurve(gizmo, "show", 1);
                         }
 
-                        var localTree = math.GreaterThan(stealthOn.AsFloat(), 0.5f, name: "When Local")
+                        var localTree = BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0, name: "When Local")
                             .create(onStealthClip, onLocalClip);
-                        var remoteTree = math.GreaterThan(stealthOn.AsFloat(), 0.5f, name: "When Remote")
+                        var remoteTree = BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0, name: "When Remote")
                             .create(null, onRemoteClip);
-                        var onTree = math.GreaterThan(fx.IsLocal().AsFloat(), 0.5f, name: $"SPS: When {name} On")
+                        var onTree = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0, name: $"SPS: When {name} On")
                             .create(localTree, remoteTree);
+                        var directTree = directTreeService.Create($"{name} - Toggle");
                         directTree.Add(toggleParam.AsFloat(), onTree);
 
                         exclusiveTriggers.Add((name, toggleParam));
@@ -338,6 +345,7 @@ namespace VF.Service {
                     var (name, on) = exclusiveTriggers[i];
                     var state = exclusiveLayer.NewState(name);
                     var when = on.IsTrue();
+                    when = when.And(fx.IsLocal().IsTrue());
                     if (multiOn != null) when = when.And(multiOn.IsFalse());
                     if (stealthOn != null) when = when.And(stealthOn.IsFalse());
                     state.TransitionsFromAny().When(when);
@@ -364,7 +372,7 @@ namespace VF.Service {
                 }
                 stop.TransitionsTo(stopped).When(fx.Always());
 
-                var vsParam = math.MakeAap("comparison", animatedFromDefaultTree: false);
+                var vsParam = fx.MakeAap("comparison");
 
                 var states = new Dictionary<Tuple<int, int>, VFState>();
                 for (var i = 0; i < autoSockets.Count; i++) {
@@ -380,10 +388,9 @@ namespace VF.Service {
                         if (i == j) continue;
                         var (bName, bEnabled, bDist) = autoSockets[j];
                         var vs = layer.NewState($"{aName} vs {bName}").Move(triggerOff, 0, j+1);
-                        var tree = clipFactory.NewDBT($"{aName} vs {bName}");
-                        math.MakeAapSafe(tree, vsParam);
-                        tree.Add(bDist, math.MakeSetter(vsParam, 1));
-                        tree.Add(aDist, math.MakeSetter(vsParam, -1));
+                        var tree = VFBlendTreeDirect.Create($"{aName} vs {bName}");
+                        tree.Add(bDist, vsParam.MakeSetter(1));
+                        tree.Add(aDist, vsParam.MakeSetter(-1));
                         vs.WithAnimation(tree);
                         states[Tuple.Create(i,j)] = vs;
                     }

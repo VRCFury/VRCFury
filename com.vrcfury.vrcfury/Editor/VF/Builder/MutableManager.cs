@@ -1,37 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
-using VF.Builder.Exceptions;
 using VF.Inspector;
 using VF.Utils;
-using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     internal static class MutableManager {
-
-        private static readonly Type[] typesToMakeMutable = {
-            // This has to be here because animator override controllers
-            // can have other controllers as children
-            typeof(RuntimeAnimatorController),
-
-            // Animator Controller internals
-            typeof(AnimatorStateMachine),
-            typeof(AnimatorState),
-            typeof(AnimatorTransitionBase),
-            typeof(StateMachineBehaviour),
-            typeof(AvatarMask),
-
-            // Clips and blend trees
-            typeof(Motion),
-
-            typeof(VRCExpressionParameters),
-            typeof(VRCExpressionsMenu),
-        };
 
         private static void Iterate(SerializedObject obj, Action<SerializedProperty> act) {
             var prop = obj.GetIterator();
@@ -71,17 +49,7 @@ namespace VF.Builder {
             return unityObj;
         }
 
-        public class CopyResults<T> {
-            public Dictionary<Object, Object> originalToCopy;
-            public Dictionary<Object, Object> copyToOriginal;
-            public T output;
-        }
-
-        public static T CopyRecursive<T>(T obj, string addPrefix = "") where T : Object {
-            return CopyRecursiveAdv(obj, addPrefix).output;
-        }
-
-        public static CopyResults<T> CopyRecursiveAdv<T>(T obj, string addPrefix = "") where T : Object {
+        public static T CopyRecursive<T>(T obj, Type[] typesToMakeMutable, string addPrefix = "") where T : Object {
             var originalToMutable = new Dictionary<Object, Object>();
             var mutableToOriginal = new Dictionary<Object, Object>();
 
@@ -92,9 +60,9 @@ namespace VF.Builder {
                 if (originalToMutable.ContainsKey(original)) return false;
                 if (obj != original) {
                     if (!IsType(original, typesToMakeMutable)) return false;
-                }
+                } 
 
-                var copy = original.Clone();
+                var copy = VrcfObjectCloner.Clone(original);
                 if (obj == original) rootCopy = copy as T;
 
                 if (copy is AnimatorState || copy is AnimatorStateMachine) {
@@ -130,11 +98,7 @@ namespace VF.Builder {
                 }
             }
 
-            return new CopyResults<T>() {
-                originalToCopy = originalToMutable,
-                copyToOriginal = mutableToOriginal,
-                output = rootCopy,
-            };
+            return rootCopy;
         }
 
         // It's like Object.Instantiate, except it actually works with

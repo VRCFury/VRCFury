@@ -55,7 +55,7 @@ namespace VF.Utils {
             var shader = mat.shader;
             if (shader == null) return output;
 
-            if (lockedPropsCache.TryGetValue(mat, out var cached)) return output;
+            if (lockedPropsCache.TryGetValue(mat, out var cached)) return cached;
 
             var matRenameSuffix = mat.GetTag("thry_rename_suffix", false, "");
 

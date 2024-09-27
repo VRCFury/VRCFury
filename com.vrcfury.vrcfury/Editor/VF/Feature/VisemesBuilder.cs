@@ -19,12 +19,11 @@ namespace VF.Feature {
     internal class VisemesBuilder : FeatureBuilder<Visemes> {
         [VFAutowired] private readonly TrackingConflictResolverService trackingConflictResolverService;
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
-        [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly SmoothingService smooth;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly DbtLayerService dbtLayerService;
         private ControllerManager fx => controllers.GetFx();
 
         private static readonly string[] visemeNames = {
@@ -39,27 +38,29 @@ namespace VF.Feature {
 
             var VisemeParam = fx.NewFloat("Viseme", usePrefix: false);
             var VolumeParam = fx.NewFloat("Voice", usePrefix: false);
-
-            var voiceTree = clipFactory.NewDBT("Advanced Visemes");
-            var enabled = math.MakeAap("AdvancedVisemesEnabled", def: 1);
-            var volumeTree = clipFactory.NewDBT("Advanced Visemes");
+            
+            var enabled = fx.MakeAap("AdvancedVisemesEnabled", def: 1);
+            var directTree = dbtLayerService.Create();
+            var math = dbtLayerService.GetMath(directTree);
             VFAFloat volumeToUse;
             if (model.instant) {
                 volumeToUse = math.SetValueWithConditions(
                     $"InstantVolume",
-                    (1, math.GreaterThan(VolumeParam, 0.1f)),
+                    (1, BlendtreeMath.GreaterThan(VolumeParam, 0.1f)),
                     (0, null)
                 );
             } else {
-                var scaledVolume = math.MakeAap("ScaledVolume");
-                directTree.Add(math.Make1D("ScaledVolume", VolumeParam,
-                    (0, math.MakeSetter(scaledVolume, 0)),
-                    (0.05f, math.MakeSetter(scaledVolume, 0f)),
-                    (0.15f, math.MakeSetter(scaledVolume, 0.8f)),
-                    (1f, math.MakeSetter(scaledVolume, 1f))
+                var scaledVolume = fx.MakeAap("ScaledVolume");
+                directTree.Add(VFBlendTree1D.CreateWithData("ScaledVolume", VolumeParam,
+                    (0, scaledVolume.MakeSetter(0)),
+                    (0.05f, scaledVolume.MakeSetter(0f)),
+                    (0.15f, scaledVolume.MakeSetter(0.8f)),
+                    (1f, scaledVolume.MakeSetter(1f))
                 ));
-                volumeToUse = smooth.Smooth("SmoothedVolume", scaledVolume, 0.07f, false);
+                volumeToUse = smooth.Smooth(directTree, "SmoothedVolume", scaledVolume, 0.07f, false);
             }
+            var voiceTree = VFBlendTreeDirect.Create("Advanced Visemes");
+            var volumeTree = VFBlendTreeDirect.Create("Advanced Visemes");
             volumeTree.Add(volumeToUse, voiceTree);
             directTree.Add(enabled, volumeTree);
 
@@ -68,14 +69,14 @@ namespace VF.Feature {
 
                 var intensityRaw = math.SetValueWithConditions(
                     $"{text}Raw",
-                    (1, math.Equals(VisemeParam, index)),
+                    (1, BlendtreeMath.Equals(VisemeParam, index)),
                     (0, null)
                 );
                 VFAFloat intensityToUse;
                 if (model.instant) {
                     intensityToUse = intensityRaw;
                 } else {
-                    intensityToUse = smooth.Smooth($"{text}Smooth", intensityRaw, 0.05f, false);
+                    intensityToUse = smooth.Smooth(directTree, $"{text}Smooth", intensityRaw, 0.05f, false);
                 }
                 voiceTree.Add(intensityToUse, clip);
             }
@@ -90,13 +91,13 @@ namespace VF.Feature {
                 var inhibitors =
                     trackingConflictResolverService.GetInhibitors(TrackingConflictResolverService.TrackingMouth);
 
-                var enabledWhen = math.True();
+                var enabledWhen = BlendtreeMath.True();
                 foreach (var inhibitor in inhibitors) {
-                    enabledWhen = math.And(enabledWhen, math.LessThan(inhibitor, 0.5f));
+                    enabledWhen = BlendtreeMath.And(enabledWhen, BlendtreeMath.LessThan(inhibitor, 0, true));
                 }
 
                 directTree.Add(enabledWhen.create(
-                    math.MakeSetter(enabled, 1),
+                    enabled.MakeSetter(1),
                     clipFactory.GetEmptyClip()
                 ));
             });

@@ -15,7 +15,7 @@ namespace VF.Service {
                 var origParams = VRCAvatarUtils.GetAvatarParams(avatar);
                 VRCExpressionParameters prms;
                 if (origParams != null) {
-                    prms = MutableManager.CopyRecursive(origParams);
+                    prms = origParams.Clone();
                 } else {
                     prms = VrcfObjectFactory.Create<VRCExpressionParameters>();
                     prms.parameters = new VRCExpressionParameters.Parameter[]{};

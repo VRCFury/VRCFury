@@ -167,6 +167,9 @@ namespace VF.Utils {
             }
             return ctrl.NewFloat(name, def);
         }
+        public BlendtreeMath.VFAap MakeAap(string name, float def = 0, bool usePrefix = true) {
+            return new BlendtreeMath.VFAap(NewFloat(name, def: def, usePrefix: usePrefix));
+        }
 
         private readonly int randomPrefix = (new System.Random()).Next(100_000_000, 999_999_999);
 

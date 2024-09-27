@@ -35,6 +35,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ParamsService paramsService;
+        [VFAutowired] private readonly DbtLayerService dbtLayerService;
         private ParamManager paramz => paramsService.GetParams();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager avatarMenu => menuService.GetMenu();
@@ -48,11 +49,11 @@ namespace VF.Feature {
 
             foreach (var p in model.prms) {
                 var prms = p.parameters.Get();
-                if (!prms) {
+                if (prms == null) {
                     missingAssets.Add(p.parameters);
                     continue;
                 }
-                var copy = MutableManager.CopyRecursive(prms);
+                var copy = prms.Clone();
                 copy.RewriteParameters(RewriteParamName);
                 foreach (var param in copy.parameters) {
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
@@ -93,7 +94,7 @@ namespace VF.Feature {
 
                 CheckMenuParams(menu);
 
-                var copy = MutableManager.CopyRecursive(menu);
+                var copy = menu.Clone();
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
                 avatarMenu.MergeMenu(prefix, copy);
@@ -310,7 +311,9 @@ namespace VF.Feature {
                             maxSupported = float.MaxValue;
                             break;
                     }
+                    var directTree = dbtLayerService.Create("Smoothing for Full Controller");
                     var smoothed = smoothingService.Smooth(
+                        directTree,
                         $"{rewritten}/Smoothed",
                         target,
                         smoothedParam.smoothingDuration,

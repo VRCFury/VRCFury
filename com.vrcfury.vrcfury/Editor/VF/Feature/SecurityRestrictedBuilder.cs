@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -17,7 +16,7 @@ namespace VF.Feature {
     internal class SecurityRestrictedBuilder : FeatureBuilder<SecurityRestricted> {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ObjectMoveService mover;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly GlobalsService globals;
         
@@ -55,6 +54,7 @@ namespace VF.Feature {
 
             var clip = clipFactory.NewClip("Unlock");
             clip.SetEnabled(wrapper, true);
+            var directTree = directTreeService.Create($"Security Restrict {featureBaseObject.name}");
             directTree.Add(security.GetEnabled().AsFloat(), clip);
         }
 

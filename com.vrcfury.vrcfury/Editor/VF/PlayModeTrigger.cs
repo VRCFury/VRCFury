@@ -16,7 +16,6 @@ using Object = UnityEngine.Object;
 
 namespace VF {
     internal class PlayModeTrigger {
-        private static string tmpDir;
         private const string TriggerObjectName = "__vrcf_play_mode_trigger";
         private static bool scannedThisFrame = false;
 
@@ -24,7 +23,7 @@ namespace VF {
         private static void Init() {
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
             VRCFuryComponent._OnValidate = () => {
-                if (Application.isPlaying && !addedTriggerObjectThisPlayMode) {
+                if (Application.isPlaying && !addedTriggerObjectThisPlayMode && PlayModeMenuItem.Get()) {
                     addedTriggerObjectThisPlayMode = true;
                     var obj = new GameObject(TriggerObjectName);
                     RescanOnStartComponent.AddToObject(obj, true);
@@ -36,7 +35,6 @@ namespace VF {
         private static bool addedTriggerObjectThisPlayMode = false;
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
             if (state == PlayModeStateChange.ExitingEditMode) {
-                tmpDir = null;
                 addedTriggerObjectThisPlayMode = false;
             }
         }
@@ -62,13 +60,6 @@ namespace VF {
             if (!PlayModeMenuItem.Get()) return;
             if (scannedThisFrame) return;
             scannedThisFrame = true;
-
-            if (tmpDir == null) {
-                var tmpDirParent = TmpFilePackage.GetPath() + "/PlayMode";
-                VRCFuryAssetDatabase.DeleteFolder(tmpDirParent);
-                tmpDir = $"{tmpDirParent}/{DateTime.Now.ToString("yyyyMMdd-HHmmss")}";
-                VRCFuryAssetDatabase.CreateFolder(tmpDir);
-            }
 
             foreach (var root in VFGameObject.GetRoots()) {
                 foreach (var avatar in root.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>()) {
@@ -119,11 +110,14 @@ namespace VF {
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
                         try {
                             var hapticContactsService = new HapticContactsService();
-                            var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService, tmpDir);
-                            foreach (var renderer in bakeResult.renderers) {
-                                SaveAssetsService.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
+                            var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService);
+                            if (bakeResult != null) {
+                                var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", bakeResult.name);
+                                foreach (var renderer in bakeResult.renderers) {
+                                    SaveAssetsService.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
+                                }
+                                HideAnnoyingGizmosService.Hide(bakeResult.bakeRoot);
                             }
-                            HideAnnoyingGizmosService.Hide(bakeResult.bakeRoot);
                         } catch (Exception e) {
                             throw new ExceptionWithCause($"Failed to bake detached SPS Plug: {plug.owner().GetPath()}", e);
                         }

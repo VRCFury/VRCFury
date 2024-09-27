@@ -199,6 +199,14 @@ namespace VF.Utils {
             }
         }
 
+        public static void Clear(this AnimationClip clip) {
+            var ext = GetExt(clip);
+            if (ext.curves.Any()) {
+                ext.curves.Clear();
+                ext.changedFromOriginalSourceClip = true;
+            }
+        }
+
         public static void SetAap(this AnimationClip clip, string paramName, FloatOrObjectCurve curve) {
             clip.SetCurve("", typeof(Animator), paramName, curve);
         }
@@ -216,7 +224,16 @@ namespace VF.Utils {
             }
             clip.SetCurve(binding, curve);
         }
-        
+
+        public static void SetLengthCurve(this AnimationClip clip, float length) {
+            clip.SetCurve(
+                "__vrcf_length",
+                typeof(GameObject),
+                "m_IsActive",
+                FloatOrObjectCurve.DummyFloatCurve(length)
+            );
+        }
+
         public static void SetCurve(this AnimationClip clip, Object componentOrObject, string propertyName, FloatOrObjectCurve curve) {
             VFGameObject owner;
             if (componentOrObject is UnityEngine.Component c) {
@@ -229,6 +246,15 @@ namespace VF.Utils {
             var avatarObject = VRCAvatarUtils.GuessAvatarObject(owner);
             var path = owner.GetPath(avatarObject);
             clip.SetCurve(path, componentOrObject.GetType(), propertyName, curve);
+        }
+
+        public static void SetLengthHolder(this AnimationClip clip, float length) {
+            clip.SetCurve(
+                "__vrcf_length",
+                typeof(GameObject),
+                "m_IsActive",
+                FloatOrObjectCurve.DummyFloatCurve(length)
+            );
         }
         
         public static void SetEnabled(this AnimationClip clip, Object componentOrObject, FloatOrObjectCurve enabledCurve) {
@@ -261,19 +287,6 @@ namespace VF.Utils {
             clip.SetCurves(other.GetAllCurves());
         }
 
-        public static AnimationClip GetLastFrame(this AnimationClip clip) {
-            var output = VrcfObjectFactory.Create<AnimationClip>();
-            if (clip.GetLengthInSeconds() == 0) {
-                output.name = clip.name;
-            } else {
-                output.name = $"{clip.name} - Last Frame";
-            }
-            foreach (var c in clip.GetAllCurves()) {
-                output.SetCurve(c.Item1, c.Item2.GetLast());
-            }
-            return output;
-        }
-
         public static bool IsLooping(this AnimationClip clip) {
             return AnimationUtility.GetAnimationClipSettings(clip).loopTime;
         }
@@ -281,7 +294,8 @@ namespace VF.Utils {
         public static void SetLooping(this AnimationClip clip, bool on) {
             var settings = AnimationUtility.GetAnimationClipSettings(clip);
             if (settings.loopTime == on) return;
-            
+
+            clip.name = $"{clip.name} (Loop={on})";
             var ext = GetExt(clip);
             ext.changedFromOriginalSourceClip = true;
             settings.loopTime = on;
@@ -302,16 +316,16 @@ namespace VF.Utils {
                 .ToImmutableHashSet();
         }
 
-        public static AnimationClip Evaluate(this AnimationClip clip, float time) {
+        public static AnimationClip EvaluateClip(this AnimationClip clip, float timeSeconds) {
             var output = clip.Clone();
-            output.name = $"{clip.name} (sampled at {time})";
+            output.name = $"{clip.name} (sampled at {timeSeconds}s)";
             output.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
                 if (curve.IsFloat) {
-                    return (binding, curve.FloatCurve.Evaluate(time), true);
+                    return (binding, curve.FloatCurve.Evaluate(timeSeconds), true);
                 } else {
                     var val = curve.ObjectCurve.Length > 0 ? curve.ObjectCurve[0].value : null;
                     foreach (var key in curve.ObjectCurve.Reverse()) {
-                        if (time >= key.time) {
+                        if (timeSeconds >= key.time) {
                             val = key.value;
                             break;
                         }

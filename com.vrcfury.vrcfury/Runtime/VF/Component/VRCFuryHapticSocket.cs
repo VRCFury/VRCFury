@@ -74,7 +74,7 @@ namespace VF.Component {
             public Vector2 range = new Vector2(-0.25f, 0);
             public DepthActionUnits units = DepthActionUnits.Meters;
             public bool enableSelf;
-            public float smoothingSeconds = 0.1f;
+            public float smoothingSeconds = 0;
             public bool reverseClip = false;
         }
 

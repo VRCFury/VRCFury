@@ -23,6 +23,16 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.UpgradeWrongParamTypes)]
         public void Apply() {
             foreach (var c in controllers.GetAllUsedControllers()) {
+                foreach (var tree in new AnimatorIterator.Trees().From(c.GetRaw())) {
+                    if (tree.blendType == BlendTreeType.Direct) {
+                        tree.RewriteChildren(child => {
+                            if (child.directBlendParameter == VFBlendTreeDirect.AlwaysOneParam) {
+                                child.directBlendParameter = c.One();
+                            }
+                            return child;
+                        });
+                    }
+                }
                 UpgradeWrongParamTypes(c.GetRaw());
                 RemoveWrongParamTypes(c.GetRaw());
             }
@@ -178,10 +188,7 @@ namespace VF.Service {
             // Change the param types
             controller.parameters = controller.parameters.Select(p => {
                 if (paramTypes.TryGetValue(p.name, out var type)) {
-                    float oldDefault = 0;
-                    if (p.type == AnimatorControllerParameterType.Bool) oldDefault = p.defaultBool ? 1 : 0;
-                    if (p.type == AnimatorControllerParameterType.Int) oldDefault = p.defaultInt;
-                    if (p.type == AnimatorControllerParameterType.Float) oldDefault = p.defaultFloat;
+                    var oldDefault = p.GetDefaultValueAsFloat();
                     p.type = type;
                     p.defaultBool = oldDefault > 0;
                     p.defaultInt = (int)Math.Round(oldDefault);
