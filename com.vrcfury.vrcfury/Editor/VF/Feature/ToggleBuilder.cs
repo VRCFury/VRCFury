@@ -230,14 +230,16 @@ namespace VF.Feature {
                     }
                     if (keptOne) {
                         var wrapper = VFBlendTreeDirect.Create($"{motion.name} (with expanded on state)");
-                        wrapper.Add(onCopy);
+                        wrapper.Add(onCopy.GetLastFrame(useLast));
                         wrapper.Add(transitionMotion);
                         return wrapper;
                     }
                     return transitionMotion;
                 }
-                inClip = ExpandIntoTransition(inClip, false);
-                outClip = ExpandIntoTransition(outClip, true);
+                if (model.expandIntoTransition) {
+                    inClip = ExpandIntoTransition(inClip, false);
+                    outClip = ExpandIntoTransition(outClip, true);
+                }
 
                 inState = layer.NewState(onName + " In").WithAnimation(inClip);
                 onState = layer.NewState(onName).WithAnimation(motion);
@@ -518,7 +520,7 @@ namespace VF.Feature {
                             VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(timeIn))
                         ));
                         single.Add(MakeTabbed(
-                            "Then do this until turned off:",
+                            "Then do this until turned off (Main Action):",
                             VRCFuryActionSetDrawer.render(prop.FindPropertyRelative(state))
                         ));
                         single.Add(MakeTabbed(
@@ -530,6 +532,7 @@ namespace VF.Feature {
                         if (!simpleOutTransitionProp.boolValue)
                             cout.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(tout)));
                         single.Add(MakeTabbed("Then play this transition out:", cout));
+                        single.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("expandIntoTransition"), "Extend object enabling and material settings into transitions"));
                     } else {
                         single.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative(state)));
                     }
