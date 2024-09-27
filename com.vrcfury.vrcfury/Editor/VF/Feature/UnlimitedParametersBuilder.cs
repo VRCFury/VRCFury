@@ -59,7 +59,7 @@ namespace VF.Feature {
                 paramsToOptimize.Where(i => i.type == VRCExpressionParameters.ValueType.Bool).ToList();
             
 
-            var boolsInParallel = maxBits - (paramz.GetRaw().CalcTotalCost() - (numbersToOptimize.Count() - 1) * 8 - boolsToOptimize.Count() + 8);
+            var boolsInParallel = maxBits - (paramz.GetRaw().CalcTotalCost() - numbersToOptimize.Count() * 8 - boolsToOptimize.Count() + 16);
 
             if (boolsToOptimize.Count <= boolsInParallel) boolsToOptimize.Clear();
             var boolBatches = boolsToOptimize.Select(i => i.name)
