@@ -225,15 +225,6 @@ namespace VF.Utils {
             clip.SetCurve(binding, curve);
         }
 
-        public static void SetLengthCurve(this AnimationClip clip, float length) {
-            clip.SetCurve(
-                "__vrcf_length",
-                typeof(GameObject),
-                "m_IsActive",
-                FloatOrObjectCurve.DummyFloatCurve(length)
-            );
-        }
-
         public static void SetCurve(this AnimationClip clip, Object componentOrObject, string propertyName, FloatOrObjectCurve curve) {
             VFGameObject owner;
             if (componentOrObject is UnityEngine.Component c) {

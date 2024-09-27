@@ -53,7 +53,7 @@ namespace VF.Service {
                     }
                     var wrapper = VFBlendTreeDirect.Create($"{tree.name} (Length Fixed)");
                     var lenClip = clipFactory.NewClip($"{tree.name} Length", false);
-                    lenClip.SetLengthCurve(maxLen);
+                    lenClip.SetLengthHolder(maxLen);
                     wrapper.Add(lenClip);
                     wrapper.Add(tree);
                     state.motion = wrapper;

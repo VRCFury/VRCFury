@@ -43,13 +43,14 @@ namespace VF.Utils {
                 .Any(binding => binding.IsValid(avatarRoot));
         }
         
-        public static Motion GetLastFrame(this Motion motion) {
+        public static Motion GetLastFrame(this Motion motion, bool last = true) {
             var clone = motion.Clone();
             foreach (var clip in new AnimatorIterator.Clips().From(clone)) {
                 clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
                     if (curve.lengthInSeconds == 0) return (binding, curve, false);
-                    return (binding, curve.GetLast(), true);
+                    return (binding, last ? curve.GetLast() : curve.GetFirst(), true);
                 }));
+                clip.SetLengthHolder(0);
             }
             return clone;
         }
