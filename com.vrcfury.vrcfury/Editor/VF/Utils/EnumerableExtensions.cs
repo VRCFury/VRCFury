@@ -18,5 +18,12 @@ namespace VF.Utils {
                 with(item);
             }
         }
+
+        public static IEnumerable<IEnumerable<T>> Chunk<T>(this IEnumerable<T> source, int chunkSize) {
+            return source
+                .Select((e,i) => (e,i))
+                .GroupBy(x => x.i / chunkSize)
+                .Select(g => g.Select(x => x.e));
+        }
     }
 }
