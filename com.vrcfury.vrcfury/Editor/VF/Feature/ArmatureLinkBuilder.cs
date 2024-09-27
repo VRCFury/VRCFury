@@ -160,6 +160,10 @@ namespace VF.Feature {
                          " (Paired with Advanced Link Target Mode pointing to the avatar root)." +
                          " BEWARE: If you use this, offset animations and toggles for the merged object WILL NOT WORK."));
             
+            super.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("forceOneWorldScale"),
+                "Force world scale to 1,1,1",
+                tooltip: "After linking, forces the world scale of the root object to 1,1,1."));
+            
             var chestUpWarning = VRCFuryEditorUtils.Warn(
                 "These clothes are designed for an avatar with a different ChestUp configuration. You may" +
                 " have downloaded the wrong version of the clothes for your avatar version, or the clothes may not be designed for your avatar." +

@@ -20,7 +20,7 @@ namespace VF {
         private const string LegacyPrefabsImportedMarker = TmpDirPath + "/LegacyPrefabsImported";
 
         public static void Cleanup() {
-            var usedFolders = UnityEngine.Object.FindObjectsOfType<VRCAvatarDescriptor>()
+            var usedFolders = Resources.FindObjectsOfTypeAll<VRCAvatarDescriptor>()
                 .SelectMany(VRCAvatarUtils.GetAllControllers)
                 .Where(c => !c.isDefault && c.controller != null)
                 .Select(c => AssetDatabase.GetAssetPath(c.controller))

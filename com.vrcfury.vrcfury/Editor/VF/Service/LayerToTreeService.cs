@@ -245,6 +245,13 @@ namespace VF.Service {
                     throw new DoNotOptimizeException($"{state.name} contains non-static motion that loops");
                 }
 
+                var hasNegativeTimeScaleClip = new AnimatorIterator.Trees().From(state.motion)
+                    .SelectMany(tree => tree.children)
+                    .Any(child => child.timeScale <= 0);
+                if (hasNegativeTimeScaleClip) {
+                    throw new DoNotOptimizeException($"{state.name} contains a tree child with a timeScale <= 0");
+                }
+
                 var startMotion = state.motion.Clone();
                 foreach (var clip in new AnimatorIterator.Clips().From(startMotion)) {
                     var dualState = clip.SplitRangeClip();
@@ -273,7 +280,7 @@ namespace VF.Service {
                     subTree.Add(0, startMotion);
                     subTree.Add(1, endMotion);
                     return subTree;
-                } else {
+                } else if (state.motion is AnimationClip) {
                     if (clipsInMotion.Any(clip => clip.GetLengthInFrames() > 5)) {
                         throw new DoNotOptimizeException($"{state.name} contains a non-static clip that is long enough to notice the animation");
                     }
@@ -281,6 +288,8 @@ namespace VF.Service {
                     if (state.speed <= -0.9) return startMotion;
                     if (Mathf.Approximately(state.speed, 0)) return startMotion;
                     throw new DoNotOptimizeException($"{state.name} contains a non-static clip with a non-standard speed");
+                } else {
+                    throw new DoNotOptimizeException($"{state.name} contains a non-static clip that is a blendtree not using motion time");
                 }
             } else {
                 return state.motion;

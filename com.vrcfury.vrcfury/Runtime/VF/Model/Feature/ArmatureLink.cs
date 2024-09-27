@@ -38,6 +38,7 @@ namespace VF.Model.Feature {
         public bool removeParentConstraints = true;
         public string forceMergedName = "";
         [NonSerialized] public Func<bool> onlyIf;
+        public bool forceOneWorldScale = false;
         
         // legacy
         [Obsolete] public bool useOptimizedUpload;

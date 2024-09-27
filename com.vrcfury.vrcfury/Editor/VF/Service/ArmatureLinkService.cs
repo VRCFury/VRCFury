@@ -270,6 +270,9 @@ namespace VF.Service {
                     addedObject.worldScale = avatarBone.worldScale * scalingFactor;
                     AddDebugInfo($"Keep offsets is set to NO, so this object was snapped to its parent's transform");
                 }
+                if (model.forceOneWorldScale) {
+                    addedObject.worldScale = Vector3.one;
+                }
 
                 if (ShouldReuseBone()) {
                     RewriteSkins(propBone, avatarBone, avatarObject);
