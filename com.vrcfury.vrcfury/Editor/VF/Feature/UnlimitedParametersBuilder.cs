@@ -61,6 +61,8 @@ namespace VF.Feature {
 
             var boolsInParallel = maxBits - (paramz.GetRaw().CalcTotalCost() - numbersToOptimize.Count() * 8 - boolsToOptimize.Count() + 16);
 
+            if (boolsInParallel <= 0) boolsInParallel = 1;
+
             if (boolsToOptimize.Count <= boolsInParallel) boolsToOptimize.Clear();
             var boolBatches = boolsToOptimize.Select(i => i.name)
                 .Chunk(boolsInParallel)
