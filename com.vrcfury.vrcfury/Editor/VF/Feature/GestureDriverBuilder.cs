@@ -21,7 +21,6 @@ namespace VF.Feature {
         private readonly Dictionary<string, VFCondition> excludeConditions = new Dictionary<string, VFCondition>();
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
