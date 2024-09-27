@@ -94,10 +94,7 @@ namespace VF.Feature {
                 );
                 onCondition = smoothedWeight.IsGreaterThan(0.05f);
                 transitionTime = 0.05f;
-                var tree = VFBlendTree1D.Create(uid + "_blend", smoothedWeight);
-                tree.Add(0, clipFactory.GetEmptyClip());
-                tree.Add(1, clip.GetLastFrame());
-                on.WithAnimation(tree);
+                on.WithAnimation(clip).MotionTime(smoothedWeight);
             } else {
                 var clip = actionClipService.LoadState(uid, gesture.state);
                 on.WithAnimation(clip);
