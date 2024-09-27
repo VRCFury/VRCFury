@@ -240,6 +240,13 @@ namespace VF.Feature {
                     inClip = ExpandIntoTransition(inClip, false);
                     outClip = ExpandIntoTransition(outClip, true);
                 }
+                
+                foreach (var clip in new AnimatorIterator.Clips().From(inClip)) {
+                    clip.SetLooping(false);
+                }
+                foreach (var clip in new AnimatorIterator.Clips().From(outClip)) {
+                    clip.SetLooping(false);
+                }
 
                 inState = layer.NewState(onName + " In").WithAnimation(inClip);
                 onState = layer.NewState(onName).WithAnimation(motion);
