@@ -281,7 +281,6 @@ namespace VF.Service {
                     subTree.Add(1, endMotion);
                     return subTree;
                 } else if (state.motion is AnimationClip) {
-                    // Don't static-ize a blendtree, since it may have parameters that change the outcome
                     if (clipsInMotion.Any(clip => clip.GetLengthInFrames() > 5)) {
                         throw new DoNotOptimizeException($"{state.name} contains a non-static clip that is long enough to notice the animation");
                     }
@@ -289,6 +288,8 @@ namespace VF.Service {
                     if (state.speed <= -0.9) return startMotion;
                     if (Mathf.Approximately(state.speed, 0)) return startMotion;
                     throw new DoNotOptimizeException($"{state.name} contains a non-static clip with a non-standard speed");
+                } else {
+                    throw new DoNotOptimizeException($"{state.name} contains a non-static clip that is a blendtree not using motion time");
                 }
             } else {
                 return state.motion;
