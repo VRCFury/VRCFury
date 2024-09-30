@@ -17,11 +17,11 @@ namespace VF.Hooks {
 #if VRC_NEW_PUBLIC_SDK
         [InitializeOnLoadMethod]
         private static void Init() {
-            VRCSdkControlPanel.OnSdkPanelEnable += (_, _) => {
+            VRCSdkControlPanel.OnSdkPanelEnable += (_, _2) => {
                 if (VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder)) {
-                    builder.OnSdkBuildStart += (_, _) => callbacks.Clear();
-                    builder.OnSdkUploadFinish += (_, _) => callbacks.Clear();
-                    builder.OnSdkUploadSuccess += (_, _) => {
+                    builder.OnSdkBuildStart += (_3, _4) => callbacks.Clear();
+                    builder.OnSdkUploadFinish += (_3, _4) => callbacks.Clear();
+                    builder.OnSdkUploadSuccess += (_3, _4) => {
                         foreach (var c in callbacks) {
                             VRCFExceptionUtils.ErrorDialogBoundary(c);
                         }
