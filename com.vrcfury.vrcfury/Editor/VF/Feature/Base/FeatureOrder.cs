@@ -80,14 +80,14 @@ namespace VF.Feature.Base {
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
-        FixPartiallyWeightedAaps, // Needs to run before PositionDefaultsLayer, before OptimizeBlendTrees, after everything setting AAPs, before anything that would remove the defaults layer like CleanupEmptyLayers
+        LocomotionConflictResolver,
+        ActionConflictResolver,
+        TrackingConflictResolver,
+        FixPartiallyWeightedAaps, // Needs to run before PositionDefaultsLayer, before OptimizeBlendTrees, after everything setting AAPs, after TrackingConflictResolver (creates aaps), before anything that would remove the defaults layer like CleanupEmptyLayers
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
         FixUnsetPlayableLayers,
         PositionDefaultsLayer, // Needs to be right before FixMasks so it winds up at the top of FX, right under the base mask
         FixMasks,
-        LocomotionConflictResolver,
-        ActionConflictResolver,
-        TrackingConflictResolver,
         LayerToTree, // Needs to run after animations are done, including everything that makes its own DBT, including TrackingConflictResolver
         AvoidMmdLayers, // Needs to be after CleanupEmptyLayers (which removes empty layers) and FixMasks and RecordAllDefaults (which may insert layers at the top)
         AnimatorLayerControlFix,

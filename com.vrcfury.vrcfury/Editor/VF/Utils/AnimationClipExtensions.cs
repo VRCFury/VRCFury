@@ -351,52 +351,5 @@ namespace VF.Utils {
                 return (binding, curve, false);
             }));
         }
-        
-        /**
-         * Converts a "two keyframe" clip into its two separate keyframes.
-         * If clip is not made up of two unique (start and end) keyframes, returns null.
-         */
-        public static Tuple<AnimationClip, AnimationClip> SplitRangeClip(this AnimationClip clip) {
-            var times = new HashSet<float>();
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (curve.IsFloat) {
-                    times.UnionWith(curve.FloatCurve.keys.Select(key => key.time));
-                } else {
-                    times.UnionWith(curve.ObjectCurve.Select(key => key.time));
-                }
-            }
-
-            if (!times.Contains(0)) return null;
-            if (times.Count > 2) return null;
-
-            var startClip = VrcfObjectFactory.Create<AnimationClip>();
-            startClip.name = $"{clip.name} - First Frame";
-            var endClip = VrcfObjectFactory.Create<AnimationClip>();
-            endClip.name = $"{clip.name} - Last Frame";
-            
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (curve.IsFloat) {
-                    var first = true;
-                    foreach (var key in curve.FloatCurve.keys) {
-                        if (first) {
-                            startClip.SetCurve(binding, key.value);
-                            first = false;
-                        }
-                        endClip.SetCurve(binding, key.value);
-                    }
-                } else {
-                    var first = true;
-                    foreach (var key in curve.ObjectCurve) {
-                        if (first) {
-                            startClip.SetCurve(binding, key.value);
-                            first = false;
-                        }
-                        endClip.SetCurve(binding, key.value);
-                    }
-                }
-            }
-
-            return Tuple.Create(startClip, endClip);
-        }
     }
 }
