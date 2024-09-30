@@ -37,103 +37,10 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.ParameterCompressor)]
         public void Apply() {
             IList<(string name, VRCExpressionParameters.ValueType type)> paramsToOptimize;
-            if (!BuildTargetUtils.IsDesktop()) {
-                // Mobile
-                var blueprintId = avatarObject.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
-                var savePath = GetSavePath(blueprintId);
-                if (savePath != null && File.Exists(savePath)) {
-                    var desktopDataStr = File.ReadAllText(savePath);
-                    var desktopData = JsonUtility.FromJson<SavedData>(desktopDataStr);
-                    // Align params with desktop copy
-                    var mobileParams = paramz.GetRaw().Clone().parameters.ToArray();
-                    var mobileParamsBySource = mobileParams.ToDictionary(
-                        p => parameterSourceService.GetSource(p.name),
-                        p => p
-                    );
-                    paramsToOptimize = new List<(string, VRCExpressionParameters.ValueType)>();
-                    var reordered = new List<VRCExpressionParameters.Parameter>();
-                    var rand = new Random().Next(100_000_000, 900_000_000);
-                    foreach (var desktopParam in desktopData.syncedParams) {
-                        if (mobileParamsBySource.TryGetValue(desktopParam.ToSource(), out var mobileParam)) {
-                            mobileParam.valueType = desktopParam.type;
-                            mobileParam.SetNetworkSynced(true);
-                            if (desktopParam.compressed) {
-                                paramsToOptimize.Add((mobileParam.name, mobileParam.valueType));
-                            }
-                            reordered.Add(mobileParam);
-                        } else {
-                            var fillerName = $"__missing_param_from_desktop_{rand}_{desktopParam.paramName}";
-                            reordered.Add(new VRCExpressionParameters.Parameter() {
-                                name = fillerName,
-                                valueType = desktopParam.type,
-                            });
-                            if (desktopParam.compressed) {
-                                paramsToOptimize.Add((fillerName, desktopParam.type));
-                            }
-                        }
-                    }
-
-                    var mobileExtras = mobileParams.Where(p => !reordered.Contains(p)).ToArray();
-                    var warnAboutExtras = mobileExtras.Where(p => p.IsNetworkSynced()).Select(p => {
-                        var source = parameterSourceService.GetSource(p.name);
-                        return source.originalParamName + " from " + source.objectPath;
-                    }).ToArray();
-                    foreach (var p in mobileExtras) {
-                        p.SetNetworkSynced(false);
-                    }
-                    reordered.AddRange(mobileExtras);
-                    if (warnAboutExtras.Any()) {
-                        EditorUtility.DisplayDialog(
-                            "VRCFury Mobile Sync",
-                            "Warning: This mobile avatar contains parameters which will NOT sync, because they are not present in the desktop version." +
-                            " If this is unexpected, make sure you upload the desktop version FIRST, and ensure the missing prefabs are in the same location in the hierarchy.\n\n"
-                            + warnAboutExtras.Join('\n'),
-                            "Ok"
-                        );
-                    }
-
-                    paramsService.GetParams().GetRaw().parameters = reordered.ToArray();
-                } else {
-                    EditorUtility.DisplayDialog(
-                        "VRCFury Mobile Sync",
-                        "Warning: You have not uploaded the desktop version of this avatar yet." +
-                        " If you want parameters to sync properly, please upload the desktop version first.",
-                        "Ok"
-                    );
-                    paramsToOptimize = GetParamsToOptimize();
-                }
+            if (BuildTargetUtils.IsDesktop()) {
+                paramsToOptimize = AlignForDesktop();
             } else {
-                // Desktop
-                paramsToOptimize = GetParamsToOptimize();
-                if (IsActuallyUploadingHook.Get()) {
-                    var saveList = paramz.GetRaw().Clone().parameters.Where(p => p.IsNetworkSynced()).Select(p => {
-                        var source = parameterSourceService.GetSource(p.name);
-                        return new SavedParam() {
-                            compressed = paramsToOptimize.Any(o => o.name == p.name),
-                            objectPath = source.objectPath,
-                            offset = source.offset,
-                            paramName = source.originalParamName,
-                            type = p.valueType
-                        };
-                    }).ToList();
-                    var saveData = new SavedData() {
-                        syncedParams = saveList,
-                        saveVersion = 1,
-                        unityVersion = Application.unityVersion,
-                        vrcfuryVersion = VRCFPackageUtils.Version
-                    };
-                    var saveText = JsonUtility.ToJson(saveData, true);
-                    var originalAvatar = originalAvatarService.GetOriginal();
-                    WhenBlueprintIdReadyHook.Add(() => {
-                        var blueprintId = originalAvatar.NullSafe()?.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
-                        var savePath = GetSavePath(blueprintId);
-                        if (savePath != null) {
-                            var dir = Path.GetDirectoryName(savePath);
-                            if (dir != null) Directory.CreateDirectory(dir);
-                            File.WriteAllBytes(savePath, Encoding.UTF8.GetBytes(saveText));
-                        }
-                    });
-                }
+                paramsToOptimize = AlignForMobile();
             }
 
             if (!paramsToOptimize.Any()) {
@@ -351,6 +258,129 @@ namespace VF.Service {
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if (string.IsNullOrEmpty(localAppData)) return null;
             return Path.Combine(localAppData, "VRCFury", "DesktopSyncData", blueprintId + ".json");
+        }
+
+        private IList<(string, VRCExpressionParameters.ValueType)> AlignForMobile() {
+            // Mobile
+            var blueprintId = avatarObject.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
+            var savePath = GetSavePath(blueprintId);
+            if (savePath == null || !File.Exists(savePath)) {
+                EditorUtility.DisplayDialog(
+                    "VRCFury Mobile Sync",
+                    "Warning: You have not uploaded the desktop version of this avatar yet." +
+                    " If you want parameters to sync properly, please upload the desktop version first.",
+                    "Ok"
+                );
+                return GetParamsToOptimize();
+            }
+
+            var desktopDataStr = File.ReadAllText(savePath);
+            var desktopData = JsonUtility.FromJson<SavedData>(desktopDataStr);
+
+            if (desktopData.saveVersion != 1) {
+                EditorUtility.DisplayDialog(
+                    "VRCFury Mobile Sync",
+                    "Warning: You have not uploaded the desktop version of this avatar yet." +
+                    " If you want parameters to sync properly, please upload the desktop version first.",
+                    "Ok"
+                );
+                return GetParamsToOptimize();
+            }
+            if (desktopData.vrcfuryVersion != VRCFPackageUtils.Version) {
+                EditorUtility.DisplayDialog(
+                    "VRCFury Mobile Sync",
+                    "Warning: The desktop version of this avatar was uploaded with a different version of VRCFury." +
+                    " If you want parameters to sync properly, please ensure the VRCFury version matches, and upload the desktop version first.\n\n" +
+                    $"Desktop VRCFury Version: {desktopData.vrcfuryVersion}\n" +
+                    $"This project's VRCFury Version: {VRCFPackageUtils.Version}",
+                    "Ok"
+                );
+            }
+            
+            // Align params with desktop copy
+            var mobileParams = paramz.GetRaw().Clone().parameters.ToArray();
+            var mobileParamsBySource = mobileParams.ToDictionary(
+                p => parameterSourceService.GetSource(p.name),
+                p => p
+            );
+            var paramsToOptimize = new List<(string, VRCExpressionParameters.ValueType)>();
+            var reordered = new List<VRCExpressionParameters.Parameter>();
+            var rand = new Random().Next(100_000_000, 900_000_000);
+            foreach (var desktopParam in desktopData.syncedParams) {
+                if (mobileParamsBySource.TryGetValue(desktopParam.ToSource(), out var mobileParam)) {
+                    mobileParam.valueType = desktopParam.type;
+                    mobileParam.SetNetworkSynced(true);
+                    if (desktopParam.compressed) {
+                        paramsToOptimize.Add((mobileParam.name, mobileParam.valueType));
+                    }
+                    reordered.Add(mobileParam);
+                } else {
+                    var fillerName = $"__missing_param_from_desktop_{rand}_{desktopParam.paramName}";
+                    reordered.Add(new VRCExpressionParameters.Parameter() {
+                        name = fillerName,
+                        valueType = desktopParam.type,
+                    });
+                    if (desktopParam.compressed) {
+                        paramsToOptimize.Add((fillerName, desktopParam.type));
+                    }
+                }
+            }
+
+            var mobileExtras = mobileParams.Where(p => !reordered.Contains(p)).ToArray();
+            var warnAboutExtras = mobileExtras.Where(p => p.IsNetworkSynced()).Select(p => {
+                var source = parameterSourceService.GetSource(p.name);
+                return source.originalParamName + " from " + source.objectPath;
+            }).ToArray();
+            foreach (var p in mobileExtras) {
+                p.SetNetworkSynced(false);
+            }
+            reordered.AddRange(mobileExtras);
+            if (warnAboutExtras.Any()) {
+                EditorUtility.DisplayDialog(
+                    "VRCFury Mobile Sync",
+                    "Warning: This mobile avatar contains parameters which will NOT sync, because they are not present in the desktop version." +
+                    " If this is unexpected, make sure you upload the desktop version FIRST, and ensure the missing prefabs are in the same location in the hierarchy.\n\n"
+                    + warnAboutExtras.Join('\n'),
+                    "Ok"
+                );
+            }
+
+            paramsService.GetParams().GetRaw().parameters = reordered.ToArray();
+            return paramsToOptimize;
+        }
+
+        public IList<(string, VRCExpressionParameters.ValueType)> AlignForDesktop() {
+            var paramsToOptimize = GetParamsToOptimize();
+            if (IsActuallyUploadingHook.Get()) {
+                var saveList = paramz.GetRaw().Clone().parameters.Where(p => p.IsNetworkSynced()).Select(p => {
+                    var source = parameterSourceService.GetSource(p.name);
+                    return new SavedParam() {
+                        compressed = paramsToOptimize.Any(o => o.name == p.name),
+                        objectPath = source.objectPath,
+                        offset = source.offset,
+                        paramName = source.originalParamName,
+                        type = p.valueType
+                    };
+                }).ToList();
+                var saveData = new SavedData() {
+                    syncedParams = saveList,
+                    saveVersion = 1,
+                    unityVersion = Application.unityVersion,
+                    vrcfuryVersion = VRCFPackageUtils.Version
+                };
+                var saveText = JsonUtility.ToJson(saveData, true);
+                var originalAvatar = originalAvatarService.GetOriginal();
+                WhenBlueprintIdReadyHook.Add(() => {
+                    var blueprintId = originalAvatar.NullSafe()?.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
+                    var savePath = GetSavePath(blueprintId);
+                    if (savePath != null) {
+                        var dir = Path.GetDirectoryName(savePath);
+                        if (dir != null) Directory.CreateDirectory(dir);
+                        File.WriteAllBytes(savePath, Encoding.UTF8.GetBytes(saveText));
+                    }
+                });
+            }
+            return paramsToOptimize;
         }
     }
 }
