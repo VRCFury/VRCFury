@@ -14,6 +14,7 @@ namespace VF.Service {
         [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ParamsService paramsService;
+        [VFAutowired] private readonly ParameterSourceService parameterSourceService;
         private ParamManager paramz => paramsService.GetParams();
 
         private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager> _controllers
@@ -58,13 +59,20 @@ namespace VF.Service {
             }
             return false;
         }
-        public string MakeUniqueParamName(string name) {
-            name = "VF" + globals.currentFeatureNumProvider() + "_" + name;
+        public string MakeUniqueParamName(string originalName) {
+            var name = "VF" + globals.currentFeatureNumProvider() + "_" + originalName;
 
             int offset = 1;
             while (true) {
                 var attempt = name + ((offset == 1) ? "" : offset+"");
-                if (!IsParamUsed(attempt)) return attempt;
+                if (!IsParamUsed(attempt)) {
+                    parameterSourceService.RecordParamSource(
+                        attempt,
+                        globals.currentFeatureObjectPath(),
+                        originalName
+                    );
+                    return attempt;
+                }
                 offset++;
             }
         }
