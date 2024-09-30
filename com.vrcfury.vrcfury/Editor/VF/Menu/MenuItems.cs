@@ -43,8 +43,6 @@ namespace VF.Menu {
         public const int debugCopyPriority = 1317;
         public const string recompileAll = prefix + "Utilites/Recompile all scripts";
         public const int recompileAllPriority = 1318;
-        public const string unpauseDb = prefix + "Utilites/Force unpause Asset Database";
-        public const int unpauseDbPriority = 1319;
         
         public const string playMode = prefix + "Settings/Enable VRCFury in play mode";
         public const int playModePriority = 1321;
@@ -177,16 +175,6 @@ namespace VF.Menu {
                     $"Done",
                     "Ok"
                 );
-            });
-        }
-        
-        [MenuItem(unpauseDb, priority = unpauseDbPriority)]
-        private static void UnpauseDb() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                for (var i = 0; i < 10; i++) {
-                    AssetDatabase.StopAssetEditing();
-                    AssetDatabase.AllowAutoRefresh();
-                }
             });
         }
     }

@@ -33,6 +33,7 @@ namespace VF {
                 VRCFuryAssetDatabase.DeleteFiltered(tmpDir, path => {
                     if (usedFolders.Any(used => path.StartsWith($"{used}/") || path == used || used.StartsWith($"{path}/"))) return false;
                     if (path.StartsWith(tmpDir + "/SPS")) return false;
+                    if (path.StartsWith(tmpDir + "/XR")) return false;
                     if (path.StartsWith(tmpDir + "/package.json")) return false;
                     if (path.StartsWith(tmpDir + "/LegacyPrefabsImported")) return false;
                     return true;
