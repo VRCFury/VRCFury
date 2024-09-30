@@ -155,8 +155,8 @@ namespace VF.Utils {
         /**
          * a,b : [-10000,10000]
          */
-        public static VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, bool orEqual = false, string name = null) {
-            name = name ?? $"{CleanName(a)} {(orEqual ? ">=" : ">")} {CleanName(b)}";
+        public static VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, string name = null) {
+            name = name ?? $"{CleanName(a)} > {CleanName(b)}";
             return new VFAFloatBool((whenTrue, whenFalse) => {
                 if (whenTrue == null) whenTrue = VrcfObjectFactory.Create<AnimationClip>();
                 if (whenFalse == null) whenFalse = VrcfObjectFactory.Create<AnimationClip>();
@@ -167,14 +167,14 @@ namespace VF.Utils {
                 tree.Add(new Vector2(-10000, 10000), whenFalse);
                 tree.Add(new Vector2(0.000001f, -0.000001f), whenTrue);
                 return tree;
-            }, a.GetDefault() > b.GetDefault() || (orEqual && a.GetDefault() == b.GetDefault()));
+            }, a.GetDefault() > b.GetDefault());
         }
         
         /**
          * a,b : (-Infinity,Infinity)
          */
         public static VFAFloatBool GreaterThan(VFAFloat a, float b, bool orEqual = false, string name = null) {
-            name = name ?? $"{CleanName(a)} > {b}";
+            name = name ?? $"{a} {(orEqual ? ">=" : ">")} {b}";
             return new VFAFloatBool((whenTrue, whenFalse) => VFBlendTree1D.CreateWithData(
                 name,
                 a,
