@@ -340,7 +340,7 @@ namespace VF.Builder.Haptics {
                 .Concat(hasExistingPlug)
                 .ToImmutableHashSet();
             if (addedPlug.Count > 0)
-                parts.Add("Plug component will be added to:\n" + string.Join("\n", addedPlug.Select(GetPath)));
+                parts.Add("Plug component will be added to:\n" + addedPlug.Select(GetPath).Join('\n'));
 
             string GetSocketLine(VFGameObject t) {
                 if (addedSocketNames.TryGetValue(t, out var name)) {
@@ -349,14 +349,14 @@ namespace VF.Builder.Haptics {
                 return GetPath(t);
             }
             if (addedSocket.Count > 0)
-                parts.Add("Socket component will be added to:\n" + string.Join("\n", addedSocket.Select(GetSocketLine)));
+                parts.Add("Socket component will be added to:\n" + addedSocket.Select(GetSocketLine).Join('\n'));
             if (deletions.Count > 0)
-                parts.Add("These objects will be deleted:\n" + string.Join("\n", deletions));
+                parts.Add("These objects will be deleted:\n" + deletions.Join('\n'));
             if (alreadyExists.Count > 0)
-                parts.Add("SPS already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
+                parts.Add("SPS already exists on:\n" + alreadyExists.Select(GetPath).Join('\n'));
 
             if (parts.Count == 0) return "";
-            return string.Join("\n\n", parts);
+            return parts.Join("\n\n");
         }
 
         private static string GetNameFromBakeInfo(VFGameObject marker) {

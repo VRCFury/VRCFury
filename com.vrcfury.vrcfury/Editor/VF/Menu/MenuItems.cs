@@ -132,12 +132,12 @@ namespace VF.Menu {
                     if (c == null || c is Transform) continue;
                     var type = c.GetType().Name;
                     if (c is VRCFury vf) {
-                        type += " (" + string.Join(",", vf.GetAllFeatures().Select(f => f.GetType().Name)) + ")";
+                        type += " (" + vf.GetAllFeatures().Select(f => f.GetType().Name).Join(',') + ")";
                     }
                     list.Add(type  + " in " + c.owner().GetPath(obj));
                 }
 
-                var output = $"List of components on {obj}:\n" + string.Join("\n", list);
+                var output = $"List of components on {obj}:\n" + list.Join('\n');
                 GUIUtility.systemCopyBuffer = output;
 
                 EditorUtility.DisplayDialog(

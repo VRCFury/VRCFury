@@ -54,7 +54,7 @@ namespace VF.Service {
                     .Select(c => c.owner().GetPath(avatarObject))
                     .OrderBy(path => path)
                     .ToArray();
-                Debug.Log("Contact report:\n" + string.Join("\n", contactPaths));
+                Debug.Log("Contact report:\n" + contactPaths.Join('\n'));
                 var usesSps = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>().Any()
                               || avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any();
                 if (usesSps) {

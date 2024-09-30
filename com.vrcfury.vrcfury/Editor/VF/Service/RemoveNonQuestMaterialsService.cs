@@ -60,7 +60,7 @@ namespace VF.Service {
                                             "You have likely switched build target by mistake and simply need to switch back to Windows mode using the VRChat SDK Control Panel. " + 
                                             "If you have not switched by mistake and want to build for mobile, you will need to change your materials to use shaders found in VRChat/Mobile.\n" +
                                             "\n" +
-                                            string.Join("\n", sorted) + moreText, 
+                                            sorted.Join('\n') + moreText, 
                                             "OK" );
             }
         }

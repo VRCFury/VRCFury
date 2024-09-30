@@ -42,7 +42,7 @@ namespace VF.Menu {
             }
             var doIt = EditorUtility.DisplayDialog(
                 "Unused Bone Cleanup",
-                "The following bones will be deleted from your avatar:\n" + string.Join("\n", effects) +
+                "The following bones will be deleted from your avatar:\n" + effects.Join('\n') +
                 "\n\nContinue?",
                 "Yes, Delete them",
                 "Cancel"

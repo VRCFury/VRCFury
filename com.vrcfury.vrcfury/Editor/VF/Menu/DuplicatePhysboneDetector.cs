@@ -41,13 +41,13 @@ namespace VF.Menu {
                     return;
                 }
 
-                var split = string.Join("\n\n", bad).Split('\n').ToList();
+                var split = bad.Join("\n\n").Split('\n').ToList();
                 while (split.Count > 0) {
                     var numToPick = Math.Min(split.Count, 40);
                     var part = split.GetRange(0, numToPick);
                     split.RemoveRange(0, numToPick);
                     
-                    var message = "Duplicate physbones found in loaded objects:\n\n" + string.Join("\n", part);
+                    var message = "Duplicate physbones found in loaded objects:\n\n" + part.Join('\n');
                     if (split.Count > 0) message += "\n... and more (will be shown in next dialog)";
                     
                     message += "\n\nDelete the duplicates?";
@@ -81,7 +81,7 @@ namespace VF.Menu {
                 var mutable = components.Where(IsMutable).ToList();
                 if (mutable.Count == 0) continue;
                 var targetStr = GetName(target);
-                var cStrs = string.Join("\n", components.Select(c => GetName(c, sources)));
+                var cStrs = components.Select(c => GetName(c, sources)).Join('\n');
                 badList.Add( $"{targetStr}\nis targeted by\n{cStrs}");
             }
         }

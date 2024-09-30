@@ -3,6 +3,7 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
@@ -39,7 +40,7 @@ namespace VF.Service {
                         "Your avatar contains multiple locomotion implementations." +
                         " You can only use one of these:\n\n" +
                         "Layer type: " + VRCFEnumUtils.GetName(type) + "\n" +
-                        "Sources:\n" + string.Join("\n", uniqueOwners)
+                        "Sources:\n" + uniqueOwners.Join('\n')
                     );
                 }
 

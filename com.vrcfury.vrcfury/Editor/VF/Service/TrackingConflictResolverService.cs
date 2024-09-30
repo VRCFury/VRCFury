@@ -61,7 +61,7 @@ namespace VF.Service {
             Debug.Log("Tracking Control Conflict Report:\n"
                       + "Consumers (vrcf blink / visemes): " + (whenCollected.Any() ? "Yes" : "No")
                       + "Inhibitors (vrcf actions affecting tracking control): " + (inhibitors.GetKeys().Any() ? "Yes" : "No")
-                      + "Tracking Control Contributors: " + string.Join(",", usedOwners));
+                      + "Tracking Control Contributors: " + usedOwners.Join(','));
             if (!useMerger) {
                 return;
             }

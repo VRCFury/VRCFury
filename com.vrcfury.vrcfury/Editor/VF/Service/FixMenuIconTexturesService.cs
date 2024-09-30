@@ -38,7 +38,7 @@ namespace VF.Service {
             }
             
             menu.GetRaw().ForEachMenu(ForEachItem: (control, path) => {
-                var strPath = string.Join("/", path);
+                var strPath = path.Join('/');
                 control.icon = Optimize(control.icon, strPath);
                 if (control.labels != null) {
                     control.labels = control.labels.Select(label => {

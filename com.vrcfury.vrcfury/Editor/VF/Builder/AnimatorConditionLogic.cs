@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor.Animations;
 using VF.Inspector;
+using VF.Utils;
 using AnimatorConditions = System.Collections.Generic.IEnumerable<UnityEditor.Animations.AnimatorCondition>;
 using AnimatorConditionsUnion = System.Collections.Generic.IEnumerable<
     System.Collections.Generic.IEnumerable<UnityEditor.Animations.AnimatorCondition>>;
@@ -88,7 +89,7 @@ namespace VF.Builder {
         }
 
         private static string Stringify(AnimatorConditions conds) {
-            return string.Join("|", conds.Select(c => c.mode + "." + c.parameter + "." + c.threshold));
+            return conds.Select(c => c.mode + "." + c.parameter + "." + c.threshold).Join('|');
         }
         
         private static AnimatorConditions Simplify(AnimatorConditions conds) {

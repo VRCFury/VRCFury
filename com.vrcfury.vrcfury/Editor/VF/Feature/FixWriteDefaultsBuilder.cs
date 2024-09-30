@@ -10,6 +10,7 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
@@ -59,13 +60,13 @@ namespace VF.Feature {
                     output.Add("Avatar base has broken mixed write defaults!");
                     output.Add("Here are the states that don't match:");
                     if (analysis.weirdStates.Count > 20) {
-                        output.Add(string.Join("\n", analysis.weirdStates.Take(20)));
+                        output.Add(analysis.weirdStates.Take(20).Join('\n'));
                         output.Add("... and " + (analysis.weirdStates.Count-20) + " others");
                     } else {
-                        output.Add(string.Join("\n", analysis.weirdStates));
+                        output.Add(analysis.weirdStates.Join('\n'));
                     }
                 }
-                cached = string.Join("\n", output);
+                cached = output.Join('\n');
                 return cached;
             }));
             

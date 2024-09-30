@@ -79,7 +79,7 @@ namespace VF.Utils.Controller {
                 currentLine += c;
             }
             if (!string.IsNullOrWhiteSpace(currentLine)) lines.Add(currentLine);
-            return string.Join("\n", lines);
+            return lines.Join('\n');
         }
 
         public void SetNextOffset(float x, float y) {

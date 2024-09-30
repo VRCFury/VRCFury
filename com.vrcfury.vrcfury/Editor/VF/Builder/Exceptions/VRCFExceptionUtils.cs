@@ -70,7 +70,7 @@ namespace VF.Builder.Exceptions {
 
                 EditorUtility.DisplayDialog(
                     "VRCFury Error",
-                    string.Join("\n\n", output),
+                    output.Join("\n\n"),
                     "Ok"
                 );
             }

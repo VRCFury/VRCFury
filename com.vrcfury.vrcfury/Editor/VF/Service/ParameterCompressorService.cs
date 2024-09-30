@@ -87,7 +87,7 @@ namespace VF.Service {
                             "VRCFury Mobile Sync",
                             "Warning: This mobile avatar contains parameters which will NOT sync, because they are not present in the desktop version." +
                             " If this is unexpected, make sure you upload the desktop version FIRST, and ensure the missing prefabs are in the same location in the hierarchy.\n\n"
-                            + string.Join("\n", warnAboutExtras),
+                            + warnAboutExtras.Join('\n'),
                             "Ok"
                         );
                     }

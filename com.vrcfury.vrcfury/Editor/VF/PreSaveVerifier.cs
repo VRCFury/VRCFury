@@ -6,6 +6,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Component;
+using VF.Utils;
 
 namespace VF {
     internal class PreSaveVerifier : UnityEditor.AssetModificationProcessor
@@ -58,7 +59,7 @@ namespace VF {
 
             if (blocked.Count > 0) {
                 EditorUtility.DisplayDialog("VRCFury Blocked Saving",
-                    "VRCFury blocked these assets from saving to prevent unity from overwriting them with corrupt data:\n\n" + string.Join("\n\n", blocked),
+                    "VRCFury blocked these assets from saving to prevent unity from overwriting them with corrupt data:\n\n" + blocked.Join("\n\n"),
                     "Ok");
                 paths = paths.ToList().Where(e => !blockedPaths.Contains(e)).ToArray();
             }

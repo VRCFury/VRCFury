@@ -25,5 +25,16 @@ namespace VF.Utils {
                 .GroupBy(x => x.i / chunkSize)
                 .Select(g => g.Select(x => x.e));
         }
+
+        public static string Join(this IEnumerable<string> source, string separator) {
+            return string.Join(separator, source);
+        }
+        public static string Join(this IEnumerable<string> source, char separator) {
+#if UNITY_2022_1_OR_NEWER
+            return string.Join(separator, source);
+#else
+            return string.Join(separator+"", source);
+#endif
+        }
     }
 }
