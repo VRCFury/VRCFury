@@ -1,4 +1,5 @@
 ﻿using UnityEditor;
+using VF.Utils;
 
 namespace VF.Menu {
     internal static class DebugCopyMenuItem {
@@ -19,7 +20,7 @@ namespace VF.Menu {
         [MenuItem(MenuItems.debugCopy, priority = MenuItems.debugCopyPriority)]
         private static void Click() {
             if (!Get()) {
-                var ok = EditorUtility.DisplayDialog(
+                var ok = DialogUtils.DisplayDialog(
                     "Warning",
                     "Enabling this option will cause VRCFury to create a backup of your avatar's controllers immediately before and after it runs during each build." +
                     " This can really slow down your build, so only enable this if needed by VRCFury support.\n\n" +

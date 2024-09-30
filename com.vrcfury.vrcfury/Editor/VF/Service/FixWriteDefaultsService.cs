@@ -169,7 +169,7 @@ namespace VF.Service {
             } else if (fixSetting != null) {
                 mode = fixSetting.mode;
             } else if (analysis.isBroken) {
-                var ask = EditorUtility.DisplayDialogComplex("VRCFury",
+                var ask = DialogUtils.DisplayDialogComplex("VRCFury",
                     "VRCFury has detected a (likely) broken mix of Write Defaults on your avatar base." +
                     " This may cause weird issues to happen with your animations," +
                     " such as toggles or animations sticking on or off forever.\n\n" +

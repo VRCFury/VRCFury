@@ -1,4 +1,5 @@
 ﻿using UnityEditor;
+using VF.Utils;
 
 namespace VF.Menu {
     internal static class AutoUpgradeConstraintsMenuItem {
@@ -19,7 +20,7 @@ namespace VF.Menu {
         [MenuItem(MenuItems.autoUpgradeConstraints, priority = MenuItems.autoUpgradeConstraintsPriority)]
         private static void Click() {
             if (Get()) {
-                var ok = EditorUtility.DisplayDialog(
+                var ok = DialogUtils.DisplayDialog(
                     "Warning",
                     "Disabling this option can reduce in-game performance and can break assets which have been" +
                     " 'Half-Upgraded' (meaning only the controllers or only the objects have been upgraded to VRC Constraints)." +

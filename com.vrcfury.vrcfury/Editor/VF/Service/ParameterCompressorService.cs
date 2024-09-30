@@ -265,7 +265,7 @@ namespace VF.Service {
             var blueprintId = avatarObject.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
             var savePath = GetSavePath(blueprintId);
             if (savePath == null || !File.Exists(savePath)) {
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     "VRCFury Mobile Sync",
                     "Warning: You have not uploaded the desktop version of this avatar yet." +
                     " If you want parameters to sync properly, please upload the desktop version first.",
@@ -278,7 +278,7 @@ namespace VF.Service {
             var desktopData = JsonUtility.FromJson<SavedData>(desktopDataStr);
 
             if (desktopData.saveVersion != 1) {
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     "VRCFury Mobile Sync",
                     "Warning: You have not uploaded the desktop version of this avatar yet." +
                     " If you want parameters to sync properly, please upload the desktop version first.",
@@ -287,7 +287,7 @@ namespace VF.Service {
                 return GetParamsToOptimize();
             }
             if (desktopData.vrcfuryVersion != VRCFPackageUtils.Version) {
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     "VRCFury Mobile Sync",
                     "Warning: The desktop version of this avatar was uploaded with a different version of VRCFury." +
                     " If you want parameters to sync properly, please ensure the VRCFury version matches, and upload the desktop version first.\n\n" +
@@ -336,7 +336,7 @@ namespace VF.Service {
             }
             reordered.AddRange(mobileExtras);
             if (warnAboutExtras.Any()) {
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     "VRCFury Mobile Sync",
                     "Warning: This mobile avatar contains parameters which will NOT sync, because they are not present in the desktop version." +
                     " If this is unexpected, make sure you upload the desktop version FIRST, and ensure the missing prefabs are in the same location in the hierarchy.\n\n"

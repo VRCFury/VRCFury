@@ -58,7 +58,7 @@ namespace VF.Hooks {
                         "\n\n";
                 }
                 
-                var ok = EditorUtility.DisplayDialog("Auto Convert Constraints",
+                var ok = DialogUtils.DisplayDialog("Auto Convert Constraints",
                     $"This object uses VRCFury.\n\n" +
                     $"To ensure all merged animations are properly upgraded, the ENTIRE root object {roots.Select(root => root.name).Join(", ")} will have ALL of its constraints upgraded.\n\n" +
                     $"Scanned {controllers.Count} controllers\n" +

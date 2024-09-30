@@ -20,7 +20,7 @@ namespace VF.Menu {
         }
         
         private static void RunUnsafe() {
-            var start = EditorUtility.DisplayDialog(
+            var start = DialogUtils.DisplayDialog(
                 "Duplicate Physbones",
                 "This tool will load every scene and prefab, and check for any bones that have more than one physbone targeting them (which is usually bad). This may take a lot of ram and time. Continue?",
                 "Yes",
@@ -33,7 +33,7 @@ namespace VF.Menu {
                 FindDupes<VRCPhysBone>(c => c.GetRootTransform(), bad);
 
                 if (bad.Count == 0) {
-                    EditorUtility.DisplayDialog(
+                    DialogUtils.DisplayDialog(
                         "Duplicate Physbones",
                         "No duplicates found in loaded objects.",
                         "Ok"
@@ -51,7 +51,7 @@ namespace VF.Menu {
                     if (split.Count > 0) message += "\n... and more (will be shown in next dialog)";
                     
                     message += "\n\nDelete the duplicates?";
-                    var ok = EditorUtility.DisplayDialog(
+                    var ok = DialogUtils.DisplayDialog(
                         "Duplicate Physbones",
                         message,
                         "Ok, Delete Duplicates",

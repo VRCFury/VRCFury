@@ -1,4 +1,5 @@
 using UnityEditor;
+using VF.Utils;
 
 namespace VF.Menu {
     internal static class HapticsToggleMenuItem {
@@ -19,7 +20,7 @@ namespace VF.Menu {
         [MenuItem(MenuItems.hapticToggle, priority = MenuItems.hapticTogglePriority)]
         private static void Click() {
             if (Get()) {
-                var ok = EditorUtility.DisplayDialog(
+                var ok = DialogUtils.DisplayDialog(
                     "Warning",
                     "Disabling haptic contacts will completely break integration with haptic response applications," +
                     " and is typically only needed if your avatar is completely out of available contacts. Are you sure you want to continue?",

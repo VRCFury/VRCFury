@@ -55,28 +55,19 @@ namespace VF.Builder.Exceptions {
             } else {
                 var message = GetGoodCause(e).Message.Trim();
                 
-                var output = new List<string>();
-                output.Add("VRCFury encountered an error.");
-                if (!string.IsNullOrWhiteSpace(message)) output.Add(message);
+                var output = "VRCFury encountered an error.";
+                if (!string.IsNullOrWhiteSpace(message)) output += "\n\n" + message;
 
-                var debugInfo = "";
-                debugInfo += "(";
-                debugInfo += e.GetBaseException().GetType().Name;
-                var closestLine = GetClosestVrcfuryLine(e);
-                if (!string.IsNullOrWhiteSpace(closestLine)) debugInfo += " in " + closestLine;
-                debugInfo += ")";
-                debugInfo += "\n" + VrcfDebugLine.GetOutputString();
-                output.Add(debugInfo);
-
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     "VRCFury Error",
-                    output.Join("\n\n"),
-                    "Ok"
+                    output,
+                    "Ok",
+                    ex: e
                 );
             }
         }
 
-        private static string GetClosestVrcfuryLine(Exception e) {
+        public static string GetClosestVrcfuryLine(Exception e) {
             var causes = new List<Exception>();
             var current = e;
             while (current != null) {

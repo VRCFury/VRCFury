@@ -23,7 +23,7 @@ namespace VF.Builder.Haptics {
 
             var messages = Apply(avatarObject, true, Mode.Manual);
             if (string.IsNullOrWhiteSpace(messages)) {
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     dialogTitle,
                     "VRCFury failed to find any parts to upgrade! Ask on the discord?",
                     "Ok"
@@ -31,7 +31,7 @@ namespace VF.Builder.Haptics {
                 return;
             }
         
-            var doIt = EditorUtility.DisplayDialog(
+            var doIt = DialogUtils.DisplayDialog(
                 dialogTitle,
                 messages + "\n\nContinue?",
                 "Yes, Do it!",
@@ -40,7 +40,7 @@ namespace VF.Builder.Haptics {
             if (!doIt) return;
 
             Apply(avatarObject, false, Mode.Manual);
-            EditorUtility.DisplayDialog(
+            DialogUtils.DisplayDialog(
                 dialogTitle,
                 "Upgrade complete!",
                 "Ok"

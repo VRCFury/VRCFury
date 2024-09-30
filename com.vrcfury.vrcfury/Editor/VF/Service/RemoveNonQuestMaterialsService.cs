@@ -61,7 +61,7 @@ namespace VF.Service {
                                             "If you have not switched by mistake and want to build for mobile, you will need to change your materials to use shaders found in VRChat/Mobile.\n" +
                                             "\n" +
                                             sorted.Join('\n') + moreText, 
-                                            "OK" );
+                                            "OK");
             }
         }
 

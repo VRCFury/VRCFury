@@ -58,7 +58,7 @@ namespace VF {
             }
 
             if (blocked.Count > 0) {
-                EditorUtility.DisplayDialog("VRCFury Blocked Saving",
+                DialogUtils.DisplayDialog("VRCFury Blocked Saving",
                     "VRCFury blocked these assets from saving to prevent unity from overwriting them with corrupt data:\n\n" + blocked.Join("\n\n"),
                     "Ok");
                 paths = paths.ToList().Where(e => !blockedPaths.Contains(e)).ToArray();
