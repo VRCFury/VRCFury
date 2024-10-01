@@ -20,7 +20,7 @@ namespace VF.Hooks {
      *
      * Note: You CANNOT use Harmony Prefix on a unity extern!
      */
-    internal static class FixConsoleSpamInPlayModeAnimatorHook {
+    internal static class FixAnimatorPreviewBreakingInPlayModeHook {
         [InitializeOnLoadMethod]
         private static void Init() { 
             foreach (var replacement in typeof(ShimReplacments).GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Instance)) {

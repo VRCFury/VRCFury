@@ -55,12 +55,12 @@ namespace VF.Utils {
         }
         
         /**
-         * Useful to replace implementations of unity externs. Note: This replacement will NOT be unpatched on unload,
-         * because a bug in Harmony causes it to throw an exception if you unpatch a method that originally had no method body.
-         * Because of that bug, we actually tell Harmony to specifically FORGET ABOUT the patch, so that unpatchAll doesn't
-         * attempt to unpatch it later.
+         * Useful to replace implementations of unity externs. Note: A bug in Harmony causes it to throw an exception if you
+         * unpatch a method that originally had no method body. Because of that bug, we actually tell Harmony to specifically
+         * FORGET ABOUT the patch, so that unpatchAll doesn't attempt to unpatch it later.
+         * Luckily, when unity reloads scripts, it seems to clear out the patch anyways, so it's not a big deal.
          */
-        public static void ReplaceMethodPermanently(MethodBase original, MethodBase replacement) {
+        public static void ReplaceMethod(MethodBase original, MethodBase replacement) {
             if (original == null || replacement == null) return;
             if (GetOriginalInstructions == null || UpdatePatchInfo == null || harmonyPatch == null || harmonyMethodConstructor == null || PatchInfoConstructor == null) return;
 
