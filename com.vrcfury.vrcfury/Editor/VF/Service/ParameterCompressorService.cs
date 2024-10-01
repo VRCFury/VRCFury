@@ -183,10 +183,10 @@ namespace VF.Service {
         }
 
         private IList<(string name,VRCExpressionParameters.ValueType type)> GetParamsToOptimize() {
-            var paramsToOptimize = new HashSet<(string,VRCExpressionParameters.ValueType)>();
+            var eligible = new HashSet<(string,VRCExpressionParameters.ValueType)>();
             
             var model = globals.allFeaturesInRun.OfType<UnlimitedParameters>().FirstOrDefault();
-            if (model == null) return paramsToOptimize.ToList();
+            if (model == null) return eligible.ToList();
 
             void AttemptToAdd(string paramName) {
                 if (string.IsNullOrEmpty(paramName)) return;
@@ -202,7 +202,7 @@ namespace VF.Service {
                 shouldOptimize |= vrcParam.valueType == VRCExpressionParameters.ValueType.Bool && model.includeBools;
 
                 if (shouldOptimize) {
-                    paramsToOptimize.Add((paramName, vrcParam.valueType));
+                    eligible.Add((paramName, vrcParam.valueType));
                 }
             }
 
@@ -224,7 +224,11 @@ namespace VF.Service {
                 return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
             });
 
-            return paramsToOptimize.Take(255).ToList();
+            return paramz.GetRaw().parameters
+                .Select(p => (p.name, p.valueType))
+                .Where(p => eligible.Contains(p))
+                .Take(255)
+                .ToList();
         }
 
         [Serializable]
