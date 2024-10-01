@@ -246,6 +246,7 @@ namespace VF.Service {
             public string paramName;
             public int offset;
             public bool compressed;
+            public float defaultValue;
 
             public ParameterSourceService.Source ToSource() {
                 return new ParameterSourceService.Source() {
@@ -323,6 +324,9 @@ namespace VF.Service {
                     reordered.Add(new VRCExpressionParameters.Parameter() {
                         name = fillerName,
                         valueType = desktopParam.type,
+                        // We need defaultValue here so if the user is on quest, they will still sync the normal "starting value" to the desktop version
+                        defaultValue = desktopParam.defaultValue,
+                        saved = false,
                     });
                     if (desktopParam.compressed) {
                         paramsToOptimize.Add((fillerName, desktopParam.type));
@@ -363,7 +367,8 @@ namespace VF.Service {
                         objectPath = source.objectPath,
                         offset = source.offset,
                         paramName = source.originalParamName,
-                        type = p.valueType
+                        type = p.valueType,
+                        defaultValue = p.defaultValue
                     };
                 }).ToList();
                 var saveData = new SavedData() {
