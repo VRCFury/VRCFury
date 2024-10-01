@@ -311,6 +311,7 @@ namespace VF.Service {
             var paramsToOptimize = new List<(string, VRCExpressionParameters.ValueType)>();
             var reordered = new List<VRCExpressionParameters.Parameter>();
             var rand = new Random().Next(100_000_000, 900_000_000);
+            var fillerI = 0;
             foreach (var desktopParam in desktopData.syncedParams) {
                 if (mobileParamsBySource.TryGetValue(desktopParam.ToSource(), out var mobileParam)) {
                     mobileParam.valueType = desktopParam.type;
@@ -320,7 +321,7 @@ namespace VF.Service {
                     }
                     reordered.Add(mobileParam);
                 } else {
-                    var fillerName = $"__missing_param_from_desktop_{rand}_{desktopParam.paramName}";
+                    var fillerName = $"__missing_param_from_desktop_{rand}_{fillerI++}_{desktopParam.paramName}";
                     reordered.Add(new VRCExpressionParameters.Parameter() {
                         name = fillerName,
                         valueType = desktopParam.type,
