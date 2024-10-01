@@ -5,6 +5,7 @@ using UnityEngine.UIElements;
 using VF.Utils;
 
 namespace VF.Hooks {
+#if VRC_NEW_PUBLIC_SDK && UNITY_2022_1_OR_NEWER
     internal static class DefaultToBuilderTabHook {
         private static double whenSdkPanelLoaded;
         private static EditorWindow sdkPanel = null;
@@ -15,7 +16,6 @@ namespace VF.Hooks {
         [InitializeOnLoadMethod]
         private static void Init() {
             if (APIUser_IsLoggedIn == null) return;
-#if VRC_NEW_PUBLIC_SDK && UNITY_2022_1_OR_NEWER
             VRCSdkControlPanel.OnSdkPanelEnable += (panel, e) => {
                 sdkPanel = panel as EditorWindow;
                 whenSdkPanelLoaded = EditorApplication.timeSinceStartup;
@@ -33,7 +33,7 @@ namespace VF.Hooks {
                     builderTab.SendEvent(ev);
                 }
             }, 200);
-#endif 
         }
     }
+#endif
 }
