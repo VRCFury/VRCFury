@@ -8,14 +8,14 @@ namespace VF.Hooks {
     internal static class DefaultToBuilderTabHook {
         private static double whenSdkPanelLoaded;
         private static EditorWindow sdkPanel = null;
-
+ 
         private static PropertyInfo APIUser_IsLoggedIn = ReflectionUtils.GetTypeFromAnyAssembly("VRC.Core.APIUser")?
             .GetProperty("IsLoggedIn", BindingFlags.Static | BindingFlags.Public);
 
         [InitializeOnLoadMethod]
         private static void Init() {
             if (APIUser_IsLoggedIn == null) return;
-#if VRC_NEW_PUBLIC_SDK
+#if VRC_NEW_PUBLIC_SDK && UNITY_2022_1_OR_NEWER
             VRCSdkControlPanel.OnSdkPanelEnable += (panel, e) => {
                 sdkPanel = panel as EditorWindow;
                 whenSdkPanelLoaded = EditorApplication.timeSinceStartup;
