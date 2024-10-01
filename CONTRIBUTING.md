@@ -1,5 +1,11 @@
 # Contributing to VRCFury
 
+## READ THIS FIRST
+
+**I do not frequently accept pull requests**. I often find that reviewing changesets is more difficult than
+simply rewriting the entire feature from scratch myself. To ensure your work does not go to waste, I would
+highly suggest joining the discord and discussing your idea with us before proceeding.
+
 ## How to make code changes
 
 * Review the important `License Requirements` section below.
