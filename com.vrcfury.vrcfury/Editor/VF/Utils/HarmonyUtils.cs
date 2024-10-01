@@ -25,7 +25,7 @@ namespace VF.Utils {
             return harmony.Value;
         }
 
-        public static void Patch(MethodInfo methodToPatch, MethodInfo prefix) {
+        public static void Patch(MethodBase methodToPatch, MethodInfo prefix) {
             if (methodToPatch == null || prefix == null) return;
             var harmonyInst = GetHarmony();
             if (harmonyInst == null) return;
