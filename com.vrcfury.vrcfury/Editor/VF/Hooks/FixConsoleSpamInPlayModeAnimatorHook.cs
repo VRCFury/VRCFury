@@ -23,33 +23,22 @@ namespace VF.Hooks {
     internal static class FixConsoleSpamInPlayModeAnimatorHook {
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (HarmonyUtils.GetOriginalInstructions == null) return;
-
-            var methodToPatch = typeof(Animator).GetMethod(
+            var original = typeof(Animator).GetMethod(
                 nameof(Animator.GetLayerWeight),
                 new[] { typeof(int) }
             );
 
-            var transpiler = typeof(FixConsoleSpamInPlayModeAnimatorHook).GetMethod( 
-                nameof(Transpile),
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            HarmonyUtils.Transpile(methodToPatch, transpiler);
-        }
-
-        static object Transpile(IEnumerable<object> orig, ILGenerator ilGenerator) {
-            var replacementMethod = typeof(Shim).GetMethod(
+            var replacement = typeof(Shim).GetMethod(
                 nameof(Shim.Replacement),
                 BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
             );
-            var replacementInstructions = HarmonyUtils.GetOriginalInstructions.Invoke(null, new object[] { replacementMethod, ilGenerator });
-            return replacementInstructions;
+
+            HarmonyUtils.ReplaceMethodPermanently(original, replacement);
         }
-   
+
         class Shim {
             public float Replacement(int layerIndex) {
-                return 0; 
+                return 0f; 
             }
         } 
     }
