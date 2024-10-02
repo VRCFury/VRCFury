@@ -50,7 +50,7 @@ namespace VF.Utils {
             if (harmonyPatch == null) return;
             if (harmonyMethodConstructor == null) return;
             var harmonyMethod = harmonyMethodConstructor.Invoke(new object[] { prefix });
-            Debug.Log($"Patching {original.DeclaringType?.Name}.{original.Name}");
+            //Debug.Log($"Patching {original.DeclaringType?.Name}.{original.Name}");
             ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, harmonyMethod);
         }
         
@@ -72,7 +72,7 @@ namespace VF.Utils {
             );
             var harmonyMethod = harmonyMethodConstructor.Invoke(new object[] { transpiler });
             replacementMethod = replacement;
-            Debug.Log($"Replacing {original.DeclaringType?.Name}.{original.Name}");
+            //Debug.Log($"Replacing {original.DeclaringType?.Name}.{original.Name}");
             ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, null, null, harmonyMethod);
 
             // Tell Harmony to "forget about" the patch, so it doesn't try to unpatch it later and break things
