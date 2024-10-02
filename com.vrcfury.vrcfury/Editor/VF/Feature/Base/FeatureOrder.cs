@@ -39,6 +39,8 @@ namespace VF.Feature.Base {
         Default,
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver,
+        // Needs to be after anything uses GestureLeft or GestureRight
+        DisableGesturesService,
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags,
         

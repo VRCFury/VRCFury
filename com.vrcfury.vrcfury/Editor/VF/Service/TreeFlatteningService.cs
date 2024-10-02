@@ -32,6 +32,16 @@ namespace VF.Service {
                     }
                 }
             }
+
+            foreach (var c in controllers.GetAllUsedControllers()) {
+                foreach (var layer in c.GetLayers()) {
+                    AnimatorIterator.RewriteConditions(layer, cond => {
+                        if (cond.parameter == VFBlendTreeDirect.AlwaysOneParam)
+                            cond.parameter = c.One();
+                        return cond;
+                    });
+                }
+            }
         }
 
         private ISet<string> GetAlwaysOneParams() {

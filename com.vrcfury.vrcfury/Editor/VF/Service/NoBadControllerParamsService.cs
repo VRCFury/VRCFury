@@ -42,61 +42,59 @@ namespace VF.Service {
             var badBool = new Lazy<string>(() => controller.NewBool("InvalidParam"));
             var badFloat = new Lazy<string>(() => controller.NewFloat("InvalidParamFloat"));
             var badThreshold = new Lazy<string>(() => controller.NewBool("BadIntThreshold", def: true));
+            AnimatorCondition InvalidCondition() => new AnimatorCondition {
+                mode = AnimatorConditionMode.If,
+                parameter = badBool.Value,
+            };
+            AnimatorCondition BadThresholdCondition() => new AnimatorCondition {
+                mode = AnimatorConditionMode.If,
+                parameter = badThreshold.Value,
+            };
 
             var paramTypes = controller.parameters
                 .ToImmutableDictionary(p => p.name, p => p.type);
-            foreach (var transition in new AnimatorIterator.Transitions().From(controller)) {
-                var hasBadThreshold = false;
-                transition.RewriteConditions(condition => {
+            foreach (var layer in controller.GetLayers()) {
+                AnimatorIterator.RewriteConditions(layer, condition => {
                     var mode = condition.mode;
-                    var valid = true;
-                    if (paramTypes.TryGetValue(condition.parameter, out var type)) {
-                        if (type == AnimatorControllerParameterType.Bool ||
-                            type == AnimatorControllerParameterType.Trigger) {
-                            valid = mode == AnimatorConditionMode.If || mode == AnimatorConditionMode.IfNot;
 
-                            // When you use a bool with an incorrect mode, the editor just always says "True",
-                            // so let's just actually make it do that instead of converting it to InvalidParamType
-                            if (!valid) {
-                                condition.mode = AnimatorConditionMode.If;
-                                valid = true;
-                            }
-                        }
-
-                        if (type == AnimatorControllerParameterType.Int) {
-                            valid = mode == AnimatorConditionMode.Equals
-                                    || mode == AnimatorConditionMode.NotEqual
-                                    || mode == AnimatorConditionMode.Greater
-                                    || mode == AnimatorConditionMode.Less;
-                            
-                             // When you use an int with a float threshold, the editor shows the floor value,
-                             // but evaluates the condition using the original value. Let's fix that so the editor
-                             // valus is actually the one that is used.
-                             var floored = (int)Math.Floor(condition.threshold);
-                             if (condition.threshold != floored) {
-                                 condition.threshold = floored;
-                                 hasBadThreshold = true;
-                             }
-                        }
-
-                        if (type == AnimatorControllerParameterType.Float) {
-                            valid = mode == AnimatorConditionMode.Greater || mode == AnimatorConditionMode.Less;
-                        }
-                    } else {
-                        valid = false;
+                    if (!paramTypes.TryGetValue(condition.parameter, out var type)) {
+                        return InvalidCondition();
                     }
 
-                    if (!valid) {
-                        condition.parameter = badBool.Value;
-                        condition.mode = AnimatorConditionMode.If;
+                    if (type == AnimatorControllerParameterType.Bool || type == AnimatorControllerParameterType.Trigger) {
+                        // When you use a bool with an incorrect mode, the editor just always says "True",
+                        // so let's just actually make it do that instead of converting it to InvalidParamType
+                        if (mode != AnimatorConditionMode.If && mode != AnimatorConditionMode.IfNot) {
+                            condition.mode = AnimatorConditionMode.If;
+                            return condition;
+                        }
+                    } else if (type == AnimatorControllerParameterType.Int) {
+                        if (mode != AnimatorConditionMode.Equals
+                            && mode != AnimatorConditionMode.NotEqual
+                            && mode != AnimatorConditionMode.Greater
+                            && mode != AnimatorConditionMode.Less) {
+                            return InvalidCondition();
+                        }
+
+                        // When you use an int with a float threshold, the editor shows the floor value,
+                        // but evaluates the condition using the original value. Let's fix that so the editor
+                        // value is actually the one that is used.
+                        var floored = (int)Math.Floor(condition.threshold);
+                        if (condition.threshold != floored) {
+                            condition.threshold = floored;
+                            return AnimatorTransitionBaseExtensions.Rewritten.And(
+                                condition,
+                                BadThresholdCondition()
+                            );
+                        }
+                    } else if (type == AnimatorControllerParameterType.Float) {
+                        if (mode != AnimatorConditionMode.Greater && mode != AnimatorConditionMode.Less) {
+                            return InvalidCondition();
+                        }
                     }
 
                     return condition;
                 });
-
-                if (hasBadThreshold) {
-                    transition.AddCondition(AnimatorConditionMode.If, 0, badThreshold.Value);
-                }
             }
 
             bool IsFloat(string p) =>
@@ -199,77 +197,37 @@ namespace VF.Service {
 
             // Fix all of the usages
             foreach (var layer in controller.GetLayers()) {
-                AnimatorIterator.ForEachTransitionRW(layer, transition => {
-                    var output = new List<AnimatorCondition>();
-                    var changed = false;
-                    var flip = new List<int>();
-                    foreach (var _c in transition.conditions) {
-                        var c = _c;
-                        var mode = c.mode;
-                        if (!paramTypes.TryGetValue(c.parameter, out var type)) {
-                            output.Add(c);
-                            continue;
-                        }
-                        if (type == AnimatorControllerParameterType.Float) {
-                            if (mode == AnimatorConditionMode.Equals) {
-                                c.mode = AnimatorConditionMode.Greater;
-                                c.threshold = _c.threshold - 0.001f;
-                                output.Add(c);
-                                c.mode = AnimatorConditionMode.Less;
-                                c.threshold = _c.threshold + 0.001f;
-                                output.Add(c);
-                                changed = true;
-                                continue;
-                            }
-                            if (mode == AnimatorConditionMode.NotEqual) {
-                                flip.Add(output.Count);
-                                c.mode = AnimatorConditionMode.Greater;
-                                c.threshold = _c.threshold;
-                                output.Add(c);
-                                changed = true;
-                                continue;
-                            }
-                        }
-                        if (type == AnimatorControllerParameterType.Int || type == AnimatorControllerParameterType.Float) {
-                            if (mode == AnimatorConditionMode.If) {
-                                c.mode = AnimatorConditionMode.Greater;
-                                c.threshold = 0;
-                                changed = true;
-                            }
-                            if (mode == AnimatorConditionMode.IfNot) {
-                                c.mode = AnimatorConditionMode.Less;
-                                c.threshold = (type == AnimatorControllerParameterType.Float ? 0.001f : 1f);
-                                changed = true;
-                            }
-                        }
-                        output.Add(c);
+                AnimatorIterator.RewriteConditions(layer, c => {
+                    if (!paramTypes.TryGetValue(c.parameter, out var type)) {
+                        return c;
                     }
-                    if (changed) transition.conditions = output.ToArray();
-
-                    var outputTransitions = new List<AnimatorTransitionBase>();
-                    outputTransitions.Add(transition);
-                    foreach (var combo in GetCombinations(flip)) {
-                        if (combo.Length == 0) continue;
-                        var copy = transition.Clone();
-                        var cs = copy.conditions;
-                        foreach (var i in combo) {
-                            var c = cs[i];
-                            c.mode = AnimatorConditionMode.Less;
-                            cs[i] = c;
+                    if (type == AnimatorControllerParameterType.Int || type == AnimatorControllerParameterType.Float) {
+                        if (c.mode == AnimatorConditionMode.If) {
+                            c.mode = AnimatorConditionMode.NotEqual;
+                            c.threshold = 0;
                         }
-                        copy.conditions = cs;
-                        outputTransitions.Add(copy);
+                        if (c.mode == AnimatorConditionMode.IfNot) {
+                            c.mode = AnimatorConditionMode.Equals;
+                            c.threshold = 0;
+                        }
                     }
-                    return outputTransitions;
+                    if (type == AnimatorControllerParameterType.Float) {
+                        if (c.mode == AnimatorConditionMode.Equals) {
+                            return AnimatorTransitionBaseExtensions.Rewritten.And(
+                                new AnimatorCondition { parameter = c.parameter, mode = AnimatorConditionMode.Greater, threshold = c.threshold - 0.001f },
+                                new AnimatorCondition { parameter = c.parameter, mode = AnimatorConditionMode.Less, threshold = c.threshold + 0.001f }
+                            );
+                        }
+                        if (c.mode == AnimatorConditionMode.NotEqual) {
+                            return AnimatorTransitionBaseExtensions.Rewritten.Or(
+                                new AnimatorCondition { parameter = c.parameter, mode = AnimatorConditionMode.Less, threshold = c.threshold - 0.001f },
+                                new AnimatorCondition { parameter = c.parameter, mode = AnimatorConditionMode.Greater, threshold = c.threshold + 0.001f }
+                            );
+                        }
+                    }
+                    return c;
                 });
             }
-        }
-        
-        // https://stackoverflow.com/questions/64998630/get-all-combinations-of-liststring-where-order-doesnt-matter-and-minimum-of-2
-        private static IEnumerable<T[]> GetCombinations<T>(List<T> source) {
-            BigInteger one = 1;
-            for (BigInteger i = 0; i < one << source.Count; i++)
-                yield return source.Where((_, j) => (i & one << j) != 0).ToArray();
         }
     }
 }

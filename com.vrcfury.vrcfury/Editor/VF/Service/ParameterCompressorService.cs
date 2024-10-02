@@ -146,8 +146,8 @@ namespace VF.Service {
                         throw new Exception("Unknown type?");
                     }
                     var diff = math.Subtract(currentValue, lastSynced);
-                    var shortcutCondition = diff.AsFloat().IsLessThan(0);
-                    shortcutCondition = shortcutCondition.Or(diff.AsFloat().IsGreaterThan(0));
+                    var shortcutCondition = diff.IsLessThan(0);
+                    shortcutCondition = shortcutCondition.Or(diff.IsGreaterThan(0));
                     local.TransitionsTo(sendState).When(shortcutCondition);
                 }
 

@@ -62,7 +62,7 @@ namespace VF.Utils {
         /**
          * value : [0,Infinity)
          */
-        public VFAap SetValueWithConditions(
+        public VFAFloat SetValueWithConditions(
             string name,
             params (VFAFloatOrConst value,VFAFloatBool condition)[] targets
         ) {
@@ -116,7 +116,7 @@ namespace VF.Utils {
         /**
          * input : (-Infinity,Infinity)
          */
-        public VFAap Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
+        public VFAFloat Map(string name, VFAFloat input, float inMin, float inMax, float outMin, float outMax) {
             var outputDefault = VrcfMath.Map(input.GetDefault(), inMin, inMax, outMin, outMax);
             outputDefault = VrcfMath.Clamp(outputDefault, outMin, outMax);
             var output = controller.MakeAap(name, def: outputDefault);
@@ -200,7 +200,7 @@ namespace VF.Utils {
         /**
          * a,b : [0,Infinity)
          */
-        public VFAap Subtract(VFAFloatOrConst a, VFAFloatOrConst b, string name = null) {
+        public VFAFloat Subtract(VFAFloatOrConst a, VFAFloatOrConst b, string name = null) {
             name = name ?? $"{CleanName(a)} - {CleanName(b)}";
             return Add(name, (a,1), (b,-1));
         }
@@ -208,7 +208,7 @@ namespace VF.Utils {
         /**
          * a,b : [0,Infinity)
          */
-        public VFAap Add(VFAFloatOrConst a, VFAFloatOrConst b, string name = null) {
+        public VFAFloat Add(VFAFloatOrConst a, VFAFloatOrConst b, string name = null) {
             name = name ?? $"{CleanName(a)} + {CleanName(b)}";
             return Add(name, (a,1), (b,1));
         }
@@ -217,7 +217,11 @@ namespace VF.Utils {
          * input : [0,Infinity)
          * multiplier : (-Infinity,Infinity)
          */
-        public VFAap Add(string name, params (VFAFloatOrConst input,float multiplier)[] components) {
+        public VFAFloat Add(string name, params (VFAFloatOrConst input,float multiplier)[] components) {
+            if (components.Length == 1 && components[0].multiplier == 1 && components[0].input.param != null) {
+                return components[0].input.param;
+            }
+
             float def = 0;
             foreach (var c in components) {
                 if (c.input.param != null) {
@@ -265,7 +269,7 @@ namespace VF.Utils {
             return tree;
         }
 
-        public VFAap Invert(string name, VFAFloat input) {
+        public VFAFloat Invert(string name, VFAFloat input) {
             var output = controller.MakeAap(name);
             var tmp = Add($"{name}/Tmp", (input, 10000), (-1, 1));
             var tree = VFBlendTreeDirect.Create(name);
@@ -296,7 +300,7 @@ namespace VF.Utils {
         /**
          * from : [0,Infinity)
          */
-        public VFAap Buffer(VFAFloat from, string to = null, bool usePrefix = true) {
+        public VFAFloat Buffer(VFAFloat from, string to = null, bool usePrefix = true) {
             to = to ?? $"{CleanName(from)}_b";
             var output = controller.MakeAap(to, from.GetDefault(), usePrefix: usePrefix);
             directTree.Add(MakeCopier(from, output));
@@ -349,7 +353,7 @@ namespace VF.Utils {
             );
         }
 
-        public VFAap Max(VFAFloat a, VFAFloat b, string name = null) {
+        public VFAFloat Max(VFAFloat a, VFAFloat b, string name = null) {
             name = name ?? $"MAX({CleanName(a)},{CleanName(b)})";
             return SetValueWithConditions(name,
                 (a, GreaterThan(a, b)),
@@ -361,7 +365,7 @@ namespace VF.Utils {
          * a : [0,Infinity)
          * b : [0,Infinity) (may be negative if constant)
          */
-        public VFAap Multiply(string name, VFAFloat a, VFAFloatOrConst b) {
+        public VFAFloat Multiply(string name, VFAFloat a, VFAFloatOrConst b) {
             var output = controller.MakeAap(name, def: a.GetDefault() * b.GetDefault());
 
             if (b.param != null) {
