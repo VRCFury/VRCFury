@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using JetBrains.Annotations;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEditor.Playables;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -47,7 +48,13 @@ namespace VF.Hooks {
         class ShimReplacments {
             public float GetLayerWeight(int layerIndex) {
                 var animator = GetAnimator(this);
-                return GetPreviewedPlayable(animator)?.GetLayerWeight(layerIndex) ?? 0; 
+                return GetPreviewedPlayable(animator)?.GetLayerWeight(layerIndex)
+                       ?? (animator.runtimeAnimatorController as AnimatorController)?.layers[layerIndex].defaultWeight
+                       ?? 1;
+            }
+            public void SetLayerWeight(int layerIndex, float weight) {
+                var animator = GetAnimator(this);
+                GetPreviewedPlayable(animator)?.SetLayerWeight(layerIndex, weight); 
             }
             public float GetFloatString(string name) {
                 var animator = GetAnimator(this);
