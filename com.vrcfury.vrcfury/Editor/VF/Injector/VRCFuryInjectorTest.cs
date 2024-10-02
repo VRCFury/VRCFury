@@ -90,6 +90,13 @@ namespace VF.Injector {
                 var isFeatureBuilder = typeof(FeatureBuilder).IsAssignableFrom(type);
                 var isPrototypeService = type.GetCustomAttribute<VFPrototypeScopeAttribute>() != null;
                 var isIBuilder = typeof(IVRCFuryBuilder).IsAssignableFrom(type);
+                var hasAutowired = ReflectionUtils.GetAllFields(type)
+                    .Any(field => field.GetCustomAttribute<VFAutowiredAttribute>() != null);
+                if (hasAutowired) {
+                    if (!isService && !isIBuilder) {
+                        throw new Exception($"Autowired field found in non-service non-builder {type.Name}");
+                    }
+                }
                 if (hasBuilderAction) {
                     if (!isService && !isFeatureBuilder) {
                         throw new Exception($"Feature builder action found in non-service non-builder {type.Name}");

@@ -118,10 +118,10 @@ namespace VF.Feature {
 
             if (missingAssets.Count > 0) {
                 if (model.allowMissingAssets) {
-                    var list = string.Join(", ", missingAssets.Select(w => VrcfObjectId.FromId(w.id).Pretty()));
+                    var list = missingAssets.Select(w => VrcfObjectId.FromId(w.id).Pretty()).Join(", ");
                     Debug.LogWarning($"Missing Assets: {list}");
                 } else {
-                    var list = string.Join("\n", missingAssets.Select(w => VrcfObjectId.FromId(w.id).Pretty()));
+                    var list = missingAssets.Select(w => VrcfObjectId.FromId(w.id).Pretty()).Join("\n");
                     throw new Exception(
                         "You're missing some files needed for this VRCFury asset. " +
                         "Are you sure you've imported all the packages needed? Here are the files that are missing:\n\n" +
@@ -135,7 +135,7 @@ namespace VF.Feature {
             void CheckParam(string param, IList<string> path) {
                 if (string.IsNullOrEmpty(param)) return;
                 if (paramz.GetParam(RewriteParamName(param)) != null) return;
-                failedParams.Add($"{param} (used by {string.Join("/", path)})");
+                failedParams.Add($"{param} (used by {path.Join('/')})");
             }
             menu.ForEachMenu(ForEachItem: (item, path) => {
                 CheckParam(item.parameter?.name, path);
@@ -149,7 +149,7 @@ namespace VF.Feature {
             if (failedParams.Count > 0) {
                 throw new Exception(
                     "The merged menu uses parameters that aren't in the merged parameters file:\n\n" +
-                    string.Join("\n", failedParams));
+                    failedParams.Join('\n'));
             }
         }
 

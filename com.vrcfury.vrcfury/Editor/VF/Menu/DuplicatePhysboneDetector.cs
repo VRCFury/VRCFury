@@ -20,7 +20,7 @@ namespace VF.Menu {
         }
         
         private static void RunUnsafe() {
-            var start = EditorUtility.DisplayDialog(
+            var start = DialogUtils.DisplayDialog(
                 "Duplicate Physbones",
                 "This tool will load every scene and prefab, and check for any bones that have more than one physbone targeting them (which is usually bad). This may take a lot of ram and time. Continue?",
                 "Yes",
@@ -33,7 +33,7 @@ namespace VF.Menu {
                 FindDupes<VRCPhysBone>(c => c.GetRootTransform(), bad);
 
                 if (bad.Count == 0) {
-                    EditorUtility.DisplayDialog(
+                    DialogUtils.DisplayDialog(
                         "Duplicate Physbones",
                         "No duplicates found in loaded objects.",
                         "Ok"
@@ -41,17 +41,17 @@ namespace VF.Menu {
                     return;
                 }
 
-                var split = string.Join("\n\n", bad).Split('\n').ToList();
+                var split = bad.Join("\n\n").Split('\n').ToList();
                 while (split.Count > 0) {
                     var numToPick = Math.Min(split.Count, 40);
                     var part = split.GetRange(0, numToPick);
                     split.RemoveRange(0, numToPick);
                     
-                    var message = "Duplicate physbones found in loaded objects:\n\n" + string.Join("\n", part);
+                    var message = "Duplicate physbones found in loaded objects:\n\n" + part.Join('\n');
                     if (split.Count > 0) message += "\n... and more (will be shown in next dialog)";
                     
                     message += "\n\nDelete the duplicates?";
-                    var ok = EditorUtility.DisplayDialog(
+                    var ok = DialogUtils.DisplayDialog(
                         "Duplicate Physbones",
                         message,
                         "Ok, Delete Duplicates",
@@ -81,7 +81,7 @@ namespace VF.Menu {
                 var mutable = components.Where(IsMutable).ToList();
                 if (mutable.Count == 0) continue;
                 var targetStr = GetName(target);
-                var cStrs = string.Join("\n", components.Select(c => GetName(c, sources)));
+                var cStrs = components.Select(c => GetName(c, sources)).Join('\n');
                 badList.Add( $"{targetStr}\nis targeted by\n{cStrs}");
             }
         }

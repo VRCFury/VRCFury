@@ -195,7 +195,7 @@ namespace VF.Utils {
 
                         m.ForEachMenu(ForEachItem: (item, path) => {
                             if (removeControls.Contains(item)) {
-                                removeItems.Add("Menu Item: " + string.Join("/", path));
+                                removeItems.Add("Menu Item: " + path.Join('/'));
                                 return perform
                                     ? VRCExpressionsMenuExtensions.ForEachMenuItemResult.Delete
                                     : VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;

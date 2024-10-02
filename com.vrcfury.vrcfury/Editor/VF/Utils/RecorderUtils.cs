@@ -40,12 +40,12 @@ namespace VF.Utils {
 
         public static void Record(AnimationClip clip, VFGameObject baseObj, bool rewriteClip = true) {
             if (!UnityReflection.IsReady(typeof(UnityReflection.Recorder))) {
-                EditorUtility.DisplayDialog("VRCFury Animation Recorder",
+                DialogUtils.DisplayDialog("VRCFury Animation Recorder",
                     "VRCFury failed to initialize the recorder. Maybe this version of unity is not supported yet?", "Ok");
                 return;
             }
             if (IsRecording()) {
-                EditorUtility.DisplayDialog("VRCFury Animation Recorder", "An animation is already being recorded",
+                DialogUtils.DisplayDialog("VRCFury Animation Recorder", "An animation is already being recorded",
                     "Ok");
                 return;
             }
@@ -55,7 +55,7 @@ namespace VF.Utils {
 
             var animState = Resources.FindObjectsOfTypeAll(UnityReflection.Recorder.animStateType).FirstOrDefault();
             if (animState == null) {
-                EditorUtility.DisplayDialog("VRCFury Animation Recorder", "Animation tab needs to be open",
+                DialogUtils.DisplayDialog("VRCFury Animation Recorder", "Animation tab needs to be open",
                     "Ok");
                 return;
             }

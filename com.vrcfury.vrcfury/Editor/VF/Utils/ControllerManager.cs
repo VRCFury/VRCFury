@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
@@ -123,9 +122,6 @@ namespace VF.Utils {
             return paramManager.Invoke();
         }
 
-        private static readonly FieldInfo networkSyncedField =
-            typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
-
         public VFABool NewBool(string name, bool synced = false, bool networkSynced = true, bool def = false, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = makeUniqueParamName(name);
             if (synced) {
@@ -134,7 +130,7 @@ namespace VF.Utils {
                 param.valueType = VRCExpressionParameters.ValueType.Bool;
                 param.saved = saved;
                 param.defaultValue = def ? 1 : 0;
-                if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
+                param.SetNetworkSynced(networkSynced, true);
                 GetParamManager().AddSyncedParam(param);
             }
             return ctrl.NewBool(name, def);
@@ -147,7 +143,7 @@ namespace VF.Utils {
                 param.valueType = VRCExpressionParameters.ValueType.Int;
                 param.saved = saved;
                 param.defaultValue = def;
-                if (networkSyncedField != null) networkSyncedField.SetValue(param, networkSynced);
+                param.SetNetworkSynced(networkSynced, true);
                 GetParamManager().AddSyncedParam(param);
             }
             return ctrl.NewInt(name, def);

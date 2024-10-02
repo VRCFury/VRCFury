@@ -98,7 +98,7 @@ namespace VF.Service {
                         var debugInfo = obj.AddComponent<VRCFuryDebugInfo>();
                         debugInfo.debugInfo =
                             "VRCFury Armature Link did not clean up this object because it is still used:\n";
-                        debugInfo.debugInfo += string.Join("\n", usedReasons.Get(obj).OrderBy(a => a));
+                        debugInfo.debugInfo += usedReasons.Get(obj).OrderBy(a => a).Join('\n');
                     }
                 }
             }
@@ -156,7 +156,7 @@ namespace VF.Service {
 
                 var animSources = anim.GetDebugSources(propBone);
                 if (animSources.Count > 0) {
-                    AddDebugInfo("This object is animated:\n" + string.Join("\n", animSources.OrderBy(a => a)));
+                    AddDebugInfo("This object is animated:\n" + animSources.OrderBy(a => a).Join('\n'));
                 }
 
                 bool ShouldReparent() {
@@ -430,11 +430,11 @@ namespace VF.Service {
             return model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Yes;
         }
 
-        public enum ChestUpHack {
+        public enum ExtraBoneHack {
             None,
-            ClothesHaveChestUp,
-            AvatarHasChestUp,
-            AvatarHasFakeChestUp
+            ClothesHaveIt,
+            AvatarHasIt,
+            AvatarHasFake
         }
 
         public class Links {
@@ -444,7 +444,8 @@ namespace VF.Service {
 
             public VFGameObject propMain;
             public VFGameObject avatarMain;
-            public ChestUpHack chestUpHack = ChestUpHack.None;
+            public ExtraBoneHack chestUpHack = ExtraBoneHack.None;
+            public ExtraBoneHack topFut = ExtraBoneHack.None;
             
             // left=bone in prop | right=bone in avatar
             public readonly Stack<(VFGameObject, VFGameObject)> mergeBones
@@ -517,7 +518,7 @@ namespace VF.Service {
             }).NotNull().FirstOrDefault();
 
             if (avatarBone == null) {
-                throw new Exception(string.Join("\n", exceptions));
+                throw new Exception(exceptions.Join('\n'));
             }
 
             var removeBoneSuffix = model.removeBoneSuffix;
@@ -550,21 +551,34 @@ namespace VF.Service {
                             // Clothes have ChestUp, but avatar does not?
                             if (childPropBone.name.Contains("ChestUp")) {
                                 childAvatarBone = checkAvatarBone;
-                                links.chestUpHack = ChestUpHack.ClothesHaveChestUp;
+                                links.chestUpHack = ExtraBoneHack.ClothesHaveIt;
+                                recurseButDoNotLink = true;
+                            }
+                            // Clothes have TopFut, but avatar does not?
+                            if (childPropBone.name == "TopFut_L" || childPropBone.name == "TopFut_R") {
+                                childAvatarBone = checkAvatarBone;
+                                links.topFut = ExtraBoneHack.ClothesHaveIt;
                                 recurseButDoNotLink = true;
                             }
                         }
                         if (childAvatarBone == null) {
-                            // Avatar has ChestUp, but clothes do not?
                             childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
-                            if (childAvatarBone != null) links.chestUpHack = ChestUpHack.AvatarHasChestUp;
+                            if (childAvatarBone != null) links.chestUpHack = ExtraBoneHack.AvatarHasIt;
+                        }
+                        if (childAvatarBone == null) {
+                            childAvatarBone = checkAvatarBone.Find("TopFut_L/" + searchName);
+                            if (childAvatarBone != null) links.topFut = ExtraBoneHack.AvatarHasIt;
+                        }
+                        if (childAvatarBone == null) {
+                            childAvatarBone = checkAvatarBone.Find("TopFut_R/" + searchName);
+                            if (childAvatarBone != null) links.topFut = ExtraBoneHack.AvatarHasIt;
                         }
                         if (childAvatarBone == null) {
                             // Clothes have real ChestUp, but avatar has ChestUp that is fake and empty?
                             // (happens on some versions of rex)
                             if (checkAvatarBone.name.Contains("ChestUp")) {
                                 childAvatarBone = checkAvatarBone.parent.Find(searchName);
-                                if (childAvatarBone != null) links.chestUpHack = ChestUpHack.AvatarHasFakeChestUp;
+                                if (childAvatarBone != null) links.chestUpHack = ExtraBoneHack.AvatarHasFake;
                             }
                         }
 

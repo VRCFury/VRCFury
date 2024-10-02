@@ -135,7 +135,7 @@ namespace VF.Utils {
             if (badPhysboneTransforms.Any()) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     $"You're animating these transforms, but they are within physbones that are not marked as Is Animated.\n" +
-                    string.Join("\n", badPhysboneTransforms.OrderBy(a => a))
+                    badPhysboneTransforms.OrderBy(a => a).Join('\n')
                 ));
             }
 
@@ -150,7 +150,7 @@ namespace VF.Utils {
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     $"You're animating these properties on materials using Poiyomi, but the materials don't have the property set as Animated. " +
                     $"Check the right click menu of the property on the material:\n" +
-                    string.Join("\n", lines)
+                    lines.Join('\n')
                 ));
             }
 
@@ -160,7 +160,7 @@ namespace VF.Utils {
                 var msg = $"These paths are animated in {thisName}, but not found in your avatar! Thus, they won't do anything!";
                 if (suggestPathRewrites) msg += " You may need to use 'Path Rewrite Rules' in the Advanced Settings to fix them if your avatar's objects are in a different location.";
                 msg += "\n";
-                msg += string.Join("\n", missingFromAvatar.OrderBy(path => path));
+                msg += missingFromAvatar.OrderBy(path => path).Join('\n');
                 warnings.Add(VRCFuryEditorUtils.Error(msg));
             }
             if (missingFromBase.Any() && suggestPathRewrites) {
@@ -169,7 +169,7 @@ namespace VF.Utils {
                     " If you want this prop to be reusable, you should use 'Path Rewrite Rules' in the Advanced Settings to rewrite " +
                     "these paths so they work with how the objects are located within this object.";
                 msg += "\n";
-                msg += string.Join("\n", missingFromBase.OrderBy(path => path));
+                msg += missingFromBase.OrderBy(path => path).Join('\n');
                 warnings.Add(VRCFuryEditorUtils.Warn(msg));
             }
 
@@ -182,7 +182,7 @@ namespace VF.Utils {
             if (overLimitConstraints.Any()) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     "VRC Constraints can only have the first 16 source animated, but you are animating a constraint source above this limit!" +
-                    " This will break these animations if this avatar is upgraded to VRC Constraints.\n" + string.Join("\n", overLimitConstraints)));
+                    " This will break these animations if this avatar is upgraded to VRC Constraints.\n" + overLimitConstraints.Join('\n')));
             }
 
             return warnings;

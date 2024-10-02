@@ -42,7 +42,13 @@ namespace VF.Inspector {
             }
 
             void OnClickMinus() {
-                EditorUtility.DisplayDialog("VRCFury", "Right click on the element you would like to remove", "Ok");
+                if (list.arraySize == 0) {
+                } else if (list.arraySize == 1) {
+                    list.DeleteArrayElementAtIndex(0);
+                    list.serializedObject.ApplyModifiedProperties();
+                } else {
+                    DialogUtils.DisplayDialog("VRCFury", "Right click on the element you would like to remove", "Ok");
+                }
             }
 
             void Move(int offset, int pos) {

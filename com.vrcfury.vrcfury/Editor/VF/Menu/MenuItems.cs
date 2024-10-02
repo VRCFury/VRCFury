@@ -132,15 +132,15 @@ namespace VF.Menu {
                     if (c == null || c is Transform) continue;
                     var type = c.GetType().Name;
                     if (c is VRCFury vf) {
-                        type += " (" + string.Join(",", vf.GetAllFeatures().Select(f => f.GetType().Name)) + ")";
+                        type += " (" + vf.GetAllFeatures().Select(f => f.GetType().Name).Join(',') + ")";
                     }
                     list.Add(type  + " in " + c.owner().GetPath(obj));
                 }
 
-                var output = $"List of components on {obj}:\n" + string.Join("\n", list);
+                var output = $"List of components on {obj}:\n" + list.Join('\n');
                 GUIUtility.systemCopyBuffer = output;
 
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     "Debug",
                     $"Found {list.Count} components in {obj.name} and copied them to clipboard",
                     "Ok"
@@ -151,7 +151,7 @@ namespace VF.Menu {
         [MenuItem(reserialize, priority = reserializePriority)]
         private static void Reserialize() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                var doIt = EditorUtility.DisplayDialog(
+                var doIt = DialogUtils.DisplayDialog(
                     "VRCFury",
                     "This is intended for VRCFury developers only, in order to quickly" +
                     " refresh serialization of all VRCF components in a project." +
@@ -170,7 +170,7 @@ namespace VF.Menu {
                     }
                 });
 
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     "VRCFury",
                     $"Done",
                     "Ok"

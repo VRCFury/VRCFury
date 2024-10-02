@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -50,7 +51,7 @@ namespace VF.Service {
                 }
             }
             
-            Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
+            Debug.Log("Optimization report:\n\n" + debugLog.Join('\n'));
         }
 
         private void OptimizeLayer(VFLayer layer, Dictionary<VFLayer, ICollection<EditorCurveBinding>> bindingsByLayer, Lazy<VFBlendTreeDirect> directTree) {
@@ -123,13 +124,13 @@ namespace VF.Service {
                 .Select(pair => pair.Key)
                 .ToArray();
             if (otherLayersAnimateTheSameThing.Length > 0) {
-                var names = string.Join(", ", otherLayersAnimateTheSameThing.Select(l => l.name));
+                var names = otherLayersAnimateTheSameThing.Select(l => l.name).Join(", ");
                 throw new DoNotOptimizeException($"Shares animations with other layer: {names}");
             }
 
             if (states.Length == 1) {
                 var state = states[0].state;
-                var onClip = MakeClipForState(layer, state);
+                var onClip = Make0LengthClipForState(layer, state);
                 if (onClip != null) {
                     directTree.Value.Add(onClip);
                 }
@@ -167,8 +168,8 @@ namespace VF.Service {
             // TODO: Might want to verify that state1Condition is the opposite of state0Condition
             // But we already verify that they use the same parameter, so it's /extremely/ unlikely for this to not be the case
             
-            var state0Clip = MakeClipForState(layer, state0);
-            var state1Clip = MakeClipForState(layer, state1);
+            var state0Clip = Make0LengthClipForState(layer, state0);
+            var state1Clip = Make0LengthClipForState(layer, state1);
 
             Optimize(state0Condition.Value, state0Clip, state1Clip, directTree);
         }
@@ -237,62 +238,52 @@ namespace VF.Service {
             }
         }
 
-        private Motion MakeClipForState(VFLayer layer, AnimatorState state) {
-            var hasNonstaticClips = new AnimatorIterator.Clips().From(state).Any(clip => !clip.IsStatic());
-            if (hasNonstaticClips) {
-                var clipsInMotion = new AnimatorIterator.Clips().From(state.motion);
-                if (clipsInMotion.Any(clip => clip.isLooping)) {
-                    throw new DoNotOptimizeException($"{state.name} contains non-static motion that loops");
-                }
+        [CanBeNull]
+        private Motion Make0LengthClipForState(VFLayer layer, AnimatorState state) {
+            if (state.motion == null) return null;
 
-                var hasNegativeTimeScaleClip = new AnimatorIterator.Trees().From(state.motion)
-                    .SelectMany(tree => tree.children)
-                    .Any(child => child.timeScale <= 0);
-                if (hasNegativeTimeScaleClip) {
-                    throw new DoNotOptimizeException($"{state.name} contains a tree child with a timeScale <= 0");
-                }
+            if (state.motion.IsStatic()) {
+                return state.motion.GetLastFrame();
+            }
 
-                var startMotion = state.motion.Clone();
-                foreach (var clip in new AnimatorIterator.Clips().From(startMotion)) {
-                    var dualState = clip.SplitRangeClip();
-                    if (dualState == null) {
-                        throw new DoNotOptimizeException($"{state.name} contains a non-static clip with more than 2 keyframes");
-                    }
-                    clip.Clear();
-                    clip.CopyFrom(dualState.Item1);
-                }
-                var endMotion = state.motion.Clone();
-                foreach (var clip in new AnimatorIterator.Clips().From(endMotion)) {
-                    var dualState = clip.SplitRangeClip();
-                    if (dualState == null) {
-                        throw new DoNotOptimizeException($"{state.name} contains a non-static clip with more than 2 keyframes");
-                    }
-                    clip.Clear();
-                    clip.CopyFrom(dualState.Item2);
-                }
+            if (!state.motion.IsTwoState()) {
+                throw new DoNotOptimizeException($"{state.name} contains a non-static clip with more than 2 keyframes");
+            }
 
-                if (state.timeParameterActive) {
-                    // TODO: This could also break if the animation tangents are not linear
-                    if (string.IsNullOrWhiteSpace(state.timeParameter)) {
-                        throw new DoNotOptimizeException($"{state.name} contains a motion time clip without a valid parameter");
-                    }
-                    var subTree = VFBlendTree1D.Create($"Layer {layer.name} - {state.name}", state.timeParameter);
-                    subTree.Add(0, startMotion);
-                    subTree.Add(1, endMotion);
-                    return subTree;
-                } else if (state.motion is AnimationClip) {
-                    if (clipsInMotion.Any(clip => clip.GetLengthInFrames() > 5)) {
-                        throw new DoNotOptimizeException($"{state.name} contains a non-static clip that is long enough to notice the animation");
-                    }
-                    if (state.speed >= 0.9) return endMotion;
-                    if (state.speed <= -0.9) return startMotion;
-                    if (Mathf.Approximately(state.speed, 0)) return startMotion;
-                    throw new DoNotOptimizeException($"{state.name} contains a non-static clip with a non-standard speed");
-                } else {
-                    throw new DoNotOptimizeException($"{state.name} contains a non-static clip that is a blendtree not using motion time");
+            var clipsInMotion = new AnimatorIterator.Clips().From(state.motion);
+            if (clipsInMotion.Any(clip => clip.isLooping)) {
+                throw new DoNotOptimizeException($"{state.name} contains non-static motion that loops");
+            }
+
+            var hasNegativeTimeScaleClip = new AnimatorIterator.Trees().From(state.motion)
+                .SelectMany(tree => tree.children)
+                .Any(child => child.timeScale <= 0);
+            if (hasNegativeTimeScaleClip) {
+                throw new DoNotOptimizeException($"{state.name} contains a tree child with a timeScale <= 0");
+            }
+
+            var startMotion = state.motion.GetLastFrame(false);
+            var endMotion = state.motion.GetLastFrame(true);
+
+            if (state.timeParameterActive) {
+                // TODO: This could also break if the animation tangents are not linear
+                if (string.IsNullOrWhiteSpace(state.timeParameter)) {
+                    throw new DoNotOptimizeException($"{state.name} contains a motion time clip without a valid parameter");
                 }
+                var subTree = VFBlendTree1D.Create($"Layer {layer.name} - {state.name}", state.timeParameter);
+                subTree.Add(0, startMotion);
+                subTree.Add(1, endMotion);
+                return subTree;
+            } else if (state.motion is AnimationClip) {
+                if (clipsInMotion.Any(clip => clip.GetLengthInFrames() > 5)) {
+                    throw new DoNotOptimizeException($"{state.name} contains a non-static clip that is long enough to notice the animation");
+                }
+                if (state.speed >= 0.9) return endMotion;
+                if (state.speed <= -0.9) return startMotion;
+                if (Mathf.Approximately(state.speed, 0)) return startMotion;
+                throw new DoNotOptimizeException($"{state.name} contains a non-static clip with a non-standard speed");
             } else {
-                return state.motion;
+                throw new DoNotOptimizeException($"{state.name} contains a non-static clip that is a blendtree not using motion time");
             }
         }
 

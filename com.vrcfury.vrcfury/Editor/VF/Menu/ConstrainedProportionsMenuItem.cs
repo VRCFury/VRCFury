@@ -3,6 +3,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Haptics;
+using VF.Utils;
 
 namespace VF.Menu {
     internal class ConstrainedProportionsMenuItem : UnityEditor.AssetModificationProcessor {
@@ -66,7 +67,7 @@ namespace VF.Menu {
         [MenuItem(MenuItems.constrainedProportions, priority = MenuItems.constrainedProportionsPriority)]
         private static void Click() {
             if (Get()) {
-                var ok = EditorUtility.DisplayDialog(
+                var ok = DialogUtils.DisplayDialog(
                     "Warning",
                     "Without Constrained Proportions, it's easy to accidentally scale objects non-uniformly," +
                     " introducing what is called 'Shear' in unity. This can make bones stretch different amounts depending on which" +

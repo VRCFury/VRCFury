@@ -78,7 +78,7 @@ namespace VF.Service {
                 }
             }
             
-            Debug.Log("Animator Layer Control Offset Builder Report:\n" + string.Join("\n", debugLog));
+            Debug.Log("Animator Layer Control Offset Builder Report:\n" + debugLog.Join('\n'));
         }
 
         public void RegisterControllerSet(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> _set) {

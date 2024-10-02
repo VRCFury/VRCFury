@@ -9,17 +9,17 @@ namespace VF.Menu {
         public static void Run(VFGameObject avatarObj) {
             var effects = CleanupAllZawooComponents(avatarObj, false);
             if (effects.Count == 0) {
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     "Zawoo Cleanup",
                     "No zawoo objects were found on avatar",
                     "Ok"
                 );
                 return;
             }
-            var doIt = EditorUtility.DisplayDialog(
+            var doIt = DialogUtils.DisplayDialog(
                 "Zawoo Cleanup",
                 "This tool is meant to be used to remove broken, old installs of the Zawoo prefab.\n\n" +
-                "The following parts will be deleted from your avatar:\n" + string.Join("\n", effects) +
+                "The following parts will be deleted from your avatar:\n" + effects.Join('\n') +
                 "\n\nContinue?",
                 "Yes, Delete them",
                 "Cancel"
