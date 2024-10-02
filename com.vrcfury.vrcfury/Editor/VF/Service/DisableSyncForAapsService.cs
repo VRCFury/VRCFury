@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
@@ -31,6 +32,7 @@ namespace VF.Service {
 
             foreach (var param in paramz.GetRaw().parameters) {
                 if (vrcfDrivenAaps.Contains(param.name)) {
+                    Debug.LogWarning($"VRCFury is disabling network sync for {param.name} because it is driven by an AAP");
                     param.SetNetworkSynced(false);
                 }
             }
