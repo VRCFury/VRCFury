@@ -37,7 +37,11 @@ namespace VF.Hooks {
                 }
                 HarmonyUtils.ReplaceMethod(original, replacement);
             }
-        } 
+            
+            Scheduler.Schedule(() => {
+                previewedPlayableCache.Clear();
+            }, 0);
+        }
  
         [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
         class ShimReplacments {
@@ -76,15 +80,19 @@ namespace VF.Hooks {
 
             return GetPlayablesForAnimator(animator);
         }
-        
+
+        private static readonly Dictionary<Animator, AnimatorControllerPlayable?> previewedPlayableCache =
+            new Dictionary<Animator, AnimatorControllerPlayable?>();
         private static AnimatorControllerPlayable? GetPreviewedPlayable(object _animator) {
             var animator = _animator as Animator;
             if (animator == null) return null;
 
+            if (previewedPlayableCache.TryGetValue(animator, out var cached)) return cached;
+
             var playables = GetPlayablesForAnimator(animator);
             var previewingController = FixDupAnimatorWindowHook.GetPreviewedAnimatorController();
             var matching = playables.Where(p => GetControllerForPlayable(p) == previewingController).ToArray();
-            return matching.Any() ? matching.First() : null;
+            return previewedPlayableCache[animator] = matching.Any() ? matching.First() : null;
         }
 
         private static readonly MethodInfo GetAnimatorControllerInternal = typeof(AnimatorControllerPlayable)
