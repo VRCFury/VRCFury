@@ -46,45 +46,68 @@ namespace VF.Hooks {
         [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
         class ShimReplacments {
             public float GetLayerWeight(int layerIndex) {
-                return GetPreviewedPlayable(this)?.GetLayerWeight(layerIndex) ?? 0; 
+                var animator = GetAnimator(this);
+                return GetPreviewedPlayable(animator)?.GetLayerWeight(layerIndex) ?? 0; 
             }
-            public float GetFloatString(string name) { 
-                return GetPreviewedPlayable(this)?.GetFloat(name) ?? 0; 
+            public float GetFloatString(string name) {
+                var animator = GetAnimator(this);
+                return GetPreviewedPlayable(animator)?.GetFloat(name) ?? animator.GetFloat(GetParameterNameHash(animator, name)); 
             }
             public void SetFloatString(string name, float value) {
-                foreach (var p in GetPlayables(this)) {
-                    SetWithCoercion(p, name, value);
-                } 
+                var animator = GetAnimator(this);
+                var playables = GetPlayables(animator);
+                if (playables.Any()) {
+                    foreach (var p in playables) {
+                        SetWithCoercion(p, name, value);
+                    }
+                } else {
+                    animator.SetFloat(GetParameterNameHash(animator, name), value);
+                }
             }
             public int GetIntegerString(string name) {
-                return GetPreviewedPlayable(this)?.GetInteger(name) ?? 0; 
+                var animator = GetAnimator(this);
+                return GetPreviewedPlayable(animator)?.GetInteger(name) ?? animator.GetInteger(GetParameterNameHash(animator, name)); 
             }
             public void SetIntegerString(string name, int value) {
-                foreach (var p in GetPlayables(this)) {
-                    SetWithCoercion(p, name, value);
+                var animator = GetAnimator(this);
+                var playables = GetPlayables(animator);
+                if (playables.Any()) {
+                    foreach (var p in playables) {
+                        SetWithCoercion(p, name, value);
+                    }
+                } else {
+                    animator.SetInteger(GetParameterNameHash(animator, name), value);
                 }
             }
             public bool GetBoolString(string name) {
-                return GetPreviewedPlayable(this)?.GetBool(name) ?? false; 
+                var animator = GetAnimator(this);
+                return GetPreviewedPlayable(animator)?.GetBool(name) ?? animator.GetBool(GetParameterNameHash(animator, name)); 
             }
             public void SetBoolString(string name, bool value) {
-                foreach (var p in GetPlayables(this)) {
-                    SetWithCoercion(p, name, value ? 1 : 0);
+                var animator = GetAnimator(this);
+                var playables = GetPlayables(animator);
+                if (playables.Any()) {
+                    foreach (var p in playables) {
+                        SetWithCoercion(p, name, value ? 1 : 0);
+                    }
+                } else {
+                    animator.SetBool(GetParameterNameHash(animator, name), value);
                 }
             }
         }
 
-        private static IList<AnimatorControllerPlayable> GetPlayables(object _animator) {
-            var animator = _animator as Animator;
-            if (animator == null) return null;
+        private static Animator GetAnimator(object obj) {
+            return obj as Animator;
+        }
 
+        private static IList<AnimatorControllerPlayable> GetPlayables(Animator animator) {
+            if (animator == null) return null;
             return GetPlayablesForAnimator(animator);
         }
 
         private static readonly Dictionary<Animator, AnimatorControllerPlayable?> previewedPlayableCache =
             new Dictionary<Animator, AnimatorControllerPlayable?>();
-        private static AnimatorControllerPlayable? GetPreviewedPlayable(object _animator) {
-            var animator = _animator as Animator;
+        private static AnimatorControllerPlayable? GetPreviewedPlayable(Animator animator) {
             if (animator == null) return null;
             if (previewedPlayableCache.TryGetValue(animator, out var cached)) return cached;
             return previewedPlayableCache[animator] = GetPreviewedPlayableUncached(animator);
@@ -131,9 +154,19 @@ namespace VF.Hooks {
                 .ToArray();
         }
 
+        private static int GetParameterNameHash(Animator animator, string name) {
+            foreach (var p in animator.parameters) {
+                if (p.name == name) return p.nameHash;
+            }
+            return -1;
+        }
+
         public static void SetWithCoercion(AnimatorControllerPlayable playable, string name, float val) {
             foreach (var p in Enumerable.Range(0, playable.GetParameterCount()).Select(i => playable.GetParameter(i))) {
                 if (p.name != name) continue;
+                if (playable.IsParameterControlledByCurve(p.nameHash)) {
+                    break;
+                }
                 switch (p.type) {
                     case AnimatorControllerParameterType.Float:
                         playable.SetFloat(p.nameHash, val);
