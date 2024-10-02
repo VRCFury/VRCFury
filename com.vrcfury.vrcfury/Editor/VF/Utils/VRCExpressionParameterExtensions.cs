@@ -3,7 +3,7 @@ using System.Reflection;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Utils {
-    public static class VRCExpressionParameterExtensions {
+    internal static class VRCExpressionParameterExtensions {
         private static readonly FieldInfo networkSyncedField =
             typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
 

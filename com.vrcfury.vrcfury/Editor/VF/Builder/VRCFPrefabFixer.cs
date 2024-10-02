@@ -23,7 +23,7 @@ namespace VF.Builder {
          * components, then will force-reimport them in bottom-up order.
          */
         public static void Fix(ICollection<VFGameObject> objs) {
-            Debug.Log("Running VRCFury prefab fix pass on " + objs.Select(o => o.GetPath()).Join(", "));
+            //Debug.Log("Running VRCFury prefab fix pass on " + objs.Select(o => o.GetPath()).Join(", "));
 
             var dependsOn = new Dictionary<string, HashSet<string>>();
             HashSet<string> GetDependsOn(string childPath) {
@@ -81,7 +81,7 @@ namespace VF.Builder {
                 }
             }
             
-            Debug.Log("Prefab fix completed");
+            //Debug.Log("Prefab fix completed");
         }
 
         public static ICollection<PropertyModification> GetModifications(Object obj) {

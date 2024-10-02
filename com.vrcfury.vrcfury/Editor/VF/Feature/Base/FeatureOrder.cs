@@ -85,6 +85,7 @@ namespace VF.Feature.Base {
         LocomotionConflictResolver,
         ActionConflictResolver,
         TrackingConflictResolver,
+        DisableSyncForAaps,
         FixPartiallyWeightedAaps, // Needs to run before PositionDefaultsLayer, before OptimizeBlendTrees, after everything setting AAPs, after TrackingConflictResolver (creates aaps), before anything that would remove the defaults layer like CleanupEmptyLayers
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
         FixUnsetPlayableLayers,
