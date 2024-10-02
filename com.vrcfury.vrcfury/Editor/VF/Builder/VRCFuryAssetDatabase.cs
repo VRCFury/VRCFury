@@ -85,7 +85,7 @@ namespace VF.Builder {
             if (reasons.Count > 0) {
                 var reasonsPath = GetUniquePath(dir, filename + "-reasons", "txt");
                 var writer = new StreamWriter(reasonsPath, false);
-                writer.WriteLine(string.Join("\n", reasons));
+                writer.WriteLine(reasons.Join('\n'));
                 writer.Close();
                 AssetDatabase.ImportAsset(reasonsPath);
             }

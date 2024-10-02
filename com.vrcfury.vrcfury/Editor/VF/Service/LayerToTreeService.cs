@@ -51,7 +51,7 @@ namespace VF.Service {
                 }
             }
             
-            Debug.Log("Optimization report:\n\n" + string.Join("\n", debugLog));
+            Debug.Log("Optimization report:\n\n" + debugLog.Join('\n'));
         }
 
         private void OptimizeLayer(VFLayer layer, Dictionary<VFLayer, ICollection<EditorCurveBinding>> bindingsByLayer, Lazy<VFBlendTreeDirect> directTree) {
@@ -124,7 +124,7 @@ namespace VF.Service {
                 .Select(pair => pair.Key)
                 .ToArray();
             if (otherLayersAnimateTheSameThing.Length > 0) {
-                var names = string.Join(", ", otherLayersAnimateTheSameThing.Select(l => l.name));
+                var names = otherLayersAnimateTheSameThing.Select(l => l.name).Join(", ");
                 throw new DoNotOptimizeException($"Shares animations with other layer: {names}");
             }
 

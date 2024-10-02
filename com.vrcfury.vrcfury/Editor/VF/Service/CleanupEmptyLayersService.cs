@@ -44,7 +44,7 @@ namespace VF.Service {
                 if (removedBindings.Count > 0) {
                     Debug.LogWarning(
                         $"Removed {removedBindings.Count} properties from animation clips that targeted objects that do not exist:\n" +
-                        string.Join("\n", removedBindings));
+                        removedBindings.Join('\n'));
                 }
 
                 // Delete empty layers

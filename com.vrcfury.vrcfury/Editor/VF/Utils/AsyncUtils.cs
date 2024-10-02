@@ -20,14 +20,5 @@ namespace VF.Utils {
 
             return promise.Task;
         }
-        public static async Task DisplayDialog(string msg) {
-            await InMainThread(() => {
-                EditorUtility.DisplayDialog(
-                    "VRCFury",
-                    msg,
-                    "Ok"
-                );
-            });
-        }
     }
 }

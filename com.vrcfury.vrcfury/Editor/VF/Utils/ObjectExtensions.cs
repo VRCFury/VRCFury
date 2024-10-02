@@ -61,5 +61,9 @@ namespace VF.Utils {
         public static T NullSafe<T>([CanBeNull] this T obj) where T : UnityEngine.Object {
             return obj == null ? null : obj;
         }
+        [CanBeNull]
+        public static VFGameObject NullSafe([CanBeNull] this VFGameObject obj) {
+            return obj == null ? null : obj;
+        }
     }
 }

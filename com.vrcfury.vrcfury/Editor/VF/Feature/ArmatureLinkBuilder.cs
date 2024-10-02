@@ -227,12 +227,12 @@ namespace VF.Feature {
                 if (links.unmergedChildren.Count > 0) {
                     text.Add(
                         "These bones do not have a match on the avatar and will be added as new children: \n" +
-                        string.Join("\n",
-                            links.unmergedChildren.Select(b =>
-                                "* " + b.Item1.GetPath(links.propMain))));
+                        links.unmergedChildren.Select(b =>
+                            "* " + b.Item1.GetPath(links.propMain)
+                        ).Join('\n'));
                 }
 
-                return string.Join("\n", text);
+                return text.Join('\n');
             }));
 
             return container;

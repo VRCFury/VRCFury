@@ -98,7 +98,7 @@ namespace VF.Service {
                         var debugInfo = obj.AddComponent<VRCFuryDebugInfo>();
                         debugInfo.debugInfo =
                             "VRCFury Armature Link did not clean up this object because it is still used:\n";
-                        debugInfo.debugInfo += string.Join("\n", usedReasons.Get(obj).OrderBy(a => a));
+                        debugInfo.debugInfo += usedReasons.Get(obj).OrderBy(a => a).Join('\n');
                     }
                 }
             }
@@ -156,7 +156,7 @@ namespace VF.Service {
 
                 var animSources = anim.GetDebugSources(propBone);
                 if (animSources.Count > 0) {
-                    AddDebugInfo("This object is animated:\n" + string.Join("\n", animSources.OrderBy(a => a)));
+                    AddDebugInfo("This object is animated:\n" + animSources.OrderBy(a => a).Join('\n'));
                 }
 
                 bool ShouldReparent() {
@@ -518,7 +518,7 @@ namespace VF.Service {
             }).NotNull().FirstOrDefault();
 
             if (avatarBone == null) {
-                throw new Exception(string.Join("\n", exceptions));
+                throw new Exception(exceptions.Join('\n'));
             }
 
             var removeBoneSuffix = model.removeBoneSuffix;

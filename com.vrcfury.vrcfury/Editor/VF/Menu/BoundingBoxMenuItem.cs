@@ -1,4 +1,5 @@
 using UnityEditor;
+using VF.Utils;
 
 namespace VF.Menu {
     internal static class BoundingBoxMenuItem {
@@ -19,7 +20,7 @@ namespace VF.Menu {
         [MenuItem(MenuItems.boundingBoxFix, priority = MenuItems.boundingBoxFixPriority)]
         private static void Click() {
             if (Get()) {
-                var ok = EditorUtility.DisplayDialog(
+                var ok = DialogUtils.DisplayDialog(
                     "Warning",
                     "Disabling this option will prevent VRCFury from adjusting small bounding boxes." +
                     " This may cause small props on your avatar (like hair) to unexpectedly disappear for users at certain angles." +

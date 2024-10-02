@@ -17,5 +17,6 @@ namespace VF.Service {
         public Func<string> currentFeatureNameProvider;
         public Func<string> currentFeatureClipPrefixProvider;
         public Func<int> currentMenuSortPosition;
+        public Func<string> currentFeatureObjectPath;
     }
 }

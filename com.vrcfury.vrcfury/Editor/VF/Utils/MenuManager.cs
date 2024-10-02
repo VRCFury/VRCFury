@@ -251,7 +251,7 @@ namespace VF.Utils {
         private VRCExpressionsMenu CreateNewMenu(IList<string> path) {
             var cleanPath = path.Select(CleanTitleForFilename);
             var newMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
-            newMenu.name = string.Join(" » ", cleanPath);
+            newMenu.name = cleanPath.Join(" » ");
             return newMenu;
         }
         private static string CleanTitleForFilename(string str) {

@@ -117,7 +117,7 @@ namespace VF.Inspector {
                 if (descriptors.Length > 1) {
                     warning.Add(VRCFuryEditorUtils.Error(
                         "There are multiple avatar descriptors in this hierarchy. Each avatar should only have one avatar descriptor on the avatar root." +
-                        " This may cause issues in this inspector or during your avatar build.\n\n" + string.Join("\n", descriptors.Select(d => d.owner().GetPath()))));
+                        " This may cause issues in this inspector or during your avatar build.\n\n" + descriptors.Select(d => d.owner().GetPath()).Join('\n')));
                 }
 
                 var hasDelete = v is VRCFury z && z.GetAllFeatures().OfType<DeleteDuringUpload>().Any();
@@ -193,7 +193,7 @@ namespace VF.Inspector {
                     overrideLabel.SetVisible(isModified);
                     if (isModified) {
                         overrideLabel.Clear();
-                        overrideLabel.Add(VRCFuryEditorUtils.WrappedLabel(baseText + "\n\n" + string.Join(", ", mods.Select(m => m.propertyPath))));
+                        overrideLabel.Add(VRCFuryEditorUtils.WrappedLabel(baseText + "\n\n" + mods.Select(m => m.propertyPath).Join(", ")));
                     }
                 }
                 EditorApplication.delayCall += CheckOverride;

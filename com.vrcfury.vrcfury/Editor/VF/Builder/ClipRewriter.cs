@@ -112,7 +112,7 @@ namespace VF.Builder {
                     }
                 }
             }
-            return string.Join("/", ret);
+            return ret.Join('/');
         }
     }
 }

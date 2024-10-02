@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Model;
+using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace VF.Menu {
@@ -15,7 +16,7 @@ namespace VF.Menu {
         
         public static void BuildTestCopy(VFGameObject originalObject) {
             if (IsTestCopy(originalObject)) {
-                EditorUtility.DisplayDialog("VRCFury Error", "This object is already a VRCF editor test copy.", "Ok");
+                DialogUtils.DisplayDialog("VRCFury Error", "This object is already a VRCF editor test copy.", "Ok");
                 return;
             }
 

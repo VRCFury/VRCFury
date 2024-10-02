@@ -1,4 +1,5 @@
 ﻿using UnityEditor;
+using VF.Utils;
 
 namespace VF.Menu {
     internal static class AutoUpgradeDpsMenuItem {
@@ -19,7 +20,7 @@ namespace VF.Menu {
         [MenuItem(MenuItems.dpsAutoUpgrade, priority = MenuItems.dpsAutoUpgradePriority)]
         private static void Click() {
             if (Get()) {
-                var ok = EditorUtility.DisplayDialog(
+                var ok = DialogUtils.DisplayDialog(
                     "Warning",
                     "Disabling this option will prevent meshes with DPS from being able to trigger haptics and" +
                     " animations on other avatars. Are you sure you want to continue?",

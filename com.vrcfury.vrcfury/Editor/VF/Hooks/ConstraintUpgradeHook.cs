@@ -54,13 +54,13 @@ namespace VF.Hooks {
                     overLimitWarning =
                         "WARNING! You have a constraint with more than 16 sources. If this is upgraded to a" +
                         " VRC Constraint, it will fail to be able to turn on those higher sources.\n" +
-                        string.Join("\n", overLimit) +
+                        overLimit.Join('\n') +
                         "\n\n";
                 }
                 
-                var ok = EditorUtility.DisplayDialog("Auto Convert Constraints",
+                var ok = DialogUtils.DisplayDialog("Auto Convert Constraints",
                     $"This object uses VRCFury.\n\n" +
-                    $"To ensure all merged animations are properly upgraded, the ENTIRE root object {string.Join(", ", roots.Select(root => root.name))} will have ALL of its constraints upgraded.\n\n" +
+                    $"To ensure all merged animations are properly upgraded, the ENTIRE root object {roots.Select(root => root.name).Join(", ")} will have ALL of its constraints upgraded.\n\n" +
                     $"Scanned {controllers.Count} controllers\n" +
                     $"Will upgrade {unityConstraints.Count} constraint components\n" +
                     $"Will upgrade {clips.Count} animation clips\n\n" +

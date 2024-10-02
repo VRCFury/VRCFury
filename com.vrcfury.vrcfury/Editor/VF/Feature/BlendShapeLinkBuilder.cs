@@ -131,7 +131,7 @@ namespace VF.Feature {
                 var text = new List<string>();
                 text.Add("Base Skin: " + baseSkin.owner().name);
                 if (linkSkins.Count > 0) {
-                    text.Add("Linked Skins: " + string.Join(", ", linkSkins.Select(l => l.owner().name)));
+                    text.Add("Linked Skins: " + linkSkins.Select(l => l.owner().name).Join(", "));
                 } else {
                     text.Add("No valid linked skins found");
                 }
@@ -144,17 +144,17 @@ namespace VF.Feature {
                             var skinList = linkSkins
                                 .Where(s => mappingsWithSkin.Contains((s, pair)))
                                 .Select(s => s.name);
-                            skinListStr = " (" + string.Join(",", skinList) + ")";
+                            skinListStr = " (" + skinList.Join(',') + ")";
                         }
 
                         if (from == to) return from + skinListStr;
                         return from + " > " + to + skinListStr;
                     }
-                    text.Add("Linked Blendshapes:\n" + string.Join("\n", allMappings.Select(FormatMapping)));
+                    text.Add("Linked Blendshapes:\n" + allMappings.Select(FormatMapping).Join('\n'));
                 } else {
                     text.Add("No valid mappings found");
                 }
-                return string.Join("\n", text);
+                return text.Join('\n');
             }));
 
             return content;

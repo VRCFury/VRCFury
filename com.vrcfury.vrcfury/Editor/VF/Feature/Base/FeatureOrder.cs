@@ -39,6 +39,8 @@ namespace VF.Feature.Base {
         Default,
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver,
+        // Needs to be after anything uses GestureLeft or GestureRight
+        DisableGesturesService,
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags,
         
@@ -75,7 +77,7 @@ namespace VF.Feature.Base {
 
         // Finalize Controllers
         UpgradeToVrcConstraints, // Needs to happen before any step starts looking at or cleaning up "invalid" animation bindings
-        UnlimitedParameters,
+        ParameterCompressor,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         RecordAllDefaults,
