@@ -86,13 +86,15 @@ namespace VF.Hooks {
         private static AnimatorControllerPlayable? GetPreviewedPlayable(object _animator) {
             var animator = _animator as Animator;
             if (animator == null) return null;
-
             if (previewedPlayableCache.TryGetValue(animator, out var cached)) return cached;
-
+            return previewedPlayableCache[animator] = GetPreviewedPlayableUncached(animator);
+        }
+        private static AnimatorControllerPlayable? GetPreviewedPlayableUncached(Animator animator) {
             var playables = GetPlayablesForAnimator(animator);
             var previewingController = FixDupAnimatorWindowHook.GetPreviewedAnimatorController();
             var matching = playables.Where(p => GetControllerForPlayable(p) == previewingController).ToArray();
-            return previewedPlayableCache[animator] = matching.Any() ? matching.First() : null;
+            if (matching.Any()) return matching.First();
+            return null;
         }
 
         private static readonly MethodInfo GetAnimatorControllerInternal = typeof(AnimatorControllerPlayable)
