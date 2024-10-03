@@ -1,12 +1,15 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using UnityEditor;
+using UnityEngine;
 using UnityEngine.Animations;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Menu;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars;
 using VRC.SDK3.Avatars.Components;
@@ -49,10 +52,10 @@ namespace VF.Service {
                     .Where(obj => obj.GetComponent<IVRCConstraint>() != null));
             }
 
-            clipRewriteService.RewriteAllClips(AnimationRewriter.RewriteBinding(binding => {
+            EditorCurveBinding RewriteBinding(EditorCurveBinding binding, VFGameObject animatorObject) {
                 if (!typeof(IConstraint).IsAssignableFrom(binding.type)) return binding;
                 if (limitToObjects != null) {
-                    var obj = avatarObject.Find(binding.path);
+                    var obj = animatorObject.Find(binding.path);
                     if (obj == null || !limitToObjects.Contains(obj)) return binding;
                 }
                 if (AvatarDynamicsSetup.TryGetSubstituteAnimationBinding(
@@ -61,12 +64,26 @@ namespace VF.Service {
                         out var newType,
                         out var newPropertyName,
                         out var isArrayProperty
-                )) {
+                    )) {
                     binding.type = newType;
                     binding.propertyName = newPropertyName;
                 }
                 return binding;
-            }));
+            }
+
+            clipRewriteService.RewriteAllClips(AnimationRewriter.RewriteBinding(binding =>
+                RewriteBinding(binding, avatarObject)
+            ));
+
+            foreach (var animator in avatarObject.GetComponentsInSelfAndChildren<Animator>()) {
+                if (animator.owner() == avatarObject) continue;
+                if (animator.runtimeAnimatorController == null) continue;
+                var clone = VFController.CopyAndLoadController(animator.runtimeAnimatorController, VRCAvatarDescriptor.AnimLayerType.Base);
+                clone.GetRaw().Rewrite(AnimationRewriter.RewriteBinding(binding =>
+                    RewriteBinding(binding, animator.owner())
+                ));
+                animator.runtimeAnimatorController = clone;
+            }
 
             var avatarDescriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
             IConstraint[] unityConstraints;
