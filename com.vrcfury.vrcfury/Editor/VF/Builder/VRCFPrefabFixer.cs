@@ -23,6 +23,7 @@ namespace VF.Builder {
          * components, then will force-reimport them in bottom-up order.
          */
         public static void Fix(ICollection<VFGameObject> objs) {
+#if ! UNITY_2022_1_OR_NEWER
             //Debug.Log("Running VRCFury prefab fix pass on " + objs.Select(o => o.GetPath()).Join(", "));
 
             var dependsOn = new Dictionary<string, HashSet<string>>();
@@ -71,7 +72,7 @@ namespace VF.Builder {
 
                 Debug.Log("Done");
             }
-
+#endif
             foreach (var sceneVrcf in objs.SelectMany(o => o.GetComponentsInSelfAndChildren<VRCFury>())) {
                 for (var vrcf = sceneVrcf; vrcf != null; vrcf = GetCorrespondingObjectFromSource(vrcf)) {
                     var mods = GetModifications(vrcf);
