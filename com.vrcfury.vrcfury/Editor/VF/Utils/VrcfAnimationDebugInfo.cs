@@ -55,6 +55,7 @@ namespace VF.Utils {
         ) {
             if (avatarObject == null) avatarObject = componentObject.root;
             var nonRewriteSafeBindings = new HashSet<string>();
+            var outsidePrefabBindings = new HashSet<string>();
             var missingBindings = new HashSet<string>();
             var autofixPrefixes = new HashSet<string>();
 
@@ -94,10 +95,17 @@ namespace VF.Utils {
                         var nearestBinding = binding;
                         nearestBinding.path = nearestPath;
                         usedBindings.Add(nearestBinding);
-                        nonRewriteSafeBindings.Add(debugPath);
-                        var suffix = "/" + binding.path;
-                        if (nearestPath.EndsWith(suffix)) {
-                            autofixPrefixes.Add(nearestPath.Substring(0, nearestPath.Length - suffix.Length));
+                        var foundObject = avatarObject.Find(nearestPath);
+                        if (foundObject != null) {
+                            if (foundObject.IsChildOf(componentObject)) {
+                                nonRewriteSafeBindings.Add(debugPath);
+                                var suffix = "/" + binding.path;
+                                if (nearestPath.EndsWith(suffix)) {
+                                    autofixPrefixes.Add(nearestPath.Substring(0, nearestPath.Length - suffix.Length));
+                                }
+                            } else {
+                                outsidePrefabBindings.Add(debugPath);
+                            }
                         }
                     }
                 }
@@ -194,6 +202,12 @@ namespace VF.Utils {
                 }
 
                 warnings.Add(VRCFuryEditorUtils.Warn(el));
+            }
+            if (outsidePrefabBindings.Any()) {
+                var msg = $"This prefab is not self-contained! It animates things outside of this object.";
+                msg += "\n";
+                msg += outsidePrefabBindings.OrderBy(path => path).Join('\n');
+                warnings.Add(VRCFuryEditorUtils.Warn(msg));
             }
 
             var overLimitConstraints = new HashSet<string>();
