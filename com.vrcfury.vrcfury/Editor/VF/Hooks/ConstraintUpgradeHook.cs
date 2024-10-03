@@ -14,7 +14,9 @@ namespace VF.Hooks {
 #if VRCSDK_HAS_VRCCONSTRAINTS
         [InitializeOnLoadMethod]
         public static void Init() {
-            AvatarDynamicsSetup.IsUnityConstraintAutoConverted += constraint => true;
+            if (BuildTargetUtils.IsDesktop()) {
+                AvatarDynamicsSetup.IsUnityConstraintAutoConverted += constraint => true;
+            }
 
             AvatarDynamicsSetup.OnConvertUnityConstraintsAcrossGameObjects += (objs, isAutoFix) => {
                 if (AnimationMode.InAnimationMode()) return false;
