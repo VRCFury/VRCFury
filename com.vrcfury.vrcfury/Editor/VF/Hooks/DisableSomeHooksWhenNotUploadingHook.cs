@@ -33,7 +33,7 @@ namespace VF.Hooks {
                 if (typeName == "RemoveAvatarEditorOnly") {
                     callbacks.Remove(callback);
                 } else if (typeName == "LockMaterialsOnUpload") {
-                    Debug.Log($"VRCFury found {typeName} and is patching it to only run during actual uploads");
+                    //Debug.Log($"VRCFury found {typeName} and is patching it to only run during actual uploads");
                     var newCallback = new InhibitWhenNotUploadingWrapper(callback);
                     callbacks.Remove(callback);
                     callbacks.Add(newCallback);
