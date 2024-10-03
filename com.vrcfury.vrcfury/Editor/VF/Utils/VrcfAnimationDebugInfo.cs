@@ -22,7 +22,7 @@ namespace VF.Utils {
             [CanBeNull] VFGameObject avatarObject,
             VFGameObject componentObject,
             Func<string, string> rewritePath = null,
-            bool suggestPathRewrites = false
+            Action<string> addPathRewrite = null
         ) {
             var bindings = new HashSet<EditorCurveBinding>();
             foreach (var c in controllers) {
@@ -42,7 +42,7 @@ namespace VF.Utils {
 #endif
             }
 
-            return BuildDebugInfo(bindings, avatarObject, componentObject, rewritePath, true, suggestPathRewrites);
+            return BuildDebugInfo(bindings, avatarObject, componentObject, rewritePath, true, addPathRewrite);
         }
         
         public static List<VisualElement> BuildDebugInfo(
@@ -51,11 +51,12 @@ namespace VF.Utils {
             VFGameObject componentObject,
             Func<string,string> rewritePath = null,
             bool isController = false,
-            bool suggestPathRewrites = false
+            Action<string> addPathRewrite = null
         ) {
             if (avatarObject == null) avatarObject = componentObject.root;
-            var missingFromBase = new HashSet<string>();
-            var missingFromAvatar = new HashSet<string>();
+            var nonRewriteSafeBindings = new HashSet<string>();
+            var missingBindings = new HashSet<string>();
+            var autofixPrefixes = new HashSet<string>();
 
             AnimationRewriter nearestRewriter = ClipRewriter.CreateNearestMatchPathRewriter(
                 animObject: componentObject,
@@ -84,16 +85,20 @@ namespace VF.Utils {
                 var debugPath = binding.path;
                 if (binding.path != path) debugPath += " -> " + path;
                 if (avatarObject == componentObject) {
-                    missingFromAvatar.Add(debugPath);
+                    missingBindings.Add(debugPath);
                 } else {
                     var nearestPath = nearestRewriter?.RewritePath(path);
                     if (nearestPath == null) {
-                        missingFromAvatar.Add(debugPath);
+                        missingBindings.Add(debugPath);
                     } else {
                         var nearestBinding = binding;
                         nearestBinding.path = nearestPath;
                         usedBindings.Add(nearestBinding);
-                        missingFromBase.Add(debugPath);
+                        nonRewriteSafeBindings.Add(debugPath);
+                        var suffix = "/" + binding.path;
+                        if (nearestPath.EndsWith(suffix)) {
+                            autofixPrefixes.Add(nearestPath.Substring(0, nearestPath.Length - suffix.Length));
+                        }
                     }
                 }
             }
@@ -156,21 +161,39 @@ namespace VF.Utils {
 
             var thisName = isController ? "the controller" : "this clip";
 
-            if (missingFromAvatar.Any()) {
+            if (missingBindings.Any()) {
                 var msg = $"These paths are animated in {thisName}, but not found in your avatar! Thus, they won't do anything!";
-                if (suggestPathRewrites) msg += " You may need to use 'Path Rewrite Rules' in the Advanced Settings to fix them if your avatar's objects are in a different location.";
+                if (addPathRewrite != null) msg += " You may need to use 'Path Rewrite Rules' in the Advanced Settings to fix them if your avatar's objects are in a different location.";
                 msg += "\n";
-                msg += missingFromAvatar.OrderBy(path => path).Join('\n');
+                msg += missingBindings.OrderBy(path => path).Join('\n');
                 warnings.Add(VRCFuryEditorUtils.Error(msg));
             }
-            if (missingFromBase.Any() && suggestPathRewrites) {
-                var msg = $"These paths are animated in the {thisName}, but not found as children of this object.";
-                if (suggestPathRewrites) msg +=
-                    " If you want this prop to be reusable, you should use 'Path Rewrite Rules' in the Advanced Settings to rewrite " +
-                    "these paths so they work with how the objects are located within this object.";
-                msg += "\n";
-                msg += missingFromBase.OrderBy(path => path).Join('\n');
-                warnings.Add(VRCFuryEditorUtils.Warn(msg));
+            if (nonRewriteSafeBindings.Any()) {
+                var el = new VisualElement();
+                el.Add(VRCFuryEditorUtils.WrappedLabel(
+                    $"The animations provided are not rename-safe! If this object is moved or renamed, the animations will break."
+                ));
+                if (addPathRewrite != null && autofixPrefixes.Any()) {
+                    el.Add(VRCFuryEditorUtils.WrappedLabel(
+                        "\nClick Auto-Fix to add a Rewrite Path rule to this Full Controller which will make the animations rename-safe."
+                    ));
+                    el.Add(new Button(() => {
+                        if (!DialogUtils.DisplayDialog(
+                                "VRCFury",
+                                "These Path Rewrite rules are being added to the Full Controller component:\n" +
+                                autofixPrefixes.Select(prefix => $"'{prefix}' -> ''").Join('\n'),
+                                "Ok",
+                                "Cancel"
+                        )) {
+                            return;
+                        }
+                        foreach (var p in autofixPrefixes) {
+                            addPathRewrite(p);
+                        }
+                    }) { text = "Auto-Fix" });
+                }
+
+                warnings.Add(VRCFuryEditorUtils.Warn(el));
             }
 
             var overLimitConstraints = new HashSet<string>();

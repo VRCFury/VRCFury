@@ -619,8 +619,12 @@ namespace VF.Inspector {
         }
 
         public static VisualElement Warn(string message) {
+            return Warn(WrappedLabel(message));
+        }
+        
+        public static VisualElement Warn(VisualElement message) {
             var i = Section().BorderColor(Color.yellow).Border(2);
-            i.Add(WrappedLabel(message));
+            i.Add(message);
             return i;
         }
         

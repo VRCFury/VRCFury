@@ -539,7 +539,19 @@ namespace VF.Feature {
                 var usesWdOff = controllers
                     .SelectMany(c => new AnimatorIterator.States().From(c))
                     .Any(state => !state.writeDefaultValues);
-                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(controllers, avatarObject, baseObject, path => RewritePath(model, path), suggestPathRewrites: true).ToList();
+                var rewrites = prop.FindPropertyRelative("rewriteBindings");
+                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
+                    controllers,
+                    avatarObject,
+                    baseObject,
+                    path => RewritePath(model, path),
+                    addPathRewrite: path => {
+                        VRCFuryEditorUtils.AddToList(rewrites, entry => {
+                            entry.FindPropertyRelative("from").stringValue = path;
+                            entry.FindPropertyRelative("to").stringValue = "";
+                        });
+                    }
+                ).ToList();
                 if (usesWdOff) {
                     warnings.Add(VRCFuryEditorUtils.Warn(
                         "This controller uses WD off!" +
