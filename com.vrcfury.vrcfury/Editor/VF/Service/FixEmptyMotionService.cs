@@ -35,7 +35,7 @@ namespace VF.Service {
         private void CheckState(ControllerManager controller, VFLayer layer, AnimatorState state, AnimationClip noopClip) {
             // ReSharper disable once ReplaceWithSingleAssignment.True
             var replaceNulls = true;
-            if (state.writeDefaultValues && !VFLayer.Created(state)) {
+            if (state.writeDefaultValues) {
                 // Interestingly, inserting noop clips into WD on states HAS SIDE EFFECTS for some reason
                 // so... don't do that. (Doing so breaks the rex eye pupil animations, because it seemingly
                 // doesn't properly propagate higher layer states while transitioning from a noop clip into
