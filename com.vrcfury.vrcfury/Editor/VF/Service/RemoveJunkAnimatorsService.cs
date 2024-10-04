@@ -12,13 +12,12 @@ namespace VF.Service {
     [VFService]
     internal class RemoveJunkAnimatorsService {
         [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly AnimatorHolderService animators;
 
         [FeatureBuilderAction(FeatureOrder.RemoveJunkAnimators)]
         public void Apply() {
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFury>()) {
-                var animator = c.gameObject.GetComponent<Animator>();
-                if (animator != null && c.gameObject != avatarObject)
-                    Object.DestroyImmediate(animator);
+                animators.RemoveAnimator(c.owner());
             }
         }
     }
