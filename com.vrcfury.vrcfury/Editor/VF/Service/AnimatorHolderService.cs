@@ -97,7 +97,9 @@ namespace VF.Service {
 
         public IList<(VFGameObject owner, VFController controller)> GetSubControllers() {
             var output = new List<(VFGameObject, VFController)>();
-            foreach (var (owner, saved) in savedAnimators) {
+            foreach (var pair in savedAnimators) {
+                var owner = pair.Key;
+                var saved = pair.Value;
                 if (owner == avatarObject) continue;
                 if (saved.controller == null) continue;
                 if (saved.clone == null) {
