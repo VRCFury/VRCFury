@@ -77,11 +77,9 @@ namespace VF.Service {
             ));
 
             foreach (var (owner,controller) in animators.GetSubControllers()) {
-                var clone = VFController.CopyAndLoadController(controller, VRCAvatarDescriptor.AnimLayerType.Base);
-                clone.GetRaw().Rewrite(AnimationRewriter.RewriteBinding(binding =>
+                controller.GetRaw().Rewrite(AnimationRewriter.RewriteBinding(binding =>
                     RewriteBinding(binding, owner)
                 ));
-                animators.SetSubController(owner, clone);
             }
 
             var avatarDescriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();

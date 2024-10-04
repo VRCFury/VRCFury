@@ -1,10 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Model;
 using VF.Utils;
+using VF.Utils.Controller;
+using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Service {
@@ -29,6 +33,7 @@ namespace VF.Service {
 
         private class SavedAnimator {
             public RuntimeAnimatorController controller;
+            public VFController clone;
             public Avatar avatar;
             public bool applyRootMotion;
             public AnimatorUpdateMode updateMode;
@@ -44,6 +49,15 @@ namespace VF.Service {
             ClosestBoneUtils.ClearCache();
 
             foreach (var animator in avatarObject.GetComponentsInSelfAndChildren<Animator>()) {
+                var owner = animator.owner();
+
+                if (owner != avatarObject && owner.GetComponents<VRCFury>().Any()) {
+                    // This is a junk animator. Common for clothing prefabs, where the artist left an Animator
+                    // on the asset to make it easier to record VRCFury animations. Just delete it.
+                    Object.DestroyImmediate(animator);
+                    continue;
+                }
+
                 savedAnimators.Add(animator.owner(), new SavedAnimator {
                     controller = animator.runtimeAnimatorController,
                     avatar = animator.avatar,
@@ -81,24 +95,19 @@ namespace VF.Service {
             }
         }
 
-        public IList<(VFGameObject owner, RuntimeAnimatorController controller)> GetSubControllers() {
-            return savedAnimators
-                .Where(pair => pair.Key != avatarObject)
-                .Where(pair => pair.Value.controller != null)
-                .Select(pair => (pair.Key, pair.Value.controller))
-                .ToArray();
-        }
-
-        public void SetSubController(VFGameObject owner, RuntimeAnimatorController controller) {
-            if (owner == avatarObject) return;
-            if (savedAnimators.TryGetValue(owner, out var saved)) {
-                saved.controller = controller;
+        public IList<(VFGameObject owner, VFController controller)> GetSubControllers() {
+            var output = new List<(VFGameObject, VFController)>();
+            foreach (var (owner, saved) in savedAnimators) {
+                if (owner == avatarObject) continue;
+                if (saved.controller == null) continue;
+                if (saved.clone == null) {
+                    saved.clone = VFController.CopyAndLoadController(saved.controller, VRCAvatarDescriptor.AnimLayerType.Base);
+                    saved.controller = saved.clone;
+                }
+                if (saved.clone == null) continue;
+                output.Add((owner, saved.clone));
             }
-        }
-
-        public void RemoveAnimator(VFGameObject owner) {
-            if (owner == avatarObject) return;
-            savedAnimators.Remove(owner);
+            return output;
         }
     }
 }

@@ -205,7 +205,7 @@ namespace VF.Feature {
                 .Select(c => c.GetRaw())
                 .SelectMany(controller => GetBindings(avatarObject, controller))
                 .Concat(animators.GetSubControllers().SelectMany(pair =>
-                    GetBindings(pair.owner, pair.controller as AnimatorController)
+                    GetBindings(pair.owner, pair.controller)
                 ))
                 .ToList();
 
