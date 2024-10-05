@@ -41,7 +41,6 @@ namespace VF.Service {
                 if (original == null) return null;
                 if (matCache.TryGetValue(original, out var output)) return output;
                 output = original;
-                // Don't use GetTexturePropertyIds because the IDs may change once the material is cloned
                 foreach (var id in original.GetTexturePropertyNames()) {
                     // GetTexture can randomly throw a "Material doesn't have a texture property '_whatever'" exception here,
                     // even though it just came from GetTexturePropertyNameIDs.
@@ -53,7 +52,7 @@ namespace VF.Service {
                     if (oldTexture == null) continue;
                     var newTexture = OptimizeTexture(oldTexture);
                     if (oldTexture != newTexture) {
-                        output = original.Clone($"Needed to swap texture {oldTexture.name} to a copy that has mipmap streaming enabled");
+                        output = output.Clone($"Needed to swap texture {oldTexture.name} to a copy that has mipmap streaming enabled");
                         output.SetTexture(id, newTexture);
                     }
                 }
