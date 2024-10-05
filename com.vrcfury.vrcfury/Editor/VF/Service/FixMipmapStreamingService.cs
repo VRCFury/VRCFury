@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -40,7 +41,8 @@ namespace VF.Service {
                 if (original == null) return null;
                 if (matCache.TryGetValue(original, out var output)) return output;
                 output = original;
-                foreach (var id in original.GetTexturePropertyNameIDs()) {
+                // Don't use GetTexturePropertyIds because the IDs may change once the material is cloned
+                foreach (var id in original.GetTexturePropertyNames()) {
                     // GetTexture can randomly throw a "Material doesn't have a texture property '_whatever'" exception here,
                     // even though it just came from GetTexturePropertyNameIDs.
                     // Attempt to avoid this by checking again if it actually has it
