@@ -99,10 +99,7 @@ namespace VF.Utils {
                         if (foundObject != null) {
                             if (foundObject.IsChildOf(componentObject)) {
                                 nonRewriteSafeBindings.Add(debugPath);
-                                var suffix = "/" + binding.path;
-                                if (nearestPath.EndsWith(suffix)) {
-                                    autofixPrefixes.Add(nearestPath.Substring(0, nearestPath.Length - suffix.Length));
-                                }
+                                autofixPrefixes.Add(componentObject.GetPath(avatarObject));
                             } else {
                                 outsidePrefabBindings.Add(debugPath);
                             }
