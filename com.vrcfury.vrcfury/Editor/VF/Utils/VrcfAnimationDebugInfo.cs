@@ -88,18 +88,24 @@ namespace VF.Utils {
                 if (avatarObject == componentObject) {
                     missingBindings.Add(debugPath);
                 } else {
-                    var nearestPath = nearestRewriter?.RewritePath(path);
-                    if (nearestPath == null) {
+                    var foundFullPath = nearestRewriter?.RewritePath(path);
+                    if (foundFullPath == null) {
                         missingBindings.Add(debugPath);
                     } else {
-                        var nearestBinding = binding;
-                        nearestBinding.path = nearestPath;
-                        usedBindings.Add(nearestBinding);
-                        var foundObject = avatarObject.Find(nearestPath);
+                        var foundObject = avatarObject.Find(foundFullPath);
                         if (foundObject != null) {
-                            if (foundObject.IsChildOf(componentObject)) {
+                            var nearestBinding = binding;
+                            nearestBinding.path = foundFullPath;
+                            usedBindings.Add(nearestBinding);
+                            if (foundObject == componentObject) {
                                 nonRewriteSafeBindings.Add(debugPath);
                                 autofixPrefixes.Add(componentObject.GetPath(avatarObject));
+                            } else if (foundObject.IsChildOf(componentObject)) {
+                                nonRewriteSafeBindings.Add(debugPath);
+                                var partInsideComponent = "/" + foundObject.GetPath(componentObject);
+                                if (path.EndsWith(partInsideComponent)) {
+                                    autofixPrefixes.Add(path.Substring(0, path.Length - partInsideComponent.Length));
+                                }
                             } else {
                                 outsidePrefabBindings.Add(debugPath);
                             }
