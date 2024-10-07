@@ -136,7 +136,7 @@ namespace VF.Builder.Haptics {
                     });
 
                     VFAFloat MakeOffsetDetector(string name, VFAFloat basisContact, bool useWidthMath, float defaultSize) {
-                        var output = controller.MakeAap($"{paramPrefix}/{name}");
+                        var output = controller.MakeAap($"{paramPrefix}/{name}", def: defaultSize);
                         var whenDetectable = useWidthMath
                             ? BlendtreeMath.Add(
                                 $"{paramPrefix}/{name}/Detectable",

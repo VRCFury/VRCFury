@@ -59,7 +59,7 @@ namespace VF.Service {
             worldContact.collisionTags.Add(tag);
             worldContact.radius = 0.1f;
             worldContact.position = new Vector3(0.1f, 0, 0);
-            var receiverParam = fx.NewFloat($"SFFix {localSpace.name} - Rcv");
+            var receiverParam = fx.NewFloat($"SFFix {localSpace.name} - Rcv", def: 0.01f);
             worldContact.parameter = receiverParam;
 
             var final = math.Value.Multiply($"SFFix {localSpace.name} - Final", receiverParam, 100 * localSpace.worldScale.x);

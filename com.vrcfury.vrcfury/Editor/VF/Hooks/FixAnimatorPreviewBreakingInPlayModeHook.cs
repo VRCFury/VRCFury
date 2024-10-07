@@ -56,6 +56,10 @@ namespace VF.Hooks {
                 var animator = GetAnimator(this);
                 GetPreviewedPlayable(animator)?.SetLayerWeight(layerIndex, weight); 
             }
+            public bool IsParameterControlledByCurveString(string name) {
+                var animator = GetAnimator(this);
+                return GetPreviewedPlayable(animator)?.IsParameterControlledByCurve(name) ?? animator.IsParameterControlledByCurve(GetParameterNameHash(animator, name)); 
+            }
             public float GetFloatString(string name) {
                 var animator = GetAnimator(this);
                 return GetPreviewedPlayable(animator)?.GetFloat(name) ?? animator.GetFloat(GetParameterNameHash(animator, name)); 
