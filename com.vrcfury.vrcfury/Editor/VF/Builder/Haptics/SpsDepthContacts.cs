@@ -30,7 +30,7 @@ namespace VF.Builder.Haptics {
             self = new TipRootPair(parent, paramPrefix + "/Self", "Self", hapticContactsService, directTree, math, controller, useHipAvoidance, HapticUtils.ReceiverParty.Self, scaleFactor, inputPlugLength);
             others = new TipRootPair(parent, paramPrefix + "/Others", "Others", hapticContactsService, directTree, math, controller, useHipAvoidance, HapticUtils.ReceiverParty.Others, scaleFactor, inputPlugLength);
             var whoIsClosest = new Lazy<(VFAFloat isSelf,VFAFloat isOthers)>(() => {
-                var isSelf = controller.MakeAap(paramPrefix + "/Closest/IsSelf");
+                var isSelf = controller.MakeAap(paramPrefix + "/Closest/IsSelf", def: 1);
                 var isOthers = controller.MakeAap(paramPrefix + "/Closest/IsOthers");
                 directTree.Add(BlendtreeMath.GreaterThan(others.distanceMeters.Value, self.distanceMeters.Value).create(
                     isSelf.MakeSetter(1),
@@ -152,7 +152,7 @@ namespace VF.Builder.Haptics {
                                 (0.01f, 1)
                             );
                         var whenTipOnly = BlendtreeMath.Add($"{paramPrefix}/{name}/TipOnly", output, (defaultSize, 1));
-                        Motion whenGone = null;
+                        Motion whenGone = whenTipOnly;
                         var whenInside = BlendtreeMath.Add($"{paramPrefix}/{name}/Inside", output, (output, 1));
 
                         directTree.Add(
