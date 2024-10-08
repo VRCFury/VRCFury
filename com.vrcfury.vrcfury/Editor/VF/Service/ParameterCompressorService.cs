@@ -34,8 +34,14 @@ namespace VF.Service {
         [VFAutowired] private readonly ParameterSourceService parameterSourceService;
         [VFAutowired] private readonly OriginalAvatarService originalAvatarService;
 
+        private int maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
+
         [FeatureBuilderAction(FeatureOrder.ParameterCompressor)]
         public void Apply() {
+            if (maxBits > 9999) {
+                // Some modified versions of the VRChat SDK have a broken value for this
+                maxBits = 256;
+            }
             IList<(string name, VRCExpressionParameters.ValueType type)> paramsToOptimize;
             if (BuildTargetUtils.IsDesktop()) {
                 paramsToOptimize = AlignForDesktop();
@@ -47,12 +53,15 @@ namespace VF.Service {
                 return;
             }
 
-            var boolsInParallel = 8;
-
             var numbersToOptimize =
                 paramsToOptimize.Where(i => i.type != VRCExpressionParameters.ValueType.Bool).ToList();
             var boolsToOptimize =
                 paramsToOptimize.Where(i => i.type == VRCExpressionParameters.ValueType.Bool).ToList();
+
+            var boolsInParallel = maxBits - (paramz.GetRaw().CalcTotalCost() - numbersToOptimize.Count() * 8 - boolsToOptimize.Count() + 16);
+
+            if (boolsInParallel <= 0) boolsInParallel = 1;
+
             if (boolsToOptimize.Count <= boolsInParallel) boolsToOptimize.Clear();
             var boolBatches = boolsToOptimize.Select(i => i.name)
                 .Chunk(boolsInParallel)
@@ -360,6 +369,10 @@ namespace VF.Service {
 
         public IList<(string, VRCExpressionParameters.ValueType)> AlignForDesktop() {
             var paramsToOptimize = GetParamsToOptimize();
+             if (paramz.GetRaw().CalcTotalCost() <= maxBits && BuildTargetUtils.IsDesktop()) {
+                Debug.Log($"No Parameter Compressing Required");
+                paramsToOptimize.Clear();
+            }
             if (IsActuallyUploadingHook.Get()) {
                 var saveList = paramz.GetRaw().Clone().parameters.Where(p => p.IsNetworkSynced()).Select(p => {
                     var source = parameterSourceService.GetSource(p.name);
