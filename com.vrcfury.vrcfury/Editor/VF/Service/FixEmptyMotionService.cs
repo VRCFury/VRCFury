@@ -23,7 +23,6 @@ namespace VF.Service {
         public void Apply() {
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 var noopClip = clipFactory.NewClip("noop");
-                noopClip.SetLengthHolder(0); // 0 frames = 1 second long because unity
                 foreach (var layer in controller.GetLayers()) {
                     foreach (var state in new AnimatorIterator.States().From(layer)) {
                         CheckState(controller, layer, state, noopClip);

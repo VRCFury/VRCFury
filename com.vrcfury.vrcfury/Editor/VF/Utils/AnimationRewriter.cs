@@ -75,24 +75,34 @@ namespace VF.Utils {
         }
         public void Rewrite(AnimationClip clip) {
             var originalLength = clip.GetLengthInSeconds();
-            var output = new List<(EditorCurveBinding, FloatOrObjectCurve)>();
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
+            var changes = new List<(EditorCurveBinding, FloatOrObjectCurve)>();
+            var beforeCurves = clip.GetAllCurves();
+            foreach (var (binding,curve) in beforeCurves) {
                 if (binding.path == "__vrcf_length") {
                     continue;
                 }
                 var (newBinding, newCurve, curveUpdated) = RewriteOne(binding, curve);
                 if (newCurve == null) {
-                    output.Add((binding, null));
+                    changes.Add((binding, null));
                 } else if (binding != newBinding) {
-                    output.Add((binding, null));
-                    output.Add((newBinding, newCurve));
+                    changes.Add((binding, null));
+                    changes.Add((newBinding, newCurve));
                 } else if (curve != newCurve || curveUpdated) {
-                    output.Add((binding, newCurve));
+                    changes.Add((binding, newCurve));
                 }
             }
-            clip.SetCurves(output);
+            clip.SetCurves(changes);
+            var afterCurves = clip.GetAllCurves();
+
+            // Ensure we maintain the same length as previous
             var newLength = clip.GetLengthInSeconds();
             if (originalLength != newLength) {
+                clip.SetLengthHolder(originalLength);
+            }
+            
+            // Whether or not a clip has any bindings at all can actually have an impact, so we ensure that if all
+            // bindings were removed, we always keep at least one
+            if (beforeCurves.Any() && !afterCurves.Any()) {
                 clip.SetLengthHolder(originalLength);
             }
         }
