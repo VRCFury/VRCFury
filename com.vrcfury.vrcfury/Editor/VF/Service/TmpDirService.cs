@@ -10,7 +10,9 @@ namespace VF.Service {
 
         public TmpDirService(OriginalAvatarService originalAvatarService, VFGameObject avatarObject) {
             tempDirLazy = new Lazy<string>(() => {
-                TmpFilePackage.Cleanup();
+                if (!Application.isPlaying) {
+                    TmpFilePackage.Cleanup();
+                }
                 return VRCFuryAssetDatabase.GetUniquePath(
                     TmpFilePackage.GetPath() + "/Builds",
                     originalAvatarService.GetOriginalName() ?? avatarObject.name,
