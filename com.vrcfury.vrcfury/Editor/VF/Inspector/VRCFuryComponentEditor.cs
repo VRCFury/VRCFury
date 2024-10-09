@@ -108,10 +108,17 @@ namespace VF.Inspector {
 
                 var descriptors = c.gameObject.asVf().GetComponentsInSelfAndParents<VRCAvatarDescriptor>();
                 if (!editingPrefab && !descriptors.Any()) {
-                    warning.Add(VRCFuryEditorUtils.Error(
-                        "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
-                        "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
-                        "object, and not just alongside it in the scene."));
+                    var animators = c.gameObject.asVf().GetComponentsInSelfAndParents<Animator>();
+                    if (animators.Any()) {
+                        warning.Add(VRCFuryEditorUtils.Error(
+                            "Your avatar does not have a VRC Avatar Descriptor, and thus this component will not do anything! " +
+                            "Make sure that your avatar can actually be uploaded using the VRCSDK before attempting to add VRCFury things to it."));
+                    } else {
+                        warning.Add(VRCFuryEditorUtils.Error(
+                            "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
+                            "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
+                            "object, and not just alongside it in the scene."));
+                    }
                 }
 
                 if (descriptors.Length > 1) {
