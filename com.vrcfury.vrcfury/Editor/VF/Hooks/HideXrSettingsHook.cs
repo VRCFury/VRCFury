@@ -15,6 +15,8 @@ namespace VF.Hooks {
 
         private static void Check() {
             if (!AssetDatabase.IsValidFolder("Assets/XR")) return;
+            var tmpFolder = TmpFilePackage.GetPathNullable();
+            if (tmpFolder == null) return;
             var subPaths = AssetDatabase.FindAssets("", new[] { "Assets/XR" })
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .Where(p => !string.IsNullOrEmpty(p))
@@ -28,7 +30,6 @@ namespace VF.Hooks {
             }
 
             if (!hasUnknownFile) {
-                var tmpFolder = TmpFilePackage.GetPath();
                 VRCFuryAssetDatabase.CreateFolder($"{tmpFolder}/XR");
                 var uniq = VRCFuryAssetDatabase.GetUniquePath($"{tmpFolder}/XR", "XR");
                 AssetDatabase.MoveAsset("Assets/XR", uniq);

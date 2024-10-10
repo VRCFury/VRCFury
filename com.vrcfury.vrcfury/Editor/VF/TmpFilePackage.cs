@@ -4,11 +4,13 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.PackageManager;
 using UnityEditor.VersionControl;
 using UnityEngine;
 using VF.Builder;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using Object = System.Object;
 
@@ -20,6 +22,9 @@ namespace VF {
         private const string LegacyPrefabsImportedMarker = TmpDirPath + "/LegacyPrefabsImported";
 
         public static void Cleanup() {
+            var tmpDir = GetPathNullable();
+            if (tmpDir == null) return;
+            
             var usedFolders = Resources.FindObjectsOfTypeAll<VRCAvatarDescriptor>()
                 .SelectMany(VRCAvatarUtils.GetAllControllers)
                 .Where(c => !c.isDefault && c.controller != null)
@@ -28,7 +33,6 @@ namespace VF {
                 .Select(VRCFuryAssetDatabase.GetDirectoryName)
                 .ToImmutableHashSet();
 
-            var tmpDir = GetPath();
             VRCFuryAssetDatabase.WithAssetEditing(() => {
                 VRCFuryAssetDatabase.DeleteFiltered(tmpDir, path => {
                     if (usedFolders.Any(used => path.StartsWith($"{used}/") || path == used || used.StartsWith($"{path}/"))) return false;
@@ -46,7 +50,21 @@ namespace VF {
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {});
         }
 
+        [CanBeNull]
+        public static string GetPathNullable() {
+            if (!AssetDatabase.IsValidFolder(TmpDirPath)) return null;
+            return TmpDirPath;
+        }
+
         public static string GetPath() {
+            var tmpDir = GetPathNullable();
+            if (tmpDir == null) throw new Exception("VRCFury Temp Files package has not been created yet. Try again?");
+            return tmpDir;
+        }
+
+        private static void InitIfMissing() {
+            if (GetPathNullable() != null) return;
+            
             var importLegacyPrefabs = false;
             if ((Directory.Exists(LegacyTmpDirPath) || Directory.Exists(TmpDirPath)) &&
                 !File.Exists(LegacyPrefabsImportedMarker)) {
@@ -69,8 +87,6 @@ namespace VF {
                 LegacyPrefabUnpacker.ScanOnce();
                 File.Create(LegacyPrefabsImportedMarker).Close();
             }
-
-            return TmpDirPath;
         }
 
         private static void ReresolvePackages() {
@@ -85,7 +101,7 @@ namespace VF {
 
         [InitializeOnLoadMethod]
         private static void Init() {
-            GetPath();
+            Scheduler.Schedule(InitIfMissing, 5000);
         }
 
         private static readonly string PackageJson =
