@@ -39,6 +39,7 @@ namespace com.vrcfury.api.Components {
         }
 
         public FuryActionSet GetActiveActions() {
+            if (s.activeActions == null) s.activeActions = new State();
             return new FuryActionSet(s.activeActions);
         }
 
