@@ -82,9 +82,9 @@ namespace VF {
                     obj.name = orig.name;
                     orig.Destroy();
                 }
-                if (root.gameObject == null) continue; // it was deleted
+                if (root == null) continue; // it was deleted
                 foreach (var socket in root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
-                    RescanOnStartComponent.AddToObject(socket.gameObject);
+                    RescanOnStartComponent.AddToObject(socket.owner());
                     var obj = socket.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
@@ -102,7 +102,7 @@ namespace VF {
                     Object.DestroyImmediate(socket);
                 }
                 foreach (var plug in root.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
-                    RescanOnStartComponent.AddToObject(plug.gameObject);
+                    RescanOnStartComponent.AddToObject(plug.owner());
                     var obj = plug.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;

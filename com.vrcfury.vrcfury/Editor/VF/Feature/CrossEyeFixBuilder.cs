@@ -43,7 +43,7 @@ namespace VF.Feature {
 
             var fakeEyeUp = GameObjects.Create(baseName + ".Fake.Up", fakeEye, useTransformFrom: realEyeUp);
 
-            mover.Move(originalEye.gameObject, realEyeUp.gameObject);
+            mover.Move(originalEye, realEyeUp);
 
             var constraint = realEyeUp.AddComponent<RotationConstraint>();
             constraint.AddSource(new ConstraintSource() {

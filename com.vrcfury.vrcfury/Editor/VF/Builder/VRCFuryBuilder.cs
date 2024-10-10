@@ -198,8 +198,8 @@ namespace VF.Builder {
                 c.Upgrade();
             }
             foreach (var vrcFury in avatarObject.GetComponentsInSelfAndChildren<VRCFury>()) {
-                var configObject = vrcFury.gameObject;
-                if (VRCFuryEditorUtils.IsInRagdollSystem(configObject.transform)) {
+                var configObject = vrcFury.owner();
+                if (VRCFuryEditorUtils.IsInRagdollSystem(configObject)) {
                     continue;
                 }
 

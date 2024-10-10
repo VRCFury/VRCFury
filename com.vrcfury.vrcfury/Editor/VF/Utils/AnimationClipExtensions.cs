@@ -258,9 +258,9 @@ namespace VF.Utils {
         }
 
         public static void SetScale(this AnimationClip clip, VFGameObject obj, Vector3 scale) {
-            clip.SetCurve(obj.transform, "m_LocalScale.x", scale.x);
-            clip.SetCurve(obj.transform, "m_LocalScale.y", scale.y);
-            clip.SetCurve(obj.transform, "m_LocalScale.z", scale.z);
+            clip.SetCurve((Transform)obj, "m_LocalScale.x", scale.x);
+            clip.SetCurve((Transform)obj, "m_LocalScale.y", scale.y);
+            clip.SetCurve((Transform)obj, "m_LocalScale.z", scale.z);
         }
 
         public static int GetLengthInFrames(this AnimationClip clip) {

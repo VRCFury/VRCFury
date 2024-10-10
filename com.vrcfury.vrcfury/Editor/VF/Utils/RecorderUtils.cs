@@ -81,9 +81,9 @@ namespace VF.Utils {
             var expandedIds = CollapseUtils.GetExpandedIds();
             var wasExpanded = expandedIds.Contains(avatarObject.GetInstanceID());
             CollapseUtils.SetExpanded(avatarObject, false);
-            foreach (var transform in avatarObject.GetComponentsInSelfAndChildren<Transform>()) {
-                if (expandedIds.Contains(transform.gameObject.GetInstanceID())) {
-                    var expandedInClone = clone.Find(transform.owner().GetPath(avatarObject));
+            foreach (var child in avatarObject.GetSelfAndAllChildren()) {
+                if (expandedIds.Contains(child.GetInstanceID())) {
+                    var expandedInClone = clone.Find(child.GetPath(avatarObject));
                     if (expandedInClone != null) CollapseUtils.SetExpanded(expandedInClone, true);
                 }
             }

@@ -32,7 +32,7 @@ namespace VF.Utils {
                 return vrcConstraint.GetEffectiveTargetTransform();
             }
 #endif
-            return component.transform;
+            return component.owner();
         }
         
         [CanBeNull]

@@ -57,7 +57,6 @@ namespace VF.Service {
         private void AdjustBoundingBox(SkinnedMeshRenderer skin) {
             var startBounds = CalculateFullBounds(avatarObject);
 
-            //var debug = skin.gameObject.name == "Body";
             var root = HapticUtils.GetMeshRoot(skin);
 
             bool ModifyBounds(float sizeX = 0, float sizeY = 0, float sizeZ = 0, float centerX = 0, float centerY = 0, float centerZ = 0) {

@@ -19,7 +19,7 @@ namespace VF.Builder.Haptics {
         
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();
-            if (avatarObject == null) avatarObject = Selection.activeGameObject.transform.root;
+            if (avatarObject == null) avatarObject = Selection.activeGameObject.asVf().root;
 
             var messages = Apply(avatarObject, true, Mode.Manual);
             if (string.IsNullOrWhiteSpace(messages)) {
@@ -110,7 +110,7 @@ namespace VF.Builder.Haptics {
             }
 
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
-                hasExistingPlug.Add(c.transform);
+                hasExistingPlug.Add(c.owner());
                 foreach (var renderer in VRCFuryHapticPlugEditor.GetRenderers(c)) {
                     hasExistingPlug.Add(renderer.owner());
                 }
@@ -263,7 +263,7 @@ namespace VF.Builder.Haptics {
                     if (!dryRun) {
                         foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
                             if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
-                                var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.transform);
+                                var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.owner());
                                 if (info != null) {
                                     var type = info.Item1;
                                     var position = info.Item2;

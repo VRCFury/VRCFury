@@ -285,7 +285,7 @@ namespace VF.Service {
         private static void RewriteSkins(VFGameObject fromBone, VFGameObject toBone, VFGameObject avatarObject) {
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 // Update skins to use bones and bind poses from the original avatar
-                if (skin.bones.Contains(fromBone.transform)) {
+                if (skin.bones.Contains((Transform)fromBone)) {
                     var mesh = skin.GetMutableMesh("Needed to change bone bind-poses for Armature Link to re-use bones on base armature");
                     if (mesh != null) {
                         mesh.bindposes = skin.bones.Zip(mesh.bindposes, (a,b) => (a,b))
@@ -299,11 +299,11 @@ namespace VF.Service {
                     }
 
                     skin.bones = skin.bones
-                        .Select(b => b == fromBone ? toBone.transform : b)
+                        .Select(b => b == fromBone ? (Transform)toBone : b)
                         .ToArray();
                     VRCFuryEditorUtils.MarkDirty(skin);
                 }
-                
+
                 // We never rewrite rootBone because of two reasons:
                 // 1. It defines the origin of the bounds (which may rotate and be impossible to reproduce)
                 // 2. It defines the origin for verts that are not weight painted (unusual, but really hard
@@ -414,7 +414,7 @@ namespace VF.Service {
             var isBone = false;
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 isBone |= skin.rootBone == rootBone;
-                isBone |= skin.bones.Contains(rootBone.transform);
+                isBone |= skin.bones.Contains((Transform)rootBone);
             }
             isBone |= rootBone.name.ToLower().Trim() == "armature";
 

@@ -69,7 +69,7 @@ namespace VF.Inspector {
             VisualElement body;
             if (isInstance) {
                 var copy = CopyComponent(v);
-                var copyGameObject = copy.gameObject;
+                var copyGameObject = copy.owner();
                 try {
                     VRCFury.RunningFakeUpgrade = true;
                     copy.Upgrade();
@@ -85,7 +85,7 @@ namespace VF.Inspector {
                 var children = copyGameObject.GetComponents<T>();
                 if (children.Length != 1) body.Add(VRCFuryComponentHeader.CreateHeaderOverlay("Legacy Multi-Component"));
                 foreach (var child in children) {
-                    child.gameObjectOverride = v.gameObject;
+                    child.gameObjectOverride = v.owner();
                     var childSo = new SerializedObject(child);
                     var childEditor = _CreateEditor(childSo, child);
                     if (children.Length > 1) childEditor.AddToClassList("vrcfMultipleHeaders");
@@ -106,9 +106,11 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
                 var warning = new VisualElement();
 
-                var descriptors = c.gameObject.asVf().GetComponentsInSelfAndParents<VRCAvatarDescriptor>();
+                if (c == null) return warning;
+
+                var descriptors = c.owner().GetComponentsInSelfAndParents<VRCAvatarDescriptor>();
                 if (!editingPrefab && !descriptors.Any()) {
-                    var animators = c.gameObject.asVf().GetComponentsInSelfAndParents<Animator>();
+                    var animators = c.owner().GetComponentsInSelfAndParents<Animator>();
                     if (animators.Any()) {
                         warning.Add(VRCFuryEditorUtils.Error(
                             "Your avatar does not have a VRC Avatar Descriptor, and thus this component will not do anything! " +
@@ -128,7 +130,7 @@ namespace VF.Inspector {
                 }
 
                 var hasDelete = v is VRCFury z && z.GetAllFeatures().OfType<DeleteDuringUpload>().Any();
-                var isDeleted = EditorOnlyUtils.IsInsideEditorOnly(c.gameObject);
+                var isDeleted = EditorOnlyUtils.IsInsideEditorOnly(c.owner());
                 if (isDeleted && !hasDelete) {
                     warning.Add(VRCFuryEditorUtils.Error(
                         "This VRCFury component is placed within an object that is tagged as EditorOnly or has a vrcfury 'Delete During Upload' component, and thus will not do anything!"));
