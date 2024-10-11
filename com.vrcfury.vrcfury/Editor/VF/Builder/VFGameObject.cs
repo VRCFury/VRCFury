@@ -20,8 +20,7 @@ namespace VF.Builder {
         }
 
         private GameObject gameObject => _gameObject;
-        // Temporarily public because of SPS Configurator
-        public Transform transform => _gameObject == null ? null : _gameObject.transform;
+        private Transform transform => _gameObject == null ? null : _gameObject.transform;
         public static implicit operator VFGameObject(GameObject d) => d == null ? null : new VFGameObject(d);
         public static implicit operator VFGameObject(Transform d) => d == null ? null : new VFGameObject(d.gameObject);
         public static implicit operator GameObject(VFGameObject d) => d?.gameObject;
