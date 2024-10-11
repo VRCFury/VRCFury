@@ -217,7 +217,7 @@ namespace VF.Utils {
 
         public static void SetCurve(this AnimationClip clip, string path, Type type, string propertyName, FloatOrObjectCurve curve) {
             EditorCurveBinding binding;
-            if (curve.IsFloat) {
+            if (curve == null || curve.IsFloat) {
                 binding = EditorCurveBinding.FloatCurve(path, type, propertyName);
             } else {
                 binding = EditorCurveBinding.PPtrCurve(path, type, propertyName);
@@ -244,7 +244,7 @@ namespace VF.Utils {
                 "__vrcf_length",
                 typeof(GameObject),
                 "m_IsActive",
-                FloatOrObjectCurve.DummyFloatCurve(length)
+                length == 0 ? null : FloatOrObjectCurve.DummyFloatCurve(length)
             );
         }
         

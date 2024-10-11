@@ -62,6 +62,9 @@ namespace VF.Utils {
                 clip.SetAap(Name(), to);
                 return clip;
             }
+            public override string ToString() {
+                return Name();
+            }
         }
 
         /**
@@ -147,13 +150,13 @@ namespace VF.Utils {
         /**
          * a,b : (-Infinity,Infinity)
          */
-        public static VFAFloatBool Equals(VFAFloat a, float b, string name = null) {
+        public static VFAFloatBool Equals(VFAFloat a, float b, string name = null, float epsilon = 0) {
             return new VFAFloatBool((whenTrue, whenFalse) => VFBlendTree1D.CreateWithData(
                 name ?? $"{a} == {b}",
                 a,
-                (Down(b), whenFalse),
+                (epsilon == 0 ? Down(b) : b - epsilon, whenFalse),
                 (b, whenTrue),
-                (Up(b), whenFalse)
+                (epsilon == 0 ? Up(b) : b + epsilon, whenFalse)
             ), a.GetDefault() == b);
         }
 
@@ -274,11 +277,12 @@ namespace VF.Utils {
             return tree;
         }
 
+        /**
+         * Delays by 2 frames
+         */
         public VFAFloat Invert(string name, VFAFloat input) {
-            if (input.GetDefault() == 0) {
-                throw new Exception("Invert() cannot be called on a param with a default of 0");
-            }
-            var output = controller.MakeAap(name, def: 1f / input.GetDefault());
+            var def = input.GetDefault() == 0 ? 0 : 1f / input.GetDefault();
+            var output = controller.MakeAap(name, def: def);
             var tmp = Add($"{name}/Tmp", (input, 10000), (-1, 1));
             var tree = VFBlendTreeDirect.Create(name);
             tree.SetNormalizedBlendValues(true);
@@ -410,13 +414,16 @@ namespace VF.Utils {
             }
         }
         
-        public void CopyInPlace(VFAFloat existing, string output) {
+        public void CopyInPlace(VFAFloat existing, string output, float multiplier = 1f) {
             var oldBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), existing.Name());
             var newBinding = oldBinding;
             newBinding.propertyName = output;
             foreach (var clip in new AnimatorIterator.Clips().From(directTree)) {
                 var curve = clip.GetCurve(oldBinding, true);
-                if (curve != null) clip.SetCurve(newBinding, curve);
+                if (curve != null) {
+                    curve = curve.Scale(multiplier);
+                    clip.SetCurve(newBinding, curve);
+                }
             }
         }
     }
