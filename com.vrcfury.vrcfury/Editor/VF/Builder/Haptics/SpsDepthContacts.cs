@@ -13,6 +13,7 @@ namespace VF.Builder.Haptics {
         public readonly Lazy<VFAFloat> closestDistanceMeters;
         public readonly Lazy<VFAFloat> closestDistancePlugLengths;
         public readonly Lazy<VFAFloat> closestDistanceLocal;
+        public readonly Lazy<VFAFloat> velocity;
         public readonly VFBlendTreeDirect directTree;
 
         public SpsDepthContacts(
@@ -22,6 +23,7 @@ namespace VF.Builder.Haptics {
             VFBlendTreeDirect directTree,
             BlendtreeMath math,
             ControllerManager controller,
+            FrameTimeService frameTimeService,
             bool useHipAvoidance,
             VFAFloat scaleFactor,
             float inputPlugLength = -1
@@ -49,6 +51,17 @@ namespace VF.Builder.Haptics {
             closestDistanceMeters = new Lazy<VFAFloat>(() => MakeClosest("Dist/Meters", o => o.distanceMeters));
             closestDistancePlugLengths = new Lazy<VFAFloat>(() => MakeClosest("Dist/PlugLens", o => o.distancePlugLengths));
             closestDistanceLocal = new Lazy<VFAFloat>(() => MakeClosest("Dist/Local", o => o.distanceLocal));
+
+            velocity = new Lazy<VFAFloat>(() => {
+                var buffer = math.Buffer(closestDistancePlugLengths.Value, minSupported:-1, maxSupported:100);
+                var frameChange = controller.MakeAap($"{paramPrefix}/Dist/PlugLens/Diff");
+                directTree.Add(BlendtreeMath.MakeCopier(closestDistancePlugLengths.Value, frameChange, -1, 100));
+                directTree.Add(BlendtreeMath.MakeCopier(buffer, frameChange, -1, 100, -1));
+
+                var output = controller.MakeAap($"{paramPrefix}/Dist/PlugLens/Vel", def: 0);
+                math.MultiplyInPlace(output, frameTimeService.GetFps(), frameChange);
+                return output;
+            });
         }
 
         public class TipRootPair {

@@ -23,11 +23,20 @@ namespace VF.Service {
             var timeSinceLoad = GetTimeSinceLoad();
             var dbt = dbtLayerService.Create();
             var math = dbtLayerService.GetMath(dbt);
-            var lastTimeSinceLoad = math.Buffer(timeSinceLoad, to: "lastTimeSinceLoad");
+            var lastTimeSinceLoad = math.Buffer(timeSinceLoad, to: "lastTimeSinceLoad", def: 1f/60);
             var diff = math.Subtract(timeSinceLoad, lastTimeSinceLoad, name: "frameTime");
 
             cachedFrameTime = diff;
             return diff;
+        }
+
+        private VFAFloat cachedFps;
+        public VFAFloat GetFps() {
+            if (cachedFps != null) return cachedFps;
+            var frametime = GetFrameTime();
+            var dbt = dbtLayerService.Create();
+            var math = dbtLayerService.GetMath(dbt);
+            return cachedFps = math.Invert("fps", frametime);
         }
 
         private VFAFloat cachedLoadTime;

@@ -34,6 +34,7 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarBindingStateService avatarBindingStateService;
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly FrameTimeService frameTimeService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
@@ -304,6 +305,7 @@ namespace VF.Service {
                     directTree,
                     math,
                     fx,
+                    frameTimeService,
                     plug.useHipAvoidance,
                     scaleFactor.Value,
                     localLength

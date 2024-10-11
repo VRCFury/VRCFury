@@ -42,6 +42,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly ControllersService controllers;
 
         public string injectSpsDepthParam = null;
+        public string injectSpsVelocityParam = null;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -189,11 +190,17 @@ namespace VF.Feature {
         private string RewriteParamNameUncached(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (VRChatGlobalParams.Contains(name)) return name;
-            if (name == model.injectSpsDepthParam) {
+            if (!string.IsNullOrEmpty(model.injectSpsDepthParam) && name == model.injectSpsDepthParam) {
                 if (injectSpsDepthParam == null) {
                     injectSpsDepthParam = controllers.MakeUniqueParamName(name);
                 }
                 return injectSpsDepthParam;
+            }
+            if (!string.IsNullOrEmpty(model.injectSpsVelocityParam) && name == model.injectSpsVelocityParam) {
+                if (injectSpsVelocityParam == null) {
+                    injectSpsVelocityParam = controllers.MakeUniqueParamName(name);
+                }
+                return injectSpsVelocityParam;
             }
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
@@ -524,6 +531,7 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "(Deprecated) Make all unsynced params global"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allowMissingAssets"), "(Deprecated) Don't fail if assets are missing"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsDepthParam"), "Inject nearest SPS depth (in plug lengths) as a parameter"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsVelocityParam"), "Inject nearest SPS velocity (in plug lengths / sec) as a parameter"));
 
             content.Add(adv);
 

@@ -304,18 +304,16 @@ namespace VF.Utils {
             return output;
         }
         */
-        
-        /**
-         * from : [0,Infinity)
-         */
-        public VFAFloat Buffer(VFAFloat from, string to = null, bool usePrefix = true) {
+
+        public VFAFloat Buffer(VFAFloat from, string to = null, bool usePrefix = true, float def = -100, float minSupported = 0, float maxSupported = float.MaxValue) {
             to = to ?? $"{from}_b";
-            var output = controller.MakeAap(to, from.GetDefault(), usePrefix: usePrefix);
-            directTree.Add(MakeCopier(from, output));
+            if (def == -100) def = from.GetDefault();
+            var output = controller.MakeAap(to, def, usePrefix: usePrefix);
+            directTree.Add(MakeCopier(from, output, minSupported, maxSupported));
             return output;
         }
 
-        public static Motion MakeCopier(VFAFloatOrConst from, VFAap to, float minSupported = 0, float maxSupported = float.MaxValue) {
+        public static Motion MakeCopier(VFAFloatOrConst from, VFAap to, float minSupported = 0, float maxSupported = float.MaxValue, float multiplier = 1) {
             if (from.param == null) {
                 return to.MakeSetter(from.constt);
             }
@@ -323,13 +321,13 @@ namespace VF.Utils {
             var name = $"{to} = {from}";
             if (minSupported >= 0) {
                 var direct = VFBlendTreeDirect.Create(name);
-                direct.Add(from.param, to.MakeSetter(1));
+                direct.Add(from.param, to.MakeSetter(multiplier));
                 return direct;
             }
 
             return VFBlendTree1D.CreateWithData(name, from.param,
-                (minSupported, to.MakeSetter(minSupported)),
-                (maxSupported, to.MakeSetter(maxSupported))
+                (minSupported, to.MakeSetter(minSupported*multiplier)),
+                (maxSupported, to.MakeSetter(maxSupported*multiplier))
             );
         }
 
