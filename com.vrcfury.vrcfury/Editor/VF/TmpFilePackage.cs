@@ -18,8 +18,6 @@ namespace VF {
     internal static class TmpFilePackage {
         private const string TmpDirPath = "Packages/com.vrcfury.temp";
         private const string TmpPackagePath = TmpDirPath + "/" + "package.json";
-        private const string LegacyTmpDirPath = "Assets/_VRCFury";
-        private const string LegacyPrefabsImportedMarker = TmpDirPath + "/LegacyPrefabsImported";
 
         public static void Cleanup() {
             var tmpDir = GetPathNullable();
@@ -39,7 +37,7 @@ namespace VF {
                     if (path.StartsWith(tmpDir + "/SPS")) return false;
                     if (path.StartsWith(tmpDir + "/XR")) return false;
                     if (path.StartsWith(tmpDir + "/package.json")) return false;
-                    if (path.StartsWith(tmpDir + "/LegacyPrefabsImported")) return false;
+                    if (path.StartsWith(tmpDir + "/PlayModeSettings")) return false;
                     return true;
                 });
                 VRCFuryAssetDatabase.Delete("Assets/_VRCFury");
@@ -64,16 +62,9 @@ namespace VF {
 
         private static void InitIfMissing() {
             if (GetPathNullable() != null) return;
-            
-            var importLegacyPrefabs = false;
-            if ((Directory.Exists(LegacyTmpDirPath) || Directory.Exists(TmpDirPath)) &&
-                !File.Exists(LegacyPrefabsImportedMarker)) {
-                importLegacyPrefabs = true;
-            }
 
             if (!Directory.Exists(TmpDirPath)) {
                 Directory.CreateDirectory(TmpDirPath); 
-                File.Create(LegacyPrefabsImportedMarker).Close();
             }
 
             if (!File.Exists(TmpPackagePath) ||
@@ -81,11 +72,6 @@ namespace VF {
                 File.WriteAllBytes(TmpPackagePath, Encoding.UTF8.GetBytes(PackageJson));
 
                 EditorApplication.delayCall += ReresolvePackages;
-            }
-
-            if (importLegacyPrefabs) {
-                LegacyPrefabUnpacker.ScanOnce();
-                File.Create(LegacyPrefabsImportedMarker).Close();
             }
         }
 
