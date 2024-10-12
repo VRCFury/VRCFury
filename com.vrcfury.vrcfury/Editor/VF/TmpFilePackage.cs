@@ -38,6 +38,7 @@ namespace VF {
                     if (path.StartsWith(tmpDir + "/XR")) return false;
                     if (path.StartsWith(tmpDir + "/package.json")) return false;
                     if (path.StartsWith(tmpDir + "/PlayModeSettings")) return false;
+                    if (path.StartsWith(tmpDir + "/LegacyPrefabsImported")) return false;
                     return true;
                 });
                 VRCFuryAssetDatabase.Delete("Assets/_VRCFury");
