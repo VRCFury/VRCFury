@@ -9,6 +9,7 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VRC.Dynamics;
+using Object = UnityEngine.Object;
 
 namespace VF.Feature {
     [FeatureTitle("CS Retarget")]
@@ -23,9 +24,12 @@ namespace VF.Feature {
             if (!constraints.Any()) {
                 throw new Exception("Object does not contain a VRC Constraint");
             }
+            
+            var newTarget = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, model.bone);
 
             foreach (var c in constraints) {
-                c.TargetTransform = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, model.bone);
+                if (newTarget == null) Object.DestroyImmediate(c);
+                else c.TargetTransform = newTarget;
             }
 #else
             throw new Exception("This version of the VRCSDK does not support VRC constraints");
