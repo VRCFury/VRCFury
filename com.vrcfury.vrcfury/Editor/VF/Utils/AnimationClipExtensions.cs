@@ -24,6 +24,7 @@ namespace VF.Utils {
             public AnimationClip originalSourceClip;
             public bool changedFromOriginalSourceClip = false;
             public bool originalSourceIsProxyClip = false;
+            public Dictionary<string, int> nonStandardEulerOrders = new Dictionary<string, int>();
             
             public AnimationClipExt Clone() {
                 var copy = new AnimationClipExt();
@@ -31,6 +32,7 @@ namespace VF.Utils {
                 copy.originalSourceClip = originalSourceClip;
                 copy.changedFromOriginalSourceClip = changedFromOriginalSourceClip;
                 copy.originalSourceIsProxyClip = originalSourceIsProxyClip;
+                copy.nonStandardEulerOrders = nonStandardEulerOrders.ToDictionary(pair => pair.Key, pair => pair.Value);
                 return copy;
             }
         }
@@ -108,6 +110,34 @@ namespace VF.Utils {
                 }
             }
 #endif
+
+            if (ext.nonStandardEulerOrders.Any()) {
+                using (var so = new SerializedObject(clip)) {
+                    so.Update();
+                    var changedOne = false;
+                    void ProcessArray(string arrayPath) {
+                        var length = so.FindProperty(arrayPath)?.arraySize ?? 0;
+                        if (length == 0) return;
+                        foreach (var i in Enumerable.Range(0, length)) {
+                            var pathProp = so.FindProperty($"{arrayPath}.Array.data[{i}].path");
+                            if (pathProp == null || pathProp.propertyType != SerializedPropertyType.String) continue;
+                            var path = pathProp.stringValue;
+                            if (ext.nonStandardEulerOrders.TryGetValue(path, out var rotationOrder)) {
+                                var rotationOrderProp = so.FindProperty($"{arrayPath}.Array.data[{i}].curve.m_RotationOrder");
+                                if (rotationOrderProp == null || rotationOrderProp.propertyType != SerializedPropertyType.Integer) continue;
+                                rotationOrderProp.intValue = rotationOrder;
+                                changedOne = true;
+                            }
+                        }
+                    }
+                    ProcessArray("m_EulerCurves");
+                    ProcessArray("m_EditorCurves");
+                    ProcessArray("m_EulerEditorCurves");
+                    if (changedOne) {
+                        so.ApplyModifiedPropertiesWithoutUndo();
+                    }
+                }
+            }
         }
         private static AnimationClipExt GetExt(AnimationClip clip) {
             if (clipDb.TryGetValue(clip, out var cached)) return cached;
@@ -122,6 +152,27 @@ namespace VF.Utils {
                     }
                     ext.originalSourceClip = clip;
                 }
+            }
+
+            using (var so = new SerializedObject(clip)) {
+                so.Update();
+                void ProcessArray(string arrayPath) {
+                    var length = so.FindProperty(arrayPath)?.arraySize ?? 0;
+                    if (length == 0) return;
+                    foreach (var i in Enumerable.Range(0, length)) {
+                        var rotationOrderProp = so.FindProperty($"{arrayPath}.Array.data[{i}].curve.m_RotationOrder");
+                        if (rotationOrderProp == null || rotationOrderProp.propertyType != SerializedPropertyType.Integer) continue;
+                        var rotationOrder = rotationOrderProp.intValue;
+                        if (rotationOrder == 4) continue;
+                        var pathProp = so.FindProperty($"{arrayPath}.Array.data[{i}].path");
+                        if (pathProp == null || pathProp.propertyType != SerializedPropertyType.String) continue;
+                        var path = pathProp.stringValue;
+                        ext.nonStandardEulerOrders[path] = rotationOrder;
+                    }
+                }
+                ProcessArray("m_EulerCurves");
+                ProcessArray("m_EditorCurves");
+                ProcessArray("m_EulerEditorCurves");
             }
 
             // Don't use ToDictionary, since animationclips can have duplicate bindings somehow
