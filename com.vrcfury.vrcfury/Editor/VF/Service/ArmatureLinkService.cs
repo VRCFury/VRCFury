@@ -211,7 +211,7 @@ namespace VF.Service {
                     }
                     parents.Reverse();
                     foreach (var parent in parents) {
-                        if (anim.activated.Contains(parent) || !parent.active) {
+                        if (anim.activated.Contains(parent) || !parent.active || animLink.ContainsValue(parent)) {
                             animatedParents.Add(parent);
                         }
                     }
@@ -238,11 +238,18 @@ namespace VF.Service {
                     addedObject = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone);
                     var current = addedObject;
 
-                    foreach (var a in animatedParents) {
-                        current = GameObjects.Create($"Toggle From {a.name}", current);
-                        current.active = a.active;
-                        animLink.Put(a, current);
-                        AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {a.name}");
+                    foreach (var parent in animatedParents) {
+                        // If this animated parent come from a toggle created during another armature link,
+                        // We have to follow the link back to find the original toggle source
+                        var original = animLink
+                            .Where(pair => pair.Value == parent)
+                            .Select(pair => pair.Key)
+                            .DefaultIfEmpty(parent)
+                            .First();
+                        current = GameObjects.Create($"Toggle From {original.name}", current);
+                        current.active = original.active;
+                        animLink.Put(original, current);
+                        AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {original.name}");
                     }
 
                     var transformAnimated =
