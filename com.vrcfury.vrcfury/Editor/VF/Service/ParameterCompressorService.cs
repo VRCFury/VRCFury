@@ -308,12 +308,49 @@ namespace VF.Service {
                 p => parameterSourceService.GetSource(p.name),
                 p => p
             );
+            var desktopParamsBySource = desktopData.syncedParams.ToDictionary(
+                p => p.ToSource(),
+                p => p
+            );
+
+            // Find object path aliases (when two objects are supposed to sync, but are not named exactly the same)
+            var desktopToMobilePathAliases = new Dictionary<string, string>();
+            {
+                var mobileParamsByPath = mobileParamsBySource
+                    .Select(pair => pair.Key)
+                    .GroupBy(source => source.objectPath)
+                    .ToDictionary(group => group.Key, group => group.ToList());
+                var desktopParamsByPath = desktopParamsBySource
+                    .Select(pair => pair.Key)
+                    .GroupBy(source => source.objectPath)
+                    .ToDictionary(group => group.Key, group => group.ToList());
+                foreach (var mobilePair in mobileParamsByPath) {
+                    var mobilePath = mobilePair.Key;
+                    var mobileParamsAtPath = mobilePair.Value;
+                    if (desktopParamsByPath.ContainsKey(mobilePath)) continue;
+                    var matchingDesktopPaths = desktopParamsByPath.Where(desktopPair => {
+                        var desktopParamsAtPath = desktopPair.Value;
+                        var matchingParams = mobileParamsAtPath.Where(m =>
+                            desktopParamsAtPath.Any(d =>
+                                m.originalParamName == d.originalParamName && m.offset == d.offset)).ToList();
+                        return matchingParams.Count == mobileParamsAtPath.Count;
+                    }).Select(desktopPair => desktopPair.Key).ToList();
+                    if (matchingDesktopPaths.Count == 1) {
+                        desktopToMobilePathAliases[matchingDesktopPaths.First()] = mobilePath;
+                    }
+                }
+            }
+
             var paramsToOptimize = new List<(string, VRCExpressionParameters.ValueType)>();
             var reordered = new List<VRCExpressionParameters.Parameter>();
             var rand = new Random().Next(100_000_000, 900_000_000);
             var fillerI = 0;
             foreach (var desktopParam in desktopData.syncedParams) {
-                if (mobileParamsBySource.TryGetValue(desktopParam.ToSource(), out var mobileParam)) {
+                var desktopSource = desktopParam.ToSource();
+                if (desktopToMobilePathAliases.TryGetValue(desktopSource.objectPath, out var mobilePathAlias)) {
+                    desktopSource.objectPath = mobilePathAlias;
+                }
+                if (mobileParamsBySource.TryGetValue(desktopSource, out var mobileParam)) {
                     mobileParam.valueType = desktopParam.type;
                     mobileParam.SetNetworkSynced(true);
                     if (desktopParam.compressed) {
