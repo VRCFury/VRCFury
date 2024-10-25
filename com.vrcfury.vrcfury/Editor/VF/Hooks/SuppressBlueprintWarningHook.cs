@@ -11,7 +11,7 @@ namespace VF.Hooks {
      * "Attempted to load the data for an avatar we do not own, clearing blueprint ID" after the build
      * every time.
      */
-    public class SuppressBlueprintWarningHook {
+    internal static class SuppressBlueprintWarningHook {
         [InitializeOnLoadMethod]
         private static void Init() {
             var original = typeof(Debug).GetMethod(nameof(Debug.LogError), BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(object), typeof(Object) }, null);

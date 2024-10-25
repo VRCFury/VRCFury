@@ -13,7 +13,7 @@ namespace VF.Hooks {
     internal static class ConstraintUpgradeHook {
 #if VRCSDK_HAS_VRCCONSTRAINTS
         [InitializeOnLoadMethod]
-        public static void Init() {
+        private static void Init() {
             if (BuildTargetUtils.IsDesktop()) {
                 AvatarDynamicsSetup.IsUnityConstraintAutoConverted += constraint => true;
             }

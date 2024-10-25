@@ -13,7 +13,7 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Injector {
     internal static class VRCFuryInjectorTest {
         [InitializeOnLoadMethod]
-        public static void Init() {
+        private static void Init() {
             try {
                 TestUnsafe();
             } catch (Exception e) {
