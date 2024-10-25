@@ -24,8 +24,13 @@ namespace VF.Feature {
             if (!constraints.Any()) {
                 throw new Exception("Object does not contain a VRC Constraint");
             }
-            
-            var newTarget = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, model.bone);
+
+            VFGameObject newTarget;
+            if (model.bone == HumanBodyBones.LastBone) {
+                newTarget = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Hips)?.parent;
+            } else {
+                newTarget = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, model.bone);
+            }
 
             foreach (var c in constraints) {
                 if (newTarget == null) Object.DestroyImmediate(c);
