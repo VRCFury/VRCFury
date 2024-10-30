@@ -43,6 +43,8 @@ namespace VF.Menu {
         public const int debugCopyPriority = 1317;
         public const string recompileAll = prefix + "Utilites/Recompile all scripts";
         public const int recompileAllPriority = 1318;
+        public const string blockScriptImports = prefix + "Utilites/Block Script Imports";
+        public const int blockScriptImportsPriority = 1319;
         
         public const string playMode = prefix + "Settings/Enable VRCFury in play mode";
         public const int playModePriority = 1321;

@@ -47,7 +47,8 @@ namespace VF.Service {
             }
 
             Motion Replace(Motion input) {
-                if (input == null) return replaceNulls ? noopClip : null;
+                var clips = new AnimatorIterator.Clips().From(input);
+                if (clips.Count == 0) return replaceNulls ? noopClip : null;
                 var hasBindings = new AnimatorIterator.Clips().From(input)
                     .SelectMany(clip => clip.GetAllBindings())
                     .Any();
