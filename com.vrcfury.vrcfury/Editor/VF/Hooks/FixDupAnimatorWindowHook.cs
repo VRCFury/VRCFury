@@ -37,7 +37,7 @@ namespace VF.Hooks {
             return AnimatorControllerTool_animatorController.GetValue(tool) as AnimatorController;
         }
     
-        static bool Prefix(ref AnimatorController __result) {
+        private static bool Prefix(ref AnimatorController __result) {
             __result = GetPreviewedAnimatorController();
             return false;
         }

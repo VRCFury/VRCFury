@@ -1,15 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
-using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;
-using VF.Feature;
 using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
-using Debug = UnityEngine.Debug;
 
 namespace VF.Hooks {
     /**
@@ -32,44 +27,10 @@ namespace VF.Hooks {
                 var typeName = callback.GetType().Name;
                 if (typeName == "RemoveAvatarEditorOnly") {
                     callbacks.Remove(callback);
-                } else if (typeName == "LockMaterialsOnUpload") {
-                    //Debug.Log($"VRCFury found {typeName} and is patching it to only run during actual uploads");
-                    var newCallback = new InhibitWhenNotUploadingWrapper(callback);
-                    callbacks.Remove(callback);
-                    callbacks.Add(newCallback);
                 }
             }
 
             callbacksField.SetValue(null, callbacks);
-        }
-
-        private class InhibitWhenNotUploadingWrapper : IVRCSDKPreprocessAvatarCallback {
-            private IVRCSDKPreprocessAvatarCallback wrapped;
-            
-            // The VRCSDK makes an instance of this hook using the default constructor and we can't stop it >:(
-            public InhibitWhenNotUploadingWrapper() {
-                this.wrapped = null;
-            }
-
-            public InhibitWhenNotUploadingWrapper(IVRCSDKPreprocessAvatarCallback wrapped) {
-                this.wrapped = wrapped;
-            }
-
-            public int callbackOrder => wrapped?.callbackOrder ?? 0;
-            public bool OnPreprocessAvatar(GameObject avatarGameObject) {
-                if (wrapped == null) return true;
-                if (!IsActuallyUploadingHook.Get()) {
-                    Debug.Log($"VRCFury inhibited IVRCSDKPreprocessAvatarCallback {wrapped.GetType().Name} from running because an upload isn't actually happening");
-                    return true;
-                }
-
-                try {
-                    return wrapped.OnPreprocessAvatar(avatarGameObject);
-                } catch (Exception e) {
-                    Debug.LogException(new Exception("Poiyomi failed to lockdown materials: " + e.Message, e));
-                    throw e;
-                }
-            }
         }
 
         public class VrcfRemoveEditorOnlyObjects : IVRCSDKPreprocessAvatarCallback {
