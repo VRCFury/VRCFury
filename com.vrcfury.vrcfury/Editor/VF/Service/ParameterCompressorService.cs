@@ -324,11 +324,21 @@ namespace VF.Service {
                     .Select(pair => pair.Key)
                     .GroupBy(source => source.objectPath)
                     .ToDictionary(group => group.Key, group => group.ToList());
+                
+                desktopToMobilePathAliases["__global"] = "__global";
                 foreach (var mobilePair in mobileParamsByPath) {
                     var mobilePath = mobilePair.Key;
+                    if (desktopParamsByPath.ContainsKey(mobilePath)) {
+                        desktopToMobilePathAliases[mobilePath] = mobilePath;
+                    }
+                }
+                foreach (var mobilePair in mobileParamsByPath) {
+                    var mobilePath = mobilePair.Key;
+                    if (desktopToMobilePathAliases.ContainsValue(mobilePath)) continue;
                     var mobileParamsAtPath = mobilePair.Value;
-                    if (desktopParamsByPath.ContainsKey(mobilePath)) continue;
                     var matchingDesktopPaths = desktopParamsByPath.Where(desktopPair => {
+                        var desktopPath = desktopPair.Key;
+                        if (desktopToMobilePathAliases.ContainsKey(desktopPath)) return false;
                         var desktopParamsAtPath = desktopPair.Value;
                         var matchingParams = mobileParamsAtPath.Where(m =>
                             desktopParamsAtPath.Any(d =>
