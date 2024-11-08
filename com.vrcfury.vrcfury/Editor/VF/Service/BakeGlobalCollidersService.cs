@@ -39,7 +39,9 @@ namespace VF.Service {
                     var left = fingers[0];
                     var right = fingers[1];
                     fingers.RemoveRange(0, 2);
-                    if (!IsFingerUsed(left.Item1, left.Item2) && (left.Item2.isMirrored || !IsFingerUsed(right.Item1, right.Item2))) {
+                    if (IsFingerCustom(left.Item1, left.Item2) || IsFingerCustom(right.Item1, right.Item2)) {
+                        // Some other script already customized this finger
+                    } else if (!IsFingerUsed(left.Item1, left.Item2) && (left.Item2.isMirrored || !IsFingerUsed(right.Item1, right.Item2))) {
                         unused.Add(left);
                         unused.Add(right);
                     } else {
@@ -113,6 +115,16 @@ namespace VF.Service {
                 finger.state = VRCAvatarDescriptor.ColliderConfig.State.Disabled;
                 setFinger(finger);
             }
+        }
+        
+        private bool IsFingerCustom(HumanBodyBones bone, VRCAvatarDescriptor.ColliderConfig config) {
+            if (config.state != VRCAvatarDescriptor.ColliderConfig.State.Custom) return false;
+            VFGameObject configObj = config.transform;
+            if (configObj == null) return false;
+            var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
+            if (boneObj == null) return true;
+            if (configObj.IsChildOf(boneObj)) return false;
+            return true;
         }
 
         private bool IsFingerUsed(HumanBodyBones bone, VRCAvatarDescriptor.ColliderConfig config) {

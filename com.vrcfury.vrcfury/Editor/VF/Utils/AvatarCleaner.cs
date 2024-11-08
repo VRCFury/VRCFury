@@ -48,7 +48,7 @@ namespace VF.Utils {
                     // (constraints and things)
                     
                     var removeObject = ShouldRemoveObj != null && ShouldRemoveObj(obj);
-                    if (ShouldRemoveComponent != null && obj.gameObject.transform.childCount == 0) {
+                    if (ShouldRemoveComponent != null && obj.childCount == 0) {
                         var allComponents = obj.GetComponents<UnityEngine.Component>()
                             .Where(c => c != null && !(c is Transform))
                             .ToArray();
@@ -195,7 +195,7 @@ namespace VF.Utils {
 
                         m.ForEachMenu(ForEachItem: (item, path) => {
                             if (removeControls.Contains(item)) {
-                                removeItems.Add("Menu Item: " + string.Join("/", path));
+                                removeItems.Add("Menu Item: " + path.Join('/'));
                                 return perform
                                     ? VRCExpressionsMenuExtensions.ForEachMenuItemResult.Delete
                                     : VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;

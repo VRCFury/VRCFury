@@ -61,7 +61,7 @@ namespace VF.Service {
             return output;
         }
 
-        private BlendtreeMath.VFAap Smooth_(VFBlendTreeDirect directTree, VFAFloat target, string name, VFAFloat speedParam, float minSupported, float maxSupported) {
+        private VFAFloat Smooth_(VFBlendTreeDirect directTree, VFAFloat target, string name, VFAFloat speedParam, float minSupported, float maxSupported) {
             var output = fx.MakeAap(name, def: target.GetDefault());
             
             // Maintain tree - keeps the current value

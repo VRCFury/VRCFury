@@ -104,7 +104,7 @@ namespace VF.Hooks {
                 }
             } catch (Exception e) {
                 Debug.LogException(e);
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     "VRCFury",
                     "VRCFury detected Av3Emulator, but was unable to reload it after making changes to the avatar." +
                     " Because of this, testing with the emulator may not be correct." +

@@ -19,8 +19,8 @@ namespace VF.Builder {
             _gameObject = gameObject;
         }
 
-        public GameObject gameObject => _gameObject;
-        public Transform transform => _gameObject == null ? null : _gameObject.transform;
+        private GameObject gameObject => _gameObject;
+        private Transform transform => _gameObject == null ? null : _gameObject.transform;
         public static implicit operator VFGameObject(GameObject d) => d == null ? null : new VFGameObject(d);
         public static implicit operator VFGameObject(Transform d) => d == null ? null : new VFGameObject(d.gameObject);
         public static implicit operator GameObject(VFGameObject d) => d?.gameObject;
@@ -294,6 +294,10 @@ namespace VF.Builder {
 
         public int GetInstanceID() {
             return _gameObject.GetInstanceID();
+        }
+
+        public bool HasTag(string tag) {
+            return gameObject.CompareTag(tag);
         }
     }
 }

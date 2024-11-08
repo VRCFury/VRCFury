@@ -60,7 +60,7 @@ namespace VF.Service {
             pendingClips.Clear();
             stored.Clear();
             
-            Debug.Log("Resting state report:\n" + string.Join("\n", debugLog));
+            Debug.Log("Resting state report:\n" + debugLog.Join('\n'));
         }
 
         [FeatureBuilderAction(FeatureOrder.ApplyImplicitRestingStates)]

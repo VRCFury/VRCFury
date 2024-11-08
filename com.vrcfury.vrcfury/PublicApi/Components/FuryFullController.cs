@@ -43,5 +43,12 @@ namespace com.vrcfury.api.Components {
         public void AddGlobalParam(string name) {
             c.globalParams.Add(name);
         }
+        
+        public void AddPathRewrite(string from, string to) {
+            c.rewriteBindings.Add(new FullController.BindingRewrite {
+                from = from,
+                to = to
+            });
+        }
     }
 }

@@ -13,8 +13,10 @@ namespace VF.Hooks {
     internal static class ConstraintUpgradeHook {
 #if VRCSDK_HAS_VRCCONSTRAINTS
         [InitializeOnLoadMethod]
-        public static void Init() {
-            //AvatarDynamicsSetup.IsUnityConstraintAutoConverted += constraint => true;
+        private static void Init() {
+            if (BuildTargetUtils.IsDesktop()) {
+                AvatarDynamicsSetup.IsUnityConstraintAutoConverted += constraint => true;
+            }
 
             AvatarDynamicsSetup.OnConvertUnityConstraintsAcrossGameObjects += (objs, isAutoFix) => {
                 if (AnimationMode.InAnimationMode()) return false;
@@ -54,13 +56,13 @@ namespace VF.Hooks {
                     overLimitWarning =
                         "WARNING! You have a constraint with more than 16 sources. If this is upgraded to a" +
                         " VRC Constraint, it will fail to be able to turn on those higher sources.\n" +
-                        string.Join("\n", overLimit) +
+                        overLimit.Join('\n') +
                         "\n\n";
                 }
                 
-                var ok = EditorUtility.DisplayDialog("Auto Convert Constraints",
+                var ok = DialogUtils.DisplayDialog("Auto Convert Constraints",
                     $"This object uses VRCFury.\n\n" +
-                    $"To ensure all merged animations are properly upgraded, the ENTIRE root object {string.Join(", ", roots.Select(root => root.name))} will have ALL of its constraints upgraded.\n\n" +
+                    $"To ensure all merged animations are properly upgraded, the ENTIRE root object {roots.Select(root => root.name).Join(", ")} will have ALL of its constraints upgraded.\n\n" +
                     $"Scanned {controllers.Count} controllers\n" +
                     $"Will upgrade {unityConstraints.Count} constraint components\n" +
                     $"Will upgrade {clips.Count} animation clips\n\n" +
@@ -87,26 +89,38 @@ namespace VF.Hooks {
         private static (AnimatorController[],AnimationClip[]) GetClipsFromComponent(object component) {
             var controllers = new HashSet<AnimatorController>();
             var clips = new HashSet<AnimationClip>();
+
+            void FoundController(RuntimeAnimatorController _c) {
+                if (!(_c is AnimatorController c)) return;
+                if (c == null) return;
+                controllers.Add(c);
+                clips.UnionWith(new AnimatorIterator.Clips().From(c));
+            }
+            void FoundClip(AnimationClip clip) {
+                if (clip == null) return;
+                clips.Add(clip);
+            }
             UnitySerializationUtils.Iterate(component, visit => {
                 if (visit.value is GuidController gc) {
-                    if (gc.Get() is AnimatorController c && c != null) {
-                        controllers.Add(c);
-                        clips.UnionWith(new AnimatorIterator.Clips().From(c));
-                    }
+                    FoundController(gc.Get());
                     return UnitySerializationUtils.IterateResult.Skip;
                 }
                 if (visit.value is GuidAnimationClip ga) {
-                    if (ga.Get() is AnimationClip clip && clip != null) {
-                        clips.Add(clip);
-                    }
+                    FoundClip(ga.Get());
                     return UnitySerializationUtils.IterateResult.Skip;
                 }
                 if (visit.value is AnimatorController ac && ac != null) {
-                    controllers.Add(ac);
+                    FoundController(ac);
                     clips.UnionWith(new AnimatorIterator.Clips().From(ac));
+                    return UnitySerializationUtils.IterateResult.Skip;
                 }
                 if (visit.value is AnimationClip c2 && c2 != null) {
-                    clips.Add(c2);
+                    FoundClip(c2);
+                    return UnitySerializationUtils.IterateResult.Skip;
+                }
+                if (visit.value is Animator a && a != null) {
+                    FoundController(a.runtimeAnimatorController);
+                    return UnitySerializationUtils.IterateResult.Skip;
                 }
                 return UnitySerializationUtils.IterateResult.Continue;
             });

@@ -98,7 +98,7 @@ namespace VF.Service {
                         var debugInfo = obj.AddComponent<VRCFuryDebugInfo>();
                         debugInfo.debugInfo =
                             "VRCFury Armature Link did not clean up this object because it is still used:\n";
-                        debugInfo.debugInfo += string.Join("\n", usedReasons.Get(obj).OrderBy(a => a));
+                        debugInfo.debugInfo += usedReasons.Get(obj).OrderBy(a => a).Join('\n');
                     }
                 }
             }
@@ -156,7 +156,7 @@ namespace VF.Service {
 
                 var animSources = anim.GetDebugSources(propBone);
                 if (animSources.Count > 0) {
-                    AddDebugInfo("This object is animated:\n" + string.Join("\n", animSources.OrderBy(a => a)));
+                    AddDebugInfo("This object is animated:\n" + animSources.OrderBy(a => a).Join('\n'));
                 }
 
                 bool ShouldReparent() {
@@ -211,7 +211,7 @@ namespace VF.Service {
                     }
                     parents.Reverse();
                     foreach (var parent in parents) {
-                        if (anim.activated.Contains(parent) || !parent.active) {
+                        if (anim.activated.Contains(parent) || !parent.active || animLink.ContainsValue(parent)) {
                             animatedParents.Add(parent);
                         }
                     }
@@ -238,11 +238,18 @@ namespace VF.Service {
                     addedObject = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone);
                     var current = addedObject;
 
-                    foreach (var a in animatedParents) {
-                        current = GameObjects.Create($"Toggle From {a.name}", current);
-                        current.active = a.active;
-                        animLink.Put(a, current);
-                        AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {a.name}");
+                    foreach (var parent in animatedParents) {
+                        // If this animated parent come from a toggle created during another armature link,
+                        // We have to follow the link back to find the original toggle source
+                        var original = animLink
+                            .Where(pair => pair.Value == parent)
+                            .Select(pair => pair.Key)
+                            .DefaultIfEmpty(parent)
+                            .First();
+                        current = GameObjects.Create($"Toggle From {original.name}", current);
+                        current.active = original.active;
+                        animLink.Put(original, current);
+                        AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {original.name}");
                     }
 
                     var transformAnimated =
@@ -270,6 +277,9 @@ namespace VF.Service {
                     addedObject.worldScale = avatarBone.worldScale * scalingFactor;
                     AddDebugInfo($"Keep offsets is set to NO, so this object was snapped to its parent's transform");
                 }
+                if (model.forceOneWorldScale) {
+                    addedObject.worldScale = Vector3.one;
+                }
 
                 if (ShouldReuseBone()) {
                     RewriteSkins(propBone, avatarBone, avatarObject);
@@ -282,7 +292,7 @@ namespace VF.Service {
         private static void RewriteSkins(VFGameObject fromBone, VFGameObject toBone, VFGameObject avatarObject) {
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 // Update skins to use bones and bind poses from the original avatar
-                if (skin.bones.Contains(fromBone.transform)) {
+                if (skin.bones.Contains((Transform)fromBone)) {
                     var mesh = skin.GetMutableMesh("Needed to change bone bind-poses for Armature Link to re-use bones on base armature");
                     if (mesh != null) {
                         mesh.bindposes = skin.bones.Zip(mesh.bindposes, (a,b) => (a,b))
@@ -296,11 +306,11 @@ namespace VF.Service {
                     }
 
                     skin.bones = skin.bones
-                        .Select(b => b == fromBone ? toBone.transform : b)
+                        .Select(b => b == fromBone ? (Transform)toBone : b)
                         .ToArray();
                     VRCFuryEditorUtils.MarkDirty(skin);
                 }
-                
+
                 // We never rewrite rootBone because of two reasons:
                 // 1. It defines the origin of the bounds (which may rotate and be impossible to reproduce)
                 // 2. It defines the origin for verts that are not weight painted (unusual, but really hard
@@ -411,7 +421,7 @@ namespace VF.Service {
             var isBone = false;
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 isBone |= skin.rootBone == rootBone;
-                isBone |= skin.bones.Contains(rootBone.transform);
+                isBone |= skin.bones.Contains((Transform)rootBone);
             }
             isBone |= rootBone.name.ToLower().Trim() == "armature";
 
@@ -427,11 +437,11 @@ namespace VF.Service {
             return model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Yes;
         }
 
-        public enum ChestUpHack {
+        public enum ExtraBoneHack {
             None,
-            ClothesHaveChestUp,
-            AvatarHasChestUp,
-            AvatarHasFakeChestUp
+            ClothesHaveIt,
+            AvatarHasIt,
+            AvatarHasFake
         }
 
         public class Links {
@@ -441,7 +451,8 @@ namespace VF.Service {
 
             public VFGameObject propMain;
             public VFGameObject avatarMain;
-            public ChestUpHack chestUpHack = ChestUpHack.None;
+            public ExtraBoneHack chestUpHack = ExtraBoneHack.None;
+            public ExtraBoneHack topFut = ExtraBoneHack.None;
             
             // left=bone in prop | right=bone in avatar
             public readonly Stack<(VFGameObject, VFGameObject)> mergeBones
@@ -514,7 +525,7 @@ namespace VF.Service {
             }).NotNull().FirstOrDefault();
 
             if (avatarBone == null) {
-                throw new Exception(string.Join("\n", exceptions));
+                throw new Exception(exceptions.Join('\n'));
             }
 
             var removeBoneSuffix = model.removeBoneSuffix;
@@ -547,21 +558,34 @@ namespace VF.Service {
                             // Clothes have ChestUp, but avatar does not?
                             if (childPropBone.name.Contains("ChestUp")) {
                                 childAvatarBone = checkAvatarBone;
-                                links.chestUpHack = ChestUpHack.ClothesHaveChestUp;
+                                links.chestUpHack = ExtraBoneHack.ClothesHaveIt;
+                                recurseButDoNotLink = true;
+                            }
+                            // Clothes have TopFut, but avatar does not?
+                            if (childPropBone.name == "TopFut_L" || childPropBone.name == "TopFut_R") {
+                                childAvatarBone = checkAvatarBone;
+                                links.topFut = ExtraBoneHack.ClothesHaveIt;
                                 recurseButDoNotLink = true;
                             }
                         }
                         if (childAvatarBone == null) {
-                            // Avatar has ChestUp, but clothes do not?
                             childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
-                            if (childAvatarBone != null) links.chestUpHack = ChestUpHack.AvatarHasChestUp;
+                            if (childAvatarBone != null) links.chestUpHack = ExtraBoneHack.AvatarHasIt;
+                        }
+                        if (childAvatarBone == null) {
+                            childAvatarBone = checkAvatarBone.Find("TopFut_L/" + searchName);
+                            if (childAvatarBone != null) links.topFut = ExtraBoneHack.AvatarHasIt;
+                        }
+                        if (childAvatarBone == null) {
+                            childAvatarBone = checkAvatarBone.Find("TopFut_R/" + searchName);
+                            if (childAvatarBone != null) links.topFut = ExtraBoneHack.AvatarHasIt;
                         }
                         if (childAvatarBone == null) {
                             // Clothes have real ChestUp, but avatar has ChestUp that is fake and empty?
                             // (happens on some versions of rex)
                             if (checkAvatarBone.name.Contains("ChestUp")) {
                                 childAvatarBone = checkAvatarBone.parent.Find(searchName);
-                                if (childAvatarBone != null) links.chestUpHack = ChestUpHack.AvatarHasFakeChestUp;
+                                if (childAvatarBone != null) links.chestUpHack = ExtraBoneHack.AvatarHasFake;
                             }
                         }
 

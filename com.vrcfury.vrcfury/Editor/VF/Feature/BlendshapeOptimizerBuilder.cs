@@ -26,6 +26,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly AnimatorHolderService animators;
 
         [FeatureEditor]
         public static VisualElement Editor() {
@@ -203,8 +204,9 @@ namespace VF.Feature {
             var animatedBindings = controllers.GetAllUsedControllers()
                 .Select(c => c.GetRaw())
                 .SelectMany(controller => GetBindings(avatarObject, controller))
-                .Concat(avatarObject.GetComponentsInSelfAndChildren<Animator>()
-                    .SelectMany(animator => GetBindings(animator.owner(), animator.runtimeAnimatorController as AnimatorController)))
+                .Concat(animators.GetSubControllers().SelectMany(pair =>
+                    GetBindings(pair.owner, pair.controller)
+                ))
                 .ToList();
 
             var skinPath = skin.owner().GetPath(avatarObject);

@@ -1,6 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.StateAction;
@@ -14,7 +15,7 @@ namespace VF.Actions {
             if (model.obj == null) {
                 //Debug.LogWarning("Missing object in action: " + name);
             } else {
-                var localScale = model.obj.transform.localScale;
+                var localScale = model.obj.asVf().localScale;
                 var newScale = localScale * model.scale;
                 offClip.SetScale(model.obj, localScale);
                 onClip.SetScale(model.obj, newScale);

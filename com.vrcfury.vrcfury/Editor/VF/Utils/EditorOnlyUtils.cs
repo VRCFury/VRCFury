@@ -23,7 +23,7 @@ namespace VF.Utils {
         }
 
         private static bool IsEditorOnly(VFGameObject obj) {
-            if (obj.gameObject.CompareTag("EditorOnly")) {
+            if (obj.HasTag("EditorOnly")) {
                 return true;
             }
             if (obj.GetComponents<VRCFury>()

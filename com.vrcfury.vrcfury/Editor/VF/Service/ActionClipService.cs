@@ -92,9 +92,8 @@ namespace VF.Service {
                             clip.Clear();
                             clip.CopyFrom(motionClip);
                         }
-                    } else {
-                        clip.SetLooping(false);
                     }
+                    clip.SetLooping(false);
                 }
             }
 

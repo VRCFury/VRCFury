@@ -157,7 +157,7 @@ namespace VF.Inspector {
             [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
             static void DrawGizmo2(VRCFurySocketGizmo gizmo, GizmoType gizmoType) {
                 if (!gizmo.show) return;
-                DrawGizmo(gizmo.owner().TransformPoint(gizmo.pos), gizmo.owner().worldRotation * gizmo.rot, gizmo.type, "", Selection.activeGameObject == gizmo.gameObject);
+                DrawGizmo(gizmo.owner().TransformPoint(gizmo.pos), gizmo.owner().worldRotation * gizmo.rot, gizmo.type, "", Selection.activeGameObject == gizmo.owner());
             }
         }
 
@@ -227,7 +227,7 @@ namespace VF.Inspector {
 
         [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         static void DrawGizmo(VRCFuryHapticSocket socket, GizmoType gizmoType) {
-            var transform = socket.transform;
+            var transform = socket.owner();
 
             var autoInfo = GetInfoFromLightsOrComponent(socket);
             var handTouchZoneSize = GetHandTouchZoneSize(socket, VRCAvatarUtils.GuessAvatarObject(socket)?.GetComponent<VRCAvatarDescriptor>());
@@ -249,12 +249,12 @@ namespace VF.Inspector {
                 );
             }
 
-            DrawGizmo(transform.TransformPoint(localPosition), transform.rotation * localRotation, lightType, GetName(socket), Selection.activeGameObject == socket.gameObject);
+            DrawGizmo(transform.TransformPoint(localPosition), transform.worldRotation * localRotation, lightType, GetName(socket), Selection.activeGameObject == socket.owner());
         }
 
         [CanBeNull]
         public static BakeResult Bake(VRCFuryHapticSocket socket, HapticContactsService hapticContactsService) {
-            var transform = socket.transform;
+            var transform = socket.owner();
             if (!HapticUtils.AssertValidScale(transform, "socket", shouldThrow: !socket.sendersOnly)) {
                 return null;
             }
@@ -361,7 +361,7 @@ namespace VF.Inspector {
             if (!enableHandTouchZone) {
                 return null;
             }
-            var length = socket.length * (socket.unitsInMeters ? 1f : socket.transform.lossyScale.z); ;
+            var length = socket.length * (socket.unitsInMeters ? 1f : socket.owner().worldScale.z);
             if (length <= 0) {
                 if (avatar == null) return null;
                 length = avatar.ViewPosition.y * 0.05f;
@@ -398,7 +398,7 @@ namespace VF.Inspector {
                 return Tuple.Create(type, position, rotation);
             }
             
-            var lightInfo = GetInfoFromLights(socket.transform);
+            var lightInfo = GetInfoFromLights(socket.owner());
             if (lightInfo != null) {
                 return lightInfo;
             }
@@ -420,7 +420,7 @@ namespace VF.Inspector {
                 act(light);
             }
             foreach (var child in obj.Children()) {
-                foreach (var light in child.gameObject.GetComponents<Light>()) {
+                foreach (var light in child.GetComponents<Light>()) {
                     Visit(light);
                 }
             }

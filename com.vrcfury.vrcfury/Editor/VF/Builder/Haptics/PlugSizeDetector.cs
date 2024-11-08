@@ -19,11 +19,11 @@ namespace VF.Builder.Haptics {
         }
         
         public static SizeResult GetWorldSize(VRCFuryHapticPlug plug) {
-            var transform = plug.transform;
+            var transform = plug.owner();
             var renderers = VRCFuryHapticPlugEditor.GetRenderers(plug);
 
-            Quaternion worldRotation = transform.rotation;
-            Vector3 worldPosition = transform.position;
+            Quaternion worldRotation = transform.worldRotation;
+            Vector3 worldPosition = transform.worldPosition;
             if (!plug.configureTps && !plug.enableSps && plug.autoPosition && renderers.Count > 0) {
                 var firstRenderer = renderers.First();
                 worldRotation = GetAutoWorldRotation(firstRenderer);
@@ -31,8 +31,8 @@ namespace VF.Builder.Haptics {
             }
             var testBase = transform.Find("OGBTestBase");
             if (testBase != null) {
-                worldPosition = testBase.position;
-                worldRotation = testBase.rotation;
+                worldPosition = testBase.worldPosition;
+                worldRotation = testBase.worldRotation;
             }
 
             float worldLength = 0;
@@ -52,17 +52,17 @@ namespace VF.Builder.Haptics {
 
             if (!plug.autoLength) {
                 worldLength = plug.length;
-                if (!plug.unitsInMeters) worldLength *= transform.lossyScale.x;
+                if (!plug.unitsInMeters) worldLength *= transform.worldScale.x;
             }
             if (!plug.autoRadius) {
                 worldRadius = plug.radius;
-                if (!plug.unitsInMeters) worldRadius *= transform.lossyScale.x;
+                if (!plug.unitsInMeters) worldRadius *= transform.worldScale.x;
             }
 
             if (worldLength <= 0) throw new VRCFBuilderException("Failed to detect plug length");
             if (worldRadius <= 0) throw new VRCFBuilderException("Failed to detect plug radius");
             if (worldRadius > worldLength / 2) worldRadius = worldLength / 2;
-            var localRotation = Quaternion.Inverse(transform.rotation) * worldRotation;
+            var localRotation = Quaternion.Inverse(transform.worldRotation) * worldRotation;
             var localPosition = transform.InverseTransformPoint(worldPosition);
             return new SizeResult {
                 renderers = renderers,

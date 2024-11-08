@@ -1,4 +1,5 @@
 ﻿using UnityEditor;
+using VF.Utils;
 
 namespace VF.Menu {
     internal static class UseInUploadMenuItem {
@@ -19,7 +20,7 @@ namespace VF.Menu {
         [MenuItem(MenuItems.uploadMode, priority = MenuItems.uploadModePriority)]
         private static void Click() {
             if (Get()) {
-                var ok = EditorUtility.DisplayDialog(
+                var ok = DialogUtils.DisplayDialog(
                     "Warning",
                     "Disabling this option will prevent VRCFury from processing your avatar while uploading." +
                     " This means NOTHING added by VRCFury will work properly on your uploaded avatar, such as VRCFury toggles, linked clothing, merged controllers, etc." +

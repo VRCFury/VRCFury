@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -251,7 +252,7 @@ namespace VF.Utils {
         private VRCExpressionsMenu CreateNewMenu(IList<string> path) {
             var cleanPath = path.Select(CleanTitleForFilename);
             var newMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
-            newMenu.name = string.Join(" » ", cleanPath);
+            newMenu.name = cleanPath.Join(" » ");
             return newMenu;
         }
         private static string CleanTitleForFilename(string str) {
@@ -333,11 +334,13 @@ namespace VF.Utils {
 
         public void SortMenu() {
             rootMenu.ForEachMenu((menu, path) => {
-                menu.controls.Sort((a, b) => {
+                // Do not use .Sort, because it's unstable and will not maintain order if you return 0
+                // .OrderBy is a stable sort.
+                menu.controls = menu.controls.OrderBy(a => a, Comparer<VRCExpressionsMenu.Control>.Create((a,b) => {
                     sortPositions.TryGetValue(a, out var aPos);
                     sortPositions.TryGetValue(b, out var bPos);
                     return aPos - bPos;
-                });
+                })).ToList();
             });
         }
 

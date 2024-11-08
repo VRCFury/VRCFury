@@ -169,7 +169,7 @@ namespace VF.Service {
             } else if (fixSetting != null) {
                 mode = fixSetting.mode;
             } else if (analysis.isBroken) {
-                var ask = EditorUtility.DisplayDialogComplex("VRCFury",
+                var ask = DialogUtils.DisplayDialogComplex("VRCFury",
                     "VRCFury has detected a (likely) broken mix of Write Defaults on your avatar base." +
                     " This may cause weird issues to happen with your animations," +
                     " such as toggles or animations sticking on or off forever.\n\n" +
@@ -209,7 +209,7 @@ namespace VF.Service {
                       + (useWriteDefaults ? "ON" : "OFF")
                       + $" counts ({analysis.debugInfo})"
                       + $" mode ({mode})"
-                      + (analysis.weirdStates.Count > 0 ? ("\n\nWeird states: " + string.Join(",", analysis.weirdStates)) : "")
+                      + (analysis.weirdStates.Count > 0 ? ("\n\nWeird states: " + analysis.weirdStates.Join(',')) : "")
             );
 
             _buildSettings = new BuildSettings {
@@ -282,10 +282,10 @@ namespace VF.Service {
                 if (info.additiveOnStates.Count > 0) entries.Add(info.additiveOnStates.Count + " additive-on");
                 if (info.additiveOffStates.Count > 0) entries.Add(info.additiveOffStates.Count + " additive-off");
                 if (entries.Count > 0) {
-                    debugList.Add($"{info.type}:{string.Join("|",entries)}");
+                    debugList.Add($"{info.type}:{entries.Join('|')}");
                 }
             }
-            var debugInfo = string.Join(", ", debugList);
+            var debugInfo = debugList.Join(", ");
 
             IList<string> Collect(Func<ControllerInfo, IEnumerable<string>> fn) {
                 return controllerInfos.SelectMany(info => fn(info).Select(s => $"{info.type} | {s}")).ToList();

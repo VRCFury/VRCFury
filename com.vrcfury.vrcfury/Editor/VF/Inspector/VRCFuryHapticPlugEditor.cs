@@ -91,7 +91,7 @@ namespace VF.Inspector {
             sizeSection.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
                 var size = PlugSizeDetector.GetWorldSize(target);
                 var text = new List<string>();
-                text.Add("Attached renderers: " + string.Join(", ", size.renderers.Select(r => r.owner().name)));
+                text.Add("Attached renderers: " + size.renderers.Select(r => r.owner().name).Join(", "));
                 text.Add($"Detected Length: {size.worldLength}m");
                 text.Add($"Detected Radius: {size.worldRadius}m");
 
@@ -108,11 +108,11 @@ namespace VF.Inspector {
                     .SelectMany(skin => skin.bones)
                     .Where(bone => bone != null)
                     .ToArray();
-                var isInsideBone = bones.Any(bone => target.transform.IsChildOf(bone));
+                var isInsideBone = bones.Any(bone => target.owner().IsChildOf(bone));
                 var displayWarning = bones.Length > 0 && !isInsideBone;
                 boneWarning.SetVisible(displayWarning);
                 
-                return string.Join("\n", text);
+                return text.Join('\n');
             }));
             
             container.Add(VRCFuryEditorUtils.BetterProp(enableSps, "Enable Deformation"));
@@ -246,7 +246,7 @@ namespace VF.Inspector {
                         "This avatar still contains a DPS tip light! This means your avatar has not been fully converted to SPS," +
                         " and your DPS penetrator may cause issues if too many sockets are on nearby." +
                         " Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
-                        string.Join("\n", tipLightPaths)
+                        tipLightPaths.Join('\n')
                     );
                     output.Add(warning);
                 }
@@ -255,14 +255,14 @@ namespace VF.Inspector {
                         "This avatar still contains un-upgraded DPS orifice lights! This means your avatar has not been fully converted to SPS," +
                         " and your DPS orifices may cause issues if too many are active at the same time." +
                         " Check out https://vrcfury.com/sps for details about how to upgrade DPS orifices to SPS sockets.\n\n" +
-                        string.Join("\n", orificeLightPaths)
+                        orificeLightPaths.Join('\n')
                     );
                     output.Add(warning);
                 }
                 if (lightPaths.Any()) {
                     var warning = VRCFuryEditorUtils.Warn(
                         "This avatar contains lights! Beware that these lights may interfere with SPS if they are enabled at the same time.\n\n" +
-                        string.Join("\n", lightPaths)
+                        lightPaths.Join('\n')
                     );
                     output.Add(warning);
                 }
@@ -271,7 +271,7 @@ namespace VF.Inspector {
                         "This avatar still contains a legacy DPS or TPS penetrator! This means your avatar has not been fully converted to SPS," +
                         " and your legacy penetrator may cause issues if too many sockets are on nearby." +
                         " Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
-                        string.Join("\n", legacyRendererPaths)
+                        legacyRendererPaths.Join('\n')
                     );
                     output.Add(warning);
                 }
@@ -325,13 +325,13 @@ namespace VF.Inspector {
         [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         //[DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFuryHapticPlug plug, GizmoType gizmoType) {
-            var transform = plug.transform;
+            var transform = plug.owner();
             
             var cache = gizmoCache.GetOrCreateValue(plug);
-            if (cache.time == 0 || transform.position != cache.position || transform.rotation != cache.rotation || EditorApplication.timeSinceStartup > cache.time + 1) {
+            if (cache.time == 0 || transform.worldPosition != cache.position || transform.worldRotation != cache.rotation || EditorApplication.timeSinceStartup > cache.time + 1) {
                 cache.time = EditorApplication.timeSinceStartup;
-                cache.position = transform.position;
-                cache.rotation = transform.rotation;
+                cache.position = transform.worldPosition;
+                cache.rotation = transform.worldRotation;
                 cache.size = null;
                 cache.error = null;
                 try {
@@ -364,7 +364,7 @@ namespace VF.Inspector {
             var worldEnd = worldRoot + worldForward * worldLength;
             VRCFuryGizmoUtils.DrawCappedCylinder(worldRoot, worldEnd, worldRadius, color);
 
-            if (Selection.activeGameObject == plug.gameObject) {
+            if (Selection.activeGameObject == plug.owner()) {
                 VRCFuryGizmoUtils.DrawText(
                     worldRoot + (worldEnd - worldRoot) / 2,
                     "SPS Plug" + (error == null ? "" : $"\n({error})"),
@@ -385,7 +385,7 @@ namespace VF.Inspector {
         public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug plug) {
             var renderers = new List<Renderer>();
             if (plug.autoRenderer) {
-                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(plug.gameObject, !plug.useLegacyRendererFinder));
+                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(plug.owner(), !plug.useLegacyRendererFinder));
             } else {
                 renderers.AddRange(plug.configureTpsMesh.Where(r => r != null));
             }
@@ -399,7 +399,7 @@ namespace VF.Inspector {
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
             bool deferMaterialConfig = false
         ) {
-            var transform = plug.transform;
+            var transform = plug.owner();
             if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.sendersOnly)) {
                 return null;
             }

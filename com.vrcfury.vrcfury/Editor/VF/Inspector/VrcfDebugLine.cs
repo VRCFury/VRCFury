@@ -22,7 +22,7 @@ namespace VF.Inspector {
 
             IEnumerable<VRCFury> vrcfComponents;
             if (avatarObject == null) {
-                vrcfComponents = Object.FindObjectsOfType<VRCFury>();
+                vrcfComponents = Resources.FindObjectsOfTypeAll<VRCFury>();
             } else {
                 vrcfComponents = avatarObject.GetComponentsInSelfAndChildren<VRCFury>();
             }

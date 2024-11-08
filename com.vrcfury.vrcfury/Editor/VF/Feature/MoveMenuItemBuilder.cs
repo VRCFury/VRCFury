@@ -76,7 +76,7 @@ namespace VF.Feature {
                 });
 
                 string PathToString(IList<string> path) {
-                    return string.Join("/", path.Select(p => p.Replace("/", "\\/")));
+                    return path.Select(p => p.Replace("/", "\\/")).Join('/');
                 }
 
                 void AddItem(VrcfSearchWindow.Group group, IList<string> prefix) {

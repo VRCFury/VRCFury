@@ -117,7 +117,7 @@ namespace VF.Injector {
                 var parents = new List<Type>();
                 if (context.parents != null) {
                     if (context.parents.Contains(type)) {
-                        throw new Exception($"{type.FullName} is already being constructed (dependency loop?) {string.Join(",", context.parents)}");
+                        throw new Exception($"{type.FullName} is already being constructed (dependency loop?) {context.parents.Select(t => t.Name).Join(',')}");
                     }
                     parents.AddRange(context.parents);
                 }

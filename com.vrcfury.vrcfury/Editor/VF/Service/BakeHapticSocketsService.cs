@@ -34,6 +34,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly FrameTimeService frameTimeService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
@@ -227,7 +228,7 @@ namespace VF.Service {
                         animObjects.Add(scaleFactorContact2);
                         var directTree = directTreeService.Create($"{name} - Depth Calculations");
                         var math = directTreeService.GetMath(directTree);
-                        return new SpsDepthContacts(animRoot, name, hapticContacts, directTree, math, fx, socket.useHipAvoidance, scaleFactor);
+                        return new SpsDepthContacts(animRoot, name, hapticContacts, directTree, math, fx, frameTimeService, socket.useHipAvoidance, scaleFactor);
                     });
 
                     if (socket.depthActions2.Count > 0) {
@@ -246,13 +247,23 @@ namespace VF.Service {
                         .Select(fc => fc.injectSpsDepthParam)
                         .NotNull()
                         .ToList();
-                    if (socket.IsValidPlugLength) {
-                        directTreeService.GetMath(Contacts.Value.directTree)
-                            .CopyInPlace(Contacts.Value.closestLength.Value, socket.plugLengthParameterName);
-                    }
                     foreach (var i in injectDepthToFullControllerParams) {
                         directTreeService.GetMath(Contacts.Value.directTree)
                             .CopyInPlace(Contacts.Value.closestDistancePlugLengths.Value, i);
+                    }
+                    var injectVelocityToFullControllerParams = globals.allBuildersInRun
+                        .OfType<FullControllerBuilder>()
+                        .Where(fc => fc.featureBaseObject.IsChildOf(socket.owner()))
+                        .Select(fc => fc.injectSpsVelocityParam)
+                        .NotNull()
+                        .ToList();
+                    foreach (var i in injectVelocityToFullControllerParams) {
+                        directTreeService.GetMath(Contacts.Value.directTree)
+                            .CopyInPlace(Contacts.Value.velocity.Value, i);
+                    }
+                    if (socket.IsValidPlugLength) {
+                        directTreeService.GetMath(Contacts.Value.directTree)
+                            .CopyInPlace(Contacts.Value.closestLength.Value, socket.plugLengthParameterName);
                     }
                     if (socket.IsValidPlugWidth) {
                         directTreeService.GetMath(Contacts.Value.directTree)

@@ -12,7 +12,6 @@ namespace VF.Utils {
         public static bool IsStatic(this Motion motion) {
             return new AnimatorIterator.Clips().From(motion).All(IsStatic);
         }
-
         private static bool IsStatic(AnimationClip clip) {
             if (clip.IsProxyClip()) return false;
             foreach (var (binding,curve) in clip.GetAllCurves()) {
@@ -29,6 +28,23 @@ namespace VF.Utils {
             return true;
         }
 
+        public static bool IsTwoState(this Motion motion) {
+            return new AnimatorIterator.Clips().From(motion).All(IsTwoState);
+        }
+        private static bool IsTwoState(this AnimationClip clip) {
+            var times = new HashSet<float>();
+            foreach (var (_,curve) in clip.GetAllCurves()) {
+                if (curve.IsFloat) {
+                    times.UnionWith(curve.FloatCurve.keys.Select(key => key.time));
+                } else {
+                    times.UnionWith(curve.ObjectCurve.Select(key => key.time));
+                }
+            }
+
+            if (!times.Contains(0)) return false;
+            return times.Count == 2;
+        }
+
         public static bool IsEmptyOrZeroLength(this Motion motion) {
             return new AnimatorIterator.Clips().From(motion).All(clip => clip.GetLengthInSeconds() == 0 || clip.GetAllBindings().Length == 0);
         }
@@ -43,13 +59,15 @@ namespace VF.Utils {
                 .Any(binding => binding.IsValid(avatarRoot));
         }
         
-        public static Motion GetLastFrame(this Motion motion) {
+        public static Motion GetLastFrame(this Motion motion, bool last = true) {
             var clone = motion.Clone();
+            clone.name = clone.name + " (" + (last ? "Last Frame" : "First Frame") + ")";
             foreach (var clip in new AnimatorIterator.Clips().From(clone)) {
                 clip.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
                     if (curve.lengthInSeconds == 0) return (binding, curve, false);
-                    return (binding, curve.GetLast(), true);
+                    return (binding, last ? curve.GetLast() : curve.GetFirst(), true);
                 }));
+                clip.SetLengthHolder(0);
             }
             return clone;
         }

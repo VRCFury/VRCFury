@@ -23,7 +23,6 @@ namespace VF.Service {
         public void Apply() {
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 var noopClip = clipFactory.NewClip("noop");
-                noopClip.SetLengthHolder(0); // 0 frames = 1 second long because unity
                 foreach (var layer in controller.GetLayers()) {
                     foreach (var state in new AnimatorIterator.States().From(layer)) {
                         CheckState(controller, layer, state, noopClip);
@@ -35,7 +34,7 @@ namespace VF.Service {
         private void CheckState(ControllerManager controller, VFLayer layer, AnimatorState state, AnimationClip noopClip) {
             // ReSharper disable once ReplaceWithSingleAssignment.True
             var replaceNulls = true;
-            if (state.writeDefaultValues && !VFLayer.Created(state)) {
+            if (state.writeDefaultValues) {
                 // Interestingly, inserting noop clips into WD on states HAS SIDE EFFECTS for some reason
                 // so... don't do that. (Doing so breaks the rex eye pupil animations, because it seemingly
                 // doesn't properly propagate higher layer states while transitioning from a noop clip into
@@ -47,18 +46,13 @@ namespace VF.Service {
                 replaceNulls = false;
             }
 
-            Motion Replace(Motion input) {
-                if (input == null) return replaceNulls ? noopClip : null;
-                var hasBindings = new AnimatorIterator.Clips().From(input)
-                    .SelectMany(clip => clip.GetAllBindings())
-                    .Any();
-                return hasBindings ? input : noopClip;
+            if (state.motion == null && replaceNulls) {
+                state.motion = noopClip;
             }
 
-            state.motion = Replace(state.motion);
             foreach (var tree in new AnimatorIterator.Trees().From(state)) {
                 tree.RewriteChildren(child => {
-                    child.motion = Replace(child.motion);
+                    if (child.motion == null) child.motion = noopClip;
                     return child;
                 });
             }

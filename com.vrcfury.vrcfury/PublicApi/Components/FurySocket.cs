@@ -29,7 +29,6 @@ namespace com.vrcfury.api.Components {
 
         public FuryActionSet AddDepthActions(Vector2 range, float smoothingSeconds, bool enableSelf = false) {
             var a = new VRCFuryHapticSocket.DepthActionNew {
-                actionSet = new State(),
                 range = range.Ordered(),
                 smoothingSeconds = smoothingSeconds,
                 enableSelf = enableSelf
