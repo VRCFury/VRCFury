@@ -1,9 +1,17 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using VF.Component;
+using VF.Feature;
+using VF.Feature.Base;
+using VF.Injector;
+using VF.Model;
+using VF.Model.Feature;
+using VF.Service;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -45,6 +53,20 @@ namespace VF.Utils {
                 .Split('/')
                 .Select(s => s.Replace("REALSLASH", "/"))
                 .ToArray();
+        }
+
+        public static string prependFolders(string path, GameObject gameObject) {
+            if (gameObject == null) return path;
+            foreach (var component in gameObject.GetComponentsInParent<VRCFury>()) {
+                var folder = component.content as MenuFolder;
+                if (folder == null) continue;
+                var folderPath = folder.folderPath;
+                if (string.IsNullOrWhiteSpace(folderPath)) continue;
+                path = folderPath + "/" + path;
+            }
+            if (path.EndsWith('/')) path = path.Substring(0, path.Length - 1);
+            return path;
+           
         }
 
         private VRCExpressionsMenu.Control NewMenuItem(string path) {

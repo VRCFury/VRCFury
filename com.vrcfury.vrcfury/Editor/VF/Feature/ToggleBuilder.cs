@@ -122,13 +122,13 @@ namespace VF.Feature {
                 if (addMenuItem) {
                     if (model.holdButton) {
                         menu.NewMenuButton(
-                            model.name,
+                            MenuManager.prependFolders(model.name, featureBaseObject),
                             param,
                             icon: model.enableIcon ? model.icon?.Get() : null
                         );
                     } else {
                         menu.NewMenuToggle(
-                            model.name,
+                            MenuManager.prependFolders(model.name, featureBaseObject),
                             param,
                             icon: model.enableIcon ? model.icon?.Get() : null
                         );
@@ -389,6 +389,7 @@ namespace VF.Feature {
                     advMenu.AddItem(new GUIContent("Select Menu Folder"), false, () => {
                         MoveMenuItemBuilder.SelectButton(
                             avatarObject,
+                            componentObject,
                             true,
                             pathProp,
                             append: () => MoveMenuItemBuilder.GetLastMenuSlug(pathProp.stringValue, "New Toggle"),
