@@ -91,7 +91,6 @@ namespace VF.Feature {
 
         [FeatureBuilderAction]
         public void Apply() {
-            globals.currentFeature = this;
             var hasTitle = !string.IsNullOrEmpty(model.name);
             var hasIcon = model.enableIcon && model.icon?.Get() != null;
             var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
