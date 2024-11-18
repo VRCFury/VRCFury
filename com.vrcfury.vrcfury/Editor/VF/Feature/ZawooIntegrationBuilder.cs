@@ -64,14 +64,14 @@ namespace VF.Feature {
             if (type == Type.Canine) {
                 menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_caninePeen");
                 if (menu == null) return;
-                var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
+                var menuDir = VRCFuryAssetDatabase.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
                 fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX Template.controller");
                 prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_caninePeen.asset");
                 toggleParam = "caninePeenToggle";
             } else if (type == Type.Anthro) {
                 menu = LoadAssetByName<VRCExpressionsMenu>("menu_zawoo_hybridAnthroPeen");
                 if (menu == null) return;
-                var menuDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
+                var menuDir = VRCFuryAssetDatabase.GetDirectoryName(AssetDatabase.GetAssetPath(menu));
                 fx = LoadAssetByPath<AnimatorController>(menuDir+"/FX_template.controller");
                 prms = LoadAssetByPath<VRCExpressionParameters>(menuDir+"/param_zawoo_hybridAnthroPeen.asset");
                 toggleParam = "peenToggle";

@@ -23,7 +23,7 @@ namespace VF.Service {
             Texture2D Optimize(Texture2D original, string path) {
                 if (original == null) return original;
                 if (original.width == 0 || original.height == 0) {
-                    EditorUtility.DisplayDialog(
+                    DialogUtils.DisplayDialog(
                         "VRCFury",
                         $"The icon in your menu at path \"{path}\" is corrupted." +
                         $" This is usually caused by a compression bug in Modular Avatar," +
@@ -38,7 +38,7 @@ namespace VF.Service {
             }
             
             menu.GetRaw().ForEachMenu(ForEachItem: (control, path) => {
-                var strPath = string.Join("/", path);
+                var strPath = path.Join('/');
                 control.icon = Optimize(control.icon, strPath);
                 if (control.labels != null) {
                     control.labels = control.labels.Select(label => {

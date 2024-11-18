@@ -32,6 +32,13 @@ namespace VF.Builder {
                 }
             }
         }
+        
+        public static void RewriteConditions(
+            VFLayer root,
+            Func<AnimatorCondition, AnimatorTransitionBaseExtensions.Rewritten> action
+        ) {
+            ForEachTransitionRW(root, t => t.RewriteConditions(action));
+        }
 
         public static void ForEachTransitionRW(
             VFLayer root,

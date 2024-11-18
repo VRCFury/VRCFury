@@ -19,7 +19,7 @@ namespace VF.Actions {
         public AnimationClip Build(ResetPhysboneAction model, string actionName) {
             var onClip = NewClip();
             if (model.physBone != null && physboneResetService != null) {
-                var param = physboneResetService.CreatePhysBoneResetter(new [] { model.physBone.owner() }, actionName);
+                var param = physboneResetService.CreatePhysBoneResetter(model.physBone.owner(), actionName);
                 onClip.SetAap(param, 1);
             }
             return onClip;

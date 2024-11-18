@@ -11,8 +11,6 @@ namespace VF.Service {
      * Holds things that are otherwise hard to autowire
      */
     internal class GlobalsService {
-        public string tmpDirParent;
-        public string tmpDir;
         public VFGameObject avatarObject;
         public Action<FeatureModel> addOtherFeature;
         public List<FeatureModel> allFeaturesInRun;
@@ -21,7 +19,6 @@ namespace VF.Service {
         public Func<string> currentFeatureNameProvider;
         public Func<string> currentFeatureClipPrefixProvider;
         public Func<int> currentMenuSortPosition;
-        public Func<VFGameObject> currentComponentObject;
         public VFAFloat currentTriggerParam;
         public Func<FeatureBuilder> currentFeature;
         public Func<string> currentFeatureObjectPath;

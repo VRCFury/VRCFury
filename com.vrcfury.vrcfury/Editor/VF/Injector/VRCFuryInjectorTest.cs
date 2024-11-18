@@ -13,7 +13,7 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Injector {
     internal static class VRCFuryInjectorTest {
         [InitializeOnLoadMethod]
-        public static void Init() {
+        private static void Init() {
             try {
                 TestUnsafe();
             } catch (Exception e) {
@@ -37,10 +37,11 @@ namespace VF.Injector {
             try {
                 var injector = new VRCFuryInjector();
                 injector.ImportOne(typeof(ActionClipService));
+                injector.ImportOne(typeof(ClipFactoryService));
                 injector.ImportScan(typeof(ActionBuilder));
                 injector.Set("avatarObject", null);
                 injector.Set("componentObject", null);
-                injector.CreateAndFillObject<ActionClipService>();
+                injector.GetService<ActionClipService>();
             } catch (Exception e) {
                 throw new Exception("Failed to verify action debugger context", e);
             }
@@ -89,6 +90,13 @@ namespace VF.Injector {
                 var isFeatureBuilder = typeof(FeatureBuilder).IsAssignableFrom(type);
                 var isPrototypeService = type.GetCustomAttribute<VFPrototypeScopeAttribute>() != null;
                 var isIBuilder = typeof(IVRCFuryBuilder).IsAssignableFrom(type);
+                var hasAutowired = ReflectionUtils.GetAllFields(type)
+                    .Any(field => field.GetCustomAttribute<VFAutowiredAttribute>() != null);
+                if (hasAutowired) {
+                    if (!isService && !isIBuilder) {
+                        throw new Exception($"Autowired field found in non-service non-builder {type.Name}");
+                    }
+                }
                 if (hasBuilderAction) {
                     if (!isService && !isFeatureBuilder) {
                         throw new Exception($"Feature builder action found in non-service non-builder {type.Name}");

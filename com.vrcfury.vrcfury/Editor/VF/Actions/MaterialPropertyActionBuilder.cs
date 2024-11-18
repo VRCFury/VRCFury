@@ -74,6 +74,20 @@ namespace VF.Actions {
             var valueFloat = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("value"), "Value");
             var valueVector = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueVector"), "Value");
             var valueColor = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueColor"), "Value");
+            var valueStField = new VisualElement();
+            var valueStScale = new VisualElement().Row().AddTo(valueStField);
+            valueStScale.Add(new Label("Scale").FlexBasis(60));
+            valueStScale.Add(new Label("X"));
+            valueStScale.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueVector.x")).FlexBasis(0).FlexGrow(1));
+            valueStScale.Add(new Label("Y"));
+            valueStScale.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueVector.y")).FlexBasis(0).FlexGrow(1));
+            var valueStOffset = new VisualElement().Row().AddTo(valueStField);
+            valueStOffset.Add(new Label("Offset").FlexBasis(60));
+            valueStOffset.Add(new Label("X"));
+            valueStOffset.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueVector.z")).FlexBasis(0).FlexGrow(1));
+            valueStOffset.Add(new Label("Y"));
+            valueStOffset.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("valueVector.w")).FlexBasis(0).FlexGrow(1));
+            var valueSt = VRCFuryEditorUtils.Prop(null, "Value", fieldOverride: valueStField);
 
             var propertyTypeProp = prop.FindPropertyRelative("propertyType");
             var propertyNameProp = prop.FindPropertyRelative("propertyName");
@@ -90,6 +104,7 @@ namespace VF.Actions {
             typeBox.Add(valueFloat);
             typeBox.Add(valueVector);
             typeBox.Add(valueColor);
+            typeBox.Add(valueSt);
             
             typeBox.AddManipulator(new ContextualMenuManipulator(e => {
                 if (e.menu.MenuItems().Count > 0) {
@@ -131,8 +146,9 @@ namespace VF.Actions {
                 }
 
                 valueFloat.SetVisible(newType == MaterialPropertyAction.Type.Float);
-                valueVector.SetVisible(newType == MaterialPropertyAction.Type.Vector || newType == MaterialPropertyAction.Type.St);
+                valueVector.SetVisible(newType == MaterialPropertyAction.Type.Vector);
                 valueColor.SetVisible(newType == MaterialPropertyAction.Type.Color);
+                valueSt.SetVisible(newType == MaterialPropertyAction.Type.St);
             }
 
             return content;
@@ -195,7 +211,7 @@ namespace VF.Actions {
                             var prioritizePropName = readableName.Length > 25f;
                             var entryName = prioritizePropName ? propertyName : readableName;
                             if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
-                                entryName += " (Offset/Scale)";
+                                entryName += " (Scale+Offset)";
                             }
                             if (renderers.Count > 1) {
                                 entryName += $" (Mesh: {renderer.owner().GetPath(avatarObject)})";

@@ -19,11 +19,11 @@ namespace VF.Builder.Haptics {
         
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();
-            if (avatarObject == null) avatarObject = Selection.activeGameObject.transform.root;
+            if (avatarObject == null) avatarObject = Selection.activeGameObject.asVf().root;
 
             var messages = Apply(avatarObject, true, Mode.Manual);
             if (string.IsNullOrWhiteSpace(messages)) {
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     dialogTitle,
                     "VRCFury failed to find any parts to upgrade! Ask on the discord?",
                     "Ok"
@@ -31,7 +31,7 @@ namespace VF.Builder.Haptics {
                 return;
             }
         
-            var doIt = EditorUtility.DisplayDialog(
+            var doIt = DialogUtils.DisplayDialog(
                 dialogTitle,
                 messages + "\n\nContinue?",
                 "Yes, Do it!",
@@ -40,7 +40,7 @@ namespace VF.Builder.Haptics {
             if (!doIt) return;
 
             Apply(avatarObject, false, Mode.Manual);
-            EditorUtility.DisplayDialog(
+            DialogUtils.DisplayDialog(
                 dialogTitle,
                 "Upgrade complete!",
                 "Ok"
@@ -110,7 +110,7 @@ namespace VF.Builder.Haptics {
             }
 
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
-                hasExistingPlug.Add(c.transform);
+                hasExistingPlug.Add(c.owner());
                 foreach (var renderer in VRCFuryHapticPlugEditor.GetRenderers(c)) {
                     hasExistingPlug.Add(renderer.owner());
                 }
@@ -263,7 +263,7 @@ namespace VF.Builder.Haptics {
                     if (!dryRun) {
                         foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
                             if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
-                                var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.transform);
+                                var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.owner());
                                 if (info != null) {
                                     var type = info.Item1;
                                     var position = info.Item2;
@@ -340,7 +340,7 @@ namespace VF.Builder.Haptics {
                 .Concat(hasExistingPlug)
                 .ToImmutableHashSet();
             if (addedPlug.Count > 0)
-                parts.Add("Plug component will be added to:\n" + string.Join("\n", addedPlug.Select(GetPath)));
+                parts.Add("Plug component will be added to:\n" + addedPlug.Select(GetPath).Join('\n'));
 
             string GetSocketLine(VFGameObject t) {
                 if (addedSocketNames.TryGetValue(t, out var name)) {
@@ -349,14 +349,14 @@ namespace VF.Builder.Haptics {
                 return GetPath(t);
             }
             if (addedSocket.Count > 0)
-                parts.Add("Socket component will be added to:\n" + string.Join("\n", addedSocket.Select(GetSocketLine)));
+                parts.Add("Socket component will be added to:\n" + addedSocket.Select(GetSocketLine).Join('\n'));
             if (deletions.Count > 0)
-                parts.Add("These objects will be deleted:\n" + string.Join("\n", deletions));
+                parts.Add("These objects will be deleted:\n" + deletions.Join('\n'));
             if (alreadyExists.Count > 0)
-                parts.Add("SPS already exists on:\n" + string.Join("\n", alreadyExists.Select(GetPath)));
+                parts.Add("SPS already exists on:\n" + alreadyExists.Select(GetPath).Join('\n'));
 
             if (parts.Count == 0) return "";
-            return string.Join("\n\n", parts);
+            return parts.Join("\n\n");
         }
 
         private static string GetNameFromBakeInfo(VFGameObject marker) {

@@ -13,19 +13,27 @@ namespace VF.Service {
     internal class OriginalAvatarService {
 
         [VFAutowired] private readonly GlobalsService globals;
-        
+
         [CanBeNull]
-        public VFGameObject GetOriginal() {
-            // When vrchat is uploading our avatar, we are actually operating on a clone of the avatar object.
-            // Let's get a reference to the original avatar, so we can apply our changes to it as well.
+        public string GetOriginalName() {
             var cloneObjectName = globals.avatarObject.name;
 
             if (!cloneObjectName.EndsWith("(Clone)")) {
                 return null;
             }
 
+            return cloneObjectName.Substring(0, cloneObjectName.Length - "(Clone)".Length);
+        }
+        
+        [CanBeNull]
+        public VFGameObject GetOriginal() {
+            // When vrchat is uploading our avatar, we are actually operating on a clone of the avatar object.
+            // Let's get a reference to the original avatar, so we can apply our changes to it as well.
+            var originalName = GetOriginalName();
+            if (originalName == null) return null;
+
             foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
-                if (desc.owner().name + "(Clone)" == cloneObjectName && desc.owner().activeInHierarchy) {
+                if (desc.owner().name == originalName && desc.owner().activeInHierarchy) {
                     return desc.owner();
                 }
             }

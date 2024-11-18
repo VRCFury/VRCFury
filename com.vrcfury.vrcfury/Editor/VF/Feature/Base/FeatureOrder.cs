@@ -1,8 +1,9 @@
 namespace VF.Feature.Base {
     internal enum FeatureOrder {
-
+        
         CollectExistingComponents,
         CleanupLegacy,
+        BackupBefore,
 
         // Needs to happen before everything
         FixDoubleFx,
@@ -11,6 +12,8 @@ namespace VF.Feature.Base {
 
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore,
+        
+        CloneAllControllers,
         
         FixAmbiguousObjectNames,
         
@@ -36,6 +39,8 @@ namespace VF.Feature.Base {
         Default,
         // Needs to happen after AdvancedVisemes so that gestures affecting the jaw override visemes
         SenkyGestureDriver,
+        // Needs to be after anything uses GestureLeft or GestureRight
+        DisableGesturesService,
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags,
         
@@ -65,34 +70,36 @@ namespace VF.Feature.Base {
         // Needs to run after HapticsAnimationRewrites
         TpsScaleFix,
         
-        FixTouchingContacts,
+        ForceStateInAnimator,
 
         // Needs to run after everything else is done messing with rest state
         ApplyToggleRestingState,
 
         // Finalize Controllers
         UpgradeToVrcConstraints, // Needs to happen before any step starts looking at or cleaning up "invalid" animation bindings
-        UnlimitedParameters,
+        ParameterCompressor,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
+        LocomotionConflictResolver,
+        ActionConflictResolver,
+        TrackingConflictResolver,
+        DisableSyncForAaps,
+        FixPartiallyWeightedAaps, // Needs to run before PositionDefaultsLayer, before OptimizeBlendTrees, after everything setting AAPs, after TrackingConflictResolver (creates aaps), before anything that would remove the defaults layer like CleanupEmptyLayers
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
         FixUnsetPlayableLayers,
         PositionDefaultsLayer, // Needs to be right before FixMasks so it winds up at the top of FX, right under the base mask
         FixMasks,
-        LocomotionConflictResolver,
-        ActionConflictResolver,
-        TrackingConflictResolver,
-        NormalizeBlendTrees, // Needs to happen before DirectTreeOptimizer (more trees may be eligible for optimization after normalizing)
-        DirectTreeOptimizer, // Needs to run after animations are done, including everything that makes its own DBT, including TrackingConflictResolver
+        LayerToTree, // Needs to run after animations are done, including everything that makes its own DBT, including TrackingConflictResolver
         AvoidMmdLayers, // Needs to be after CleanupEmptyLayers (which removes empty layers) and FixMasks and RecordAllDefaults (which may insert layers at the top)
-        AdjustWriteDefaults,
-        FixEmptyMotions,
         AnimatorLayerControlFix,
         RemoveNonQuestMaterials,
+        FixTreeLength,
+        TreeFlattening,
+        AdjustWriteDefaults, // Needs to be after TreeFlattening, since it can change whether or not a layer has a DBT
+        FixEmptyMotions, // Needs to be after AdjustWriteDefaults, since it changes behaviour if a state is WD on or off
         UpgradeWrongParamTypes,
-        OptimizeBlendTrees,
         FinalizeController,
 
         // Finalize Menus
@@ -105,14 +112,12 @@ namespace VF.Feature.Base {
 
         MarkThingsAsDirtyJustInCase,
         
-        RemoveJunkAnimators,
+        // Needs to happen after everything is done using the animator, and before SaveAssets
+        ResetAnimatorAfter,
 
         SaveAssets,
-        
-        // Needs to happen after everything is done using the animator
-        ResetAnimatorAfter,
-        
         Validation,
         HideAddedComponents,
+        BackupAfter,
     }
 }

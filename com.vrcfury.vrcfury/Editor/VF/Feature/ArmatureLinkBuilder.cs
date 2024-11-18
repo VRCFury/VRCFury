@@ -160,6 +160,10 @@ namespace VF.Feature {
                          " (Paired with Advanced Link Target Mode pointing to the avatar root)." +
                          " BEWARE: If you use this, offset animations and toggles for the merged object WILL NOT WORK."));
             
+            super.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("forceOneWorldScale"),
+                "Force world scale to 1,1,1",
+                tooltip: "After linking, forces the world scale of the root object to 1,1,1."));
+            
             var chestUpWarning = VRCFuryEditorUtils.Warn(
                 "These clothes are designed for an avatar with a different ChestUp configuration. You may" +
                 " have downloaded the wrong version of the clothes for your avatar version, or the clothes may not be designed for your avatar." +
@@ -168,6 +172,13 @@ namespace VF.Feature {
             chestUpWarning.SetVisible(false);
             container.Add(chestUpWarning);
             
+            var topFutWarning = VRCFuryEditorUtils.Warn(
+                "These clothes were designed for an old version of the Rexouium which does not support digi-legs." +
+                " Contact the clothing creator, and see if they have a proper version of the clothing for your rig.\n\n" +
+                "VRCFury will attempt to merge it anyways, but it's likely the clothes will clip near the ankles.");
+            topFutWarning.SetVisible(false);
+            container.Add(topFutWarning);
+
             var hipsWarning = VRCFuryEditorUtils.Warn(
                 "It appears this object is clothing with an Armature and Hips bone. If you are trying to link the clothing to your avatar," +
                 " the Link From box should be the Hips object from this clothing, not this main object!");
@@ -184,6 +195,7 @@ namespace VF.Feature {
                 }
                 
                 chestUpWarning.SetVisible(false);
+                topFutWarning.SetVisible(false);
                 if (avatarObject == null) {
                     return "Avatar descriptor is missing";
                 }
@@ -195,8 +207,11 @@ namespace VF.Feature {
                     return "No valid link target found";
                 }
 
-                if (links.chestUpHack != ArmatureLinkService.ChestUpHack.None) {
+                if (links.chestUpHack != ArmatureLinkService.ExtraBoneHack.None) {
                     chestUpWarning.SetVisible(true);
+                }
+                if (links.topFut == ArmatureLinkService.ExtraBoneHack.AvatarHasIt) {
+                    topFutWarning.SetVisible(true);
                 }
 
                 var text = new List<string>();
@@ -212,12 +227,12 @@ namespace VF.Feature {
                 if (links.unmergedChildren.Count > 0) {
                     text.Add(
                         "These bones do not have a match on the avatar and will be added as new children: \n" +
-                        string.Join("\n",
-                            links.unmergedChildren.Select(b =>
-                                "* " + b.Item1.GetPath(links.propMain))));
+                        links.unmergedChildren.Select(b =>
+                            "* " + b.Item1.GetPath(links.propMain)
+                        ).Join('\n'));
                 }
 
-                return string.Join("\n", text);
+                return text.Join('\n');
             }));
 
             return container;

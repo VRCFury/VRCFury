@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
@@ -39,7 +40,7 @@ namespace VF.Inspector {
             foreach (var g in vf.GetAllFeatures().OfType<Gizmo>()) {
                 var q = Quaternion.Euler(g.rotation);
                 Vector3 getPoint(Vector3 input) {
-                    return vf.transform.TransformPoint(q * input);
+                    return vf.owner().TransformPoint(q * input);
                 }
 
                 var worldPos = getPoint(Vector3.zero);
@@ -54,7 +55,7 @@ namespace VF.Inspector {
                 }
 
                 if (g.sphereRadius > 0) {
-                    VRCFuryGizmoUtils.DrawSphere(worldPos, g.sphereRadius * vf.transform.lossyScale.x, Color.red);
+                    VRCFuryGizmoUtils.DrawSphere(worldPos, g.sphereRadius * vf.owner().worldScale.x, Color.red);
                 }
             }
         }

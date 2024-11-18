@@ -47,7 +47,7 @@ namespace VF.Component {
             public float startDistance = 1;
             public float endDistance;
             public bool enableSelf;
-            public float smoothingSeconds = 0.25f;
+            public float smoothingSeconds = 0;
             [Obsolete] public float smoothing;
         }
 

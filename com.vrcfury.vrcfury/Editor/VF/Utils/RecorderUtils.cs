@@ -40,12 +40,12 @@ namespace VF.Utils {
 
         public static void Record(AnimationClip clip, VFGameObject baseObj, bool rewriteClip = true) {
             if (!UnityReflection.IsReady(typeof(UnityReflection.Recorder))) {
-                EditorUtility.DisplayDialog("VRCFury Animation Recorder",
+                DialogUtils.DisplayDialog("VRCFury Animation Recorder",
                     "VRCFury failed to initialize the recorder. Maybe this version of unity is not supported yet?", "Ok");
                 return;
             }
             if (IsRecording()) {
-                EditorUtility.DisplayDialog("VRCFury Animation Recorder", "An animation is already being recorded",
+                DialogUtils.DisplayDialog("VRCFury Animation Recorder", "An animation is already being recorded",
                     "Ok");
                 return;
             }
@@ -55,7 +55,7 @@ namespace VF.Utils {
 
             var animState = Resources.FindObjectsOfTypeAll(UnityReflection.Recorder.animStateType).FirstOrDefault();
             if (animState == null) {
-                EditorUtility.DisplayDialog("VRCFury Animation Recorder", "Animation tab needs to be open",
+                DialogUtils.DisplayDialog("VRCFury Animation Recorder", "Animation tab needs to be open",
                     "Ok");
                 return;
             }
@@ -81,9 +81,9 @@ namespace VF.Utils {
             var expandedIds = CollapseUtils.GetExpandedIds();
             var wasExpanded = expandedIds.Contains(avatarObject.GetInstanceID());
             CollapseUtils.SetExpanded(avatarObject, false);
-            foreach (var transform in avatarObject.GetComponentsInSelfAndChildren<Transform>()) {
-                if (expandedIds.Contains(transform.gameObject.GetInstanceID())) {
-                    var expandedInClone = clone.Find(transform.owner().GetPath(avatarObject));
+            foreach (var child in avatarObject.GetSelfAndAllChildren()) {
+                if (expandedIds.Contains(child.GetInstanceID())) {
+                    var expandedInClone = clone.Find(child.GetPath(avatarObject));
                     if (expandedInClone != null) CollapseUtils.SetExpanded(expandedInClone, true);
                 }
             }

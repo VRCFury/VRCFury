@@ -103,8 +103,9 @@ namespace VF.Builder.Haptics {
             if (isBuiltIn) hashContent += Application.unityVersion;
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
-            var hash = string.Join("", Enumerable.Range(0, hashBytes.Length)
-                .Select(i => hashBytes[i].ToString("x2")));
+            var hash = Enumerable.Range(0, hashBytes.Length)
+                .Select(i => hashBytes[i].ToString("x2"))
+                .Join("");
 
             if (parentHash != null) {
                 hash = $"{parentHash}-{hash}";
@@ -335,7 +336,8 @@ namespace VF.Builder.Haptics {
                     throw new Exception("Found vertex method multiple times: "
                                         + oldVertFunction
                                         + "\n"
-                                        + string.Join("\n", foundOldVert.Select(f => f.Item2 + " " + f.Item1)));
+                                        + foundOldVert.Select(f => f.Item2 + " " + f.Item1).Join('\n')
+                    );
                 }
 
                 var paramList = foundOldVert[0].Item1;
@@ -424,7 +426,7 @@ namespace VF.Builder.Haptics {
             program = "\n"
                       + program
                       + "\n"
-                      + string.Join("\n", newBody)
+                      + newBody.Join('\n')
                       + "\n";
 
             return program;
@@ -460,7 +462,7 @@ namespace VF.Builder.Haptics {
                 }
             }
             ProcessSinceLast();
-            return string.Join("\n", output);
+            return output.Join('\n');
         }
 
         public class RewriteParamListOutput {
@@ -471,9 +473,9 @@ namespace VF.Builder.Haptics {
         private static RewriteParamListOutput RewriteParamList(string paramList, string rewriteFirstParamTypeTo = null, string rewriteFirstParamNameTo = null, bool stripTypes = false) {
             string firstParamName = null;
             string firstParamType = null;
-            var rewritten = string.Join("\n", paramList.Split('\n').Select(line => {
+            var rewritten = paramList.Split('\n').Select(line => {
                 if (line.Trim().StartsWith("#")) return line;
-                return string.Join(",", line.Split(',').Select(p => {
+                return line.Split(',').Select(p => {
                     var trimmed = p.Trim();
                     if (trimmed.Length == 0) return p;
                     if (firstParamName == null) {
@@ -492,8 +494,8 @@ namespace VF.Builder.Haptics {
                         p = Regex.Replace(p, @"\S.*\s(\S+)\s*$", "$1");
                     }
                     return p;
-                }));
-            }));
+                }).Join(',');
+            }).Join('\n');
             return new RewriteParamListOutput() {
                 firstParamType = firstParamType,
                 firstParamName = firstParamName,
@@ -641,9 +643,9 @@ namespace VF.Builder.Haptics {
                 if (path.StartsWith("/")) path = path.Substring(1);
                 if (filePath != null && !File.Exists(fullPath)) {
                     var p = path;
-                    fullPath = Path.GetDirectoryName(filePath);
+                    fullPath = VRCFuryAssetDatabase.GetDirectoryName(filePath);
                     while (p.StartsWith("..")) {
-                        fullPath = Path.GetDirectoryName(fullPath);
+                        fullPath = VRCFuryAssetDatabase.GetDirectoryName(fullPath);
                         p = p.Substring(3);
                     }
                     fullPath = Path.Combine(fullPath, p);
@@ -655,7 +657,7 @@ namespace VF.Builder.Haptics {
                     isLib = true;
                 }
                 if (!File.Exists(fullPath)) {
-                    Debug.LogWarning("Failed to find include at " + string.Join(" or ", attempts));
+                    Debug.LogWarning("Failed to find include at " + attempts.Join(" or "));
                     return match.Groups[0].ToString();
                 }
                 if (!includeLibraryFiles && isLib) {
@@ -692,7 +694,7 @@ namespace VF.Builder.Haptics {
                 return ReadAndFlattenPath(includePath, included, includeLibraryFiles);
             }, includeLibraryFiles: includeLibraryFiles);
             output.Add(content);
-            return string.Join("\n", output);
+            return output.Join('\n');
         }
 
         private static string GetPathToSps() {

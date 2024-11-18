@@ -23,7 +23,7 @@ namespace VF.Menu {
         }
         
         private static void Run(VFGameObject avatarObj) {
-            if (!EditorUtility.DisplayDialog(
+            if (!DialogUtils.DisplayDialog(
                     "Unused Bone Cleanup",
                     "MAKE SURE YOU BACKED UP YOUR SELECTED OBJECT FIRST" +
                     "\n\nContinue?",
@@ -33,16 +33,16 @@ namespace VF.Menu {
 
             var effects = Clean(avatarObj, false);
             if (effects.Count == 0) {
-                EditorUtility.DisplayDialog(
+                DialogUtils.DisplayDialog(
                     "Unused Bone Cleanup",
                     "No unused bones found on avatar",
                     "Ok"
                 );
                 return;
             }
-            var doIt = EditorUtility.DisplayDialog(
+            var doIt = DialogUtils.DisplayDialog(
                 "Unused Bone Cleanup",
-                "The following bones will be deleted from your avatar:\n" + string.Join("\n", effects) +
+                "The following bones will be deleted from your avatar:\n" + effects.Join('\n') +
                 "\n\nContinue?",
                 "Yes, Delete them",
                 "Cancel"

@@ -31,7 +31,7 @@ namespace VF.Feature {
             var x = fx.NewFloat(model.name + "_x", synced: usesX, saved: model.saved, def: model.defaultX);
             var y = fx.NewFloat(model.name + "_y", synced: usesY, saved: model.saved, def: model.defaultY);
             
-            var tree = clipFactory.NewFreeformDirectional2D(model.name, x, y);
+            var tree = VFBlendTree2D.CreateFreeformDirectional(model.name, x, y);
             tree.Add(new Vector2(0,0), clipFactory.GetEmptyClip());
             var i = 0;
             foreach (var stop in model.stops) {

@@ -173,7 +173,7 @@ namespace VF.Service {
                     var oldValue = mat.GetFloat(propName);
                     var newValue = val;
                     if (oldValue == newValue) return mat;
-                    mat = mat.Clone($"Needed to change {propName} property from ${oldValue} to ${newValue}");
+                    mat = mat.Clone($"Needed to change {propName} property from {oldValue} to {newValue}");
                     mat.SetFloat(propName, newValue);
                     return mat;
                 }
@@ -194,7 +194,7 @@ namespace VF.Service {
                     if (bundleSuffix == "b") newValue.b = val;
                     if (bundleSuffix == "a") newValue.a = val;
                     if (oldValue == newValue) return mat;
-                    mat = mat.Clone($"Needed to change {propName} property from ${oldValue} to ${newValue}");
+                    mat = mat.Clone($"Needed to change {propName} property from {oldValue} to {newValue}");
                     mat.SetColor(bundleName, newValue);
                     return mat;
                 }
@@ -206,7 +206,7 @@ namespace VF.Service {
                     if (bundleSuffix == "z") newValue.z = val;
                     if (bundleSuffix == "w") newValue.w = val;
                     if (oldValue == newValue) return mat;
-                    mat = mat.Clone($"Needed to change {propName} property from ${oldValue} to ${newValue}");
+                    mat = mat.Clone($"Needed to change {propName} property from {oldValue} to {newValue}");
                     mat.SetVector(bundleName, newValue);
                     return mat;
                 }

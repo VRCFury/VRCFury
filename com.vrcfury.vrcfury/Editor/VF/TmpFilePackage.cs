@@ -1,28 +1,71 @@
 using System;
+using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.PackageManager;
+using UnityEditor.VersionControl;
+using UnityEngine;
 using VF.Builder;
+using VF.Utils;
+using VRC.SDK3.Avatars.Components;
+using Object = System.Object;
 
 namespace VF {
-    internal class TmpFilePackage {
+    internal static class TmpFilePackage {
         private const string TmpDirPath = "Packages/com.vrcfury.temp";
         private const string TmpPackagePath = TmpDirPath + "/" + "package.json";
-        private const string LegacyTmpDirPath = "Assets/_VRCFury";
-        private const string LegacyPrefabsImportedMarker = TmpDirPath + "/LegacyPrefabsImported";
-        
+
+        public static void Cleanup() {
+            var tmpDir = GetPathNullable();
+            if (tmpDir == null) return;
+            
+            var usedFolders = Resources.FindObjectsOfTypeAll<VRCAvatarDescriptor>()
+                .SelectMany(VRCAvatarUtils.GetAllControllers)
+                .Where(c => !c.isDefault && c.controller != null)
+                .Select(c => AssetDatabase.GetAssetPath(c.controller))
+                .Where(path => !string.IsNullOrEmpty(path))
+                .Select(VRCFuryAssetDatabase.GetDirectoryName)
+                .ToImmutableHashSet();
+
+            VRCFuryAssetDatabase.WithAssetEditing(() => {
+                VRCFuryAssetDatabase.DeleteFiltered(tmpDir, path => {
+                    if (usedFolders.Any(used => path.StartsWith($"{used}/") || path == used || used.StartsWith($"{path}/"))) return false;
+                    if (path.StartsWith(tmpDir + "/SPS")) return false;
+                    if (path.StartsWith(tmpDir + "/XR")) return false;
+                    if (path.StartsWith(tmpDir + "/package.json")) return false;
+                    if (path.StartsWith(tmpDir + "/PlayModeSettings")) return false;
+                    if (path.StartsWith(tmpDir + "/LegacyPrefabsImported")) return false;
+                    return true;
+                });
+                VRCFuryAssetDatabase.Delete("Assets/_VRCFury");
+            });
+            // If we don't disable asset editing temporarily, the asset database does WEIRD things,
+            // like showing that the deleted directories still exist, and reusing data from the
+            // assets that used to be in those folders
+            VRCFuryAssetDatabase.WithoutAssetEditing(() => {});
+        }
+
+        [CanBeNull]
+        public static string GetPathNullable() {
+            if (!AssetDatabase.IsValidFolder(TmpDirPath)) return null;
+            return TmpDirPath;
+        }
+
         public static string GetPath() {
-            var importLegacyPrefabs = false;
-            if ((Directory.Exists(LegacyTmpDirPath) || Directory.Exists(TmpDirPath)) &&
-                !File.Exists(LegacyPrefabsImportedMarker)) {
-                importLegacyPrefabs = true;
-            }
+            var tmpDir = GetPathNullable();
+            if (tmpDir == null) throw new Exception("VRCFury Temp Files package has not been created yet. Try again?");
+            return tmpDir;
+        }
+
+        private static void InitIfMissing() {
+            if (GetPathNullable() != null) return;
 
             if (!Directory.Exists(TmpDirPath)) {
-                VRCFuryAssetDatabase.CreateFolder(TmpDirPath); 
-                File.Create(LegacyPrefabsImportedMarker).Close();
+                Directory.CreateDirectory(TmpDirPath); 
             }
 
             if (!File.Exists(TmpPackagePath) ||
@@ -31,22 +74,9 @@ namespace VF {
 
                 EditorApplication.delayCall += ReresolvePackages;
             }
-
-            if (importLegacyPrefabs) {
-                LegacyPrefabUnpacker.ScanOnce();
-                File.Create(LegacyPrefabsImportedMarker).Close();
-            }
-
-            EditorApplication.delayCall += () => {
-                if (Directory.Exists("Assets/_VRCFury")) {
-                    AssetDatabase.MoveAsset("Assets/_VRCFury", GetPath() + "/LegacyBackup");
-                }
-            };
-
-            return TmpDirPath;
         }
 
-        public static void ReresolvePackages() {
+        private static void ReresolvePackages() {
             var method = typeof(Client).GetMethod("Resolve",
                 BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
                 null,
@@ -58,7 +88,7 @@ namespace VF {
 
         [InitializeOnLoadMethod]
         private static void Init() {
-            GetPath();
+            Scheduler.Schedule(InitIfMissing, 5000);
         }
 
         private static readonly string PackageJson =

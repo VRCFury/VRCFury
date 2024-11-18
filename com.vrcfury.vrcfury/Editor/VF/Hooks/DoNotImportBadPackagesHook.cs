@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using VF.Menu;
 using VF.Utils;
 
 namespace VF.Hooks {
@@ -70,6 +71,12 @@ namespace VF.Hooks {
                     var isPoiFile = poiyomiLocations.Any(p => path == p || path.StartsWith(p + "/"));
                     if (isPoiFile) {
                         removedPoiFile = true;
+                        return false;
+                    }
+                }
+
+                if (BlockScriptImportsMenuItem.Get()) {
+                    if (path.EndsWith(".asmdef") || path.EndsWith(".dll") || path.EndsWith(".cs") || path.EndsWith(".shader") || path.EndsWith(".compute") || path.EndsWith(".cginc") || path.EndsWith(".hlsl") || path.EndsWith(".h") || path.EndsWith(".xml")) {
                         return false;
                     }
                 }

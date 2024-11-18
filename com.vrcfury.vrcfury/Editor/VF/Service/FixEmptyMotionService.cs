@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -22,12 +23,6 @@ namespace VF.Service {
         public void Apply() {
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 var noopClip = clipFactory.NewClip("noop");
-                noopClip.SetCurve(
-                    "_vrcf_noop",
-                    typeof(GameObject),
-                    "m_IsActive",
-                    0 // 0 frames = 1 second long because unity
-                );
                 foreach (var layer in controller.GetLayers()) {
                     foreach (var state in new AnimatorIterator.States().From(layer)) {
                         CheckState(controller, layer, state, noopClip);
@@ -37,28 +32,33 @@ namespace VF.Service {
         }
 
         private void CheckState(ControllerManager controller, VFLayer layer, AnimatorState state, AnimationClip noopClip) {
+            // ReSharper disable once ReplaceWithSingleAssignment.True
+            var replaceNulls = true;
             if (state.writeDefaultValues) {
                 // Interestingly, inserting noop clips into WD on states HAS SIDE EFFECTS for some reason
                 // so... don't do that. (Doing so breaks the rex eye pupil animations, because it seemingly
                 // doesn't properly propagate higher layer states while transitioning from a noop clip into
                 // a clip with content)
-                return;
+                replaceNulls = false;
             }
             if (controller.GetType() != VRCAvatarDescriptor.AnimLayerType.FX) {
                 // The same also seems to happen in layers with muscle animations, so we also skip this on all controllers that aren't FX
-                return;
+                replaceNulls = false;
             }
-            if (state.motion == null) {
-                Debug.LogWarning($"Replacing empty motion in {layer.name}.{state.name}");
-                state.motion = noopClip;
-                return;
+
+            Motion Replace(Motion input) {
+                var clips = new AnimatorIterator.Clips().From(input);
+                if (clips.Count == 0) return replaceNulls ? noopClip : null;
+                var hasBindings = new AnimatorIterator.Clips().From(input)
+                    .SelectMany(clip => clip.GetAllBindings())
+                    .Any();
+                return hasBindings ? input : noopClip;
             }
+
+            state.motion = Replace(state.motion);
             foreach (var tree in new AnimatorIterator.Trees().From(state)) {
                 tree.RewriteChildren(child => {
-                    if (child.motion == null) {
-                        Debug.LogWarning($"Replacing empty blendtree motion in {layer.name}.{state.name}");
-                        child.motion = noopClip;
-                    }
+                    child.motion = Replace(child.motion);
                     return child;
                 });
             }

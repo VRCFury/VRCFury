@@ -13,11 +13,12 @@ namespace VF.Service {
     [VFService]
     [VFPrototypeScope]
     internal class SmoothingService {
-        [VFAutowired] private readonly MathService math;
-        [VFAutowired] private readonly DirectBlendTreeService directTree;
+        [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
+        [VFAutowired] private readonly ControllersService controllers;
+        private ControllerManager fx => controllers.GetFx();
         
-        public VFAFloat Smooth(string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true, float minSupported = 0, float maxSupported = float.MaxValue) {
+        public VFAFloat Smooth(VFBlendTreeDirect directTree, string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true, float minSupported = 0, float maxSupported = float.MaxValue) {
             if (smoothingSeconds <= 0) {
                 return target;
             }
@@ -25,11 +26,11 @@ namespace VF.Service {
             var speed = GetSpeed(smoothingSeconds, useAcceleration);
 
             if (!useAcceleration) {
-                return Smooth_(target, name, speed, minSupported, maxSupported);
+                return Smooth_(directTree, target, name, speed, minSupported, maxSupported);
             }
 
-            var pass1 = Smooth_(target, $"{name}/Pass1", speed, minSupported, maxSupported);
-            return Smooth_(pass1, $"{name}/Pass2", speed, minSupported, maxSupported);
+            var pass1 = Smooth_(directTree, target, $"{name}/Pass1", speed, minSupported, maxSupported);
+            return Smooth_(directTree, pass1, $"{name}/Pass2", speed, minSupported, maxSupported);
         }
 
         private readonly Dictionary<string, VFAFloat> cachedSpeeds = new Dictionary<string, VFAFloat>();
@@ -53,24 +54,25 @@ namespace VF.Service {
                 nextStep *= 0.5f;
             }
             var fractionPerSecond = currentSpeed * framerateForCalculation;
-            
+
+            var math = dbtLayerService.GetMath(dbtLayerService.Create($"Calculate {name}"));
             output = math.Multiply(name, frameTimeService.GetFrameTime(), fractionPerSecond);
             cachedSpeeds[name] = output;
             return output;
         }
 
-        private MathService.VFAap Smooth_(VFAFloat target, string name, VFAFloat speedParam, float minSupported, float maxSupported) {
-            var output = math.MakeAap(name, def: target.GetDefault());
+        private VFAFloat Smooth_(VFBlendTreeDirect directTree, VFAFloat target, string name, VFAFloat speedParam, float minSupported, float maxSupported) {
+            var output = fx.MakeAap(name, def: target.GetDefault());
             
             // Maintain tree - keeps the current value
-            var maintainTree = math.MakeCopier(output, output, minSupported, maxSupported);
+            var maintainTree = BlendtreeMath.MakeCopier(output, output, minSupported, maxSupported);
 
             // Target tree - uses the target (input) value
-            var targetTree = math.MakeCopier(target, output, minSupported, maxSupported);
+            var targetTree = BlendtreeMath.MakeCopier(target, output, minSupported, maxSupported);
 
             //The following two trees merge the update and the maintain tree together. The smoothParam controls 
             //how much from either tree should be applied during each tick
-            var smoothTree = math.Make1D(
+            var smoothTree = VFBlendTree1D.CreateWithData(
                 $"{output.Name()} smoothto {target.Name()}",
                 speedParam,
                 (0, maintainTree),

@@ -25,7 +25,7 @@ namespace VF.Actions {
             var sources = states
                 .Select((substate,i) => {
                     var loaded = actionClipService.LoadStateAdv("tmp", substate, animObject);
-                    return ((float)i, loaded.onClip);
+                    return ((float)i, loaded.onClip.FlattenAll());
                 })
                 .ToArray();
 
@@ -35,8 +35,8 @@ namespace VF.Actions {
                 onClip.CopyFrom(built);
             } else {
                 // This is wrong, but it's fine because this branch is for debug info only
-                foreach (var source in sources) {
-                    onClip.CopyFrom(source.onClip);
+                foreach (var (time,source) in sources) {
+                    onClip.CopyFrom(source);
                 }
             }
             return onClip;

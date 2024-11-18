@@ -111,7 +111,7 @@ namespace VF.Utils {
             foreach (var path in paths) {
                 var split = path.Split('/');
                 for (var i = 1; i <= split.Length; i++) {
-                    all.Add(string.Join("/", split.Take(i)));
+                    all.Add(split.Take(i).Join('/'));
                 }
             }
             return all;

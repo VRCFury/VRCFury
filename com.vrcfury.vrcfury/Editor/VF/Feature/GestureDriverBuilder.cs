@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -18,15 +19,14 @@ namespace VF.Feature {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
         private readonly Dictionary<string, VFCondition> excludeConditions = new Dictionary<string, VFCondition>();
-        [VFAutowired] private readonly MathService math;
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly DbtLayerService dbtLayerService;
         
         [FeatureBuilderAction]
         public void Apply() {
@@ -58,6 +58,8 @@ namespace VF.Feature {
                 }
             }
 
+            var directTree = new Lazy<VFBlendTreeDirect>(() => dbtLayerService.Create());
+            var blendtreeMath = new Lazy<BlendtreeMath>(() => dbtLayerService.GetMath(directTree.Value));
             void MakeHand(bool right, ref VFCondition aggCondition, ref VFAFloat aggWeight) {
                 if (hand == GestureDriver.Hand.LEFT && right) return;
                 if (hand == GestureDriver.Hand.RIGHT && !right) return;
@@ -71,7 +73,7 @@ namespace VF.Feature {
                 if (sign == GestureDriver.HandSign.FIST && gesture.enableWeight) {
                     var myWeight = right ? fx.GestureRightWeight() : fx.GestureLeftWeight();
                     if (aggWeight == null) aggWeight = myWeight;
-                    else aggWeight = math.Max(aggWeight, myWeight);
+                    else aggWeight = blendtreeMath.Value.Max(aggWeight, myWeight);
                 }
             }
 
@@ -85,15 +87,13 @@ namespace VF.Feature {
             if (weight != null) {
                 var clip = actionClipService.LoadState(uid, gesture.state, motionTime: ActionClipService.MotionTimeMode.Always);
                 var smoothedWeight = MakeWeightLayer(
+                    directTree.Value,
                     weight,
                     onCondition
                 );
                 onCondition = smoothedWeight.IsGreaterThan(0.05f);
                 transitionTime = 0.05f;
-                var tree = clipFactory.New1D(uid + "_blend", smoothedWeight);
-                tree.Add(0, clipFactory.GetEmptyClip());
-                tree.Add(1, clip.GetLastFrame());
-                on.WithAnimation(tree);
+                on.WithAnimation(clip).MotionTime(smoothedWeight);
             } else {
                 var clip = actionClipService.LoadState(uid, gesture.state);
                 on.WithAnimation(clip);
@@ -122,17 +122,17 @@ namespace VF.Feature {
             on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
         }
 
-        private VFAFloat MakeWeightLayer(VFAFloat input, VFCondition enabled) {
+        private VFAFloat MakeWeightLayer(VFBlendTreeDirect directTree, VFAFloat input, VFCondition enabled) {
             var layer = fx.NewLayer($"{input.Name()} Target");
 
-            var target = math.MakeAap($"{input.Name()}/Target", def: input.GetDefault(), animatedFromDefaultTree: false);
+            var target = fx.MakeAap($"{input.Name()}/Target", def: input.GetDefault());
 
-            var off = layer.NewState("Off").WithAnimation(math.MakeSetter(target, 0));
-            var on = layer.NewState("On").WithAnimation(math.MakeCopier(input, target));
+            var off = layer.NewState("Off").WithAnimation(target.MakeSetter(0));
+            var on = layer.NewState("On").WithAnimation(BlendtreeMath.MakeCopier(input, target));
             off.TransitionsTo(on).When(enabled);
             on.TransitionsTo(off).When(enabled.Not());
 
-            return smoothing.Smooth($"{input.Name()}/Smoothed", target, 0.15f);
+            return smoothing.Smooth(directTree, $"{input.Name()}/Smoothed", target, 0.15f);
         }
 
         [FeatureEditor]

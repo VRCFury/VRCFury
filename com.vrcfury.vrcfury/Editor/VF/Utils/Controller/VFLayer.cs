@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -78,11 +79,18 @@ namespace VF.Utils.Controller {
                 currentLine += c;
             }
             if (!string.IsNullOrWhiteSpace(currentLine)) lines.Add(currentLine);
-            return string.Join("\n", lines);
+            return lines.Join('\n');
         }
 
         public void SetNextOffset(float x, float y) {
             nextOffset = new Vector2(x, y);
+        }
+
+        private static readonly HashSet<AnimatorState> createdStates = new HashSet<AnimatorState>();
+
+        [InitializeOnLoadMethod]
+        private static void ClearCreatedStates() {
+            EditorApplication.update += () => createdStates.Clear();
         }
 
         public VFState NewState(string name) {
@@ -105,7 +113,12 @@ namespace VF.Utils.Controller {
 
             SetNextOffset(0, 1);
             lastCreatedState = state;
+            createdStates.Add(node.state);
             return state;
+        }
+
+        public static bool Created(AnimatorState state) {
+            return createdStates.Contains(state);
         }
 
         private ChildAnimatorState? GetLastNode() {

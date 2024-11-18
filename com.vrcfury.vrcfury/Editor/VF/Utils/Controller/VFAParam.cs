@@ -11,5 +11,9 @@ namespace VF.Utils.Controller {
         public string Name() {
             return name;
         }
+
+        public override string ToString() {
+            return Name();
+        }
     }
 }

@@ -1,7 +1,8 @@
+import process from 'node:process';
 import fs from 'node:fs/promises';
 import fsPlain from 'node:fs';
-import tar from 'tar';
-import hasha from 'hasha';
+import {create as tarCreate} from 'tar';
+import { hashFile } from 'hasha';
 import semver from 'semver';
 import tmp from 'tmp-promise';
 import { spawn } from 'promisify-child-process';
@@ -51,7 +52,7 @@ for (const dir of await fs.readdir('.')) {
         versionJson.packages.push(existing);
     }
     existing.latestVersion = version;
-    existing.hash = await hasha.fromFile(outputPath, {algorithm: 'sha256'});
+    existing.hash = await hashFile(outputPath, {algorithm: 'sha256'});
     existing.displayName = json.displayName;
     existing.latestUpmTargz = outputUrl;
 
@@ -123,7 +124,7 @@ function checkFileExists(file) {
 async function md5Dir(dir) {
     const tmpFile = (await tmp.file()).path;
     await createTar(dir, tmpFile);
-    const md5 = await hasha.fromFile(tmpFile, {algorithm: 'sha256'});
+    const md5 = await hashFile(tmpFile, {algorithm: 'sha256'});
     await fs.unlink(tmpFile);
     return md5;
 }
@@ -139,7 +140,7 @@ async function rmdir(path) {
     }
 }
 async function createTar(dir, outputFilename) {
-    await tar.create({
+    await tarCreate({
         gzip: true,
         cwd: dir,
         file: outputFilename,
@@ -167,10 +168,16 @@ async function getTags() {
         .filter(line => line !== "");
 }
 async function getNextVersion(allTags, prefix) {
-    const versions = allTags
+    const existingVersions = allTags
         .filter(tag => tag.startsWith(prefix))
         .map(tag => tag.substring(prefix.length));
-    const maxVersion = semver.maxSatisfying(versions, '*');
-    if (!maxVersion) return '1.0.0';
-    return semver.inc(maxVersion, 'minor');
+    if (existingVersions.length === 0) {
+        existingVersions.push('1.0.0');
+    }
+    if (process.env.GITHUB_REF_NAME === "main") {
+        const maxVersion = semver.maxSatisfying(existingVersions, '*');
+        return semver.inc(maxVersion, 'minor');
+    }
+    const maxVersion = semver.maxSatisfying(existingVersions, '*', { includePrerelease: true });
+    return semver.inc(maxVersion, 'prerelease', 'beta', 1);
 }

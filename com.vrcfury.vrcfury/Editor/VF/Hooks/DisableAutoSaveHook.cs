@@ -12,7 +12,7 @@ namespace VF.Hooks {
      */
     internal static class DisableAutoSaveHook {
         [InitializeOnLoadMethod]
-        public static void Init() {
+        private static void Init() {
             Scheduler.Schedule(() => {
                 if (UnityCompatUtils.IsEditingPrefab()) {
                     var hasVrcf = VFGameObject.GetRoots()

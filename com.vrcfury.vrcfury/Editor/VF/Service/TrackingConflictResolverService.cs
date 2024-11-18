@@ -18,8 +18,8 @@ namespace VF.Service {
     internal class TrackingConflictResolverService {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
-        [VFAutowired] private readonly MathService mathService;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
+        [VFAutowired] private readonly DbtLayerService dbtLayerService;
 
         private readonly VFMultimapList<TrackingControlType, VFAFloat> inhibitors =
             new VFMultimapList<TrackingControlType, VFAFloat>();
@@ -61,7 +61,7 @@ namespace VF.Service {
             Debug.Log("Tracking Control Conflict Report:\n"
                       + "Consumers (vrcf blink / visemes): " + (whenCollected.Any() ? "Yes" : "No")
                       + "Inhibitors (vrcf actions affecting tracking control): " + (inhibitors.GetKeys().Any() ? "Yes" : "No")
-                      + "Tracking Control Contributors: " + string.Join(",", usedOwners));
+                      + "Tracking Control Contributors: " + usedOwners.Join(','));
             if (!useMerger) {
                 return;
             }
@@ -101,13 +101,15 @@ namespace VF.Service {
             if (typesUsed.Length == 0) return;
 
             var whenAnimatedDict = new Dictionary<TrackingControlType, VFCondition>();
+            var dbt = dbtLayerService.Create();
+            var math = dbtLayerService.GetMath(dbt);
             {
                 foreach (var type in typesUsed) {
-                    var merged = mathService.Add(
+                    var merged = math.Add(
                         $"TC_merged_{type.fieldName}",
-                        inhibitors.Get(type).Select(input => ((MathService.VFAFloatOrConst)input,1f)).ToArray()
+                        inhibitors.Get(type).Select(input => ((BlendtreeMath.VFAFloatOrConst)input,1f)).ToArray()
                     );
-                    whenAnimatedDict[type] = merged.AsFloat().IsGreaterThan(0.5f);
+                    whenAnimatedDict[type] = merged.IsGreaterThan(0);
                 }
             }
 

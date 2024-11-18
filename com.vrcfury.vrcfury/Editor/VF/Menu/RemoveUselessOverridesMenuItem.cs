@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
+using VF.Utils;
 
 namespace VF.Menu {
     internal static class RemoveUselessOverridesMenuItem {
@@ -19,7 +20,7 @@ namespace VF.Menu {
         }
         
         private static void Run(VFGameObject avatarObj) {
-            if (!EditorUtility.DisplayDialog(
+            if (!DialogUtils.DisplayDialog(
                     "Useless Override Cleanup",
                     "This utility will remove all useless prefab overrides from the selected avatar." +
                     "These are overrides where the override value is identical to the base value, and may be useful to cleanup" +

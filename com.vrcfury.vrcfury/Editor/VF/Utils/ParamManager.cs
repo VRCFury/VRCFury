@@ -11,6 +11,14 @@ namespace VF.Utils {
 
         public ParamManager(VRCExpressionParameters syncedParams) {
             this.syncedParams = syncedParams;
+            
+            // Remove duplicates
+            var seenNames = new HashSet<string>();
+            syncedParams.parameters = syncedParams.parameters.Where(p => {
+                var seen = seenNames.Contains(p.name);
+                seenNames.Add(p.name);
+                return !seen;
+            }).ToArray();
         }
 
         public void AddSyncedParam(VRCExpressionParameters.Parameter param) {

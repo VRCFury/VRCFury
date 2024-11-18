@@ -2,7 +2,7 @@
 using JetBrains.Annotations;
 
 namespace VF.Feature.Base {
-    [MeansImplicitUse]
+    [MeansImplicitUse(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
     [AttributeUsage(AttributeTargets.Class)]
     internal class FeatureTitleAttribute : Attribute {
         public FeatureTitleAttribute(string title) {

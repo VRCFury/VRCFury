@@ -69,7 +69,7 @@ namespace VF.Inspector {
             VisualElement body;
             if (isInstance) {
                 var copy = CopyComponent(v);
-                var copyGameObject = copy.gameObject;
+                var copyGameObject = copy.owner();
                 try {
                     VRCFury.RunningFakeUpgrade = true;
                     copy.Upgrade();
@@ -85,7 +85,7 @@ namespace VF.Inspector {
                 var children = copyGameObject.GetComponents<T>();
                 if (children.Length != 1) body.Add(VRCFuryComponentHeader.CreateHeaderOverlay("Legacy Multi-Component"));
                 foreach (var child in children) {
-                    child.gameObjectOverride = v.gameObject;
+                    child.gameObjectOverride = v.owner();
                     var childSo = new SerializedObject(child);
                     var childEditor = _CreateEditor(childSo, child);
                     if (children.Length > 1) childEditor.AddToClassList("vrcfMultipleHeaders");
@@ -106,22 +106,31 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
                 var warning = new VisualElement();
 
-                var descriptors = c.gameObject.asVf().GetComponentsInSelfAndParents<VRCAvatarDescriptor>();
+                if (c == null) return warning;
+
+                var descriptors = c.owner().GetComponentsInSelfAndParents<VRCAvatarDescriptor>();
                 if (!editingPrefab && !descriptors.Any()) {
-                    warning.Add(VRCFuryEditorUtils.Error(
-                        "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
-                        "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
-                        "object, and not just alongside it in the scene."));
+                    var animators = c.owner().GetComponentsInSelfAndParents<Animator>();
+                    if (animators.Any()) {
+                        warning.Add(VRCFuryEditorUtils.Error(
+                            "Your avatar does not have a VRC Avatar Descriptor, and thus this component will not do anything! " +
+                            "Make sure that your avatar can actually be uploaded using the VRCSDK before attempting to add VRCFury things to it."));
+                    } else {
+                        warning.Add(VRCFuryEditorUtils.Error(
+                            "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
+                            "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
+                            "object, and not just alongside it in the scene."));
+                    }
                 }
 
                 if (descriptors.Length > 1) {
                     warning.Add(VRCFuryEditorUtils.Error(
                         "There are multiple avatar descriptors in this hierarchy. Each avatar should only have one avatar descriptor on the avatar root." +
-                        " This may cause issues in this inspector or during your avatar build.\n\n" + string.Join("\n", descriptors.Select(d => d.owner().GetPath()))));
+                        " This may cause issues in this inspector or during your avatar build.\n\n" + descriptors.Select(d => d.owner().GetPath()).Join('\n')));
                 }
 
                 var hasDelete = v is VRCFury z && z.GetAllFeatures().OfType<DeleteDuringUpload>().Any();
-                var isDeleted = EditorOnlyUtils.IsInsideEditorOnly(c.gameObject);
+                var isDeleted = EditorOnlyUtils.IsInsideEditorOnly(c.owner());
                 if (isDeleted && !hasDelete) {
                     warning.Add(VRCFuryEditorUtils.Error(
                         "This VRCFury component is placed within an object that is tagged as EditorOnly or has a vrcfury 'Delete During Upload' component, and thus will not do anything!"));
@@ -193,7 +202,7 @@ namespace VF.Inspector {
                     overrideLabel.SetVisible(isModified);
                     if (isModified) {
                         overrideLabel.Clear();
-                        overrideLabel.Add(VRCFuryEditorUtils.WrappedLabel(baseText + "\n\n" + string.Join(", ", mods.Select(m => m.propertyPath))));
+                        overrideLabel.Add(VRCFuryEditorUtils.WrappedLabel(baseText + "\n\n" + mods.Select(m => m.propertyPath).Join(", ")));
                     }
                 }
                 EditorApplication.delayCall += CheckOverride;

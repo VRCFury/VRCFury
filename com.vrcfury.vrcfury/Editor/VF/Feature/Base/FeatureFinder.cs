@@ -25,7 +25,7 @@ namespace VF.Feature.Base {
                     output.Add(modelType, type);
                 }
             }
-            Debug.Log("VRCFury loaded " + output.Count + " builder types");
+            //Debug.Log("VRCFury loaded " + output.Count + " builder types");
             return output;
         }); 
 
@@ -50,25 +50,42 @@ namespace VF.Feature.Base {
                 .All(c => c is VRCFuryComponent || c is Transform);
         }
 
-        public static IList<Tuple<string,Type, Type>> GetAllFeaturesForMenu<BaseType>() {
+        public class FoundMenuItem {
+            public string title;
+            public Type modelType;
+            public Type builderType;
+            [CanBeNull] public string warning;
+        }
+
+        public static IList<FoundMenuItem> GetAllFeaturesForMenu<BaseType>() {
             return modelToBuilder.Value
-                .Select(e => {
+                .SelectMany(e => {
+                    var entries = new List<FoundMenuItem>();
+
                     var builderType = e.Value;
                     if (!typeof(BaseType).IsAssignableFrom(builderType)) {
-                        return null;
+                        return entries;
                     }
                     if (builderType.GetCustomAttribute<FeatureHideInMenuAttribute>() != null) {
-                        return null;
+                        return entries;
                     }
                     var titleAttribute = builderType.GetCustomAttribute<FeatureTitleAttribute>();
                     if (titleAttribute == null) {
-                        return null;
+                        return entries;
+                    }
+                    
+                    entries.Add(new FoundMenuItem { title = titleAttribute.Title, modelType = e.Key, builderType = e.Value });
+                    foreach (var alias in e.Value.GetCustomAttributes<FeatureAliasAttribute>()) {
+                        entries.Add(new FoundMenuItem {
+                            title = alias.OldTitle, modelType = e.Key, builderType = e.Value,
+                            warning = $"{alias.OldTitle} has been renamed to {titleAttribute.Title}"
+                        });
                     }
 
-                    return Tuple.Create(titleAttribute.Title, e.Key, e.Value);
+                    return entries;
                 })
                 .Where(tuple => tuple != null)
-                .OrderBy(tuple => tuple.Item1)
+                .OrderBy(tuple => tuple.title)
                 .ToArray();
         }
 

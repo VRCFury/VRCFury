@@ -25,6 +25,12 @@ namespace VF.Service {
             MenuSplitter.SplitMenus(menu.GetRaw(), menuSettings);
 
             menu.GetRaw().ForEachMenu(ForEachItem: (control, path) => {
+                // Menu items with invalid types say "Button" in the editor, but do nothing in gesture manager
+                // and in game, and cause av3emu to throw an exception
+                if (!VRCFEnumUtils.IsValid(control.type)) {
+                    control.type = VRCExpressionsMenu.Control.ControlType.Button;
+                }
+
                 // VRChat doesn't care, but SDK3ToCCKConverter crashes if there are any null parameters
                 // on a submenu. GestureManager crashes if there's any null parameters on ANYTHING.
                 if (control.parameter == null) {

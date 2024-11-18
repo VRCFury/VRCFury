@@ -108,20 +108,73 @@ namespace VF.Utils {
                 }
             }
 #endif
+
+            if (ext.originalSourceClip != null) {
+                var nonStandardEulerOrders = new Dictionary<string, int>();
+                using (var so = new SerializedObject(ext.originalSourceClip)) {
+                    so.Update();
+                    void ProcessArray(string arrayPath) {
+                        var length = so.FindProperty(arrayPath)?.arraySize ?? 0;
+                        if (length == 0) return;
+                        foreach (var i in Enumerable.Range(0, length)) {
+                            var rotationOrderProp = so.FindProperty($"{arrayPath}.Array.data[{i}].curve.m_RotationOrder");
+                            if (rotationOrderProp == null || rotationOrderProp.propertyType != SerializedPropertyType.Integer) continue;
+                            var rotationOrder = rotationOrderProp.intValue;
+                            if (rotationOrder == 4) continue;
+                            var pathProp = so.FindProperty($"{arrayPath}.Array.data[{i}].path");
+                            if (pathProp == null || pathProp.propertyType != SerializedPropertyType.String) continue;
+                            var path = pathProp.stringValue;
+                            nonStandardEulerOrders[path] = rotationOrder;
+                        }
+                    }
+                    ProcessArray("m_EulerCurves");
+                    ProcessArray("m_EditorCurves");
+                    ProcessArray("m_EulerEditorCurves");
+                }
+                if (nonStandardEulerOrders.Any()) {
+                    using (var so = new SerializedObject(clip)) {
+                        so.Update();
+                        var changedOne = false;
+                        void ProcessArray(string arrayPath) {
+                            var length = so.FindProperty(arrayPath)?.arraySize ?? 0;
+                            if (length == 0) return;
+                            foreach (var i in Enumerable.Range(0, length)) {
+                                var pathProp = so.FindProperty($"{arrayPath}.Array.data[{i}].path");
+                                if (pathProp == null || pathProp.propertyType != SerializedPropertyType.String) continue;
+                                var path = pathProp.stringValue;
+                                if (nonStandardEulerOrders.TryGetValue(path, out var rotationOrder)) {
+                                    var rotationOrderProp = so.FindProperty($"{arrayPath}.Array.data[{i}].curve.m_RotationOrder");
+                                    if (rotationOrderProp == null || rotationOrderProp.propertyType != SerializedPropertyType.Integer) continue;
+                                    rotationOrderProp.intValue = rotationOrder;
+                                    changedOne = true;
+                                }
+                            }
+                        }
+                        ProcessArray("m_EulerCurves");
+                        ProcessArray("m_EditorCurves");
+                        ProcessArray("m_EulerEditorCurves");
+                        if (changedOne) {
+                            so.ApplyModifiedPropertiesWithoutUndo();
+                        }
+                    }
+                }
+            }
         }
         private static AnimationClipExt GetExt(AnimationClip clip) {
             if (clipDb.TryGetValue(clip, out var cached)) return cached;
 
             var ext = clipDb[clip] = new AnimationClipExt();
+            ext.originalSourceClip = clip;
 
             if (AssetDatabase.IsMainAsset(clip)) {
                 var path = AssetDatabase.GetAssetPath(clip);
-                if (!string.IsNullOrEmpty(path)) {
-                    if (Path.GetFileName(path).StartsWith("proxy_")) {
-                        ext.originalSourceIsProxyClip = true;
-                    }
-                    ext.originalSourceClip = clip;
+                if (string.IsNullOrEmpty(path)) {
+                    ext.changedFromOriginalSourceClip = true;
+                } else if (Path.GetFileName(path).StartsWith("proxy_")) {
+                    ext.originalSourceIsProxyClip = true;
                 }
+            } else {
+                ext.changedFromOriginalSourceClip = true;
             }
 
             // Don't use ToDictionary, since animationclips can have duplicate bindings somehow
@@ -199,6 +252,14 @@ namespace VF.Utils {
             }
         }
 
+        public static void Clear(this AnimationClip clip) {
+            var ext = GetExt(clip);
+            if (ext.curves.Any()) {
+                ext.curves.Clear();
+                ext.changedFromOriginalSourceClip = true;
+            }
+        }
+
         public static void SetAap(this AnimationClip clip, string paramName, FloatOrObjectCurve curve) {
             clip.SetCurve("", typeof(Animator), paramName, curve);
         }
@@ -209,14 +270,14 @@ namespace VF.Utils {
 
         public static void SetCurve(this AnimationClip clip, string path, Type type, string propertyName, FloatOrObjectCurve curve) {
             EditorCurveBinding binding;
-            if (curve.IsFloat) {
+            if (curve == null || curve.IsFloat) {
                 binding = EditorCurveBinding.FloatCurve(path, type, propertyName);
             } else {
                 binding = EditorCurveBinding.PPtrCurve(path, type, propertyName);
             }
             clip.SetCurve(binding, curve);
         }
-        
+
         public static void SetCurve(this AnimationClip clip, Object componentOrObject, string propertyName, FloatOrObjectCurve curve) {
             VFGameObject owner;
             if (componentOrObject is UnityEngine.Component c) {
@@ -230,6 +291,15 @@ namespace VF.Utils {
             var path = owner.GetPath(avatarObject);
             clip.SetCurve(path, componentOrObject.GetType(), propertyName, curve);
         }
+
+        public static void SetLengthHolder(this AnimationClip clip, float length) {
+            clip.SetCurve(
+                "__vrcf_length",
+                typeof(GameObject),
+                "m_IsActive",
+                length == 0 ? null : FloatOrObjectCurve.DummyFloatCurve(length)
+            );
+        }
         
         public static void SetEnabled(this AnimationClip clip, Object componentOrObject, FloatOrObjectCurve enabledCurve) {
             string propertyName = (componentOrObject is GameObject) ? "m_IsActive" : "m_Enabled";
@@ -241,9 +311,9 @@ namespace VF.Utils {
         }
 
         public static void SetScale(this AnimationClip clip, VFGameObject obj, Vector3 scale) {
-            clip.SetCurve(obj.transform, "m_LocalScale.x", scale.x);
-            clip.SetCurve(obj.transform, "m_LocalScale.y", scale.y);
-            clip.SetCurve(obj.transform, "m_LocalScale.z", scale.z);
+            clip.SetCurve((Transform)obj, "m_LocalScale.x", scale.x);
+            clip.SetCurve((Transform)obj, "m_LocalScale.y", scale.y);
+            clip.SetCurve((Transform)obj, "m_LocalScale.z", scale.z);
         }
 
         public static int GetLengthInFrames(this AnimationClip clip) {
@@ -261,19 +331,6 @@ namespace VF.Utils {
             clip.SetCurves(other.GetAllCurves());
         }
 
-        public static AnimationClip GetLastFrame(this AnimationClip clip) {
-            var output = VrcfObjectFactory.Create<AnimationClip>();
-            if (clip.GetLengthInSeconds() == 0) {
-                output.name = clip.name;
-            } else {
-                output.name = $"{clip.name} - Last Frame";
-            }
-            foreach (var c in clip.GetAllCurves()) {
-                output.SetCurve(c.Item1, c.Item2.GetLast());
-            }
-            return output;
-        }
-
         public static bool IsLooping(this AnimationClip clip) {
             return AnimationUtility.GetAnimationClipSettings(clip).loopTime;
         }
@@ -281,7 +338,8 @@ namespace VF.Utils {
         public static void SetLooping(this AnimationClip clip, bool on) {
             var settings = AnimationUtility.GetAnimationClipSettings(clip);
             if (settings.loopTime == on) return;
-            
+
+            clip.name = $"{clip.name} (Loop={on})";
             var ext = GetExt(clip);
             ext.changedFromOriginalSourceClip = true;
             settings.loopTime = on;
@@ -302,16 +360,16 @@ namespace VF.Utils {
                 .ToImmutableHashSet();
         }
 
-        public static AnimationClip Evaluate(this AnimationClip clip, float time) {
+        public static AnimationClip EvaluateClip(this AnimationClip clip, float timeSeconds) {
             var output = clip.Clone();
-            output.name = $"{clip.name} (sampled at {time})";
+            output.name = $"{clip.name} (sampled at {timeSeconds}s)";
             output.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
                 if (curve.IsFloat) {
-                    return (binding, curve.FloatCurve.Evaluate(time), true);
+                    return (binding, curve.FloatCurve.Evaluate(timeSeconds), true);
                 } else {
                     var val = curve.ObjectCurve.Length > 0 ? curve.ObjectCurve[0].value : null;
                     foreach (var key in curve.ObjectCurve.Reverse()) {
-                        if (time >= key.time) {
+                        if (timeSeconds >= key.time) {
                             val = key.value;
                             break;
                         }
@@ -345,53 +403,6 @@ namespace VF.Utils {
                 }
                 return (binding, curve, false);
             }));
-        }
-        
-        /**
-         * Converts a "two keyframe" clip into its two separate keyframes.
-         * If clip is not made up of two unique (start and end) keyframes, returns null.
-         */
-        public static Tuple<AnimationClip, AnimationClip> SplitRangeClip(this AnimationClip clip) {
-            var times = new HashSet<float>();
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (curve.IsFloat) {
-                    times.UnionWith(curve.FloatCurve.keys.Select(key => key.time));
-                } else {
-                    times.UnionWith(curve.ObjectCurve.Select(key => key.time));
-                }
-            }
-
-            if (!times.Contains(0)) return null;
-            if (times.Count > 2) return null;
-
-            var startClip = VrcfObjectFactory.Create<AnimationClip>();
-            startClip.name = $"{clip.name} - First Frame";
-            var endClip = VrcfObjectFactory.Create<AnimationClip>();
-            endClip.name = $"{clip.name} - Last Frame";
-            
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
-                if (curve.IsFloat) {
-                    var first = true;
-                    foreach (var key in curve.FloatCurve.keys) {
-                        if (first) {
-                            startClip.SetCurve(binding, key.value);
-                            first = false;
-                        }
-                        endClip.SetCurve(binding, key.value);
-                    }
-                } else {
-                    var first = true;
-                    foreach (var key in curve.ObjectCurve) {
-                        if (first) {
-                            startClip.SetCurve(binding, key.value);
-                            first = false;
-                        }
-                        endClip.SetCurve(binding, key.value);
-                    }
-                }
-            }
-
-            return Tuple.Create(startClip, endClip);
         }
     }
 }

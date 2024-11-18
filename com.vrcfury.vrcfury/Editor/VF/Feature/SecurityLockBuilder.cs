@@ -56,9 +56,9 @@ namespace VF.Feature {
             // to be based on where this security lock was placed
             menu.OverrideSortPosition(uniqueModelNum, () => {
                 for (var i = 1; i < 8; i++) {
-                    menu.NewMenuToggle("Security/" + i, paramInput, i);
+                    menu.NewMenuButton("Security/" + i, paramInput, i);
                 }
-                menu.NewMenuToggle("Security/Unlocked", paramInput, 8);
+                menu.NewMenuButton("Security/Unlocked", paramInput, 8);
             });
 
             var layer = fx.NewLayer("Security Lock");
@@ -66,11 +66,13 @@ namespace VF.Feature {
             var remote = layer.NewState("Remote Trap");
 
             var entry = layer.NewState("Entry")
-                .Move(remote, 1, 0);
+                .Move(remote, 0, 1);
             
             var clear = layer.NewState("Clear")
                 .Move(entry, 1, 1);
             clear.TransitionsTo(entry).When(fx.Always());
+            clear.Drives(paramInput, 0);
+            clear.Drives(paramSecuritySync, false);
 
             remote.TransitionsTo(entry).When(fx.IsLocal().IsTrue());
             
@@ -81,36 +83,24 @@ namespace VF.Feature {
                 clear.Drives(savedDigit, 0);
             }
 
-            var saveStates = new List<VFState>();
+            var input = layer.NewState("Input");
+            input.Move(entry, 0, 1);
+            entry.TransitionsTo(input).When(paramInput.IsGreaterThan(0).And(paramInput.IsLessThan(8)));
+            entry.TransitionsTo(clear).When(paramInput.IsEqualTo(8));
+            input.TransitionsTo(entry).When(paramInput.IsEqualTo(0));
             for (var i = numDigitSlots - 1; i >= 0; i--) {
-                var saveState = layer.NewState("Save " + i);
-                if (saveStates.Count == 0) saveState.Move(entry, -1, 1);
-                saveStates.Add(saveState);
                 var target = digitParams[i];
                 var source = i == 0 ? paramInput : digitParams[i - 1];
-                saveState.DrivesCopy(source, target);
-                if (saveStates.Count > 1) {
-                    saveStates[saveStates.Count - 2].TransitionsTo(saveState).When(fx.Always());
-                } else {
-                    entry.TransitionsTo(saveState).When(paramInput.IsGreaterThan(0).And(paramInput.IsLessThan(8)));
-                }
+                input.DrivesCopy(source, target);
             }
 
-            entry.TransitionsTo(clear).When(paramInput.IsEqualTo(8));
-            entry.Drives(paramInput, 0);
-            entry.Drives(paramSecuritySync, false);
-
-            var check = layer.NewState("Check").Move(1, -1);
-            saveStates[saveStates.Count - 1].TransitionsTo(check).When(fx.Always());
-
-            var unlocked = layer.NewState("Unlocked").Move(1,-1);
+            var unlocked = layer.NewState("Unlocked").Move(entry, 1,0);
             var digitsReversed = digits.Reverse().ToArray();
             var unlockCondition = digitParams[0].IsEqualTo(digitsReversed[0]);
             for (var i = 1; i < numDigits; i++) {
                 unlockCondition = unlockCondition.And(digitParams[i].IsEqualTo(digitsReversed[i]));
             }
-            check.TransitionsTo(unlocked).When(unlockCondition);
-            check.TransitionsTo(entry).When(fx.Always());
+            entry.TransitionsTo(unlocked).When(unlockCondition);
             unlocked.Drives(paramInput, 8);
             unlocked.Drives(paramSecuritySync, true);
             unlocked.TransitionsTo(clear).When(paramInput.IsNotEqualTo(8));

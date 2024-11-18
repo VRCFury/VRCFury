@@ -6,6 +6,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Service {
@@ -13,13 +14,15 @@ namespace VF.Service {
     internal class SaveAssetsService {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VFGameObject avatarObject;
-        [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly TmpDirService tmpDirService;
 
         [FeatureBuilderAction(FeatureOrder.SaveAssets)]
         public void Run() {
+            var tmpDir = tmpDirService.GetTempDir();
+
             // Save mats and meshes
             foreach (var component in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
-                SaveUnsavedComponentAssets(component, globals.tmpDir);
+                SaveUnsavedComponentAssets(component, tmpDir);
             }
             
             // Special handling for mask and controller names
@@ -31,28 +34,38 @@ namespace VF.Service {
                 }
                 SaveAssetAndChildren(
                     controller.GetRaw(),
-                    $"VRCFury {controller.GetType().ToString()} for {avatarObject.name}",
-                    globals.tmpDir
+                    $"VRCFury {controller.GetType().ToString()}",
+                    tmpDir,
+                    true
                 );
             }
 
             // Save everything else
             foreach (var component in avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                SaveUnsavedComponentAssets(component, globals.tmpDir);
+                SaveUnsavedComponentAssets(component, tmpDir);
             }
         }
 
         public static void SaveUnsavedComponentAssets(UnityEngine.Component component, string tmpDir) {
-            foreach (var asset in GetUnsavedChildren(component, recurse: false)) {
+            foreach (var asset in GetUnsavedChildren(component, false, true)) {
+                string filename;
+                if (asset is VRCExpressionsMenu) {
+                    filename = "VRCFury Menu";
+                } else if (asset is VRCExpressionParameters) {
+                    filename = "VRCFury Params";
+                } else {
+                    filename = $"VRCFury {asset.GetType().Name} for {component.owner().name}";
+                }
                 SaveAssetAndChildren(
                     asset,
-                    $"VRCFury {asset.GetType().Name} for {component.owner().name}",
-                    tmpDir
+                    filename,
+                    tmpDir,
+                    true
                 );
             }
         }
 
-        private static IList<Object> GetUnsavedChildren(Object obj, bool recurse = true) {
+        private static IList<Object> GetUnsavedChildren(Object obj, bool recurse, bool reuseOriginalClips) {
             var unsavedChildren = new List<Object>();
             var clipReplacements = new Dictionary<Object, Object>();
             MutableManager.ForEachChild(obj, asset => {
@@ -60,10 +73,12 @@ namespace VF.Service {
                 if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
                 if (!NeedsSaved(asset)) return false;
                 if (asset is AnimationClip vac) {
-                    var useOriginalClip = vac.GetUseOriginalUserClip();
-                    if (useOriginalClip != null) {
-                        clipReplacements[vac] = useOriginalClip;
-                        return false;
+                    if (reuseOriginalClips) {
+                        var useOriginalClip = vac.GetUseOriginalUserClip();
+                        if (useOriginalClip != null) {
+                            clipReplacements[vac] = useOriginalClip;
+                            return false;
+                        }
                     }
                     vac.FinalizeAsset();
                 }
@@ -83,10 +98,10 @@ namespace VF.Service {
             return VrcfObjectFactory.DidCreate(asset) && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset));
         }
 
-        private static void SaveAssetAndChildren(Object asset, string filename, string tmpDir) {
+        public static void SaveAssetAndChildren(Object asset, string filename, string tmpDir, bool reuseOriginalClips) {
             if (!NeedsSaved(asset)) return;
 
-            var unsavedChildren = GetUnsavedChildren(asset);
+            var unsavedChildren = GetUnsavedChildren(asset, true, reuseOriginalClips);
 
             // Save child textures
             // If we don't save textures before the materials that use them, unity just throws them away

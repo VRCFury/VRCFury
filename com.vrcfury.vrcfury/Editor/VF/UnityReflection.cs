@@ -92,7 +92,7 @@ namespace VF {
                 }
             }
             if (notReady.Any()) {
-                Debug.LogError("VRCFury failed to find hook into some parts of Unity properly. Perhaps this version of Unity is not yet supported?\n" + string.Join("\n", notReady));
+                Debug.LogError("VRCFury failed to find hook into some parts of Unity properly. Perhaps this version of Unity is not yet supported?\n" + notReady.Join('\n'));
             }
         }
     }
