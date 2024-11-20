@@ -56,6 +56,7 @@ namespace VF.Utils {
         }
 
         public static string prependFolders(string path, GameObject gameObject) {
+            if (path.StartsWith("/")) return path.Substring(1);
             if (gameObject == null) return path;
             foreach (var component in gameObject.GetComponentsInParent<VRCFury>()) {
                 var folder = component.content as MenuFolder;
