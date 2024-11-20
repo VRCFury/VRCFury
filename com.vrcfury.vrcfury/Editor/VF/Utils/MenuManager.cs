@@ -64,6 +64,10 @@ namespace VF.Utils {
                 var folderPath = folder.folderPath;
                 if (string.IsNullOrWhiteSpace(folderPath)) continue;
                 path = folderPath + "/" + path;
+                if (path.StartsWith("/")) {
+                    path = path.Substring(1);
+                    break;
+                }
             }
             if (path.EndsWith('/')) path = path.Substring(0, path.Length - 1);
             return path;

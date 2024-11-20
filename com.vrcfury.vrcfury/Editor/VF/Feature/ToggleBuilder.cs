@@ -476,6 +476,12 @@ namespace VF.Feature {
                 });
             flex.Add(button);
 
+            content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                var fullPath = MenuManager.PrependFolders(pathProp.stringValue, componentObject);
+                if (!string.IsNullOrEmpty(fullPath) && !string.IsNullOrEmpty(pathProp.stringValue) && !pathProp.stringValue.StartsWith("/")) return "Full Menu Path: " + fullPath;
+                return "";
+            }));
+
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (enableExclusiveTagProp.boolValue) {

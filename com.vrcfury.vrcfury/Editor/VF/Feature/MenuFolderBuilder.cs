@@ -4,6 +4,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Feature {
     [FeatureTitle("Menu Folder")]
@@ -17,6 +18,11 @@ namespace VF.Feature {
             var folderPath = prop.FindPropertyRelative("folderPath");
             
             content.Add(MoveMenuItemBuilder.SelectButton(avatarObject, componentObject.parent, true, folderPath, label: "Folder Path"));
+            content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                var fullPath = MenuManager.PrependFolders("", componentObject);
+                if (!string.IsNullOrEmpty(fullPath)) return "Full Folder Path: " + fullPath;
+                return "";
+            }));
 
             return content;
         }
