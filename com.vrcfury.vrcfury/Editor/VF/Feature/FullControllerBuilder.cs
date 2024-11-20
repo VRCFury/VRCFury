@@ -97,7 +97,7 @@ namespace VF.Feature {
 
                 var copy = menu.Clone();
                 copy.RewriteParameters(RewriteParamName);
-                var prefix = MenuManager.SplitPath(MenuManager.prependFolders(m.prefix, featureBaseObject));
+                var prefix = MenuManager.SplitPath(MenuManager.PrependFolders(m.prefix, featureBaseObject));
                 avatarMenu.MergeMenu(prefix, copy);
             }
 

@@ -61,7 +61,7 @@ namespace VF.Feature {
                     path += append();
                 }
                 if (componentObject != null) {
-                    var folderPrefix = MenuManager.prependFolders("", componentObject);
+                    var folderPrefix = MenuManager.PrependFolders("", componentObject);
                     if (path.StartsWith(folderPrefix)) path = path.Replace(folderPrefix,"");
                     if (path.StartsWith("/")) path = path.Substring(1);
                 }

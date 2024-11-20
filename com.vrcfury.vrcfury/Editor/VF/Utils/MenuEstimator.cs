@@ -31,7 +31,7 @@ namespace VF.Utils {
                     foreach (var menuEntry in fullController.menus) {
                         var menu = menuEntry.menu.Get();
                         if (menu == null) continue;
-                        var prefix = MenuManager.SplitPath(MenuManager.prependFolders(menuEntry.prefix, builder.gameObject));
+                        var prefix = MenuManager.SplitPath(MenuManager.PrependFolders(menuEntry.prefix, builder.gameObject));
                         merged.MergeMenu(prefix, menu);
                     }
                 }
@@ -41,7 +41,7 @@ namespace VF.Utils {
                     var hasIcon = toggle.enableIcon && toggle.icon?.Get() != null;
                     var addMenuItem = toggle.addMenuItem && (hasTitle || hasIcon);
                     if (addMenuItem) {
-                        merged.NewMenuButton(MenuManager.prependFolders(toggle.name, builder.gameObject));
+                        merged.NewMenuButton(MenuManager.PrependFolders(toggle.name, builder.gameObject));
                     }
                 }
             }

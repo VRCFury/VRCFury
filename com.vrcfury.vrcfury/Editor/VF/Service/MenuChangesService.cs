@@ -30,7 +30,7 @@ namespace VF.Service {
             void BetweenSteps() {
                 foreach (var iconChange in iconChanges.ToArray()) {
                     var icon = iconChange.model.icon.Get();
-                    var path = MenuManager.prependFolders(iconChange.model.path, iconChange.featureBaseObject);
+                    var path = MenuManager.PrependFolders(iconChange.model.path, iconChange.featureBaseObject);
                     var result = menu.SetIcon(path, icon);
                     if (result) {
                         var filePath = icon != null ? AssetDatabase.GetAssetPath(icon) : "";

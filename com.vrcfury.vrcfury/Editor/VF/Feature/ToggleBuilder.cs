@@ -122,13 +122,13 @@ namespace VF.Feature {
                 if (addMenuItem) {
                     if (model.holdButton) {
                         menu.NewMenuButton(
-                            MenuManager.prependFolders(model.name, featureBaseObject),
+                            MenuManager.PrependFolders(model.name, featureBaseObject),
                             param,
                             icon: model.enableIcon ? model.icon?.Get() : null
                         );
                     } else {
                         menu.NewMenuToggle(
-                            MenuManager.prependFolders(model.name, featureBaseObject),
+                            MenuManager.PrependFolders(model.name, featureBaseObject),
                             param,
                             icon: model.enableIcon ? model.icon?.Get() : null
                         );
