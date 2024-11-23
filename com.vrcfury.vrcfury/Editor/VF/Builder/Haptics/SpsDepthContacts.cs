@@ -67,13 +67,13 @@ namespace VF.Builder.Haptics {
                 var latchedDiffDist = controller.MakeAap("latchedDiffDist");
                 var latchedDiffTime = controller.MakeAap("latchedDiffTime");
                 var update = VFBlendTreeDirect.Create("Update");
-                update.Add(BlendtreeMath.MakeCopier(diffDist, latchedDiffDist, minSupported:-100, maxSupported:100));
-                update.Add(BlendtreeMath.MakeCopier(diffTime, latchedDiffTime));
+                update.Add(latchedDiffDist.MakeCopier(diffDist, minSupported:-100, maxSupported:100));
+                update.Add(latchedDiffTime.MakeCopier(diffTime));
                 var maintain = VFBlendTreeDirect.Create("Maintain");
-                maintain.Add(BlendtreeMath.MakeCopier(latchedDiffDist, latchedDiffDist, minSupported:-100, maxSupported:100));
-                maintain.Add(BlendtreeMath.MakeCopier(latchedDiffTime, latchedDiffTime));
+                maintain.Add(latchedDiffDist.MakeCopier(latchedDiffDist, minSupported:-100, maxSupported:100));
+                maintain.Add(latchedDiffTime.MakeCopier(latchedDiffTime));
                 math.SetValueWithConditions(
-                    (update, BlendtreeMath.Not(BlendtreeMath.Equals(diffDist, 0, epsilon: 0.0001f))),
+                    (update, BlendtreeMath.Equals(diffDist, 0, epsilon: 0.0001f).Not()),
                     (maintain, null)
                 );
 
