@@ -255,7 +255,8 @@ namespace VF.Service {
                     var transformAnimated =
                         anim.positionIsAnimated.Contains(propBone)
                         || anim.rotationIsAnimated.Contains(propBone)
-                        || anim.scaleIsAnimated.Contains(propBone);
+                        || anim.scaleIsAnimated.Contains(propBone)
+                        || propBone.GetConstraints().Any();
                     if (transformAnimated) {
                         current = GameObjects.Create("Original Parent (Retained for transform animation)", current, propBone.parent);
 
