@@ -43,9 +43,8 @@ namespace VF.Service {
         }
         
         public class BuiltAction {
-            public Motion onClip = VrcfObjectFactory.Create<AnimationClip>();
-            public AnimationClip implicitRestingClip = VrcfObjectFactory.Create<AnimationClip>();
-            public bool useMotionTime = false;
+            public Motion onClip;
+            public bool useMotionTime;
         }
 
         public IList<Action> GetActions([CanBeNull] State actionSet) {

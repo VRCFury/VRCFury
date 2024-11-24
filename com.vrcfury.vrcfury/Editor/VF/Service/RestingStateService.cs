@@ -81,12 +81,12 @@ namespace VF.Service {
                             if (!string.IsNullOrWhiteSpace(fc.toggleParam)) {
                                 var rootObj = component.owner();
                                 if (fc.rootObjOverride != null) rootObj = fc.rootObjOverride;
-                                var built = actionClipService.LoadStateAdv("", new State {
+                                var built = actionClipService.BuildOff(new State {
                                     actions = {
                                         new ObjectToggleAction { obj = rootObj, mode = ObjectToggleAction.Mode.TurnOn }
                                     }
                                 });
-                                ApplyClipToRestingState(built.implicitRestingClip, owner: owner);
+                                ApplyClipToRestingState(built, owner: owner);
                             }
                         }
                         return UnitySerializationUtils.IterateResult.Continue;
