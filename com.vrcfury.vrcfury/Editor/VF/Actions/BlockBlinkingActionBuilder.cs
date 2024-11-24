@@ -15,9 +15,9 @@ namespace VF.Actions {
     internal class BlockBlinkingActionBuilder : ActionBuilder<BlockBlinkingAction> {
         [VFAutowired] [CanBeNull] private readonly TrackingConflictResolverService trackingConflictResolverService;
 
-        public AnimationClip Build(string actionName, bool useServices) {
+        public AnimationClip Build(string actionName) {
             var onClip = NewClip();
-            if (trackingConflictResolverService == null || !useServices) return onClip;
+            if (trackingConflictResolverService == null) return onClip;
             var blockTracking = trackingConflictResolverService.AddInhibitor(
                 actionName, TrackingConflictResolverService.TrackingEyes);
             onClip.SetAap(blockTracking, 1);

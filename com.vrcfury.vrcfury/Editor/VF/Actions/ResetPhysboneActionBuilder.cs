@@ -16,9 +16,9 @@ namespace VF.Actions {
     internal class ResetPhysboneActionBuilder : ActionBuilder<ResetPhysboneAction> {
         [VFAutowired] [CanBeNull] private readonly PhysboneResetService physboneResetService;
 
-        public AnimationClip Build(ResetPhysboneAction model, string actionName, bool useServices) {
+        public AnimationClip Build(ResetPhysboneAction model, string actionName) {
             var onClip = NewClip();
-            if (model.physBone != null && physboneResetService != null && useServices) {
+            if (model.physBone != null && physboneResetService != null) {
                 var param = physboneResetService.CreatePhysBoneResetter(model.physBone.owner(), actionName);
                 onClip.SetAap(param, 1);
             }
