@@ -11,25 +11,11 @@ namespace VF.Actions {
     [FeatureTitle("Scale")]
     internal class ScaleActionBuilder : ActionBuilder<ScaleAction> {
         public AnimationClip Build(ScaleAction model) {
-            return MakeClip(model);
-        }
-        public AnimationClip BuildOff(ScaleAction model) {
-            return MakeClip(model, true);
-        }
-
-        private AnimationClip MakeClip(ScaleAction model, bool basis = false) {
             var clip = NewClip();
-            if (model.obj == null) {
-                //Debug.LogWarning("Missing object in action: " + name);
-            } else {
-                var localScale = model.obj.asVf().localScale;
-                if (basis) {
-                    clip.SetScale(model.obj, localScale);
-                } else {
-                    var newScale = localScale * model.scale;
-                    clip.SetScale(model.obj, newScale);
-                }
-            }
+            if (model.obj == null) return clip;
+            var localScale = model.obj.asVf().localScale;
+            var newScale = localScale * model.scale;
+            clip.SetScale(model.obj, newScale);
             return clip;
         }
 
