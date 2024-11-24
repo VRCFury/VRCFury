@@ -38,8 +38,8 @@ namespace VF.Service {
             Always
         }
 
-        public Motion LoadState(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
-            return LoadStateAdv(name, state, animObjectOverride, motionTime).onClip;
+        public Motion LoadState(string name, State state, MotionTimeMode motionTime = MotionTimeMode.Never) {
+            return LoadStateAdv(name, state, motionTime: motionTime).onClip;
         }
         
         public class BuiltAction {
@@ -47,7 +47,7 @@ namespace VF.Service {
             public bool useMotionTime;
         }
 
-        public IList<Action> GetActions([CanBeNull] State actionSet) {
+        private static IList<Action> GetActiveActions([CanBeNull] State actionSet) {
             if (actionSet == null) return new List<Action>();
             return actionSet.actions.Where(action => {
                 if (action == null) throw new Exception("Action list contains a corrupt action");
@@ -63,8 +63,9 @@ namespace VF.Service {
         public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
             var animObject = animObjectOverride ?? componentObject();
 
-            var outputMotions = GetActions(state)
+            var outputMotions = GetActiveActions(state)
                 .Select(a => LoadAction(name, a, animObject))
+                .Where(motion => new AnimatorIterator.Clips().From(motion).SelectMany(clip => clip.GetAllBindings()).Any())
                 .ToList();
 
             bool useMotionTime;
@@ -144,7 +145,7 @@ namespace VF.Service {
             var animObject = componentObject();
             var clip = VrcfObjectFactory.Create<AnimationClip>();
 
-            foreach (var action in GetActions(state)) {
+            foreach (var action in GetActiveActions(state)) {
                 if (!modelTypeToBuilder.TryGetValue(action.GetType(), out var builder)) {
                     throw new Exception($"Unknown action type {action.GetType().Name}");
                 }

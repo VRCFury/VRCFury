@@ -184,7 +184,7 @@ namespace VF.Feature {
 
             Motion restingClip = null;
             if (weight != null) {
-                var builtAction = actionClipService.LoadStateAdv(onName, action, null, ActionClipService.MotionTimeMode.Always);
+                var builtAction = actionClipService.LoadStateAdv(onName, action, motionTime: ActionClipService.MotionTimeMode.Always);
                 inState = onState = layer.NewState(onName);
                 onState.WithAnimation(builtAction.onClip).MotionTime(weight);
                 onState.TransitionsToExit().When(onCase.Not());
