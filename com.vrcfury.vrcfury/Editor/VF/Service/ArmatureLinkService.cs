@@ -438,13 +438,6 @@ namespace VF.Service {
             return model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Yes;
         }
 
-        public enum ExtraBoneHack {
-            None,
-            ClothesHaveIt,
-            AvatarHasIt,
-            AvatarHasFake
-        }
-
         public class Links {
             // These are stacks, because it's convenient, and we want to iterate over them in reverse order anyways
             // because when operating on the vrc clone, we delete game objects as we process them, and we want to
@@ -452,8 +445,7 @@ namespace VF.Service {
 
             public VFGameObject propMain;
             public VFGameObject avatarMain;
-            public ExtraBoneHack chestUpHack = ExtraBoneHack.None;
-            public ExtraBoneHack topFut = ExtraBoneHack.None;
+            public ISet<String> hacksUsed = new HashSet<string>();
             
             // left=bone in prop | right=bone in avatar
             public readonly Stack<(VFGameObject, VFGameObject)> mergeBones
@@ -555,38 +547,26 @@ namespace VF.Service {
 
                         // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
                         var recurseButDoNotLink = false;
-                        if (childAvatarBone == null) {
-                            // Clothes have ChestUp, but avatar does not?
-                            if (childPropBone.name.Contains("ChestUp")) {
-                                childAvatarBone = checkAvatarBone;
-                                links.chestUpHack = ExtraBoneHack.ClothesHaveIt;
-                                recurseButDoNotLink = true;
-                            }
-                            // Clothes have TopFut, but avatar does not?
-                            if (childPropBone.name == "TopFut_L" || childPropBone.name == "TopFut_R") {
-                                childAvatarBone = checkAvatarBone;
-                                links.topFut = ExtraBoneHack.ClothesHaveIt;
-                                recurseButDoNotLink = true;
-                            }
-                        }
-                        if (childAvatarBone == null) {
-                            childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
-                            if (childAvatarBone != null) links.chestUpHack = ExtraBoneHack.AvatarHasIt;
-                        }
-                        if (childAvatarBone == null) {
-                            childAvatarBone = checkAvatarBone.Find("TopFut_L/" + searchName);
-                            if (childAvatarBone != null) links.topFut = ExtraBoneHack.AvatarHasIt;
-                        }
-                        if (childAvatarBone == null) {
-                            childAvatarBone = checkAvatarBone.Find("TopFut_R/" + searchName);
-                            if (childAvatarBone != null) links.topFut = ExtraBoneHack.AvatarHasIt;
-                        }
-                        if (childAvatarBone == null) {
-                            // Clothes have real ChestUp, but avatar has ChestUp that is fake and empty?
-                            // (happens on some versions of rex)
-                            if (checkAvatarBone.name.Contains("ChestUp")) {
-                                childAvatarBone = checkAvatarBone.parent.Find(searchName);
-                                if (childAvatarBone != null) links.chestUpHack = ExtraBoneHack.AvatarHasFake;
+                        foreach (var b in new[] { "ChestUp", "TopFut_L", "TopFut_R", "HeadGRP" }) {
+                            if (childAvatarBone == null) {
+                                if (childPropBone.name == b) {
+                                    childAvatarBone = checkAvatarBone;
+                                    links.hacksUsed.Add("Clothes have extra mid-bone: " + b);
+                                    recurseButDoNotLink = true;
+                                    break;
+                                }
+                                childAvatarBone = checkAvatarBone.Find(b + "/" + searchName);
+                                if (childAvatarBone != null) {
+                                    links.hacksUsed.Add("Avatar has extra mid-bone: " + b);
+                                    break;
+                                }
+                                if (checkAvatarBone.name == b) {
+                                    childAvatarBone = checkAvatarBone.parent.Find(searchName);
+                                    if (childAvatarBone != null) {
+                                        links.hacksUsed.Add("Avatar has fake mid-bone: " + b);
+                                        break;
+                                    }
+                                }
                             }
                         }
 

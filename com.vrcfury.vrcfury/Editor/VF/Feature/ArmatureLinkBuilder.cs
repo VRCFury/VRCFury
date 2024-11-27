@@ -163,21 +163,18 @@ namespace VF.Feature {
             super.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("forceOneWorldScale"),
                 "Force world scale to 1,1,1",
                 tooltip: "After linking, forces the world scale of the root object to 1,1,1."));
-            
-            var chestUpWarning = VRCFuryEditorUtils.Warn(
-                "These clothes are designed for an avatar with a different ChestUp configuration. You may" +
+
+            var hackWarningWrapper = new VisualElement();
+            VRCFuryEditorUtils.WrappedLabel(
+                "These clothes are designed for a different version of your avatar's rig. You may" +
                 " have downloaded the wrong version of the clothes for your avatar version, or the clothes may not be designed for your avatar." +
                 " Contact the clothing creator, and see if they have a proper version of the clothing for your rig.\n\n" +
-                "VRCFury will attempt to merge it anyways, but the chest area may not look correct.");
-            chestUpWarning.SetVisible(false);
-            container.Add(chestUpWarning);
-            
-            var topFutWarning = VRCFuryEditorUtils.Warn(
-                "These clothes were designed for an old version of the Rexouium which does not support digi-legs." +
-                " Contact the clothing creator, and see if they have a proper version of the clothing for your rig.\n\n" +
-                "VRCFury will attempt to merge it anyways, but it's likely the clothes will clip near the ankles.");
-            topFutWarning.SetVisible(false);
-            container.Add(topFutWarning);
+                "VRCFury will attempt to merge it anyways, but the affected areas may have slight clipping issues.\n"
+            ).AddTo(hackWarningWrapper);
+            var hackWarningList = VRCFuryEditorUtils.WrappedLabel("").AddTo(hackWarningWrapper);
+            var hackWarning = VRCFuryEditorUtils.Warn(hackWarningWrapper);
+            hackWarning.SetVisible(false);
+            container.Add(hackWarning);
 
             var hipsWarning = VRCFuryEditorUtils.Warn(
                 "It appears this object is clothing with an Armature and Hips bone. If you are trying to link the clothing to your avatar," +
@@ -194,8 +191,7 @@ namespace VF.Feature {
                     }
                 }
                 
-                chestUpWarning.SetVisible(false);
-                topFutWarning.SetVisible(false);
+                hackWarning.SetVisible(false);
                 if (avatarObject == null) {
                     return "Avatar descriptor is missing";
                 }
@@ -207,11 +203,9 @@ namespace VF.Feature {
                     return "No valid link target found";
                 }
 
-                if (links.chestUpHack != ArmatureLinkService.ExtraBoneHack.None) {
-                    chestUpWarning.SetVisible(true);
-                }
-                if (links.topFut == ArmatureLinkService.ExtraBoneHack.AvatarHasIt) {
-                    topFutWarning.SetVisible(true);
+                if (links.hacksUsed.Any()) {
+                    hackWarningList.text = links.hacksUsed.OrderBy(a => a).Join("\n");
+                    hackWarning.SetVisible(true);
                 }
 
                 var text = new List<string>();
