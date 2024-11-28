@@ -44,7 +44,7 @@ namespace VF.Service {
                 var layer = layers[i];
                 if (layer.type == VRCAvatarDescriptor.AnimLayerType.Gesture || layer.type == VRCAvatarDescriptor.AnimLayerType.FX) {
                     var c = layer.animatorController as AnimatorController;
-                    if (c && c.layers.Length > 0) {
+                    if (c != null && c.layers.Length > 0) {
                         layer.mask = c.layers[0].avatarMask;
                         layers[i] = layer;
                     }

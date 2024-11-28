@@ -105,7 +105,7 @@ namespace VF.Builder.Haptics {
             foreach (var renderer in renderers) {
                 var bakedMesh = MeshBaker.BakeMesh(renderer);
                 if (bakedMesh == null) continue;
-                var mask = plug ? PlugMaskGenerator.GetMask(renderer, plug) : null;
+                var mask = plug != null ? PlugMaskGenerator.GetMask(renderer, plug) : null;
                 var matsUsedByVert = new VFMultimapSet<int, int>();
                 var mesh = renderer.GetMesh();
                 var matSlotsInMesh = 0;

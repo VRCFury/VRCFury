@@ -403,8 +403,8 @@ namespace VF.Service {
                 if (propRoot != null) {
                     foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                         if (skin.owner().IsChildOf(propRoot)) continue;
-                        usesBonesFromProp |= skin.rootBone && skin.rootBone.asVf().IsChildOf(propRoot);
-                        usesBonesFromProp |= skin.bones.Any(bone => bone && bone.asVf().IsChildOf(propRoot));
+                        usesBonesFromProp |= skin.rootBone != null && skin.rootBone.asVf().IsChildOf(propRoot);
+                        usesBonesFromProp |= skin.bones.Any(bone => bone != null && bone.asVf().IsChildOf(propRoot));
                     }
                 }
 

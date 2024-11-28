@@ -205,7 +205,7 @@ namespace VF.Feature {
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
                     var prms = p.parameters.Get();
-                    return prms && prms.parameters.Any(param => param.name == name);
+                    return prms != null && prms.parameters.Any(param => param.name == name);
                 });
                 if (!synced) return name;
             }

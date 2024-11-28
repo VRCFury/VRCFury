@@ -326,7 +326,7 @@ namespace VF.Service {
 
                         exclusiveTriggers.Add((name, toggleParam));
 
-                        if (socket.enableAuto && autoOnClip) {
+                        if (socket.enableAuto && autoOnClip != null) {
                             var autoReceiverObj = GameObjects.Create("AutoDistance", bakeResult.worldSpace);
                             var distParam = hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
                                 obj = autoReceiverObj,
