@@ -46,21 +46,8 @@ namespace VF.Service {
                 replaceNulls = false;
             }
 
-            Motion Replace(Motion input) {
-                var clips = new AnimatorIterator.Clips().From(input);
-                if (clips.Count == 0) return replaceNulls ? noopClip : null;
-                var hasBindings = new AnimatorIterator.Clips().From(input)
-                    .SelectMany(clip => clip.GetAllBindings())
-                    .Any();
-                return hasBindings ? input : noopClip;
-            }
-
-            state.motion = Replace(state.motion);
-            foreach (var tree in new AnimatorIterator.Trees().From(state)) {
-                tree.RewriteChildren(child => {
-                    child.motion = Replace(child.motion);
-                    return child;
-                });
+            if (state.motion == null && replaceNulls) {
+                state.motion = noopClip;
             }
         }
     }
