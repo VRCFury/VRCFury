@@ -137,7 +137,7 @@ namespace VF.Builder.Haptics {
         }
 
         public static bool IsLocked(Material mat) {
-            return mat && mat.shader && mat.shader.name.ToLower().Contains("locked");
+            return mat != null && mat.shader && mat.shader.name.ToLower().Contains("locked");
         }
 
         public static bool HasDpsOrTpsMaterial(Renderer r) {

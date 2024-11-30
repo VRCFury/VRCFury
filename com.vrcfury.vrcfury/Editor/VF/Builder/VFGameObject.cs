@@ -26,7 +26,7 @@ namespace VF.Builder {
         public static implicit operator GameObject(VFGameObject d) => d?.gameObject;
         public static implicit operator Object(VFGameObject d) => d?.gameObject;
         public static implicit operator Transform(VFGameObject d) => d?.transform;
-        public static implicit operator bool(VFGameObject d) => d?.gameObject;
+        public static implicit operator bool(VFGameObject d) => d?.gameObject != null;
         public static bool operator ==(VFGameObject a, VFGameObject b) => a?.Equals(b) ?? b?.Equals(null) ?? true;
         public static bool operator !=(VFGameObject a, VFGameObject b) => !(a == b);
         public override bool Equals(object other) {
