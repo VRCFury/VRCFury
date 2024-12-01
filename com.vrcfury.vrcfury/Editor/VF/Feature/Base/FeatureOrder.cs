@@ -83,7 +83,6 @@ namespace VF.Feature.Base {
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
-        LocomotionConflictResolver,
         ActionConflictResolver,
         TrackingConflictResolver,
         FixPartiallyWeightedAaps, // Needs to run before PositionDefaultsLayer, before OptimizeBlendTrees, after everything setting AAPs, after TrackingConflictResolver (creates aaps), before anything that would remove the defaults layer like CleanupEmptyLayers
