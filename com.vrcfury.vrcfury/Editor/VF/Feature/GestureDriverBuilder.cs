@@ -13,7 +13,7 @@ using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Feature {
-    
+
     [FeatureTitle("Gestures")]
     internal class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
@@ -27,7 +27,7 @@ namespace VF.Feature {
         private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
-        
+
         [FeatureBuilderAction]
         public void Apply() {
             foreach (var gesture in model.gestures) {
@@ -44,10 +44,17 @@ namespace VF.Feature {
                 name += " " + gesture.comboSign;
             }
             var uid = "gesture_" + uniqueNum;
+            var uidExit = "gesture_" + uniqueNum + "_exit";
 
             var layer = fx.NewLayer(name);
             var off = layer.NewState("Off");
             var on = layer.NewState("On");
+
+            var hasExit = gesture.exitState.actions.Count > 0;
+            VFState exit = null;
+            if (hasExit) {
+                exit = layer.NewState("Exit");
+            }
 
             VFABool lockMenuParam = null;
             if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
@@ -83,7 +90,7 @@ namespace VF.Feature {
             MakeHand(true, ref onCondition, ref weight);
 
             var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
-            
+
             if (weight != null) {
                 var clip = actionClipService.LoadState(uid, gesture.state, motionTime: ActionClipService.MotionTimeMode.Always);
                 var smoothedWeight = MakeWeightLayer(
@@ -94,9 +101,19 @@ namespace VF.Feature {
                 onCondition = smoothedWeight.IsGreaterThan(0.05f);
                 transitionTime = 0.05f;
                 on.WithAnimation(clip).MotionTime(smoothedWeight);
+
+                if (hasExit) {
+                    var exitClip = actionClipService.LoadState(uidExit, gesture.exitState, motionTime: ActionClipService.MotionTimeMode.Always);
+                    exit.WithAnimation(exitClip).MotionTime(smoothedWeight);
+                }
             } else {
                 var clip = actionClipService.LoadState(uid, gesture.state);
                 on.WithAnimation(clip);
+
+                if  (hasExit) {
+                    var exitClip = actionClipService.LoadState(uidExit, gesture.exitState);
+                    exit.WithAnimation(exitClip);
+                }
             }
 
             if (lockMenuParam != null) {
@@ -119,8 +136,13 @@ namespace VF.Feature {
             }
 
             off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition);
-            on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
-        }
+            if (!hasExit) {
+                on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
+            } else {
+                on.TransitionsTo(exit).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
+                exit.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
+            }
+         }
 
         private VFAFloat MakeWeightLayer(VFBlendTreeDirect directTree, VFAFloat input, VFCondition enabled) {
             var layer = fx.NewLayer($"{input.Name()} Target");
@@ -139,7 +161,7 @@ namespace VF.Feature {
         public static VisualElement Editor(SerializedProperty prop) {
             return VRCFuryEditorUtils.List(prop.FindPropertyRelative("gestures"));
         }
-        
+
         [CustomPropertyDrawer(typeof(GestureDriver.Gesture))]
         public class GestureDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
@@ -149,7 +171,7 @@ namespace VF.Feature {
 
         private static VisualElement RenderGestureEditor(SerializedProperty gesture) {
             var wrapper = new VisualElement();
-            
+
             var handProp = gesture.FindPropertyRelative("hand");
             var signProp = gesture.FindPropertyRelative("sign");
             var comboSignProp = gesture.FindPropertyRelative("comboSign");
@@ -172,8 +194,6 @@ namespace VF.Feature {
             row.Add(handSigns);
             wrapper.Add(row);
 
-            wrapper.Add(VRCFuryActionSetDrawer.render(gesture.FindPropertyRelative("state")));
-
             var customTransitionTimeProp = gesture.FindPropertyRelative("customTransitionTime");
             var transitionTimeProp = gesture.FindPropertyRelative("transitionTime");
             var enableLockMenuItemProp = gesture.FindPropertyRelative("enableLockMenuItem");
@@ -181,6 +201,16 @@ namespace VF.Feature {
             var enableExclusiveTagProp = gesture.FindPropertyRelative("enableExclusiveTag");
             var exclusiveTagProp = gesture.FindPropertyRelative("exclusiveTag");
             var enableWeightProp = gesture.FindPropertyRelative("enableWeight");
+            var enableExitProp = gesture.FindPropertyRelative("enableExit");
+
+            if (enableExitProp.boolValue) {
+                wrapper.Add(new Label("On enter gesture"));
+            }
+            wrapper.Add(VRCFuryActionSetDrawer.render(gesture.FindPropertyRelative("state")));
+            if (enableExitProp.boolValue) {
+                wrapper.Add(new Label("On exit gesture"));
+                wrapper.Add(VRCFuryActionSetDrawer.render(gesture.FindPropertyRelative("exitState")));
+            }
 
             row.Add(new Button().Text("Options").FlexBasis(70).OnClick(() => {
                 var advMenu = new GenericMenu();
@@ -201,9 +231,13 @@ namespace VF.Feature {
                     enableWeightProp.boolValue = !enableWeightProp.boolValue;
                     gesture.serializedObject.ApplyModifiedProperties();
                 });
+                advMenu.AddItem(new GUIContent("Enable gesture exit"), enableExitProp.boolValue, () => {
+                    enableExitProp.boolValue = !enableExitProp.boolValue;
+                    gesture.serializedObject.ApplyModifiedProperties();
+                });
                 advMenu.ShowAsContext();
             }));
-            
+
             wrapper.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var w = new VisualElement();
                 if (customTransitionTimeProp.boolValue) w.Add(VRCFuryEditorUtils.Prop(transitionTimeProp, "Custom transition time (seconds)"));
@@ -211,8 +245,8 @@ namespace VF.Feature {
                 if (enableExclusiveTagProp.boolValue) w.Add(VRCFuryEditorUtils.Prop(exclusiveTagProp, "Exclusive Tag"));
                 if (enableWeightProp.boolValue) w.Add(VRCFuryEditorUtils.WrappedLabel("Use gesture weight (fist only)"));
                 return w;
-            }, customTransitionTimeProp, enableLockMenuItemProp, enableExclusiveTagProp, enableWeightProp));
-            
+            }, customTransitionTimeProp, enableLockMenuItemProp, enableExclusiveTagProp, enableWeightProp, enableExitProp));
+
             return wrapper;
         }
     }

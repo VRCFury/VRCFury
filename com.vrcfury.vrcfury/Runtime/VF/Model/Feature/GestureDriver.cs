@@ -8,13 +8,14 @@ namespace VF.Model.Feature {
     [Serializable]
     internal class GestureDriver : NewFeatureModel {
         public List<Gesture> gestures = new List<Gesture>();
-        
+
         [Serializable]
         public class Gesture : VrcfUpgradeable {
             public Hand hand;
             public HandSign sign;
             public HandSign comboSign;
             public State state = new State();
+            public State exitState = new State();
             [Obsolete] public bool disableBlinking;
             public bool customTransitionTime;
             public float transitionTime = 0;
@@ -23,7 +24,8 @@ namespace VF.Model.Feature {
             public bool enableExclusiveTag;
             public string exclusiveTag;
             public bool enableWeight;
-            
+            public bool enableExit;
+
             public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
                 if (fromVersion < 1) {
@@ -46,7 +48,7 @@ namespace VF.Model.Feature {
             RIGHT,
             COMBO
         }
-        
+
         public enum HandSign {
             NEUTRAL,
             FIST,
