@@ -118,6 +118,7 @@ namespace VF.Builder {
             var currentServiceNumber = 0;
             var currentServiceGameObject = avatarObject;
             var currentObjectPath = "";
+            FeatureBuilder currentFeature = null;
 
             var actions = new List<FeatureBuilderAction>();
             var totalActionCount = 0;
@@ -147,6 +148,7 @@ namespace VF.Builder {
                 currentFeatureClipPrefixProvider = () => currentModelClipPrefix,
                 currentMenuSortPosition = () => currentServiceNumber,
                 currentFeatureObjectPath = () => currentObjectPath,
+                currentFeature = () => currentFeature,
             };
             injector.Set(globals);
             
@@ -252,6 +254,7 @@ namespace VF.Builder {
                 currentModelClipPrefix = $"VF{currentServiceNumber} {(service as FeatureBuilder)?.GetClipPrefix() ?? service.GetType().Name}";
                 currentServiceGameObject = action.configObject;
                 currentObjectPath = action.configObject.GetPath(avatarObject);
+                currentFeature = (service as FeatureBuilder);
 
                 var statusMessage = $"{service.GetType().Name}.{action.GetName()} on {objectName} ({currentServiceNumber})";
                 progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
