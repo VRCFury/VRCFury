@@ -92,7 +92,6 @@ namespace VF.Utils {
             var baseObjInClone = clone.Find(prefix);
             Selection.activeGameObject = baseObjInClone;
 
-            var rig = clone.GetComponent<Animator>().NullSafe()?.avatar.NullSafe();
             foreach (var an in clone.GetComponentsInSelfAndChildren<Animator>()) {
                 Object.DestroyImmediate(an);
             }
@@ -103,7 +102,6 @@ namespace VF.Utils {
                 Object.DestroyImmediate(a);
             }
             var animator = clone.AddComponent<Animator>();
-            animator.avatar = rig;
             var controller = new AnimatorController();
             controller.AddLayer("Temp Controller For Recording");
             var layer = controller.layers.Last();
