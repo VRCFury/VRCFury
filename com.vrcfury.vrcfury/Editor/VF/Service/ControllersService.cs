@@ -36,6 +36,7 @@ namespace VF.Service {
                 );
                 foreach (var layer in ctrl.GetLayers()) {
                     layerSourceService.SetSource(layer, isDefault ? LayerSourceService.VrcDefaultSource : LayerSourceService.AvatarDescriptorSource);
+                    layerSourceService.SetSourceFile(layer, existingController);
                 }
                 _controllers[type] = output;
                 VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
