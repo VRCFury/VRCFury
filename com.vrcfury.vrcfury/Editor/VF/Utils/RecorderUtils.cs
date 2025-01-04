@@ -26,7 +26,7 @@ namespace VF.Utils {
             }
 
             EditorApplication.update += () => {
-                if (!IsRecording()) Cleanup();
+                if (restore != null && !IsRecording()) Cleanup();
             };
 
             AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
