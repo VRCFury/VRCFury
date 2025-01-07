@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -18,6 +19,9 @@ namespace VF.Actions {
     [FeatureTitle("Material Property")]
     internal class MaterialPropertyActionBuilder : ActionBuilder<MaterialPropertyAction> {
         [VFAutowired] private readonly VFGameObject avatarObject;
+
+        private static readonly MethodInfo lilTranslator = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilLanguageManager")?
+            .GetMethod("GetLoc", BindingFlags.Static | BindingFlags.Public, null, new[] { typeof(string) }, null);
 
         public AnimationClip Build(MaterialPropertyAction materialPropertyAction) {
             var onClip = NewClip();
@@ -195,10 +199,16 @@ namespace VF.Actions {
                         var sectionStack = new Stack<string>();
                         for (var i = 0; i < count; i++) {
                             var propertyName = shader.GetPropertyName(i);
+                            if (propertyName == "_DummyProperty") continue;
                             var description = shader.GetPropertyDescription(i);
+                            if (description.Contains("{condition_showS:(0==1)}")) continue;
                             
                             var readableName = description;
                             readableName = readableName.RemoveAfter("--");
+
+                            if (shader.name.Contains("lil") && lilTranslator != null) {
+                                readableName = (string)lilTranslator.Invoke(null, new[] { readableName });
+                            }
 
                             if (propertyName.StartsWith("m_start")) {
                                 sectionStack.Push(readableName.RemoveHtmlTags().NormalizeSpaces());
@@ -208,8 +218,13 @@ namespace VF.Actions {
                                 sectionStack.Clear();
                                 sectionStack.Push(readableName.RemoveHtmlTags().NormalizeSpaces());
                             }
-                            
-                            if (description.Contains("{condition_showS:(0==1)}")) continue;
+
+                            readableName = readableName.NormalizeSpaces();
+                            var showPropertyNameSuffix = true;
+                            if (string.IsNullOrEmpty(readableName) || readableName == propertyName) {
+                                readableName = propertyName;
+                                showPropertyNameSuffix = false;
+                            }
 
                             if (sectionStack.Any()) {
                                 readableName = sectionStack.Reverse().Join(" > ") + " > " + readableName;
@@ -249,7 +264,9 @@ namespace VF.Actions {
                             if (sharedMaterials.Length > 1) {
                                 entryName += $" (Mat: {material.name})";
                             }
-                            entryName += $" ({propertyName})";
+                            if (showPropertyNameSuffix) {
+                                entryName += $" ({propertyName})";
+                            }
                             matGroup.Add(entryName, propertyName);
                         }
                     }    
