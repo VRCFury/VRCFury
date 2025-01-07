@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
@@ -52,6 +53,23 @@ namespace VF.Actions {
             ));
             output.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("pages")));
             return output;
+        }
+
+        [CustomPropertyDrawer(typeof(FlipBookBuilderAction.FlipBookPage))]
+        public class FlipbookPageDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var content = new VisualElement();
+                var match = Regex.Match(prop.propertyPath, @"\[(\d+)\]$");
+                string pageNum;
+                if (match.Success && int.TryParse(match.Groups[1].ToString(), out var num)) {
+                    pageNum = (num + 1).ToString();
+                } else {
+                    pageNum = "?";
+                }
+                content.Add(new Label($"Page #{pageNum}").Bold());
+                content.Add(VRCFuryActionSetDrawer.render(prop.FindPropertyRelative("state"), showDebugInfo: false));
+                return content;
+            }
         }
     }
 }
