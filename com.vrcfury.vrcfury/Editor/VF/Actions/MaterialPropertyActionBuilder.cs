@@ -1,8 +1,11 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
@@ -16,6 +19,9 @@ namespace VF.Actions {
     [FeatureTitle("Material Property")]
     internal class MaterialPropertyActionBuilder : ActionBuilder<MaterialPropertyAction> {
         [VFAutowired] private readonly VFGameObject avatarObject;
+
+        private static readonly MethodInfo lilTranslator = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilLanguageManager")?
+            .GetMethod("GetLoc", BindingFlags.Static | BindingFlags.Public, null, new[] { typeof(string) }, null);
 
         public AnimationClip Build(MaterialPropertyAction materialPropertyAction) {
             var onClip = NewClip();
@@ -188,29 +194,68 @@ namespace VF.Actions {
                         var shader = material.shader;
                         
                         if (shader == null) continue;
-                        
-                        var count = ShaderUtil.GetPropertyCount(shader);
-                        var materialProperties = MaterialEditor.GetMaterialProperties(new Object[]{ material });
-                        for (var i = 0; i < count; i++) {
-                            var propertyName = ShaderUtil.GetPropertyName(shader, i);
-                            var readableName = ShaderUtil.GetPropertyDescription(shader, i);
-                            var propType = ShaderUtil.GetPropertyType(shader, i);
-                            if (propType != ShaderUtil.ShaderPropertyType.Float &&
-                                propType != ShaderUtil.ShaderPropertyType.Range &&
-                                propType != ShaderUtil.ShaderPropertyType.Color &&
-                                propType != ShaderUtil.ShaderPropertyType.Vector &&
-                                propType != ShaderUtil.ShaderPropertyType.TexEnv
-                            ) continue;
-                            var matProp = Array.Find(materialProperties, p => p.name == propertyName);
-                            if ((matProp.flags & MaterialProperty.PropFlags.HideInInspector) != 0) continue;
 
-                            if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
+                        var count = shader.GetPropertyCount();
+                        var sectionStack = new Stack<string>();
+                        for (var i = 0; i < count; i++) {
+                            var propertyName = shader.GetPropertyName(i);
+                            if (propertyName == "_DummyProperty") continue;
+                            var description = shader.GetPropertyDescription(i);
+                            if (description.Contains("{condition_showS:(0==1)}")) continue;
+                            
+                            var readableName = description;
+                            readableName = readableName.RemoveAfter("--");
+
+                            if (shader.name.Contains("lil") && lilTranslator != null) {
+                                readableName = (string)lilTranslator.Invoke(null, new[] { readableName });
+                            }
+
+                            if (propertyName.StartsWith("m_start")) {
+                                sectionStack.Push(readableName.RemoveHtmlTags().NormalizeSpaces());
+                            } else if (propertyName.StartsWith("m_end")) {
+                                sectionStack.Pop();
+                            } else if (propertyName.StartsWith("m_")) {
+                                sectionStack.Clear();
+                                sectionStack.Push(readableName.RemoveHtmlTags().NormalizeSpaces());
+                            }
+
+                            readableName = readableName.NormalizeSpaces();
+                            var showPropertyNameSuffix = true;
+                            if (string.IsNullOrEmpty(readableName) || readableName == propertyName) {
+                                readableName = propertyName;
+                                showPropertyNameSuffix = false;
+                            }
+
+                            if (sectionStack.Any()) {
+                                readableName = sectionStack.Reverse().Join(" > ") + " > " + readableName;
+                            }
+
+                            var propType = shader.GetPropertyType(i);
+                            if (propType != ShaderPropertyType.Float &&
+                                propType != ShaderPropertyType.Range &&
+                                propType != ShaderPropertyType.Color &&
+                                propType != ShaderPropertyType.Vector &&
+                                propType != ShaderPropertyType.Texture
+                            ) continue;
+
+                            var flags = shader.GetPropertyFlags(i);
+                            var isHidden = (flags & ShaderPropertyFlags.HideInInspector) != 0;
+                            if (isHidden) continue;
+
+                            var attributes = shader.GetPropertyAttributes(i);
+                            if (attributes.Any(a => a.StartsWith("ThryToggle"))) continue;
+                            if (attributes.Any(a => a.StartsWith("DoNotAnimate"))) continue;
+                            if (attributes.Any(a => a.StartsWith("NoAnimate"))) continue;
+                            if (attributes.Any(a => a.StartsWith("Helpbox"))) continue;
+                            if (attributes.Any(a => a.StartsWith("ThryShaderOptimizerLockButton"))) continue;
+                            if (attributes.Any(a => a.StartsWith("ThryWideEnum"))) continue;
+
+                            if (propType == ShaderPropertyType.Texture) {
                                 propertyName += "_ST";
                             }
 
-                            var prioritizePropName = readableName.Length > 25f;
-                            var entryName = prioritizePropName ? propertyName : readableName;
-                            if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
+                            var entryName = readableName;
+                            if (propType == ShaderPropertyType.Texture) {
                                 entryName += " (Scale+Offset)";
                             }
                             if (renderers.Count > 1) {
@@ -219,7 +264,9 @@ namespace VF.Actions {
                             if (sharedMaterials.Length > 1) {
                                 entryName += $" (Mat: {material.name})";
                             }
-                            entryName += prioritizePropName ? $" ({readableName})" : $" ({propertyName})";
+                            if (showPropertyNameSuffix) {
+                                entryName += $" ({propertyName})";
+                            }
                             matGroup.Add(entryName, propertyName);
                         }
                     }    
