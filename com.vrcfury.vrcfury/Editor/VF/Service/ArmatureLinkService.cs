@@ -218,8 +218,17 @@ namespace VF.Service {
                 }
 
                 // Move it on over
+                
+                if (!keepBoneOffsets) {
+                    propBone.worldPosition = avatarBone.worldPosition;
+                    propBone.worldRotation = avatarBone.worldRotation;
+                    propBone.worldScale = avatarBone.worldScale * scalingFactor;
+                    AddDebugInfo($"Keep offsets is set to NO, so this object was snapped to its parent's transform");
+                }
+                if (model.forceOneWorldScale) {
+                    propBone.worldScale = Vector3.one;
+                }
 
-                VFGameObject addedObject;
                 if (!string.IsNullOrWhiteSpace(model.forceMergedName) && linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) {
                     // Special logic for force naming
                     var exists = avatarBone.Find(model.forceMergedName);
@@ -229,14 +238,21 @@ namespace VF.Service {
                             $" '{exists.GetPath(avatarObject)}', but that object already exists at the destination.");
                     }
                     mover.Move(propBone, avatarBone, model.forceMergedName, defer: true);
-                    addedObject = propBone;
+                    pruneCheck.Add(propBone);
                     AddDebugInfo($"Forcefully named {model.forceMergedName} by Armature Link Force Naming." +
                                  $" Note that this may break toggles or offset animations for this object!");
                 } else {
                     var newName = $"[VF{new Random().Next(100,999)}] {propBone.name}";
                     if (propBone.name != rootName) newName += $" from {rootName}";
-                    addedObject = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone);
-                    var current = addedObject;
+                    var current = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone.parent);
+                    pruneCheck.Add(current);
+
+                    // In a weird edge case, sometimes people mark all their clothing bones with an initial scale of 0,
+                    // to mark them as initially "hidden". In this case, we need to make sure that the parent
+                    // doesn't just permanently set the scale to 0.
+                    if (current.localScale.x == 0 || current.localScale.y == 0 || current.localScale.z == 0) {
+                        current.localScale = Vector3.one;
+                    }
 
                     foreach (var parent in animatedParents) {
                         // If this animated parent come from a toggle created during another armature link,
@@ -252,41 +268,12 @@ namespace VF.Service {
                         AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {original.name}");
                     }
 
-                    var transformAnimated =
-                        anim.positionIsAnimated.Contains(propBone)
-                        || anim.rotationIsAnimated.Contains(propBone)
-                        || anim.scaleIsAnimated.Contains(propBone)
-                        || propBone.GetConstraints().Any();
-                    if (transformAnimated) {
-                        current = GameObjects.Create("Original Parent (Retained for transform animation)", current, propBone.parent);
-
-                        // In a weird edge case, sometimes people mark all their clothing bones with an initial scale of 0,
-                        // to mark them as initially "hidden". In this case, we need to make sure that the transform maintainer
-                        // doesn't just permanently set the scale to 0.
-                        if (current.localScale.x == 0 || current.localScale.y == 0 || current.localScale.z == 0) {
-                            current.localScale = Vector3.one;
-                        }
-                        AddDebugInfo($"Detected that this object's transform is animated, so a wrapper object was added to keep its original parent transform");
-                    }
-
                     mover.Move(propBone, current, "Original Object", defer: true);
-                }
-                
-                if (!keepBoneOffsets) {
-                    addedObject.worldPosition = avatarBone.worldPosition;
-                    addedObject.worldRotation = avatarBone.worldRotation;
-                    addedObject.worldScale = avatarBone.worldScale * scalingFactor;
-                    AddDebugInfo($"Keep offsets is set to NO, so this object was snapped to its parent's transform");
-                }
-                if (model.forceOneWorldScale) {
-                    addedObject.worldScale = Vector3.one;
                 }
 
                 if (ShouldReuseBone()) {
                     RewriteSkins(propBone, avatarBone, avatarObject);
                 }
-
-                pruneCheck.Add(addedObject);
             }
         }
 
