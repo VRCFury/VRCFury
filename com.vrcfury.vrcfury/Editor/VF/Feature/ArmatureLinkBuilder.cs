@@ -133,22 +133,22 @@ namespace VF.Feature {
                          "based on the difference between the name of the given root bones."
             ));
 
-            var alignment = VRCFuryEditorUtils.Section("Transform Lock", "Snap merged objects to the existing transform on the avatar").AddTo(adv);
+            var alignment = VRCFuryEditorUtils.Section("Transform Alignment", "Snap merged objects to the existing transform on the avatar").AddTo(adv);
 
             alignment.Add(VRCFuryEditorUtils.BetterProp(
                 prop.FindPropertyRelative("alignPosition"),
-                label: "Lock Position"
+                label: "Align Position"
             ));
             alignment.Add(VRCFuryEditorUtils.BetterProp(
                 prop.FindPropertyRelative("alignRotation"),
-                label: "Lock Rotation"
+                label: "Align Rotation"
             ));
 
             var lockScaleOptions = new VisualElement();
             var lockScaleProp = prop.FindPropertyRelative("alignScale");
             alignment.Add(VRCFuryEditorUtils.Prop(
                 lockScaleProp,
-                label: "Lock Scale",
+                label: "Align Scale",
                 onChange: () => UpdateVisibleSettings()
             ).PaddingBottom(5));
             
