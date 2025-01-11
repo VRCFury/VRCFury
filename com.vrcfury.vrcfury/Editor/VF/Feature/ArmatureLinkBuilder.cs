@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
@@ -23,13 +24,25 @@ namespace VF.Feature {
             container.Add(VRCFuryEditorUtils.Info(
                 "This feature will attach a prop (with or without an armature) to the avatar." +
                 " If 'Link From' is an armature matching the avatar's, the armatures will be merged and the extra bones will not count toward performance rank."));
-
+            
+            Action UpdateVisibleSettings = null;
+            
+            var propBoneProp = prop.FindPropertyRelative("propBone");
+            var lastPropBone = propBoneProp.objectReferenceValue as GameObject;
             container.Add(VRCFuryEditorUtils.Prop(
-                prop.FindPropertyRelative("propBone"),
+                propBoneProp,
                 label: "Link From (Prop / Clothing)",
                 tooltip: "For clothing, this should be the Hips bone in the clothing's Armature (or the 'main' bone if it doesn't have Hips).\n" +
                          "For non-clothing objects (things that you just want to re-parent), this should be the object you want moved."
             ).MarginBottom(10));
+            container.Add(VRCFuryEditorUtils.OnChange(propBoneProp, () => {
+                var newValue = propBoneProp.objectReferenceValue as GameObject;
+                if (lastPropBone != newValue) {
+                    UpdateOnLinkFromChange(model, lastPropBone, newValue);
+                    prop.serializedObject.Update();
+                    lastPropBone = newValue;
+                }
+            }));
 
             container.Add(VRCFuryEditorUtils.WrappedLabel("Link To (Avatar):"));
             var linkToList = prop.FindPropertyRelative("linkTo");
@@ -93,17 +106,6 @@ namespace VF.Feature {
 
             var matching = VRCFuryEditorUtils.Section("Search / Matching").AddTo(adv);
             
-            matching.Add(VRCFuryEditorUtils.Prop(
-                prop.FindPropertyRelative("linkMode"),
-                label: "Link Mode",
-                tooltip: 
-                "(Skin Rewrite) Attempt to merge children as well as root object\n" + 
-                "(Reparent Root) The prop object is moved into the avatar's bone. No other merging takes place.\n" +
-                "(Merge as Children) Deprecated. Same as Skin Rewrite.\n" +
-                "(Bone Constraint) Deprecated. Same as Skin Rewrite.\n" +
-                "(Auto) Selects Skin Rewrite if a mesh uses bones from the prop armature, or Reparent Root otherwise."
-            ).MarginBottom(10));
-
             if (simpleLinkToMode) {
                 var advancedLinkToButtonContainer = new VisualElement();
                 matching.Add(advancedLinkToButtonContainer);
@@ -115,35 +117,65 @@ namespace VF.Feature {
                 }) { text = "Enable Advanced Link Target Mode"}.MarginBottom(5));
             }
 
+            var recursiveProp = prop.FindPropertyRelative("recursive");
+            matching.Add(VRCFuryEditorUtils.Prop(
+                recursiveProp,
+                label: "Recursive",
+                tooltip: "If enabled, child objects with matching object names on the avatar will also be linked",
+                onChange: () => UpdateVisibleSettings()
+            ).MarginBottom(10));
+
             matching.Add(VRCFuryEditorUtils.BetterProp(
                 prop.FindPropertyRelative("removeBoneSuffix"),
-                label: "Remove bone suffix/prefix",
-                tooltip: "If set, this substring will be removed from all bone names in the prop. This is useful for props where the artist added " +
-                         "something like _PropName to the end of every bone, breaking AvatarLink in the process. If empty, the suffix will be predicted " +
+                label: "Ignore name suffix/prefix",
+                tooltip: "If set, this substring will be ignored when matching object names against the avatar. This is useful for props where the artist added " +
+                         "something like _PropName to the end of every bone. If empty, the suffix will be predicted " +
                          "based on the difference between the name of the given root bones."
             ));
 
-            var alignment = VRCFuryEditorUtils.Section("Positioning and Alignment").AddTo(adv);
+            var alignment = VRCFuryEditorUtils.Section("Transform Lock", "Snap merged objects to the existing transform on the avatar").AddTo(adv);
 
             alignment.Add(VRCFuryEditorUtils.BetterProp(
-                prop.FindPropertyRelative("keepBoneOffsets2"),
-                label: "Keep bone offsets",
-                tooltip:
-                "If no, linked bones will be rigidly locked to the transform of the corresponding avatar bone.\n" +
-                "If yes, prop bones will maintain their initial offset to the corresponding avatar bone. This is unusual.\n" +
-                "If auto, offsets will be kept only if Reparent Root link mode is used."
+                prop.FindPropertyRelative("alignPosition"),
+                label: "Lock Position"
+            ));
+            alignment.Add(VRCFuryEditorUtils.BetterProp(
+                prop.FindPropertyRelative("alignRotation"),
+                label: "Lock Rotation"
             ));
 
-            alignment.Add(VRCFuryEditorUtils.BetterProp(
-                prop.FindPropertyRelative("skinRewriteScalingFactor"),
-                label: "Scaling factor override",
-                tooltip: "If 0, scaling factor will automatically be detected using the difference in size between the root bones."
-            ));
+            var lockScaleOptions = new VisualElement();
+            var lockScaleProp = prop.FindPropertyRelative("alignScale");
+            alignment.Add(VRCFuryEditorUtils.Prop(
+                lockScaleProp,
+                label: "Lock Scale",
+                onChange: () => UpdateVisibleSettings()
+            ).PaddingBottom(5));
+            
+            var autoScaleFactorProp = prop.FindPropertyRelative("autoScaleFactor");
 
-            alignment.Add(VRCFuryEditorUtils.BetterProp(
+            var powersOfTen = VRCFuryEditorUtils.BetterProp(
                 prop.FindPropertyRelative("scalingFactorPowersOf10Only"),
-                label: "Restrict scaling factor to powers of 10"
-            ));
+                label: "Restrict multiplier to powers of 10"
+            );
+
+            var multiplier = VRCFuryEditorUtils.BetterProp(
+                prop.FindPropertyRelative("skinRewriteScalingFactor"),
+                label: "Multiplier"
+            );
+            
+            var autoMultiplier = VRCFuryEditorUtils.Prop(
+                autoScaleFactorProp,
+                label: "Automatic Scale Multiplier",
+                onChange: () => UpdateVisibleSettings()
+            );
+            
+            lockScaleOptions.Add(autoMultiplier.PaddingBottom(5));
+            lockScaleOptions.Add(powersOfTen);
+            lockScaleOptions.Add(multiplier);
+            lockScaleOptions
+                .PaddingLeft(10)
+                .AddTo(alignment);
             
             var superFoldout = new Foldout {
                 text = "Super Advanced Options",
@@ -196,9 +228,7 @@ namespace VF.Feature {
                     return "Avatar descriptor is missing";
                 }
 
-                var linkMode = ArmatureLinkService.GetLinkMode(model, avatarObject);
-                var keepBoneOffsets = ArmatureLinkService.GetKeepBoneOffsets(model, linkMode);
-                var links = ArmatureLinkService.GetLinks(model, linkMode, avatarObject);
+                var links = ArmatureLinkService.GetLinks(model, avatarObject);
                 if (links == null) {
                     return "No valid link target found";
                 }
@@ -209,11 +239,9 @@ namespace VF.Feature {
                 }
 
                 var text = new List<string>();
-                var (avatarMainScale, propMainScale, scalingFactor) = ArmatureLinkService.GetScalingFactor(model, links, linkMode);
                 text.Add($"Merging to bone: {links.avatarMain.GetPath(avatarObject)}");
-                text.Add($"Link Mode: {linkMode}");
-                text.Add($"Keep Bone Offsets: {keepBoneOffsets}");
-                if (!keepBoneOffsets) {
+                if (model.alignScale) {
+                    var (avatarMainScale, propMainScale, scalingFactor) = ArmatureLinkService.GetScalingFactor(model, links);
                     text.Add($"Prop root bone scale: {propMainScale}");
                     text.Add($"Avatar root bone scale: {avatarMainScale}");
                     text.Add($"Scaling factor: {scalingFactor}");
@@ -228,6 +256,20 @@ namespace VF.Feature {
 
                 return text.Join('\n');
             }));
+
+            UpdateVisibleSettings = () => {
+                lockScaleOptions.SetVisible(lockScaleProp.boolValue);
+                if (recursiveProp.boolValue) {
+                    autoMultiplier.SetVisible(true);
+                    powersOfTen.SetVisible(autoScaleFactorProp.boolValue);
+                    multiplier.SetVisible(!autoScaleFactorProp.boolValue);
+                } else {
+                    autoMultiplier.SetVisible(false);
+                    powersOfTen.SetVisible(false);
+                    multiplier.SetVisible(true);
+                }
+            };
+            UpdateVisibleSettings();
 
             return container;
         }
@@ -290,6 +332,15 @@ namespace VF.Feature {
             }
 
             return componentObject;
+        }
+
+        public static void UpdateOnLinkFromChange(ArmatureLink model, [CanBeNull] VFGameObject before, [CanBeNull] VFGameObject after) {
+            if (after == null) return;
+            var skinAfter = ArmatureLink.HasExternalSkinBoneReference(after);
+            if (before == null || ArmatureLink.HasExternalSkinBoneReference(before) != skinAfter) {
+                model.alignPosition = model.alignRotation = model.alignScale = skinAfter;
+                model.recursive = skinAfter;
+            }
         }
     }
 }

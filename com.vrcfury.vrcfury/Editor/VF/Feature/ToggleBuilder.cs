@@ -621,7 +621,9 @@ namespace VF.Feature {
             ));
 
             content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-                var baseObject = avatarObject != null ? avatarObject : componentObject.root;
+                var baseObject = avatarObject != null ? avatarObject : componentObject.NullSafe()?.root;
+                // componentObject can be null when this method is called while the editor is being torn down (leaving prefab mode)
+                if (baseObject == null) return new VisualElement();
 
                 var turnsOff = model.state.actions
                     .OfType<ObjectToggleAction>()
