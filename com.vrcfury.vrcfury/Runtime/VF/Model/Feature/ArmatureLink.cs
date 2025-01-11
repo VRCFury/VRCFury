@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Model.Feature {
     [Serializable]
     internal class ArmatureLink : NewFeatureModel {
-        public enum ArmatureLinkMode {
+        [Obsolete] public enum ArmatureLinkMode {
             SkinRewrite,
             MergeAsChildren,
             ParentConstraint,
@@ -13,7 +15,7 @@ namespace VF.Model.Feature {
             Auto,
         }
 
-        public enum KeepBoneOffsets {
+        [Obsolete] public enum KeepBoneOffsets {
             Auto,
             Yes,
             No
@@ -28,18 +30,25 @@ namespace VF.Model.Feature {
             public string offset = "";
         }
 
-        public ArmatureLinkMode linkMode = ArmatureLinkMode.Auto;
         public GameObject propBone;
         public List<LinkTo> linkTo = new List<LinkTo>() { new LinkTo() };
-        public KeepBoneOffsets keepBoneOffsets2 = KeepBoneOffsets.Auto;
         public string removeBoneSuffix;
-        public float skinRewriteScalingFactor = 0;
-        public bool scalingFactorPowersOf10Only = true;
         public bool removeParentConstraints = true;
         public string forceMergedName = "";
         [NonSerialized] public Func<bool> onlyIf;
         public bool forceOneWorldScale = false;
         
+        // Merging
+        public bool recursive = false;
+
+        // Alignment
+        public bool alignPosition = false;
+        public bool alignRotation = false;
+        public bool alignScale = false;
+        public bool autoScaleFactor = false;
+        public bool scalingFactorPowersOf10Only = true;
+        public float skinRewriteScalingFactor = 1;
+
         // legacy
         [Obsolete] public bool useOptimizedUpload;
         [Obsolete] public bool useBoneMerging;
@@ -48,6 +57,8 @@ namespace VF.Model.Feature {
         [Obsolete] public HumanBodyBones boneOnAvatar;
         [Obsolete] public string bonePathOnAvatar;
         [Obsolete] public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
+        [Obsolete] public KeepBoneOffsets keepBoneOffsets2 = KeepBoneOffsets.Auto;
+        [Obsolete] public ArmatureLinkMode linkMode = ArmatureLinkMode.Auto;
         
         public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
@@ -85,11 +96,48 @@ namespace VF.Model.Feature {
                     linkTo.Add(new LinkTo { useBone = false, useObj = false, offset = bonePathOnAvatar });
                 }
             }
+            if (fromVersion < 7) {
+                if (linkMode == ArmatureLinkMode.Auto) {
+                    if (HasExternalSkinBoneReference(propBone.transform)) {
+                        recursive = true;
+                    } else {
+                        recursive = false;
+                    }
+                } else if (linkMode == ArmatureLinkMode.ReparentRoot) {
+                    recursive = false;
+                } else {
+                    recursive = true;
+                }
+                if (keepBoneOffsets2 == KeepBoneOffsets.Auto) {
+                    alignPosition = alignRotation = alignScale = recursive;
+                } else {
+                    alignPosition = alignRotation = alignScale = (keepBoneOffsets2 == KeepBoneOffsets.No);
+                }
+                if (skinRewriteScalingFactor <= 0) {
+                    skinRewriteScalingFactor = 1;
+                    autoScaleFactor = recursive;
+                } else {
+                    autoScaleFactor = false;
+                }
+            }
             return false;
 #pragma warning restore 0612
         }
         public override int GetLatestVersion() {
-            return 6;
+            return 7;
+        }
+
+        public static bool HasExternalSkinBoneReference(Transform obj) {
+            if (obj == null) return false;
+            var avatarDescriptor = obj.GetComponentInParent<VRCAvatarDescriptor>();
+            var avatarObj = avatarDescriptor != null ? avatarDescriptor.transform : obj.root; 
+            foreach (var skin in avatarObj.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+                if (skin == null) continue;
+                if (skin.transform.IsChildOf(obj)) continue;
+                if (skin.rootBone != null && skin.rootBone.IsChildOf(obj)) return true;
+                if (skin.bones.Any(bone => bone != null && bone.IsChildOf(obj))) return true;
+            }
+            return false;
         }
     }
 }

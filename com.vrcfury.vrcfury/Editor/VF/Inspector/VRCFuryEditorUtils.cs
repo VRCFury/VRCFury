@@ -289,7 +289,8 @@ namespace VF.Inspector {
             Func<string,string> formatEnum = null,
             string tooltip = null,
             VisualElement fieldOverride = null,
-            bool forceLabelOnOwnLine = false
+            bool forceLabelOnOwnLine = false,
+            Action onChange = null
         ) {
             VisualElement field = null;
             var isCheckbox = false;
@@ -311,6 +312,14 @@ namespace VF.Inspector {
                             formatSelectedValueCallback: formatEnum,
                             formatListItemCallback: formatEnum
                         ) { bindingPath = prop.propertyPath };
+                        break;
+                    }
+                    case SerializedPropertyType.Boolean: {
+                        var toggle = new Toggle { bindingPath = prop.propertyPath };
+                        toggle.RegisterValueChangedCallback(e => {
+                            onChange?.Invoke();
+                        });
+                        field = toggle;
                         break;
                     }
                     case SerializedPropertyType.Generic: {

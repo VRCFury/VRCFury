@@ -112,6 +112,7 @@ namespace VF.Hooks {
                             if (modelInst == null) continue;
                             if (modelInst is ArmatureLink al) {
                                 al.propBone = ArmatureLinkBuilder.GuessLinkFrom(obj);
+                                ArmatureLinkBuilder.UpdateOnLinkFromChange(al, null, al.propBone);
                             }
 
                             var c = Undo.AddComponent<VRCFury>(obj);

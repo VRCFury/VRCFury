@@ -40,7 +40,7 @@ namespace VF.Feature {
                         useObj = true
                     }
                 },
-                linkMode = ArmatureLink.ArmatureLinkMode.ReparentRoot,
+                recursive = false,
                 onlyIf = () => {
                     var isChildOfHead = obj.IsChildOf(head);
                     if (model.onlyIfChildOfHead && !isChildOfHead) return false;

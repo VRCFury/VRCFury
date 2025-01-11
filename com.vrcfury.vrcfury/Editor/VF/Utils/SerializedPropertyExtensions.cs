@@ -12,6 +12,7 @@ namespace VF.Utils {
             object obj = prop.serializedObject.targetObject;
 
             foreach (var slug in path.Split('.')) {
+                if (obj == null) return null;
                 if (slug.StartsWith("[")) {
                     if (!(obj is IList e)) return null;
                     if (!int.TryParse(slug.Substring(1, slug.Length - 2), out var index)) return null;

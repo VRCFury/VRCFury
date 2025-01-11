@@ -126,15 +126,12 @@ namespace VF.Service {
             
             Debug.Log("Armature Linking " + model.propBone.asVf().GetPath(avatarObject));
 
-            var linkMode = GetLinkMode(model, avatarObject);
-            var links = GetLinks(model, linkMode, avatarObject);
+            var links = GetLinks(model, avatarObject);
             if (links == null) {
                 return;
             }
 
-            var keepBoneOffsets = GetKeepBoneOffsets(model, linkMode);
-
-            var (_, _, scalingFactor) = GetScalingFactor(model, links, linkMode);
+            var (_, _, scalingFactor) = GetScalingFactor(model, links);
 
             var rootName = GetRootName(links.propMain, avatarObject);
 
@@ -218,18 +215,24 @@ namespace VF.Service {
                 }
 
                 // Move it on over
-                
-                if (!keepBoneOffsets) {
+
+                if (model.alignPosition) {
                     propBone.worldPosition = avatarBone.worldPosition;
+                    AddDebugInfo($"Aligned to parent position");
+                }
+                if (model.alignRotation) {
                     propBone.worldRotation = avatarBone.worldRotation;
-                    propBone.worldScale = avatarBone.worldScale * scalingFactor;
-                    AddDebugInfo($"Keep offsets is set to NO, so this object was snapped to its parent's transform");
+                    AddDebugInfo($"Aligned to parent rotation");
                 }
                 if (model.forceOneWorldScale) {
                     propBone.worldScale = Vector3.one;
+                    AddDebugInfo($"Forced to 1 world scale");
+                } else if (model.alignScale) {
+                    propBone.worldScale = avatarBone.worldScale * scalingFactor;
+                    AddDebugInfo($"Aligned to parent scale (with multiplier {scalingFactor})");
                 }
 
-                if (!string.IsNullOrWhiteSpace(model.forceMergedName) && linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) {
+                if (!string.IsNullOrWhiteSpace(model.forceMergedName) && !model.recursive) {
                     // Special logic for force naming
                     var exists = avatarBone.Find(model.forceMergedName);
                     if (exists != null) {
@@ -246,13 +249,6 @@ namespace VF.Service {
                     if (propBone.name != rootName) newName += $" from {rootName}";
                     var current = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone.parent);
                     pruneCheck.Add(current);
-
-                    // In a weird edge case, sometimes people mark all their clothing bones with an initial scale of 0,
-                    // to mark them as initially "hidden". In this case, we need to make sure that the parent
-                    // doesn't just permanently set the scale to 0.
-                    if (current.localScale.x == 0 || current.localScale.y == 0 || current.localScale.z == 0) {
-                        current.localScale = Vector3.one;
-                    }
 
                     foreach (var parent in animatedParents) {
                         // If this animated parent come from a toggle created during another armature link,
@@ -306,13 +302,14 @@ namespace VF.Service {
             }
         }
 
-        public static (float, float, float) GetScalingFactor(ArmatureLink model, Links links, ArmatureLink.ArmatureLinkMode linkMode) {
+        public static (float, float, float) GetScalingFactor(ArmatureLink model, Links links) {
             var avatarMainScale = Math.Abs(links.avatarMain.worldScale.x);
             var propMainScale = Math.Abs(links.propMain.worldScale.x);
+
             var scalingFactor = model.skinRewriteScalingFactor;
 
-            if (scalingFactor <= 0) {
-                if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) {
+            if (model.autoScaleFactor) {
+                if (!model.recursive) {
                     scalingFactor = 1;
                 } else {
                     scalingFactor = propMainScale / avatarMainScale;
@@ -383,26 +380,6 @@ namespace VF.Service {
             return reasons;
         }
 
-        public static ArmatureLink.ArmatureLinkMode GetLinkMode(ArmatureLink model, VFGameObject avatarObject) {
-            if (model.linkMode == ArmatureLink.ArmatureLinkMode.Auto) {
-                var usesBonesFromProp = false;
-                var propRoot = model.propBone.asVf();
-                if (propRoot != null) {
-                    foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                        if (skin.owner().IsChildOf(propRoot)) continue;
-                        usesBonesFromProp |= skin.rootBone != null && skin.rootBone.asVf().IsChildOf(propRoot);
-                        usesBonesFromProp |= skin.bones.Any(bone => bone != null && bone.asVf().IsChildOf(propRoot));
-                    }
-                }
-
-                return usesBonesFromProp
-                    ? ArmatureLink.ArmatureLinkMode.SkinRewrite
-                    : ArmatureLink.ArmatureLinkMode.ReparentRoot;
-            }
-
-            return model.linkMode;
-        }
-
         private static string GetRootName(VFGameObject rootBone, VFGameObject avatarObject) {
             if (rootBone == null) return "Unknown";
 
@@ -416,13 +393,6 @@ namespace VF.Service {
             if (isBone) return GetRootName(rootBone.parent, avatarObject);
 
             return rootBone.name;
-        }
-
-        public static bool GetKeepBoneOffsets(ArmatureLink model, ArmatureLink.ArmatureLinkMode linkMode) {
-            if (model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Auto) {
-                return linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot;
-            }
-            return model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Yes;
         }
 
         public class Links {
@@ -447,7 +417,7 @@ namespace VF.Service {
             try {
                 var linkFrom = model.propBone;
                 if (linkFrom == null || !obj.IsChildOf(linkFrom)) return null;
-                var links = GetLinks(model, GetLinkMode(model, avatarObject), avatarObject);
+                var links = GetLinks(model, avatarObject);
                 return links.mergeBones
                     .Where(pair => pair.Item1 == obj)
                     .Select(pair => pair.Item2)
@@ -457,7 +427,7 @@ namespace VF.Service {
             }
         }
 
-        public static Links GetLinks(ArmatureLink model, ArmatureLink.ArmatureLinkMode linkMode, VFGameObject avatarObject) {
+        public static Links GetLinks(ArmatureLink model, VFGameObject avatarObject) {
             VFGameObject propBone = model.propBone;
             if (propBone == null) return null;
 
@@ -520,7 +490,7 @@ namespace VF.Service {
             var links = new Links();
             links.mergeBones.Push((propBone, avatarBone));
 
-            if (linkMode != ArmatureLink.ArmatureLinkMode.ReparentRoot) {
+            if (model.recursive) {
                 var checkStack = new Stack<(VFGameObject, VFGameObject)>();
                 checkStack.Push((propBone, avatarBone));
                 while (checkStack.Count > 0) {
