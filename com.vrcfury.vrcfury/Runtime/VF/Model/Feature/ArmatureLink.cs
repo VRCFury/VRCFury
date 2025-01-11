@@ -98,7 +98,7 @@ namespace VF.Model.Feature {
             }
             if (fromVersion < 7) {
                 if (linkMode == ArmatureLinkMode.Auto) {
-                    if (HasExternalSkinBoneReference(propBone.transform)) {
+                    if (propBone != null && HasExternalSkinBoneReference(propBone.transform)) {
                         recursive = true;
                     } else {
                         recursive = false;
