@@ -167,6 +167,9 @@ namespace VF.Feature {
             var autoMultiplier = VRCFuryEditorUtils.Prop(
                 autoScaleFactorProp,
                 label: "Automatic Scale Multiplier",
+                tooltip: "" +
+                         "When checked, the scale multiplier will be set to the Link From object's world scale divided by the Link To object's world scale." +
+                         " When combined with 'Restrict to powers of 10', this will automatically correct for clothes which have been incorrectly exported with the wrong scale units.",
                 onChange: () => UpdateVisibleSettings()
             );
             
