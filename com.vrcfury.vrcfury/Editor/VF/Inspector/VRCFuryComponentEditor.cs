@@ -54,7 +54,6 @@ namespace VF.Inspector {
             }
             
             var isInstance = PrefabUtility.IsPartOfPrefabInstance(v);
-            isInstance = false;
 
             var container = new VisualElement();
 
