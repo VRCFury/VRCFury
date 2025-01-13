@@ -54,6 +54,7 @@ namespace VF.Inspector {
             }
             
             var isInstance = PrefabUtility.IsPartOfPrefabInstance(v);
+            isInstance = false;
 
             var container = new VisualElement();
 
@@ -190,23 +191,20 @@ namespace VF.Inspector {
             var overrideLabel = VRCFuryEditorUtils.Error(baseText);
             overrideLabel.SetVisible(false);
 
-            double lastCheck = 0;
             void CheckOverride() {
-                if (this == null) return; // The editor was deleted
-                var vrcf = (VRCFuryComponent)target;
-                var now = EditorApplication.timeSinceStartup;
-                if (lastCheck < now - 1) {
-                    lastCheck = now;
-                    var mods = VRCFPrefabFixer.GetModifications(vrcf);
-                    var isModified = mods.Count > 0;
-                    overrideLabel.SetVisible(isModified);
-                    if (isModified) {
-                        overrideLabel.Clear();
-                        overrideLabel.Add(VRCFuryEditorUtils.WrappedLabel(baseText + "\n\n" + mods.Select(m => m.propertyPath).Join(", ")));
-                    }
+                var vrcf = target as VRCFuryComponent;
+                if (vrcf == null) return;
+
+                var mods = VRCFPrefabFixer.GetModifications(vrcf);
+                var isModified = mods.Count > 0;
+                overrideLabel.SetVisible(isModified);
+                if (isModified) {
+                    overrideLabel.Clear();
+                    overrideLabel.Add(VRCFuryEditorUtils.WrappedLabel(baseText + "\n\n" + mods.Select(m => m.propertyPath).Join(", ")));
                 }
-                EditorApplication.delayCall += CheckOverride;
             }
+
+            //overrideLabel.schedule.Execute(CheckOverride).Every(1000);
             CheckOverride();
 
             return overrideLabel;
