@@ -45,7 +45,7 @@ namespace VF.Model.Feature {
         public bool alignPosition = false;
         public bool alignRotation = false;
         public bool alignScale = false;
-        public bool autoScaleFactor = false;
+        public bool autoScaleFactor = true;
         public bool scalingFactorPowersOf10Only = true;
         public float skinRewriteScalingFactor = 1;
 

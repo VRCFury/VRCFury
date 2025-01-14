@@ -343,6 +343,9 @@ namespace VF.Feature {
             if (before == null || ArmatureLink.HasExternalSkinBoneReference(before) != skinAfter) {
                 model.alignPosition = model.alignRotation = model.alignScale = skinAfter;
                 model.recursive = skinAfter;
+                model.autoScaleFactor = true;
+                model.scalingFactorPowersOf10Only = true;
+                model.skinRewriteScalingFactor = 1;
             }
         }
     }
