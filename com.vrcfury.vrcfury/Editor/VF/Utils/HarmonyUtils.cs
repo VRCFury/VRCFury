@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 
@@ -43,10 +45,32 @@ namespace VF.Utils {
             return harmony.Value;
         }
 
+        [CanBeNull]
+        public static MethodInfo FindOriginal(MethodInfo patch, Type searchClass) {
+            foreach (var method in searchClass.GetMethods()) {
+                if (patch.Name != method.Name) continue;
+                var methodParams = method.GetParameters();
+                var paramsMatch = patch.GetParameters().All(param => { 
+                    if (param.Name == "__result") {
+                        return param.ParameterType.GetElementType() == method.ReturnType;
+                    } else if (param.Name.StartsWith("__") && int.TryParse(param.Name.Substring(2), out var i)) {
+                        return methodParams.Length > i && methodParams[i].ParameterType == param.ParameterType;
+                    }
+                    return true;
+                });
+                if (paramsMatch) return method;
+            }
+            return null;
+        }
+
+        public static bool IsInternal(MethodBase method) {
+            return (method.MethodImplementationFlags & MethodImplAttributes.InternalCall) != 0;
+        }
+ 
         public static void Patch(MethodBase original, MethodInfo prefix) {
             if (original == null || prefix == null) return;
             
-            if ((original.MethodImplementationFlags & MethodImplAttributes.InternalCall) != 0) {
+            if (IsInternal(original)) {
                 Debug.LogWarning($"VRCFury attempted to use harmony to patch a method that is internal: {original.Name}. This version of unity might not be supported.");
                 return;
             }
@@ -70,7 +94,7 @@ namespace VF.Utils {
             if (original == null || replacement == null) return;
             if (GetOriginalInstructions == null || UpdatePatchInfo == null || harmonyPatch == null || harmonyMethodConstructor == null || PatchInfoConstructor == null) return;
             
-            if ((original.MethodImplementationFlags & MethodImplAttributes.InternalCall) == 0) {
+            if (!IsInternal(original)) {
                 Debug.LogWarning($"VRCFury attempted to use harmony to replace a method that is not an internal: {original.Name}. This version of unity might not be supported.");
                 return;
             }
