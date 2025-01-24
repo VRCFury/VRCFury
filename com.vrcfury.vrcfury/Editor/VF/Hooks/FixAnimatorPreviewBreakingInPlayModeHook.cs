@@ -24,6 +24,19 @@ namespace VF.Hooks {
     internal static class FixAnimatorPreviewBreakingInPlayModeHook {
         [InitializeOnLoadMethod]
         private static void Init() { 
+#if UNITY_6000_0_OR_NEWER
+            foreach (var replacement in typeof(ShimPrefix).GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Static)) {
+                var original = typeof(Animator).GetMethod(
+                    replacement.Name,
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+                if (original == null) {
+                    Debug.LogWarning($"VRCFury Failed to find method to replace: Animator.{replacement.Name}");
+                    continue;
+                }
+                HarmonyUtils.Patch(original, replacement);  
+            }
+#else
             foreach (var replacement in typeof(ShimReplacments).GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Instance)) {
                 var original = typeof(Animator).GetMethod(
                     replacement.Name,
@@ -38,10 +51,82 @@ namespace VF.Hooks {
                 }
                 HarmonyUtils.ReplaceMethod(original, replacement);
             }
-            
+#endif
             Scheduler.Schedule(() => {
                 previewedPlayableCache.Clear();
             }, 0);
+        }
+
+        [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
+        private class ShimPrefix {
+            public static bool GetLayerWeight(ref float __result, int __0, Animator __instance) {
+                var animator = GetAnimator(__instance);
+                __result = GetPreviewedPlayable(animator)?.GetLayerWeight(__0)
+                       ?? (animator.runtimeAnimatorController as AnimatorController)?.layers[__0].defaultWeight
+                       ?? 1;
+                return true;
+            }
+            public static bool SetLayerWeight(int __0, float __1, Animator __instance) {
+                var animator = GetAnimator(__instance);
+                GetPreviewedPlayable(animator)?.SetLayerWeight(__0, __1);
+                return true;
+            }
+            public static bool IsParameterControlledByCurveString(ref bool __result, string __0, Animator __instance) {
+                var animator = GetAnimator(__instance);
+                __result = GetPreviewedPlayable(animator)?.IsParameterControlledByCurve(__0) ?? animator.IsParameterControlledByCurve(GetParameterNameHash(animator, __0));
+                return true;
+            }
+            public static bool GetFloatString(ref float __result, string __0, Animator __instance) {
+                var animator = GetAnimator(__instance);
+                __result = GetPreviewedPlayable(animator)?.GetFloat(__0) ?? animator.GetFloat(GetParameterNameHash(animator, __0));
+                return true;
+            }
+            public static bool SetFloatString(string __0, float __1, Animator __instance) {
+                var animator = GetAnimator(__instance);
+                var playables = GetPlayables(animator);
+                if (playables.Any()) {
+                    foreach (var p in playables) {
+                        SetWithCoercion(p, __0, __1);
+                    }
+                } else {
+                    animator.SetFloat(GetParameterNameHash(animator, __0), __1);
+                }
+                return true;
+            }
+            public static bool GetIntegerString(ref int __result, string __0, Animator __instance) {
+                var animator = GetAnimator(__instance);
+                __result = GetPreviewedPlayable(animator)?.GetInteger(__0) ?? animator.GetInteger(GetParameterNameHash(animator, __0));
+                return true;
+            }
+            public static bool SetIntegerString(string __0, int __1, Animator __instance) {
+                var animator = GetAnimator(__instance);
+                var playables = GetPlayables(animator);
+                if (playables.Any()) {
+                    foreach (var p in playables) {
+                        SetWithCoercion(p, __0, __1);
+                    }
+                } else {
+                    animator.SetInteger(GetParameterNameHash(animator, __0), __1);
+                }
+                return true;
+            }
+            public static bool GetBoolString(ref bool __result, string __0, Animator __instance) {
+                var animator = GetAnimator(__instance);
+                __result = GetPreviewedPlayable(animator)?.GetBool(__0) ?? animator.GetBool(GetParameterNameHash(animator, __0));
+                return true;
+            }
+            public static bool SetBoolString(string __0, bool __1, Animator __instance) {
+                var animator = GetAnimator(__instance);
+                var playables = GetPlayables(animator);
+                if (playables.Any()) {
+                    foreach (var p in playables) {
+                        SetWithCoercion(p, __0, __1 ? 1 : 0);
+                    }
+                } else {
+                    animator.SetBool(GetParameterNameHash(animator, __0), __1);
+                }
+                return true;
+            }
         }
  
         [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]

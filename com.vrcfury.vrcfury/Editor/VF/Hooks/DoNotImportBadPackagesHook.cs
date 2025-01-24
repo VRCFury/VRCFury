@@ -16,10 +16,19 @@ namespace VF.Hooks {
      */
     internal static class DoNotImportBadPackagesHook {
         private static readonly string WarningDialogTitle = "Asset Import Warning from VRCFury";
+        
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Type PackageImportWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.PackageImport");
+            public static readonly FieldInfo m_ImportPackageItems = PackageImportWindow?.GetField("m_ImportPackageItems", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly FieldInfo m_Tree = PackageImportWindow?.GetField("m_Tree", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly FieldInfo m_TreeViewState = PackageImportWindow?.GetField("m_TreeViewState", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly Type ImportPackageItem = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ImportPackageItem");
+            public static readonly FieldInfo AssetPath = ImportPackageItem?.GetField("exportedAssetPath");
+        }
 
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (!UnityReflection.IsReady(typeof(UnityReflection.PackageImport))) return;
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
             Scheduler.Schedule(Check, 0);
         }
 
@@ -70,11 +79,11 @@ namespace VF.Hooks {
         private static EditorWindow lastCheckedWindow = null;
         private static void Check() {
             var importWindow = EditorWindow.focusedWindow;
-            if (!UnityReflection.PackageImport.PackageImportWindow.IsInstanceOfType(importWindow)) return;
+            if (!Reflection.PackageImportWindow.IsInstanceOfType(importWindow)) return;
             if (importWindow == lastCheckedWindow) return;
             lastCheckedWindow = importWindow;
             
-            var items = UnityReflection.PackageImport.m_ImportPackageItems.GetValue(importWindow) as object[];
+            var items = Reflection.m_ImportPackageItems.GetValue(importWindow) as object[];
             if (items == null) return;
 
             var allProjectPaths = AssetDatabase.FindAssets("")
@@ -84,7 +93,7 @@ namespace VF.Hooks {
                 .OrderBy(p => p)
                 .ToArray();
             var allPackagePaths = items
-                .Select(item => UnityReflection.PackageImport.AssetPath.GetValue(item) as string)
+                .Select(item => Reflection.AssetPath.GetValue(item) as string)
                 .SelectMany(WithDirectories)
                 .Distinct()
                 .OrderBy(p => p)
@@ -113,7 +122,7 @@ namespace VF.Hooks {
             var removedPoiFile = false;
             var removedVrcsdkFile = false;
             var newItems = items.Where(item => {
-                var path = UnityReflection.PackageImport.AssetPath.GetValue(item) as string;
+                var path = Reflection.AssetPath.GetValue(item) as string;
                 if (path == null) return true;
                 if (vrcsdkProjectPaths.Any()) {
                     var isVrcsdkFile = vrcsdkPackagePaths.Any(p => path == p || path.StartsWith(p + "/"));
@@ -143,12 +152,12 @@ namespace VF.Hooks {
             var removedCount = items.Length - newItems.Length;
             Debug.Log($"VRCF removed {removedCount} conflicting items from the import dialog");
 
-            var arr = Array.CreateInstance(UnityReflection.PackageImport.ImportPackageItem, newItems.Length);
+            var arr = Array.CreateInstance(Reflection.ImportPackageItem, newItems.Length);
             newItems.CopyTo(arr, 0);
-            UnityReflection.PackageImport.m_ImportPackageItems.SetValue(importWindow, arr);
-            if (UnityReflection.PackageImport.m_TreeViewState != null && UnityReflection.PackageImport.m_Tree != null) {
-                UnityReflection.PackageImport.m_TreeViewState?.SetValue(importWindow, null);
-                UnityReflection.PackageImport.m_Tree?.SetValue(importWindow, null);
+            Reflection.m_ImportPackageItems.SetValue(importWindow, arr);
+            if (Reflection.m_TreeViewState != null && Reflection.m_Tree != null) {
+                Reflection.m_TreeViewState?.SetValue(importWindow, null);
+                Reflection.m_Tree?.SetValue(importWindow, null);
             }
 
             if (newItems.Length == 0) {

@@ -733,9 +733,14 @@ namespace VF.Inspector {
             return AssetDatabase.LoadAssetAtPath<T>(path);
         }
         
+        private abstract class PropsReflection : ReflectionHelper {
+            private static readonly Type ScriptAttributeUtility = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ScriptAttributeUtility");
+            public delegate FieldInfo GetFieldInfoFromProperty_(SerializedProperty property, out System.Type type);
+            public static readonly GetFieldInfoFromProperty_ GetFieldInfoFromProperty = ScriptAttributeUtility?.GetMatchingDelegate<GetFieldInfoFromProperty_>("GetFieldInfoFromProperty");
+        }
         public static Type GetPropertyType(SerializedProperty prop) {
-            if (UnityReflection.Props.GetFieldInfoFromProperty == null) return null;
-            UnityReflection.Props.GetFieldInfoFromProperty(prop, out var type);
+            if (PropsReflection.GetFieldInfoFromProperty == null) return null;
+            PropsReflection.GetFieldInfoFromProperty(prop, out var type);
             return type;
         }
 

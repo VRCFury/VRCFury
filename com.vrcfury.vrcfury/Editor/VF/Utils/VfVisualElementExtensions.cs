@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -128,11 +130,16 @@ namespace VF.Utils {
             return el;
         }
         
+        private abstract class VisualElementReflection : ReflectionHelper {
+            public static readonly MethodInfo registerCallback = typeof(VisualElement)
+                .GetMethods()
+                .FirstOrDefault(method => method.Name == nameof(VisualElement.RegisterCallback) && method.GetParameters().Length == 2);
+        }
         public static void RegisterCallback(this VisualElement el, Type type, Action<EventBase> callback) {
             if (type == null) return;
-            if (!UnityReflection.IsReady(typeof(UnityReflection.Binding))) return;
+            if (VisualElementReflection.registerCallback == null) return;
 
-            var registerCallback = UnityReflection.Binding.registerCallback.MakeGenericMethod(type);
+            var registerCallback = VisualElementReflection.registerCallback.MakeGenericMethod(type);
             var typeofCallback = typeof(EventCallback<>).MakeGenericType(type);
             var handler = new EventHandler(callback);
             var del = Delegate.CreateDelegate(typeofCallback, handler, typeof(EventHandler).GetMethod(nameof(EventHandler.OnEvent)));

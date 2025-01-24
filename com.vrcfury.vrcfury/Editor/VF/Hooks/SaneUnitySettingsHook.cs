@@ -2,6 +2,7 @@
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using VF.Utils;
 
 namespace VF.Hooks {
     /**
@@ -24,9 +25,18 @@ namespace VF.Hooks {
                 Debug.LogException(e);
             }
         }
+        
+        private abstract class ConsoleReflection : ReflectionHelper {
+            public static readonly Type ConsoleWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ConsoleWindow");
+            public delegate void SetConsoleErrorPause_(bool enabled);
+            public static readonly SetConsoleErrorPause_ SetConsoleErrorPause = ConsoleWindow?.GetMatchingDelegate<SetConsoleErrorPause_>("SetConsoleErrorPause");
+            public static readonly MethodInfo SetFlag = ConsoleWindow?.GetMethod("SetFlag", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly Type ConsoleFlags = ConsoleWindow?.GetNestedType("ConsoleFlags", BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly object LogLevelError = ConsoleFlags != null ? Enum.Parse(ConsoleFlags, "LogLevelError") : null;
+        }
 
         private static void DisableErrorPause() {
-            UnityReflection.Console.SetConsoleErrorPause?.Invoke(false);
+            ConsoleReflection.SetConsoleErrorPause?.Invoke(false);
         }
  
         private static void TurnOffPause() {
@@ -34,8 +44,8 @@ namespace VF.Hooks {
         }
         
         private static void EnableErrorLogs() {
-            if (UnityReflection.Console.LogLevelError != null) {
-                UnityReflection.Console.SetFlag?.Invoke(null, new object[] { UnityReflection.Console.LogLevelError, true });
+            if (ConsoleReflection.LogLevelError != null) {
+                ConsoleReflection.SetFlag?.Invoke(null, new object[] { ConsoleReflection.LogLevelError, true });
             }
         }
    

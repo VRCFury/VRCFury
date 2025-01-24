@@ -45,6 +45,12 @@ namespace VF.Utils {
 
         public static void Patch(MethodBase original, MethodInfo prefix) {
             if (original == null || prefix == null) return;
+            
+            if ((original.MethodImplementationFlags & MethodImplAttributes.InternalCall) != 0) {
+                Debug.LogWarning($"VRCFury attempted to use harmony to patch a method that is internal: {original.Name}. This version of unity might not be supported.");
+                return;
+            }
+            
             var harmonyInst = GetHarmony();
             if (harmonyInst == null) return;
             if (harmonyPatch == null) return;
