@@ -34,8 +34,10 @@ namespace VF.Utils {
 
         private static bool IsRecording() {
             if (!UnityReflection.IsReady(typeof(UnityReflection.Recorder))) return false;
-            return Resources.FindObjectsOfTypeAll(UnityReflection.Recorder.animStateType)
-                .Any(window => (bool)UnityReflection.Recorder.isRecordingProperty.GetValue(window, null));
+            var animationWindow = EditorWindowFinder.GetWindows(UnityReflection.Recorder.AnimationWindow).FirstOrDefault();
+            if (animationWindow == null) return false;
+            var animState = UnityReflection.Recorder.AnimationWindowState.GetValue(animationWindow);
+            return (bool)UnityReflection.Recorder.isRecordingProperty.GetValue(animState);
         }
 
         public static void Record(AnimationClip clip, VFGameObject baseObj, bool rewriteClip = true) {
@@ -51,14 +53,15 @@ namespace VF.Utils {
             }
             
             // Open / focus the animation tab
-            EditorWindow.GetWindow(UnityReflection.Recorder.AnimationWindow)?.Focus();
-
-            var animState = Resources.FindObjectsOfTypeAll(UnityReflection.Recorder.animStateType).FirstOrDefault();
-            if (animState == null) {
+            var animationWindow = EditorWindowFinder.GetWindows(UnityReflection.Recorder.AnimationWindow).FirstOrDefault();
+            if (animationWindow == null) {
                 DialogUtils.DisplayDialog("VRCFury Animation Recorder", "Animation tab needs to be open",
                     "Ok");
                 return;
             }
+
+            animationWindow.Focus();
+            var animState = UnityReflection.Recorder.AnimationWindowState.GetValue(animationWindow);
             
             var avatarObject = baseObj.GetComponentInSelfOrParent<VRCAvatarDescriptor>().NullSafe()?.owner();
             if (avatarObject == null) {

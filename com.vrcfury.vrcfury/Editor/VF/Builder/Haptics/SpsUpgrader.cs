@@ -46,7 +46,7 @@ namespace VF.Builder.Haptics {
                 "Ok"
             );
 
-            SceneView sv = EditorWindow.GetWindow<SceneView>();
+            var sv = EditorWindowFinder.GetWindows<SceneView>().FirstOrDefault();
             if (sv != null) sv.drawGizmos = true;
         }
 

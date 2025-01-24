@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
@@ -16,12 +17,12 @@ namespace VF.Utils {
             }
 
             _SetExpanded = (o, e) => {
-                var win = EditorWindow.GetWindow(UnityReflection.Collapse.SceneHierarchyWindow);
+                var win = EditorWindowFinder.GetWindows(UnityReflection.Collapse.SceneHierarchyWindow).FirstOrDefault();
                 if (win == null) return;
                 UnityReflection.Collapse.SetExpanded.Invoke(win, new object[] { o.GetInstanceID(), e });
             };
             _GetExpandedIds = () => {
-                var win = EditorWindow.GetWindow(UnityReflection.Collapse.SceneHierarchyWindow);
+                var win = EditorWindowFinder.GetWindows(UnityReflection.Collapse.SceneHierarchyWindow).FirstOrDefault();
                 if (win == null) return new int[] { };
                 return (UnityReflection.Collapse.GetExpandedIDs.Invoke(win, new object[] { }) as int[]) ?? new int[] { };
             };

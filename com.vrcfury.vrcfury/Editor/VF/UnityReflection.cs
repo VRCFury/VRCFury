@@ -19,6 +19,7 @@ namespace VF {
 #endif
             public static readonly PropertyInfo isRecordingProperty = animStateType?.GetProperty("recording", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             public static readonly Type AnimationWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationWindow");
+            public static readonly PropertyInfo AnimationWindowState = AnimationWindow?.GetProperty("state", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         }
 
         public class PackageImport {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -147,7 +148,7 @@ namespace VF.Inspector {
             [InitializeOnLoadMethod]
             private static void Init() {
                 VRCFurySocketGizmo.EnableSceneLighting = () => {
-                    var sv = EditorWindow.GetWindow<SceneView>();
+                    var sv = EditorWindowFinder.GetWindows<SceneView>().FirstOrDefault();
                     if (sv != null) {
                         sv.sceneLighting = true;
                         sv.drawGizmos = true;
