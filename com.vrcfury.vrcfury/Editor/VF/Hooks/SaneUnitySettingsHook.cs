@@ -14,6 +14,7 @@ namespace VF.Hooks {
             DoSafe(TurnOffPause);
             DoSafe(EnableErrorLogs);
             DoSafe(ExitPlayWhenCompiling);
+            DoSafe(DisableMeshOptimization);
         }
 
         private static void DoSafe(Action with) {
@@ -48,6 +49,10 @@ namespace VF.Hooks {
             if (EditorPrefs.GetInt("ScriptCompilationDuringPlay", 0) == 0) {
                 EditorPrefs.SetInt("ScriptCompilationDuringPlay", 1);
             }
+        }
+
+        private static void DisableMeshOptimization() {
+            PlayerSettings.stripUnusedMeshComponents = false;
         }
     }
 }
