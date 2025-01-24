@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 using VF.Utils;
 
 namespace VF {
@@ -13,7 +14,9 @@ namespace VF {
             public static readonly PropertyInfo selectionField = animStateType?.GetProperty("selection");
             public static readonly PropertyInfo gameObjectField = selectionField?.PropertyType.GetProperty("gameObject");
             public static readonly PropertyInfo animationClipField = animStateType?.GetProperty("activeAnimationClip");
+#if ! UNITY_6000_0_OR_NEWER
             public static readonly MethodInfo startRecording = animStateType?.GetMethod("StartRecording");
+#endif
             public static readonly PropertyInfo isRecordingProperty = animStateType?.GetProperty("recording", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             public static readonly Type AnimationWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationWindow");
         }
@@ -38,6 +41,9 @@ namespace VF {
 
         public static class Binding {
             public static readonly Type bindEventType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.UIElements.SerializedObjectBindEvent");
+            public static readonly MethodInfo registerCallback = typeof(VisualElement)
+                .GetMethods()
+                .FirstOrDefault(method => method.Name == nameof(VisualElement.RegisterCallback) && method.GetParameters().Length == 2);
         }
 
         public static class Props {

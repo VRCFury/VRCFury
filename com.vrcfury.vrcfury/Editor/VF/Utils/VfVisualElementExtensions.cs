@@ -127,6 +127,27 @@ namespace VF.Utils {
             el.clicked += onClick;
             return el;
         }
+        
+        public static void RegisterCallback(this VisualElement el, Type type, Action<EventBase> callback) {
+            if (type == null) return;
+            if (!UnityReflection.IsReady(typeof(UnityReflection.Binding))) return;
 
+            var registerCallback = UnityReflection.Binding.registerCallback.MakeGenericMethod(type);
+            var typeofCallback = typeof(EventCallback<>).MakeGenericType(type);
+            var handler = new EventHandler(callback);
+            var del = Delegate.CreateDelegate(typeofCallback, handler, typeof(EventHandler).GetMethod(nameof(EventHandler.OnEvent)));
+            ReflectionUtils.CallWithOptionalParams(registerCallback, el, del);
+        }
+        private class EventHandler {
+            private readonly Action<EventBase> callback;
+            public EventHandler(Action<EventBase> callback) {
+                this.callback = callback;
+            }
+            public void OnEvent(object evt) {
+                if (evt is EventBase evt2) {
+                    callback?.Invoke(evt2);
+                }
+            }
+        }
     }
 }

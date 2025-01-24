@@ -112,7 +112,11 @@ namespace VF.Utils {
             var selection = UnityReflection.Recorder.selectionField.GetValue(animState);
             UnityReflection.Recorder.gameObjectField.SetValue(selection, (GameObject)clone);
             UnityReflection.Recorder.animationClipField.SetValue(animState, clip);
+#if UNITY_6000_0_OR_NEWER
+            UnityReflection.Recorder.isRecordingProperty.SetValue(animState, true);
+#else
             UnityReflection.Recorder.startRecording.Invoke(animState, new object[] { });
+#endif
 
             if (avatarObject == baseObj) rewriteClip = false;
             if (rewriteClip) {

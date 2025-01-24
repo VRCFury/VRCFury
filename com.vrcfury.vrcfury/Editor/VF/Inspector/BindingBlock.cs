@@ -1,17 +1,17 @@
 ﻿using System;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Utils;
 
 namespace VF.Inspector {
     /**
      * Prevents children of this object from being re-bound by a parent
      */
     internal class BindingBlock : VisualElement {
-        protected override void ExecuteDefaultActionAtTarget(EventBase evt) {
-            if (UnityReflection.Binding.bindEventType != null && UnityReflection.Binding.bindEventType.IsInstanceOfType(evt)) {
+        public BindingBlock() {
+            this.RegisterCallback(UnityReflection.Binding.bindEventType, evt => {
                 evt.StopPropagation();
-            }
-            base.ExecuteDefaultAction(evt);
+            });
         }
     }
 }

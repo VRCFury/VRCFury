@@ -40,7 +40,7 @@ namespace VF.Hooks {
         private static void DestroyAllOfType(string typeStr) {
             var type = ReflectionUtils.GetTypeFromAnyAssembly(typeStr);
             if (type == null) return;
-            foreach (var runtime in Object.FindObjectsOfType(type)) {
+            foreach (var runtime in ObjectExtensions.FindObjectsByType(type)) {
                 Object.DestroyImmediate(runtime);
             }
         }
@@ -74,7 +74,7 @@ namespace VF.Hooks {
 
                 var restartField = av3EmulatorType.GetField("RestartEmulator");
                 if (restartField == null) throw new Exception("Failed to find RestartEmulator field");
-                var emulators = Object.FindObjectsOfType(av3EmulatorType);
+                var emulators = ObjectExtensions.FindObjectsByType(av3EmulatorType);
                 foreach (var emulator in emulators) {
                     ClearField(emulator, "runtimes");
                     ClearField(emulator, "forceActiveRuntimes");
@@ -85,7 +85,7 @@ namespace VF.Hooks {
                 }
 
                 if (emulators.Length >= 1) {
-                    var avatars = Object.FindObjectsOfType<VRCAvatarDescriptor>();
+                    var avatars = ObjectExtensions.FindObjectsByType<VRCAvatarDescriptor>();
                     foreach (var avatar in avatars) {
                         foreach (var component in avatar.GetComponentsInChildren<IParameterSetup>(true)) {
                             foreach (var fieldInfo in component.GetType().GetFields()) {

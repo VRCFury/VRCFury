@@ -63,6 +63,11 @@ namespace VF.Utils {
         public static void ReplaceMethod(MethodBase original, MethodBase replacement) {
             if (original == null || replacement == null) return;
             if (GetOriginalInstructions == null || UpdatePatchInfo == null || harmonyPatch == null || harmonyMethodConstructor == null || PatchInfoConstructor == null) return;
+            
+            if ((original.MethodImplementationFlags & MethodImplAttributes.InternalCall) == 0) {
+                Debug.LogWarning($"VRCFury attempted to use harmony to replace a method that is not an internal: {original.Name}. This version of unity might not be supported.");
+                return;
+            }
 
             var harmonyInst = GetHarmony(); // We make a fresh harmony, because we can't unpatch these
             if (harmonyInst == null) return;
