@@ -41,7 +41,9 @@ namespace VF {
                     if (path.StartsWith(tmpDir + "/LegacyPrefabsImported")) return false;
                     return true;
                 });
-                VRCFuryAssetDatabase.Delete("Assets/_VRCFury");
+                if (AssetDatabase.IsValidFolder("Assets/_VRCFury")) {
+                    VRCFuryAssetDatabase.Delete("Assets/_VRCFury");
+                }
             });
             // If we don't disable asset editing temporarily, the asset database does WEIRD things,
             // like showing that the deleted directories still exist, and reusing data from the
