@@ -202,6 +202,10 @@ namespace VF.Service {
                     }
                 }
             }
+            
+            // Go/Float is driven by an add driver, but it's safe to compress. The driver is only used while you're
+            // actively holding a button in the menu.
+            addDriven.Remove("Go/Float");
 
             void AttemptToAdd(string paramName) {
                 if (string.IsNullOrEmpty(paramName)) return;
