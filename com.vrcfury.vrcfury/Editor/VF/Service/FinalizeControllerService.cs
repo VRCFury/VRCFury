@@ -1,6 +1,7 @@
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
@@ -28,6 +29,20 @@ namespace VF.Service {
                 controller.GetRaw().parameters = controller.GetRaw().parameters
                     .OrderBy(p => p.name)
                     .ToArray();
+            }
+
+            // If you have a transition without conditions or an exit time, unity prints a warning in the console
+            // and people incorrectly attribute this issue to VRCF when it really came from some other input controller.
+            // We can just go ahead and remove these invalid conditions.
+            foreach (var controller in controllers.GetAllUsedControllers()) {
+                foreach (var layer in controller.GetLayers()) {
+                    AnimatorIterator.ForEachTransitionRW(layer, transition => {
+                        if (transition is AnimatorStateTransition t && !t.hasExitTime && !t.conditions.Any()) {
+                            return new AnimatorTransitionBase[] { };
+                        }
+                        return new[] { transition };
+                    });
+                }
             }
         }
         
