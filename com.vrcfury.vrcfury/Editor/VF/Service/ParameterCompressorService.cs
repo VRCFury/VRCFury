@@ -334,7 +334,7 @@ namespace VF.Service {
             var desktopToMobilePathAliases = new Dictionary<string, string>();
             {
                 var mobileParamsByPath = mobileParamsBySource
-                    .Where(pair => pair.Value.networkSynced)
+                    .Where(pair => pair.Value.IsNetworkSynced())
                     .Select(pair => pair.Key)
                     .GroupBy(source => source.objectPath)
                     .ToDictionary(group => group.Key, group => group.ToList());
