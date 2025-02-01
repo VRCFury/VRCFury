@@ -54,8 +54,8 @@ namespace VF.Service {
                 menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
                 autoOnClip = clipFactory.NewClip("Enable SPS Auto Contacts");
                 var directTree = directTreeService.Create($"Auto Mode Toggle");
-                directTree.Add(BlendtreeMath.And(
-                    BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0, name: "SPS: Auto Contacts"),
+                directTree.Add(
+                    BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0, name: "SPS: Auto Contacts").And(
                     BlendtreeMath.GreaterThan(autoOn.AsFloat(), 0, name: "When Local")
                 ).create(autoOnClip, null));
             }
