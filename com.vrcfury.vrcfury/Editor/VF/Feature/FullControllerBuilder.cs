@@ -640,8 +640,10 @@ namespace VF.Feature {
             return content;
         }
 
+        // https://creators.vrchat.com/avatars/animator-parameters/
         public static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
+            "PreviewMode",
             "Viseme",
             "Voice",
             "GestureLeft",
@@ -662,7 +664,7 @@ namespace VF.Feature {
             "MuteSelf",
             "InStation",
             "Earmuffs",
-
+            "IsOnFriendsList",
             "AvatarVersion",
 
             "Supine",
@@ -674,7 +676,6 @@ namespace VF.Feature {
             "EyeHeightAsMeters",
             "EyeHeightAsPercent",
             
-            "IsOnFriendsList",
         };
     }
 
