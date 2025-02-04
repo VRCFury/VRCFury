@@ -38,7 +38,7 @@ namespace VF.Service {
             void MakeLastAnyTransitionFirst() {
                 var oldAny = layer.GetRawStateMachine().anyStateTransitions;
                 layer.GetRawStateMachine().anyStateTransitions = new[] { oldAny.Last() }
-                    .Concat(oldAny.SkipLast(1))
+                    .Concat(oldAny.Take(oldAny.Length - 1))
                     .ToArray();
             }
 
