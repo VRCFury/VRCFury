@@ -676,6 +676,8 @@ namespace VF.Feature {
             "EyeHeightAsMeters",
             "EyeHeightAsPercent",
             
+            "IsAnimatorEnabled",
+            
         };
     }
 
