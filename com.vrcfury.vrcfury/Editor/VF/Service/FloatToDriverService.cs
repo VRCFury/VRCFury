@@ -35,7 +35,7 @@ namespace VF.Service {
             var math = dbtLayerService.GetMath(dbt);
 
             var layer = fx.NewLayer($"FloatToDriverService - Driver");
-            layer.NewState("Idle");
+            var idle = layer.NewState("Idle");
             layer.SetNextOffset(1, 0);
             
             var threshold = 0.003f;
@@ -86,6 +86,8 @@ namespace VF.Service {
                 conditions.Add((maintainClip, null));
                 math.SetValueWithConditions(conditions.ToArray());
             }
+
+            idle.TransitionsFromAny().When(fx.Always());
         }
 
         public VFAFloat Drive(string output, float? onValue, float? offValue) {
