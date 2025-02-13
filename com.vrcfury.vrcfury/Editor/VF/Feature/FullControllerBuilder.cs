@@ -224,12 +224,34 @@ namespace VF.Feature {
                 return "Go/" + name;
             }
 
-            if (model.globalParams.Contains("*")) {
-                if (model.globalParams.Contains("!" + name)) return controllers.MakeUniqueParamName(name);
-                return name;
+            var isGlobal = false;
+            foreach (var _global in model.globalParams) {
+                var global = _global;
+                var negative = false;
+                var wildcard = false;
+                if (global.StartsWith("!")) {
+                    negative = true;
+                    global = global.Substring(1);
+                }
+                if (global.EndsWith("*")) {
+                    wildcard = true;
+                    global = global.Substring(0, global.Length - 1);
+                }
+                if (name == global || (wildcard && name.StartsWith(global))) {
+                    if (negative) {
+                        isGlobal = false;
+                        break;
+                    } else {
+                        isGlobal = true;
+                    }
+                }
             }
-            if (model.globalParams.Contains(name)) return name;
-            return controllers.MakeUniqueParamName(name); 
+
+            if (isGlobal) {
+                return name;
+            } else {
+                return controllers.MakeUniqueParamName(name);
+            }
         }
 
         private static string RewritePath(FullController model, string path) {
@@ -555,9 +577,12 @@ namespace VF.Feature {
                     "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
                     "parameters (such as gestures) are included by default.\n" +
                     "\n" +
-                    "If you want to make all parameters global, you can use enter a * . " +
+                    "If you want to make all parameters global, you can use enter a *\n" +
+                    "\n" +
+                    "You can also make a specific prefix global by adding a * to the end: MyGlobalParams/*\n" +
+                    "\n" +
                     "If you want to make all parameters global except for a few, you can mark specific parameters " +
-                    "as not global by prefixing them with a ! ."
+                    "as not global by prefixing them with a !"
                 );
                 adv.Add(a);
                 adv.Add(b);

@@ -40,7 +40,8 @@ namespace VF.Feature {
         public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
             + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
             + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
-            + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
+            + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants\n\n"
+            + "If you want to include a '/' character in the label without making a subfolder, add a backslash just before it: \\/";
 
         private static ISet<string> SeparateList(string str) {
             return str.Split(',')
