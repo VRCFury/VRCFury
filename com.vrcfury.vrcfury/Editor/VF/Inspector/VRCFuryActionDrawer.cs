@@ -80,26 +80,7 @@ namespace VF.Inspector {
         }
 
         public static VisualElement Title(string title) {
-            var label = new Label(title);
-            label.style.unityFontStyleAndWeight = FontStyle.Bold;
-            return label;
-        }
-
-        [CustomPropertyDrawer(typeof(FlipBookBuilderAction.FlipBookPage))]
-        public class FlipbookPageDrawer : PropertyDrawer {
-            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var content = new VisualElement();
-                var match = Regex.Match(prop.propertyPath, @"\[(\d+)\]$");
-                string pageNum;
-                if (match.Success && int.TryParse(match.Groups[1].ToString(), out var num)) {
-                    pageNum = (num + 1).ToString();
-                } else {
-                    pageNum = "?";
-                }
-                content.Add(Title($"Page #{pageNum}"));
-                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("state")));
-                return content;
-            }
+            return new Label(title).Bold();
         }
     }
 

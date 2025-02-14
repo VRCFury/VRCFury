@@ -2,6 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.StateAction;
@@ -11,25 +12,33 @@ namespace VF.Actions {
     [FeatureTitle("Object Toggle")]
     [FeatureHideTitleInEditor]
     internal class ObjectToggleActionBuilder : ActionBuilder<ObjectToggleAction> {
-        public AnimationClip Build(ObjectToggleAction toggle, AnimationClip offClip) {
-            var onClip = NewClip();
+        public AnimationClip Build(ObjectToggleAction toggle) {
+            return MakeClip(toggle);
+        }
+        public AnimationClip BuildOff(ObjectToggleAction toggle) {
+            return MakeClip(toggle, true);
+        }
+
+        private static AnimationClip MakeClip(ObjectToggleAction toggle, bool invert = false) {
+            var clip = NewClip();
             if (toggle.obj == null) {
                 //Debug.LogWarning("Missing object in action: " + name);
-                return onClip;
+                return clip;
             }
 
-            var onState = true;
+            var state = true;
             if (toggle.mode == ObjectToggleAction.Mode.TurnOff) {
-                onState = false;
+                state = false;
             } else if (toggle.mode == ObjectToggleAction.Mode.Toggle) {
-                onState = !toggle.obj.activeSelf;
+                state = !toggle.obj.activeSelf;
             }
-            
-            onClip.name = $"{(onState ? "Turn On" : "Turn Off")} {toggle.obj.name}";
 
-            offClip.SetEnabled(toggle.obj, !onState);
-            onClip.SetEnabled(toggle.obj, onState);
-            return onClip;
+            if (invert) state = !state;
+            
+            clip.name = $"{(state ? "Turn On" : "Turn Off")} {toggle.obj.name}";
+
+            clip.SetEnabled(toggle.obj, state);
+            return clip;
         }
 
         [FeatureEditor]

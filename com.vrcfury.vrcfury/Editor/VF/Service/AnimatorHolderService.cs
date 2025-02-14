@@ -38,6 +38,7 @@ namespace VF.Service {
             public bool applyRootMotion;
             public AnimatorUpdateMode updateMode;
             public AnimatorCullingMode cullingMode;
+            public bool enabled;
         }
 
         private readonly Dictionary<VFGameObject, SavedAnimator> savedAnimators = new Dictionary<VFGameObject, SavedAnimator>();
@@ -64,6 +65,7 @@ namespace VF.Service {
                     applyRootMotion = animator.applyRootMotion,
                     updateMode = animator.updateMode,
                     cullingMode = animator.cullingMode,
+                    enabled = animator.enabled,
                 });
                 // In unity 2022, calling this when the animator hasn't called Update recently (meaning outside of play mode,
                 // just entered play mode, object not enabled, etc) can make it write defaults that are NOT the proper resting state.
@@ -79,7 +81,7 @@ namespace VF.Service {
                 var obj = pair.Key;
                 if (obj == null) continue;
                 var saved = pair.Value;
-                
+
                 var animator = obj.AddComponent<Animator>();
                 animator.applyRootMotion = saved.applyRootMotion;
                 animator.updateMode = saved.updateMode;
@@ -91,6 +93,7 @@ namespace VF.Service {
                     }
                 } else {
                     animator.runtimeAnimatorController = saved.controller;
+                    animator.enabled = saved.enabled;
                 }
             }
         }

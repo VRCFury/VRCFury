@@ -43,7 +43,10 @@ namespace VF.Feature.Base {
         DisableGesturesService,
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags,
-        
+        // Needs to run before ArmatureLinkBuilder, which reads active state of objects
+        ApplyRestState3,
+        // Needs to happen right before driving non float types
+        EvaluateTriggerParams,
         // Needs to happen after all controller params (and their types) are in place
         DriveNonFloatTypes,
         
@@ -77,15 +80,15 @@ namespace VF.Feature.Base {
 
         // Finalize Controllers
         UpgradeToVrcConstraints, // Needs to happen before any step starts looking at or cleaning up "invalid" animation bindings
+        DisableSyncForAaps,
+        LocalOnlyDrivenParams,
         ParameterCompressor,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
-        LocomotionConflictResolver,
         ActionConflictResolver,
         TrackingConflictResolver,
-        DisableSyncForAaps,
         FixPartiallyWeightedAaps, // Needs to run before PositionDefaultsLayer, before OptimizeBlendTrees, after everything setting AAPs, after TrackingConflictResolver (creates aaps), before anything that would remove the defaults layer like CleanupEmptyLayers
         CleanupEmptyLayers, // Needs to be before anything using EnsureEmptyBaseLayer
         FixUnsetPlayableLayers,

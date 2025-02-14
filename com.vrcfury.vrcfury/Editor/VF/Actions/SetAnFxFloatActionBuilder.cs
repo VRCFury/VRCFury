@@ -15,7 +15,7 @@ using VF.Utils;
 namespace VF.Actions {
     [FeatureTitle("Set an FX Float")]
     internal class SetAnFxFloatActionBuilder : ActionBuilder<FxFloatAction> {
-        public AnimationClip Build(FxFloatAction model, AnimationClip offClip) {
+        public AnimationClip Build(FxFloatAction model) {
             var onClip = NewClip();
             if (string.IsNullOrWhiteSpace(model.name)) {
                 return onClip;

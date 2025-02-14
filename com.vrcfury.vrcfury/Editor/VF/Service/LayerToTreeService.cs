@@ -267,12 +267,18 @@ namespace VF.Service {
 
             if (state.timeParameterActive) {
                 // TODO: This could also break if the animation tangents are not linear
+                // TODO: We could detect if this is always 1 or always 0 and optimize it away
                 if (string.IsNullOrWhiteSpace(state.timeParameter)) {
                     throw new DoNotOptimizeException($"{state.name} contains a motion time clip without a valid parameter");
                 }
                 var subTree = VFBlendTree1D.Create($"Layer {layer.name} - {state.name}", state.timeParameter);
-                subTree.Add(0, startMotion);
-                subTree.Add(1, endMotion);
+                if (state.speed >= 0) {
+                    subTree.Add(0, startMotion);
+                    subTree.Add(1, endMotion);
+                } else {
+                    subTree.Add(0, endMotion);
+                    subTree.Add(1, startMotion);
+                }
                 return subTree;
             } else if (state.motion is AnimationClip) {
                 if (clipsInMotion.Any(clip => clip.GetLengthInFrames() > 5)) {

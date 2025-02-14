@@ -28,7 +28,8 @@ namespace VF.Inspector {
             SerializedProperty prop,
             string myLabel = null,
             int labelWidth = 100,
-            string tooltip = null
+            string tooltip = null,
+            bool showDebugInfo = true
         ) {
             var container = new VisualElement();
             container.AddToClassList("vfState");
@@ -94,34 +95,36 @@ namespace VF.Inspector {
                 return VRCFuryEditorUtils.AssembleProp(myLabel, tooltip, body, false, showList, labelWidth);
             }, list));
             
-            container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-                var debugInfo = new VisualElement();
+            if (showDebugInfo) {
+                container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
+                    var debugInfo = new VisualElement();
 
-                var actionSet = prop.GetObject() as State;
-                if (actionSet == null) return debugInfo;
-                var gameObject = prop.serializedObject.GetGameObject();
-                var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
-                if (avatarObject == null) return debugInfo;
+                    var actionSet = prop.GetObject() as State;
+                    if (actionSet == null) return debugInfo;
+                    var gameObject = prop.serializedObject.GetGameObject();
+                    var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
+                    if (avatarObject == null) return debugInfo;
 
-                var injector = new VRCFuryInjector();
-                injector.ImportOne(typeof(ActionClipService));
-                injector.ImportOne(typeof(ClipFactoryService));
-                injector.ImportScan(typeof(ActionBuilder));
-                injector.Set("avatarObject", avatarObject);
-                injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
-                var mainBuilder = injector.GetService<ActionClipService>();
-                var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject);
-                var bindings = new AnimatorIterator.Clips().From(test.onClip)
-                    .SelectMany(clip => clip.GetAllBindings())
-                    .ToImmutableHashSet();
-                var warnings =
-                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject, avatarObject);
+                    var injector = new VRCFuryInjector();
+                    injector.ImportOne(typeof(ActionClipService));
+                    injector.ImportOne(typeof(ClipFactoryService));
+                    injector.ImportScan(typeof(ActionBuilder));
+                    injector.Set("avatarObject", avatarObject);
+                    injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
+                    var mainBuilder = injector.GetService<ActionClipService>();
+                    var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject);
+                    var bindings = new AnimatorIterator.Clips().From(test.onClip)
+                        .SelectMany(clip => clip.GetAllBindings())
+                        .ToImmutableHashSet();
+                    var warnings =
+                        VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject, avatarObject);
 
-                foreach (var warning in warnings) {
-                    debugInfo.Add(warning);
-                }
-                return debugInfo;
-            }));
+                    foreach (var warning in warnings) {
+                        debugInfo.Add(warning);
+                    }
+                    return debugInfo;
+                }));
+            }
 
             return container;
         }

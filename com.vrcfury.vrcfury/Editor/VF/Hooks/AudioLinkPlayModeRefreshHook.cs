@@ -35,7 +35,7 @@ namespace VF.Hooks {
             var alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("VRCAudioLink.AudioLink");
             if (alComponentType == null) alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("AudioLink.AudioLink");
             if (alComponentType == null) return;
-            foreach (var audioLink in Object.FindObjectsOfType(alComponentType).OfType<UnityEngine.Component>()) {
+            foreach (var audioLink in ObjectExtensions.FindObjectsByType(alComponentType).OfType<UnityEngine.Component>()) {
                 var obj = audioLink.owner();
                 if (obj.active) {
                     Debug.Log($"VRCFury is restarting AudioLink object {obj.name} ...");

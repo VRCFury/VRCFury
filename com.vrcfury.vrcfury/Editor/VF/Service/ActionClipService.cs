@@ -39,33 +39,33 @@ namespace VF.Service {
             Always
         }
 
-        public Motion LoadState(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
-            return LoadStateAdv(name, state, animObjectOverride, motionTime).onClip;
+        public Motion LoadState(string name, State state, MotionTimeMode motionTime = MotionTimeMode.Never) {
+            return LoadStateAdv(name, state, motionTime: motionTime).onClip;
         }
         
         public class BuiltAction {
-            public Motion onClip = VrcfObjectFactory.Create<AnimationClip>();
-            public AnimationClip implicitRestingClip = VrcfObjectFactory.Create<AnimationClip>();
-            public bool useMotionTime = false;
+            public Motion onClip;
+            public bool useMotionTime;
         }
-        
-        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
-            if (globals != null) globals.currentTriggerParam = null; // always reset when making an animation
 
+        private static IList<Action> GetActiveActions([CanBeNull] State actionSet) {
+            if (actionSet == null) return new List<Action>();
+            return actionSet.actions.Where(action => {
+                if (action == null) throw new Exception("Action list contains a corrupt action");
+                if (action.desktopActive || action.androidActive) {
+                    var isDesktop = BuildTargetUtils.IsDesktop();
+                    if (!isDesktop && !action.androidActive) return false;
+                    if (isDesktop && !action.desktopActive) return false;
+                }
+                return true;
+            }).ToList();
+        }
+
+        public BuiltAction LoadStateAdv(string name, State state, VFGameObject animObjectOverride = null, MotionTimeMode motionTime = MotionTimeMode.Never) {
             var animObject = animObjectOverride ?? componentObject();
 
-            if (state == null) {
-                return new BuiltAction();
-            }
-
-            if (state.actions.Any(action => action == null)) {
-                throw new Exception("Action list contains a corrupt action");
-            }
-
-            var offClip = VrcfObjectFactory.Create<AnimationClip>();
-
-            var outputMotions = state.actions
-                .Select(a => LoadAction(name, a, offClip, animObject))
+            var outputMotions = GetActiveActions(state)
+                .Select(a => LoadAction(name, a, animObject))
                 .Where(motion => new AnimatorIterator.Clips().From(motion).SelectMany(clip => clip.GetAllBindings()).Any())
                 .ToList();
 
@@ -113,24 +113,11 @@ namespace VF.Service {
 
             return new BuiltAction {
                 onClip = output,
-                implicitRestingClip = offClip,
                 useMotionTime = useMotionTime
             };
         }
 
-        private Motion LoadAction(string name, Action action, AnimationClip offClip, VFGameObject animObject) {
-            if (action == null) {
-                throw new Exception("Action is corrupt");
-            }
-
-            var onClip = VrcfObjectFactory.Create<AnimationClip>();
-
-            if (action.desktopActive || action.androidActive) {
-                var isDesktop = BuildTargetUtils.IsDesktop();
-                if (!isDesktop && !action.androidActive) return onClip;
-                if (isDesktop && !action.desktopActive) return onClip;
-            }
-
+        private Motion LoadAction(string name, Action action, VFGameObject animObject) {
             if (!modelTypeToBuilder.TryGetValue(action.GetType(), out var builder)) {
                 throw new Exception($"Unknown action type {action.GetType().Name}");
             }
@@ -140,7 +127,6 @@ namespace VF.Service {
             methodInjector.Set(this);
             methodInjector.Set("actionName", name);
             methodInjector.Set("animObject", animObject);
-            methodInjector.Set("offClip", offClip);
             var buildMethod = builder.GetType().GetMethod("Build");
             var clip = (Motion)methodInjector.FillMethod(buildMethod, builder);
 
@@ -154,6 +140,26 @@ namespace VF.Service {
             }
 
             return output;
+        }
+        
+        public AnimationClip BuildOff(State state) {
+            var animObject = componentObject();
+            var clip = VrcfObjectFactory.Create<AnimationClip>();
+
+            foreach (var action in GetActiveActions(state)) {
+                if (!modelTypeToBuilder.TryGetValue(action.GetType(), out var builder)) {
+                    throw new Exception($"Unknown action type {action.GetType().Name}");
+                }
+                var buildMethod = builder.GetType().GetMethod("BuildOff");
+                if (buildMethod == null) continue;
+                var methodInjector = new VRCFuryInjector();
+                methodInjector.Set(action);
+                methodInjector.Set("animObject", animObject);
+                var c = (AnimationClip)methodInjector.FillMethod(buildMethod, builder);
+                clip.CopyFrom(c);
+            }
+
+            return clip;
         }
     }
 }

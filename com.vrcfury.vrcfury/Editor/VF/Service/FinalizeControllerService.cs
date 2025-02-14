@@ -1,6 +1,7 @@
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
@@ -29,6 +30,20 @@ namespace VF.Service {
                     .OrderBy(p => p.name)
                     .ToArray();
             }
+
+            // If you have a transition without conditions or an exit time, unity prints a warning in the console
+            // and people incorrectly attribute this issue to VRCF when it really came from some other input controller.
+            // We can just go ahead and remove these invalid conditions.
+            foreach (var controller in controllers.GetAllUsedControllers()) {
+                foreach (var layer in controller.GetLayers()) {
+                    AnimatorIterator.ForEachTransitionRW(layer, transition => {
+                        if (transition is AnimatorStateTransition t && !t.hasExitTime && !t.conditions.Any()) {
+                            return new AnimatorTransitionBase[] { };
+                        }
+                        return new[] { transition };
+                    });
+                }
+            }
         }
         
         private void ApplyFixes() {
@@ -44,7 +59,7 @@ namespace VF.Service {
                 var layer = layers[i];
                 if (layer.type == VRCAvatarDescriptor.AnimLayerType.Gesture || layer.type == VRCAvatarDescriptor.AnimLayerType.FX) {
                     var c = layer.animatorController as AnimatorController;
-                    if (c && c.layers.Length > 0) {
+                    if (c != null && c.layers.Length > 0) {
                         layer.mask = c.layers[0].avatarMask;
                         layers[i] = layer;
                     }

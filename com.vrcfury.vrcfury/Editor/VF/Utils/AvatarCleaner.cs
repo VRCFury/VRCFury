@@ -160,12 +160,12 @@ namespace VF.Utils {
                         bool ShouldRemoveMenuItem(VRCExpressionsMenu.Control item) {
                             var shouldRemove =
                                 item.type == VRCExpressionsMenu.Control.ControlType.SubMenu
-                                && item.subMenu
+                                && item.subMenu != null
                                 && ShouldRemoveAsset != null
                                 && ShouldRemoveAsset(item.subMenu);
                             shouldRemove |=
                                 item.type == VRCExpressionsMenu.Control.ControlType.SubMenu
-                                && item.subMenu
+                                && item.subMenu != null
                                 && item.subMenu.controls.Count > 0
                                 && item.subMenu.controls.All(control => removeControls.Contains(control));
                             shouldRemove |=

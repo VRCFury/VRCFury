@@ -3,6 +3,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
@@ -32,7 +33,7 @@ namespace VF.Service {
             var originalName = GetOriginalName();
             if (originalName == null) return null;
 
-            foreach (var desc in Object.FindObjectsOfType<VRCAvatarDescriptor>()) {
+            foreach (var desc in ObjectExtensions.FindObjectsByType<VRCAvatarDescriptor>()) {
                 if (desc.owner().name == originalName && desc.owner().activeInHierarchy) {
                     return desc.owner();
                 }

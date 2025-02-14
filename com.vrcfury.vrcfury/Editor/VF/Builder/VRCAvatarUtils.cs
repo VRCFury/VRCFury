@@ -76,6 +76,9 @@ namespace VF.Builder {
             } else if (type == VRCAvatarDescriptor.AnimLayerType.Action) {
                 // vrc_AvatarV3ActionLayer
                 guid = "3e479eeb9db24704a828bffb15406520";
+            } else if (type == VRCAvatarDescriptor.AnimLayerType.Base) {
+                // vrc_AvatarV3LocomotionLayer
+                guid = "4e4e1a372a526074884b7311d6fc686b";
             }
             if (guid == null) return null;
             var path = AssetDatabase.GUIDToAssetPath(guid);

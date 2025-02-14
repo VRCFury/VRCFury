@@ -12,13 +12,6 @@ namespace VF.Utils {
                 .FirstOrDefault(t => t != null);
         }
         
-        public static Type[] GetTypesWithAttributeFromAnyAssembly<T>() where T : Attribute {
-            return AppDomain.CurrentDomain.GetAssemblies().AsParallel()
-                .SelectMany(assembly => assembly.GetTypes())
-                .Where(type => type.GetCustomAttribute<T>() != null)
-                .ToArray();
-        }
-        
         public static Type[] GetTypes(Type id) {
             var candidates = typeof(ReflectionUtils).Assembly
                 .GetTypes()

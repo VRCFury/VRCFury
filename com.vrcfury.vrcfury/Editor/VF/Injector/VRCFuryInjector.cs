@@ -77,12 +77,12 @@ namespace VF.Injector {
             method.GetParameters().Select(p => Get(p)).ToArray();
         }
 
-        public object Get(ParameterInfo p, Context context = default) {
+        private object Get(ParameterInfo p, Context context = default) {
             context.fieldName = p.Name;
             context.nullable = p.GetCustomAttribute<CanBeNullAttribute>() != null;
             return GetService(p.ParameterType, context);
         }
-        public object Get(FieldInfo p, Context context = default) {
+        private object Get(FieldInfo p, Context context = default) {
             context.fieldName = p.Name;
             context.nullable = p.GetCustomAttribute<CanBeNullAttribute>() != null;
             return GetService(p.FieldType, context);
@@ -93,7 +93,7 @@ namespace VF.Injector {
                 var listItemType = ReflectionUtils.GetGenericArgument(type, typeof(IList<>));
                 if (listItemType != null) {
                     var list = Activator.CreateInstance(typeof(List<>).MakeGenericType(listItemType));
-                    foreach (var s in GetServices(listItemType)) {
+                    foreach (var s in GetServices(listItemType, context)) {
                         list.GetType().GetMethod("Add").Invoke(list, new object[] { s });
                     }
                     return list;
@@ -134,10 +134,10 @@ namespace VF.Injector {
         }
 
         public T[] GetServices<T>() {
-            return GetServices(typeof(T)).OfType<T>().ToArray();
+            return GetServices(typeof(T), new Context()).OfType<T>().ToArray();
         }
         
-        public object[] GetServices(Type type, Context context = default) {
+        private object[] GetServices(Type type, Context context) {
             return serviceTypes
                 .Where(type.IsAssignableFrom)
                 .Where(t => !IsPrototypeScope(t))

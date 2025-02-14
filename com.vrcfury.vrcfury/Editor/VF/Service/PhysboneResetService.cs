@@ -27,7 +27,9 @@ namespace VF.Service {
             var resetClip = clipFactory.NewClip("Physbone Reset");
             resetClip.SetEnabled(physBone, false);
 
-            directTree.Add(BlendtreeMath.Xor(BlendtreeMath.GreaterThan(buffer1, 0), BlendtreeMath.GreaterThan(buffer3, 0))
+            directTree.Add(
+                BlendtreeMath.GreaterThan(buffer1, 0)
+                .Xor(BlendtreeMath.GreaterThan(buffer3, 0))
                 .create(resetClip, clipFactory.GetEmptyClip()));
 
             return param;

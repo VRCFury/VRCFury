@@ -16,7 +16,9 @@ using VF.Model.Feature;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Core;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDKBase;
 using Random = System.Random;
 
 namespace VF.Service {
@@ -188,8 +190,27 @@ namespace VF.Service {
             var model = globals.allFeaturesInRun.OfType<UnlimitedParameters>().FirstOrDefault();
             if (model == null) return eligible.ToList();
 
+            var addDriven = new HashSet<string>();
+            foreach (var controller in controllers.GetAllUsedControllers()) {
+                foreach (var behaviour in new AnimatorIterator.Behaviours().From(controller.GetRaw())) {
+                    if (behaviour is VRCAvatarParameterDriver driver) {
+                        foreach (var p in driver.parameters) {
+                            if (p.type == VRC_AvatarParameterDriver.ChangeType.Add) {
+                                addDriven.Add(p.name);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Go/Float is driven by an add driver, but it's safe to compress. The driver is only used while you're
+            // actively holding a button in the menu.
+            addDriven.Remove("Go/Float");
+
             void AttemptToAdd(string paramName) {
                 if (string.IsNullOrEmpty(paramName)) return;
+
+                if (addDriven.Contains(paramName)) return;
                 
                 var vrcParam = paramz.GetParam(paramName);
                 if (vrcParam == null) return;
@@ -317,6 +338,7 @@ namespace VF.Service {
             var desktopToMobilePathAliases = new Dictionary<string, string>();
             {
                 var mobileParamsByPath = mobileParamsBySource
+                    .Where(pair => pair.Value.IsNetworkSynced())
                     .Select(pair => pair.Key)
                     .GroupBy(source => source.objectPath)
                     .ToDictionary(group => group.Key, group => group.ToList());

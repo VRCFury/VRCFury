@@ -59,7 +59,7 @@ namespace VF.Builder.Haptics {
         }
 
         public static bool IsSps(Material mat) {
-            return mat && mat.HasProperty(SpsBake);
+            return mat != null && mat.HasProperty(SpsBake);
         }
     }
 }

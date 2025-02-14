@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Menu;
@@ -14,61 +16,123 @@ namespace VF.Hooks {
      */
     internal static class DoNotImportBadPackagesHook {
         private static readonly string WarningDialogTitle = "Asset Import Warning from VRCFury";
-
-        private static readonly string[] vrcsdkLocations = {
-            "Packages/com.vrchat.base",
-            "Packages/com.vrchat.avatars",
-            "Packages/com.vrchat.worlds",
-            "Assets/VRCSDK",
-            "Assets/Plugins/VRCSDK"
-        };
-        private static readonly string[] poiyomiLocations = {
-            "Packages/com.poiyomi.toon",
-            "Assets/_PoiyomiShaders",
-            "Assets/_PoiyomiToonShader"
-        };
+        
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Type PackageImportWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.PackageImport");
+            public static readonly FieldInfo m_ImportPackageItems = PackageImportWindow?.GetField("m_ImportPackageItems", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly FieldInfo m_Tree = PackageImportWindow?.GetField("m_Tree", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly FieldInfo m_TreeViewState = PackageImportWindow?.GetField("m_TreeViewState", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly Type ImportPackageItem = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ImportPackageItem");
+            public static readonly FieldInfo AssetPath = ImportPackageItem?.GetField("exportedAssetPath");
+        }
 
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (!UnityReflection.IsReady(typeof(UnityReflection.PackageImport))) return;
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
             Scheduler.Schedule(Check, 0);
+        }
+
+        private static IList<string> WithDirectories(string path) {
+            var output = new List<string>();
+            while (!string.IsNullOrEmpty(path)) {
+                output.Add(path.Replace('\\', '/'));
+                path = Path.GetDirectoryName(path);
+            }
+            return output;
+        }
+        
+        private static IList<string> GetVrcsdkPaths(ICollection<string> allPaths) {
+            var output = new HashSet<string>();
+            foreach (var path in new [] {
+                "Packages/com.vrchat.core.vpm-resolver",
+                "Packages/com.vrchat.base",
+                "Packages/com.vrchat.avatars",
+                "Packages/com.vrchat.worlds",
+                "Assets/VRCSDK",
+                "Assets/Plugins/VRCSDK"
+            }) {
+                if (allPaths.Contains(path)) output.Add(path);
+            }
+            return output.ToArray();
+        }
+ 
+        private static IList<string> GetPoiyomiPaths(ICollection<string> allPaths) {
+            var output = new HashSet<string>();
+            foreach (var path in new [] {
+                "Packages/com.poiyomi.toon",
+                "Assets/_PoiyomiShaders",
+                "Assets/_PoiyomiToonShader"
+            }) {
+                if (allPaths.Contains(path)) output.Add(path);
+            }
+            foreach (var path in allPaths) {
+                if (Path.GetFileName(path) == "poiToonPresets.txt") {
+                    var parentPath = Path.GetDirectoryName(path);
+                    if (parentPath != null && Path.GetFileName(parentPath).ToLower().Contains("poiyomi")) {
+                        output.Add(parentPath.Replace('\\', '/'));
+                    }
+                }
+            }
+            return output.ToArray();
         }
 
         private static EditorWindow lastCheckedWindow = null;
         private static void Check() {
             var importWindow = EditorWindow.focusedWindow;
-            if (!UnityReflection.PackageImport.PackageImportWindow.IsInstanceOfType(importWindow)) return;
+            if (!Reflection.PackageImportWindow.IsInstanceOfType(importWindow)) return;
             if (importWindow == lastCheckedWindow) return;
             lastCheckedWindow = importWindow;
-
-            var items = UnityReflection.PackageImport.m_ImportPackageItems.GetValue(importWindow) as object[];
+            
+            var items = Reflection.m_ImportPackageItems.GetValue(importWindow) as object[];
             if (items == null) return;
 
-            var vrcsdkProjectPath = vrcsdkLocations.FirstOrDefault(path => Directory.Exists(path));
-            var poiProjectPath = poiyomiLocations.FirstOrDefault(path => Directory.Exists(path));
+            var allProjectPaths = AssetDatabase.FindAssets("")
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .SelectMany(WithDirectories)
+                .Distinct()
+                .OrderBy(p => p)
+                .ToArray();
+            var allPackagePaths = items
+                .Select(item => Reflection.AssetPath.GetValue(item) as string)
+                .SelectMany(WithDirectories)
+                .Distinct()
+                .OrderBy(p => p)
+                .ToArray();
+
+            var vrcsdkProjectPaths = GetVrcsdkPaths(allProjectPaths);
+            var poiProjectPaths = GetPoiyomiPaths(allProjectPaths);
 
             // Some poi plugins (dps) are allowed to import into the poi location even if it's already installed,
             // as long as they don't contain their own full shader files
-            var packageIncludesPoiShaderFile = items.Any(item => {
-                var path = UnityReflection.PackageImport.AssetPath.GetValue(item) as string;
-                if (path == null) return false;
-                return path.EndsWith(".shader") && poiyomiLocations.Any(p => path.StartsWith(p + "/"));
+            var vrcsdkPackagePaths = GetVrcsdkPaths(allPackagePaths);
+            var poiPackagePaths = GetPoiyomiPaths(allPackagePaths);
+            var packageIncludesPoiShaderFile = allPackagePaths.Any(packagePath => {
+                return packagePath.EndsWith(".shader") && poiPackagePaths.Any(p => packagePath.StartsWith(p + "/"));
             });
+
+            // Debug.Log(
+            //     $"VRCF import window debugger:\n" +
+            //     $"Project VRCSDK: {vrcsdkProjectPaths.Join(',')}\n" +
+            //     $"Project Poi: {poiProjectPaths.Join(',')}\n" +
+            //     $"Package VRCSDK: {vrcsdkPackagePaths.Join(',')}\n" +
+            //     $"Package Poi: {poiPackagePaths.Join(',')}\n" +
+            //     $"Package Poi shader: {packageIncludesPoiShaderFile}"
+            // );
 
             var removedPoiFile = false;
             var removedVrcsdkFile = false;
             var newItems = items.Where(item => {
-                var path = UnityReflection.PackageImport.AssetPath.GetValue(item) as string;
+                var path = Reflection.AssetPath.GetValue(item) as string;
                 if (path == null) return true;
-                if (vrcsdkProjectPath != null) {
-                    var isVrcsdkFile = vrcsdkLocations.Any(p => path == p || path.StartsWith(p + "/"));
+                if (vrcsdkProjectPaths.Any()) {
+                    var isVrcsdkFile = vrcsdkPackagePaths.Any(p => path == p || path.StartsWith(p + "/"));
                     if (isVrcsdkFile) {
                         removedVrcsdkFile = true;
                         return false;
                     }
                 }
-                if (poiProjectPath != null && packageIncludesPoiShaderFile) {
-                    var isPoiFile = poiyomiLocations.Any(p => path == p || path.StartsWith(p + "/"));
+                if (poiProjectPaths.Any() && packageIncludesPoiShaderFile) {
+                    var isPoiFile = poiPackagePaths.Any(p => path == p || path.StartsWith(p + "/"));
                     if (isPoiFile) {
                         removedPoiFile = true;
                         return false;
@@ -85,12 +149,15 @@ namespace VF.Hooks {
 
             if (newItems.Length == items.Length) return;
 
-            var arr = Array.CreateInstance(UnityReflection.PackageImport.ImportPackageItem, newItems.Length);
+            var removedCount = items.Length - newItems.Length;
+            Debug.Log($"VRCF removed {removedCount} conflicting items from the import dialog");
+
+            var arr = Array.CreateInstance(Reflection.ImportPackageItem, newItems.Length);
             newItems.CopyTo(arr, 0);
-            UnityReflection.PackageImport.m_ImportPackageItems.SetValue(importWindow, arr);
-            if (UnityReflection.PackageImport.m_TreeViewState != null && UnityReflection.PackageImport.m_Tree != null) {
-                UnityReflection.PackageImport.m_TreeViewState?.SetValue(importWindow, null);
-                UnityReflection.PackageImport.m_Tree?.SetValue(importWindow, null);
+            Reflection.m_ImportPackageItems.SetValue(importWindow, arr);
+            if (Reflection.m_TreeViewState != null && Reflection.m_Tree != null) {
+                Reflection.m_TreeViewState?.SetValue(importWindow, null);
+                Reflection.m_Tree?.SetValue(importWindow, null);
             }
 
             if (newItems.Length == 0) {
@@ -98,12 +165,12 @@ namespace VF.Hooks {
                 EditorApplication.delayCall += () => {
                     if (removedPoiFile) {
                         EditorUtility.DisplayDialog(WarningDialogTitle,
-                            "Poiyomi is already installed at " + poiProjectPath +
+                            "Poiyomi is already installed at " + poiProjectPaths.Join(',') +
                             " and must be removed before importing a new version.", "Ok");
                     } else if (removedVrcsdkFile) {
-                        if (vrcsdkProjectPath != null && vrcsdkProjectPath.StartsWith("Assets")) {
+                        if (vrcsdkProjectPaths.Any(p => p.StartsWith("Assets"))) {
                             EditorUtility.DisplayDialog(WarningDialogTitle,
-                                "The VRCSDK is already installed at " + vrcsdkProjectPath +
+                                "The VRCSDK is already installed at " + vrcsdkProjectPaths.Join(',') +
                                 " and must be removed before importing a new version.", "Ok");
                         } else {
                             EditorUtility.DisplayDialog(WarningDialogTitle,

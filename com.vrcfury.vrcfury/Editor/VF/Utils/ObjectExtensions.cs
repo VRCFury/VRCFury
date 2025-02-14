@@ -6,6 +6,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     internal static class ObjectExtensions {
@@ -64,6 +65,22 @@ namespace VF.Utils {
         [CanBeNull]
         public static VFGameObject NullSafe([CanBeNull] this VFGameObject obj) {
             return obj == null ? null : obj;
+        }
+
+        public static T[] FindObjectsByType<T>() where T : Object {
+#if UNITY_2022_1_OR_NEWER
+            return Object.FindObjectsByType<T>(FindObjectsSortMode.None);
+#else
+            return Object.FindObjectsOfType<T>();
+#endif
+        }
+
+        public static Object[] FindObjectsByType(Type type) {
+#if UNITY_2022_1_OR_NEWER
+            return Object.FindObjectsByType(type, FindObjectsSortMode.None);
+#else
+            return Object.FindObjectsOfType(type);
+#endif
         }
     }
 }

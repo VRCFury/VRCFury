@@ -53,9 +53,7 @@ namespace com.vrcfury.api.Components {
          * merged objects as bones.
          */
         public void SetRecursive(bool recursive) {
-            c.linkMode = recursive
-                ? ArmatureLink.ArmatureLinkMode.SkinRewrite
-                : ArmatureLink.ArmatureLinkMode.ReparentRoot;
+            c.recursive = recursive;
         }
         
         /**
@@ -65,9 +63,7 @@ namespace com.vrcfury.api.Components {
          * Optional. Defaults to "auto" mode, which will align only if Recursive is true.
          */
         public void SetAlign(bool align) {
-            c.keepBoneOffsets2 = align
-                ? ArmatureLink.KeepBoneOffsets.No
-                : ArmatureLink.KeepBoneOffsets.Yes;
+            c.alignPosition = c.alignRotation = c.alignScale = align;
         }
     }
 }

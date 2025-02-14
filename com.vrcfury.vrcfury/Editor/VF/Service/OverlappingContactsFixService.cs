@@ -54,7 +54,7 @@ namespace VF.Service {
             var scaleFactorDiff = blendtreeMath.Add("ScaleFactorDiff", (scaleFactor, 1), (scaleFactorBuffered, -1));
 
             directTree.Add(
-                BlendtreeMath.Not(BlendtreeMath.Equals(scaleFactorDiff, 0f))
+                BlendtreeMath.Equals(scaleFactorDiff, 0f).Not()
                 .create(counterSetToZero, counterAddOne)
             );
 

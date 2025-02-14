@@ -16,10 +16,12 @@ namespace VF.Feature {
         [FeatureBuilderAction]
         public void Link() {
             globals.addOtherFeature(new ArmatureLink {
+                propBone = model.obj,
                 linkTo = { new ArmatureLink.LinkTo { bone = model.bone }},
-                keepBoneOffsets2 = ArmatureLink.KeepBoneOffsets.No,
-                linkMode = ArmatureLink.ArmatureLinkMode.ParentConstraint,
-                propBone = model.obj
+                alignPosition = true,
+                alignRotation = true,
+                alignScale = true,
+                recursive = false
             });
         }
 

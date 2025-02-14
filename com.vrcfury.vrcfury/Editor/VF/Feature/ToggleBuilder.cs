@@ -41,7 +41,8 @@ namespace VF.Feature {
         public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
             + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
             + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
-            + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
+            + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants\n\n"
+            + "If you want to include a '/' character in the label without making a subfolder, add a backslash just before it: \\/";
 
         private static ISet<string> SeparateList(string str) {
             return str.Split(',')
@@ -96,9 +97,9 @@ namespace VF.Feature {
             var hasIcon = model.enableIcon && model.icon?.Get() != null;
             var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
 
-            var addToParamFile = true;
+            var synced = true;
             if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
-                addToParamFile = false;
+                synced = false;
             }
 
             var (paramName, usePrefixOnParam) = GetParamName();
@@ -108,7 +109,7 @@ namespace VF.Feature {
             if (model.slider) {
                 var param = fx.NewFloat(
                     paramName,
-                    synced: addToParamFile,
+                    synced: synced,
                     saved: model.saved,
                     def: model.defaultSliderValue,
                     usePrefix: usePrefixOnParam
@@ -134,7 +135,7 @@ namespace VF.Feature {
                 defaultOn = model.defaultOn;
                 this.param = param;
             } else {
-                var param = fx.NewBool(paramName, synced: addToParamFile, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
+                var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
                 onCase = param.IsTrue();
                 drive = (state,on) => state.Drives(param, on ? 1 : 0);
                 defaultOn = model.defaultOn;
@@ -225,7 +226,7 @@ namespace VF.Feature {
 
             Motion restingClip = null;
             if (weight != null) {
-                var builtAction = actionClipService.LoadStateAdv(onName, action, null, ActionClipService.MotionTimeMode.Always);
+                var builtAction = actionClipService.LoadStateAdv(onName, action, motionTime: ActionClipService.MotionTimeMode.Always);
                 inState = onState = layer.NewState(onName);
                 onState.WithAnimation(builtAction.onClip).MotionTime(weight);
                 onState.TransitionsToExit().When(onCase.Not());
@@ -671,7 +672,9 @@ namespace VF.Feature {
             ));
 
             content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-                var baseObject = avatarObject != null ? avatarObject : componentObject.root;
+                var baseObject = avatarObject != null ? avatarObject : componentObject.NullSafe()?.root;
+                // componentObject can be null when this method is called while the editor is being torn down (leaving prefab mode)
+                if (baseObject == null) return new VisualElement();
 
                 var turnsOff = model.state.actions
                     .OfType<ObjectToggleAction>()

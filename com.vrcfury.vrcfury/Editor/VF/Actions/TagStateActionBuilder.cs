@@ -2,7 +2,6 @@
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
-using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
@@ -13,22 +12,13 @@ using VF.Utils;
 namespace VF.Actions {
     [FeatureTitle("Set a Tag State")]
     internal class TagStateActionBuilder : ActionBuilder<TagStateAction> {
-        [VFAutowired] [CanBeNull] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
-        [VFAutowired] [CanBeNull] private readonly GlobalsService globals;
-        [VFAutowired] [CanBeNull] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
+        [VFAutowired] [CanBeNull] private readonly TriggerDriverService triggerDriverService;
         
         public AnimationClip Build(TagStateAction model, string actionName) {
             var onClip = NewClip();
-
-            if (globals == null) return onClip;
-
-            if (globals.currentTriggerParam == null) {
-                globals.currentTriggerParam = fx.NewFloat(actionName + " (Param Trigger)");
-                onClip.SetAap(globals.currentTriggerParam, 1);
-            }
-
-            driveOtherTypesFromFloatService.DriveTag(globals.currentTriggerParam, model.tag, model.value, globals.currentFeature());
+            if (triggerDriverService == null) return onClip;
+            onClip.SetCurve("TRIGGER_DUMMY",typeof(GameObject),"TRIGGER_DUMMY",1);
+            triggerDriverService.DriveTag(onClip, model.tag, model.value);
             return onClip;
         }
 

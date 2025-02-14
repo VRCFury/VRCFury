@@ -15,7 +15,7 @@ namespace VF.Service {
     internal class FullBodyEmoteService {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
-        [VFAutowired] private readonly DriveOtherTypesFromFloatService driveOtherTypesFromFloatService;
+        [VFAutowired] private readonly FloatToDriverService floatToDriverService;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         
         private readonly Dictionary<EditorCurveBindingExtensions.MuscleBindingType, Func<AnimationClip,VFAFloat>> addCache
@@ -60,20 +60,21 @@ namespace VF.Service {
             clip = clip.Clone();
             var state = layer.NewState(clip.name).WithAnimation(clip);
 
-            var enableParam = fx.NewFloat(clip.name + " (Trigger)");
-            VFCondition myCond;
+            VFAFloat fxParam;
+            VFCondition enableCond;
             if (ctrl == fx) {
-                myCond = enableParam.IsGreaterThan(0);
+                fxParam = fx.NewFloat(clip.name + " (Trigger)");
+                enableCond = fxParam.IsGreaterThan(0);
             } else {
-                var myParam = ctrl.NewBool(clip.name+" (Action)");
-                driveOtherTypesFromFloatService.Drive(enableParam, myParam.Name(), 1);
-                myCond = myParam.IsTrue();
+                var actionParam = ctrl.NewBool(clip.name + " (Action)");
+                enableCond = actionParam.IsTrue();
+                fxParam = floatToDriverService.Drive(actionParam, 1, 0);
             }
-            state.TransitionsFromEntry().When(myCond);
-            idle.TransitionsToExit().When(myCond);
+            state.TransitionsFromEntry().When(enableCond);
+            idle.TransitionsToExit().When(enableCond);
 
             var outState = layer.NewState($"{clip.name} - Out");
-            state.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(myCond.Not());
+            state.TransitionsTo(outState).WithTransitionDurationSeconds(1000).Interruptable().When(enableCond.Not());
             outState.TransitionsToExit().When(ctrl.Always());
 
             if (type == EditorCurveBindingExtensions.MuscleBindingType.Body) {
@@ -114,7 +115,7 @@ namespace VF.Service {
                 trackingType.SetValue(animOff, VRC_AnimatorTrackingControl.TrackingType.Tracking);
             }
             
-            return enableParam;
+            return fxParam;
         }
     }
 }

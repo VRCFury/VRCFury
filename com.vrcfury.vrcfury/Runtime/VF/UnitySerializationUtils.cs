@@ -63,27 +63,38 @@ namespace VF {
             if (objType != to.GetType()) throw new Exception($"Types do not match: {objType.Name} {to.GetType().Name}");
 
             foreach (var field in GetAllSerializableFields(objType)) {
-                field.SetValue(to, CloneValue(field.GetValue(from), field));
+                field.SetValue(to, CloneValue(field.GetValue(from)));
             }
         }
 
-        private static object CloneValue(object value, FieldInfo field) {
+        private static object CloneValue(object value) {
             if (!SerializionEnters(value)) {
                 return value;
             }
-            if (value is IList list) {
-                var listType = typeof(List<>);
-                var genericArgs = field.FieldType.GetGenericArguments();
-                var concreteType = listType.MakeGenericType(genericArgs);
-                var listItemCopy = (IList)Activator.CreateInstance(concreteType);
-                foreach (var listItem in list) {
-                    listItemCopy.Add(CloneValue(listItem, field));
+
+            var type = value.GetType();
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>)) {
+                var list = (IList)value;
+                var copy = (IList)Activator.CreateInstance(type);
+                foreach (var item in list) {
+                    copy.Add(CloneValue(item));
                 }
-                return listItemCopy;
+                return copy;
+            } else if (type.BaseType == typeof(Array)) {
+                var list = (IList)value;
+                var copy = (IList)Array.CreateInstance(type.GetElementType(), list.Count);
+                var i = 0;
+                foreach (var item in list) {
+                    copy[i++] = CloneValue(item);
+                }
+                return copy;
+            } else if (value is IList) {
+                throw new Exception("Unknown type of IList: " + type);
+            } else {
+                var copy = Activator.CreateInstance(value.GetType());
+                CloneSerializable(value, copy);
+                return copy;
             }
-            var copy = Activator.CreateInstance(value.GetType());
-            CloneSerializable(value, copy);
-            return copy;
         }
 
         private static bool SerializionEnters(object obj) {
@@ -93,6 +104,7 @@ namespace VF {
             return true;
         }
 
+        // https://docs.unity3d.com/6000.0/Documentation/Manual/script-serialization-rules.html
         private static IEnumerable<FieldInfo> GetAllSerializableFields(Type objType) {
             var output = new List<FieldInfo>();
 
@@ -100,8 +112,8 @@ namespace VF {
                 var privateFields =
                     current.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 foreach (var field in privateFields) {
-                    if (field.DeclaringType != current) continue;
-                    if (field.IsInitOnly) continue;
+                    if (field.DeclaringType != current) continue; // will get caught in another pass of this loop
+                    if (field.IsInitOnly) continue; // readonly
                     if (field.IsLiteral) continue;
                     if (!field.IsPublic && field.GetCustomAttribute<SerializeField>() == null) continue;
                     if (field.GetCustomAttribute<NonSerializedAttribute>() != null) continue;
