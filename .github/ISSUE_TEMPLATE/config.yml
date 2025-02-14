@@ -3,3 +3,6 @@ contact_links:
   - name: VRCFury Discord
     url: https://vrcfury.com/discord
     about: This issue board is for confirmed bugs and feature requests only. For help or suggestions, please click here to visit our support discord.
+  - name: VRCFury Website
+    url: https://vrcfury.com
+    about: Looking for the download or documentation? Click here to visit the website.
