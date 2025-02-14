@@ -1,8 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: VRCFury Discord
+  - name: VRCFury User? Click here.
     url: https://vrcfury.com/discord
-    about: This issue board is for confirmed bugs and feature requests only. For help or suggestions, please click here to visit our support discord.
-  - name: VRCFury Website
-    url: https://vrcfury.com
-    about: Looking for the download or documentation? Click here to visit the website.
+    about: All bug reports, feature requests, and support should be posted to our Discord server. Unique, valid concerns will be converted to a Github issue for you.
