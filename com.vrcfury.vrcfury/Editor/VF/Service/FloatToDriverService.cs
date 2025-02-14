@@ -75,8 +75,7 @@ namespace VF.Service {
                 }
 
                 var maintainClip = resolvedTrigger.MakeCopier(resolvedTrigger);
-                conditions.Add((null, BlendtreeMath.GreaterThan(changedLastFrame, threshold).Or(BlendtreeMath.LessThan(drivenLastFrame, threshold))));
-                conditions.Add((maintainClip, null));
+                conditions.Add((maintainClip, BlendtreeMath.GreaterThan(changedLastFrame, threshold).Or(BlendtreeMath.LessThan(drivenLastFrame, threshold))));
                 math.SetValueWithConditions(conditions.ToArray());
             }
 

@@ -43,7 +43,8 @@ namespace VF.Feature.Base {
         DisableGesturesService,
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags,
-        
+        // Needs to happen right before driving non float types
+        EvaluateTriggerParams,
         // Needs to happen after all controller params (and their types) are in place
         DriveNonFloatTypes,
         
@@ -78,6 +79,7 @@ namespace VF.Feature.Base {
         // Finalize Controllers
         UpgradeToVrcConstraints, // Needs to happen before any step starts looking at or cleaning up "invalid" animation bindings
         DisableSyncForAaps,
+        LocalOnlyDrivenParams,
         ParameterCompressor,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves

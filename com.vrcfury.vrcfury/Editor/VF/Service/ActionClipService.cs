@@ -21,6 +21,7 @@ namespace VF.Service {
 
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] [CanBeNull] private readonly ClipBuilderService clipBuilder;
+        [VFAutowired] [CanBeNull] private readonly GlobalsService globals;
         [VFAutowired] [CanBeNull] private readonly ControllersService controllers;
         [CanBeNull] private ControllerManager fx => controllers?.GetFx();
         private readonly IDictionary<Type,ActionBuilder> modelTypeToBuilder;
