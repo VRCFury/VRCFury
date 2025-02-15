@@ -11,6 +11,7 @@ namespace VF.Service {
     internal class AddDebugParamService {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ParamsService paramz;
+        [VFAutowired] private readonly FixWriteDefaultsService fixWriteDefaultsService;
         
         [FeatureBuilderAction(FeatureOrder.AddDebugVrcParameter)]
         public void Apply() {
@@ -18,7 +19,8 @@ namespace VF.Service {
                 return;
             }
 
-            var newParams = VrcfDebugLine.GetParts(avatarObject).Select(part => {
+            var parts = VrcfDebugLine.GetParts(avatarObject, fixWriteDefaultsService.IsStillBroken());
+            var newParams = parts.Select(part => {
                 var param = new VRCExpressionParameters.Parameter();
                 param.name = "VF " + part;
                 param.valueType = VRCExpressionParameters.ValueType.Bool;

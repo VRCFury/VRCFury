@@ -17,21 +17,27 @@ namespace VF.Inspector {
         private static readonly bool ndmfPresent =
             ReflectionUtils.GetTypeFromAnyAssembly("nadena.dev.ndmf.AvatarProcessor") != null;
 
-        public static string GetDebugChars([CanBeNull] VFGameObject avatarObject = null) {
+        public static string GetDebugChars([CanBeNull] VFGameObject avatarObject = null, bool? isStillBroken = null) {
             var output = "";
-            
-            IEnumerable<VRCFury> vrcfComponents;
-            if (avatarObject == null) {
-                vrcfComponents = Resources.FindObjectsOfTypeAll<VRCFury>();
+
+            bool wdBroken;
+            if (isStillBroken.HasValue) {
+                wdBroken = isStillBroken.Value;
             } else {
-                vrcfComponents = avatarObject.GetComponentsInSelfAndChildren<VRCFury>();
+                IEnumerable<VRCFury> vrcfComponents;
+                if (avatarObject == null) {
+                    vrcfComponents = Resources.FindObjectsOfTypeAll<VRCFury>();
+                } else {
+                    vrcfComponents = avatarObject.GetComponentsInSelfAndChildren<VRCFury>();
+                }
+
+                wdBroken = vrcfComponents
+                    .SelectMany(c => c.GetAllFeatures())
+                    .OfType<FixWriteDefaults>()
+                    .Any(fwd => fwd.mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled);
             }
 
-            var wdDisabled = vrcfComponents
-                .SelectMany(c => c.GetAllFeatures())
-                .OfType<FixWriteDefaults>()
-                .Any(fwd => fwd.mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled);
-            if (wdDisabled) {
+            if (wdBroken) {
                 output += "W";
             }
 
@@ -79,10 +85,10 @@ namespace VF.Inspector {
             return output;
         }
 
-        public static IList<string> GetParts([CanBeNull] VFGameObject avatarObject = null) {
+        public static IList<string> GetParts([CanBeNull] VFGameObject avatarObject = null, bool? isStillBroken = null) {
             var parts = new List<string>();
 
-            parts.Add(GetDebugChars(avatarObject));
+            parts.Add(GetDebugChars(avatarObject, isStillBroken));
 
             parts.Add(Application.unityVersion);
 

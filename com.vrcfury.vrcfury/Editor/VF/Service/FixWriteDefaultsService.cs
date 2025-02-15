@@ -136,6 +136,10 @@ namespace VF.Service {
             }
         }
 
+        public bool IsStillBroken() {
+            return GetBuildSettings().ignoredBroken;
+        }
+
         private class BuildSettings {
             public bool applyToUnmanagedLayers;
             public bool useWriteDefaults;
