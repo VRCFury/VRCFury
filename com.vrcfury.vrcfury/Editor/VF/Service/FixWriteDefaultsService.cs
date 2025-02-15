@@ -116,10 +116,6 @@ namespace VF.Service {
         public void AdjustWriteDefaults() {
             var settings = GetBuildSettings();
 
-            if (settings.ignoredBroken) {
-                fx.NewBool($"VF/BrokenWd", usePrefix: false, synced: true, networkSynced: false);
-            }
-
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var layer in GetMaintainedLayers(controller)) {
                     // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer

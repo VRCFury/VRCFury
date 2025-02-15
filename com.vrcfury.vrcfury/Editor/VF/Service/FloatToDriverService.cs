@@ -16,9 +16,6 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.DriveNonFloatTypes)]
         public void Apply() {
             if (driveRequests.Count == 0) return;
-            
-            var dbt = dbtLayerService.Create("FloatToDriverService - DBT");
-            var math = dbtLayerService.GetMath(dbt);
 
             var layer = fx.NewLayer($"FloatToDriverService - Driver");
             var idle = layer.NewState("Idle");
@@ -28,6 +25,10 @@ namespace VF.Service {
 
             foreach (var outputGroup in driveRequests.GroupBy(req => req.output)) {
                 var output = outputGroup.Key;
+                
+                var dbt = dbtLayerService.Create($"FloatToDriverService - {output} (DBT)");
+                var math = dbtLayerService.GetMath(dbt);
+                
                 var resolvedTrigger = fx.MakeAap($"FloatToDriverService - {output} (Resolved)");
                 var resolvedTriggerLastValue = 0;
                 var conditions = new List<(Motion, BlendtreeMath.VFAFloatBool)>();

@@ -9,8 +9,10 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature;
 using VF.Feature.Base;
+using VF.Hooks;
 using VF.Injector;
 using VF.Inspector;
+using VF.Menu;
 using VF.Model.Feature;
 using VF.Utils;
 using VF.Utils.Controller;
@@ -29,6 +31,10 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.LayerToTree)]
         public void Apply() {
+            if (DisableDbtOptimizerMenuItem.Get() && Application.isPlaying) {
+                return;
+            }
+
             var applyToUnmanaged = globals.allFeaturesInRun
                 .OfType<DirectTreeOptimizer>()
                 .Any();
