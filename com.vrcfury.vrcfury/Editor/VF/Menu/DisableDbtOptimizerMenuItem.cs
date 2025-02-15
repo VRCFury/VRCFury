@@ -24,7 +24,7 @@ namespace VF.Menu {
                     "Warning",
                     "Enabling this option will prevent VRCFury from merging layers into an optimized DBT." +
                     " This is mostly for debugging purposes (it's easier to tell what each layer is doing)." +
-                    " Beware that this will be VERY BAD FOR PERFORMANCE!\n\nThis option will reset when unity restarts\n\n" +
+                    " Beware that this will be VERY BAD FOR PERFORMANCE!\n\nThis option will reset when unity restarts.\n\n" +
                     "Are you sure you want to continue?",
                     "Yes, disable DBT merging, my avatar will be awful performance",
                     "Cancel"
