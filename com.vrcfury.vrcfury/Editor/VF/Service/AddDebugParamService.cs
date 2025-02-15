@@ -18,15 +18,18 @@ namespace VF.Service {
                 return;
             }
 
-            var param = new VRCExpressionParameters.Parameter();
-            param.name = "_VF " + VrcfDebugLine.GetOutputString(avatarObject);
-            param.valueType = VRCExpressionParameters.ValueType.Bool;
-            param.saved = false;
-            param.defaultValue = 0;
-            param.SetNetworkSynced(false);
+            var newParams = VrcfDebugLine.GetParts(avatarObject).Select(part => {
+                var param = new VRCExpressionParameters.Parameter();
+                param.name = "VF " + part;
+                param.valueType = VRCExpressionParameters.ValueType.Bool;
+                param.saved = false;
+                param.defaultValue = 0;
+                param.SetNetworkSynced(false);
+                return param;
+            });
 
             var raw = paramz.GetParams().GetRaw();
-            raw.parameters = new[] { param }.Concat(raw.parameters).ToArray();
+            raw.parameters = newParams.Concat(raw.parameters).ToArray();
         }
     }
 }
