@@ -46,6 +46,8 @@ namespace VF.Service {
 
                     var localDriver = (VRCAvatarParameterDriver)add(typeof(VRCAvatarParameterDriver));
                     UnitySerializationUtils.CloneSerializable(driver, localDriver);
+                    localDriver.localOnly = true;
+                    localDriver.debugString = "";
                     localDriver.parameters = synced;
                     driver.parameters = unsynced;
                     return true;
