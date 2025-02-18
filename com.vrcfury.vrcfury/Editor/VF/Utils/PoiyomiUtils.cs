@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
@@ -44,7 +45,6 @@ namespace VF.Utils {
         }
 
         public class PoiProp {
-            public string renamedTo;
             public bool animated;
         }
 
@@ -57,20 +57,25 @@ namespace VF.Utils {
 
             if (lockedPropsCache.TryGetValue(mat, out var cached)) return cached;
 
-            var matRenameSuffix = mat.GetTag("thry_rename_suffix", false, "");
+            var matRenameSuffix = GetRenameSuffix(mat);
 
             var count = ShaderUtil.GetPropertyCount(shader);
             for (var i = 0; i < count; i++) {
                 var propertyName = ShaderUtil.GetPropertyName(shader, i);
+
+                var ogName = propertyName;
+                if (ogName.EndsWith("_" + matRenameSuffix)) {
+                    ogName = ogName.Substring(0, ogName.Length - matRenameSuffix.Length - 1);
+                }
+                
                 var propType = ShaderUtil.GetPropertyType(shader, i);
-                var animatedTag = mat.GetTag(propertyName + "Animated", false, "");
+                var animatedTag = mat.GetTag(ogName + "Animated", false, "");
 
                 var isAnimated = animatedTag != "";
-                var renameSuffix = (animatedTag == "2" && matRenameSuffix != "") ? $"_{matRenameSuffix}" : "";
+                var renameSuffix = animatedTag == "2" ? $"_{matRenameSuffix}" : "";
                 void Add(string suffix) {
-                    output[$"{propertyName}{suffix}"] = new PoiProp() {
+                    output[$"{ogName}{renameSuffix}{suffix}"] = new PoiProp {
                         animated = isAnimated,
-                        renamedTo = $"{propertyName}{renameSuffix}{suffix}"
                     };
                 }
 
@@ -98,6 +103,12 @@ namespace VF.Utils {
             }
 
             return lockedPropsCache[mat] = output;
+        }
+
+        public static string GetRenameSuffix(Material mat) {
+            var fromTag = mat.GetTag("thry_rename_suffix", false);
+            if (!string.IsNullOrWhiteSpace(fromTag)) return fromTag;
+            return Regex.Replace(mat.name, "[^a-zA-Z0-9_]", "");
         }
 
         public static void LockPoiyomi(Material mat) {

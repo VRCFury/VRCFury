@@ -200,6 +200,11 @@ namespace VF.Actions {
                         for (var i = 0; i < count; i++) {
                             var propertyName = shader.GetPropertyName(i);
                             if (propertyName == "_DummyProperty") continue;
+
+                            if (material.GetTag(propertyName + "Animated", false) == "2") {
+                                propertyName += "_" + PoiyomiUtils.GetRenameSuffix(material);
+                            }
+                            
                             var description = shader.GetPropertyDescription(i);
                             if (description.Contains("{condition_showS:(0==1)}")) continue;
                             

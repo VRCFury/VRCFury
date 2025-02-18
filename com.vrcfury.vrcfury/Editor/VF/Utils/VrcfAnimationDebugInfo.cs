@@ -116,25 +116,6 @@ namespace VF.Utils {
             
             var warnings = new List<VisualElement>();
             
-            var badMats = new VFMultimapSet<string,string>();
-            foreach (var binding in usedBindings) {
-                if (AvatarBindingStateService.TryParseMaterialProperty(binding, out var propertyName)) {
-                    var obj = avatarObject.Find(binding.path);
-                    if (obj == null) continue;
-                    var renderer = obj.GetComponent<Renderer>();
-                    if (renderer == null) continue;
-                    var bad = renderer.sharedMaterials
-                        .NotNull()
-                        .Distinct()
-                        .Where(m => PoiyomiUtils.IsPoiyomiWithPropNonanimated(m, propertyName))
-                        .Select(m => m.name)
-                        .ToList();
-                    foreach (var matName in bad) {
-                        badMats.Put(propertyName, matName + " on " + obj.name);
-                    }
-                }
-            }
-            
             var inNonAnimatedPhysbones = avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()
                 .Where(physbone => !physbone.isAnimated)
                 .Select(physbone => physbone.GetRootTransform().asVf())
@@ -155,11 +136,29 @@ namespace VF.Utils {
                 ));
             }
 
-            if (badMats.Any()) {
+            var nonAnimatedPoi = new VFMultimapSet<string,string>();
+            foreach (var binding in usedBindings) {
+                if (AvatarBindingStateService.TryParseMaterialProperty(binding, out var propertyName)) {
+                    var obj = avatarObject.Find(binding.path);
+                    if (obj == null) continue;
+                    var renderer = obj.GetComponent<Renderer>();
+                    if (renderer == null) continue;
+                    var bad = renderer.sharedMaterials
+                        .NotNull()
+                        .Distinct()
+                        .Where(m => PoiyomiUtils.IsPoiyomiWithPropNonanimated(m, propertyName))
+                        .Select(m => m.name)
+                        .ToList();
+                    foreach (var matName in bad) {
+                        nonAnimatedPoi.Put(propertyName, matName + " on " + obj.name);
+                    }
+                }
+            }
+            if (nonAnimatedPoi.Any()) {
                 var lines = new List<string>();
-                foreach (var propertyName in badMats.GetKeys().OrderBy(a => a)) {
+                foreach (var propertyName in nonAnimatedPoi.GetKeys().OrderBy(a => a)) {
                     lines.Add(propertyName);
-                    foreach (var mat in badMats.Get(propertyName).OrderBy(a => a)) {
+                    foreach (var mat in nonAnimatedPoi.Get(propertyName).OrderBy(a => a)) {
                         lines.Add("  " + mat);
                     }
                 }
