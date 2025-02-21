@@ -15,9 +15,11 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.RemoveVrcGlobalsFromExpressionParams)]
         public void Apply() {
-            paramz.GetRaw().parameters = paramz.GetRaw().parameters
-                .Where(param => !FullControllerBuilder.VRChatGlobalParams.Contains(param.name))
-                .ToArray();
+            foreach (var p in paramz.GetRaw().parameters) {
+                if (FullControllerBuilder.VRChatGlobalParams.Contains(p.name)) {
+                    p.SetNetworkSynced(false, true);
+                }
+            }
         }
     }
 }
