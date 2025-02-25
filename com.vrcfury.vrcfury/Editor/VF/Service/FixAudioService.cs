@@ -23,9 +23,9 @@ namespace VF.Service {
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
                 foreach (var c in controllers.GetAllUsedControllers()) {
                     foreach (var layer in c.GetLayers()) {
-                        AnimatorIterator.ForEachBehaviourRW(layer, (b, add) => {
-                            if (b is VRCAnimatorPlayAudio) return false;
-                            return true;
+                        AnimatorIterator.ForEachBehaviourRW(layer, b => {
+                            if (b is VRCAnimatorPlayAudio) return null;
+                            return b;
                         });
                     }
                 }

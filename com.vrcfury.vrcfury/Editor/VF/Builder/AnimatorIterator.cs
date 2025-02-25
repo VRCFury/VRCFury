@@ -7,7 +7,6 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Utils;
 using VF.Utils.Controller;
-using AnimatorStateExtensions = VF.Utils.AnimatorStateExtensions;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -15,24 +14,30 @@ namespace VF.Builder {
      * Collects the resting value for every animated property in an animator, and puts them all into a clip.
      */
     internal static class AnimatorIterator {
+        public static ISet<VFBehaviourContainer> GetAllBehaviourContainers(VFLayer layer) {
+            var set = new HashSet<VFBehaviourContainer>();
+            foreach (var sm in GetAllStateMachines(layer)) {
+                set.Add(new VFStateMachine(sm));
+                foreach (var child in sm.states) {
+                    set.Add(new VFState(child, sm));
+                }
+            }
+            return set;
+        }
+
         public static void ForEachBehaviourRW(
             VFLayer layer,
-            Func<StateMachineBehaviour, Func<Type, StateMachineBehaviour>, bool> action
+            Func<StateMachineBehaviour, OneOrMany<StateMachineBehaviour>> action
         ) {
-            foreach (var stateMachine in GetAllStateMachines(layer)) {
-                foreach (var behaviour in stateMachine.behaviours.ToArray()) {
-                    var keep = action(behaviour, type => stateMachine.VAddStateMachineBehaviour(type));
-                    if (!keep) stateMachine.behaviours = stateMachine.behaviours.Where(b => b != behaviour).ToArray();
-                }
-            }
-            foreach (var state in new States().From(layer)) {
-                foreach (var behaviour in state.behaviours.ToArray()) {
-                    var keep = action(behaviour, type => state.VAddStateMachineBehaviour(type));
-                    if (!keep) state.behaviours = state.behaviours.Where(b => b != behaviour).ToArray();
-                }
+            foreach (var container in GetAllBehaviourContainers(layer)) {
+                container.behaviours = container.behaviours.SelectMany(b => {
+                    var keep = action(b);
+                    if (keep == null) return new StateMachineBehaviour[] { };
+                    return keep.list;
+                }).ToArray();
             }
         }
-        
+
         public static void RewriteConditions(
             VFLayer root,
             Func<AnimatorCondition, AnimatorTransitionBaseExtensions.Rewritten> action
@@ -204,12 +209,9 @@ namespace VF.Builder {
         
         public class Behaviours : Iterator<StateMachineBehaviour> {
             public override IImmutableSet<StateMachineBehaviour> From(VFLayer root) {
-                var all = new HashSet<StateMachineBehaviour>();
-                ForEachBehaviourRW(root, (b, add) => {
-                    all.Add(b);
-                    return true;
-                });
-                return all.ToImmutableHashSet();
+                return GetAllBehaviourContainers(root)
+                    .SelectMany(c => c.behaviours)
+                    .ToImmutableHashSet();
             }
         }
     }

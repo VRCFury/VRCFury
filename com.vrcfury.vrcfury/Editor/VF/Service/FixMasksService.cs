@@ -58,7 +58,7 @@ namespace VF.Service {
                 if (propTypes.Contains(EditorCurveBindingType.Muscle) || propTypes.Contains(EditorCurveBindingType.Aap)) {
                     // We're keeping both layers
                     // Remove behaviours from the fx copy
-                    AnimatorIterator.ForEachBehaviourRW(new VFLayer(null,layerForFx.stateMachine), (behaviour, add) => false);
+                    AnimatorIterator.ForEachBehaviourRW(new VFLayer(null,layerForFx.stateMachine), b => null);
                     return layerForGesture;
                 } else {
                     // We're only keeping it in FX

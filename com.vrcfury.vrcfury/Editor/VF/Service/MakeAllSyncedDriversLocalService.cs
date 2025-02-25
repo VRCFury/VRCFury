@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using VF.Builder;
 using VF.Feature.Base;
@@ -30,27 +31,36 @@ namespace VF.Service {
                 .ToImmutableHashSet();
 
             foreach (var layer in controllers.GetAllUsedControllers().SelectMany(c => c.GetLayers())) {
-                AnimatorIterator.ForEachBehaviourRW(layer, (b, add) => {
-                    if (!(b is VRCAvatarParameterDriver driver)) return true; // Not a driver, keep it
-                    if (driver.localOnly) return true; // Driver is already local only, keep it
+                AnimatorIterator.ForEachBehaviourRW(layer, b => {
+                    if (!(b is VRCAvatarParameterDriver driver)) return b; // Not a driver, keep it
+                    if (driver.localOnly) return driver; // Driver is already local only, keep it
 
                     var synced = driver.parameters.Where(p => syncedParams.Contains(p.name)).ToList();
                     var unsynced = driver.parameters.Where(p => !syncedParams.Contains(p.name)).ToList();
 
-                    if (synced.Count == 0) return true; // All params are unsynced, keep it as non-local-only
+                    if (synced.Count == 0) return driver; // All params are unsynced, keep it as non-local-only
                     if (unsynced.Count == 0) {
                         // All params are synced, just make the whole thing local only
                         driver.localOnly = true;
-                        return true;
+                        return driver;
                     }
 
-                    var localDriver = (VRCAvatarParameterDriver)add(typeof(VRCAvatarParameterDriver));
-                    UnitySerializationUtils.CloneSerializable(driver, localDriver);
-                    localDriver.localOnly = true;
-                    localDriver.debugString = "";
-                    localDriver.parameters = synced;
-                    driver.parameters = unsynced;
-                    return true;
+                    var parameters = driver.parameters.ToArray();
+                    driver.parameters.Clear();
+                    var output = new List<VRCAvatarParameterDriver> { driver };
+                    foreach (var p in parameters) {
+                        var newLocal = syncedParams.Contains(p.name);
+                        if (newLocal != output.Last().localOnly) {
+                            var newDriver = VrcfObjectFactory.Create<VRCAvatarParameterDriver>();
+                            UnitySerializationUtils.CloneSerializable(driver, newDriver);
+                            newDriver.parameters.Clear();
+                            newDriver.localOnly = newLocal;
+                            newDriver.debugString = "";
+                            output.Add(newDriver);
+                        }
+                        output.Last().parameters.Add(p);
+                    }
+                    return output.ToArray();
                 });
             }
         }

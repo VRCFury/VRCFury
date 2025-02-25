@@ -51,29 +51,30 @@ namespace VF.Service {
 
             foreach (var c in controllers.GetAllUsedControllers()) {
                 foreach (var l in c.GetLayers()) {
-                    AnimatorIterator.ForEachBehaviourRW(l, (b, add) => {
-                        if (!(b is VRCAnimatorLayerControl control)) return true;
+                    AnimatorIterator.ForEachBehaviourRW(l, b => {
+                        if (!(b is VRCAnimatorLayerControl control)) return b;
                         var targetLayers = mapping.Get(control);
                         if (targetLayers.Count == 0) {
                             debugLog.Add("Removing invalid AnimatorLayerControl (not found in mapping??) " + b);
-                            return false;
+                            return null;
                         }
-                        foreach (var targetLayer in targetLayers) {
+
+                        return targetLayers.Select(targetLayer => {
                             if (!smToTypeAndNumber.TryGetValue(targetLayer, out var pair)) {
                                 debugLog.Add("Removing invalid AnimatorLayerControl (target sm has disappeared) " + b);
-                                continue;
+                                return null;
                             }
 
-                            var copy = (VRCAnimatorLayerControl)add(typeof(VRCAnimatorLayerControl));
-                            EditorUtility.CopySerialized(control, copy);
+                            var copy = control.Clone();
                             var (newType, newI) = pair;
                             var newCastedType = VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(
                                 VRCFEnumUtils.GetName(newType));
-                            debugLog.Add($"Rewriting {b} from {control.playable}:{control.layer} to {newCastedType}:{newI}");
+                            debugLog.Add(
+                                $"Rewriting {b} from {control.playable}:{control.layer} to {newCastedType}:{newI}");
                             copy.playable = newCastedType;
                             copy.layer = newI;
-                        }
-                        return false;
+                            return copy;
+                        }).NotNull().ToArray();
                     });
                 }
             }
@@ -85,20 +86,20 @@ namespace VF.Service {
             var set = _set.ToArray();
             foreach (var (type, controller) in set) {
                 foreach (var layer in controller.GetLayers()) {
-                    AnimatorIterator.ForEachBehaviourRW(layer, (b, add) => {
+                    AnimatorIterator.ForEachBehaviourRW(layer, b => {
                         if (b is VRCAnimatorLayerControl control) {
                             var targetController = set
                                 .Where(tuple =>
                                     VRCFEnumUtils.GetName(tuple.Item1) == VRCFEnumUtils.GetName(control.playable))
                                 .Select(tuple => tuple.Item2)
                                 .FirstOrDefault();
-                            if (targetController == null) return false;
-                            if (control.layer < 0 || control.layer >= targetController.layers.Length) return false;
+                            if (targetController == null) return null;
+                            if (control.layer < 0 || control.layer >= targetController.layers.Length) return null;
                             var targetSm = targetController.layers[control.layer].stateMachine;
                             Register(control, targetSm);
                         }
 
-                        return true;
+                        return b;
                     });
                 }
             }

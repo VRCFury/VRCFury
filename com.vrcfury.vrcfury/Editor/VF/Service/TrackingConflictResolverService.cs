@@ -47,13 +47,12 @@ namespace VF.Service {
             var usedOwners = new HashSet<string>();
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var l in controller.GetLayers()) {
-                    AnimatorIterator.ForEachBehaviourRW(l, (b, add) => {
+                    foreach (var b in new AnimatorIterator.Behaviours().From(l)) {
                         if (b is VRCAnimatorTrackingControl) {
                             var layerOwner = controller.GetLayerOwner(l);
                             usedOwners.Add(layerOwner);
                         }
-                        return true;
-                    });
+                    }
                 }
             }
 
@@ -69,26 +68,24 @@ namespace VF.Service {
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var l in controller.GetLayers()) {
                     var layerOwner = controller.GetLayerOwner(l);
-                    AnimatorIterator.ForEachBehaviourRW(l, (b, add) => {
-                        if (b is VRCAnimatorTrackingControl trackingControl) {
-                            var driver = (VRCAvatarParameterDriver)add(typeof(VRCAvatarParameterDriver));
-                            foreach (var type in allTypes) {
-                                var value = type.GetValue(trackingControl);
-                                if (value != VRC_AnimatorTrackingControl.TrackingType.NoChange) {
-                                    if (!trackingParamsCache.TryGetValue((layerOwner, type), out var param)) {
-                                        param = AddInhibitor(layerOwner, type);
-                                        trackingParamsCache[(layerOwner, type)] = param;
-                                    }
-                                    driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
-                                        name = param,
-                                        value = value == VRC_AnimatorTrackingControl.TrackingType.Animation ? 1 : 0
-                                    });
-                                }
-                            }
-                            return false;
-                        }
+                    AnimatorIterator.ForEachBehaviourRW(l, b => {
+                        if (!(b is VRCAnimatorTrackingControl trackingControl)) return b;
 
-                        return true;
+                        var driver = VrcfObjectFactory.Create<VRCAvatarParameterDriver>();
+                        foreach (var type in allTypes) {
+                            var value = type.GetValue(trackingControl);
+                            if (value != VRC_AnimatorTrackingControl.TrackingType.NoChange) {
+                                if (!trackingParamsCache.TryGetValue((layerOwner, type), out var param)) {
+                                    param = AddInhibitor(layerOwner, type);
+                                    trackingParamsCache[(layerOwner, type)] = param;
+                                }
+                                driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
+                                    name = param,
+                                    value = value == VRC_AnimatorTrackingControl.TrackingType.Animation ? 1 : 0
+                                });
+                            }
+                        }
+                        return driver;
                     });
                 }
             }
@@ -127,7 +124,7 @@ namespace VF.Service {
             // because vrchat doesn't respect the setting for a short duration after avatar load
             idle.TransitionsTo(refresh).WithTransitionExitTime(0.2f).When(frameTimeService.GetTimeSinceLoad().IsLessThan(5));
             refresh.TransitionsToExit().When(fx.Always());
-            var refreshDriver = refresh.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
+            var refreshDriver = refresh.AddBehaviour<VRCAvatarParameterDriver>();
             foreach (var type in typesUsed) {
                 refreshDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type], value = -1 });
             }
@@ -171,8 +168,8 @@ namespace VF.Service {
                     //    state.TransitionsToExit().When(triggerWhen.Not());
                     //}
 
-                    var control = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
-                    var driver = state.GetRaw().VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
+                    var control = state.AddBehaviour<VRCAnimatorTrackingControl>();
+                    var driver = state.AddBehaviour<VRCAvatarParameterDriver>();
                 
                     foreach (var type in types) {
                         type.SetValue(control, controlValue);
