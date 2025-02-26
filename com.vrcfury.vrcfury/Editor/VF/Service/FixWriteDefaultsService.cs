@@ -157,7 +157,7 @@ namespace VF.Service {
                 .ToImmutableHashSet();
 
             var analysis = DetectExistingWriteDefaults(
-                controllers.GetAllUsedControllers().Select(c => (c.GetType(), c.GetRaw())),
+                controllers.GetAllUsedControllers().Select(c => (c.GetType(), c)),
                 allManagedStateMachines
             );
 
@@ -244,10 +244,10 @@ namespace VF.Service {
         }
         
         // Returns: Broken, Should Use Write Defaults, Reason, Bad States
-        public static DetectionResults DetectExistingWriteDefaults(
-            IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> avatarControllers,
+        public static DetectionResults DetectExistingWriteDefaults<T>(
+            IEnumerable<(VRCAvatarDescriptor.AnimLayerType, T)> avatarControllers,
             ISet<AnimatorStateMachine> stateMachinesToIgnore = null
-        ) {
+        ) where T : VFController {
             var controllerInfos = avatarControllers.Select(tuple => {
                 var (type, controller) = tuple;
                 var info = new ControllerInfo();

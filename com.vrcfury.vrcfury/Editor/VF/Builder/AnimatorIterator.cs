@@ -113,7 +113,7 @@ namespace VF.Builder {
             
             public IImmutableSet<T> From(AnimatorController root) {
                 if (root == null) return ImmutableHashSet<T>.Empty;
-                return From((VFController)root);
+                return From(new VFController(root));
             }
 
             public IImmutableSet<T> From(VFController root) {

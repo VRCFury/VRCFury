@@ -50,7 +50,7 @@ namespace VF.Service {
                             
                             // VRChat can break the "default value" of AAPs when using a station, so we need to make sure it's
                             // the default when it's not animated (usually 0)
-                            var defaultValue = fx.GetRaw().GetParam(aap);
+                            var defaultValue = fx.GetParam(aap);
                             if (defaultValue != null) {
                                 writeDefaultsService.GetDefaultClip().SetAap(aap, defaultValue.GetDefaultValueAsFloat());
                             }

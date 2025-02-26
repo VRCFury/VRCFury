@@ -13,10 +13,8 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Utils {
-    internal class ControllerManager {
-        private readonly VFController ctrl;
+    internal class ControllerManager : VFControllerWithVrcType {
         private readonly Func<ParamManager> paramManager;
-        private readonly VRCAvatarDescriptor.AnimLayerType type;
         private readonly Func<int> currentFeatureNumProvider;
         private readonly Func<string> currentFeatureClipPrefixProvider;
         private readonly Func<string, string> makeUniqueParamName;
@@ -30,26 +28,16 @@ namespace VF.Utils {
             Func<string> currentFeatureClipPrefixProvider,
             Func<string, string> makeUniqueParamName,
             LayerSourceService layerSourceService
-        ) {
-            this.ctrl = ctrl;
+        ) : base(ctrl.GetRaw(), type) {
             this.paramManager = paramManager;
-            this.type = type;
             this.currentFeatureNumProvider = currentFeatureNumProvider;
             this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
             this.makeUniqueParamName = makeUniqueParamName;
             this.layerSourceService = layerSourceService;
         }
 
-        public VFController GetRaw() {
-            return ctrl;
-        }
-
-        public new VRCAvatarDescriptor.AnimLayerType GetType() {
-            return type;
-        }
-
         public VFLayer EnsureEmptyBaseLayer() {
-            var oldLayer0 = ctrl.GetLayer(0);
+            var oldLayer0 = GetLayer(0);
             if (oldLayer0 != null && oldLayer0.stateMachine.defaultState == null) {
                 return oldLayer0;
             }
@@ -60,8 +48,8 @@ namespace VF.Utils {
             return newLayer0;
         }
 
-        public VFLayer NewLayer(string name, int insertAt = -1) {
-            var newLayer = ctrl.NewLayer(NewLayerName(name), insertAt);
+        public override VFLayer NewLayer(string name, int insertAt = -1) {
+            var newLayer = base.NewLayer(NewLayerName(name), insertAt);
             layerSourceService.SetSourceToCurrent(newLayer);
             return newLayer;
         }
@@ -81,16 +69,16 @@ namespace VF.Utils {
             }
 
             if (putOnTop) {
-                ctrl.layers = other.layers.Concat(ctrl.layers).ToArray();
+                layers = other.layers.Concat(layers).ToArray();
             } else {
-                ctrl.layers = ctrl.layers.Concat(other.layers).ToArray();
+                layers = layers.Concat(other.layers).ToArray();
             }
 
             other.layers = new AnimatorControllerLayer[] { };
             
             // Merge Params
             foreach (var p in other.parameters) {
-                ctrl.NewParam(p.name, p.type, n => {
+                _NewParam(p.name, p.type, n => {
                     n.defaultBool = p.defaultBool;
                     n.defaultFloat = p.defaultFloat;
                     n.defaultInt = p.defaultInt;
@@ -104,9 +92,6 @@ namespace VF.Utils {
             return "[VF" + currentFeatureNumProvider() + "] " + name;
         }
 
-        public IEnumerable<VFLayer> GetLayers() {
-            return ctrl.GetLayers();
-        }
         public IEnumerable<VFLayer> GetManagedLayers() {
             return GetLayers().Where(l => IsManaged(l));
         }
@@ -133,7 +118,7 @@ namespace VF.Utils {
                 param.SetNetworkSynced(networkSynced, true);
                 GetParamManager().AddSyncedParam(param);
             }
-            return ctrl.NewBool(name, def);
+            return _NewBool(name, def);
         }
         public VFAInteger NewInt(string name, bool synced = false, bool networkSynced = true, int def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = makeUniqueParamName(name);
@@ -146,7 +131,7 @@ namespace VF.Utils {
                 param.SetNetworkSynced(networkSynced, true);
                 GetParamManager().AddSyncedParam(param);
             }
-            return ctrl.NewInt(name, def);
+            return _NewInt(name, def);
         }
         public VFAFloat NewFloat(string name, bool synced = false, float def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) {
@@ -161,7 +146,7 @@ namespace VF.Utils {
                 param.defaultValue = def;
                 GetParamManager().AddSyncedParam(param);
             }
-            return ctrl.NewFloat(name, def);
+            return _NewFloat(name, def);
         }
         public BlendtreeMath.VFAap MakeAap(string name, float def = 0, bool usePrefix = true) {
             return new BlendtreeMath.VFAap(NewFloat(name, def: def, usePrefix: usePrefix));

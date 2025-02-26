@@ -73,7 +73,7 @@ namespace VF.Feature {
                     continue;
                 }
                 var copy = VFController.CopyAndLoadController(source, c.type);
-                if (copy) {
+                if (copy != null) {
                     toMerge.Add((c.type, copy, source));
                 }
             }
@@ -279,9 +279,8 @@ namespace VF.Feature {
             return path;
         }
 
-        private void Merge(VFController from, ControllerManager toMain, RuntimeAnimatorController source) {
-            var to = toMain.GetRaw();
-            var type = toMain.GetType();
+        private void Merge(VFController from, ControllerManager to, RuntimeAnimatorController source) {
+            var type = to.GetType();
 
             // Check for gogoloco
             foreach (var p in from.parameters) {
@@ -291,7 +290,7 @@ namespace VF.Feature {
             }
 
             // Rewrite clips
-            ((AnimatorController)from).Rewrite(AnimationRewriter.Combine(
+            from.GetRaw().Rewrite(AnimationRewriter.Combine(
                 AnimationRewriter.RewritePath(path => RewritePath(model, path)),
                 ClipRewriter.CreateNearestMatchPathRewriter(
                     animObject: GetBaseObject(model, featureBaseObject),
@@ -325,8 +324,8 @@ namespace VF.Feature {
                 var afkCustomized = transitionParams.Contains("AFK");
                 var vrcEmoteCustomized = transitionParams.Contains("VRCEmote");
                 if (afkCustomized && (vrcEmoteCustomized || !menuUsesVrcEmote)) {
-                    foreach (var layer in toMain.GetLayers()) {
-                        if (toMain.GetLayerOwner(layer) == LayerSourceService.VrcDefaultSource) {
+                    foreach (var layer in to.GetLayers()) {
+                        if (to.GetLayerOwner(layer) == LayerSourceService.VrcDefaultSource) {
                             layer.Remove();
                         }
                     }
@@ -334,8 +333,8 @@ namespace VF.Feature {
             }
             
             // Fail if trying to merge a controller that is on the avatar descriptor
-            foreach (var layer in toMain.GetLayers()) {
-                if (toMain.GetLayerOwner(layer) == LayerSourceService.AvatarDescriptorSource &&
+            foreach (var layer in to.GetLayers()) {
+                if (to.GetLayerOwner(layer) == LayerSourceService.AvatarDescriptorSource &&
                     layerSourceService.GetSourceFile(layer) == source) {
                     if (AssetDatabase.GetAssetPath(source)?.ToLower().Contains("goloco") ?? false) {
                         throw new Exception(
@@ -354,8 +353,8 @@ namespace VF.Feature {
             // Rip out the base controller if it's locomotion
             if (type == VRCAvatarDescriptor.AnimLayerType.Base || type == VRCAvatarDescriptor.AnimLayerType.TPose ||
                 type == VRCAvatarDescriptor.AnimLayerType.IKPose || type == VRCAvatarDescriptor.AnimLayerType.Sitting) {
-                foreach (var layer in toMain.GetLayers()) {
-                    var owner = toMain.GetLayerOwner(layer);
+                foreach (var layer in to.GetLayers()) {
+                    var owner = to.GetLayerOwner(layer);
                     if (owner == LayerSourceService.AvatarDescriptorSource || owner == LayerSourceService.VrcDefaultSource) {
                         layer.Remove();
                     } else {
@@ -374,7 +373,7 @@ namespace VF.Feature {
                 layerSourceService.SetSourceToCurrent(layer);
                 layerSourceService.SetSourceFile(layer, source);
             }
-            toMain.TakeOwnershipOf(from);
+            to.TakeOwnershipOf(from.GetRaw());
 
             // Parameter smoothing
             if (type == VRCAvatarDescriptor.AnimLayerType.FX && model.smoothedPrms.Count > 0) {
@@ -382,7 +381,7 @@ namespace VF.Feature {
                 foreach (var smoothedParam in model.smoothedPrms) {
                     var rewritten = RewriteParamName(smoothedParam.name);
                     if (smoothedDict.ContainsKey(rewritten)) continue;
-                    var exists = toMain.GetRaw().GetParam(rewritten);
+                    var exists = to.GetParam(rewritten);
                     if (exists == null) continue;
                     if (exists.type != AnimatorControllerParameterType.Float) continue;
                     var target = new VFAFloat(exists.name, exists.defaultFloat);
@@ -414,7 +413,7 @@ namespace VF.Feature {
                     smoothedDict[rewritten] = smoothed;
                 }
 
-                toMain.GetRaw().RewriteParameters(name => {
+                to.RewriteParameters(name => {
                     if (smoothedDict.TryGetValue(name, out var smoothed)) {
                         return smoothed;
                     }

@@ -13,7 +13,7 @@ namespace VF.Service {
 
         public void RewriteAllClips(AnimationRewriter rewriter) {
             foreach (var c in controllers.GetAllUsedControllers()) {
-                c.GetRaw().GetRaw().Rewrite(rewriter);
+                c.GetRaw().Rewrite(rewriter);
             }
             foreach (var clip in additionalClips) {
                 clip.Rewrite(rewriter);

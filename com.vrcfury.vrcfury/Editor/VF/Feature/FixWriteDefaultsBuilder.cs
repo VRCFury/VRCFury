@@ -45,7 +45,7 @@ namespace VF.Feature {
                     .Select(c => {
                         var ctrl = c.controller;
                         while (ctrl is AnimatorOverrideController ov) ctrl = ov.runtimeAnimatorController;
-                        return (c.type, (VFController)(ctrl as AnimatorController));
+                        return (c.type, new VFController(ctrl as AnimatorController));
                     })
                     .Where(c => c.Item2 != null);
                 var analysis = FixWriteDefaultsService.DetectExistingWriteDefaults(avatarControllers);

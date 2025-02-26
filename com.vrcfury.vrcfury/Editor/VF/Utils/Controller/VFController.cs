@@ -15,13 +15,13 @@ namespace VF.Utils.Controller {
     internal class VFController {
         private readonly AnimatorController ctrl;
 
-        private VFController(AnimatorController ctrl) {
+        public VFController(AnimatorController ctrl) {
             this.ctrl = ctrl;
         }
     
-        public static implicit operator VFController(AnimatorController d) => new VFController(d);
-        public static implicit operator AnimatorController(VFController d) => d?.ctrl;
-        public static implicit operator bool(VFController d) => d?.ctrl != null;
+        //public static implicit operator VFController(AnimatorController d) => new VFController(d);
+        //public static implicit operator AnimatorController(VFController d) => d?.ctrl;
+        //public static implicit operator bool(VFController d) => d?.ctrl != null;
         public static bool operator ==(VFController a, VFController b) => a?.Equals(b) ?? b?.Equals(null) ?? true;
         public static bool operator !=(VFController a, VFController b) => !(a == b);
         public override bool Equals(object other) {
@@ -35,7 +35,7 @@ namespace VF.Utils.Controller {
             return ctrl;
         }
 
-        public VFLayer NewLayer(string name, int insertAt = -1) {
+        public virtual VFLayer NewLayer(string name, int insertAt = -1) {
             // Unity breaks if name contains .
             name = name.Replace(".", "");
 
@@ -54,19 +54,19 @@ namespace VF.Utils.Controller {
             ctrl.RemoveParameter(i);
         }
 
-        public VFABool NewBool(string name, bool def = false) {
-            var p = NewParam(name, AnimatorControllerParameterType.Bool, param => param.defaultBool = def);
+        public VFABool _NewBool(string name, bool def = false) {
+            var p = _NewParam(name, AnimatorControllerParameterType.Bool, param => param.defaultBool = def);
             return new VFABool(p.name, p.defaultBool);
         }
-        public VFAFloat NewFloat(string name, float def = 0) {
-            var p = NewParam(name, AnimatorControllerParameterType.Float, param => param.defaultFloat = def);
+        public VFAFloat _NewFloat(string name, float def = 0) {
+            var p = _NewParam(name, AnimatorControllerParameterType.Float, param => param.defaultFloat = def);
             return new VFAFloat(p.name, p.defaultFloat);
         }
-        public VFAInteger NewInt(string name, int def = 0) {
-            var p = NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def);
+        public VFAInteger _NewInt(string name, int def = 0) {
+            var p = _NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def);
             return new VFAInteger(p.name, p.defaultInt);
         }
-        public AnimatorControllerParameter NewParam(string name, AnimatorControllerParameterType type, Action<AnimatorControllerParameter> with = null) {
+        public AnimatorControllerParameter _NewParam(string name, AnimatorControllerParameterType type, Action<AnimatorControllerParameter> with = null) {
             var exists = GetParam(name);
             if (exists != null) {
                 return exists;

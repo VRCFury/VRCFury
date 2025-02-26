@@ -30,7 +30,7 @@ namespace VF.Service {
             var gesture = controllers.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
             var newFxLayers = new List<AnimatorControllerLayer>();
 
-            var copyForFx = gesture.GetRaw().GetRaw().Clone();
+            var copyForFx = gesture.GetRaw().Clone();
             var copyForFxLayers = copyForFx.layers;
             foreach (var to in new AnimatorIterator.Behaviours().From(copyForFx).OfType<VRCAnimatorLayerControl>()) {
                 animatorLayerControlManager.Alias(to.GetCloneSource(), to);
@@ -70,7 +70,7 @@ namespace VF.Service {
             if (newFxLayers.Count > 0) {
                 fx.GetRaw().layers = newFxLayers.Concat(fx.GetRaw().layers).ToArray();
                 foreach (var p in gesture.GetRaw().parameters) {
-                    fx.GetRaw().NewParam(p.name, p.type, n => {
+                    fx._NewParam(p.name, p.type, n => {
                         n.defaultBool = p.defaultBool;
                         n.defaultFloat = p.defaultFloat;
                         n.defaultInt = p.defaultInt;
@@ -121,7 +121,7 @@ namespace VF.Service {
             }
 
             foreach (var c in controllers.GetAllUsedControllers()) {
-                var ctrl = c.GetRaw();
+                var ctrl = c;
 
                 AvatarMask expectedMask = null;
                 if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {

@@ -26,7 +26,7 @@ namespace VF.Utils {
         ) {
             var bindings = new HashSet<EditorCurveBinding>();
             foreach (var c in controllers) {
-                var controller = (VFController)c;
+                var controller = new VFController(c);
                 foreach (var state in new AnimatorIterator.States().From(controller)) {
                     bindings.UnionWith(new AnimatorIterator.Clips().From(state)
                         .SelectMany(clip => clip.GetAllBindings())

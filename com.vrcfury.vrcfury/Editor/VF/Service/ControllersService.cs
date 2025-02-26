@@ -24,7 +24,7 @@ namespace VF.Service {
                 var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
                 VFController ctrl = null;
                 if (existingController != null) ctrl = VFController.CopyAndLoadController(existingController, type);
-                if (ctrl == null) ctrl = VrcfObjectFactory.Create<AnimatorController>();
+                if (ctrl == null) ctrl = new VFController(VrcfObjectFactory.Create<AnimatorController>());
                 output = new ControllerManager(
                     ctrl,
                     () => paramz,
@@ -39,7 +39,7 @@ namespace VF.Service {
                     layerSourceService.SetSourceFile(layer, existingController);
                 }
                 _controllers[type] = output;
-                VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
+                VRCAvatarUtils.SetAvatarController(avatar, type, ctrl.GetRaw());
             }
             return output;
         }
@@ -56,7 +56,7 @@ namespace VF.Service {
         private bool IsParamUsed(string name) {
             if (paramz.GetRaw().FindParameter(name) != null) return true;
             foreach (var c in GetAllUsedControllers()) {
-                if (c.GetRaw().GetParam(name) != null) return true;
+                if (c.GetParam(name) != null) return true;
             }
             return false;
         }

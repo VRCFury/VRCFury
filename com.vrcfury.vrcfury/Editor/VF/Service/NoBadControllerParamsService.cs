@@ -33,15 +33,15 @@ namespace VF.Service {
                         });
                     }
                 }
-                UpgradeWrongParamTypes(c.GetRaw());
-                RemoveWrongParamTypes(c.GetRaw());
+                UpgradeWrongParamTypes(c);
+                RemoveWrongParamTypes(c);
             }
         }
 
         public static void RemoveWrongParamTypes(VFController controller) {
-            var badBool = new Lazy<string>(() => controller.NewBool("InvalidParam"));
-            var badFloat = new Lazy<string>(() => controller.NewFloat("InvalidParamFloat"));
-            var badThreshold = new Lazy<string>(() => controller.NewBool("BadIntThreshold", def: true));
+            var badBool = new Lazy<string>(() => controller._NewBool("InvalidParam"));
+            var badFloat = new Lazy<string>(() => controller._NewFloat("InvalidParamFloat"));
+            var badThreshold = new Lazy<string>(() => controller._NewBool("BadIntThreshold", def: true));
             AnimatorCondition InvalidCondition() => new AnimatorCondition {
                 mode = AnimatorConditionMode.If,
                 parameter = badBool.Value,

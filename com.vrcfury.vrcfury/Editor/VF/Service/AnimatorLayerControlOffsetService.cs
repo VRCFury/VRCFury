@@ -26,13 +26,13 @@ namespace VF.Service {
         
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlRecordBase)]
         public void RecordBase() {
-            RegisterControllerSet(controllers.GetAllUsedControllers().Select(c => (c.GetType(), c.GetRaw())));
+            RegisterControllerSet(controllers.GetAllUsedControllers().Select(c => (c.GetType(), c)));
         }
 
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlFix)]
         public void Fix() {
             foreach (var c in controllers.GetAllUsedControllers()) {
-                var layer0 = c.GetRaw().GetLayer(0);
+                var layer0 = c.GetLayer(0);
                 if (layer0 != null && mapping.ContainsValue(layer0)) {
                     // Something is trying to drive the base layer!
                     // Since this is impossible, we have to insert another layer above it to take its place
@@ -82,7 +82,7 @@ namespace VF.Service {
             Debug.Log("Animator Layer Control Offset Builder Report:\n" + debugLog.Join('\n'));
         }
 
-        public void RegisterControllerSet(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> _set) {
+        public void RegisterControllerSet<T>(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, T)> _set) where T : VFController {
             var set = _set.ToArray();
             foreach (var (type, controller) in set) {
                 foreach (var layer in controller.GetLayers()) {
