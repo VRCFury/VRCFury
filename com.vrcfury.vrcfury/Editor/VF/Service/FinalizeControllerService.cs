@@ -38,14 +38,14 @@ namespace VF.Service {
                 foreach (var layer in controller.GetLayers()) {
                     AnimatorIterator.ForEachTransitionRW(layer, transition => {
                         if (transition is AnimatorStateTransition t && !t.hasExitTime && !t.conditions.Any()) {
-                            return new AnimatorTransitionBase[] { };
+                            return null;
                         }
-                        return new[] { transition };
+                        return transition;
                     });
                 }
             }
         }
-        
+
         private void ApplyFixes() {
             // The VRCSDK usually builds the debug window name lookup before the avatar is built, so we have
             // to update it with our newly-added states

@@ -14,7 +14,7 @@ namespace VF.Builder {
      * Collects the resting value for every animated property in an animator, and puts them all into a clip.
      */
     internal static class AnimatorIterator {
-        public static ISet<VFBehaviourContainer> GetAllBehaviourContainers(VFLayer layer) {
+        private static ISet<VFBehaviourContainer> GetAllBehaviourContainers(VFLayer layer) {
             var set = new HashSet<VFBehaviourContainer>();
             foreach (var sm in GetAllStateMachines(layer)) {
                 set.Add(new VFStateMachine(sm));
@@ -30,11 +30,7 @@ namespace VF.Builder {
             Func<StateMachineBehaviour, OneOrMany<StateMachineBehaviour>> action
         ) {
             foreach (var container in GetAllBehaviourContainers(layer)) {
-                container.behaviours = container.behaviours.SelectMany(b => {
-                    var keep = action(b);
-                    if (keep == null) return new StateMachineBehaviour[] { };
-                    return keep.list;
-                }).ToArray();
+                container.behaviours = container.behaviours.SelectMany(b => action(b).Get()).ToArray();
             }
         }
 
@@ -47,7 +43,7 @@ namespace VF.Builder {
 
         public static void ForEachTransitionRW(
             VFLayer root,
-            Func<AnimatorTransitionBase, IList<AnimatorTransitionBase>> action
+            Func<AnimatorTransitionBase, OneOrMany<AnimatorTransitionBase>> action
         ) {
             foreach (var sm in GetAllStateMachines(root)) {
                 ForEachTransitionRW(sm.entryTransitions, a => sm.entryTransitions = a, action);
@@ -64,11 +60,11 @@ namespace VF.Builder {
         private static void ForEachTransitionRW<T>(
             T[] input,
             Action<T[]> setter,
-            Func<AnimatorTransitionBase, IList<AnimatorTransitionBase>> action
+            Func<AnimatorTransitionBase, OneOrMany<AnimatorTransitionBase>> action
         ) where T : AnimatorTransitionBase {
             var changed = false;
             var output = input.SelectMany(oneTransition => {
-                var result = action(oneTransition);
+                var result = action(oneTransition).Get();
                 changed |= result.Count != 1 || result[0] != oneTransition;
                 return result;
             }).OfType<T>().ToArray();
