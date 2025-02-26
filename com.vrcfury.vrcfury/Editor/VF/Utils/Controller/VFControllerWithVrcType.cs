@@ -9,7 +9,7 @@ namespace VF.Utils.Controller {
             return vrcType;
         }
 
-        protected VFControllerWithVrcType(AnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType vrcType) : base(ctrl) {
+        public VFControllerWithVrcType(AnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType vrcType) : base(ctrl) {
             this.vrcType = vrcType;
         }
     }

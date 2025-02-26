@@ -33,14 +33,5 @@ namespace VF.Service {
         public string GetSource(AnimatorStateMachine sm) {
             return sources.TryGetValue(sm, out var source) ? source : null;
         }
-        
-        public void SetSourceFile(AnimatorStateMachine sm, RuntimeAnimatorController source) {
-            sourceFiles[sm] = source;
-        }
-        
-        [CanBeNull]
-        public RuntimeAnimatorController GetSourceFile(AnimatorStateMachine sm) {
-            return sourceFiles.TryGetValue(sm, out var source) ? source : null;
-        }
     }
 }

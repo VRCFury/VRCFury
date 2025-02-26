@@ -36,7 +36,6 @@ namespace VF.Service {
                 );
                 foreach (var layer in ctrl.GetLayers()) {
                     layerSourceService.SetSource(layer, isDefault ? LayerSourceService.VrcDefaultSource : LayerSourceService.AvatarDescriptorSource);
-                    layerSourceService.SetSourceFile(layer, existingController);
                 }
                 _controllers[type] = output;
                 VRCAvatarUtils.SetAvatarController(avatar, type, ctrl.GetRaw());
@@ -46,7 +45,7 @@ namespace VF.Service {
         public ControllerManager GetFx() {
             return GetController(VRCAvatarDescriptor.AnimLayerType.FX);
         }
-        public IEnumerable<ControllerManager> GetAllUsedControllers() {
+        public IList<ControllerManager> GetAllUsedControllers() {
             return VRCAvatarUtils.GetAllControllers(avatar)
                 .Where(c => c.controller != null)
                 .Select(c => GetController(c.type))

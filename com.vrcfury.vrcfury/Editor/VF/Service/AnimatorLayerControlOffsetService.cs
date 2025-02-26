@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -26,7 +25,7 @@ namespace VF.Service {
         
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlRecordBase)]
         public void RecordBase() {
-            RegisterControllerSet(controllers.GetAllUsedControllers().Select(c => (c.GetType(), c)));
+            RegisterControllerSet(controllers.GetAllUsedControllers());
         }
 
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlFix)]
@@ -82,17 +81,12 @@ namespace VF.Service {
             Debug.Log("Animator Layer Control Offset Builder Report:\n" + debugLog.Join('\n'));
         }
 
-        public void RegisterControllerSet<T>(IEnumerable<(VRCAvatarDescriptor.AnimLayerType, T)> _set) where T : VFController {
-            var set = _set.ToArray();
-            foreach (var (type, controller) in set) {
+        public void RegisterControllerSet<T>(ICollection<T> set) where T : VFControllerWithVrcType {
+            foreach (var controller in set) {
                 foreach (var layer in controller.GetLayers()) {
                     AnimatorIterator.ForEachBehaviourRW(layer, b => {
                         if (b is VRCAnimatorLayerControl control) {
-                            var targetController = set
-                                .Where(tuple =>
-                                    VRCFEnumUtils.GetName(tuple.Item1) == VRCFEnumUtils.GetName(control.playable))
-                                .Select(tuple => tuple.Item2)
-                                .FirstOrDefault();
+                            var targetController = set.FirstOrDefault(other => VRCFEnumUtils.GetName(other.vrcType) == VRCFEnumUtils.GetName(control.playable));
                             if (targetController == null) return null;
                             if (control.layer < 0 || control.layer >= targetController.layers.Length) return null;
                             var targetSm = targetController.layers[control.layer].stateMachine;

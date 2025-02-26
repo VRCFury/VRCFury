@@ -126,7 +126,7 @@ namespace VF.Utils.Controller {
         }
 
         [CanBeNull]
-        public static VFController CopyAndLoadController(RuntimeAnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType type) {
+        public static VFControllerWithVrcType CopyAndLoadController(RuntimeAnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType type) {
             if (ctrl == null) {
                 return null;
             }
@@ -146,7 +146,7 @@ namespace VF.Utils.Controller {
                 return null;
             }
             
-            var output = new VFController(ac);
+            var output = new VFControllerWithVrcType(ac, type);
             output.RemoveInvalidParameters();
             output.FixNullStateMachines();
             output.CheckForBadBehaviours();

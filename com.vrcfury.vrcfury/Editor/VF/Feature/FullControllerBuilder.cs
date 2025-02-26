@@ -65,7 +65,7 @@ namespace VF.Feature {
                 }
             }
 
-            var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, VFController, RuntimeAnimatorController)>();
+            var fromControllers = new List<VFControllerWithVrcType>();
             foreach (var c in model.controllers) {
                 var source = c.controller.Get();
                 if (source == null) {
@@ -74,16 +74,32 @@ namespace VF.Feature {
                 }
                 var copy = VFController.CopyAndLoadController(source, c.type);
                 if (copy != null) {
-                    toMerge.Add((c.type, copy, source));
+                    fromControllers.Add(copy);
                 }
             }
 
             // Record the offsets so we can fix them later
-            animatorLayerControlManager.RegisterControllerSet(toMerge.Select(pair => (pair.Item1, pair.Item2)));
+            animatorLayerControlManager.RegisterControllerSet(fromControllers);
 
-            foreach (var (type, from, source) in toMerge) {
-                var targetController = controllers.GetController(type);
-                Merge(from, targetController, source);
+            foreach (var from in fromControllers) {
+                var to = controllers.GetController(from.vrcType);
+
+                // Fail if trying to merge a controller that is on the avatar descriptor
+                if (to.GetRaw().GetCloneSource() == from.GetRaw().GetCloneSource()) {
+                    if (AssetDatabase.GetAssetPath(to.GetRaw().GetCloneSource())?.ToLower().Contains("goloco") ?? false) {
+                        throw new Exception(
+                            "You've installed GogoLoco using VRCFury, but your avatar descriptor also contains GogoLoco controllers." +
+                            " Make sure your Avatar Descriptor does not contain any gogoloco files."
+                        );
+                    } else {
+                        throw new Exception(
+                            "This Full Controller component is setup to merge the same controller file that is already on your avatar descriptor. VRCFury Full Controller components" +
+                            " should only contain the things you want to ADD to your avatar. Do not include your avatar's base files."
+                        );
+                    }
+                }
+
+                Merge(from, to);
             }
 
             foreach (var m in model.menus) {
@@ -279,7 +295,7 @@ namespace VF.Feature {
             return path;
         }
 
-        private void Merge(VFController from, ControllerManager to, RuntimeAnimatorController source) {
+        private void Merge(VFController from, ControllerManager to) {
             var type = to.GetType();
 
             // Check for gogoloco
@@ -331,24 +347,6 @@ namespace VF.Feature {
                     }
                 }
             }
-            
-            // Fail if trying to merge a controller that is on the avatar descriptor
-            foreach (var layer in to.GetLayers()) {
-                if (to.GetLayerOwner(layer) == LayerSourceService.AvatarDescriptorSource &&
-                    layerSourceService.GetSourceFile(layer) == source) {
-                    if (AssetDatabase.GetAssetPath(source)?.ToLower().Contains("goloco") ?? false) {
-                        throw new Exception(
-                            "You've installed GogoLoco using VRCFury, but your avatar descriptor also contains GogoLoco controllers." +
-                            " Make sure your Avatar Descriptor does not contain any gogoloco files."
-                        );
-                    } else {
-                        throw new Exception(
-                            "This Full Controller component is setup to merge the same controller file that is already on your avatar descriptor. VRCFury Full Controller components" +
-                            " should only contain the things you want to ADD to your avatar. Do not include your avatar's base files."
-                        );
-                    }
-                }
-            }
 
             // Rip out the base controller if it's locomotion
             if (type == VRCAvatarDescriptor.AnimLayerType.Base || type == VRCAvatarDescriptor.AnimLayerType.TPose ||
@@ -371,7 +369,6 @@ namespace VF.Feature {
             // Merge Layers
             foreach (var layer in from.GetLayers()) {
                 layerSourceService.SetSourceToCurrent(layer);
-                layerSourceService.SetSourceFile(layer, source);
             }
             to.TakeOwnershipOf(from.GetRaw());
 
