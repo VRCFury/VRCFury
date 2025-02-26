@@ -220,7 +220,7 @@ namespace VF.Service {
             return _buildSettings;
         }
 
-        private IEnumerable<VFLayer> GetMaintainedLayers(ControllerManager controller) {
+        private IList<VFLayer> GetMaintainedLayers(ControllerManager controller) {
             var settings = GetBuildSettings();
             return settings.applyToUnmanagedLayers ? controller.GetLayers() : controller.GetManagedLayers();
         }

@@ -92,11 +92,11 @@ namespace VF.Utils {
             return "[VF" + currentFeatureNumProvider() + "] " + name;
         }
 
-        public IEnumerable<VFLayer> GetManagedLayers() {
-            return GetLayers().Where(l => IsManaged(l));
+        public IList<VFLayer> GetManagedLayers() {
+            return GetLayers().Where(l => IsManaged(l)).ToArray();
         }
-        public IEnumerable<VFLayer> GetUnmanagedLayers() {
-            return GetLayers().Where(l => !IsManaged(l));
+        public IList<VFLayer> GetUnmanagedLayers() {
+            return GetLayers().Where(l => !IsManaged(l)).ToArray();
         }
 
         private bool IsManaged(AnimatorStateMachine layer) {

@@ -83,8 +83,8 @@ namespace VF.Utils.Controller {
             return Array.Find(ctrl.parameters, other => other.name == name);
         }
     
-        public IEnumerable<VFLayer> GetLayers() {
-            return ctrl.layers.Select(l => new VFLayer(this, l.stateMachine));
+        public IList<VFLayer> GetLayers() {
+            return ctrl.layers.Select(l => new VFLayer(this, l.stateMachine)).ToArray();
         }
 
         public bool ContainsLayer(AnimatorStateMachine stateMachine) {

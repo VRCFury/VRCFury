@@ -18,7 +18,7 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 namespace VF.Utils {
     internal static class VrcfAnimationDebugInfo {
         public static List<VisualElement> BuildDebugInfo(
-            IList<AnimatorController> controllers,
+            IEnumerable<AnimatorController> controllers,
             [CanBeNull] VFGameObject avatarObject,
             VFGameObject componentObject,
             Func<string, string> rewritePath = null,

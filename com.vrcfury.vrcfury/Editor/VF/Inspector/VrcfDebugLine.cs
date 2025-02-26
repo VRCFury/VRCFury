@@ -24,7 +24,7 @@ namespace VF.Inspector {
             if (isStillBroken.HasValue) {
                 wdBroken = isStillBroken.Value;
             } else {
-                IEnumerable<VRCFury> vrcfComponents;
+                ICollection<VRCFury> vrcfComponents;
                 if (avatarObject == null) {
                     vrcfComponents = Resources.FindObjectsOfTypeAll<VRCFury>();
                 } else {
