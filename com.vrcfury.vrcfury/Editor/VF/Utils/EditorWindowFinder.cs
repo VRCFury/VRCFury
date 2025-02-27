@@ -5,8 +5,8 @@ using UnityEditor;
 using UnityEngine;
 
 namespace VF.Utils {
-    public static class EditorWindowFinder {
-        private static HashSet<EditorWindow> activeWindows = new HashSet<EditorWindow>();
+    internal static class EditorWindowFinder {
+        private static readonly HashSet<EditorWindow> activeWindows = new HashSet<EditorWindow>();
 
         [InitializeOnLoadMethod]
         private static void Init() {

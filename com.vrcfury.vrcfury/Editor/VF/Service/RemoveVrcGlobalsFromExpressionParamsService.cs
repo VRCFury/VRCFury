@@ -9,7 +9,7 @@ namespace VF.Service {
      * Having these in the expressions param list literally just wastes space
      */
     [VFService]
-    public class RemoveVrcGlobalsFromExpressionParamsService {
+    internal class RemoveVrcGlobalsFromExpressionParamsService {
         [VFAutowired] private readonly ParamsService paramsService;
         private ParamManager paramz => paramsService.GetParams();
 

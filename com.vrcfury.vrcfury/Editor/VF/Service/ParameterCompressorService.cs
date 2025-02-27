@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -190,19 +191,14 @@ namespace VF.Service {
             var model = globals.allFeaturesInRun.OfType<UnlimitedParameters>().FirstOrDefault();
             if (model == null) return eligible.ToList();
 
-            var addDriven = new HashSet<string>();
-            foreach (var controller in controllers.GetAllUsedControllers()) {
-                foreach (var behaviour in new AnimatorIterator.Behaviours().From(controller.GetRaw())) {
-                    if (behaviour is VRCAvatarParameterDriver driver) {
-                        foreach (var p in driver.parameters) {
-                            if (p.type == VRC_AvatarParameterDriver.ChangeType.Add) {
-                                addDriven.Add(p.name);
-                            }
-                        }
-                    }
-                }
-            }
-            
+            var addDriven = new HashSet<string>(controllers.GetAllUsedControllers()
+                .SelectMany(controller => controller.layers)
+                .SelectMany(layer => layer.allBehaviours)
+                .OfType<VRCAvatarParameterDriver>()
+                .SelectMany(driver => driver.parameters)
+                .Where(p => p.type == VRC_AvatarParameterDriver.ChangeType.Add)
+                .Select(p => p.name));
+
             // Go/Float is driven by an add driver, but it's safe to compress. The driver is only used while you're
             // actively holding a button in the menu.
             addDriven.Remove("Go/Float");

@@ -47,11 +47,9 @@ namespace VF.Service {
             var usedOwners = new HashSet<string>();
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var l in controller.GetLayers()) {
-                    foreach (var b in new AnimatorIterator.Behaviours().From(l)) {
-                        if (b is VRCAnimatorTrackingControl) {
-                            var layerOwner = controller.GetLayerOwner(l);
-                            usedOwners.Add(layerOwner);
-                        }
+                    if (l.allBehaviours.OfType<VRCAnimatorTrackingControl>().Any()) {
+                        var layerOwner = controller.GetLayerOwner(l);
+                        usedOwners.Add(layerOwner);
                     }
                 }
             }
@@ -68,9 +66,7 @@ namespace VF.Service {
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var l in controller.GetLayers()) {
                     var layerOwner = controller.GetLayerOwner(l);
-                    AnimatorIterator.ForEachBehaviourRW(l, b => {
-                        if (!(b is VRCAnimatorTrackingControl trackingControl)) return b;
-
+                    l.RewriteBehaviours<VRCAnimatorTrackingControl>(trackingControl => {
                         var driver = VrcfObjectFactory.Create<VRCAvatarParameterDriver>();
                         foreach (var type in allTypes) {
                             var value = type.GetValue(trackingControl);

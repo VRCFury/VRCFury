@@ -23,10 +23,7 @@ namespace VF.Service {
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
                 foreach (var c in controllers.GetAllUsedControllers()) {
                     foreach (var layer in c.GetLayers()) {
-                        AnimatorIterator.ForEachBehaviourRW(layer, b => {
-                            if (b is VRCAnimatorPlayAudio) return null;
-                            return b;
-                        });
+                        layer.RewriteBehaviours<VRCAnimatorPlayAudio>(b => null);
                     }
                 }
 #endif
@@ -63,11 +60,9 @@ namespace VF.Service {
             }
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
             foreach (var c in controllers.GetAllUsedControllers()) {
-                foreach (var b in new AnimatorIterator.Behaviours().From(c.GetRaw())) {
-                    if (b is VRCAnimatorPlayAudio audio) {
-                        audio.Clips = audio.Clips.Select(FixClip).ToArray();
-                        EditorUtility.SetDirty(audio);
-                    }
+                foreach (var audio in c.layers.SelectMany(layer => layer.allBehaviours).OfType<VRCAnimatorPlayAudio>()) {
+                    audio.Clips = audio.Clips.Select(FixClip).ToArray();
+                    EditorUtility.SetDirty(audio);
                 }
             }
 #endif

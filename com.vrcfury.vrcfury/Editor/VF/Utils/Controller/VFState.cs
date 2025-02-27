@@ -1,12 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Builder;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
+using Object = UnityEngine.Object;
 
 namespace VF.Utils.Controller {
     internal class VFState : VFBehaviourContainer {
+        private VFLayer layer;
         private ChildAnimatorState node;
         private readonly AnimatorState state;
         private readonly AnimatorStateMachine stateMachine;
@@ -14,7 +18,8 @@ namespace VF.Utils.Controller {
         private static readonly float X_OFFSET = 250;
         private static readonly float Y_OFFSET = 80;
 
-        public VFState(ChildAnimatorState node, AnimatorStateMachine stateMachine) {
+        public VFState(VFLayer layer, ChildAnimatorState node, AnimatorStateMachine stateMachine) {
+            this.layer = layer;
             this.node = node;
             this.state = node.state;
             this.stateMachine = stateMachine;
@@ -150,9 +155,9 @@ namespace VF.Utils.Controller {
             return new VFTransition(() => VrcfObjectFactory.Register(state.AddExitTransition()));
         }
 
-        public AnimatorState GetRaw() {
-            return state;
-        }
+        //public AnimatorState GetRaw() {
+        //    return state;
+        //}
 
         public static void FakeAnyState(params (VFState,VFCondition)[] states) {
             if (states.Length <= 1) return;
@@ -175,9 +180,16 @@ namespace VF.Utils.Controller {
             }
         }
 
+        public void SetAsDefaultState() {
+            stateMachine.defaultState = state;
+        }
+
         public StateMachineBehaviour[] behaviours {
             get => state.behaviours;
             set => state.behaviours = value;
         }
+
+        public string prettyName => $"{layer.prettyName} State {state.name}";
+        public Object behaviourContainer => state;
     }
 }

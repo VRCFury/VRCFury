@@ -24,7 +24,7 @@ namespace VF.Service {
                 var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
                 VFController ctrl = null;
                 if (existingController != null) ctrl = VFController.CopyAndLoadController(existingController, type);
-                if (ctrl == null) ctrl = VrcfObjectFactory.Create<AnimatorController>();
+                if (ctrl == null) ctrl = new VFController(VrcfObjectFactory.Create<AnimatorController>());
                 output = new ControllerManager(
                     ctrl,
                     () => paramz,
@@ -36,17 +36,16 @@ namespace VF.Service {
                 );
                 foreach (var layer in ctrl.GetLayers()) {
                     layerSourceService.SetSource(layer, isDefault ? LayerSourceService.VrcDefaultSource : LayerSourceService.AvatarDescriptorSource);
-                    layerSourceService.SetSourceFile(layer, existingController);
                 }
                 _controllers[type] = output;
-                VRCAvatarUtils.SetAvatarController(avatar, type, ctrl);
+                VRCAvatarUtils.SetAvatarController(avatar, type, ctrl.GetRaw());
             }
             return output;
         }
         public ControllerManager GetFx() {
             return GetController(VRCAvatarDescriptor.AnimLayerType.FX);
         }
-        public IEnumerable<ControllerManager> GetAllUsedControllers() {
+        public IList<ControllerManager> GetAllUsedControllers() {
             return VRCAvatarUtils.GetAllControllers(avatar)
                 .Where(c => c.controller != null)
                 .Select(c => GetController(c.type))
@@ -56,7 +55,7 @@ namespace VF.Service {
         private bool IsParamUsed(string name) {
             if (paramz.GetRaw().FindParameter(name) != null) return true;
             foreach (var c in GetAllUsedControllers()) {
-                if (c.GetRaw().GetParam(name) != null) return true;
+                if (c.GetParam(name) != null) return true;
             }
             return false;
         }

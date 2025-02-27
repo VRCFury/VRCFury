@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
@@ -18,7 +17,7 @@ namespace VF.Service {
      * will fix them afterward.
      */
     [VFService]
-    public class MakeAllSyncedDriversLocalService {
+    internal class MakeAllSyncedDriversLocalService {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ParamsService paramsService;
         private ParamManager paramz => paramsService.GetParams();
@@ -31,8 +30,7 @@ namespace VF.Service {
                 .ToImmutableHashSet();
 
             foreach (var layer in controllers.GetAllUsedControllers().SelectMany(c => c.GetLayers())) {
-                AnimatorIterator.ForEachBehaviourRW(layer, b => {
-                    if (!(b is VRCAvatarParameterDriver driver)) return b; // Not a driver, keep it
+                layer.RewriteBehaviours<VRCAvatarParameterDriver>(driver => {
                     if (driver.localOnly) return driver; // Driver is already local only, keep it
 
                     var synced = driver.parameters.Where(p => syncedParams.Contains(p.name)).ToList();

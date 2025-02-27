@@ -22,8 +22,7 @@ namespace VF.Builder {
             public Action setToDefault;
         }
         
-        private static IEnumerable<FoundController>
-            GetAllControllers(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.CustomAnimLayer[] layers) {
+        private static IList<FoundController> GetAllControllers(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.CustomAnimLayer[] layers) {
             
             var output = new List<FoundController>();
 
@@ -62,12 +61,12 @@ namespace VF.Builder {
 
             return output;
         }
-        public static IEnumerable<FoundController> GetAllControllers(VRCAvatarDescriptor avatar) {
-            return Enumerable.Concat(
-                GetAllControllers(avatar, avatar.baseAnimationLayers),
-                GetAllControllers(avatar, avatar.specialAnimationLayers));
+        public static IList<FoundController> GetAllControllers(VRCAvatarDescriptor avatar) {
+            return GetAllControllers(avatar, avatar.baseAnimationLayers)
+                .Concat(GetAllControllers(avatar, avatar.specialAnimationLayers))
+                .ToArray();
         }
-        
+
         private static AnimatorController GetDefaultController(VRCAvatarDescriptor.AnimLayerType type) {
             string guid = null;
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {

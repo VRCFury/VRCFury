@@ -18,7 +18,7 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 namespace VF.Utils {
     internal static class VrcfAnimationDebugInfo {
         public static List<VisualElement> BuildDebugInfo(
-            IList<AnimatorController> controllers,
+            IEnumerable<AnimatorController> controllers,
             [CanBeNull] VFGameObject avatarObject,
             VFGameObject componentObject,
             Func<string, string> rewritePath = null,
@@ -26,14 +26,15 @@ namespace VF.Utils {
         ) {
             var bindings = new HashSet<EditorCurveBinding>();
             foreach (var c in controllers) {
-                var controller = (VFController)c;
+                var controller = new VFController(c);
                 foreach (var state in new AnimatorIterator.States().From(controller)) {
                     bindings.UnionWith(new AnimatorIterator.Clips().From(state)
                         .SelectMany(clip => clip.GetAllBindings())
                     );
                 }
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-                bindings.UnionWith(new AnimatorIterator.Behaviours().From(controller)
+                bindings.UnionWith(controller.layers
+                    .SelectMany(c => c.allBehaviours)
                     .OfType<VRCAnimatorPlayAudio>()
                     .Select(audio => audio.SourcePath)
                     .Where(path => path != "")
