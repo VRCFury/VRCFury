@@ -51,8 +51,7 @@ namespace VF.Service {
                 foreach (var (layer, i) in c.GetLayers().Select((l,i) => (l,i))) {
                     var hasNonEmptyClip = new AnimatorIterator.Clips().From(layer)
                         .Any(clip => clip.HasValidBinding(avatarObject));
-                    var hasBehaviour = new AnimatorIterator.Behaviours().From(layer)
-                        .Any();
+                    var hasBehaviour = layer.allBehaviours.Any();
 
                     if (!hasNonEmptyClip && !hasBehaviour) {
                         Debug.LogWarning($"Removing layer {layer.name} from {c.GetType()} because it doesn't do anything");

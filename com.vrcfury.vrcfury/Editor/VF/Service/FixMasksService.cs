@@ -26,7 +26,7 @@ namespace VF.Service {
 
             var gesture = controllers.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
             var copyForFx = gesture.Clone();
-            foreach (var to in new AnimatorIterator.Behaviours().From(copyForFx).OfType<VRCAnimatorLayerControl>()) {
+            foreach (var to in copyForFx.layers.SelectMany(l => l.allBehaviours).OfType<VRCAnimatorLayerControl>()) {
                 animatorLayerControlManager.Alias(to.GetCloneSource(), to);
             }
 
@@ -51,7 +51,7 @@ namespace VF.Service {
                 if (propTypes.Contains(EditorCurveBindingType.Muscle) || propTypes.Contains(EditorCurveBindingType.Aap)) {
                     // We're keeping both layers
                     // Remove behaviours from the fx copy
-                    AnimatorIterator.ForEachBehaviourRW(layerForFx, b => null);
+                    layerForFx.RewriteBehaviours(b => null);
                 } else {
                     // We're only keeping it in FX
                     // Delete it from Gesture
@@ -130,7 +130,7 @@ namespace VF.Service {
                         // it can still impact the hip offset. This doesn't happen if it's on layer 1+. So we must ensure that there's never content with a mask on layer 0 in these cases.
                         createEmptyBaseLayer = true;
                     }
-                } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX && (layer0.states.Count > 1 || layer0.hasSubMachines)) {
+                } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX && (layer0.hasSubMachines || layer0.allStates.Count > 1)) {
                     // On FX, do not allow a layer with transitions to live as the base layer, because for some reason transition times can break
                     //   and animate immediately when performed within the base layer
                     createEmptyBaseLayer = true;

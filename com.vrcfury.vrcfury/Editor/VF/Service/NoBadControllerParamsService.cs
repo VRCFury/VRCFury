@@ -54,7 +54,7 @@ namespace VF.Service {
             var paramTypes = controller.parameters
                 .ToImmutableDictionary(p => p.name, p => p.type);
             foreach (var layer in controller.GetLayers()) {
-                AnimatorIterator.RewriteConditions(layer, condition => {
+                layer.RewriteConditions(condition => {
                     var mode = condition.mode;
 
                     if (!paramTypes.TryGetValue(condition.parameter, out var type)) {
@@ -148,7 +148,7 @@ namespace VF.Service {
             foreach (var p in controller.parameters) {
                 UpgradeType(p.name, p.type);
             }
-            foreach (var condition in new AnimatorIterator.Conditions().From(controller)) {
+            foreach (var condition in controller.layers.SelectMany(layer => layer.allTransitions).SelectMany(transition => transition.conditions)) {
                 var mode = condition.mode;
                 if (mode == AnimatorConditionMode.Equals || mode == AnimatorConditionMode.NotEqual) {
                     UpgradeType(condition.parameter, AnimatorControllerParameterType.Int);
@@ -197,7 +197,7 @@ namespace VF.Service {
 
             // Fix all of the usages
             foreach (var layer in controller.GetLayers()) {
-                AnimatorIterator.RewriteConditions(layer, c => {
+                layer.RewriteConditions(c => {
                     if (!paramTypes.TryGetValue(c.parameter, out var type)) {
                         return c;
                     }

@@ -333,7 +333,7 @@ namespace VF.Feature {
                     return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
                 });
                 var transitionParams = from.GetLayers()
-                    .SelectMany(l => new AnimatorIterator.Transitions().From(l))
+                    .SelectMany(l => l.allTransitions)
                     .SelectMany(transition => transition.conditions)
                     .Select(condition => condition.parameter)
                     .ToImmutableHashSet();

@@ -33,7 +33,8 @@ namespace VF.Utils {
                     );
                 }
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-                bindings.UnionWith(new AnimatorIterator.Behaviours().From(controller)
+                bindings.UnionWith(controller.layers
+                    .SelectMany(c => c.allBehaviours)
                     .OfType<VRCAnimatorPlayAudio>()
                     .Select(audio => audio.SourcePath)
                     .Where(path => path != "")

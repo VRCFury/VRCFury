@@ -23,10 +23,8 @@ namespace VF.Utils {
             
             // Rewrite VRCAnimatorPlayAudio
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-            foreach (var b in new AnimatorIterator.Behaviours().From(c)) {
-                if (b is VRCAnimatorPlayAudio audio) {
-                    audio.SourcePath = rewriter.RewritePath(audio.SourcePath);
-                }
+            foreach (var audio in c.layers.SelectMany(l => l.allBehaviours).OfType<VRCAnimatorPlayAudio>()) {
+                audio.SourcePath = rewriter.RewritePath(audio.SourcePath);
             }
 #endif
         }

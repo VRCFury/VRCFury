@@ -14,82 +14,6 @@ namespace VF.Builder {
      * Collects the resting value for every animated property in an animator, and puts them all into a clip.
      */
     internal static class AnimatorIterator {
-        private static ISet<VFBehaviourContainer> GetAllBehaviourContainers(VFLayer layer) {
-            var set = new HashSet<VFBehaviourContainer>();
-            foreach (var sm in layer.allStateMachines) {
-                set.Add(new VFStateMachine(sm));
-                foreach (var child in sm.states) {
-                    set.Add(new VFState(child, sm));
-                }
-            }
-            return set;
-        }
-
-        public static void ForEachBehaviourRW(
-            VFLayer layer,
-            Func<StateMachineBehaviour, OneOrMany<StateMachineBehaviour>> action
-        ) {
-            foreach (var container in GetAllBehaviourContainers(layer)) {
-                container.behaviours = container.behaviours.SelectMany(b => action(b).Get()).ToArray();
-            }
-        }
-
-        public static void RewriteConditions(
-            VFLayer root,
-            Func<AnimatorCondition, AnimatorTransitionBaseExtensions.Rewritten> action
-        ) {
-            ForEachTransitionRW(root, t => t.RewriteConditions(action));
-        }
-
-        public static void ForEachTransitionRW(
-            VFLayer root,
-            Func<AnimatorTransitionBase, OneOrMany<AnimatorTransitionBase>> action
-        ) {
-            foreach (var sm in root.allStateMachines) {
-                ForEachTransitionRW(sm.entryTransitions, a => sm.entryTransitions = a, action);
-                ForEachTransitionRW(sm.anyStateTransitions, a => sm.anyStateTransitions = a, action);
-                foreach (var childSm in sm.stateMachines) {
-                    ForEachTransitionRW(sm.GetStateMachineTransitions(childSm.stateMachine), a => sm.SetStateMachineTransitions(childSm.stateMachine, a), action);
-                }
-            }
-            foreach (var state in new States().From(root)) {
-                ForEachTransitionRW(state.transitions, a => state.transitions = a, action);
-            }
-        }
-
-        private static void ForEachTransitionRW<T>(
-            T[] input,
-            Action<T[]> setter,
-            Func<AnimatorTransitionBase, OneOrMany<AnimatorTransitionBase>> action
-        ) where T : AnimatorTransitionBase {
-            var changed = false;
-            var output = input.SelectMany(oneTransition => {
-                var result = action(oneTransition).Get();
-                changed |= result.Count != 1 || result[0] != oneTransition;
-                return result;
-            }).OfType<T>().ToArray();
-            if (changed) setter(output);
-        }
-
-        public static void ReplaceClips(VFController controller, Func<AnimationClip, AnimationClip> replace) {
-            Motion RewriteMotion(Motion motion) {
-                if (motion is AnimationClip clip) {
-                    return replace(clip);
-                }
-                if (motion is BlendTree tree) {
-                    tree.RewriteChildren(child => {
-                        child.motion = RewriteMotion(child.motion);
-                        return child;
-                    });
-                    return tree;
-                }
-                return motion;
-            }
-            
-            foreach (var state in new States().From(controller)) {
-                state.motion = RewriteMotion(state.motion);
-            }
-        }
 
         public abstract class Iterator<T> {
             public virtual IImmutableSet<T> From(Motion root) {
@@ -137,34 +61,7 @@ namespace VF.Builder {
 
         public class States : Iterator<AnimatorState> {
             public override IImmutableSet<AnimatorState> From(VFLayer root) {
-                return root.allStateMachines
-                    .SelectMany(sm => sm.states)
-                    .Select(c => c.state)
-                    .Where(state => state != null)
-                    .ToImmutableHashSet();
-            }
-        }
-        
-        public class Transitions : Iterator<AnimatorTransitionBase> {
-            public override IImmutableSet<AnimatorTransitionBase> From(VFLayer root) {
-                var states = new States().From(root);
-                return root.allStateMachines
-                    .SelectMany(sm =>
-                        sm.entryTransitions
-                            .Concat<AnimatorTransitionBase>(sm.anyStateTransitions)
-                            .Concat(sm.stateMachines.SelectMany(childSm => sm.GetStateMachineTransitions(childSm.stateMachine)))
-                    )
-                    .Concat(states.SelectMany(state => state.transitions))
-                    .Where(transition => transition != null)
-                    .ToImmutableHashSet();
-            }
-        }
-        
-        public class Conditions : Iterator<AnimatorCondition> {
-            public override IImmutableSet<AnimatorCondition> From(VFLayer root) {
-                return new Transitions().From(root)
-                    .SelectMany(t => t.conditions)
-                    .ToImmutableHashSet();
+                return root.allStates;
             }
         }
 
@@ -189,14 +86,6 @@ namespace VF.Builder {
         public class Trees : Iterator<BlendTree> {
             public override IImmutableSet<BlendTree> From(Motion root) {
                 return new Motions().From(root).OfType<BlendTree>().ToImmutableHashSet();
-            }
-        }
-        
-        public class Behaviours : Iterator<StateMachineBehaviour> {
-            public override IImmutableSet<StateMachineBehaviour> From(VFLayer root) {
-                return GetAllBehaviourContainers(root)
-                    .SelectMany(c => c.behaviours)
-                    .ToImmutableHashSet();
             }
         }
     }

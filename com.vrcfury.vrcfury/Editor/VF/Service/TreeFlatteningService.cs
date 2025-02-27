@@ -35,7 +35,7 @@ namespace VF.Service {
 
             foreach (var c in controllers.GetAllUsedControllers()) {
                 foreach (var layer in c.GetLayers()) {
-                    AnimatorIterator.RewriteConditions(layer, cond => {
+                    layer.RewriteConditions(cond => {
                         if (cond.parameter == VFBlendTreeDirect.AlwaysOneParam)
                             cond.parameter = c.One();
                         return cond;
@@ -62,9 +62,11 @@ namespace VF.Service {
                 .Select(p => p.name);
             animatedParams.UnionWith(vrcControlled);
             var driven = controllers.GetAllUsedControllers()
-                .SelectMany(c => new AnimatorIterator.Behaviours().From(c))
+                .SelectMany(c => c.layers)
+                .SelectMany(l => l.allBehaviours)
                 .OfType<VRCAvatarParameterDriver>()
-                .SelectMany(driver => driver.parameters.Select(p => p.name));
+                .SelectMany(driver => driver.parameters)
+                .Select(p => p.name);
             animatedParams.UnionWith(driven);
             var aaps = fx.GetClips()
                 .SelectMany(clip => clip.GetFloatBindings())

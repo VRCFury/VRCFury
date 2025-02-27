@@ -9,30 +9,30 @@ using VF.Builder;
 
 namespace VF.Utils.Controller {
     internal class VFLayer {
+        private readonly AnimatorStateMachine rootStateMachine;
         private readonly AnimatorController ctrl;
-        private readonly AnimatorStateMachine _stateMachine;
 
         private Vector2 nextOffset = new Vector2(1, 0);
         private VFState lastCreatedState;
 
-        public VFLayer(AnimatorController ctrl, AnimatorStateMachine stateMachine) {
+        public VFLayer(AnimatorController ctrl, AnimatorStateMachine rootStateMachine) {
             this.ctrl = ctrl;
-            this._stateMachine = stateMachine;
+            this.rootStateMachine = rootStateMachine;
         }
 
-        public static bool operator ==(VFLayer a, VFLayer b) => a?._stateMachine == b?._stateMachine;
+        public static bool operator ==(VFLayer a, VFLayer b) => a?.rootStateMachine == b?.rootStateMachine;
         public static bool operator !=(VFLayer a, VFLayer b) => !(a == b);
         public override bool Equals(object obj) => this == (VFLayer)obj;
-        public override int GetHashCode() => _stateMachine.GetHashCode();
+        public override int GetHashCode() => rootStateMachine.GetHashCode();
 
         public bool Exists() {
-            return ctrl.layers.Any(l => l.stateMachine == _stateMachine);
+            return ctrl.layers.Any(l => l.stateMachine == rootStateMachine);
         }
 
         public int GetLayerId() {
             var id = ctrl.layers
                 .Select((l, i) => (l, i))
-                .Where(tuple => tuple.Item1.stateMachine == _stateMachine)
+                .Where(tuple => tuple.Item1.stateMachine == rootStateMachine)
                 .Select(tuple => tuple.Item2)
                 .DefaultIfEmpty(-1)
                 .First();
@@ -104,17 +104,17 @@ namespace VF.Utils.Controller {
             name = WrapStateName(name);
             name = name.Replace(".", "");
 
-            var s = _stateMachine.AddState(name);
+            var s = rootStateMachine.AddState(name);
             VrcfObjectFactory.Register(s);
             var node = GetLastNode().Value;
             node.state.writeDefaultValues = true;
 
-            var state = new VFState(node, _stateMachine);
+            var state = new VFState(this, node, rootStateMachine);
             
             if (lastCreatedState != null) {
                 state.Move(lastCreatedState, nextOffset.x, nextOffset.y);
             } else {
-                state.Move(_stateMachine.entryPosition, nextOffset.x, nextOffset.y);
+                state.Move(rootStateMachine.entryPosition, nextOffset.x, nextOffset.y);
             }
 
             SetNextOffset(0, 1);
@@ -128,18 +128,18 @@ namespace VF.Utils.Controller {
         }
 
         private ChildAnimatorState? GetLastNode() {
-            var states = _stateMachine.states;
-            if (states.Length == 0) return null;
-            return states[states.Length-1];
+            var s = rootStateMachine.states;
+            if (s.Length == 0) return null;
+            return s[s.Length-1];
         }
 
         public void Move(int newIndex) {
             var layers = ctrl.layers;
             var myLayer = layers
-                .First(l => l.stateMachine == _stateMachine);
+                .First(l => l.stateMachine == rootStateMachine);
 
             var newList = layers
-                .Where(l => l.stateMachine != _stateMachine)
+                .Where(l => l.stateMachine != rootStateMachine)
                 .ToList();
             newList.Insert(newIndex, myLayer);
             ctrl.layers = newList.ToArray();
@@ -148,18 +148,81 @@ namespace VF.Utils.Controller {
         public void Remove() {
             ctrl.RemoveLayer(GetLayerId());
         }
-        
-        public IImmutableSet<AnimatorStateMachine> allStateMachines =>
-            AnimatorIterator.GetRecursive(_stateMachine, sm => sm.stateMachines.Select(c => c.stateMachine));
 
-        public bool hasSubMachines => _stateMachine.stateMachines.Any();
+        private IReadOnlyCollection<AnimatorStateMachine> allRawStateMachines =>
+            AnimatorIterator.GetRecursive(rootStateMachine, s => s.stateMachines.Select(c => c.stateMachine));
 
-        public bool hasDefaultState => _stateMachine.defaultState != null;
+        public IReadOnlyCollection<VFStateMachine> allStateMachines =>
+            allRawStateMachines.Select(sm => new VFStateMachine(this, sm)).ToArray();
 
-        public Vector2 entryPosition => _stateMachine.entryPosition;
+        public bool hasSubMachines => rootStateMachine.stateMachines.Any();
+        public bool hasDefaultState => rootStateMachine.defaultState != null;
+        public AnimatorState defaultState => rootStateMachine.defaultState;
+        public AnimatorTransition[] entryTransitions => rootStateMachine.entryTransitions;
+        public Vector2 entryPosition => rootStateMachine.entryPosition;
 
-        public IList<VFState> states => _stateMachine.states
-            .Select(c => new VFState(c, _stateMachine))
-            .ToArray();
+        public IImmutableSet<AnimatorState> allStates => allRawStateMachines
+            .SelectMany(sm => sm.states)
+            .Select(child => child.state)
+            .NotNull()
+            .ToImmutableHashSet();
+
+        private IImmutableSet<VFBehaviourContainer> allBehaviourContainers => allStateMachines
+            .SelectMany(sm => sm.states.OfType<VFBehaviourContainer>().Append(sm))
+            .ToImmutableHashSet();
+
+        public IImmutableSet<StateMachineBehaviour> allBehaviours => allBehaviourContainers
+            .SelectMany(container => container.behaviours)
+            .ToImmutableHashSet();
+
+        public void RewriteBehaviours(Func<StateMachineBehaviour, OneOrMany<StateMachineBehaviour>> action) {
+            RewriteBehaviours<StateMachineBehaviour>(action);
+        }
+        public void RewriteBehaviours<T>(Func<T, OneOrMany<StateMachineBehaviour>> action) where T : StateMachineBehaviour {
+            foreach (var container in allBehaviourContainers) {
+                container.behaviours = container.behaviours.SelectMany(b => b is T t ? action(t).Get() : new [] { b }).ToArray();
+            }
+        }
+
+        public void RewriteConditions(Func<AnimatorCondition, AnimatorTransitionBaseExtensions.Rewritten> action) {
+            RewriteTransitions(t => t.RewriteConditions(action));
+        }
+
+        public IImmutableSet<AnimatorTransitionBase> allTransitions => allRawStateMachines
+            .SelectMany(sm =>
+                sm.entryTransitions
+                    .Concat<AnimatorTransitionBase>(sm.anyStateTransitions)
+                    .Concat(sm.stateMachines.SelectMany(childSm => sm.GetStateMachineTransitions(childSm.stateMachine)))
+                    .Concat(sm.states.SelectMany(child => child.state.transitions))
+            )
+            .NotNull()
+            .ToImmutableHashSet();
+
+        public void RewriteTransitions(Func<AnimatorTransitionBase, OneOrMany<AnimatorTransitionBase>> action) {
+            foreach (var sm in allRawStateMachines) {
+                RewriteTransitions(sm.entryTransitions, a => sm.entryTransitions = a, action);
+                RewriteTransitions(sm.anyStateTransitions, a => sm.anyStateTransitions = a, action);
+                foreach (var childSm in sm.stateMachines.Select(child => child.stateMachine)) {
+                    RewriteTransitions(sm.GetStateMachineTransitions(childSm), a => sm.SetStateMachineTransitions(childSm, a), action);
+                }
+                foreach (var state in sm.states.Select(child => child.state)) {
+                    RewriteTransitions(state.transitions, a => state.transitions = a, action);
+                }
+            }
+        }
+
+        private static void RewriteTransitions<T>(
+            T[] input,
+            Action<T[]> setter,
+            Func<AnimatorTransitionBase, OneOrMany<AnimatorTransitionBase>> action
+        ) where T : AnimatorTransitionBase {
+            var changed = false;
+            var output = input.SelectMany(oneTransition => {
+                var result = action(oneTransition).Get();
+                changed |= result.Count != 1 || result[0] != oneTransition;
+                return result;
+            }).OfType<T>().ToArray();
+            if (changed) setter(output);
+        }
     }
 }

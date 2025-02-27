@@ -126,6 +126,7 @@ namespace VF.Utils.Controller {
         public IList<VFLayer> GetLayers() {
             return ctrl.layers.Select(l => new VFLayer(ctrl, l.stateMachine)).ToArray();
         }
+        public IList<VFLayer> layers => GetLayers();
 
         [CanBeNull]
         public VFLayer GetLayer(int index) {
@@ -133,8 +134,6 @@ namespace VF.Utils.Controller {
             if (index < 0 || index >= ls.Length) return null;
             return new VFLayer(ctrl, ls[index].stateMachine);
         }
-
-        public IList<VFLayer> layers => GetLayers();
 
         public AnimatorControllerParameter[] parameters {
             get => ctrl.parameters;
@@ -171,7 +170,7 @@ namespace VF.Utils.Controller {
 
             // Apply override controllers
             if (overrides.Count > 0) {
-                AnimatorIterator.ReplaceClips(output, clip => {
+                output.ReplaceClips(clip => {
                     return overrides
                         .Select(ov => ov[clip])
                         .Where(overrideClip => overrideClip != null)
@@ -412,7 +411,7 @@ namespace VF.Utils.Controller {
                 VRCFuryEditorUtils.MarkDirty(state);
             }
             
-            foreach (var b in new AnimatorIterator.Behaviours().From(affectsLayers)) {
+            foreach (var b in affectsLayers.SelectMany(layer => layer.allBehaviours)) {
                 // VRCAvatarParameterDriver
                 if (includeWrites && b is VRCAvatarParameterDriver oldB) {
                     foreach (var p in oldB.parameters) {
@@ -450,17 +449,35 @@ namespace VF.Utils.Controller {
 
             // Transitions
             foreach (var layer in affectsLayers) {
-                AnimatorIterator.RewriteConditions(layer, cond => {
+                layer.RewriteConditions(cond => {
                     cond.parameter = RewriteParamName(cond.parameter);
                     return cond;
                 });
             }
         }
 
-        public string name => ctrl.name;
-
         public VFController Clone() {
             return new VFController(ctrl.Clone());
+        }
+        
+        public void ReplaceClips(Func<AnimationClip, AnimationClip> replace) {
+            Motion RewriteMotion(Motion motion) {
+                if (motion is AnimationClip clip) {
+                    return replace(clip);
+                }
+                if (motion is BlendTree tree) {
+                    tree.RewriteChildren(child => {
+                        child.motion = RewriteMotion(child.motion);
+                        return child;
+                    });
+                    return tree;
+                }
+                return motion;
+            }
+            
+            foreach (var state in layers.SelectMany(l => l.allStates)) {
+                state.motion = RewriteMotion(state.motion);
+            }
         }
     }
 }

@@ -36,7 +36,7 @@ namespace VF.Service {
             // We can just go ahead and remove these invalid conditions.
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetLayers()) {
-                    AnimatorIterator.ForEachTransitionRW(layer, transition => {
+                    layer.RewriteTransitions(transition => {
                         if (transition is AnimatorStateTransition t && !t.hasExitTime && !t.conditions.Any()) {
                             return null;
                         }

@@ -230,7 +230,8 @@ namespace VF.Utils {
 
         private static bool IsParamUsed(VFLayer layer, string param) {
             var isUsed = false;
-            isUsed |= new AnimatorIterator.Conditions().From(layer)
+            isUsed |= layer.allTransitions
+                .SelectMany(t => t.conditions)
                 .Any(c => c.parameter == param);
             isUsed |= new AnimatorIterator.States().From(layer).Any(state =>
                 state.speedParameter == param ||

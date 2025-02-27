@@ -87,27 +87,25 @@ namespace VF.Service {
                 throw new DoNotOptimizeException("Contains submachine");
             }
 
-            var hasBehaviour = new AnimatorIterator.Behaviours().From(layer).Any();
+            var hasBehaviour = layer.allBehaviours.Any();
             if (hasBehaviour) {
                 throw new DoNotOptimizeException($"Contains behaviours");
             }
 
-            var hasExitTime = new AnimatorIterator.Transitions()
-                .From(layer)
+            var hasExitTime = layer.allTransitions
                 .Any(b => b is AnimatorStateTransition t && t.hasExitTime);
             if (hasExitTime) {
                 throw new DoNotOptimizeException($"Contains a transition using exit time");
             }
             
-            var hasNonZeroTransitonTime = new AnimatorIterator.Transitions()
-                .From(layer)
+            var hasNonZeroTransitonTime = layer.allTransitions
                 .Any(b => b is AnimatorStateTransition t && t.duration != 0);
             if (hasNonZeroTransitonTime) {
                 throw new DoNotOptimizeException($"Contains a transition with a non-0 duration");
             }
 
-            var states = layer.states;
-            states = states.Where(state => !state.IsUnreachableState()).ToArray();
+            var states = layer.allStates.ToArray();
+            states = states.Where(state => !IsUnreachableState(layer, state)).ToArray();
 
             var hasEulerRotation = states.Any(state => {
                 if (state.motion is BlendTree) return false;
@@ -134,7 +132,7 @@ namespace VF.Service {
                 throw new DoNotOptimizeException($"Shares animations with other layer: {names}");
             }
 
-            if (states.Count == 1) {
+            if (states.Length == 1) {
                 var state = states[0];
                 var onClip = Make0LengthClipForState(layer, state);
                 if (onClip != null) {
@@ -142,18 +140,18 @@ namespace VF.Service {
                 }
                 return;
             }
-            if (states.Count == 3) {
-                states = states.Where(state => !state.IsEntryOnlyState()).ToArray();
+            if (states.Length == 3) {
+                states = states.Where(state => !IsEntryOnlyState(layer, state)).ToArray();
             }
-            if (states.Count != 2) {
-                throw new DoNotOptimizeException($"Contains {states.Count} states");
+            if (states.Length != 2) {
+                throw new DoNotOptimizeException($"Contains {states.Length} states");
             }
             
             var state0 = states[0];
             var state1 = states[1];
 
-            var state0Condition = GetSingleCondition(state0.GetTransitionsTo());
-            var state1Condition = GetSingleCondition(state1.GetTransitionsTo());
+            var state0Condition = GetSingleCondition(GetTransitionsTo(layer, state0));
+            var state1Condition = GetSingleCondition(GetTransitionsTo(layer, state1));
             if (state0Condition == null || state1Condition == null) {
                 throw new DoNotOptimizeException($"State conditions are not basic");
             }
@@ -178,6 +176,34 @@ namespace VF.Service {
             var state1Clip = Make0LengthClipForState(layer, state1);
 
             Optimize(state0Condition.Value, state0Clip, state1Clip, directTree);
+        }
+        
+        private static bool IsEntryOnlyState(VFLayer layer, AnimatorState state) {
+            return layer.defaultState == state && GetTransitionsTo(layer, state).Count == 0;
+        }
+        
+        private static bool IsUnreachableState(VFLayer layer, AnimatorState state) {
+            return layer.defaultState != state && GetTransitionsTo(layer, state).Count == 0;
+        }
+        
+        private static ICollection<AnimatorTransitionBase> GetTransitionsTo(VFLayer layer, AnimatorState state) {
+            var output = new List<AnimatorTransitionBase>();
+            var ignoreTransitions = new HashSet<AnimatorTransitionBase>();
+            var entryState = layer.defaultState;
+
+            if (layer.entryTransitions.Length == 1 &&
+                layer.entryTransitions[0].conditions.Length == 0) {
+                entryState = layer.entryTransitions[0].destinationState;
+                ignoreTransitions.Add(layer.entryTransitions[0]);
+            }
+
+            foreach (var t in layer.allTransitions) {
+                if (ignoreTransitions.Contains(t)) continue;
+                if (t.destinationState == state || (t.isExit && entryState == state)) {
+                    output.Add(t);
+                }
+            }
+            return output.ToArray();
         }
 
         private void Optimize(AnimatorCondition condition, Motion on, Motion off, Lazy<VFBlendTreeDirect> directTree) {
@@ -217,7 +243,7 @@ namespace VF.Service {
         }
 
         [CanBeNull]
-        private Motion Make0LengthClipForState(VFLayer layer, VFState state) {
+        private Motion Make0LengthClipForState(VFLayer layer, AnimatorState state) {
             if (state.motion == null) return null;
 
             if (state.motion.IsStatic()) {

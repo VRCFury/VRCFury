@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using JetBrains.Annotations;
 
 namespace VF.Builder {
-    public class OneOrMany<T> {
+    internal class OneOrMany<T> {
         public readonly IList<T> _raw;
 
         private OneOrMany(IList<T> list) {
@@ -15,7 +15,7 @@ namespace VF.Builder {
         public static implicit operator OneOrMany<T>(List<T> d) => new OneOrMany<T>(d);
     }
 
-    public static class OneOrManyExtensions {
+    internal static class OneOrManyExtensions {
         // This is an extension so that it works even if the OneOrMany is null
         public static IList<T> Get<T>([CanBeNull] this OneOrMany<T> oneOrMany) {
             return oneOrMany?._raw ?? Array.Empty<T>();

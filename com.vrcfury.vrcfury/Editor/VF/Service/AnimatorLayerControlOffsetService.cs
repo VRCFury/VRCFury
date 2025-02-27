@@ -49,17 +49,16 @@ namespace VF.Service {
 
             foreach (var c in controllers.GetAllUsedControllers()) {
                 foreach (var l in c.GetLayers()) {
-                    AnimatorIterator.ForEachBehaviourRW(l, b => {
-                        if (!(b is VRCAnimatorLayerControl control)) return b;
+                    l.RewriteBehaviours<VRCAnimatorLayerControl>(control => {
                         var targetLayers = mapping.Get(control);
                         if (targetLayers.Count == 0) {
-                            debugLog.Add("Removing invalid AnimatorLayerControl (not found in mapping??) " + b);
+                            debugLog.Add("Removing invalid AnimatorLayerControl (not found in mapping??) " + control);
                             return null;
                         }
 
                         return targetLayers.Select(targetLayer => {
                             if (!smToTypeAndNumber.TryGetValue(targetLayer, out var pair)) {
-                                debugLog.Add("Removing invalid AnimatorLayerControl (target sm has disappeared) " + b);
+                                debugLog.Add("Removing invalid AnimatorLayerControl (target sm has disappeared) " + control);
                                 return null;
                             }
 
@@ -68,7 +67,7 @@ namespace VF.Service {
                             var newCastedType = VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(
                                 VRCFEnumUtils.GetName(newType));
                             debugLog.Add(
-                                $"Rewriting {b} from {control.playable}:{control.layer} to {newCastedType}:{newI}");
+                                $"Rewriting {control} from {control.playable}:{control.layer} to {newCastedType}:{newI}");
                             copy.playable = newCastedType;
                             copy.layer = newI;
                             return copy;
@@ -83,21 +82,18 @@ namespace VF.Service {
         public void RegisterControllerSet<T>(ICollection<T> set) where T : VFControllerWithVrcType {
             foreach (var controller in set) {
                 foreach (var layer in controller.GetLayers()) {
-                    AnimatorIterator.ForEachBehaviourRW(layer, b => {
-                        if (b is VRCAnimatorLayerControl control) {
-                            var targetController = set.FirstOrDefault(other => VRCFEnumUtils.GetName(other.vrcType) == VRCFEnumUtils.GetName(control.playable));
-                            if (targetController == null) return null;
-                            if (control.layer < 0 || control.layer >= targetController.layers.Count) return null;
-                            var targetSm = targetController.layers[control.layer];
-                            Register(control, targetSm);
-                        }
-
-                        return b;
+                    layer.RewriteBehaviours<VRCAnimatorLayerControl>(control => {
+                        var targetController = set.FirstOrDefault(other => VRCFEnumUtils.GetName(other.vrcType) == VRCFEnumUtils.GetName(control.playable));
+                        if (targetController == null) return null;
+                        if (control.layer < 0 || control.layer >= targetController.layers.Count) return null;
+                        var targetSm = targetController.layers[control.layer];
+                        Register(control, targetSm);
+                        return control;
                     });
                 }
             }
         }
-        
+
         public void Register(VRCAnimatorLayerControl control, VFLayer targetSm) {
             mapping.Put(control, targetSm);
         }

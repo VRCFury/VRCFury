@@ -38,9 +38,7 @@ namespace VF.Service {
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetLayers()) {
                     var layerOwner = controller.GetLayerOwner(layer);
-                    AnimatorIterator.ForEachBehaviourRW(layer, b => {
-                        if (!(b is VRCPlayableLayerControl playableControl)) return b;
-
+                    layer.RewriteBehaviours<VRCPlayableLayerControl>(playableControl => {
                         var drivesTypeName = VRCFEnumUtils.GetName(playableControl.layer);
                         var drivesType = VRCFEnumUtils.Parse<VRCAvatarDescriptor.AnimLayerType>(drivesTypeName);
                         
@@ -48,16 +46,16 @@ namespace VF.Service {
                         // (see Hailey avatar, Gesture Controller, SB_FX Weight layer)
                         // For now, only worry about things driving action
                         if (drivesType != VRCAvatarDescriptor.AnimLayerType.Action) {
-                            return b;
+                            return playableControl;
                         }
 
                         if (!ownersByController.TryGetValue(drivesType, out var uniqueOwnersOnType)) {
                             // They're driving a controller that doesn't exist?
                             // uhh... keep it I guess
-                            return b;
+                            return playableControl;
                         }
                         if (!uniqueOwnersOnType.Contains(layerOwner)) return null;
-                        if (uniqueOwnersOnType.Count == 1) return b;
+                        if (uniqueOwnersOnType.Count == 1) return playableControl;
 
                         var drivesController = controllers.GetController(drivesType);
                         var drivesLayers = drivesController.GetLayers()

@@ -9,6 +9,7 @@ using VRC.SDKBase;
 
 namespace VF.Utils.Controller {
     internal class VFState : VFBehaviourContainer {
+        private VFLayer layer;
         private ChildAnimatorState node;
         private readonly AnimatorState state;
         private readonly AnimatorStateMachine stateMachine;
@@ -16,7 +17,8 @@ namespace VF.Utils.Controller {
         private static readonly float X_OFFSET = 250;
         private static readonly float Y_OFFSET = 80;
 
-        public VFState(ChildAnimatorState node, AnimatorStateMachine stateMachine) {
+        public VFState(VFLayer layer, ChildAnimatorState node, AnimatorStateMachine stateMachine) {
+            this.layer = layer;
             this.node = node;
             this.state = node.state;
             this.stateMachine = stateMachine;
@@ -184,44 +186,6 @@ namespace VF.Utils.Controller {
         public StateMachineBehaviour[] behaviours {
             get => state.behaviours;
             set => state.behaviours = value;
-        }
-
-        public Motion motion {
-            get => state.motion;
-            set => state.motion = value;
-        }
-
-        public string name => state.name;
-        public bool timeParameterActive => state.timeParameterActive;
-        public string timeParameter => state.timeParameter;
-        public float speed => state.speed;
-        
-        public bool IsEntryOnlyState() {
-            return stateMachine.defaultState == state && !GetTransitionsTo().Any();
-        }
-        
-        public bool IsUnreachableState() {
-            return stateMachine.defaultState != state && !GetTransitionsTo().Any();
-        }
-        
-        public ICollection<AnimatorTransitionBase> GetTransitionsTo() {
-            var output = new List<AnimatorTransitionBase>();
-            var ignoreTransitions = new HashSet<AnimatorTransitionBase>();
-            var entryState = stateMachine.defaultState;
-
-            if (stateMachine.entryTransitions.Length == 1 &&
-                stateMachine.entryTransitions[0].conditions.Length == 0) {
-                entryState = stateMachine.entryTransitions[0].destinationState;
-                ignoreTransitions.Add(stateMachine.entryTransitions[0]);
-            }
-
-            foreach (var t in new AnimatorIterator.Transitions().From(new VFLayer(null, stateMachine))) {
-                if (ignoreTransitions.Contains(t)) continue;
-                if (t.destinationState == state || (t.isExit && entryState == state)) {
-                    output.Add(t);
-                }
-            }
-            return output.ToArray();
         }
     }
 }
