@@ -8,7 +8,7 @@ using UnityEngine;
 using VF.Builder;
 
 namespace VF.Utils.Controller {
-    internal class VFLayer {
+    internal class VFLayer : VFPrettyNamed {
         private readonly AnimatorStateMachine rootStateMachine;
         private readonly AnimatorController ctrl;
 
@@ -58,7 +58,7 @@ namespace VF.Utils.Controller {
             set { WithLayer(l => l.name = value); }
         }
 
-        public string debugName => $"Controller `{ctrl.name}` Layer `{name}`";
+        public string prettyName => $"Controller `{ctrl.name}` Layer `{name}`";
 
         public AnimatorLayerBlendingMode blendingMode {
             get => ctrl.layers[GetLayerId()].blendingMode;
@@ -174,6 +174,12 @@ namespace VF.Utils.Controller {
         public IImmutableSet<StateMachineBehaviour> allBehaviours => allBehaviourContainers
             .SelectMany(container => container.behaviours)
             .ToImmutableHashSet();
+        
+        public void RemoveBadBehaviours() {
+            foreach (var c in allBehaviourContainers) {
+                c.RemoveBadBehaviours();
+            }
+        }
 
         public void RewriteBehaviours(Func<StateMachineBehaviour, OneOrMany<StateMachineBehaviour>> action) {
             RewriteBehaviours<StateMachineBehaviour>(action);

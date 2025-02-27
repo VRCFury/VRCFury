@@ -18,8 +18,9 @@ namespace VF.Utils.Controller {
             set => sm.behaviours = value;
         }
 
-        public string name => sm.name;
-        
+        public string prettyName => $"{layer.prettyName} StateMachine {sm.name}";
+        public Object behaviourContainer => sm;
+
         public ICollection<VFState> states => sm.states
             .Select(c => new VFState(layer, c, sm))
             .ToArray();

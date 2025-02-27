@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
-using VF.Feature;
 using VF.Inspector;
 using VF.Service;
 using VRC.SDK3.Avatars.Components;
@@ -164,7 +162,7 @@ namespace VF.Utils.Controller {
             var output = new VFControllerWithVrcType(ac, type);
             output.RemoveInvalidParameters();
             output.FixNullStateMachines();
-            output.CheckForBadBehaviours();
+            output.RemoveBadBehaviours();
             output.ReplaceSyncedLayers();
             output.RemoveDuplicateStateMachines();
 
@@ -270,41 +268,9 @@ namespace VF.Utils.Controller {
             }
         }
 
-        private static void RemoveBadBehaviours(string location, object obj) {
-            var field = obj.GetType()
-                .GetProperty("behaviours_Internal", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (field != null) {
-                // 2022+
-                var raw = field.GetValue(obj) as ScriptableObject[];
-                if (raw == null) return;
-                var clean = raw.OfType<StateMachineBehaviour>().Cast<ScriptableObject>().ToArray();
-                if (raw.Length != clean.Length) {
-                    field.SetValue(obj, clean);
-                    Debug.LogWarning($"{location} contained a corrupt behaviour. It has been removed.");
-                }
-            } else {
-                // 2019
-                var oldField = obj.GetType().GetProperty("behaviours", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (oldField == null) return;
-                var raw = oldField.GetValue(obj) as StateMachineBehaviour[];
-                if (raw == null) return;
-                var clean = raw.Cast<object>().OfType<StateMachineBehaviour>().ToArray();
-                if (raw.Length != clean.Length) {
-                    oldField.SetValue(obj, clean);
-                    Debug.LogWarning($"{location} contained a corrupt behaviour. It has been removed.");
-                }
-            }
-        }
-
-        private void CheckForBadBehaviours() {
-            foreach (var layer in GetLayers()) {
-                foreach (var stateMachine in layer.allStateMachines) {
-                    RemoveBadBehaviours($"{layer.debugName} StateMachine `{stateMachine.name}`", stateMachine);
-                }
-
-                foreach (var state in new AnimatorIterator.States().From(layer)) {
-                    RemoveBadBehaviours($"{layer.debugName} State `{state.name}`", state);
-                }
+        private void RemoveBadBehaviours() {
+            foreach (var layer in layers) {
+                layer.RemoveBadBehaviours();
             }
         }
 

@@ -6,6 +6,7 @@ using UnityEngine;
 using VF.Builder;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
+using Object = UnityEngine.Object;
 
 namespace VF.Utils.Controller {
     internal class VFState : VFBehaviourContainer {
@@ -187,5 +188,8 @@ namespace VF.Utils.Controller {
             get => state.behaviours;
             set => state.behaviours = value;
         }
+
+        public string prettyName => $"{layer.prettyName} State {state.name}";
+        public Object behaviourContainer => state;
     }
 }

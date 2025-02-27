@@ -191,14 +191,13 @@ namespace VF.Service {
             var model = globals.allFeaturesInRun.OfType<UnlimitedParameters>().FirstOrDefault();
             if (model == null) return eligible.ToList();
 
-            var addDriven = controllers.GetAllUsedControllers()
+            var addDriven = new HashSet<string>(controllers.GetAllUsedControllers()
                 .SelectMany(controller => controller.layers)
                 .SelectMany(layer => layer.allBehaviours)
                 .OfType<VRCAvatarParameterDriver>()
                 .SelectMany(driver => driver.parameters)
                 .Where(p => p.type == VRC_AvatarParameterDriver.ChangeType.Add)
-                .Select(p => p.name)
-                .ToHashSet();
+                .Select(p => p.name));
 
             // Go/Float is driven by an add driver, but it's safe to compress. The driver is only used while you're
             // actively holding a button in the menu.
