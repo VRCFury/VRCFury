@@ -150,9 +150,9 @@ namespace VF.Utils.Controller {
             return new VFTransition(() => VrcfObjectFactory.Register(state.AddExitTransition()));
         }
 
-        public AnimatorState GetRaw() {
-            return state;
-        }
+        //public AnimatorState GetRaw() {
+        //    return state;
+        //}
 
         public static void FakeAnyState(params (VFState,VFCondition)[] states) {
             if (states.Length <= 1) return;
@@ -173,6 +173,10 @@ namespace VF.Utils.Controller {
                     other.TransitionsTo(state).When(myWhen);
                 }
             }
+        }
+
+        public void SetAsDefaultState() {
+            stateMachine.defaultState = state;
         }
 
         public StateMachineBehaviour[] behaviours {

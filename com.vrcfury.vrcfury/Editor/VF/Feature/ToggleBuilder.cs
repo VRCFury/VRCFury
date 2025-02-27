@@ -282,7 +282,7 @@ namespace VF.Feature {
             }
 
             if (defaultOn && !model.separateLocal && !model.securityEnabled) {
-                layer.GetRawStateMachine().defaultState = onState.GetRaw();
+                onState.SetAsDefaultState();
                 off.TransitionsFromEntry().When();
             }
 
