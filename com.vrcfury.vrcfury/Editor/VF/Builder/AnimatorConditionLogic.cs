@@ -43,7 +43,7 @@ namespace VF.Builder {
         
         public static AnimatorCondition[][] Not(AnimatorCondition[][] input) {
             var output = input.Aggregate(
-                Array.Empty<AnimatorCondition[]>(), 
+                new [] { Array.Empty<AnimatorCondition>() }, 
                 (accumulator, sequence) => (
                     from accseq in accumulator 
                     from item in sequence 
