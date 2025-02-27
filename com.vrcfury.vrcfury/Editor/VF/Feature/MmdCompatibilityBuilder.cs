@@ -67,7 +67,6 @@ namespace VF.Feature {
                 .ToImmutableHashSet();
             var layersToDisable = fx.GetLayers()
                 .Where(l => layerNamesToDisable.Contains(l.name))
-                .Select(l => l.stateMachine)
                 .ToArray();
             
             if (layersToDisable.Length == 0 && string.IsNullOrWhiteSpace(model.globalParam)) {

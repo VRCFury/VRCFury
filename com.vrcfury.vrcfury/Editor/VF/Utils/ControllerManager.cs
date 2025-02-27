@@ -38,7 +38,7 @@ namespace VF.Utils {
 
         public VFLayer EnsureEmptyBaseLayer() {
             var oldLayer0 = GetLayer(0);
-            if (oldLayer0 != null && oldLayer0.stateMachine.defaultState == null) {
+            if (oldLayer0 != null && !oldLayer0.hasDefaultState) {
                 return oldLayer0;
             }
             var newLayer0 = NewLayer("Base Mask", insertAt: 0);
@@ -48,48 +48,14 @@ namespace VF.Utils {
             return newLayer0;
         }
 
+        protected override string NewLayerName(string name) {
+            return "[VF" + currentFeatureNumProvider() + "] " + name;
+        }
+
         public override VFLayer NewLayer(string name, int insertAt = -1) {
-            var newLayer = base.NewLayer(NewLayerName(name), insertAt);
+            var newLayer = base.NewLayer(name, insertAt);
             layerSourceService.SetSourceToCurrent(newLayer);
             return newLayer;
-        }
-
-        /**
-         * BEWARE: This consumes the ENTIRE asset file containing "other"
-         * The animator controller (and its sub-assets) should be owned by vrcfury, and should
-         * be the ONLY THING in that file!!!
-         */
-        public void TakeOwnershipOf(AnimatorController other, bool putOnTop = false, bool prefix = true) {
-            // Merge Layers
-            if (prefix) {
-                other.layers = other.layers.Select((layer, i) => {
-                    layer.name = NewLayerName(layer.name);
-                    return layer;
-                }).ToArray();
-            }
-
-            if (putOnTop) {
-                layers = other.layers.Concat(layers).ToArray();
-            } else {
-                layers = layers.Concat(other.layers).ToArray();
-            }
-
-            other.layers = new AnimatorControllerLayer[] { };
-            
-            // Merge Params
-            foreach (var p in other.parameters) {
-                _NewParam(p.name, p.type, n => {
-                    n.defaultBool = p.defaultBool;
-                    n.defaultFloat = p.defaultFloat;
-                    n.defaultInt = p.defaultInt;
-                });
-            }
-
-            other.parameters = new AnimatorControllerParameter[] { };
-        }
-
-        public string NewLayerName(string name) {
-            return "[VF" + currentFeatureNumProvider() + "] " + name;
         }
 
         public IList<VFLayer> GetManagedLayers() {
@@ -99,7 +65,7 @@ namespace VF.Utils {
             return GetLayers().Where(l => !IsManaged(l)).ToArray();
         }
 
-        private bool IsManaged(AnimatorStateMachine layer) {
+        private bool IsManaged(VFLayer layer) {
             return layerSourceService.GetSource(layer) != LayerSourceService.AvatarDescriptorSource;
         }
 
@@ -193,22 +159,18 @@ namespace VF.Utils {
         }
 
         [CanBeNull]
-        public string GetLayerOwner(AnimatorStateMachine stateMachine) {
-            return layerSourceService.GetSource(stateMachine);
-        }
-
-        public bool IsSourceAvatarDescriptor(AnimatorStateMachine stateMachine) {
-            return GetLayerOwner(stateMachine) == LayerSourceService.AvatarDescriptorSource;
+        public string GetLayerOwner(VFLayer layer) {
+            return layerSourceService.GetSource(layer);
         }
 
         public void ForEachClip(Action<AnimationClip> action) {
-            foreach (var clip in new AnimatorIterator.Clips().From(GetRaw())) {
+            foreach (var clip in new AnimatorIterator.Clips().From(this)) {
                 action(clip);
             }
         }
 
         public IImmutableSet<AnimationClip> GetClips() {
-            return new AnimatorIterator.Clips().From(GetRaw());
+            return new AnimatorIterator.Clips().From(this);
         }
     }
 }

@@ -29,7 +29,7 @@ namespace VF.Service {
                 var uniqueOwners = new HashSet<string>();
                 foreach (var layer in controller.GetLayers()) {
                     // Ignore empty layers (bask mask, junk layers, etc)
-                    if (layer.stateMachine.defaultState == null) continue;
+                    if (!layer.hasDefaultState) continue;
                     uniqueOwners.Add(controller.GetLayerOwner(layer));
                 }
                 ownersByController[type] = uniqueOwners;

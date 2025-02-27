@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
@@ -20,8 +19,8 @@ namespace VF.Service {
     internal class AnimatorLayerControlOffsetService {
         [VFAutowired] private readonly ControllersService controllers;
 
-        private readonly VFMultimapList<VRCAnimatorLayerControl, AnimatorStateMachine> mapping
-            = new VFMultimapList<VRCAnimatorLayerControl, AnimatorStateMachine>();
+        private readonly VFMultimapList<VRCAnimatorLayerControl, VFLayer> mapping
+            = new VFMultimapList<VRCAnimatorLayerControl, VFLayer>();
         
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlRecordBase)]
         public void RecordBase() {
@@ -39,7 +38,7 @@ namespace VF.Service {
                 }
             }
 
-            var smToTypeAndNumber = new Dictionary<AnimatorStateMachine, (VRCAvatarDescriptor.AnimLayerType, int)>();
+            var smToTypeAndNumber = new Dictionary<VFLayer, (VRCAvatarDescriptor.AnimLayerType, int)>();
             foreach (var c in controllers.GetAllUsedControllers()) {
                 foreach (var (i,l) in c.GetLayers().Select((l,i) => (i,l))) {
                     smToTypeAndNumber[l] = (c.GetType(), i);
@@ -88,8 +87,8 @@ namespace VF.Service {
                         if (b is VRCAnimatorLayerControl control) {
                             var targetController = set.FirstOrDefault(other => VRCFEnumUtils.GetName(other.vrcType) == VRCFEnumUtils.GetName(control.playable));
                             if (targetController == null) return null;
-                            if (control.layer < 0 || control.layer >= targetController.layers.Length) return null;
-                            var targetSm = targetController.layers[control.layer].stateMachine;
+                            if (control.layer < 0 || control.layer >= targetController.layers.Count) return null;
+                            var targetSm = targetController.layers[control.layer];
                             Register(control, targetSm);
                         }
 
@@ -99,11 +98,11 @@ namespace VF.Service {
             }
         }
         
-        public void Register(VRCAnimatorLayerControl control, AnimatorStateMachine targetSm) {
+        public void Register(VRCAnimatorLayerControl control, VFLayer targetSm) {
             mapping.Put(control, targetSm);
         }
 
-        public void Alias(AnimatorStateMachine oldTargetSm, AnimatorStateMachine newTargetSm) {
+        public void Alias(VFLayer oldTargetSm, VFLayer newTargetSm) {
             foreach (var key in mapping.GetKeys()) {
                 if (mapping.Get(key).Contains(oldTargetSm)) {
                     mapping.Put(key, newTargetSm);
@@ -117,7 +116,7 @@ namespace VF.Service {
             }
         }
 
-        public bool IsLayerTargeted(AnimatorStateMachine sm) {
+        public bool IsLayerTargeted(VFLayer sm) {
             return mapping.ContainsValue(sm);
         }
     }

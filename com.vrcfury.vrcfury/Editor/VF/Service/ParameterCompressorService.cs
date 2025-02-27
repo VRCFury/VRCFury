@@ -192,7 +192,7 @@ namespace VF.Service {
 
             var addDriven = new HashSet<string>();
             foreach (var controller in controllers.GetAllUsedControllers()) {
-                foreach (var behaviour in new AnimatorIterator.Behaviours().From(controller.GetRaw())) {
+                foreach (var behaviour in new AnimatorIterator.Behaviours().From(controller)) {
                     if (behaviour is VRCAvatarParameterDriver driver) {
                         foreach (var p in driver.parameters) {
                             if (p.type == VRC_AvatarParameterDriver.ChangeType.Add) {

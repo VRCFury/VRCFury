@@ -34,20 +34,60 @@ namespace VF.Utils.Controller {
         public AnimatorController GetRaw() {
             return ctrl;
         }
-
+        
+        protected virtual string NewLayerName(string name) {
+            return name;
+        }
+        
         public virtual VFLayer NewLayer(string name, int insertAt = -1) {
+            name = NewLayerName(name);
+
             // Unity breaks if name contains .
             name = name.Replace(".", "");
 
             ctrl.AddLayer(name);
-            var layer = new VFLayer(this, ctrl.layers.Last().stateMachine);
+            var sm = ctrl.layers.Last().stateMachine;
+            var layer = new VFLayer(ctrl, sm);
             if (insertAt >= 0) {
                 layer.Move(insertAt);
             }
             layer.weight = 1;
-            layer.stateMachine.anyStatePosition = VFState.CalculateOffsetPosition(layer.stateMachine.entryPosition, 0, 1);
-            VrcfObjectFactory.Register(layer.stateMachine);
+            sm.anyStatePosition = VFState.CalculateOffsetPosition(sm.entryPosition, 0, 1);
+            VrcfObjectFactory.Register(sm);
             return layer;
+        }
+        
+        /**
+         * BEWARE: This consumes the ENTIRE asset file containing "other"
+         * The animator controller (and its sub-assets) should be owned by vrcfury, and should
+         * be the ONLY THING in that file!!!
+         */
+        public void TakeOwnershipOf(VFController other, bool putOnTop = false, bool prefix = true) {
+            // Merge Layers
+            if (prefix) {
+                foreach (var layer in other.layers) {
+                    layer.name = NewLayerName(layer.name);
+                }
+            }
+
+            if (putOnTop) {
+                ctrl.layers = other.ctrl.layers.Concat(ctrl.layers).ToArray();
+            } else {
+                ctrl.layers = ctrl.layers.Concat(other.ctrl.layers).ToArray();
+            }
+
+            other.ctrl.layers = new AnimatorControllerLayer[] { };
+            
+            // Merge Params
+            foreach (var p in other.parameters) {
+                _NewParam(p.name, p.type, n => {
+                    n.defaultBool = p.defaultBool;
+                    n.defaultFloat = p.defaultFloat;
+                    n.defaultInt = p.defaultInt;
+                });
+            }
+
+            other.parameters = new AnimatorControllerParameter[] { };
         }
 
         public void RemoveParameter(int i) {
@@ -84,41 +124,17 @@ namespace VF.Utils.Controller {
         }
     
         public IList<VFLayer> GetLayers() {
-            return ctrl.layers.Select(l => new VFLayer(this, l.stateMachine)).ToArray();
-        }
-
-        public bool ContainsLayer(AnimatorStateMachine stateMachine) {
-            return ctrl.layers.Any(l => l.stateMachine == stateMachine);
-        }
-
-        public int GetLayerId(AnimatorStateMachine stateMachine) {
-            var id = ctrl.layers
-                .Select((l, i) => (l, i))
-                .Where(tuple => tuple.Item1.stateMachine == stateMachine)
-                .Select(tuple => tuple.Item2)
-                .DefaultIfEmpty(-1)
-                .First();
-            if (id == -1) {
-                throw new Exception("Layer not found in controller. It may have been accessed after it was removed.");
-            }
-            return id;
+            return ctrl.layers.Select(l => new VFLayer(ctrl, l.stateMachine)).ToArray();
         }
 
         [CanBeNull]
         public VFLayer GetLayer(int index) {
-            var layers = ctrl.layers;
-            if (index < 0 || index >= layers.Length) return null;
-            return new VFLayer(this, layers[index].stateMachine);
+            var ls = ctrl.layers;
+            if (index < 0 || index >= ls.Length) return null;
+            return new VFLayer(ctrl, ls[index].stateMachine);
         }
 
-        public VFLayer GetLayer(AnimatorStateMachine stateMachine) {
-            return GetLayer(GetLayerId(stateMachine));
-        }
-
-        public AnimatorControllerLayer[] layers {
-            get => ctrl.layers;
-            set => ctrl.layers = value;
-        }
+        public IList<VFLayer> layers => GetLayers();
 
         public AnimatorControllerParameter[] parameters {
             get => ctrl.parameters;
@@ -155,7 +171,7 @@ namespace VF.Utils.Controller {
 
             // Apply override controllers
             if (overrides.Count > 0) {
-                AnimatorIterator.ReplaceClips(ac, clip => {
+                AnimatorIterator.ReplaceClips(output, clip => {
                     return overrides
                         .Select(ov => ov[clip])
                         .Where(overrideClip => overrideClip != null)
@@ -283,7 +299,7 @@ namespace VF.Utils.Controller {
 
         private void CheckForBadBehaviours() {
             foreach (var layer in GetLayers()) {
-                foreach (var stateMachine in AnimatorIterator.GetAllStateMachines(layer)) {
+                foreach (var stateMachine in layer.allStateMachines) {
                     RemoveBadBehaviours($"{layer.debugName} StateMachine `{stateMachine.name}`", stateMachine);
                 }
 
@@ -302,12 +318,12 @@ namespace VF.Utils.Controller {
          * but it's better than nothing.
          */
         private void ReplaceSyncedLayers() {
-            layers = layers.Select((layer, id) => {
+            ctrl.layers = ctrl.layers.Select((layer, id) => {
                 if (layer.syncedLayerIndex < 0 || layer.syncedLayerIndex == id) {
                     layer.syncedLayerIndex = -1;
                     return layer;
                 }
-                if (layer.syncedLayerIndex >= layers.Length) {
+                if (layer.syncedLayerIndex >= ctrl.layers.Length) {
                     var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
                     sm.name = layer.name;
                     layer.stateMachine = sm;
@@ -315,10 +331,10 @@ namespace VF.Utils.Controller {
                     return layer;
                 }
 
-                var copy = layers[layer.syncedLayerIndex].stateMachine.Clone();
+                var copy = ctrl.layers[layer.syncedLayerIndex].stateMachine.Clone();
                 layer.syncedLayerIndex = -1;
                 layer.stateMachine = copy;
-                foreach (var state in new AnimatorIterator.States().From(new VFLayer(new VFController(ctrl), layer.stateMachine))) {
+                foreach (var state in new AnimatorIterator.States().From(new VFLayer(ctrl, layer.stateMachine))) {
                     var originalState = state.GetCloneSource();
                     state.motion = layer.GetOverrideMotion(originalState);
                     state.behaviours = layer.GetOverrideBehaviours(originalState);
@@ -339,7 +355,7 @@ namespace VF.Utils.Controller {
          */
         private void RemoveDuplicateStateMachines() {
             var seenStateMachines = new HashSet<AnimatorStateMachine>();
-            layers = layers.Select(layer => {
+            ctrl.layers = ctrl.layers.Select(layer => {
                 if (layer.stateMachine != null) {
                     if (seenStateMachines.Contains(layer.stateMachine)) {
                         return null;
@@ -359,13 +375,13 @@ namespace VF.Utils.Controller {
             ctrl.parameters = ctrl.parameters.Where(p => VRCFEnumUtils.IsValid(p.type)).ToArray();
         }
 
-        public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<AnimatorStateMachine> limitToLayers = null) {
+        public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<VFLayer> limitToLayers = null) {
             string RewriteParamName(string str) {
                 if (string.IsNullOrEmpty(str)) return str;
                 return rewriteParamNameNullUnsafe(str);
             }
             var affectsLayers = GetLayers()
-                .Where(l => limitToLayers == null || limitToLayers.Contains(l.stateMachine))
+                .Where(l => limitToLayers == null || limitToLayers.Contains(l))
                 .ToArray();
             
             // Params
@@ -439,6 +455,12 @@ namespace VF.Utils.Controller {
                     return cond;
                 });
             }
+        }
+
+        public string name => ctrl.name;
+
+        public VFController Clone() {
+            return new VFController(ctrl.Clone());
         }
     }
 }

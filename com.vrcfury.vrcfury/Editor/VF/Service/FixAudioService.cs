@@ -63,7 +63,7 @@ namespace VF.Service {
             }
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
             foreach (var c in controllers.GetAllUsedControllers()) {
-                foreach (var b in new AnimatorIterator.Behaviours().From(c.GetRaw())) {
+                foreach (var b in new AnimatorIterator.Behaviours().From(c)) {
                     if (b is VRCAnimatorPlayAudio audio) {
                         audio.Clips = audio.Clips.Select(FixClip).ToArray();
                         EditorUtility.SetDirty(audio);

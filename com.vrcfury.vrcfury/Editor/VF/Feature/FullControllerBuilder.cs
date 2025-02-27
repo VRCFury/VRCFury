@@ -306,7 +306,7 @@ namespace VF.Feature {
             }
 
             // Rewrite clips
-            from.GetRaw().Rewrite(AnimationRewriter.Combine(
+            from.Rewrite(AnimationRewriter.Combine(
                 AnimationRewriter.RewritePath(path => RewritePath(model, path)),
                 ClipRewriter.CreateNearestMatchPathRewriter(
                     animObject: GetBaseObject(model, featureBaseObject),
@@ -370,7 +370,7 @@ namespace VF.Feature {
             foreach (var layer in from.GetLayers()) {
                 layerSourceService.SetSourceToCurrent(layer);
             }
-            to.TakeOwnershipOf(from.GetRaw());
+            to.TakeOwnershipOf(from);
 
             // Parameter smoothing
             if (type == VRCAvatarDescriptor.AnimLayerType.FX && model.smoothedPrms.Count > 0) {
@@ -415,7 +415,7 @@ namespace VF.Feature {
                         return smoothed;
                     }
                     return name;
-                }, false, myLayers.Select(l => l.stateMachine).ToArray());
+                }, false, myLayers);
             }
         }
 
@@ -628,7 +628,7 @@ namespace VF.Feature {
                     .NotNull()
                     .ToList();
                 var usesWdOff = controllers
-                    .SelectMany(c => new AnimatorIterator.States().From(c))
+                    .SelectMany(c => new AnimatorIterator.States().From(new VFController(c)))
                     .Any(state => !state.writeDefaultValues);
                 var rewrites = prop.FindPropertyRelative("rewriteBindings");
                 var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(

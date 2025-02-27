@@ -1,14 +1,11 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
-using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
@@ -28,17 +25,14 @@ namespace VF.Service {
             }
 
             var gesture = controllers.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
-            var newFxLayers = new List<AnimatorControllerLayer>();
-
-            var copyForFx = gesture.GetRaw().Clone();
-            var copyForFxLayers = copyForFx.layers;
+            var copyForFx = gesture.Clone();
             foreach (var to in new AnimatorIterator.Behaviours().From(copyForFx).OfType<VRCAnimatorLayerControl>()) {
                 animatorLayerControlManager.Alias(to.GetCloneSource(), to);
             }
 
-            gesture.GetRaw().layers = gesture.GetRaw().layers.Select((layerForGesture,i) => {
+            foreach (var (layerForGesture, layerForFx) in gesture.layers.Zip(copyForFx.layers, (a,b) => (a,b))) {
                 
-                var propTypes = new AnimatorIterator.Clips().From(new VFLayer(null,layerForGesture.stateMachine))
+                var propTypes = new AnimatorIterator.Clips().From(layerForGesture)
                     .SelectMany(clip => {
                         if (clip.IsProxyClip()) return new[]{ EditorCurveBindingType.Muscle };
                         return clip.GetAllBindings().Select(b => b.GetPropType());
@@ -47,43 +41,35 @@ namespace VF.Service {
 
                 if (!propTypes.Contains(EditorCurveBindingType.Fx) && !propTypes.Contains(EditorCurveBindingType.Aap)) {
                     // Keep it only in gesture
-                    return layerForGesture;
+                    layerForFx.Remove();
+                    continue;
                 }
 
-                var layerForFx = copyForFxLayers[i];
-                newFxLayers.Add(layerForFx);
-                animatorLayerControlManager.Alias(layerForGesture.stateMachine, layerForFx.stateMachine);
-                layerSourceService.CopySource(layerForGesture.stateMachine, layerForFx.stateMachine);
+                animatorLayerControlManager.Alias(layerForGesture, layerForFx);
+                layerSourceService.CopySource(layerForGesture, layerForFx);
 
                 if (propTypes.Contains(EditorCurveBindingType.Muscle) || propTypes.Contains(EditorCurveBindingType.Aap)) {
                     // We're keeping both layers
                     // Remove behaviours from the fx copy
-                    AnimatorIterator.ForEachBehaviourRW(new VFLayer(null,layerForFx.stateMachine), b => null);
-                    return layerForGesture;
+                    AnimatorIterator.ForEachBehaviourRW(layerForFx, b => null);
                 } else {
                     // We're only keeping it in FX
                     // Delete it from Gesture
-                    return null;
+                    layerForGesture.Remove();
                 }
-            }).NotNull().ToArray();
 
-            if (newFxLayers.Count > 0) {
-                fx.GetRaw().layers = newFxLayers.Concat(fx.GetRaw().layers).ToArray();
-                foreach (var p in gesture.GetRaw().parameters) {
-                    fx._NewParam(p.name, p.type, n => {
-                        n.defaultBool = p.defaultBool;
-                        n.defaultFloat = p.defaultFloat;
-                        n.defaultInt = p.defaultInt;
-                    });
-                }
             }
-            
+
+            if (copyForFx.layers.Any()) {
+                fx.TakeOwnershipOf(copyForFx, putOnTop: true, prefix: false);
+            }
+
             // This clip cleanup must happen after the merge is all finished,
             // because otherwise `propTypes` above could be wrong for some layers that use shared clips
             // if we cleanup while iterating through the layers
             
             // Remove fx bindings from the gesture copy
-            foreach (var clip in new AnimatorIterator.Clips().From(gesture.GetRaw())) {
+            foreach (var clip in new AnimatorIterator.Clips().From(gesture)) {
                 clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
                     if (b.GetPropType() == EditorCurveBindingType.Fx) return null;
                     return b;
@@ -97,7 +83,7 @@ namespace VF.Service {
             }
 
             // Remove muscle control from the fx copy
-            foreach (var clip in new AnimatorIterator.Clips().From(fx.GetRaw())) {
+            foreach (var clip in new AnimatorIterator.Clips().From(fx)) {
                 clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
                     if (b.GetPropType() == EditorCurveBindingType.Muscle) return null;
                     return b;
@@ -144,7 +130,7 @@ namespace VF.Service {
                         // it can still impact the hip offset. This doesn't happen if it's on layer 1+. So we must ensure that there's never content with a mask on layer 0 in these cases.
                         createEmptyBaseLayer = true;
                     }
-                } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX && layer0.stateMachine.states.Length > 1) {
+                } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX && (layer0.states.Count > 1 || layer0.hasSubMachines)) {
                     // On FX, do not allow a layer with transitions to live as the base layer, because for some reason transition times can break
                     //   and animate immediately when performed within the base layer
                     createEmptyBaseLayer = true;

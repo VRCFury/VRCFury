@@ -30,7 +30,7 @@ namespace VF.Service {
         
         [FeatureBuilderAction(FeatureOrder.FixPartiallyWeightedAaps)]
         public void Apply() {
-            foreach (var state in new AnimatorIterator.States().From(fx.GetRaw()).Where(VFLayer.Created)) {
+            foreach (var state in new AnimatorIterator.States().From(fx).Where(VFLayer.Created)) {
                 if (state.motion is BlendTree tree) {
                     var aaps = new AnimatorIterator.Clips().From(tree)
                         .SelectMany(clip => clip.GetFloatBindings())

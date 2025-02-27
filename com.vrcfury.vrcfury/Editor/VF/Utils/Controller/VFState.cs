@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Builder;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
@@ -182,6 +184,44 @@ namespace VF.Utils.Controller {
         public StateMachineBehaviour[] behaviours {
             get => state.behaviours;
             set => state.behaviours = value;
+        }
+
+        public Motion motion {
+            get => state.motion;
+            set => state.motion = value;
+        }
+
+        public string name => state.name;
+        public bool timeParameterActive => state.timeParameterActive;
+        public string timeParameter => state.timeParameter;
+        public float speed => state.speed;
+        
+        public bool IsEntryOnlyState() {
+            return stateMachine.defaultState == state && !GetTransitionsTo().Any();
+        }
+        
+        public bool IsUnreachableState() {
+            return stateMachine.defaultState != state && !GetTransitionsTo().Any();
+        }
+        
+        public ICollection<AnimatorTransitionBase> GetTransitionsTo() {
+            var output = new List<AnimatorTransitionBase>();
+            var ignoreTransitions = new HashSet<AnimatorTransitionBase>();
+            var entryState = stateMachine.defaultState;
+
+            if (stateMachine.entryTransitions.Length == 1 &&
+                stateMachine.entryTransitions[0].conditions.Length == 0) {
+                entryState = stateMachine.entryTransitions[0].destinationState;
+                ignoreTransitions.Add(stateMachine.entryTransitions[0]);
+            }
+
+            foreach (var t in new AnimatorIterator.Transitions().From(new VFLayer(null, stateMachine))) {
+                if (ignoreTransitions.Contains(t)) continue;
+                if (t.destinationState == state || (t.isExit && entryState == state)) {
+                    output.Add(t);
+                }
+            }
+            return output.ToArray();
         }
     }
 }

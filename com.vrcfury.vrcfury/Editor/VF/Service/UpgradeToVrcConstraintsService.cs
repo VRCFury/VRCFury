@@ -77,7 +77,7 @@ namespace VF.Service {
             ));
 
             foreach (var (owner,controller) in animators.GetSubControllers()) {
-                controller.GetRaw().Rewrite(AnimationRewriter.RewriteBinding(binding =>
+                controller.Rewrite(AnimationRewriter.RewriteBinding(binding =>
                     RewriteBinding(binding, owner)
                 ));
             }

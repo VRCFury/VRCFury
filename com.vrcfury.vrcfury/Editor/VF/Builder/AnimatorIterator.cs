@@ -16,7 +16,7 @@ namespace VF.Builder {
     internal static class AnimatorIterator {
         private static ISet<VFBehaviourContainer> GetAllBehaviourContainers(VFLayer layer) {
             var set = new HashSet<VFBehaviourContainer>();
-            foreach (var sm in GetAllStateMachines(layer)) {
+            foreach (var sm in layer.allStateMachines) {
                 set.Add(new VFStateMachine(sm));
                 foreach (var child in sm.states) {
                     set.Add(new VFState(child, sm));
@@ -45,7 +45,7 @@ namespace VF.Builder {
             VFLayer root,
             Func<AnimatorTransitionBase, OneOrMany<AnimatorTransitionBase>> action
         ) {
-            foreach (var sm in GetAllStateMachines(root)) {
+            foreach (var sm in root.allStateMachines) {
                 ForEachTransitionRW(sm.entryTransitions, a => sm.entryTransitions = a, action);
                 ForEachTransitionRW(sm.anyStateTransitions, a => sm.anyStateTransitions = a, action);
                 foreach (var childSm in sm.stateMachines) {
@@ -71,7 +71,7 @@ namespace VF.Builder {
             if (changed) setter(output);
         }
 
-        public static void ReplaceClips(AnimatorController controller, Func<AnimationClip, AnimationClip> replace) {
+        public static void ReplaceClips(VFController controller, Func<AnimationClip, AnimationClip> replace) {
             Motion RewriteMotion(Motion motion) {
                 if (motion is AnimationClip clip) {
                     return replace(clip);
@@ -106,11 +106,6 @@ namespace VF.Builder {
             public IImmutableSet<T> From(IEnumerable<VFLayer> layers) {
                 return layers.SelectMany(From).ToImmutableHashSet();
             }
-            
-            public IImmutableSet<T> From(AnimatorController root) {
-                if (root == null) return ImmutableHashSet<T>.Empty;
-                return From(new VFController(root));
-            }
 
             public IImmutableSet<T> From(VFController root) {
                 if (root == null) return ImmutableHashSet<T>.Empty;
@@ -118,7 +113,7 @@ namespace VF.Builder {
             }
         }
 
-        private static IImmutableSet<T> GetRecursive<T>(T root, Func<T, IEnumerable<T>> getChildren) where T : Object {
+        public static IImmutableSet<T> GetRecursive<T>(T root, Func<T, IEnumerable<T>> getChildren) where T : Object {
             var all = new HashSet<T>();
             var stack = new Stack<T>();
             stack.Push(root);
@@ -139,16 +134,10 @@ namespace VF.Builder {
             }
             return all.ToImmutableHashSet();
         }
-        
-        public static IImmutableSet<AnimatorStateMachine> GetAllStateMachines(AnimatorStateMachine root) {
-            return GetRecursive(root, sm => sm.stateMachines
-                .Select(c => c.stateMachine)
-            );
-        }
 
         public class States : Iterator<AnimatorState> {
             public override IImmutableSet<AnimatorState> From(VFLayer root) {
-                return GetAllStateMachines(root)
+                return root.allStateMachines
                     .SelectMany(sm => sm.states)
                     .Select(c => c.state)
                     .Where(state => state != null)
@@ -159,7 +148,7 @@ namespace VF.Builder {
         public class Transitions : Iterator<AnimatorTransitionBase> {
             public override IImmutableSet<AnimatorTransitionBase> From(VFLayer root) {
                 var states = new States().From(root);
-                return GetAllStateMachines(root)
+                return root.allStateMachines
                     .SelectMany(sm =>
                         sm.entryTransitions
                             .Concat<AnimatorTransitionBase>(sm.anyStateTransitions)

@@ -151,14 +151,13 @@ namespace VF.Service {
                 return _buildSettings;
             }
             
-            var allManagedStateMachines = controllers.GetAllUsedControllers()
+            var allManagedLayers = controllers.GetAllUsedControllers()
                 .SelectMany(controller => controller.GetManagedLayers())
-                .Select(l => l.stateMachine)
                 .ToImmutableHashSet();
 
             var analysis = DetectExistingWriteDefaults(
                 controllers.GetAllUsedControllers(),
-                allManagedStateMachines
+                allManagedLayers
             );
 
             var fixSetting = globals.allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
@@ -246,14 +245,14 @@ namespace VF.Service {
         // Returns: Broken, Should Use Write Defaults, Reason, Bad States
         public static DetectionResults DetectExistingWriteDefaults<T>(
             ICollection<T> avatarControllers,
-            ISet<AnimatorStateMachine> stateMachinesToIgnore = null
+            ISet<VFLayer> layersToIgnore = null
         ) where T : VFControllerWithVrcType {
             var controllerInfos = avatarControllers.Select(controller => {
                 var type = controller.vrcType;
                 var info = new ControllerInfo();
                 info.type = type;
                 foreach (var layer in controller.GetLayers()) {
-                    var ignore = stateMachinesToIgnore != null && stateMachinesToIgnore.Contains(layer.stateMachine);
+                    var ignore = layersToIgnore != null && layersToIgnore.Contains(layer);
                     if (!ignore) {
                         foreach (var state in new AnimatorIterator.States().From(layer)) {
                             List<string> list;

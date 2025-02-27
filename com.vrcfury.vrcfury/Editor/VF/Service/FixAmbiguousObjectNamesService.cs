@@ -43,7 +43,7 @@ namespace VF.Service {
                 movedPaths.TryGetValue(path, out var to) ? to : path);
 
             foreach (var controller in controllers.GetAllUsedControllers()) {
-                ((AnimatorController)controller.GetRaw()).Rewrite(rewriter);
+                controller.Rewrite(rewriter);
             }
         }
     }

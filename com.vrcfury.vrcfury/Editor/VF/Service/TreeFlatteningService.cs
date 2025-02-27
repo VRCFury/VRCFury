@@ -22,7 +22,7 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.TreeFlattening)]
         public void Optimize() {
             var alwaysOneParams = GetAlwaysOneParams();
-            foreach (var state in new AnimatorIterator.States().From(fx.GetRaw()).Where(VFLayer.Created)) {
+            foreach (var state in new AnimatorIterator.States().From(fx).Where(VFLayer.Created)) {
                 if (state.motion is BlendTree tree) {
                     Optimize(tree, alwaysOneParams);
                     if (tree.blendType == BlendTreeType.Direct
@@ -62,7 +62,7 @@ namespace VF.Service {
                 .Select(p => p.name);
             animatedParams.UnionWith(vrcControlled);
             var driven = controllers.GetAllUsedControllers()
-                .SelectMany(c => new AnimatorIterator.Behaviours().From(c.GetRaw()))
+                .SelectMany(c => new AnimatorIterator.Behaviours().From(c))
                 .OfType<VRCAvatarParameterDriver>()
                 .SelectMany(driver => driver.parameters.Select(p => p.name));
             animatedParams.UnionWith(driven);

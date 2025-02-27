@@ -23,7 +23,7 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.UpgradeWrongParamTypes)]
         public void Apply() {
             foreach (var c in controllers.GetAllUsedControllers()) {
-                foreach (var tree in new AnimatorIterator.Trees().From(c.GetRaw())) {
+                foreach (var tree in new AnimatorIterator.Trees().From(c)) {
                     if (tree.blendType == BlendTreeType.Direct) {
                         tree.RewriteChildren(child => {
                             if (child.directBlendParameter == VFBlendTreeDirect.AlwaysOneParam) {
@@ -120,7 +120,7 @@ namespace VF.Service {
                     state.cycleOffsetParameter = badFloat.Value;
             }
             
-            controller.GetRaw().Rewrite(AnimationRewriter.RewriteBinding(binding => {
+            controller.Rewrite(AnimationRewriter.RewriteBinding(binding => {
                 if (binding.GetPropType() == EditorCurveBindingType.Aap && !IsFloat(binding.propertyName)) {
                     return null;
                 }
