@@ -22,7 +22,7 @@ namespace VF.Hooks {
                     "Unpacking prefabs is an outdated recommendation!!\n\n" +
                     "* Unpacking will prevent you from easily getting updates to this asset\n\n" +
                     "* Unpacking will prevent you from receiving changes made to FBX models, and can cause your rig definition to become invalid\n\n" +
-                    "* If you need to reparent bones or move child objects, use a non-destructive reparenting tool such as VRCFury Armature Link instead\n\n" +
+                    "* If you need to link clothes, reparent bones, or move child objects, use a non-destructive reparenting tool such as VRCFury Armature Link instead\n\n" +
                     "* Unpacking is basically never required for VRChat avatars or avatar assets!", 
                     "I don't care, Unpack Anyways (Not recommended)",
                     "Cancel"
