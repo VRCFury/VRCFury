@@ -85,7 +85,7 @@ namespace VF.Feature {
                 var to = controllers.GetController(from.vrcType);
 
                 // Fail if trying to merge a controller that is on the avatar descriptor
-                if (to.GetRaw().GetCloneSource() == from.GetRaw().GetCloneSource()) {
+                if (VrcfObjectCloner.GetOriginal(to.GetRaw()) != null && to.GetRaw().GetCloneSource() == from.GetRaw().GetCloneSource()) {
                     if (AssetDatabase.GetAssetPath(to.GetRaw().GetCloneSource())?.ToLower().Contains("goloco") ?? false) {
                         throw new Exception(
                             "You've installed GogoLoco using VRCFury, but your avatar descriptor also contains GogoLoco controllers." +
