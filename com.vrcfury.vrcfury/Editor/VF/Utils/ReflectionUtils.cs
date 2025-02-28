@@ -32,7 +32,7 @@ namespace VF.Utils {
             return method.Invoke(obj, list.ToArray());
         }
         
-        public static IEnumerable<FieldInfo> GetAllFields(Type objType) {
+        public static IList<FieldInfo> GetAllFields(Type objType) {
             var output = new List<FieldInfo>();
             foreach (var field in objType.GetFields()) {
                 output.Add(field);

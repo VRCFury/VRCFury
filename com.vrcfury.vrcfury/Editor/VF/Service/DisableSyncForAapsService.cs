@@ -24,7 +24,7 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.DisableSyncForAaps)]
         public void Apply() {
-            var vrcfDrivenAaps = new AnimatorIterator.Clips().From(fx.GetRaw())
+            var vrcfDrivenAaps = new AnimatorIterator.Clips().From(fx)
                 .SelectMany(clip => clip.GetFloatBindings())
                 .Where(binding => binding.GetPropType() == EditorCurveBindingType.Aap)
                 .Select(binding => binding.propertyName)

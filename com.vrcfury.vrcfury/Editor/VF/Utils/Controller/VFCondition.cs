@@ -1,18 +1,19 @@
+using System;
 using System.Collections.Generic;
 using UnityEditor.Animations;
 using VF.Builder;
 
 namespace VF.Utils.Controller {
     internal class VFCondition {
-        internal IEnumerable<IEnumerable<AnimatorCondition>> transitions;
+        public readonly AnimatorCondition[][] transitions;
         private VFCondition() {
-            transitions = new List<List<AnimatorCondition>>();
+            transitions = Array.Empty<AnimatorCondition[]>();
         }
         public VFCondition(AnimatorCondition cond) {
-            var transition = new List<AnimatorCondition> { cond };
-            transitions = new List<List<AnimatorCondition>> { transition };
+            var transition = new [] { cond };
+            transitions = new [] { transition };
         }
-        public VFCondition(IEnumerable<IEnumerable<AnimatorCondition>> transitions) {
+        public VFCondition(AnimatorCondition[][] transitions) {
             this.transitions = transitions;
         }
         public VFCondition And(VFCondition other) {

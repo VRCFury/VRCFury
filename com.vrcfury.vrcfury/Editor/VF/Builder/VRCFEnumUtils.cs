@@ -20,8 +20,8 @@ namespace VF.Builder {
             }
         }
         
-        public static IEnumerable<T> GetValues<T>() {
-            return Enum.GetValues(typeof(T)).Cast<T>();
+        public static IList<T> GetValues<T>() {
+            return Enum.GetValues(typeof(T)).Cast<T>().ToArray();
         }
         
         public static bool IsValid(Enum enumval) {

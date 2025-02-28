@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using VF.Component;
 
 namespace VF.VrcfEditorOnly {
     internal static class WhitelistPatch {

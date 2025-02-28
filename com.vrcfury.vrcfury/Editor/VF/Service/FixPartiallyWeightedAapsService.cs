@@ -30,7 +30,7 @@ namespace VF.Service {
         
         [FeatureBuilderAction(FeatureOrder.FixPartiallyWeightedAaps)]
         public void Apply() {
-            foreach (var state in new AnimatorIterator.States().From(fx.GetRaw()).Where(VFLayer.Created)) {
+            foreach (var state in new AnimatorIterator.States().From(fx).Where(VFLayer.Created)) {
                 if (state.motion is BlendTree tree) {
                     var aaps = new AnimatorIterator.Clips().From(tree)
                         .SelectMany(clip => clip.GetFloatBindings())
@@ -50,7 +50,7 @@ namespace VF.Service {
                             
                             // VRChat can break the "default value" of AAPs when using a station, so we need to make sure it's
                             // the default when it's not animated (usually 0)
-                            var defaultValue = fx.GetRaw().GetParam(aap);
+                            var defaultValue = fx.GetParam(aap);
                             if (defaultValue != null) {
                                 writeDefaultsService.GetDefaultClip().SetAap(aap, defaultValue.GetDefaultValueAsFloat());
                             }

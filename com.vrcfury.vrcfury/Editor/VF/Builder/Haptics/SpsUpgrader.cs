@@ -77,13 +77,14 @@ namespace VF.Builder.Haptics {
             var addedPlug = new HashSet<VFGameObject>();
             var foundParentConstraint = false;
 
-            bool AlreadyExistsAboveOrBelow(VFGameObject obj, IEnumerable<VFGameObject> list) {
+            bool AlreadyExistsAboveOrBelow(VFGameObject obj, IEnumerable<VFGameObject> enumerable) {
+                var set = enumerable.ToImmutableHashSet();
                 var parentIsDeleted = obj.GetSelfAndAllParents()
                     .Any(t => objectsToDelete.Contains(t));
                 if (parentIsDeleted) return true;
                 return obj.GetSelfAndAllChildren()
                     .Concat(obj.GetSelfAndAllParents())
-                    .Any(list.Contains);
+                    .Any(set.Contains);
             }
 
             string GetPath(VFGameObject obj) {

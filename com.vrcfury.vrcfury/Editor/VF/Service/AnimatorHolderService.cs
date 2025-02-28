@@ -107,7 +107,7 @@ namespace VF.Service {
                 if (saved.controller == null) continue;
                 if (saved.clone == null) {
                     saved.clone = VFController.CopyAndLoadController(saved.controller, VRCAvatarDescriptor.AnimLayerType.Base);
-                    saved.controller = saved.clone;
+                    saved.controller = saved.clone?.GetRaw();
                 }
                 if (saved.clone == null) continue;
                 output.Add((owner, saved.clone));

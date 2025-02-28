@@ -78,23 +78,23 @@ namespace VF.Service {
             outState.TransitionsToExit().When(ctrl.Always());
 
             if (type == EditorCurveBindingExtensions.MuscleBindingType.Body) {
-                var weightOn = state.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
+                var weightOn = state.AddBehaviour<VRCPlayableLayerControl>();
                 weightOn.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                 weightOn.goalWeight = 1;
-                var weightOff = outState.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
+                var weightOff = outState.AddBehaviour<VRCPlayableLayerControl>();
                 weightOff.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                 weightOff.goalWeight = 0;
             } else {
-                var weightOn = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
+                var weightOn = state.AddBehaviour<VRCAnimatorLayerControl>();
                 animatorLayerControlManager.Register(weightOn, layer);
                 weightOn.goalWeight = 1;
-                var weightOff = outState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
+                var weightOff = outState.AddBehaviour<VRCAnimatorLayerControl>();
                 animatorLayerControlManager.Register(weightOff, layer);
                 weightOff.goalWeight = 0;
             }
 
-            var animOn = state.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
-            var animOff = outState.GetRaw().VAddStateMachineBehaviour<VRCAnimatorTrackingControl>();
+            var animOn = state.AddBehaviour<VRCAnimatorTrackingControl>();
+            var animOff = outState.AddBehaviour<VRCAnimatorTrackingControl>();
             foreach (var trackingType in TrackingConflictResolverService.allTypes) {
                 if (type == EditorCurveBindingExtensions.MuscleBindingType.LeftHand) {
                     if (trackingType != TrackingConflictResolverService.TrackingLeftFingers) {
