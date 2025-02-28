@@ -84,9 +84,9 @@ namespace VF.Utils {
                 foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
                     var controller_ = c.controller as AnimatorController;
                     if (controller_ == null) continue;
-                    var controller = (VFController)(controller_);
+                    var controller = new VFController(controller_);
                     var typeName = VRCFEnumUtils.GetName(c.type);
-                    if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller)) {
+                    if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller_)) {
                         removeItems.Add("Avatar Controller: " + typeName);
                         if (perform) c.setToDefault();
                     } else {
@@ -120,7 +120,7 @@ namespace VF.Utils {
                             }
                         }
 
-                        if (perform) VRCFuryEditorUtils.MarkDirty(controller);
+                        if (perform) VRCFuryEditorUtils.MarkDirty(controller_);
                     }
                 }
 
@@ -230,7 +230,8 @@ namespace VF.Utils {
 
         private static bool IsParamUsed(VFLayer layer, string param) {
             var isUsed = false;
-            isUsed |= new AnimatorIterator.Conditions().From(layer)
+            isUsed |= layer.allTransitions
+                .SelectMany(t => t.conditions)
                 .Any(c => c.parameter == param);
             isUsed |= new AnimatorIterator.States().From(layer).Any(state =>
                 state.speedParameter == param ||

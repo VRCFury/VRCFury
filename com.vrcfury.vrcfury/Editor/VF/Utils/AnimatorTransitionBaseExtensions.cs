@@ -10,7 +10,7 @@ namespace VF.Utils {
          * Updating conditions is expensive because it calls AnimatorController.OnInvalidateAnimatorController
          * So only do if it something actually changes.
          */
-        public static IList<AnimatorTransitionBase> RewriteConditions(this AnimatorTransitionBase transition, Func<AnimatorCondition, Rewritten> rewrite) {
+        public static AnimatorTransitionBase[] RewriteConditions(this AnimatorTransitionBase transition, Func<AnimatorCondition, Rewritten> rewrite) {
             var updated = false;
             var andOr = transition.conditions.SelectMany(condition => {
                 var rewritten = rewrite(condition);

@@ -23,7 +23,7 @@ namespace VF.Service {
                 var removedBindings = new List<string>();
 
                 // Delete bindings targeting things that don't exist
-                foreach (var clip in new AnimatorIterator.Clips().From(c.GetRaw())) {
+                foreach (var clip in new AnimatorIterator.Clips().From(c)) {
                     if (clip.GetUseOriginalUserClip() != null &&
                         clip.GetAllBindings().Any(b => b.IsValid(avatarObject))) {
                         // We haven't touched this clip at all during the build so far,
@@ -51,12 +51,11 @@ namespace VF.Service {
                 foreach (var (layer, i) in c.GetLayers().Select((l,i) => (l,i))) {
                     var hasNonEmptyClip = new AnimatorIterator.Clips().From(layer)
                         .Any(clip => clip.HasValidBinding(avatarObject));
-                    var hasBehaviour = new AnimatorIterator.Behaviours().From(layer)
-                        .Any();
+                    var hasBehaviour = layer.allBehaviours.Any();
 
                     if (!hasNonEmptyClip && !hasBehaviour) {
                         Debug.LogWarning($"Removing layer {layer.name} from {c.GetType()} because it doesn't do anything");
-                        if (layer.stateMachine.states.Length > 0 && !IsActuallyUploadingHook.Get()) {
+                        if (layer.hasDefaultState && !IsActuallyUploadingHook.Get()) {
                             layer.name += " (NO VALID ANIMATIONS)";
                             var s = layer.NewState(
                                 "Warning from VRCFury!\n" +
@@ -64,7 +63,7 @@ namespace VF.Service {
                                 " and will be removed during a real upload," +
                                 " Make sure the animated objects / components" +
                                 " actually exist at the paths used in the clips");
-                            var entryPos = layer.stateMachine.entryPosition;
+                            var entryPos = layer.entryPosition;
                             var warningPos = new Vector2(entryPos.x, entryPos.y - 100);
                             s.SetRawPosition(warningPos);
                         } else {

@@ -23,7 +23,7 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.UpgradeWrongParamTypes)]
         public void Apply() {
             foreach (var c in controllers.GetAllUsedControllers()) {
-                foreach (var tree in new AnimatorIterator.Trees().From(c.GetRaw())) {
+                foreach (var tree in new AnimatorIterator.Trees().From(c)) {
                     if (tree.blendType == BlendTreeType.Direct) {
                         tree.RewriteChildren(child => {
                             if (child.directBlendParameter == VFBlendTreeDirect.AlwaysOneParam) {
@@ -33,15 +33,15 @@ namespace VF.Service {
                         });
                     }
                 }
-                UpgradeWrongParamTypes(c.GetRaw());
-                RemoveWrongParamTypes(c.GetRaw());
+                UpgradeWrongParamTypes(c);
+                RemoveWrongParamTypes(c);
             }
         }
 
         public static void RemoveWrongParamTypes(VFController controller) {
-            var badBool = new Lazy<string>(() => controller.NewBool("InvalidParam"));
-            var badFloat = new Lazy<string>(() => controller.NewFloat("InvalidParamFloat"));
-            var badThreshold = new Lazy<string>(() => controller.NewBool("BadIntThreshold", def: true));
+            var badBool = new Lazy<string>(() => controller._NewBool("InvalidParam"));
+            var badFloat = new Lazy<string>(() => controller._NewFloat("InvalidParamFloat"));
+            var badThreshold = new Lazy<string>(() => controller._NewBool("BadIntThreshold", def: true));
             AnimatorCondition InvalidCondition() => new AnimatorCondition {
                 mode = AnimatorConditionMode.If,
                 parameter = badBool.Value,
@@ -54,7 +54,7 @@ namespace VF.Service {
             var paramTypes = controller.parameters
                 .ToImmutableDictionary(p => p.name, p => p.type);
             foreach (var layer in controller.GetLayers()) {
-                AnimatorIterator.RewriteConditions(layer, condition => {
+                layer.RewriteConditions(condition => {
                     var mode = condition.mode;
 
                     if (!paramTypes.TryGetValue(condition.parameter, out var type)) {
@@ -120,7 +120,7 @@ namespace VF.Service {
                     state.cycleOffsetParameter = badFloat.Value;
             }
             
-            controller.GetRaw().Rewrite(AnimationRewriter.RewriteBinding(binding => {
+            controller.Rewrite(AnimationRewriter.RewriteBinding(binding => {
                 if (binding.GetPropType() == EditorCurveBindingType.Aap && !IsFloat(binding.propertyName)) {
                     return null;
                 }
@@ -148,7 +148,7 @@ namespace VF.Service {
             foreach (var p in controller.parameters) {
                 UpgradeType(p.name, p.type);
             }
-            foreach (var condition in new AnimatorIterator.Conditions().From(controller)) {
+            foreach (var condition in controller.layers.SelectMany(layer => layer.allTransitions).SelectMany(transition => transition.conditions)) {
                 var mode = condition.mode;
                 if (mode == AnimatorConditionMode.Equals || mode == AnimatorConditionMode.NotEqual) {
                     UpgradeType(condition.parameter, AnimatorControllerParameterType.Int);
@@ -197,7 +197,7 @@ namespace VF.Service {
 
             // Fix all of the usages
             foreach (var layer in controller.GetLayers()) {
-                AnimatorIterator.RewriteConditions(layer, c => {
+                layer.RewriteConditions(c => {
                     if (!paramTypes.TryGetValue(c.parameter, out var type)) {
                         return c;
                     }

@@ -17,21 +17,27 @@ namespace VF.Inspector {
         private static readonly bool ndmfPresent =
             ReflectionUtils.GetTypeFromAnyAssembly("nadena.dev.ndmf.AvatarProcessor") != null;
 
-        public static string GetOutputString([CanBeNull] VFGameObject avatarObject = null) {
+        public static string GetDebugChars([CanBeNull] VFGameObject avatarObject = null, bool? isStillBroken = null) {
             var output = "";
 
-            IEnumerable<VRCFury> vrcfComponents;
-            if (avatarObject == null) {
-                vrcfComponents = Resources.FindObjectsOfTypeAll<VRCFury>();
+            bool wdBroken;
+            if (isStillBroken.HasValue) {
+                wdBroken = isStillBroken.Value;
             } else {
-                vrcfComponents = avatarObject.GetComponentsInSelfAndChildren<VRCFury>();
+                ICollection<VRCFury> vrcfComponents;
+                if (avatarObject == null) {
+                    vrcfComponents = Resources.FindObjectsOfTypeAll<VRCFury>();
+                } else {
+                    vrcfComponents = avatarObject.GetComponentsInSelfAndChildren<VRCFury>();
+                }
+
+                wdBroken = vrcfComponents
+                    .SelectMany(c => c.GetAllFeatures())
+                    .OfType<FixWriteDefaults>()
+                    .Any(fwd => fwd.mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled);
             }
 
-            var wdDisabled = vrcfComponents
-                .SelectMany(c => c.GetAllFeatures())
-                .OfType<FixWriteDefaults>()
-                .Any(fwd => fwd.mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled);
-            if (wdDisabled) {
+            if (wdBroken) {
                 output += "W";
             }
 
@@ -76,18 +82,29 @@ namespace VF.Inspector {
                 output += "V";
             }
 
-            if (output != "") output += " ";
-            
-            output += Application.unityVersion;
+            return output;
+        }
+
+        public static IList<string> GetParts([CanBeNull] VFGameObject avatarObject = null, bool? isStillBroken = null) {
+            var parts = new List<string>();
+
+            parts.Add(GetDebugChars(avatarObject, isStillBroken));
+
+            parts.Add(Application.unityVersion);
 
             var vrcsdkAvatar = VRCFPackageUtils.GetVersionFromId("com.vrchat.avatars");
             var vrcsdkBase = VRCFPackageUtils.GetVersionFromId("com.vrchat.base");
-            output += " " + vrcsdkAvatar;
-            if (vrcsdkBase != vrcsdkAvatar) output += "x" + vrcsdkBase;
+            
+            parts.Add(vrcsdkAvatar);
+            if (vrcsdkBase != vrcsdkAvatar) parts.Add("x" + vrcsdkBase);
 
-            output += " " + VRCFPackageUtils.Version;
+            parts.Add(VRCFPackageUtils.Version);
 
-            return output;
+            return parts.Where(p => !string.IsNullOrEmpty(p)).ToArray();
+        }
+
+        public static string GetOutputString([CanBeNull] VFGameObject avatarObject = null) {
+            return GetParts(avatarObject).Join(" ");
         }
     }
 }

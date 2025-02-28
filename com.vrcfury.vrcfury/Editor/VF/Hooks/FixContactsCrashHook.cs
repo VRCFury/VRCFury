@@ -11,7 +11,7 @@ namespace VF.Hooks {
      * If a contact is enabled while contacts are being solved in the background, the contact fails to add and never works again.
      * We can fix this by forcing the VRCSDK to finalize the background processing before the any new contact is attempted to be added.
      */
-    public static class FixContactsCrashHook {
+    internal static class FixContactsCrashHook {
         private static readonly FieldInfo currentJobHandleField = ReflectionUtils
             .GetTypeFromAnyAssembly("VRC.Dynamics.VRCAvatarDynamicsScheduler")?
             .GetField("_currentDynamicsJobHandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);

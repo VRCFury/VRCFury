@@ -179,12 +179,32 @@ namespace VF.Utils {
 
             // Don't use ToDictionary, since animationclips can have duplicate bindings somehow
             foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+                if (b.path == null || b.propertyName == null || b.type == null) {
+                    Debug.LogWarning($"Clip {AssetDatabase.GetAssetPath(clip)} {clip.name} contains an invalid binding");
+                    ext.changedFromOriginalSourceClip = true;
+                    continue;
+                }
                 var curve = AnimationUtility.GetObjectReferenceCurve(clip, b);
-                if (curve != null) ext.curves[b] = curve;
+                if (curve == null) {
+                    Debug.LogWarning($"Clip {AssetDatabase.GetAssetPath(clip)} {clip.name} contains a binding that is missing a curve");
+                    ext.changedFromOriginalSourceClip = true;
+                    continue;
+                }
+                ext.curves[b] = curve;
             }
             foreach (var b in AnimationUtility.GetCurveBindings(clip)) {
+                if (b.path == null || b.propertyName == null || b.type == null) {
+                    Debug.LogWarning($"Clip {AssetDatabase.GetAssetPath(clip)} {clip.name} contains an invalid binding");
+                    ext.changedFromOriginalSourceClip = true;
+                    continue;
+                }
                 var curve = AnimationUtility.GetEditorCurve(clip, b);
-                if (curve != null) ext.curves[b] = curve;
+                if (curve == null) {
+                    Debug.LogWarning($"Clip {AssetDatabase.GetAssetPath(clip)} {clip.name} contains a binding that is missing a curve");
+                    ext.changedFromOriginalSourceClip = true;
+                    continue;
+                }
+                ext.curves[b] = curve;
             }
             return ext;
         }

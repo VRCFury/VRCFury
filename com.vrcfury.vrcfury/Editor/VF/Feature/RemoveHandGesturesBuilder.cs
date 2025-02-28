@@ -20,7 +20,7 @@ namespace VF.Feature {
         public void Apply() {
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetUnmanagedLayers()) {
-                    AnimatorIterator.RewriteConditions(layer, c => {
+                    layer.RewriteConditions(c => {
                         if (c.IsForGesture()) return c.IncludesValue(0);
                         return c;
                     });

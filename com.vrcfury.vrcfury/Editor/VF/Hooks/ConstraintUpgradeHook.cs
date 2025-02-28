@@ -7,6 +7,7 @@ using UnityEngine.Animations;
 using VF.Builder;
 using VF.Model;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars;
 
 namespace VF.Hooks {
@@ -94,7 +95,7 @@ namespace VF.Hooks {
                 if (!(_c is AnimatorController c)) return;
                 if (c == null) return;
                 controllers.Add(c);
-                clips.UnionWith(new AnimatorIterator.Clips().From(c));
+                clips.UnionWith(new AnimatorIterator.Clips().From(new VFController(c)));
             }
             void FoundClip(AnimationClip clip) {
                 if (clip == null) return;
@@ -111,7 +112,7 @@ namespace VF.Hooks {
                 }
                 if (visit.value is AnimatorController ac && ac != null) {
                     FoundController(ac);
-                    clips.UnionWith(new AnimatorIterator.Clips().From(ac));
+                    clips.UnionWith(new AnimatorIterator.Clips().From(new VFController(ac)));
                     return UnitySerializationUtils.IterateResult.Skip;
                 }
                 if (visit.value is AnimationClip c2 && c2 != null) {

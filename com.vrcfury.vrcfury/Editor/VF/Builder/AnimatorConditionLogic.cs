@@ -5,9 +5,6 @@ using System.Linq;
 using UnityEditor.Animations;
 using VF.Inspector;
 using VF.Utils;
-using AnimatorConditions = System.Collections.Generic.IEnumerable<UnityEditor.Animations.AnimatorCondition>;
-using AnimatorConditionsUnion = System.Collections.Generic.IEnumerable<
-    System.Collections.Generic.IEnumerable<UnityEditor.Animations.AnimatorCondition>>;
 
 namespace VF.Builder {
     /**
@@ -44,75 +41,78 @@ namespace VF.Builder {
             return copy;
         }
         
-        public static AnimatorConditionsUnion Not(AnimatorConditionsUnion input) {
-            AnimatorConditionsUnion emptyProduct = new[] { Enumerable.Empty<AnimatorCondition>() }; 
+        public static AnimatorCondition[][] Not(AnimatorCondition[][] input) {
             var output = input.Aggregate(
-                emptyProduct, 
-                (accumulator, sequence) => 
+                new [] { Array.Empty<AnimatorCondition>() }, 
+                (accumulator, sequence) => (
                     from accseq in accumulator 
                     from item in sequence 
-                    select accseq.Concat(new[] {Not(item)}));
+                    select accseq.Append(Not(item)).ToArray()
+                ).ToArray());
             return Simplify(output);
         }
-        
-        public static AnimatorConditionsUnion And(AnimatorConditionsUnion in1, AnimatorConditionsUnion in2) {
-            var combined = in1.SelectMany(a => in2.Select(b => a.Concat(b)));
+
+        public static AnimatorCondition[][] And(AnimatorCondition[][] in1, AnimatorCondition[][] in2) {
+            var combined = in1.SelectMany(a =>
+                in2.Select(b => a.Concat(b).ToArray())
+            ).ToArray();
             return Simplify(combined);
         }
 
-        public static AnimatorConditionsUnion Or(AnimatorConditionsUnion in1, AnimatorConditionsUnion in2) {
-            var combined = in1.Concat(in2);
+        public static AnimatorCondition[][] Or(AnimatorCondition[][] in1, AnimatorCondition[][] in2) {
+            var combined = in1.Concat(in2).ToArray();
             return Simplify(combined);
         }
 
-        private static AnimatorConditionsUnion Simplify(AnimatorConditionsUnion conds) {
+        private static AnimatorCondition[][] Simplify(AnimatorCondition[][] conds) {
             // Simplify each transform
-            conds = conds.Select(Simplify);
+            conds = conds.Select(Simplify).ToArray();
 
             // Remove duplicates
-            var all = conds
+            conds = conds
                 .Select(c => new HashSet<AnimatorCondition>(c))
                 .Distinct(HashSet<AnimatorCondition>.CreateSetComparer())
+                .Select(c => c.ToArray())
                 .ToArray();
-            
+
             // Remove supersets
-            conds = all.Where(c => {
+            conds = conds.Where(c => {
                 var set = c.ToImmutableHashSet();
-                var hasSubset = all.Any(other => c != other && set.IsProperSupersetOf(other));
+                var hasSubset = conds.Any(other => c != other && set.IsProperSupersetOf(other));
                 return !hasSubset;
-            });
+            }).ToArray();
 
             // Remove impossible
-            conds = conds.Where(c => !IsImpossible(c));
+            conds = conds.Where(c => !IsImpossible(c)).ToArray();
 
-            return conds.ToArray();
+            return conds;
         }
 
-        private static string Stringify(AnimatorConditions conds) {
-            return conds.Select(c => c.mode + "." + c.parameter + "." + c.threshold).Join('|');
+        private static string Stringify(AnimatorCondition[] conds) {
+            return conds
+                .Select(c => c.mode + "." + c.parameter + "." + c.threshold)
+                .Join('|');
         }
         
-        private static AnimatorConditions Simplify(AnimatorConditions conds) {
-            var all = conds.ToArray();
+        private static AnimatorCondition[] Simplify(AnimatorCondition[] all) {
 
             // Remove redundant conditions
-            conds = all.Where(c => !IsRedundant(c, all));
+            var stream = all.Where(c => !IsRedundant(c, all));
             
             // Remove duplicate conditions
-            conds = conds.GroupBy(c => c).Select(grp => grp.First());
+            stream = stream.GroupBy(c => c).Select(grp => grp.First());
             
             // Sort
-            conds = conds.OrderBy(c => c.parameter);
+            stream = stream.OrderBy(c => c.parameter);
 
-            return conds.ToArray();
+            return stream.ToArray();
         }
 
-        private static bool IsImpossible(AnimatorConditions conds) {
-            var all = conds.ToList();
-            return all.Any(c => IsImpossible(c, all));
+        private static bool IsImpossible(AnimatorCondition[] conds) {
+            return conds.Any(c => IsImpossible(c, conds));
         }
 
-        private static bool IsImpossible(AnimatorCondition rule, AnimatorConditions others) {
+        private static bool IsImpossible(AnimatorCondition rule, AnimatorCondition[] others) {
             foreach (var other in others) {
                 if (rule.parameter != other.parameter) continue;
                 switch (rule.mode) {
@@ -152,7 +152,7 @@ namespace VF.Builder {
             }
             return false;
         }
-        private static bool IsRedundant(AnimatorCondition rule, AnimatorConditions others) {
+        private static bool IsRedundant(AnimatorCondition rule, AnimatorCondition[] others) {
             foreach (var other in others) {
                 if (rule.parameter != other.parameter) continue;
                 switch (rule.mode) {

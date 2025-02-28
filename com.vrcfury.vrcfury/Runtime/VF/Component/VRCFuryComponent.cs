@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using VF.Upgradeable;
+using VF.VrcfEditorOnly;
 
 namespace VF.Component {
     internal abstract class VRCFuryComponent : VrcfUpgradeableMonoBehaviour, IVrcfEditorOnly {

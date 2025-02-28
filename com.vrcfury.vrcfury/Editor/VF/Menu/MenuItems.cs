@@ -45,6 +45,8 @@ namespace VF.Menu {
         public const int recompileAllPriority = 1318;
         public const string blockScriptImports = prefix + "Utilites/Block Script Imports";
         public const int blockScriptImportsPriority = 1319;
+        public const string disableDbtMerging = prefix + "Utilites/Disable DBT Merging";
+        public const int disableDbtMergingPriority = 1320;
         
         public const string playMode = prefix + "Settings/Enable VRCFury in play mode";
         public const int playModePriority = 1321;

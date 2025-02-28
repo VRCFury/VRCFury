@@ -10,13 +10,17 @@ namespace VF.Utils {
         public static bool IsNetworkSynced(this VRCExpressionParameters.Parameter param) {
             return networkSyncedField == null || (bool)networkSyncedField.GetValue(param);
         }
-        
+
         public static void SetNetworkSynced(this VRCExpressionParameters.Parameter param, bool networkSynced, bool optional = false) {
-            if (networkSyncedField == null) {
+            if (!SupportsUnsynced()) {
                 if (networkSynced || optional) return;
                 throw new Exception("Your VRCSDK is too old to support non-synced parameters. Please update the VRCSDK.");
             }
             networkSyncedField.SetValue(param, networkSynced);
+        }
+
+        public static bool SupportsUnsynced() {
+            return networkSyncedField != null;
         }
     }
 }

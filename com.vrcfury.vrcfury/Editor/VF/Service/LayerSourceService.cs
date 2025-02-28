@@ -3,6 +3,7 @@ using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Injector;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     [VFService]
@@ -12,35 +13,25 @@ namespace VF.Service {
         public const string AvatarDescriptorSource = "VRC Avatar Descriptor";
         public const string VrcDefaultSource = "VRC Default";
 
-        private readonly Dictionary<AnimatorStateMachine, string> sources = new Dictionary<AnimatorStateMachine, string>();
-        private readonly Dictionary<AnimatorStateMachine, RuntimeAnimatorController> sourceFiles = new Dictionary<AnimatorStateMachine, RuntimeAnimatorController>();
+        private readonly Dictionary<VFLayer, string> sources = new Dictionary<VFLayer, string>();
 
-        public void SetSource(AnimatorStateMachine sm, string source) {
+        public void SetSource(VFLayer sm, string source) {
             sources[sm] = source;
         }
         
-        public void SetSourceToCurrent(AnimatorStateMachine sm) {
+        public void SetSourceToCurrent(VFLayer sm) {
             SetSource(sm, globals.currentFeatureNameProvider());
         }
 
-        public void CopySource(AnimatorStateMachine from, AnimatorStateMachine to) {
+        public void CopySource(VFLayer from, VFLayer to) {
             if (sources.TryGetValue(from, out var source)) {
                 sources[to] = source;
             }
         }
 
         [CanBeNull]
-        public string GetSource(AnimatorStateMachine sm) {
+        public string GetSource(VFLayer sm) {
             return sources.TryGetValue(sm, out var source) ? source : null;
-        }
-        
-        public void SetSourceFile(AnimatorStateMachine sm, RuntimeAnimatorController source) {
-            sourceFiles[sm] = source;
-        }
-        
-        [CanBeNull]
-        public RuntimeAnimatorController GetSourceFile(AnimatorStateMachine sm) {
-            return sourceFiles.TryGetValue(sm, out var source) ? source : null;
         }
     }
 }

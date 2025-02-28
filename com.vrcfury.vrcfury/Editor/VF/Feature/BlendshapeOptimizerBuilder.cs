@@ -202,7 +202,6 @@ namespace VF.Feature {
 
         private ICollection<string> CollectAnimatedBlendshapesForMesh(SkinnedMeshRenderer skin) {
             var animatedBindings = controllers.GetAllUsedControllers()
-                .Select(c => c.GetRaw())
                 .SelectMany(controller => GetBindings(avatarObject, controller))
                 .Concat(animators.GetSubControllers().SelectMany(pair =>
                     GetBindings(pair.owner, pair.controller)

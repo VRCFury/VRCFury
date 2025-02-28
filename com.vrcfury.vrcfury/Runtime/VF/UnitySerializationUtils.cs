@@ -105,7 +105,7 @@ namespace VF {
         }
 
         // https://docs.unity3d.com/6000.0/Documentation/Manual/script-serialization-rules.html
-        private static IEnumerable<FieldInfo> GetAllSerializableFields(Type objType) {
+        private static IList<FieldInfo> GetAllSerializableFields(Type objType) {
             var output = new List<FieldInfo>();
 
             for (var current = objType; current != null; current = current.BaseType) {
