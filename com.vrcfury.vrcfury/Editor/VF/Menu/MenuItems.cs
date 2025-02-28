@@ -27,25 +27,25 @@ namespace VF.Menu {
         public const string upgradeLegacyHaptics = prefix + "SPS/Upgrade legacy haptics";
         public const int upgradeLegacyHapticsPriority = 1303;
 
-        public const string nukeZawoo = prefix + "Utilites/Nuke Zawoo";
+        public const string nukeZawoo = prefix + "Utilities/Nuke Zawoo";
         public const int nukeZawooPriority = 1311;
-        public const string unusedBones = prefix + "Utilites/Nuke unused bones";
+        public const string unusedBones = prefix + "Utilities/Nuke unused bones";
         public const int unusedBonesPriority = 1312;
-        public const string listComponents = prefix + "Utilites/List All Components";
+        public const string listComponents = prefix + "Utilities/List All Components";
         public const int listComponentsPriority = 1313;
-        public const string detectDuplicatePhysbones = prefix + "Utilites/Detect Duplicate Physbones";
+        public const string detectDuplicatePhysbones = prefix + "Utilities/Detect Duplicate Physbones";
         public const int detectDuplicatePhysbonesPriority = 1314;
-        public const string reserialize = prefix + "Utilites/Reserialize All VRCFury Assets";
+        public const string reserialize = prefix + "Utilities/Reserialize All VRCFury Assets";
         public const int reserializePriority = 1315;
-        public const string uselessOverrides = prefix + "Utilites/Cleanup Useless Overrides";
+        public const string uselessOverrides = prefix + "Utilities/Cleanup Useless Overrides";
         public const int uselessOverridesPriority = 1316;
-        public const string debugCopy = prefix + "Utilites/Make debug copy during build";
+        public const string debugCopy = prefix + "Utilities/Make debug copy during build";
         public const int debugCopyPriority = 1317;
-        public const string recompileAll = prefix + "Utilites/Recompile all scripts";
+        public const string recompileAll = prefix + "Utilities/Recompile all scripts";
         public const int recompileAllPriority = 1318;
-        public const string blockScriptImports = prefix + "Utilites/Block Script Imports";
+        public const string blockScriptImports = prefix + "Utilities/Block Script Imports";
         public const int blockScriptImportsPriority = 1319;
-        public const string disableDbtMerging = prefix + "Utilites/Disable DBT Merging";
+        public const string disableDbtMerging = prefix + "Utilities/Disable DBT Merging";
         public const int disableDbtMergingPriority = 1320;
         
         public const string playMode = prefix + "Settings/Enable VRCFury in play mode";
