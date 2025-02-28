@@ -74,7 +74,10 @@ namespace VF.Service {
                             return UnitySerializationUtils.IterateResult.Skip;
                         }
                         if (visit.value is State action) {
-                            var built = actionClipService.BuildOff(action);
+                            var tempState = new State {
+                                actions = action.actions.Where(a => a.GetType().GetCustomAttribute<DoNotApplyRestingStateAttribute>() == null).ToList()
+                            };
+                            var built = actionClipService.BuildOff(tempState);
                             ApplyClipToRestingState(built, owner: $"{component.GetType().Name} on {path}");
                         }
                         if (visit.value is FullController fc) {

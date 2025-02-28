@@ -43,7 +43,8 @@ namespace VF.Feature.Base {
         DisableGesturesService,
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags,
-        
+        // Needs to happen right before driving non float types
+        EvaluateTriggerParams,
         // Needs to happen after all controller params (and their types) are in place
         DriveNonFloatTypes,
         

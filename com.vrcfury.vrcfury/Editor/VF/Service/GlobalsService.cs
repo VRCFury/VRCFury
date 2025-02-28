@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using VF.Builder;
+using VF.Feature;
 using VF.Feature.Base;
 using VF.Model.Feature;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -17,6 +19,8 @@ namespace VF.Service {
         public Func<string> currentFeatureNameProvider;
         public Func<string> currentFeatureClipPrefixProvider;
         public Func<int> currentMenuSortPosition;
+        public VFAFloat currentTriggerParam;
+        public Func<FeatureBuilder> currentFeature;
         public Func<string> currentFeatureObjectPath;
     }
 }
