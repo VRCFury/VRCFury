@@ -220,6 +220,7 @@ namespace VF.Inspector {
                 var avatar = VRCAvatarUtils.GuessAvatarObject(c);
                 if (avatar != null) {
                     foreach (var light in avatar.GetComponentsInSelfAndChildren<Light>()) {
+                        if (light.type != LightType.Point) continue;
                         var path = light.owner().GetPath(avatar, true);
                         var type = VRCFuryHapticSocketEditor.GetLegacyDpsLightType(light);
                         if (type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Tip)
@@ -261,7 +262,7 @@ namespace VF.Inspector {
                 }
                 if (lightPaths.Any()) {
                     var warning = VRCFuryEditorUtils.Warn(
-                        "This avatar contains lights! Beware that these lights may interfere with SPS if they are enabled at the same time.\n\n" +
+                        "This avatar contains point lights! Beware that these lights may interfere with SPS if they are enabled at the same time.\n\n" +
                         lightPaths.Join('\n')
                     );
                     output.Add(warning);
