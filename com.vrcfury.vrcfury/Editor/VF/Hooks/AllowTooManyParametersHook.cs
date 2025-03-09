@@ -1,73 +1,47 @@
-
 using VF.Utils;
-#if VRC_NEW_PUBLIC_SDK
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
-using UnityEngine;
 using VF.Builder;
 using VF.Model;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
-using VRC.SDK3A.Editor;
 using Object = UnityEngine.Object;
-#endif
 
 namespace VF.Hooks {
     internal static class AllowTooManyParametersHook {
-#if VRC_NEW_PUBLIC_SDK
+        private static readonly MethodInfo OnGUIError = ReflectionUtils.GetTypeFromAnyAssembly("VRCSdkControlPanel")
+            .GetMethod("OnGUIError",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                new[] { typeof(Object), typeof(string), typeof(Action), typeof(Action) },
+                null
+            );
+
         [InitializeOnLoadMethod]
         private static void Init() {
-            VRCSdkControlPanel.OnSdkPanelEnable += (sender, e) => {
-                if (VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var _builder)) {
-                    builder = _builder;
-                }
-            };
-            Scheduler.Schedule(Check, 1000);
+            if (OnGUIError == null) return;
+            var prefix = typeof(AllowTooManyParametersHook).GetMethod(nameof(Prefix), BindingFlags.NonPublic | BindingFlags.Static);
+            HarmonyUtils.Patch(OnGUIError, prefix);
         }
 
-        private static IVRCSdkAvatarBuilderApi builder;
-
-        private static void Check() {
+        private static bool Prefix(Object __0, string __1) {
             try {
-                CheckUnsafe();
-            } catch (Exception) { /**/ }
-        }
-        private static void CheckUnsafe() {
-            if (builder == null) return;
-            var panel = builder.GetType().GetField("_builder",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?
-                .GetValue(builder);
-            if (panel == null) return;
-            var errors = panel.GetType().GetField("GUIErrors",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?
-                .GetValue(panel) as IEnumerable;
-            if (errors == null) return;
-            foreach (var pair in errors) {
-                var key = pair.GetType().GetProperty("Key")?.GetValue(pair) as Object;
-                var value = pair.GetType().GetProperty("Value")?.GetValue(pair) as IList;
-                if (key == null || value == null) continue;
-                var avatar = key as VRCAvatarDescriptor;
-                if (avatar == null) continue;
-                var remove = new List<object>();
-                foreach (var issue in value) {
-                    var issueText = issue.GetType().GetField("issueText").GetValue(issue) as string;
-                    if (issueText == null) continue;
-                    if (!issueText.Contains("VRCExpressionParameters has too many parameters")) continue;
-                    var hasUnlimitedParameters = avatar.owner()
+                if (
+                    __1.Contains("VRCExpressionParameters has too many parameters")
+                    && __0 is VRCAvatarDescriptor avatar
+                    && avatar.owner()
                         .GetComponentsInSelfAndChildren<VRCFury>()
                         .SelectMany(v => v.GetAllFeatures())
-                        .Any(f => f is UnlimitedParameters);
-                    if (hasUnlimitedParameters) remove.Add(issue);
+                        .Any(f => f is UnlimitedParameters)
+                ) {
+                    return false;
                 }
-                foreach (var r in remove) {
-                    value.Remove(r);
-                }
+            } catch (Exception) { /**/
             }
+
+            return true;
         }
-#endif
     }
 }
