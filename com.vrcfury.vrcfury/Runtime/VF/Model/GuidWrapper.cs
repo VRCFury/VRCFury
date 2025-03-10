@@ -77,12 +77,6 @@ namespace VF.Model {
         }
 #pragma warning restore 0612
 
-        // We sync in preserialize to ensure that if an asset "reappeared" recently, and objRef is still null,
-        // that this asset will still show up in the export dialog when the user exports their prefab
-        protected override void PreSerialize() {
-            Sync();
-        }
-
         private bool Sync() {
             return SyncExt != null && SyncExt(this, typeof(T));
         }
