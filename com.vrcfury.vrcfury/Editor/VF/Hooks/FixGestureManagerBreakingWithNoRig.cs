@@ -6,6 +6,9 @@ using UnityEngine;
 using VF.Utils;
 
 namespace VF.Hooks {
+    /**
+     * https://github.com/BlackStartx/VRC-Gesture-Manager/issues/66
+     */
     internal static class FixGestureManagerBreakingWithNoRig {
         [InitializeOnLoadMethod]
         private static void Init() {
