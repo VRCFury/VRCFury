@@ -16,8 +16,11 @@ namespace VF.Inspector {
             return wrapper.FindPropertyRelative("objRef");
         }
         public static void SetValue(SerializedProperty prop, Object val) {
-            GetIdProp(prop).stringValue = VrcfObjectId.ObjectToId(val);
             GetObjRefProp(prop).objectReferenceValue = val;
+            UpdateFallbackId(prop);
+        }
+        public static void UpdateFallbackId(SerializedProperty prop) {
+            GetIdProp(prop).stringValue = VrcfObjectId.ObjectToId(GetObjRefProp(prop).objectReferenceValue);
         }
         public static Object GetValue(SerializedProperty prop) {
             return VrcfObjectId.IdToObject<Object>(GetIdProp(prop).stringValue);
@@ -32,14 +35,26 @@ namespace VF.Inspector {
             var objField = new ObjectField();
             var type = fieldInfo.FieldType.GetField("typeDetector").FieldType;
             objField.objectType = type;
-            objField.SetValueWithoutNotify(GetValue(prop));
+            objField.bindingPath = GetObjRefProp(prop).propertyPath;
             output.Add(objField);
 
             objField.RegisterValueChangedCallback(change => {
-                SetValue(prop, change.newValue);
-                prop.serializedObject.ApplyModifiedProperties();
+                if (change.newValue == null && change.previousValue != null) {
+                    UpdateFallbackId(prop);
+                    prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                } else if (change.newValue != null && change.newValue != change.previousValue) {
+                    UpdateFallbackId(prop);
+                    prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                }
+                Debug.Log("Changed");
             });
-
+            objField.RegisterCallback<KeyDownEvent>(evt => {
+                if (evt.keyCode == KeyCode.Delete) {
+                    SetValue(prop, null);
+                    prop.serializedObject.ApplyModifiedProperties();
+                }
+            });
+ 
             output.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (objField.value != null) return new VisualElement();
 

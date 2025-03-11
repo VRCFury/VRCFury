@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -81,6 +82,52 @@ namespace VF.Utils {
 #else
             return Object.FindObjectsOfType(type);
 #endif
+        }
+
+        [InitializeOnLoadMethod]
+        public static void IsMissingTest() {
+            Object obj = null;
+            if (obj.GetNoneType() != NoneType.Unset) {
+                Debug.LogError("Failed IsMissing test 1");
+            }
+            obj = new AnimationClip();
+            if (obj.GetNoneType() != NoneType.Present) {
+                Debug.LogError("Failed IsMissing test 2");
+            }
+            Object.DestroyImmediate(obj);
+            if (obj.GetNoneType() != NoneType.Missing) {
+                Debug.LogError("Failed IsMissing test 4");
+            }
+        }
+
+        public enum NoneType {
+            Unset,
+            Missing,
+            Present
+        }
+
+        public static NoneType GetNoneType([CanBeNull] this Object obj) {
+            if (obj != null) return NoneType.Present;
+            var wrapper = ScriptableObject.CreateInstance<DummyObjectWrapper>();
+            try {
+                wrapper.obj = obj;
+                using (var so = new SerializedObject(wrapper)) {
+                    var sp = so.FindProperty("obj");
+                    var prop = typeof(SerializedProperty).GetProperty("objectReferenceStringValue",
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    var result = (string)prop.GetValue(sp, null);
+                    if (result == "None (Object)") return NoneType.Unset;
+                    if (result == "Missing (Object)") return NoneType.Missing;
+                    throw new Exception("Unknown object state");
+                }
+            } finally {
+                Object.DestroyImmediate(wrapper);
+            }
+        }
+
+        [Serializable]
+        private class DummyObjectWrapper : ScriptableObject {
+            public Object obj;
         }
     }
 }
