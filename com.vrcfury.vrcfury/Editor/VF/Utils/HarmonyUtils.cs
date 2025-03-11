@@ -67,7 +67,7 @@ namespace VF.Utils {
             return (method.MethodImplementationFlags & MethodImplAttributes.InternalCall) != 0;
         }
  
-        public static void Patch(MethodBase original, MethodInfo prefix) {
+        public static void Patch(MethodBase original, MethodInfo prefix, bool postfix = false) {
             if (original == null || prefix == null) return;
             
             if (IsInternal(original)) {
@@ -81,7 +81,11 @@ namespace VF.Utils {
             if (harmonyMethodConstructor == null) return;
             var harmonyMethod = harmonyMethodConstructor.Invoke(new object[] { prefix });
             //Debug.Log($"Patching {original.DeclaringType?.Name}.{original.Name}");
-            ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, harmonyMethod);
+            if (postfix) {
+                ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, null, harmonyMethod);
+            } else {
+                ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, harmonyMethod);
+            }
         }
         
         /**
