@@ -24,9 +24,6 @@ namespace VF.Inspector {
         public static void UpdateFallbackId(SerializedProperty prop) {
             GetIdProp(prop).stringValue = VrcfObjectId.ObjectToId(GetObjRefProp(prop).objectReferenceValue);
         }
-        public static VrcfObjectId GetId(SerializedProperty prop) {
-            return VrcfObjectId.FromId(GetIdProp(prop).stringValue);
-        }
 
         public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
             var objRefProp = GetObjRefProp(prop);
@@ -40,38 +37,45 @@ namespace VF.Inspector {
             objField.bindingPath = objRefProp.propertyPath;
             output.Add(objField);
 
-            objField.RegisterValueChangedCallback(change => {
-                if (objRefProp.GetNoneType() == SerializedPropertyExtensions.NoneType.Missing) {
-                    // keep whatever's in there
-                    //Debug.Log("Missing");
+            var lastSeenLabel = VRCFuryEditorUtils.WrappedLabel("");
+            output.Add(lastSeenLabel);
+
+            void UpdateLastSeenLabel() {
+                if (objRefProp.objectReferenceValue != null || idProp.stringValue == "") {
+                    lastSeenLabel.text = "";
+                    lastSeenLabel.SetVisible(false);
                 } else {
+                    var parsed = VrcfObjectId.FromId(idProp.stringValue);
+                    var missingId = "";
+                    if (!string.IsNullOrWhiteSpace(parsed.objectName)) {
+                        missingId = $"{parsed.objectName} from {parsed.fileName}";
+                    } else if (!string.IsNullOrWhiteSpace(parsed.fileName)) {
+                        missingId = parsed.fileName;
+                    } else if (!string.IsNullOrWhiteSpace(parsed.guid)) {
+                        missingId = $"GUID {parsed.guid}";
+                    } else {
+                        missingId = "?";
+                    }
+                    lastSeenLabel.text = $"Last seen at {missingId}";
+                    lastSeenLabel.SetVisible(true);
+                }
+            }
+
+            objField.RegisterValueChangedCallback(change => {
+                if (change.newValue != null || change.previousValue != null) {
                     UpdateFallbackId(prop);
                     prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
                 }
+                UpdateLastSeenLabel();
             });
             objField.RegisterCallback<KeyDownEvent>(evt => {
                 if (evt.keyCode == KeyCode.Delete) {
                     SetValue(prop, null);
                     prop.serializedObject.ApplyModifiedProperties();
+                    UpdateLastSeenLabel();
                 }
             });
- 
-            output.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (objField.value != null) return new VisualElement();
 
-                var parsed = GetId(prop);
-                var missingId = "";
-                if (!string.IsNullOrWhiteSpace(parsed.objectName)) {
-                    missingId = $"{parsed.objectName} from {parsed.fileName}";
-                } else if (!string.IsNullOrWhiteSpace(parsed.fileName)) {
-                    missingId = parsed.fileName;
-                } else if (!string.IsNullOrWhiteSpace(parsed.guid)) {
-                    missingId = $"GUID {parsed.guid}";
-                } else {
-                    return new VisualElement();
-                }
-                return VRCFuryEditorUtils.WrappedLabel($"Last seen at {missingId}");
-            }, GetIdProp(prop)));
             return output;
         }
     }

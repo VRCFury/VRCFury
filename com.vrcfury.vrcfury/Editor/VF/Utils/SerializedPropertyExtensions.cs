@@ -35,22 +35,5 @@ namespace VF.Utils {
         public static T GetComponent<T>(this SerializedProperty prop) where T : UnityEngine.Component {
             return (prop.objectReferenceValue as GameObject).NullSafe()?.GetComponent<T>();
         }
-        
-        public enum NoneType {
-            Unset,
-            Missing,
-            Present
-        }
-        
-        private static readonly PropertyInfo objectReferenceStringValue = typeof(SerializedProperty).GetProperty("objectReferenceStringValue",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
-        public static NoneType GetNoneType(this SerializedProperty sp) {
-            if (sp.objectReferenceValue != null) return NoneType.Present;
-            var result = (string)objectReferenceStringValue.GetValue(sp, null);
-            if (result == "None (Object)") return NoneType.Unset;
-            if (result == "Missing (Object)") return NoneType.Missing;
-            throw new Exception("Unknown object state");
-        }
     }
 }

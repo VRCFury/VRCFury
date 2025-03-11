@@ -30,14 +30,11 @@ namespace VF {
                         wrapper.id = newId;
                         changed = true;
                     }
-                } else if (wrapper.objRef.GetNoneType() == SerializedPropertyExtensions.NoneType.Missing) {
-                    // Object is set, but missing in the project
-                    // Don't touch anything! The reference is still valid!
-                    //Debug.Log("Objref is set but missing");
                 } else {
-                    // Object is totally unset. Either it was emptied by the user (and id is ""),
-                    // or this reference came from an old version of unity and we need to restore
-                    // the reference from id
+                    // Object is either:
+                    // * missing (asset was deleted)
+                    // * totally unset (user cleared the field or never put anything in it)
+                    // * reference came from an old version of unity which stored "missing" as "unset" and we need to restore the reference from id
                     var newObjRef = VrcfObjectId.IdToObject<Object>(wrapper.id);
                     if (newObjRef != wrapper.objRef) {
                         wrapper.objRef = newObjRef;

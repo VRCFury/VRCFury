@@ -83,39 +83,5 @@ namespace VF.Utils {
             return Object.FindObjectsOfType(type);
 #endif
         }
-
-        [InitializeOnLoadMethod]
-        public static void IsMissingTest() {
-            Object obj = null;
-            if (obj.GetNoneType() != SerializedPropertyExtensions.NoneType.Unset) {
-                Debug.LogError("Failed IsMissing test 1");
-            }
-            obj = new AnimationClip();
-            if (obj.GetNoneType() != SerializedPropertyExtensions.NoneType.Present) {
-                Debug.LogError("Failed IsMissing test 2");
-            }
-            Object.DestroyImmediate(obj);
-            if (obj.GetNoneType() != SerializedPropertyExtensions.NoneType.Missing) {
-                Debug.LogError("Failed IsMissing test 4");
-            }
-        }
-
-        public static SerializedPropertyExtensions.NoneType GetNoneType([CanBeNull] this Object obj) {
-            if (obj != null) return SerializedPropertyExtensions.NoneType.Present;
-            var wrapper = ScriptableObject.CreateInstance<DummyObjectWrapper>();
-            try {
-                wrapper.obj = obj;
-                using (var so = new SerializedObject(wrapper)) {
-                    return so.FindProperty("obj").GetNoneType();
-                }
-            } finally {
-                Object.DestroyImmediate(wrapper);
-            }
-        }
-
-        [Serializable]
-        private class DummyObjectWrapper : ScriptableObject {
-            public Object obj;
-        }
     }
 }
