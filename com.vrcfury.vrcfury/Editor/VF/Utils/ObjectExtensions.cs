@@ -87,38 +87,26 @@ namespace VF.Utils {
         [InitializeOnLoadMethod]
         public static void IsMissingTest() {
             Object obj = null;
-            if (obj.GetNoneType() != NoneType.Unset) {
+            if (obj.GetNoneType() != SerializedPropertyExtensions.NoneType.Unset) {
                 Debug.LogError("Failed IsMissing test 1");
             }
             obj = new AnimationClip();
-            if (obj.GetNoneType() != NoneType.Present) {
+            if (obj.GetNoneType() != SerializedPropertyExtensions.NoneType.Present) {
                 Debug.LogError("Failed IsMissing test 2");
             }
             Object.DestroyImmediate(obj);
-            if (obj.GetNoneType() != NoneType.Missing) {
+            if (obj.GetNoneType() != SerializedPropertyExtensions.NoneType.Missing) {
                 Debug.LogError("Failed IsMissing test 4");
             }
         }
 
-        public enum NoneType {
-            Unset,
-            Missing,
-            Present
-        }
-
-        public static NoneType GetNoneType([CanBeNull] this Object obj) {
-            if (obj != null) return NoneType.Present;
+        public static SerializedPropertyExtensions.NoneType GetNoneType([CanBeNull] this Object obj) {
+            if (obj != null) return SerializedPropertyExtensions.NoneType.Present;
             var wrapper = ScriptableObject.CreateInstance<DummyObjectWrapper>();
             try {
                 wrapper.obj = obj;
                 using (var so = new SerializedObject(wrapper)) {
-                    var sp = so.FindProperty("obj");
-                    var prop = typeof(SerializedProperty).GetProperty("objectReferenceStringValue",
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                    var result = (string)prop.GetValue(sp, null);
-                    if (result == "None (Object)") return NoneType.Unset;
-                    if (result == "Missing (Object)") return NoneType.Missing;
-                    throw new Exception("Unknown object state");
+                    return so.FindProperty("obj").GetNoneType();
                 }
             } finally {
                 Object.DestroyImmediate(wrapper);

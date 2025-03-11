@@ -7,10 +7,8 @@ using VF.Utils;
 namespace VF {
     internal static class GuidWrapperExtensions {
         [CanBeNull]
-        public static T Get<T>(this GuidWrapper<T> wrapper) where T : Object {
-            if (wrapper == null) return null;
-            if (wrapper.objRef is T t) return t;
-            return VrcfObjectId.IdToObject<T>(wrapper.id);
+        public static T Get<T>([CanBeNull] this GuidWrapper<T> wrapper) where T : Object {
+            return wrapper?.objRef as T;
         }
 
         [InitializeOnLoadMethod]
@@ -32,7 +30,7 @@ namespace VF {
                         wrapper.id = newId;
                         changed = true;
                     }
-                } else if (wrapper.objRef.GetNoneType() == ObjectExtensions.NoneType.Missing) {
+                } else if (wrapper.objRef.GetNoneType() == SerializedPropertyExtensions.NoneType.Missing) {
                     // Object is set, but missing in the project
                     // Don't touch anything! The reference is still valid!
                     //Debug.Log("Objref is set but missing");

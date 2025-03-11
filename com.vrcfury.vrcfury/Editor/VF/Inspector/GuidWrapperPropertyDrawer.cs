@@ -1,3 +1,4 @@
+using System;
 using System.Reflection;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -5,6 +6,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Model;
 using VF.Utils;
+using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
     [CustomPropertyDrawer(typeof(GuidWrapper<>), true)]
@@ -22,31 +24,30 @@ namespace VF.Inspector {
         public static void UpdateFallbackId(SerializedProperty prop) {
             GetIdProp(prop).stringValue = VrcfObjectId.ObjectToId(GetObjRefProp(prop).objectReferenceValue);
         }
-        public static Object GetValue(SerializedProperty prop) {
-            return VrcfObjectId.IdToObject<Object>(GetIdProp(prop).stringValue);
-        }
         public static VrcfObjectId GetId(SerializedProperty prop) {
             return VrcfObjectId.FromId(GetIdProp(prop).stringValue);
         }
 
         public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+            var objRefProp = GetObjRefProp(prop);
+            var idProp = GetIdProp(prop);
+            
             var output = new VisualElement();
 
             var objField = new ObjectField();
             var type = fieldInfo.FieldType.GetField("typeDetector").FieldType;
             objField.objectType = type;
-            objField.bindingPath = GetObjRefProp(prop).propertyPath;
+            objField.bindingPath = objRefProp.propertyPath;
             output.Add(objField);
 
             objField.RegisterValueChangedCallback(change => {
-                if (change.newValue == null && change.previousValue != null) {
-                    UpdateFallbackId(prop);
-                    prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-                } else if (change.newValue != null && change.newValue != change.previousValue) {
+                if (objRefProp.GetNoneType() == SerializedPropertyExtensions.NoneType.Missing) {
+                    // keep whatever's in there
+                    //Debug.Log("Missing");
+                } else {
                     UpdateFallbackId(prop);
                     prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
                 }
-                Debug.Log("Changed");
             });
             objField.RegisterCallback<KeyDownEvent>(evt => {
                 if (evt.keyCode == KeyCode.Delete) {
@@ -69,7 +70,7 @@ namespace VF.Inspector {
                 } else {
                     return new VisualElement();
                 }
-                return VRCFuryEditorUtils.WrappedLabel($"Missing asset: {missingId}");
+                return VRCFuryEditorUtils.WrappedLabel($"Last seen at {missingId}");
             }, GetIdProp(prop)));
             return output;
         }

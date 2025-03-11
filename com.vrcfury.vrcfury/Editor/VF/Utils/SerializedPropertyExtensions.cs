@@ -1,8 +1,11 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Reflection;
 using JetBrains.Annotations;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     internal static class SerializedPropertyExtensions {
@@ -31,6 +34,23 @@ namespace VF.Utils {
         [CanBeNull]
         public static T GetComponent<T>(this SerializedProperty prop) where T : UnityEngine.Component {
             return (prop.objectReferenceValue as GameObject).NullSafe()?.GetComponent<T>();
+        }
+        
+        public enum NoneType {
+            Unset,
+            Missing,
+            Present
+        }
+        
+        private static readonly PropertyInfo objectReferenceStringValue = typeof(SerializedProperty).GetProperty("objectReferenceStringValue",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+        public static NoneType GetNoneType(this SerializedProperty sp) {
+            if (sp.objectReferenceValue != null) return NoneType.Present;
+            var result = (string)objectReferenceStringValue.GetValue(sp, null);
+            if (result == "None (Object)") return NoneType.Unset;
+            if (result == "Missing (Object)") return NoneType.Missing;
+            throw new Exception("Unknown object state");
         }
     }
 }
