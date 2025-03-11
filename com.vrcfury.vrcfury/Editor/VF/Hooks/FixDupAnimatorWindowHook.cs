@@ -32,7 +32,7 @@ namespace VF.Hooks {
         
         public static AnimatorController GetPreviewedAnimatorController() {
             if (AnimatorControllerTool == null || AnimatorControllerTool_animatorController == null) return null;
-            var tool = Resources.FindObjectsOfTypeAll(AnimatorControllerTool).FirstOrDefault();
+            var tool = EditorWindowFinder.GetWindows(AnimatorControllerTool).FirstOrDefault();
             if (tool == null) return null;
             return AnimatorControllerTool_animatorController.GetValue(tool) as AnimatorController;
         }
