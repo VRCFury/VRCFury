@@ -10,7 +10,7 @@ namespace VF.Hooks.UnityFixes {
      * Whenever you delete or move a layer in a controller, unity scrolls the list to the top for no reason.
      * This hook fixes that issue.
      */
-    public static class FixAnimatorLayerScrollHook {
+    internal static class FixAnimatorLayerScrollHook {
         private static readonly Type LayerControllerView = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.LayerControllerView");
         private static readonly FieldInfo LayerControllerView_m_LayerScroll = LayerControllerView?
             .GetField("m_LayerScroll", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);

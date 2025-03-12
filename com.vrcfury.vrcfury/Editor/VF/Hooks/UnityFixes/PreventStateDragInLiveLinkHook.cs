@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 using VF.Utils;
 
 namespace VF.Hooks {
@@ -10,7 +11,7 @@ namespace VF.Hooks {
      * Dragging a state in an animator by even one single pixel while in play mode totally breaks live link and disables gesture manager.
      * This hook prevents you from accidentally dragging nodes in an animator while live link is active.
      */
-    internal class PreventStateDragInLiveLinkHook {
+    internal static class PreventStateDragInLiveLinkHook {
         [InitializeOnLoadMethod]
         private static void Init() {
             var original = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.GraphGUI")?.GetMethod(
@@ -37,6 +38,8 @@ namespace VF.Hooks {
         }
 
         private static bool ShouldBlockDrag() {
+            if (Event.current == null) return false;
+            if (Event.current.type != EventType.KeyDown && Event.current.type != EventType.MouseDrag) return false;
             if (AnimatorControllerTool_liveLink == null) return false;
             var tool = EditorWindowFinder.GetWindows(AnimatorControllerTool).FirstOrDefault();
             if (tool == null) return false;
