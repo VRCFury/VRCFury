@@ -25,51 +25,52 @@ namespace VF.Service {
             if (!addCache.ContainsKey(type)) {
                 if (type == EditorCurveBindingExtensions.MuscleBindingType.Body) {
                     var action = controllers.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
-                    var layer = action.NewLayer("VRCFury Actions");
+                    var name = "VRCFury Actions";
+                    var param = action.NewInt(name);
+                    var paramIndex = 0;
+                    var layer = action.NewLayer(name);
                     addedLayers.Add(layer);
                     var idle = layer.NewState("Idle");
-                    addCache[type] = c => AddClip(c, action, idle, layer, type);
+                    addCache[type] = c => AddClip(c, action, idle, layer, type, param, ++paramIndex);
                 } else {
                     var gesture = controllers.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
                     var isLeft = type == EditorCurveBindingExtensions.MuscleBindingType.LeftHand;
-                    var layer = gesture.NewLayer(
-                        "VRCFury " +
-                        (isLeft
-                            ? "Left Hand"
-                            : "Right Hand")
-                    );
+                    var name = "VRCFury " + (isLeft ? "Left Hand" : "Right Hand");
+                    var param = gesture.NewInt(name);
+                    var paramIndex = 0;
+                    var layer = gesture.NewLayer(name);
                     addedLayers.Add(layer);
                     layer.weight = 0;
                     layer.mask = AvatarMaskExtensions.Empty();
                     layer.mask.SetHumanoidBodyPartActive(isLeft ? AvatarMaskBodyPart.LeftFingers : AvatarMaskBodyPart.RightFingers, true);
                     var idle = layer.NewState("Idle");
-                    addCache[type] = c => AddClip(c, gesture, idle, layer, type);
+                    addCache[type] = c => AddClip(c, gesture, idle, layer, type, param, ++paramIndex);
                 }
             }
 
             return addCache[type](clip);
         }
 
-        private static ISet<VFLayer> addedLayers = new HashSet<VFLayer>();
+        private static readonly ISet<VFLayer> addedLayers = new HashSet<VFLayer>();
 
         public bool DidAddLayer(VFLayer layer) {
             return addedLayers.Contains(layer);
         }
         
-        private VFAFloat AddClip(AnimationClip clip, ControllerManager ctrl, VFState idle, VFLayer layer, EditorCurveBindingExtensions.MuscleBindingType type) {
+        private VFAFloat AddClip(
+            AnimationClip clip,
+            ControllerManager ctrl,
+            VFState idle,
+            VFLayer layer,
+            EditorCurveBindingExtensions.MuscleBindingType type,
+            VFAInteger param,
+            int paramIndex
+        ) {
             clip = clip.Clone();
             var state = layer.NewState(clip.name).WithAnimation(clip);
 
-            VFAFloat fxParam;
-            VFCondition enableCond;
-            if (ctrl == fx) {
-                fxParam = fx.NewFloat(clip.name + " (Trigger)");
-                enableCond = fxParam.IsGreaterThan(0);
-            } else {
-                var actionParam = ctrl.NewBool(clip.name + " (Action)");
-                enableCond = actionParam.IsTrue();
-                fxParam = floatToDriverService.Drive(actionParam, 1, 0);
-            }
+            var fxParam = floatToDriverService.Drive(param, "FullBodyEmoteService", paramIndex, 0);
+            var enableCond = param.IsEqualTo(paramIndex);
             state.TransitionsFromEntry().When(enableCond);
             idle.TransitionsToExit().When(enableCond);
 

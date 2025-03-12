@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -15,87 +16,59 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.DriveNonFloatTypes)]
         public void Apply() {
-            if (driveRequests.Count == 0) return;
+            var dbt = dbtLayerService.Create($"FloatToDriverService (Buffer DBT)");
+            var math = dbtLayerService.GetMath(dbt);
 
-            var layer = fx.NewLayer($"FloatToDriverService - Driver");
-            var idle = layer.NewState("Idle");
-            layer.SetNextOffset(1, 0);
-            
-            var threshold = 0.003f;
-
-            foreach (var outputGroup in driveRequests.GroupBy(req => req.output)) {
-                var output = outputGroup.Key;
+            foreach (var paramGroup in driveRequests.GroupBy(req => req.output)) {
+                var outputParam = paramGroup.Key;
                 
-                var dbt = dbtLayerService.Create($"FloatToDriverService - {output} (DBT)");
-                var math = dbtLayerService.GetMath(dbt);
-                
-                var resolvedTrigger = fx.MakeAap($"FloatToDriverService - {output} (Resolved)");
-                var resolvedTriggerLastValue = 0;
-                var conditions = new List<(Motion, BlendtreeMath.VFAFloatBool)>();
-                var drivenLastFrame = fx.MakeAap($"FloatToDriverService - {output} (Driven Last Frame)");
-                var drivenLastFrameClip = VrcfObjectFactory.Create<AnimationClip>();
-                drivenLastFrameClip.SetAap(drivenLastFrame, 1);
-                var changedLastFrame = fx.MakeAap($"FloatToDriverService - {output} (Changed Last Frame)");
+                var layer = fx.NewLayer($"FloatToDriverService - {outputParam}");
+                var idle = layer.NewState("Idle");
 
-                // Map from (targetValue) -> (resolver clip)
-                var existingResolverClips = new Dictionary<float, AnimationClip>();
-                
-                void AddTrigger(float targetValue, BlendtreeMath.VFAFloatBool triggeredCondition) {
-                    var triggered = math.SetValueWithConditions($"FloatToDriverService - {output} = {targetValue} (Trigger)",
-                        (1f, triggeredCondition),
-                        (0f, null)
-                    );
+                var onStuff = new List<Action>();
+                var offStuff = new List<Action>();
+                var allDriversWithOnValueAreOff = fx.Always();
+                foreach (var driver in paramGroup.Reverse()) {
+                    var control = driver.control;
+                    var buffered = math.Buffer(control);
 
-                    if (!existingResolverClips.TryGetValue(targetValue, out var clip)) {
-                        var resolvedTriggerValue = ++resolvedTriggerLastValue;
-                        clip = resolvedTrigger.MakeSetter(resolvedTriggerValue);
-                        clip.SetAap(changedLastFrame, 1);
-                        existingResolverClips[targetValue] = clip;
-
-                        var state = layer.NewState($"{output} = {targetValue}");
-                        state.TransitionsFromAny().When(resolvedTrigger.AsFloat().IsGreaterThan(resolvedTriggerValue - threshold)
-                            .And(resolvedTrigger.AsFloat().IsLessThan(resolvedTriggerValue + threshold)));
-                        state.Drives(output, targetValue);
-                        state.WithAnimation(drivenLastFrameClip);
+                    if (driver.onValue.HasValue) {
+                        onStuff.Add(() => {
+                            var state = layer.NewState($"Set to {driver.onValue.Value} ({driver.source})");
+                            state.Drives(driver.output, driver.onValue.Value);
+                            state.TransitionsFromAny().When(control.IsGreaterThan(0).And(buffered.IsGreaterThan(0).Not()));
+                        });
+                        allDriversWithOnValueAreOff = allDriversWithOnValueAreOff.And(control.IsGreaterThan(0).Not());
                     }
-
-                    conditions.Add((clip, BlendtreeMath.GreaterThan(triggered, threshold)));
-                }
-                
-                foreach (var req in outputGroup.Reverse()) {
-                    var input = req.control;
-                    var inputBuffered = math.Buffer(input);
-                    if (req.offValue.HasValue) {
-                        AddTrigger(req.offValue.Value, BlendtreeMath.GreaterThan(inputBuffered, threshold, true)
-                            .And(BlendtreeMath.LessThan(input, threshold)));
-                    }
-                    if (req.onValue.HasValue) {
-                        AddTrigger(req.onValue.Value, BlendtreeMath.LessThan(inputBuffered, threshold)
-                            .And(BlendtreeMath.GreaterThan(input, threshold, true)));
+                    if (driver.offValue.HasValue) {
+                        offStuff.Add(() => {
+                            var state = layer.NewState($"Set to {driver.offValue.Value} ({driver.source})");
+                            state.Drives(driver.output, driver.offValue.Value);
+                            state.TransitionsFromAny().When(allDriversWithOnValueAreOff.And(buffered.IsGreaterThan(0)));
+                        });
                     }
                 }
 
-                var maintainClip = resolvedTrigger.MakeCopier(resolvedTrigger);
-                conditions.Add((maintainClip, BlendtreeMath.GreaterThan(changedLastFrame, threshold).Or(BlendtreeMath.LessThan(drivenLastFrame, threshold))));
-                math.SetValueWithConditions(conditions.ToArray());
+                foreach (var a in onStuff) a();
+                foreach (var a in offStuff) a();
             }
-
-            idle.TransitionsFromAny().When(fx.Always());
         }
 
         private readonly List<DriveRequest> driveRequests = new List<DriveRequest>();
 
         private class DriveRequest {
             public string output;
+            public string source;
             public VFAFloat control;
             public float? onValue;
             public float? offValue;
         }
         
-        public VFAFloat Drive(string output, float? onValue, float? offValue) {
+        public VFAFloat Drive(string output, string source, float? onValue, float? offValue) {
             var control = fx.NewFloat($"Drive {output} to {onValue}/{offValue}");
             driveRequests.Add(new DriveRequest() {
                 output = output,
+                source = source,
                 control = control,
                 onValue = onValue,
                 offValue = offValue
