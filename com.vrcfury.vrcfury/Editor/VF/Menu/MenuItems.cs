@@ -62,6 +62,8 @@ namespace VF.Menu {
         public const int boundingBoxFixPriority = 1326;
         public const string autoUpgradeConstraints = prefix + "Settings/Automatically upgrade to VRC Constraints";
         public const int autoUpgradeConstraintsPriority = 1327;
+        public const string unpackWarning = prefix + "Settings/Warn when unpacking prefabs";
+        public const int unpackWarningPriority = 1328;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {

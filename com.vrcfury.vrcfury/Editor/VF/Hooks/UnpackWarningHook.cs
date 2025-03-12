@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using UnityEditor;
+using VF.Menu;
 using VF.Utils;
 
 namespace VF.Hooks {
@@ -17,6 +18,7 @@ namespace VF.Hooks {
         } 
 
         private static bool Prefix() {
+            if (!UnpackWarningMenuItem.Get()) return true;
             if (!EditorUtility.DisplayDialog(
                     "VRCFury says: Don't unpack!",
                     "Unpacking prefabs is an outdated recommendation!!\n\n" +
