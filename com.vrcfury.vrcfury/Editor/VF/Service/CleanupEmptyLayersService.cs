@@ -69,6 +69,8 @@ namespace VF.Service {
                         } else {
                             layer.Remove();
                         }
+                    } else if (!hasNonEmptyClip) {
+                        layer.weight = 0;
                     }
                 }
             }
