@@ -47,10 +47,17 @@ namespace VF.Builder {
         }
 
         internal static bool ShouldRun(VFGameObject avatarObject) {
-            return avatarObject
+            if (avatarObject
                 .GetComponentsInSelfAndChildren<VRCFuryComponent>()
                 .Where(c => !(c is VRCFuryDebugInfo || c is VRCFuryTest))
-                .Any();
+                .Any()) {
+                // There's a vrcfury component
+                return true;
+            }
+            if (ParameterCompressorService.IsMobileBuildWithSavedData(avatarObject)) {
+                return true;
+            }
+            return false;
         }
 
         public static void StripAllVrcfComponents(VFGameObject obj) {

@@ -22,5 +22,11 @@ namespace VF.Utils {
         public static bool SupportsUnsynced() {
             return networkSyncedField != null;
         }
+
+        public static VRCExpressionParameters.Parameter Clone(this VRCExpressionParameters.Parameter param) {
+            var clone = new VRCExpressionParameters.Parameter();
+            UnitySerializationUtils.CloneSerializable(param, clone);
+            return clone;
+        }
     }
 }
