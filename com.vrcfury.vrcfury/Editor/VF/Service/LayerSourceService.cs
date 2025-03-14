@@ -14,6 +14,7 @@ namespace VF.Service {
         public const string VrcDefaultSource = "VRC Default";
 
         private readonly Dictionary<VFLayer, string> sources = new Dictionary<VFLayer, string>();
+        private readonly HashSet<VFLayer> created = new HashSet<VFLayer>();
 
         public void SetSource(VFLayer sm, string source) {
             sources[sm] = source;
@@ -27,6 +28,17 @@ namespace VF.Service {
             if (sources.TryGetValue(from, out var source)) {
                 sources[to] = source;
             }
+            if (created.Contains(from)) {
+                created.Add(to);
+            }
+        }
+
+        public void MarkCreated(VFLayer layer) {
+            created.Add(layer);
+        }
+
+        public bool DidCreate(VFLayer layer) {
+            return created.Contains(layer);
         }
 
         [CanBeNull]

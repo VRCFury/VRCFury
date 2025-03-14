@@ -55,6 +55,7 @@ namespace VF.Utils {
         public override VFLayer NewLayer(string name, int insertAt = -1) {
             var newLayer = base.NewLayer(name, insertAt);
             layerSourceService.SetSourceToCurrent(newLayer);
+            layerSourceService.MarkCreated(newLayer);
             return newLayer;
         }
 

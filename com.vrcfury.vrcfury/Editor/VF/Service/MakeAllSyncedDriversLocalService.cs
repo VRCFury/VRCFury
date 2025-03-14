@@ -18,6 +18,7 @@ namespace VF.Service {
      */
     [VFService]
     internal class MakeAllSyncedDriversLocalService {
+        [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ParamsService paramsService;
         private ParamManager paramz => paramsService.GetParams();
@@ -30,6 +31,12 @@ namespace VF.Service {
                 .ToImmutableHashSet();
 
             foreach (var layer in controllers.GetAllUsedControllers().SelectMany(c => c.GetLayers())) {
+                // We only do this for layers that we created.
+                // We tried applying it to everything (as a favor to broken prefab creators)
+                // but unfortunately, a toggle pattern commonly-recommended on vrc.school
+                // depends on setting synced behaviours on remotes to avoid flickering between multiple anystates
+                if (!layerSourceService.DidCreate(layer)) continue;
+
                 layer.RewriteBehaviours<VRCAvatarParameterDriver>(driver => {
                     if (driver.localOnly) return driver; // Driver is already local only, keep it
 
