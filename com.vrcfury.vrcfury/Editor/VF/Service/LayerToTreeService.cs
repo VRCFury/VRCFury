@@ -20,7 +20,6 @@ using VF.Utils.Controller;
 namespace VF.Service {
     [VFService]
     internal class LayerToTreeService {
-        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService layerControlService;
         [VFAutowired] private readonly FixWriteDefaultsService fixWriteDefaults;
@@ -28,6 +27,7 @@ namespace VF.Service {
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
 
         [FeatureBuilderAction(FeatureOrder.LayerToTree)]
         public void Apply() {
@@ -111,7 +111,7 @@ namespace VF.Service {
                 if (state.motion is BlendTree) return false;
                 return new AnimatorIterator.Clips().From(state.motion)
                     .SelectMany(clip => clip.GetAllBindings())
-                    .Where(binding => binding.IsValid(avatarObject))
+                    .Where(binding => validateBindingsService.IsValid(binding))
                     .Select(binding => binding.Normalize(true))
                     .Any(b => b.propertyName == EditorCurveBindingExtensions.NormalizedRotationProperty);
             });
@@ -222,8 +222,8 @@ namespace VF.Service {
                 (on, off) = (off, on);
             }
 
-            var onValid = on.HasValidBinding(avatarObject);
-            var offValid = off.HasValidBinding(avatarObject);
+            var onValid = validateBindingsService.HasValidBinding(on);
+            var offValid = validateBindingsService.HasValidBinding(off);
             if (!onValid && !offValid) throw new DoNotOptimizeException($"Contains no valid bindings");
 
             var param = new VFAFloat(condition.parameter, 0);
@@ -305,7 +305,7 @@ namespace VF.Service {
         private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(VFLayer layer) {
             return new AnimatorIterator.Clips().From(layer)
                 .SelectMany(clip => clip.GetAllBindings())
-                .Where(binding => binding.IsValid(avatarObject))
+                .Where(binding => validateBindingsService.IsValid(binding))
                 .Select(binding => binding.Normalize(true))
                 .ToImmutableHashSet();
         }

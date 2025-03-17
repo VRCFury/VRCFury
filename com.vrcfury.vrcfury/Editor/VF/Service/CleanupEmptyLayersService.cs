@@ -15,7 +15,7 @@ namespace VF.Service {
     [VFService]
     internal class CleanupEmptyLayersService {
         [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
         
         [FeatureBuilderAction(FeatureOrder.CleanupEmptyLayers)]
         public void Apply() {
@@ -24,15 +24,14 @@ namespace VF.Service {
 
                 // Delete bindings targeting things that don't exist
                 foreach (var clip in new AnimatorIterator.Clips().From(c)) {
-                    if (clip.GetUseOriginalUserClip() != null &&
-                        clip.GetAllBindings().Any(b => b.IsValid(avatarObject))) {
+                    if (clip.GetUseOriginalUserClip() != null && validateBindingsService.HasValidBinding(clip)) {
                         // We haven't touched this clip at all during the build so far,
                         // and it contains some useful bindings, so go ahead and just leave it as is
                         // so the original file will be used, rather than generating a fresh copy.
                     } else {
                         // Rip out all impossible bindings
                         clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
-                            if (!binding.IsValid(avatarObject)) {
+                            if (!validateBindingsService.IsValid(binding)) {
                                 removedBindings.Add($"{binding.PrettyString()} from {clip.name}");
                                 return null;
                             }
@@ -50,7 +49,7 @@ namespace VF.Service {
                 // Delete empty layers
                 foreach (var (layer, i) in c.GetLayers().Select((l,i) => (l,i))) {
                     var hasNonEmptyClip = new AnimatorIterator.Clips().From(layer)
-                        .Any(clip => clip.HasValidBinding(avatarObject));
+                        .Any(clip => validateBindingsService.HasValidBinding(clip));
                     var hasBehaviour = layer.allBehaviours.Any();
 
                     if (!hasNonEmptyClip && !hasBehaviour) {

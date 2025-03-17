@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Service;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
@@ -78,7 +79,8 @@ namespace VF.Builder {
                     } else {
                         var testBinding = binding;
                         testBinding.path = Join(prefix, binding.path);
-                        if (testBinding.IsValid(rootObject)) {
+                        var validateBindingsService = new ValidateBindingsService(rootObject);
+                        if (validateBindingsService.IsValid(testBinding)) {
                             return testBinding;
                         }
                     }
