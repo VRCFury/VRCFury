@@ -2,13 +2,16 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 
 namespace VF.Utils {
     internal class PoiyomiUtils {
-        private static readonly Type ShaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
+        [CanBeNull]
+        public static readonly Type ShaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ThryEditor.ShaderOptimizer")
+            ?? ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
         private static readonly MethodInfo IsShaderUsingThryOptimizer = ShaderOptimizer?.GetMethod(
             "IsShaderUsingThryOptimizer",
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static

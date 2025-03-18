@@ -7,7 +7,7 @@ namespace VF.Hooks {
     internal static class DisablePoiLockWhenNotUploadingHook {
         [InitializeOnLoadMethod]
         private static void Init() {
-            var methodToPatch = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer")?
+            var methodToPatch = PoiyomiUtils.ShaderOptimizer?
                 .GetNestedType("LockMaterialsOnUpload")?
                 .GetMethod( 
                 "OnPreprocessAvatar",
