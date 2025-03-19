@@ -50,7 +50,7 @@ namespace VF.Service {
             var debugLog = new List<string>();
             
             foreach (var pending in pendingClips) {
-                bindingstateService.ApplyClip(pending.clip);
+                bindingstateService.ApplyClip(pending.clip, pending.owner);
                 foreach (var (binding,curve) in pending.clip.GetAllCurves()) {
                     var value = curve.GetLast();
                     debugLog.Add($"{binding.path} {binding.type.Name} {binding.propertyName} = {value}\n  via {pending.owner}");

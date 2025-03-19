@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
@@ -19,14 +21,14 @@ namespace VF.Service {
         [VFAutowired] private readonly GlobalsService globals;
         private VFGameObject avatarObject => globals.avatarObject;
 
-        public void ApplyClip(AnimationClip clip) {
+        public void ApplyClip(AnimationClip clip, string reason) {
             var copy = clip.Clone();
             copy.FinalizeAsset();
             copy.SampleAnimation(avatarObject, 0);
             foreach (var (binding,curve) in clip.GetAllCurves()) {
                 var value = curve.GetLast();
                 HandleMaterialSwaps(binding, value);
-                HandleMaterialProperties(binding, value);
+                HandleMaterialProperties(binding, value, reason);
             }
         }
 
@@ -49,7 +51,7 @@ namespace VF.Service {
                 if (!trustUnity) {
                     if (TryFindObject(binding, out var obj) &&
                         forcedMaterialProperties.TryGetValue((obj, matProp), out var forcedValue)) {
-                        data = forcedValue;
+                        data = forcedValue.Item1;
                         return true;
                     }
                 }
@@ -154,82 +156,97 @@ namespace VF.Service {
          * We store using the gameobject instead of the renderer, as the renderer type is converted from mesh to skinned
          * during the build in some cases.
          */
-        private readonly Dictionary<(VFGameObject, string), float> forcedMaterialProperties =
-            new Dictionary<(VFGameObject, string), float>();
-        
-        private void HandleMaterialProperties(EditorCurveBinding binding, FloatOrObject val_) {
+        private readonly Dictionary<(VFGameObject, string), (float,string)> forcedMaterialProperties =
+            new Dictionary<(VFGameObject, string), (float,string)>();
+
+        private void HandleMaterialProperties(EditorCurveBinding binding, FloatOrObject val_, string reason) {
             if (!val_.IsFloat()) return;
             var val = val_.GetFloat();
             if (!TryParseMaterialProperty(binding, out var propName)) return;
             if (!TryFindComponent<Renderer>(binding, out var renderer)) return;
+            forcedMaterialProperties[(renderer.owner(), propName)] = (val, reason);
+        }
 
-            forcedMaterialProperties[(renderer.owner(), propName)] = val;
-            
-            renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
-                if (mat == null) return mat;
-
-                var type = mat.GetPropertyType(propName);
-                if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range) {
-                    var oldValue = mat.GetFloat(propName);
-                    var newValue = val;
-                    if (oldValue == newValue) return mat;
-                    mat = mat.Clone($"Needed to change {propName} property from {oldValue} to {newValue}");
-                    mat.SetFloat(propName, newValue);
+        [FeatureBuilderAction(FeatureOrder.ApplyModifiedMaterialProperties)]
+        public void ApplyModifiedMaterialProperties() {
+            foreach (var rendererGroup in forcedMaterialProperties.GroupBy(p => p.Key.Item1)) {
+                var rendererOwner = rendererGroup.Key;
+                if (rendererOwner == null) continue;
+                var renderer = rendererOwner.GetComponent<Renderer>();
+                if (renderer == null) continue;
+                renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
+                    foreach (var pair in rendererGroup) {
+                        mat = ApplyModifiedMaterialProperty(mat, pair.Key.Item2, pair.Value.Item1, pair.Value.Item2);
+                    }
                     return mat;
-                }
+                }).ToArray();
+                VRCFuryEditorUtils.MarkDirty(renderer);
+            }
+        }
 
-                if (propName.Length < 2 || propName[propName.Length-2] != '.') return mat;
+        private Material ApplyModifiedMaterialProperty([CanBeNull] Material mat, String propName, float val, string reason) {
+            if (mat == null) return mat;
 
-                var bundleName = propName.Substring(0, propName.Length - 2);
-                var bundleSuffix = propName.Substring(propName.Length - 1);
-                var bundleType = mat.GetPropertyType(bundleName);
-                // This is /technically/ incorrect, since if a property is missing, the proper (matching unity)
-                // behaviour is that it should be set to 0. However, unit really tries to not allow you to be missing
-                // one component in your animator (by deleting them all at once), so it's probably not a big deal.
-                if (bundleType == ShaderUtil.ShaderPropertyType.Color) {
-                    var oldValue = mat.GetColor(bundleName);
-                    var newValue = oldValue;
-                    if (bundleSuffix == "r") newValue.r = val;
-                    if (bundleSuffix == "g") newValue.g = val;
-                    if (bundleSuffix == "b") newValue.b = val;
-                    if (bundleSuffix == "a") newValue.a = val;
-                    if (oldValue == newValue) return mat;
-                    mat = mat.Clone($"Needed to change {propName} property from {oldValue} to {newValue}");
-                    mat.SetColor(bundleName, newValue);
-                    return mat;
-                }
-                if (bundleType == ShaderUtil.ShaderPropertyType.Vector) {
-                    var oldValue = mat.GetVector(bundleName);
-                    var newValue = oldValue;
-                    if (bundleSuffix == "x") newValue.x = val;
-                    if (bundleSuffix == "y") newValue.y = val;
-                    if (bundleSuffix == "z") newValue.z = val;
-                    if (bundleSuffix == "w") newValue.w = val;
-                    if (oldValue == newValue) return mat;
-                    mat = mat.Clone($"Needed to change {propName} property from {oldValue} to {newValue}");
-                    mat.SetVector(bundleName, newValue);
-                    return mat;
-                }
-                if (bundleType == MaterialExtensions.StPropertyType && bundleName.EndsWith("_ST")) {
-                    var textureName = bundleName.Substring(0, bundleName.Length - 3);
-                    var oldScale = mat.GetTextureScale(textureName);
-                    var oldOffset = mat.GetTextureOffset(textureName);
-                    var newScale = oldScale;
-                    var newOffset = oldOffset;
-                    if (bundleSuffix == "x") newScale.x = val;
-                    if (bundleSuffix == "y") newScale.y = val;
-                    if (bundleSuffix == "z") newOffset.x = val;
-                    if (bundleSuffix == "w") newOffset.y = val;
-                    if (oldScale == newScale && oldOffset == newOffset) return mat;
-                    mat = mat.Clone($"Needed to change {textureName} offset/scale property from {oldScale},{oldOffset} to {newScale},{newOffset}");
-                    mat.SetTextureScale(textureName, newScale);
-                    mat.SetTextureOffset(textureName, newOffset);
-                    return mat;
-                }
-
+            var type = mat.GetPropertyType(propName);
+            if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range) {
+                var oldValue = mat.GetFloat(propName);
+                var newValue = val;
+                if (oldValue == newValue) return mat;
+                mat = mat.Clone($"{reason} changed {propName} from {oldValue} to {newValue}");
+                mat.SetFloat(propName, newValue);
                 return mat;
-            }).ToArray();
-            VRCFuryEditorUtils.MarkDirty(renderer);
+            }
+
+            if (propName.Length < 2 || propName[propName.Length-2] != '.') return mat;
+
+            var bundleName = propName.Substring(0, propName.Length - 2);
+            var bundleSuffix = propName.Substring(propName.Length - 1);
+            var bundleType = mat.GetPropertyType(bundleName);
+            // This is /technically/ incorrect, since if a property is missing, the proper (matching unity)
+            // behaviour is that it should be set to 0. However, unit really tries to not allow you to be missing
+            // one component in your animator (by deleting them all at once), so it's probably not a big deal.
+            if (bundleType == ShaderUtil.ShaderPropertyType.Color) {
+                var oldValue = mat.GetColor(bundleName);
+                var newValue = oldValue;
+                if (bundleSuffix == "r") newValue.r = val;
+                if (bundleSuffix == "g") newValue.g = val;
+                if (bundleSuffix == "b") newValue.b = val;
+                if (bundleSuffix == "a") newValue.a = val;
+                if (oldValue == newValue) return mat;
+                mat = mat.Clone($"{reason} changed {bundleName} from {oldValue} to {newValue}");
+                mat.SetColor(bundleName, newValue);
+                return mat;
+            }
+            if (bundleType == ShaderUtil.ShaderPropertyType.Vector) {
+                var oldValue = mat.GetVector(bundleName);
+                var newValue = oldValue;
+                if (bundleSuffix == "x") newValue.x = val;
+                if (bundleSuffix == "y") newValue.y = val;
+                if (bundleSuffix == "z") newValue.z = val;
+                if (bundleSuffix == "w") newValue.w = val;
+                if (oldValue == newValue) return mat;
+                mat = mat.Clone($"{reason} changed {bundleName} from {oldValue} to {newValue}");
+                mat.SetVector(bundleName, newValue);
+                return mat;
+            }
+            if (bundleType == MaterialExtensions.StPropertyType && bundleName.EndsWith("_ST")) {
+                var textureName = bundleName.Substring(0, bundleName.Length - 3);
+                var oldScale = mat.GetTextureScale(textureName);
+                var oldOffset = mat.GetTextureOffset(textureName);
+                var newScale = oldScale;
+                var newOffset = oldOffset;
+                if (bundleSuffix == "x") newScale.x = val;
+                if (bundleSuffix == "y") newScale.y = val;
+                if (bundleSuffix == "z") newOffset.x = val;
+                if (bundleSuffix == "w") newOffset.y = val;
+                if (oldScale == newScale && oldOffset == newOffset) return mat;
+                mat = mat.Clone($"{reason} changed {textureName} offset/scale from {oldScale},{oldOffset} to {newScale},{newOffset}");
+                mat.SetTextureScale(textureName, newScale);
+                mat.SetTextureOffset(textureName, newOffset);
+                return mat;
+            }
+
+            return mat;
         }
     }
 }

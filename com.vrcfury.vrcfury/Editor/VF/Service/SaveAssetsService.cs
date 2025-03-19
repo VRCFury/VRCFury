@@ -60,7 +60,7 @@ namespace VF.Service {
                 } else if (asset is VRCExpressionParameters) {
                     filename = "VRCFury Params";
                 } else {
-                    filename = $"VRCFury {asset.GetType().Name} for {component.owner().name}";
+                    filename = $"VRCFury {asset.name} - {component.owner().name}";
                 }
                 SaveAssetAndChildren(
                     asset,
