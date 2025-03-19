@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Menu;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.UnityFixes {
     /**
      * Prevents people from importing bad things (like old versions of the VRCSDK or poiyomi)
      * from unitypackages when they are already installed in the project.

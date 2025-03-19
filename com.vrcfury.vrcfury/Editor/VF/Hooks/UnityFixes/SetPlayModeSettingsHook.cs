@@ -2,7 +2,7 @@
 using UnityEditor;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.UnityFixes {
     /**
      * Automatically disable domain reload and scene reload to speed up entering play mode.
      * This only happens once, so if the user changes it back afterward, we don't touch it.

@@ -1,10 +1,9 @@
-﻿using System.Reflection;
-using JetBrains.Annotations;
+﻿using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
 #if VRC_NEW_PUBLIC_SDK && UNITY_2022_1_OR_NEWER
     internal static class DefaultToBuilderTabHook {
         private static double whenSdkPanelLoaded;

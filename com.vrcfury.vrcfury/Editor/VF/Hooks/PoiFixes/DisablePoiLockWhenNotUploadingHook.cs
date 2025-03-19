@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.PoiFixes {
     internal static class DisablePoiLockWhenNotUploadingHook {
         [InitializeOnLoadMethod]
         private static void Init() {

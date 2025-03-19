@@ -1,11 +1,10 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.GestureManagerFixes {
     /**
      * https://github.com/BlackStartx/VRC-Gesture-Manager/issues/66
      */

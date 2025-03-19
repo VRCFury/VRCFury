@@ -5,7 +5,7 @@ using UnityEngine;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     /**
      * If you build a test copy without a blueprint id, the VRCSDK will display an error
      * "Attempted to load the data for an avatar we do not own, clearing blueprint ID" after the build

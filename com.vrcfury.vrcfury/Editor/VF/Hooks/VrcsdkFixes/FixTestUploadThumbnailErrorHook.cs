@@ -1,9 +1,8 @@
 ﻿using System.Reflection;
 using UnityEditor;
-using UnityEngine;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     /**
      * If you do Build and Test without a thumbnail set, the VRCSDK throws an exception after the build completes
      */

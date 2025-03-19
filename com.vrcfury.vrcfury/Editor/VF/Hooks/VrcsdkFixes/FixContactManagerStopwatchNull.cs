@@ -4,7 +4,7 @@ using System.Reflection;
 using UnityEditor;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     /**
      * The VRCSDK tries to use a variable before it is initialized, resulting in a consistent NPE the first time
      * you enter play mode after reloading scripts.

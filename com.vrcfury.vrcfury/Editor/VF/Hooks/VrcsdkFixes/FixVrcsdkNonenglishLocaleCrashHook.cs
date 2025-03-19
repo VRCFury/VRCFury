@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     /**
      * Due to a bug in mono ( https://github.com/mono/mono/issues/20968 ),
      * Assembly.GetName() may throw an exception when called on an assembly created by Harmony

@@ -1,6 +1,4 @@
 using System;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -8,14 +6,12 @@ using VF.Builder;
 using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
-using VRC.SDK3.Dynamics.Contact.Components;
-using VRC.SDK3.Dynamics.PhysBone.Components;
 using VRC.SDKBase;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Debug = UnityEngine.Debug;
 using Object = UnityEngine.Object;
 
-namespace VF.Hooks {
+namespace VF.Hooks.Av3EmuFixes {
     /**
      * If preprocessor hooks are run after av3emu has initialized, it blows up because the animator has changed
      * and transforms its expecting to exist may no longer exist. To solve this, we totally blow away av3emu and tell it

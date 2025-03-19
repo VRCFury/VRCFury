@@ -6,12 +6,13 @@ using UnityEngine;
 using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     /**
-     * Poiyomi tries to enforce mat lockdown when preprocessor hooks are run, even if they are run by the emulator.
-     * Prevent that from happening if we're in play mode.
+     * The VRCSDK removes all EditorOnly objects and components at -1024 by default.
+     * This defers the component removal until the very end of the build, so all systems have a chance to use them.
+     * There's really no reason to remove them earlier.
      */
-    internal static class DisableSomeHooksWhenNotUploadingHook {
+    internal static class KeepEditorOnlyComponentsLongerHook {
         [DidReloadScripts]
         public static void Init() {
             var callbacksClass =

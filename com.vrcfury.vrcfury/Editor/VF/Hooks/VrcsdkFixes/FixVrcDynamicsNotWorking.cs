@@ -2,7 +2,7 @@
 using UnityEditor;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     /**
      * https://feedback.vrchat.com/sdk-bug-reports/p/376-dynamics-only-work-the-first-time-you-enter-play-mode
      */

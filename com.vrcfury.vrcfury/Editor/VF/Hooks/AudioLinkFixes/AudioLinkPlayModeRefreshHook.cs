@@ -5,9 +5,8 @@ using VF.Builder;
 using VF.Menu;
 using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
-using Object = UnityEngine.Object;
 
-namespace VF.Hooks {
+namespace VF.Hooks.AudioLinkFixes {
     /**
      * If a renderer comes into existence after audiolink has loaded, it will never attach to the new renderer. We fix
      * this by forcing a reload after any avatars are built.

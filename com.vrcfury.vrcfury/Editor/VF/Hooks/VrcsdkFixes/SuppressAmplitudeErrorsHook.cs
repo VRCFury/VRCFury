@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     /**
      * If the VRCSDK cannot reach api2.amplitude.com, it spams the unity console any time you do anything in the VRCSDK
      * dialog. These errors are non-actionable.

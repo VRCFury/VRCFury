@@ -2,10 +2,9 @@
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
-using UnityEngine;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     /**
      * https://feedback.vrchat.com/sdk-bug-reports/p/race-condition-in-contactmanager-often-crashes-contacts-in-the-editor
      * If a contact is enabled while contacts are being solved in the background, the contact fails to add and never works again.

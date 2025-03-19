@@ -3,10 +3,9 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.UIElements;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.UnityFixes {
     /**
      * Dragging a state in an animator by even one single pixel while in play mode totally breaks live link and disables gesture manager.
      * This hook prevents you from accidentally dragging nodes in an animator while live link is active.

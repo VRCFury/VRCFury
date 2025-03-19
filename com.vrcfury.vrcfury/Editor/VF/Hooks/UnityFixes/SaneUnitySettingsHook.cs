@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.UnityFixes {
     /**
      * Prevents the user from accidentally doing dumb things in their unity settings, then breaking their project.
      */

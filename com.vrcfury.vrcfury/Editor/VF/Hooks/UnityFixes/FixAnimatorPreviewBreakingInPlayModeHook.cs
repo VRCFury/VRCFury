@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -10,9 +9,10 @@ using UnityEditor.Playables;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
+using VF.Hooks.VrcsdkFixes;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.UnityFixes {
     /**
      * If you open an Animator window, targeting an Animator on a gameobject using a mixer (like... an avatar using Gesture Manager / av3emu)
      * and then you open any controller aside from the first, it will try to incorrectly get the layer weights from the first controller in the mixer,

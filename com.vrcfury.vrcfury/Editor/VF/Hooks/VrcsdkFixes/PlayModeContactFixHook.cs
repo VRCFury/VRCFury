@@ -1,12 +1,10 @@
-﻿using System;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using VF.Builder;
 using VRC.Dynamics;
 using VRC.SDKBase.Editor.BuildPipeline;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     /**
      * Makes "self" and "others" contacts actually work properly in play mode
      */

@@ -5,7 +5,7 @@ using VF.Builder;
 using VF.Component;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.UnityFixes {
     /**
      * Unity's Prefab "Auto-Save" option adds an extreme amount of lag when changing components in a large prefab.
      * Automatically disable it for any prefabs containing vrcfury components.

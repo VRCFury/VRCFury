@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Reflection;
 using UnityEditor;
-using UnityEngine;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     /**
      * VRC_AnimatorPlayAudioEditor reads props in OnEnable instead of OnInspectorGui (don't do this).
      * A unity bug causes behaviour editors to remain forever rather than getting destroyed in some cases.

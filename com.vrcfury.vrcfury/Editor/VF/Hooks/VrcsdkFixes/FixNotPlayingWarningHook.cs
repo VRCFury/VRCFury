@@ -1,11 +1,9 @@
-﻿using System;
-using System.Linq;
-using System.Reflection;
+﻿using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     /**
      * When you go into play mode with a bunch of VRC contact receivers on an avatar with an Animator
      * that has no controller, it dumps a "Animator is not playing an AnimatorController" warning to console for every one,

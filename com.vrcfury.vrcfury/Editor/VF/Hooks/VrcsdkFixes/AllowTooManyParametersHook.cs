@@ -1,4 +1,3 @@
-using VF.Utils;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -6,10 +5,11 @@ using UnityEditor;
 using VF.Builder;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     internal static class AllowTooManyParametersHook {
         private static readonly MethodInfo OnGUIError = ReflectionUtils.GetTypeFromAnyAssembly("VRCSdkControlPanel")
             .GetMethod("OnGUIError",

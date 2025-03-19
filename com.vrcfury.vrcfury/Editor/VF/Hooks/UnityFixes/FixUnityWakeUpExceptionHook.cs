@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEditor.Graphs;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.UnityFixes {
     /**
      * Fixes internal unity error when reloading scripts when an empty animator has been opened recently
      * https://discussions.unity.com/t/what-is-this-big-error-im-getting/579827

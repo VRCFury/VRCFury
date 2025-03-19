@@ -1,10 +1,9 @@
-﻿using System;
-using System.Reflection;
+﻿using System.Reflection;
 using UnityEditor;
 using VF.Menu;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.UnityFixes {
     internal static class UnpackWarningHook {
         [InitializeOnLoadMethod]
         private static void Init() {

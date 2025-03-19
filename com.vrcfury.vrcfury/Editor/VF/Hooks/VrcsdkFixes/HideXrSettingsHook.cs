@@ -3,7 +3,7 @@ using UnityEditor;
 using VF.Builder;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     internal static class HideXrSettingsHook {
         [InitializeOnLoadMethod]
         private static void Init() {

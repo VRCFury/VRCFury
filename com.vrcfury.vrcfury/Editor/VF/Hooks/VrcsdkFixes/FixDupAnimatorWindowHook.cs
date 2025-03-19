@@ -3,10 +3,9 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEditor.Animations;
-using UnityEngine;
 using VF.Utils;
 
-namespace VF.Hooks {
+namespace VF.Hooks.VrcsdkFixes {
     internal static class FixDupAnimatorWindowHook {
         [InitializeOnLoadMethod]
         private static void Init() {
