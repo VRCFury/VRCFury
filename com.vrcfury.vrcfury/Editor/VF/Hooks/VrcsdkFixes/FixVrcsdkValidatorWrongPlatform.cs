@@ -1,5 +1,7 @@
 ﻿using UnityEditor;
+#if VRC_NEW_PUBLIC_SDK
 using VRC.SDK3A.Editor;
+#endif
 
 namespace VF.Hooks.VrcsdkFixes {
     /**
