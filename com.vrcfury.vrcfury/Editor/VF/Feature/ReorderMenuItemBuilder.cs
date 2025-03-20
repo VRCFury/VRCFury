@@ -17,7 +17,7 @@ namespace VF.Feature {
             content.Add(VRCFuryEditorUtils.Info("This feature will change the position of a menu item within its folder."));
 
             var pathProp = prop.FindPropertyRelative("path");
-            content.Add(MoveMenuItemBuilder.SelectButton(avatarObject, false, pathProp));
+            content.Add(MoveMenuItemBuilder.SelectButton(avatarObject, null, false, pathProp));
 
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("position"), "New Position",
                 tooltip: "This is the position that you want to move the menu item to.\n\nExamples:\n" +
