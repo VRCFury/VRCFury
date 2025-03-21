@@ -18,7 +18,7 @@ namespace VF.Feature {
     internal class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
         private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
-        private readonly Dictionary<string, VFCondition> excludeConditions = new Dictionary<string, VFCondition>();
+        private readonly Dictionary<string, VFCondition> exclusiveConditions = new Dictionary<string, VFCondition>();
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly ControllersService controllers;
@@ -104,22 +104,25 @@ namespace VF.Feature {
             }
 
             if (gesture.enableExclusiveTag) {
-                foreach (var tag in gesture.exclusiveTag.Split(',')) {
-                    var trimmedTag = tag.Trim();
-                    if (!string.IsNullOrWhiteSpace(trimmedTag)) {
+                var tags = ToggleBuilder.SeparateList(gesture.exclusiveTag);
+                if (tags.Any()) {
+                    var myOn = fx.NewBool(name);
+                    on.Drives(myOn, true);
+                    off.Drives(myOn, false);
+                    foreach (var tag in tags) {
                         var main = globals.allBuildersInRun.OfType<GestureDriverBuilder>().First();
-                        if (main.excludeConditions.TryGetValue(trimmedTag, out var excludeCondition)) {
-                            main.excludeConditions[trimmedTag] = excludeCondition.Or(onCondition);
-                            onCondition = onCondition.And(excludeCondition.Not());
+                        if (main.exclusiveConditions.TryGetValue(tag, out var exclusiveCondition)) {
+                            main.exclusiveConditions[tag] = exclusiveCondition.And(myOn.IsFalse());
+                            onCondition = onCondition.And(exclusiveCondition);
                         } else {
-                            main.excludeConditions[trimmedTag] = onCondition;
+                            main.exclusiveConditions[tag] = myOn.IsFalse();
                         }
                     }
                 }
             }
 
-            off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition);
-            on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not());
+            off.TransitionsTo(on).WithTransitionDurationSeconds(transitionTime).When(onCondition).Interruptable();
+            on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not()).Interruptable();
         }
 
         private VFAFloat MakeWeightLayer(VFBlendTreeDirect directTree, VFAFloat input, VFCondition enabled) {

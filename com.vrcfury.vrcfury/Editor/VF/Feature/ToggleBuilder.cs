@@ -42,7 +42,7 @@ namespace VF.Feature {
             + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants\n\n"
             + "If you want to include a '/' character in the label without making a subfolder, add a backslash just before it: \\/";
 
-        private static ISet<string> SeparateList(string str) {
+        public static ISet<string> SeparateList(string str) {
             return str.Split(',')
                 .Select(tag => tag.Trim())
                 .Where(tag => !string.IsNullOrWhiteSpace(tag))
