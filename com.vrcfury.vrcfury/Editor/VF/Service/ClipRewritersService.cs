@@ -1,16 +1,32 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using VF.Builder;
 using VF.Builder.Exceptions;
-using VF.Service;
+using VF.Injector;
 using VF.Utils;
-using Object = UnityEngine.Object;
 
-namespace VF.Builder {
-    internal static class ClipRewriter {
-        public static AnimationRewriter AnimatorBindingsAlwaysTargetRoot() {
+namespace VF.Service {
+    /**
+     * Builds some common types of ClipRewriters
+     */
+    [VFService]
+    internal class ClipRewritersService {
+        private readonly VFGameObject rootObject;
+        private readonly ValidateBindingsService validateBindingsService;
+
+        [VFAutowired]
+        public ClipRewritersService(VFGameObject avatarObject, ValidateBindingsService validateBindingsService) {
+            this.rootObject = avatarObject;
+            this.validateBindingsService = validateBindingsService;
+        }
+
+        public ClipRewritersService(VFGameObject rootObject) {
+            this.rootObject = rootObject;
+            this.validateBindingsService = new ValidateBindingsService(rootObject);
+        }
+
+        public AnimationRewriter AnimatorBindingsAlwaysTargetRoot() {
             return AnimationRewriter.RewriteBinding(binding => {
                 if (binding.type == typeof(Animator)) {
                     var newBinding = binding;
@@ -21,7 +37,7 @@ namespace VF.Builder {
             });
         }
         
-        public static AnimationRewriter AdjustRootScale(VFGameObject rootObject) {
+        public AnimationRewriter AdjustRootScale() {
             return AnimationRewriter.RewriteCurve((binding, curve) => {
                 var noChange = (binding, curve, false);
                 if (!curve.IsFloat) return noChange;
@@ -43,18 +59,14 @@ namespace VF.Builder {
          *
          * If no match is ever found, it's returned with animObject as the prefix.
          */
-        public static AnimationRewriter CreateNearestMatchPathRewriter(
+        public AnimationRewriter CreateNearestMatchPathRewriter(
             VFGameObject animObject = null,
-            VFGameObject rootObject = null,
             bool rootBindingsApplyToAvatar = false,
             bool nullIfNotFound = false,
             bool invert = false
         ) {
             if (animObject == null) {
                 throw new VRCFBuilderException("animObject cannot be null");
-            }
-            if (rootObject == null) {
-                throw new VRCFBuilderException("rootObject cannot be null");
             }
             if (!animObject.IsChildOf(rootObject)) {
                 throw new VRCFBuilderException("animObject not child of rootObject");
@@ -79,7 +91,6 @@ namespace VF.Builder {
                     } else {
                         var testBinding = binding;
                         testBinding.path = Join(prefix, binding.path);
-                        var validateBindingsService = new ValidateBindingsService(rootObject);
                         if (validateBindingsService.IsValid(testBinding)) {
                             return testBinding;
                         }

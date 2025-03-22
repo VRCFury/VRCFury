@@ -60,9 +60,9 @@ namespace VF.Utils {
             var missingBindings = new HashSet<string>();
             var autofixPrefixes = new HashSet<string>();
 
-            AnimationRewriter nearestRewriter = ClipRewriter.CreateNearestMatchPathRewriter(
-                animObject: componentObject,
-                rootObject: avatarObject,
+            var cr = new ClipRewritersService(avatarObject);
+            AnimationRewriter nearestRewriter = cr.CreateNearestMatchPathRewriter(
+                componentObject,
                 rootBindingsApplyToAvatar: false,
                 nullIfNotFound: true
             );

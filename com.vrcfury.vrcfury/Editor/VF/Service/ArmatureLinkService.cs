@@ -459,7 +459,7 @@ namespace VF.Service {
 
                     if (!string.IsNullOrWhiteSpace(to.offset)) {
                         var path = obj.GetPath(avatarObject);
-                        var finalPath = ClipRewriter.Join(path, to.offset);
+                        var finalPath = ClipRewritersService.Join(path, to.offset);
                         obj = avatarObject.Find(finalPath);
                         if (obj == null) throw new Exception($"Failed to find object at path '{finalPath}'");
                     }

@@ -29,7 +29,7 @@ namespace VF.Service {
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
-        [VFAutowired] private readonly ClipRewriteService clipRewriteService;
+        [VFAutowired] private readonly AllClipsService allClipsService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly AvatarBindingStateService avatarBindingStateService;
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
@@ -385,7 +385,7 @@ namespace VF.Service {
                         }
                     }
                 }
-                clipRewriteService.GetAllClips().ForEach(RewriteClip);
+                allClipsService.GetAllClips().ForEach(RewriteClip);
 
                 rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials
                     .Select((mat,slotNum) => rewrite.configureMaterial(slotNum, mat))

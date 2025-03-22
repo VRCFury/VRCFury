@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Component;
+using VF.Service;
 using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
@@ -136,12 +137,10 @@ namespace VF.Utils {
 
             if (avatarObject == baseObj) rewriteClip = false;
             if (rewriteClip) {
+                var rewriters = new ClipRewritersService(avatarObject);
                 clip.Rewrite(AnimationRewriter.Combine(
-                    ClipRewriter.CreateNearestMatchPathRewriter(
-                        animObject: baseObj,
-                        rootObject: avatarObject
-                    ),
-                    ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
+                    rewriters.CreateNearestMatchPathRewriter(baseObj),
+                    rewriters.AnimatorBindingsAlwaysTargetRoot()
                 ));
                 clip.FinalizeAsset(false);
             }
@@ -154,13 +153,13 @@ namespace VF.Utils {
                     if (wasExpanded) CollapseUtils.SetExpanded(avatarObject, true);
                 }
                 if (rewriteClip && clip != null) {
+                    var rewriters = new ClipRewritersService(avatarObject);
                     clip.Rewrite(AnimationRewriter.Combine(
-                        ClipRewriter.CreateNearestMatchPathRewriter(
-                            animObject: baseObj,
-                            rootObject: avatarObject,
+                        rewriters.CreateNearestMatchPathRewriter(
+                            baseObj,
                             invert: true
                         ),
-                        ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
+                        rewriters.AnimatorBindingsAlwaysTargetRoot()
                     ));
                     clip.FinalizeAsset(false);
                 }

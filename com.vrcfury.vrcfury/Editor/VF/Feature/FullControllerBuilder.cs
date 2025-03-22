@@ -28,7 +28,6 @@ namespace VF.Feature {
 
     [FeatureTitle("Full Controller")]
     internal class FullControllerBuilder : FeatureBuilder<FullController> {
-        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
@@ -40,6 +39,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager avatarMenu => menuService.GetMenu();
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly ClipRewritersService clipRewritersService;
 
         public string injectSpsDepthParam = null;
         public string injectSpsVelocityParam = null;
@@ -280,11 +280,11 @@ namespace VF.Feature {
                 while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
 
                 if (from == "") {
-                    path = ClipRewriter.Join(to, path);
+                    path = ClipRewritersService.Join(to, path);
                     if (rewrite.delete) return null;
                 } else if (path.StartsWith(from + "/")) {
                     path = path.Substring(from.Length + 1);
-                    path = ClipRewriter.Join(to, path);
+                    path = ClipRewritersService.Join(to, path);
                     if (rewrite.delete) return null;
                 } else if (path == from) {
                     path = to;
@@ -308,13 +308,12 @@ namespace VF.Feature {
             // Rewrite clips
             from.Rewrite(AnimationRewriter.Combine(
                 AnimationRewriter.RewritePath(path => RewritePath(model, path)),
-                ClipRewriter.CreateNearestMatchPathRewriter(
-                    animObject: GetBaseObject(model, featureBaseObject),
-                    rootObject: avatarObject,
+                clipRewritersService.CreateNearestMatchPathRewriter(
+                    GetBaseObject(model, featureBaseObject),
                     rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
                 ),
-                ClipRewriter.AdjustRootScale(avatarObject),
-                ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
+                clipRewritersService.AdjustRootScale(),
+                clipRewritersService.AnimatorBindingsAlwaysTargetRoot()
             ));
 
             // Rewrite params

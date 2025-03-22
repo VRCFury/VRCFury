@@ -24,7 +24,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly FixWriteDefaultsService writeDefaultsManager;
-        [VFAutowired] private readonly ClipRewriteService clipRewriteService;
+        [VFAutowired] private readonly AllClipsService allClipsService;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
@@ -288,7 +288,7 @@ namespace VF.Feature {
                 loadedRestingClip = true;
                 if (restingClip.IsStatic()) {
                     savedRestingClip = restingClip.EvaluateMotion(1);
-                    clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
+                    allClipsService.AddAdditionalManagedClip(savedRestingClip);
                 }
             }
         }

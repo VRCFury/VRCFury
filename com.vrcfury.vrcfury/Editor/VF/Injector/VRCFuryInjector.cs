@@ -53,7 +53,8 @@ namespace VF.Injector {
             var parent = context.nearestNonPrototypeParent;
             if (context.nearestNonPrototypeParent == null) context.nearestNonPrototypeParent = nextParentHolder;
 
-            var constructor = type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First();
+            var constructor = type.GetConstructors().FirstOrDefault(c => c.GetCustomAttribute<VFAutowiredAttribute>() != null) ??
+                type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First();
             var args = constructor.GetParameters().Select(p => Get(p, context)).ToArray();
             var instance = Activator.CreateInstance(type, args);
             nextParentHolder.parent = instance;

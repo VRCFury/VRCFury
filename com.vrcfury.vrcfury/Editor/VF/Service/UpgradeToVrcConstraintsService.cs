@@ -30,7 +30,7 @@ namespace VF.Service {
     [VFService]
     internal class UpgradeToVrcConstraintsService {
 #if VRCSDK_HAS_VRCCONSTRAINTS
-        [VFAutowired] private readonly ClipRewriteService clipRewriteService;
+        [VFAutowired] private readonly AllClipsService allClipsService;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly AnimatorHolderService animators;
 
@@ -44,7 +44,7 @@ namespace VF.Service {
             HashSet<VFGameObject> limitToObjects = null;
             if (!AutoUpgradeConstraintsMenuItem.Get()) {
                 limitToObjects = new HashSet<VFGameObject>();
-                limitToObjects.UnionWith(clipRewriteService.GetAllClips()
+                limitToObjects.UnionWith(allClipsService.GetAllClips()
                     .SelectMany(clip => clip.GetFloatBindings())
                     .Where(binding => typeof(IVRCConstraint).IsAssignableFrom(binding.type))
                     .Select(binding => avatarObject.Find(binding.path))
@@ -72,7 +72,7 @@ namespace VF.Service {
                 return binding;
             }
 
-            clipRewriteService.RewriteAllClips(AnimationRewriter.RewriteBinding(binding =>
+            allClipsService.RewriteAllClips(AnimationRewriter.RewriteBinding(binding =>
                 RewriteBinding(binding, avatarObject)
             ));
 

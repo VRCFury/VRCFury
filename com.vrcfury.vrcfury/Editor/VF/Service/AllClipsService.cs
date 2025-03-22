@@ -6,8 +6,12 @@ using VF.Injector;
 using VF.Utils;
 
 namespace VF.Service {
+    /**
+     * Keeps tabs on all clips in the entire build. Not the same as all clips in the controllers,
+     * since sometimes clips are stored separately temporarily, and then used later.
+     */
     [VFService]
-    internal class ClipRewriteService {
+    internal class AllClipsService {
         [VFAutowired] private readonly ControllersService controllers;
         private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
 

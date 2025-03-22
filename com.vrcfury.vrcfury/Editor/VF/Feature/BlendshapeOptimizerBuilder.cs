@@ -194,7 +194,7 @@ namespace VF.Feature {
                 .SelectMany(clip => clip.GetFloatCurves())
                 .Select(pair => {
                     var (binding, curve) = pair;
-                    binding.path = ClipRewriter.Join(prefix, binding.path, allowAdvancedOperators: false);
+                    binding.path = ClipRewritersService.Join(prefix, binding.path, allowAdvancedOperators: false);
                     return (binding, curve);
                 })
                 .ToList();
