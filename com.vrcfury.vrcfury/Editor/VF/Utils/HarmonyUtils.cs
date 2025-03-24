@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.InteropServices;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
@@ -41,7 +42,19 @@ namespace VF.Utils {
             return harmonyInst;
         });
 
+        private static bool ShownArmWarning = false;
         private static object GetHarmony() {
+            if (RuntimeInformation.ProcessArchitecture == Architecture.Arm ||
+                RuntimeInformation.ProcessArchitecture == Architecture.Arm64) {
+                if (!ShownArmWarning) {
+                    ShownArmWarning = true;
+                    Debug.LogWarning(
+                        "VRCFury's bug patches are disabled because this system is running ARM, and thus does not support Harmony." +
+                        " You may experience bugs in Unity, the VRCSDK, or other plugins that VRCFury would usually fix for you."
+                    );
+                }
+                return null;
+            }
             return harmony.Value;
         }
 
