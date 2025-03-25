@@ -17,10 +17,10 @@ namespace VF.Hooks.Av3EmuFixes {
      * and transforms its expecting to exist may no longer exist. To solve this, we totally blow away av3emu and tell it
      * to restart after an avatar is built in play mode.
      */
-    internal class Av3EmuAnimatorFixHook : IVRCSDKPreprocessAvatarCallback {
-        public int callbackOrder => int.MaxValue;
+    internal class Av3EmuAnimatorFixHook : VrcfAvatarPreprocessor {
+        protected override int order => int.MaxValue;
         private static bool restartPending = false;
-        public bool OnPreprocessAvatar(GameObject obj) {
+        protected override void Process(VFGameObject obj) {
             if (Application.isPlaying && !restartPending) {
                 restartPending = true;
                 EditorApplication.delayCall += () => {
@@ -30,7 +30,6 @@ namespace VF.Hooks.Av3EmuFixes {
                     }
                 };
             }
-            return true;
         }
         
         private static void DestroyAllOfType(string typeStr) {

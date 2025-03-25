@@ -7,28 +7,16 @@ namespace VF.Hooks.PoiFixes {
     internal static class DisablePoiLockWhenNotUploadingHook {
         [InitializeOnLoadMethod]
         private static void Init() {
-            var methodToPatch = PoiyomiUtils.ShaderOptimizer?
-                .GetNestedType("LockMaterialsOnUpload")?
-                .GetMethod( 
-                "OnPreprocessAvatar",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
-                null,
-                new [] { typeof(GameObject) },
-                null
-            );
-            if (methodToPatch == null || methodToPatch.ReturnType != typeof(bool)) {
-                return;
-            }
-
-            var prefix = typeof(DisablePoiLockWhenNotUploadingHook).GetMethod(
+            HarmonyUtils.Patch(
+                typeof(DisablePoiLockWhenNotUploadingHook),
                 nameof(Prefix),
-                BindingFlags.Static | BindingFlags.NonPublic
+                PoiyomiUtils.ShaderOptimizer?.GetNestedType("LockMaterialsOnUpload"),
+                "OnPreprocessAvatar",
+                warnIfMissing: false
             );
-
-            HarmonyUtils.Patch(methodToPatch, prefix);    
         }
 
-        private static bool Prefix(ref bool __result, object __instance) {
+        private static bool Prefix(ref bool __result, object __instance, GameObject __0) {
             if (!IsActuallyUploadingHook.Get()) {
                 Debug.Log($"VRCFury inhibited {__instance.GetType().FullName} from running because an upload isn't actually happening");
                 __result = true;

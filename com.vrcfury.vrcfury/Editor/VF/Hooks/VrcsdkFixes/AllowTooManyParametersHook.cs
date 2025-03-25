@@ -11,19 +11,14 @@ using Object = UnityEngine.Object;
 
 namespace VF.Hooks.VrcsdkFixes {
     internal static class AllowTooManyParametersHook {
-        private static readonly MethodInfo OnGUIError = ReflectionUtils.GetTypeFromAnyAssembly("VRCSdkControlPanel")
-            .GetMethod("OnGUIError",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                null,
-                new[] { typeof(Object), typeof(string), typeof(Action), typeof(Action) },
-                null
-            );
-
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (OnGUIError == null) return;
-            var prefix = typeof(AllowTooManyParametersHook).GetMethod(nameof(Prefix), BindingFlags.NonPublic | BindingFlags.Static);
-            HarmonyUtils.Patch(OnGUIError, prefix);
+            HarmonyUtils.Patch(
+                typeof(AllowTooManyParametersHook),
+                nameof(Prefix),
+                "VRCSdkControlPanel",
+                "OnGUIError"
+            );
         }
 
         private static bool Prefix(Object __0, string __1) {

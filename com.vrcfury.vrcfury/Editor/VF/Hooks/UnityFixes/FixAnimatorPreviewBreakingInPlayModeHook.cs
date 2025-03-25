@@ -25,23 +25,14 @@ namespace VF.Hooks.UnityFixes {
         [InitializeOnLoadMethod]
         private static void Init() {
             foreach (var prefix in typeof(ShimPrefix).GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Static)) {
-                var original = HarmonyUtils.FindOriginal(prefix, typeof(Animator));
-                if (original == null) {
-                    Debug.LogWarning($"VRCFury Failed to find method to replace: Animator.{prefix.Name}");
-                    continue;
-                }
-                if (HarmonyUtils.IsInternal(original)) {
-                    var replacement = typeof(ShimReplacments).GetMethod(prefix.Name, BindingFlags.Public | BindingFlags.Instance);
-                    if (replacement == null) {
-                        Debug.LogWarning($"VRCFury tried to patch a method, but it was internal, and a replcement wasn't available: Animator.{prefix.Name}");
-                        continue;
-                    }
-                    HarmonyUtils.ReplaceMethod(original, replacement);
-                } else {
-                    HarmonyUtils.Patch(original, prefix);
-                }
+                HarmonyUtils.Patch(
+                    typeof(ShimPrefix),
+                    prefix.Name,
+                    typeof(Animator),
+                    prefix.Name,
+                    internalReplacementClass: typeof(ShimReplacments)
+                );
             }
-
             Scheduler.Schedule(() => {
                 previewedPlayableCache.Clear();
             }, 0);

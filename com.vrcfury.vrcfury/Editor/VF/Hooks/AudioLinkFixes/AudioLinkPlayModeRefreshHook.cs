@@ -11,14 +11,13 @@ namespace VF.Hooks.AudioLinkFixes {
      * If a renderer comes into existence after audiolink has loaded, it will never attach to the new renderer. We fix
      * this by forcing a reload after any avatars are built.
      */
-    internal class AudioLinkPlayModeRefreshHook : IVRCSDKPreprocessAvatarCallback {
-        public int callbackOrder => int.MaxValue;
+    internal class AudioLinkPlayModeRefreshHook : VrcfAvatarPreprocessor {
+        protected override int order => int.MaxValue;
         private static bool triggerReload = false;
 
-        public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
+        protected override void Process(VFGameObject _) {
             triggerReload = true;
             EditorApplication.delayCall += () => EditorApplication.delayCall += DelayCall;
-            return true;
         }
 
         private static void DelayCall() {

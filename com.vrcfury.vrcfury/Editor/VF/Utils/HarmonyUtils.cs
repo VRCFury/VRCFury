@@ -22,7 +22,7 @@ namespace VF.Utils {
             .GetTypeFromAnyAssembly("HarmonyLib.HarmonySharedState")?
             .GetMethod("UpdatePatchInfo", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
 
-        public static readonly MethodInfo GetOriginalInstructions = ReflectionUtils
+        private static readonly MethodInfo GetOriginalInstructions = ReflectionUtils
             .GetTypeFromAnyAssembly("HarmonyLib.PatchProcessor")?.GetMethod(
                 "GetOriginalInstructions",
                 BindingFlags.Public | BindingFlags.Static,
@@ -58,16 +58,79 @@ namespace VF.Utils {
             return harmony.Value;
         }
 
-        [CanBeNull]
-        public static MethodInfo FindOriginal(MethodInfo patch, Type searchClass) {
-            foreach (var method in searchClass.GetMethods()) {
-                if (patch.Name != method.Name) continue;
+        internal class NameOrType {
+            private Type _type;
+            private string _name;
+            public static implicit operator NameOrType(string name) => new NameOrType { _name = name, _type = ReflectionUtils.GetTypeFromAnyAssembly(name) };
+            public static implicit operator NameOrType(Type type) => new NameOrType { _name = type?.Name ?? "?", _type = type };
+            [CanBeNull] public Type type => _type;
+            public string name => _name;
+        }
+
+        public static string CONSTRUCTOR = "CONSTRUCTOR";
+
+        public static void Patch(
+            Type prefixClass,
+            string prefixMethodName,
+            NameOrType originalClass,
+            string originalMethodName,
+            bool warnIfMissing = true,
+            bool postfix = false,
+            Type internalReplacementClass = null
+        ) {
+            if (GetHarmony() == null) return;
+            var prefixMethod = prefixClass.GetMethod(prefixMethodName,
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            if (prefixMethod == null) {
+                Debug.LogWarning($"VRCFury Failed to find prefix method to patch: {prefixClass.Name}.{prefixMethodName}");
+                return;
+            }
+            if (originalClass.type == null) {
+                if (warnIfMissing) Debug.LogWarning($"VRCFury Failed to find original class to patch: {originalClass.name}");
+                return;
+            }
+            var originalMethod = FindOriginal(prefixMethod, originalClass.type, originalMethodName);
+            if (originalMethod == null) {
+                if (warnIfMissing) Debug.LogWarning($"VRCFury Failed to find original method to patch: {originalClass.name}.{originalMethodName}");
+                return;
+            }
+            if (IsInternal(originalMethod)) {
+                if (internalReplacementClass != null) {
+                    var replacement = internalReplacementClass.GetMethod(prefixMethodName, BindingFlags.Public | BindingFlags.Instance);
+                    if (replacement != null) {
+                        ReplaceMethod(originalMethod, replacement);
+                        return;
+                    }
+                }
+                Debug.LogWarning($"VRCFury tried to patch a method, but it was internal, and a replcement wasn't available: {originalClass.name}.{originalMethod.Name}");
+                return;
+            }
+            PatchInternal(originalMethod, prefixMethod, postfix: postfix);
+        }
+
+        [CanBeNull] 
+        private static MethodBase FindOriginal(MethodInfo patch, Type searchClass, string searchName) {
+            IEnumerable<MethodBase> allMethods;
+            if (searchName == CONSTRUCTOR) {
+                allMethods = searchClass.GetConstructors();
+            } else {
+                allMethods = searchClass
+                    .GetMethods(BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    .Where(method => searchName == method.Name);
+            }
+
+            foreach (var method in allMethods.OrderBy(method => method.GetParameters().Length)) {
                 var methodParams = method.GetParameters();
-                var paramsMatch = patch.GetParameters().All(param => { 
-                    if (param.Name == "__result") {
-                        return param.ParameterType.GetElementType() == method.ReturnType;
+                var paramsMatch = patch.GetParameters().All(param => {
+                    var paramType = param.ParameterType;
+                    // Remove "ref"
+                    if (paramType.IsByRef) paramType = paramType.GetElementType();
+                    if (param.Name == "__instance") {
+                        return !method.IsStatic;
+                    } else if (param.Name == "__result") {
+                        return method is MethodInfo info && paramType == info.ReturnType;
                     } else if (param.Name.StartsWith("__") && int.TryParse(param.Name.Substring(2), out var i)) {
-                        return methodParams.Length > i && methodParams[i].ParameterType == param.ParameterType;
+                        return methodParams.Length > i && paramType.IsAssignableFrom(methodParams[i].ParameterType);
                     }
                     return true;
                 });
@@ -76,11 +139,11 @@ namespace VF.Utils {
             return null;
         }
 
-        public static bool IsInternal(MethodBase method) {
+        private static bool IsInternal(MethodBase method) {
             return (method.MethodImplementationFlags & MethodImplAttributes.InternalCall) != 0;
         }
  
-        public static void Patch(MethodBase original, MethodInfo prefix, bool postfix = false) {
+        private static void PatchInternal(MethodBase original, MethodInfo prefix, bool postfix = false) {
             if (original == null || prefix == null) return;
             
             if (IsInternal(original)) {
@@ -107,7 +170,7 @@ namespace VF.Utils {
          * FORGET ABOUT the patch, so that unpatchAll doesn't attempt to unpatch it later.
          * Luckily, when unity reloads scripts, it seems to clear out the patch anyways, so it's not a big deal.
          */
-        public static void ReplaceMethod(MethodBase original, MethodBase replacement) {
+        private static void ReplaceMethod(MethodBase original, MethodBase replacement) {
             if (original == null || replacement == null) return;
             if (GetOriginalInstructions == null || UpdatePatchInfo == null || harmonyPatch == null || harmonyMethodConstructor == null || PatchInfoConstructor == null) return;
             

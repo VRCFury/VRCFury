@@ -7,13 +7,18 @@ namespace VF.Hooks.UnityFixes {
     internal static class UnpackWarningHook {
         [InitializeOnLoadMethod]
         private static void Init() {
-            var SceneHierarchy = typeof(EditorApplication).Assembly.GetType("UnityEditor.SceneHierarchy");
-            if (SceneHierarchy == null) return;
-            var prefix = typeof(UnpackWarningHook).GetMethod(nameof(Prefix), BindingFlags.NonPublic | BindingFlags.Static);
-            var original = SceneHierarchy.GetMethod("UnpackPrefab", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-            if (original != null) HarmonyUtils.Patch(original, prefix);
-            original = SceneHierarchy.GetMethod("UnpackPrefabCompletely", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-            if (original != null) HarmonyUtils.Patch(original, prefix);
+            HarmonyUtils.Patch(
+                typeof(UnpackWarningHook),
+                nameof(Prefix),
+                "UnityEditor.SceneHierarchy",
+                "UnpackPrefab"
+            );
+            HarmonyUtils.Patch(
+                typeof(UnpackWarningHook),
+                nameof(Prefix),
+                "UnityEditor.SceneHierarchy",
+                "UnpackPrefabCompletely"
+            );
         } 
 
         private static bool Prefix() {

@@ -9,20 +9,12 @@ namespace VF.Hooks.VrcsdkFixes {
     internal static class FixTestUploadThumbnailErrorHook {
         [InitializeOnLoadMethod]
         private static void Init() {
-            var methodToPatch = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Editor.Elements.Thumbnail")?.GetMethod(
-                "SetImage",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
-                null,
-                new [] { typeof(string) },
-                null
-            );
-
-            var prefix = typeof(FixTestUploadThumbnailErrorHook).GetMethod(
+            HarmonyUtils.Patch(
+                typeof(FixTestUploadThumbnailErrorHook),
                 nameof(Prefix),
-                BindingFlags.Static | BindingFlags.NonPublic
+                "VRC.SDKBase.Editor.Elements.Thumbnail",
+                "SetImage"
             );
-
-            HarmonyUtils.Patch(methodToPatch, prefix);
         }
 
         private static bool Prefix(string __0) {

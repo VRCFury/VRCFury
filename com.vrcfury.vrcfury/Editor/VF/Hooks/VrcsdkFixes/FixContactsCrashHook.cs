@@ -18,23 +18,18 @@ namespace VF.Hooks.VrcsdkFixes {
         [InitializeOnLoadMethod]
         private static void Init() {
             if (currentJobHandleField == null) return;
-            var ContactManager = ReflectionUtils.GetTypeFromAnyAssembly("VRC.Dynamics.ContactManager");
-            if (ContactManager == null) return;
-
-            var methodsToPatch = ContactManager
-                .GetMethods()
-                .Where(m => m.Name == "AddContact" || m.Name == "RemoveContact")
-                .ToArray();
-
-            var prefix = typeof(FixContactsCrashHook).GetMethod(
+            HarmonyUtils.Patch(
+                typeof(FixContactsCrashHook),
                 nameof(Prefix),
-                BindingFlags.Static | BindingFlags.NonPublic
+                "VRC.Dynamics.ContactManager",
+                "AddContact"
             );
-
-            foreach (var methodToPatch in methodsToPatch) {
-                //Debug.Log("Patching " + methodToPatch.Name);
-                HarmonyUtils.Patch(methodToPatch, prefix);
-            }
+            HarmonyUtils.Patch(
+                typeof(FixContactsCrashHook),
+                nameof(Prefix),
+                "VRC.Dynamics.ContactManager",
+                "RemoveContact"
+            );
         }
 
         static void Prefix() {
@@ -42,7 +37,6 @@ namespace VF.Hooks.VrcsdkFixes {
             if (currentJobHandle == null) return;
             var completeMethod = currentJobHandle.GetType().GetMethod("Complete", new Type[] { });
             if (completeMethod == null) return;
-            //Debug.Log("Calling complete");
             completeMethod.Invoke(currentJobHandle, new object[] {});
         }
     }

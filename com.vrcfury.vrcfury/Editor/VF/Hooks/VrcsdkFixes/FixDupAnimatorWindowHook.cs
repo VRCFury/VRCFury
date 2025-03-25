@@ -9,22 +9,14 @@ namespace VF.Hooks.VrcsdkFixes {
     internal static class FixDupAnimatorWindowHook {
         [InitializeOnLoadMethod]
         private static void Init() {
-            var methodToPatch = ReflectionUtils.GetTypeFromAnyAssembly("AvatarParameterDriverEditor")?.GetMethod( 
-                "GetCurrentController",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static,
-                null,
-                new Type[] { },
-                null
-            );
-
-            var prefix = typeof(FixDupAnimatorWindowHook).GetMethod(
+            HarmonyUtils.Patch(
+                typeof(FixDupAnimatorWindowHook),
                 nameof(Prefix),
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            HarmonyUtils.Patch(methodToPatch, prefix);    
+                "AvatarParameterDriverEditor",
+                "GetCurrentController"
+            );    
         }
-        
+
         private static readonly Type AnimatorControllerTool = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.AnimatorControllerTool");
         private static readonly PropertyInfo AnimatorControllerTool_animatorController = AnimatorControllerTool?
             .GetProperty("animatorController", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);

@@ -19,9 +19,12 @@ namespace VF.Hooks.VrcsdkFixes {
     internal static class FixVrcsdkNonenglishLocaleCrashHook {
         [InitializeOnLoadMethod]
         private static void Init() {
-            var original = typeof(Assembly).GetMethod(nameof(Assembly.GetName), BindingFlags.Public | BindingFlags.Instance, null, new Type[] {}, null);
-            var prefix = typeof(FixVrcsdkNonenglishLocaleCrashHook).GetMethod(nameof(Prefix), BindingFlags.NonPublic | BindingFlags.Static);
-            HarmonyUtils.Patch(original, prefix);
+            HarmonyUtils.Patch(
+                typeof(FixVrcsdkNonenglishLocaleCrashHook),
+                nameof(Prefix),
+                typeof(Assembly),
+                nameof(Assembly.GetName)
+            );
         }
 
         private static bool Prefix(Assembly __instance, ref AssemblyName __result) {

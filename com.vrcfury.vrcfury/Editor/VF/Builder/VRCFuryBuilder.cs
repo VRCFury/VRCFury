@@ -8,7 +8,6 @@ using UnityEngine;
 using VF.Actions;
 using VF.Builder.Exceptions;
 using VF.Component;
-using VF.Feature;
 using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
@@ -24,26 +23,17 @@ using Object = UnityEngine.Object;
 namespace VF.Builder {
 
     internal class VRCFuryBuilder {
-        internal enum Status {
-            Success,
-            Failed
-        }
-
-        internal Status SafeRun(VFGameObject avatarObject) {
+        internal static void RunMain(VFGameObject avatarObject) {
             Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
-            var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                VRCFuryAssetDatabase.WithAssetEditing(() => {
-                    try {
-                        MaterialLocker.injectedAvatarObject = avatarObject;
-                        Run(avatarObject);
-                    } finally {
-                        MaterialLocker.injectedAvatarObject = null;
-                    }
-                });
+            VRCFuryAssetDatabase.WithAssetEditing(() => {
+                try {
+                    MaterialLocker.injectedAvatarObject = avatarObject;
+                    Run(avatarObject);
+                } finally {
+                    MaterialLocker.injectedAvatarObject = null;
+                }
             });
-
-            return result ? Status.Success : Status.Failed;
         }
 
         internal static bool ShouldRun(VFGameObject avatarObject) {
@@ -69,7 +59,7 @@ namespace VF.Builder {
             }
         }
 
-        private void Run(VFGameObject avatarObject) {
+        private static void Run(VFGameObject avatarObject) {
             if (!Application.isPlaying && VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
                 throw new VRCFBuilderException(
                     "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +

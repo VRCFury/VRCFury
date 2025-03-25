@@ -11,21 +11,13 @@ namespace VF.Hooks.GestureManagerFixes {
     internal static class FixGestureManagerBreakingWithNoRig {
         [InitializeOnLoadMethod]
         private static void Init() {
-            var type = ReflectionUtils.GetTypeFromAnyAssembly(
-                "BlackStartX.GestureManager.Editor.Modules.Vrc3.AvatarDynamics.AvatarDynamicReset");
-            if (type == null) return;
-            var methodsToPatch = type.GetMethods()
-                .Where(method => method.Name == "ReinstallAvatarColliders")
-                .Where(method => method.GetParameters().Length == 1)
-                .ToArray();
-            if (methodsToPatch.Length != 1) return;
-
-            var prefix = typeof(FixGestureManagerBreakingWithNoRig).GetMethod(
+            HarmonyUtils.Patch(
+                typeof(FixGestureManagerBreakingWithNoRig),
                 nameof(Prefix),
-                BindingFlags.Static | BindingFlags.NonPublic
+                "BlackStartX.GestureManager.Editor.Modules.Vrc3.AvatarDynamics.AvatarDynamicReset",
+                "ReinstallAvatarColliders",
+                warnIfMissing: false
             );
-
-            HarmonyUtils.Patch(methodsToPatch[0], prefix);    
         }
 
         private static bool Prefix(object __0) {

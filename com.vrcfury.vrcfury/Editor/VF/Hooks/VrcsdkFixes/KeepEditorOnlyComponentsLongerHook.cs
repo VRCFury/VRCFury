@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor.Callbacks;
 using UnityEngine;
+using VF.Builder;
 using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
 
@@ -34,21 +35,19 @@ namespace VF.Hooks.VrcsdkFixes {
             callbacksField.SetValue(null, callbacks);
         }
 
-        public class VrcfRemoveEditorOnlyObjects : IVRCSDKPreprocessAvatarCallback {
-            public int callbackOrder => -1024;
-            public bool OnPreprocessAvatar(GameObject obj) {
+        public class VrcfRemoveEditorOnlyObjects : VrcfAvatarPreprocessor {
+            protected override int order => -1024;
+            protected override void Process(VFGameObject obj) {
                 EditorOnlyUtils.RemoveEditorOnlyObjects(obj);
-                return true;
             }
         }
         
-        public class VrcfRemoveEditorOnlyComponents : IVRCSDKPreprocessAvatarCallback {
-            public int callbackOrder => Int32.MaxValue;
-            public bool OnPreprocessAvatar(GameObject obj) {
+        public class VrcfRemoveEditorOnlyComponents : VrcfAvatarPreprocessor {
+            protected override int order => Int32.MaxValue;
+            protected override void Process(VFGameObject obj) {
                 if (IsActuallyUploadingHook.Get()) {
                     EditorOnlyUtils.RemoveEditorOnlyComponents(obj);
                 }
-                return true;
             }
         }
     }

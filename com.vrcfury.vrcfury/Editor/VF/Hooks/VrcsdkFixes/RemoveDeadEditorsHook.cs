@@ -13,18 +13,13 @@ namespace VF.Hooks.VrcsdkFixes {
     internal static class RemoveDeadEditorsHook {
         [InitializeOnLoadMethod]
         private static void Init() {
-            var original = ReflectionUtils.GetTypeFromAnyAssembly("VRC_AnimatorPlayAudioEditor")?.GetMethod(
+            HarmonyUtils.Patch(
+                typeof(RemoveDeadEditorsHook),
+                nameof(Prefix),
+                "VRC_AnimatorPlayAudioEditor",
                 "OnEnable",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                null,
-                new Type[] {},
-                null
+                warnIfMissing: false
             );
-
-            var prefix = typeof(RemoveDeadEditorsHook).GetMethod(nameof(Prefix),
-                BindingFlags.Static | BindingFlags.NonPublic);
-
-            HarmonyUtils.Patch(original, prefix);
         }
 
         private static bool Prefix(Editor __instance) {

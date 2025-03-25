@@ -12,16 +12,12 @@ namespace VF.Hooks.VrcsdkFixes {
     internal static class FixNotPlayingWarningHook {
         [InitializeOnLoadMethod]
         private static void Init() {
-            var methodToPatch = ReflectionUtils.GetTypeFromAnyAssembly("VRC.Dynamics.AnimParameterAccessAvatarSDK")?.GetConstructor(
-                new [] { typeof(Animator), typeof(string) }
-            );
-
-            var prefix = typeof(FixNotPlayingWarningHook).GetMethod(
+            HarmonyUtils.Patch(
+                typeof(FixNotPlayingWarningHook),
                 nameof(Prefix),
-                BindingFlags.Static | BindingFlags.NonPublic
+                "VRC.Dynamics.AnimParameterAccessAvatarSDK",
+                HarmonyUtils.CONSTRUCTOR
             );
-
-            HarmonyUtils.Patch(methodToPatch, prefix);
         }
 
         static void Prefix(ref Animator __0) {

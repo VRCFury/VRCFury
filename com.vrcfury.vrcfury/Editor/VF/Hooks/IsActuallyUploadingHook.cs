@@ -2,17 +2,17 @@
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using VF.Builder;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Debug = UnityEngine.Debug;
 
 namespace VF.Hooks {
-    internal class IsActuallyUploadingHook : IVRCSDKPreprocessAvatarCallback {
-        public int callbackOrder => int.MinValue;
+    internal class IsActuallyUploadingHook : VrcfAvatarPreprocessor {
+        protected override int order => int.MinValue;
         private static bool actuallyUploading = false;
-        public bool OnPreprocessAvatar(GameObject obj) {
+        protected override void Process(VFGameObject obj) {
             EditorApplication.delayCall += () => actuallyUploading = false;
             actuallyUploading = DetermineIfActuallyUploading();
-            return true;
         }
 
         private static bool DetermineIfActuallyUploading() {

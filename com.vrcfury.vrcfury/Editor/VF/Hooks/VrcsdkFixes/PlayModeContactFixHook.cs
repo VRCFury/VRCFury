@@ -18,15 +18,13 @@ namespace VF.Hooks.VrcsdkFixes {
             }
         }
         
-        internal class PlayerBuilt : IVRCSDKPreprocessAvatarCallback {
-            public int callbackOrder => int.MaxValue;
-            public bool OnPreprocessAvatar(GameObject _obj) {
-                VFGameObject obj = _obj;
+        internal class PlayerBuilt : VrcfAvatarPreprocessor {
+            protected override int order => int.MaxValue;
+            protected override void Process(VFGameObject obj) {
                 var playerId = nextPlayerId++;
                 foreach (var contact in obj.GetComponentsInSelfAndChildren<ContactBase>()) {
                     contact.playerId = playerId;
                 }
-                return true;
             }
         }
     }

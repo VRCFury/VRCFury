@@ -13,14 +13,16 @@ namespace VF.Hooks.VrcsdkFixes {
         private static readonly Type contactManagerType = ReflectionUtils.GetTypeFromAnyAssembly("VRC.Dynamics.ContactManager");
         private static readonly FieldInfo stopwatchField = contactManagerType?
             .GetField("_stopwatch", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        private static readonly MethodInfo frameCompleteMethod = contactManagerType?
-            .GetMethod("HandleDynamicsFrameComplete", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        
+
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (contactManagerType == null || stopwatchField == null || frameCompleteMethod == null) return;
-            HarmonyUtils.Patch(frameCompleteMethod, typeof(FixContactManagerStopwatchNull)
-                .GetMethod(nameof(Prefix), BindingFlags.Static | BindingFlags.NonPublic));
+            if (contactManagerType == null || stopwatchField == null) return;
+            HarmonyUtils.Patch(
+                typeof(FixContactManagerStopwatchNull),
+                nameof(Prefix),
+                contactManagerType,
+                "HandleDynamicsFrameComplete"
+            );
         }
 
         private static bool Prefix(object __instance) {

@@ -20,21 +20,19 @@ namespace VF.Hooks.UnityFixes {
             if (LayerControllerView_m_LayerScroll == null) return;
             if (LayerControllerView_m_LayerScroll.FieldType != typeof(Vector2)) return;
 
-            var original = LayerControllerView.GetMethod(
-                "ResetUI",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                null,
-                new Type[] {},
-                null
+            HarmonyUtils.Patch(
+                typeof(FixAnimatorLayerScrollHook),
+                nameof(Prefix),
+                LayerControllerView,
+                "ResetUI"
             );
-
-            var prefix = typeof(FixAnimatorLayerScrollHook).GetMethod(nameof(Prefix),
-                BindingFlags.Static | BindingFlags.NonPublic);
-            var postfix = typeof(FixAnimatorLayerScrollHook).GetMethod(nameof(Postfix),
-                BindingFlags.Static | BindingFlags.NonPublic);
-
-            HarmonyUtils.Patch(original, prefix);
-            HarmonyUtils.Patch(original, postfix, true);
+            HarmonyUtils.Patch(
+                typeof(FixAnimatorLayerScrollHook),
+                nameof(Postfix),
+                LayerControllerView,
+                "ResetUI",
+                postfix: true
+            );
         }
 
         private static Vector2 savedScroll;
