@@ -19,20 +19,8 @@ namespace VF.Hooks {
             if (Application.isPlaying) return false;
             var stack = new StackTrace().GetFrames();
             if (stack == null) return true;
-            var preprocessFrame = stack
-                .Select((frame, i) => (frame, i))
-                .Where(f => f.frame.GetMethod().Name == "OnPreprocessAvatar" &&
-                            (f.frame.GetMethod().DeclaringType?.FullName ?? "").StartsWith("VRC."))
-                .Select(pair => pair.i)
-                .DefaultIfEmpty(-1)
-                .Last();
-            if (preprocessFrame < 0) return false; // Not called through preprocessor hook
-            if (preprocessFrame >= stack.Length - 1) return true;
-
-            var callingClass = stack[preprocessFrame + 1].GetMethod().DeclaringType?.FullName;
-            if (callingClass == null) return true;
-            Debug.Log("Build was invoked by " + callingClass);
-            return callingClass.StartsWith("VRC.");
+            var actuallyUploading = stack.Any(frame => (frame.GetMethod().DeclaringType?.FullName ?? "").Contains("VRC.SDK3.Builder.VRCAvatarBuilder"));
+            return actuallyUploading;
         }
 
         public static bool Get() {
