@@ -3,7 +3,9 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+#if VRC_NEW_PUBLIC_SDK
 using VRC.SDK3A.Editor;
+#endif
 
 namespace VF.Hooks {
     internal static class IsActuallyUploadingHook {

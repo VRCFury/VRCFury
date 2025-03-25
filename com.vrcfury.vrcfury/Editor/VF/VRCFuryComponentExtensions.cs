@@ -20,6 +20,7 @@ namespace VF {
             string GetPath() {
                 if (c == null) return null;
                 var path = AssetDatabase.GetAssetPath(c);
+                if (string.IsNullOrEmpty(path)) return null;
                 if (reimported.Contains(path)) return null;
                 return path;
             }
