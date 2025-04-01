@@ -15,17 +15,12 @@ namespace VF.Menu {
         }
         
         public static void BuildTestCopy(VFGameObject originalObject) {
-            if (IsTestCopy(originalObject)) {
-                DialogUtils.DisplayDialog("VRCFury Error", "This object is already a VRCF editor test copy.", "Ok");
-                return;
-            }
-
             VRCFPrefabFixer.Fix(new[] {originalObject});
 
             var cloneName = "VRCF Test Copy for " + originalObject.name;
             var exists = VFGameObject.GetRoots(originalObject.scene)
                 .FirstOrDefault(o => o.name == cloneName);
-            if (exists) {
+            if (exists != null) {
                 exists.Destroy();
             }
             var clone = originalObject.Clone();
@@ -40,12 +35,7 @@ namespace VF.Menu {
                 SceneManager.MoveGameObjectToScene(clone, originalObject.scene);
             }
             clone.name = cloneName;
-            clone.AddComponent<VRCFuryTest>();
             Selection.SetActiveObjectWithContext(clone, clone);
-        }
-
-        public static bool IsTestCopy(VFGameObject obj) {
-            return obj.GetComponentsInSelfAndChildren<VRCFuryTest>().Length > 0;
         }
 
         public static bool CheckBuildTestCopy() {

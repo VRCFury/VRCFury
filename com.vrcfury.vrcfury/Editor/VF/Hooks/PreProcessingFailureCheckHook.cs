@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Utils;
-using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace VF.Hooks {
     /**

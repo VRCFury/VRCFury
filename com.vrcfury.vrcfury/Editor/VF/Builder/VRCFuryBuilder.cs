@@ -39,7 +39,7 @@ namespace VF.Builder {
         internal static bool ShouldRun(VFGameObject avatarObject) {
             if (avatarObject
                 .GetComponentsInSelfAndChildren<VRCFuryComponent>()
-                .Where(c => !(c is VRCFuryDebugInfo || c is VRCFuryTest))
+                .Where(c => !(c is VRCFuryDebugInfo))
                 .Any()) {
                 // There's a vrcfury component
                 return true;
@@ -60,14 +60,8 @@ namespace VF.Builder {
         }
 
         private static void Run(VFGameObject avatarObject) {
-            if (!Application.isPlaying && VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
-                throw new VRCFBuilderException(
-                    "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
-                    " used to create this test instead.");
-            }
-
             EditorOnlyUtils.RemoveEditorOnlyObjects(avatarObject);
-            
+
             if (!ShouldRun(avatarObject)) {
                 Debug.Log("VRCFury components not found in avatar. Skipping.");
                 return;
