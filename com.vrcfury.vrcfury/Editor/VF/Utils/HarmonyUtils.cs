@@ -99,7 +99,9 @@ namespace VF.Utils {
             }
             if (IsInternal(originalMethod)) {
                 if (internalReplacementClass != null) {
-                    var replacement = internalReplacementClass.GetMethod(prefixMethodName, BindingFlags.Public | BindingFlags.Instance);
+                    var flags = BindingFlags.Public;
+                    flags |= originalMethod.IsStatic ? BindingFlags.Static : BindingFlags.Instance;
+                    var replacement = internalReplacementClass.GetMethod(prefixMethodName, flags);
                     if (replacement != null) {
                         ReplaceMethod(originalMethod, replacement);
                         return;
