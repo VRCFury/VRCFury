@@ -20,6 +20,8 @@ namespace VF.Menu {
 
         [InitializeOnLoadMethod]
         private static void Init() {
+            EditorApplication.delayCall += UpdateMenu;
+            
             if (constrainProportionsScale == null) {
                 Debug.LogWarning("Failed to find constrainProportionsScale");
                 return;
@@ -38,7 +40,6 @@ namespace VF.Menu {
                 "UnityEditor.ConstrainProportionsTransformScale",
                 "SetConstrainProportions"
             );
-            EditorApplication.delayCall += UpdateMenu;
             Selection.selectionChanged += () => unlocked.Clear();
         }
 
