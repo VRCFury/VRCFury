@@ -1,9 +1,7 @@
 {
   "dependencies": {
-    "com.unity.burst": "1.4.11",
-    "com.unity.ide.rider": "3.0.24",
     "com.unity.nuget.newtonsoft-json": "3.2.1",
-    "com.unity.postprocessing": "3.1.1",
+    "com.unity.test-framework": "1.1.29",
     "com.unity.timeline": "1.2.18",
     "com.unity.ugui": "1.0.0",
     "com.vrcfury.vrcfury": "file:../../../../com.vrcfury.vrcfury",
@@ -38,5 +36,8 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
-  }
+  },
+  "testables": [
+    "com.vrcfury.vrcfury"
+  ]
 }

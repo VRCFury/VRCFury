@@ -1,4 +1,9 @@
 Library/
 Temp/
 Logs/
-ProjectSettings/
+ProjectSettings/*
+!ProjectSettings/ProjectVersion.txt
+*.csproj
+*.sln
+Packages/*
+!Packages/manifest.json
