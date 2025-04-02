@@ -16,6 +16,6 @@ public class TestBuild {
         };
         BuildPipeline.BuildAssetBundles(Application.temporaryCachePath, new AssetBundleBuild[1] {
             assetBundleBuild
-        }, BuildAssetBundleOptions.None, BuildTarget.StandaloneWindows64);
+        }, BuildAssetBundleOptions.None, EditorUserBuildSettings.activeBuildTarget);
     }
 }
