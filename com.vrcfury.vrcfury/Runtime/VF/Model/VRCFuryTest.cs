@@ -5,7 +5,7 @@ using VF.VrcfEditorOnly;
 namespace VF.Model {
     [ExecuteInEditMode]
     [AddComponentMenu("")]
-    internal class PreprocessorsRan : MonoBehaviour, IVrcfEditorOnly {
+    internal class VRCFuryTest : MonoBehaviour, IVrcfEditorOnly {
         public enum State {
             AddedByHarmonyPatch,
             FirstPass,
@@ -13,10 +13,10 @@ namespace VF.Model {
         }
         [NonSerialized] public State state = State.Finished;
 
-        public static Action<PreprocessorsRan> onDestroy;
-
-        private void OnDestroy() {
-            onDestroy?.Invoke(this);
-        }
+        // public static Action<VRCFuryTest> onDestroy;
+        //
+        // private void OnDestroy() {
+        //     onDestroy?.Invoke(this);
+        // }
     }
 }

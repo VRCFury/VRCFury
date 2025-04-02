@@ -20,7 +20,7 @@ namespace VF.Hooks {
 
         private static bool Prefix(GameObject __0, ref bool __result) {
             var go = (VFGameObject)__0;
-            if (go.GetComponent<PreprocessorsRan>() != null) {
+            if (go.GetComponent<VRCFuryTest>() != null) {
                 if (Application.isPlaying) {
                     Debug.LogWarning($"VRCFury is preventing OnPreprocessAvatar from running on {__0.name} because it already ran on that object");
                     __result = true;
@@ -31,8 +31,8 @@ namespace VF.Hooks {
                     return false;
                 }
             } else {
-                var c = go.AddComponent<PreprocessorsRan>();
-                c.state = PreprocessorsRan.State.AddedByHarmonyPatch;
+                var c = go.AddComponent<VRCFuryTest>();
+                c.state = VRCFuryTest.State.AddedByHarmonyPatch;
             }
             return true;
         }
@@ -52,19 +52,19 @@ namespace VF.Hooks {
             public int callbackOrder => int.MinValue;
             public bool OnPreprocessAvatar(GameObject obj) {
                 var go = (VFGameObject)obj;
-                var c = go.GetComponent<PreprocessorsRan>();
+                var c = go.GetComponent<VRCFuryTest>();
                 if (c != null) {
-                    if (c.state == PreprocessorsRan.State.AddedByHarmonyPatch) {
-                        c.state = PreprocessorsRan.State.FirstPass;
-                    } else if (c.state == PreprocessorsRan.State.FirstPass) {
-                        c.state = PreprocessorsRan.State.Finished;
-                    } else if (c.state == PreprocessorsRan.State.Finished && !Application.isPlaying) {
+                    if (c.state == VRCFuryTest.State.AddedByHarmonyPatch) {
+                        c.state = VRCFuryTest.State.FirstPass;
+                    } else if (c.state == VRCFuryTest.State.FirstPass) {
+                        c.state = VRCFuryTest.State.Finished;
+                    } else if (c.state == VRCFuryTest.State.Finished && !Application.isPlaying) {
                         ShowFailDialog();
                         return false;
                     }
                 } else {
-                    c = go.AddComponent<PreprocessorsRan>();
-                    c.state = PreprocessorsRan.State.FirstPass;
+                    c = go.AddComponent<VRCFuryTest>();
+                    c.state = VRCFuryTest.State.FirstPass;
                 }
                 return true;
             }

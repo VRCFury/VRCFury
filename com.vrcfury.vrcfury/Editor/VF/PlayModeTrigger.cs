@@ -70,7 +70,7 @@ namespace VF {
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
                     if (IsWithinAv3EmulatorClone(obj)) continue;
-                    if (obj.GetComponentsInSelfAndChildren<PreprocessorsRan>().Any()) continue;
+                    if (obj.GetComponentsInSelfAndChildren<VRCFuryTest>().Any()) continue;
                     if (!VRCFuryBuilder.ShouldRun(obj)) continue;
 
                     var orig = obj.Clone();
