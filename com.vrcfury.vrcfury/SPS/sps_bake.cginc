@@ -41,6 +41,4 @@ void SpsGetBakedPosition(uint vertexId, out float3 position, out float3 normal, 
     SpsApplyBlendshape(vertexId, position, normal, tangent, _SPS_Blendshape13, 13);
     SpsApplyBlendshape(vertexId, position, normal, tangent, _SPS_Blendshape14, 14);
     SpsApplyBlendshape(vertexId, position, normal, tangent, _SPS_Blendshape15, 15);
-
-    position *= (_SPS_Length / _SPS_BakedLength);
 }

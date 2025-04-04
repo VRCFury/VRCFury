@@ -28,6 +28,8 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, inout float3 tange
 	bakedTangent = modCopy.SPS_STRUCT_TANGENT_NAME.xyz;
 #endif
 
+	bakedVertex *= (_SPS_Length / _SPS_BakedLength);
+	
 	if (active == 0) return;
 
 	float3 rootPos;
