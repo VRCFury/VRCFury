@@ -92,10 +92,20 @@ namespace VF.Builder.Haptics {
             }
 
             string spsMain;
-            if (keepImports) {
-                spsMain = $"#include \"{pathToSps}/sps_main.cginc\"";
+            if (shader.name.Contains("VertexAnimationTexture")) { 
+                // VAT Patch - Sepcial case for shdaers with VATs support
+                // If they're setup for VATs, use the pathced sps_main, otherise use the default file
+                if (keepImports) {
+                    spsMain = $"#include \"{pathToSps}/sps_main_vat_patch.cginc\"";
+                } else {
+                    spsMain = ReadAndFlattenPath($"{pathToSps}/sps_main_vat_patch.cginc");
+                }
             } else {
-                spsMain = ReadAndFlattenPath($"{pathToSps}/sps_main.cginc");
+                if (keepImports) {
+                    spsMain = $"#include \"{pathToSps}/sps_main.cginc\"";
+                } else {
+                    spsMain = ReadAndFlattenPath($"{pathToSps}/sps_main.cginc");
+                }
             }
             
             var md5 = MD5.Create();
