@@ -5,7 +5,7 @@
 #include "sps_utils.cginc"
 
 // SPS Penetration Shader
-void sps_apply_real(inout float3 vertex, inout float3 normal, inout float4 tangent, uint vertexId, inout float4 color)
+void sps_apply_real(inout float3 vertex, inout float3 normal, inout float3 tangent, uint vertexId, inout float4 color, SpsInputs all)
 {
 	const float worldLength = _SPS_Length;
 	const float3 origVertex = vertex;
@@ -16,6 +16,17 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, inout float4 tange
 	float3 bakedTangent;
 	float active;
 	SpsGetBakedPosition(vertexId, bakedVertex, bakedNormal, bakedTangent, active);
+
+#ifdef SPS_BAKED_VERTEX_MOD
+	SpsInputs modCopy = all;
+	modCopy.SPS_STRUCT_POSITION_NAME.xyz = bakedVertex;
+	modCopy.SPS_STRUCT_NORMAL_NAME.xyz = bakedNormal;
+	modCopy.SPS_STRUCT_TANGENT_NAME.xyz = bakedTangent;
+	SPS_BAKED_VERTEX_MOD((SPS_VANILLA_VERT_PARAM_TYPE)modCopy);
+	bakedVertex = modCopy.SPS_STRUCT_POSITION_NAME.xyz;
+	bakedNormal = modCopy.SPS_STRUCT_NORMAL_NAME.xyz;
+	bakedTangent = modCopy.SPS_STRUCT_TANGENT_NAME.xyz;
+#endif
 
 	if (active == 0) return;
 
@@ -142,9 +153,6 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, inout float4 tange
 }
 void sps_apply(inout SpsInputs o) {
 
-	#if defined(SPS_STRUCT_TANGENT_TYPE_float3)
-		float4 tangent = float4(o.SPS_STRUCT_TANGENT_NAME,1);
-	#endif
 	#if defined(SPS_STRUCT_COLOR_TYPE_float3)
 		float4 color = float4(o.SPS_STRUCT_COLOR_NAME,1);
 	#endif
@@ -154,26 +162,19 @@ void sps_apply(inout SpsInputs o) {
 	//#ifdef VERTEXLIGHT_ON
 	sps_apply_real(
 		o.SPS_STRUCT_POSITION_NAME.xyz,
-		o.SPS_STRUCT_NORMAL_NAME,
-		#if defined(SPS_STRUCT_TANGENT_TYPE_float3)
-			tangent,
-		#else
-			o.SPS_STRUCT_TANGENT_NAME,
-		#endif
+		o.SPS_STRUCT_NORMAL_NAME.xyz,
+		o.SPS_STRUCT_TANGENT_NAME.xyz,
 		o.SPS_STRUCT_SV_VertexID_NAME,
 		#if defined(SPS_STRUCT_COLOR_TYPE_float3)
-			color
+			color,
 		#else
-			o.SPS_STRUCT_COLOR_NAME
+			o.SPS_STRUCT_COLOR_NAME,
 		#endif
+		o
 	);
 	//#endif
 
-	#if defined(SPS_STRUCT_TANGENT_TYPE_float3)
-		o.SPS_STRUCT_TANGENT_NAME = tangent.xyz;
-	#endif
 	#if defined(SPS_STRUCT_COLOR_TYPE_float3)
 		o.SPS_STRUCT_COLOR_NAME = color.xyz;
 	#endif
 }
-
