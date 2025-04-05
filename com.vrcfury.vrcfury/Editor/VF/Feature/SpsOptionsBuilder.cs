@@ -19,6 +19,7 @@ namespace VF.Feature {
             var pathProp = prop.FindPropertyRelative("menuPath");
             c.Add(MoveMenuItemBuilder.SelectButton(
                 avatarObject,
+                null,
                 true,
                 pathProp,
                 append: () => "SPS",
