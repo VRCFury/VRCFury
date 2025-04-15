@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
@@ -18,6 +19,10 @@ namespace VF.Utils {
         );
         private static readonly MethodInfo SetLockedForAllMaterials = ShaderOptimizer?.GetMethod(
             "SetLockedForAllMaterials",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+        );
+        private static readonly MethodInfo GetRenamedPropertySuffix = ShaderOptimizer?.GetMethod(
+            "GetRenamedPropertySuffix",
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
         );
         
@@ -67,7 +72,7 @@ namespace VF.Utils {
                 var propertyName = ShaderUtil.GetPropertyName(shader, i);
 
                 var ogName = propertyName;
-                if (ogName.EndsWith("_" + matRenameSuffix)) {
+                if (matRenameSuffix != null && ogName.EndsWith("_" + matRenameSuffix)) {
                     ogName = ogName.Substring(0, ogName.Length - matRenameSuffix.Length - 1);
                 }
                 
@@ -108,10 +113,10 @@ namespace VF.Utils {
             return lockedPropsCache[mat] = output;
         }
 
+        [CanBeNull]
         public static string GetRenameSuffix(Material mat) {
-            var fromTag = mat.GetTag("thry_rename_suffix", false);
-            if (!string.IsNullOrWhiteSpace(fromTag)) return fromTag;
-            return Regex.Replace(mat.name, "[^a-zA-Z0-9_]", "");
+            if (GetRenamedPropertySuffix == null) return null;
+            return (string)GetRenamedPropertySuffix.Invoke(null, new object[] { mat });
         }
 
         public static void LockPoiyomi(Material mat) {

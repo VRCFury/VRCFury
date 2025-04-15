@@ -64,7 +64,10 @@ namespace VF.Utils {
 #endif
 
                     // Keep the thry suffix so if it's locked later, the renamed properties still use the same suffixes
-                    copyMat.SetOverrideTag("thry_rename_suffix", PoiyomiUtils.GetRenameSuffix(originalMat));
+                    var renameSuffix = PoiyomiUtils.GetRenameSuffix(originalMat);
+                    if (renameSuffix != null) {
+                        copyMat.SetOverrideTag("thry_rename_suffix", renameSuffix);
+                    }
                 }
             }
 
