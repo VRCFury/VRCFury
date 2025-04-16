@@ -114,4 +114,4 @@ For more information, please refer to <https://unlicense.org>
 * Ximmer-VR
   * Made Toggle sliders work with global parameters
 * Zaytha
-  * Vertex Animation Textures with SPS
+  * Added Vertex Animation Textures with SPS
