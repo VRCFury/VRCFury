@@ -1,9 +1,9 @@
 // helper function to get current frame and next frames offset
-float2 sps_vat_get_uv_offset(float frame, float y_ratio, float y_cord, float x_cord)
+float2 sps_vat_get_uv_offset(float frame, float y_cord, float x_cord)
 {
     // progress describes how far the animation is along the VAT, from 0 to 1
     float progress = frame * (1/_SPS_VAT_FrameCount);
-    float shifted_y_uv = 1 - (y_cord + (progress * y_ratio));
+    float shifted_y_uv = 1 - (y_cord + progress);
     // uv postition with shifted offset on the y for current frame
     float2 frame_uv = float2(x_cord, shifted_y_uv);
 
@@ -33,8 +33,8 @@ void sps_vertex_animation_texture(inout float3 vertex, inout float3 normal, inou
     float next_frame = fmod(active_frame+1, _SPS_VAT_FrameCount);
 
     // get the offset for curret and next frame
-    float2 current_frame_uv = sps_vat_get_uv_offset(current_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
-    float2 next_frame_uv = sps_vat_get_uv_offset(next_frame, pixel_ratio_y, y_uv_cord, x_uv_cord);
+    float2 current_frame_uv = sps_vat_get_uv_offset(current_frame, y_uv_cord, x_uv_cord);
+    float2 next_frame_uv = sps_vat_get_uv_offset(next_frame, y_uv_cord, x_uv_cord);
 
     // sample positiion texture with offset uv for current and next frame
     float4 pos_offset = tex2Dlod(_SPS_VAT_PosTexture, float4(current_frame_uv, 0, 0));
