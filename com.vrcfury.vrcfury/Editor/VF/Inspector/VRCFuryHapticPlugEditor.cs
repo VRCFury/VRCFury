@@ -183,6 +183,28 @@ namespace VF.Inspector {
 
             container.Add(GetHapticsSection());
 
+            // Vertex Animation Textures
+            var enableVat = serializedObject.FindProperty("enableVat");
+            container.Add(VRCFuryEditorUtils.BetterProp(enableVat, "Enable Vertex Animation Textures"));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (enableVat.boolValue) {
+                    var vatBox = VRCFuryEditorUtils.Section("Vertex Animation Textures");
+                    c.Add(vatBox);
+                    vatBox.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("vatInterpolate"),"Interpolate"));
+                    vatBox.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("vatPlaybackSpeed"), "Playback speed"));
+                    vatBox.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("vatPosTexture"), "Position Texture"));
+                    vatBox.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("vatRotTexture"), "Rotatoin Texture"));
+                    vatBox.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("vatFPS"), "FPS"));
+                    vatBox.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("vatFrameCount"), "FrameCount"));
+                    vatBox.Add(VRCFuryEditorUtils.Info(
+                        "These Anim values should be usign the range system like depth animations do, but I don't know how to use that system so I'm hardcoding the values for now"));
+                    vatBox.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("vatAnimMin"), "Anim Min Distance"));
+                    vatBox.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("vatAnimMax"), "Anim Max Distance"));
+                }
+                return c;
+            }, enableVat));
+
             var adv = new Foldout {
                 text = "Advanced Plug Options",
                 value = false

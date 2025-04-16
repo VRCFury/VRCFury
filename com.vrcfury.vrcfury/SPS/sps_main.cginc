@@ -3,6 +3,7 @@
 #include "sps_plus.cginc"
 #include "sps_bake.cginc"
 #include "sps_utils.cginc"
+#include "sps_vat.cginc"
 
 // SPS Penetration Shader
 void sps_apply_real(inout float3 vertex, inout float3 normal, inout float3 tangent, uint vertexId, inout float4 color, SpsInputs all)
@@ -27,8 +28,6 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, inout float3 tange
 	bakedNormal = modCopy.SPS_STRUCT_NORMAL_NAME.xyz;
 	bakedTangent = modCopy.SPS_STRUCT_TANGENT_NAME.xyz;
 #endif
-
-	bakedVertex *= (_SPS_Length / _SPS_BakedLength);
 	
 	if (active == 0) return;
 
@@ -93,6 +92,17 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, inout float3 tange
 
 	rootPos *= (1-shrinkLerp);
 	orfDistance *= (1-shrinkLerp);
+
+	// VAT Patch
+	if(_SPS_VAT_Enabled == 1) {
+		float dist_a = _SPS_Length - (_SPS_Length * _SPS_VAT_AnimMax);
+		float dist_b = _SPS_Length - (_SPS_Length * _SPS_VAT_AnimMin);
+		float dist_fitted = sps_saturated_map(orfDistance, dist_a, dist_b);
+		sps_vertex_animation_texture(bakedVertex, bakedNormal, bakedTangent, all.uv1, dist_fitted);
+	}
+
+	// Need to do SPS before scale is applied
+	bakedVertex *= (_SPS_Length / _SPS_BakedLength);
 
 	float3 bezierPos;
 	float3 bezierForward;
