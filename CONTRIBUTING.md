@@ -113,3 +113,5 @@ For more information, please refer to <https://unlicense.org>
   * Added public api for SPS Socket creation
 * Ximmer-VR
   * Made Toggle sliders work with global parameters
+* Zaytha
+  * Added Vertex Animation Textures with SPS

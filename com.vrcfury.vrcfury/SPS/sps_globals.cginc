@@ -49,4 +49,14 @@ float _SPS_Enabled;
 float _SPS_Overrun;
 float _SPS_Target_LL_Lights;
 
+float _SPS_VAT_Enabled;
+float _SPS_VAT_Interpolate;
+float _SPS_VAT_PlaybackSpeed;
+sampler2D _SPS_VAT_PosTexture;
+sampler2D _SPS_VAT_RotTexture;
+float _SPS_VAT_FPS;
+float _SPS_VAT_FrameCount;
+float _SPS_VAT_AnimMin;
+float _SPS_VAT_AnimMax;
+
 #endif
