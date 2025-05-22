@@ -21,17 +21,12 @@ namespace VF.Builder.Haptics {
             ISet<int> includedBoneIds = ImmutableHashSet<int>.Empty;
             if (plug.useBoneMask && renderer is SkinnedMeshRenderer skin) {
                 VFGameObject firstBone = plug.owner();
-                while (firstBone != null) {
-                    if (skin.bones.Contains((Transform)firstBone)) {
-                        break;
-                    }
-                    firstBone = firstBone.parent;
-                }
-                if (firstBone != null) {
+                while (firstBone != null && !includedBoneIds.Any()) {
                     includedBoneIds = firstBone.GetSelfAndAllChildren()
                         .Select(bone => Array.IndexOf(skin.bones, (Transform)bone))
                         .Where(id => id >= 0)
                         .ToImmutableHashSet();
+                    firstBone = firstBone.parent;
                 }
             }
 
