@@ -286,7 +286,8 @@ namespace VF.Service {
                 DialogUtils.DisplayDialog(
                     "VRCFury Mobile Sync",
                     "Warning: You have not uploaded the desktop version of this avatar yet." +
-                    " If you want parameters to sync properly, please upload the desktop version first.",
+                    " If you want parameters to sync properly, please upload the desktop version first.\n\n"
+                    + blueprintId,
                     "Ok"
                 );
                 return GetParamsToOptimize();
