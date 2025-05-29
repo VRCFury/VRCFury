@@ -378,6 +378,7 @@ namespace VF.Builder.Haptics {
             void AddParamIfMissing(string keyword, string defaultName, string defaultType) {
                 newStructBody.Add($"#ifndef SPS_STRUCT_{keyword}_NAME");
                 newStructBody.Add($"  {defaultType} {defaultName} : {keyword};");
+                newStructBody.Add($"  #define SPS_STRUCT_{keyword}_TYPE {defaultType}");
                 newStructBody.Add($"  #define SPS_STRUCT_{keyword}_TYPE_{defaultType}");
                 newStructBody.Add($"  #define SPS_STRUCT_{keyword}_NAME {defaultName}");
                 newStructBody.Add($"#endif");
@@ -449,6 +450,7 @@ namespace VF.Builder.Haptics {
                     if (keyword.EndsWith("0")) {
                         keyword = keyword.Substring(0, keyword.Length - 1);
                     }
+                    output.Add($"#define SPS_STRUCT_{keyword}_TYPE {type}");
                     output.Add($"#define SPS_STRUCT_{keyword}_TYPE_{type}");
                     output.Add($"#define SPS_STRUCT_{keyword}_NAME {name}");
                 }
