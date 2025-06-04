@@ -54,12 +54,14 @@ namespace VF.Hooks.UnityFixes {
             }
             public static bool IsParameterControlledByCurve(ref bool __result, string __0, Animator __instance) {
                 var animator = GetAnimator(__instance);
-                __result = GetPreviewedPlayable(animator)?.IsParameterControlledByCurve(__0) ?? animator.IsParameterControlledByCurve(GetParameterNameHash(animator, __0));
+                __result = GetPreviewedPlayable(animator)?.IsParameterControlledByCurve(__0)
+                           ?? (TryGetParameterNameHash(animator, __0, out var hash) ? animator.IsParameterControlledByCurve(hash) : false);
                 return false;
             }
             public static bool GetFloat(ref float __result, string __0, Animator __instance) {
                 var animator = GetAnimator(__instance);
-                __result = GetPreviewedPlayable(animator)?.GetFloat(__0) ?? animator.GetFloat(GetParameterNameHash(animator, __0));
+                __result = GetPreviewedPlayable(animator)?.GetFloat(__0)
+                           ?? (TryGetParameterNameHash(animator, __0, out var hash) ? animator.GetFloat(hash) : 0);
                 return false;
             }
             public static bool SetFloat(string __0, float __1, Animator __instance) {
@@ -70,13 +72,16 @@ namespace VF.Hooks.UnityFixes {
                         SetWithCoercion(p, __0, __1);
                     }
                 } else {
-                    animator.SetFloat(GetParameterNameHash(animator, __0), __1);
+                    if (TryGetParameterNameHash(animator, __0, out var hash)) {
+                        animator.SetFloat(hash, __1);
+                    }
                 }
                 return false;
             }
             public static bool GetInteger(ref int __result, string __0, Animator __instance) {
                 var animator = GetAnimator(__instance);
-                __result = GetPreviewedPlayable(animator)?.GetInteger(__0) ?? animator.GetInteger(GetParameterNameHash(animator, __0));
+                __result = GetPreviewedPlayable(animator)?.GetInteger(__0)
+                           ?? (TryGetParameterNameHash(animator, __0, out var hash) ? animator.GetInteger(hash) : 0);
                 return false;
             }
             public static bool SetInteger(string __0, int __1, Animator __instance) {
@@ -87,13 +92,16 @@ namespace VF.Hooks.UnityFixes {
                         SetWithCoercion(p, __0, __1);
                     }
                 } else {
-                    animator.SetInteger(GetParameterNameHash(animator, __0), __1);
+                    if (TryGetParameterNameHash(animator, __0, out var hash)) {
+                        animator.SetInteger(hash, __1);
+                    }
                 }
                 return false;
             }
             public static bool GetBool(ref bool __result, string __0, Animator __instance) {
                 var animator = GetAnimator(__instance);
-                __result = GetPreviewedPlayable(animator)?.GetBool(__0) ?? animator.GetBool(GetParameterNameHash(animator, __0));
+                __result = GetPreviewedPlayable(animator)?.GetBool(__0)
+                           ?? (TryGetParameterNameHash(animator, __0, out var hash) ? animator.GetBool(hash) : false);
                 return false;
             }
             public static bool SetBool(string __0, bool __1, Animator __instance) {
@@ -104,7 +112,9 @@ namespace VF.Hooks.UnityFixes {
                         SetWithCoercion(p, __0, __1 ? 1 : 0);
                     }
                 } else {
-                    animator.SetBool(GetParameterNameHash(animator, __0), __1);
+                    if (TryGetParameterNameHash(animator, __0, out var hash)) {
+                        animator.SetBool(hash, __1);
+                    }
                 }
                 return false;
             }
@@ -182,14 +192,19 @@ namespace VF.Hooks.UnityFixes {
                 .ToArray();
         }
 
-        private static int GetParameterNameHash(Animator animator, string name) {
+        private static bool TryGetParameterNameHash(Animator animator, string name, out int hash) {
             foreach (var p in animator.parameters) {
-                if (p.name == name) return p.nameHash;
+                if (p.name == name) {
+                    hash = p.nameHash;
+                    return true;
+                }
             }
-            return -1;
+
+            hash = -1;
+            return false;
         }
 
-        public static void SetWithCoercion(AnimatorControllerPlayable playable, string name, float val) {
+        private static void SetWithCoercion(AnimatorControllerPlayable playable, string name, float val) {
             foreach (var p in Enumerable.Range(0, playable.GetParameterCount()).Select(i => playable.GetParameter(i))) {
                 if (p.name != name) continue;
                 if (playable.IsParameterControlledByCurve(p.nameHash)) {

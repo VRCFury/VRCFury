@@ -40,6 +40,7 @@ namespace VF.Service {
 
         public static void RemoveWrongParamTypes(VFController controller) {
             var badBool = new Lazy<string>(() => controller._NewBool("InvalidParam"));
+            var badFloat = new Lazy<string>(() => controller._NewFloat("InvalidParamFloat"));
             var badThreshold = new Lazy<string>(() => controller._NewBool("BadIntThreshold", def: true));
             AnimatorCondition InvalidCondition() => new AnimatorCondition {
                 mode = AnimatorConditionMode.If,
@@ -118,12 +119,12 @@ namespace VF.Service {
                             if (firstFloat != null) {
                                 return firstFloat.name;
                             } else {
-                                return "";
+                                return badFloat.Value;
                             }
                         }
                     } else {
                         // It doesn't exist
-                        return "";
+                        return badFloat.Value;
                     }
                 });
             }
