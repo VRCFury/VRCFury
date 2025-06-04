@@ -67,7 +67,7 @@ namespace VF.Builder.Haptics {
             }
             
             var pathToSps = GetPathToSps();
-            var contents = ReadFile(shader);
+            var (contents,isBuiltIn) = ReadFile(shader);
 
             void Replace(string pattern, string replacement, int count) {
                 var startLen = contents.Length + "" + contents.GetHashCode();
@@ -100,7 +100,7 @@ namespace VF.Builder.Haptics {
             
             var md5 = MD5.Create();
             var hashContent = contents + spsMain + HashBuster;
-            //if (isBuiltIn) hashContent += Application.unityVersion;
+            if (isBuiltIn) hashContent += Application.unityVersion;
             var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
             var hashBytes = md5.ComputeHash(hashContentBytes);
             var hash = Enumerable.Range(0, hashBytes.Length)
@@ -708,30 +708,15 @@ namespace VF.Builder.Haptics {
             }
             return path;
         }
-        private static string ReadFile(Shader shader) {
+        private static (string,bool) ReadFile(Shader shader) {
             var path = AssetDatabase.GetAssetPath(shader);
             if (string.IsNullOrWhiteSpace(path)) {
                 throw new Exception("Failed to find source file for the shader");
             }
-            
-            if (!path.EndsWith(".shader")) {
-                var sourceAsset = AssetDatabase.LoadAllAssetsAtPath(path).OfType<TextAsset>().FirstOrDefault();
-                if (sourceAsset != null) {
-                    return sourceAsset.text;
-                }
-                if (path.EndsWith(".lilcontainer")) {
-                    var lilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
-                    var unpackMethod = lilShaderContainer.GetMethods()
-                        .First(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
-                    var content = (string)ReflectionUtils.CallWithOptionalParams(unpackMethod, null, path);
-                    var shaderLibsPath = (string)lilShaderContainer.GetField("shaderLibsPath",
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
-                    return content.Replace("\"Includes", "\"" + shaderLibsPath);
-                }
-                throw new Exception("Failed to find post-processed shader source: " + path);
-            }
 
+            var isBuiltIn = false;
             if (path.StartsWith("Resources") || path.StartsWith("Library")) {
+                isBuiltIn = true;
                 if (shader.name == "Standard") {
                     path = $"{GetPathToSps()}/Standard.shader.orig";
                 } else if (shader.name == "Standard (Specular setup)") {
@@ -744,15 +729,32 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            return ReadFile(path);
+            return (ReadFile(path, true), isBuiltIn);
         }
-        private static string ReadFile(string path) {
+        private static string ReadFile(string path, bool isMainShader = false) {
             string content;
-            StreamReader sr = new StreamReader(path);
-            try {
-                content = sr.ReadToEnd();
-            } finally {
-                sr.Close();
+            if (isMainShader && !path.EndsWith(".shader")) {
+                var sourceAsset = AssetDatabase.LoadAllAssetsAtPath(path).OfType<TextAsset>().FirstOrDefault();
+                if (sourceAsset != null) {
+                    content = sourceAsset.text;
+                } else if (path.EndsWith(".lilcontainer")) {
+                    var lilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
+                    var unpackMethod = lilShaderContainer.GetMethods()
+                        .First(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
+                    content = (string)ReflectionUtils.CallWithOptionalParams(unpackMethod, null, path);
+                    var shaderLibsPath = (string)lilShaderContainer.GetField("shaderLibsPath",
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+                    content = content.Replace("\"Includes", "\"" + shaderLibsPath);
+                } else {
+                    throw new Exception("Failed to find orlshader source");
+                }
+            } else {
+                StreamReader sr = new StreamReader(path);
+                try {
+                    content = sr.ReadToEnd();
+                } finally {
+                    sr.Close();
+                }
             }
 
             content = WithEachInclude(content, path, replaceWithFullPath: true);
