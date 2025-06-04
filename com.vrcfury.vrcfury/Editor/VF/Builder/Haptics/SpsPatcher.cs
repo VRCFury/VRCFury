@@ -746,7 +746,7 @@ namespace VF.Builder.Haptics {
                         BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
                     content = content.Replace("\"Includes", "\"" + shaderLibsPath);
                 } else {
-                    throw new Exception("Failed to find orlshader source");
+                    throw new Exception("Failed to find source for post-processed shader: " + path);
                 }
             } else {
                 StreamReader sr = new StreamReader(path);
