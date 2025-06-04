@@ -40,7 +40,6 @@ namespace VF.Service {
 
         public static void RemoveWrongParamTypes(VFController controller) {
             var badBool = new Lazy<string>(() => controller._NewBool("InvalidParam"));
-            var badFloat = new Lazy<string>(() => controller._NewFloat("InvalidParamFloat"));
             var badThreshold = new Lazy<string>(() => controller._NewBool("BadIntThreshold", def: true));
             AnimatorCondition InvalidCondition() => new AnimatorCondition {
                 mode = AnimatorConditionMode.If,
@@ -97,29 +96,57 @@ namespace VF.Service {
                 });
             }
 
+            bool Exists(string p) =>
+                p != null && paramTypes.ContainsKey(p);
             bool IsFloat(string p) =>
                 p != null && paramTypes.TryGetValue(p, out var type) && type == AnimatorControllerParameterType.Float;
-            bool IsBool(string p) =>
-                p != null && paramTypes.TryGetValue(p, out var type) && type == AnimatorControllerParameterType.Bool;
 
+            // Bad tree weights are weird.
+            // * If the parameter doesn't exist, the value is always 0
+            // * Otherwise, if the parameter is not a float, it uses the first float in the controller
+            //   If there is no other float, the value is always 0
             foreach (var tree in new AnimatorIterator.Trees().From(controller)) {
                 tree.RewriteParameters(p => {
-                    if (!IsFloat(p)) return badFloat.Value;
-                    return p;
+                    if (paramTypes.TryGetValue(p, out var type)) {
+                        if (type == AnimatorControllerParameterType.Float) {
+                            // It's valid
+                            return p;
+                        } else {
+                            // It exists but isn't a float, use the first float in the controller
+                            var firstFloat = controller.parameters
+                                .FirstOrDefault(pr => pr.type == AnimatorControllerParameterType.Float);
+                            if (firstFloat != null) {
+                                return firstFloat.name;
+                            } else {
+                                return "";
+                            }
+                        }
+                    } else {
+                        // It doesn't exist
+                        return "";
+                    }
                 });
             }
 
+            // Fix bad state fields
+            // Unity treats bad state fields very strangely.
+            // * If the parameter doesn't exist, it's as if the checkbox isn't even checked
+            // * Otherwise, if the parameter is the wrong type, its value gets used anyways
             foreach (var state in new AnimatorIterator.States().From(controller)) {
-                if (state.mirrorParameterActive && !IsBool(state.mirrorParameter))
-                    state.mirrorParameter = badBool.Value;
-                if (state.speedParameterActive && !IsFloat(state.speedParameter))
-                    state.speedParameter = badFloat.Value;
-                if (state.timeParameterActive && !IsFloat(state.timeParameter))
-                    state.timeParameter = badFloat.Value;
-                if (state.cycleOffsetParameterActive && !IsFloat(state.cycleOffsetParameter))
-                    state.cycleOffsetParameter = badFloat.Value;
+                if (state.mirrorParameterActive && !Exists(state.mirrorParameter)) {
+                    state.mirrorParameterActive = false;
+                }
+                if (state.speedParameterActive && !Exists(state.speedParameter)) {
+                    state.speedParameterActive = false;
+                }
+                if (state.timeParameterActive && !Exists(state.timeParameter)) {
+                    state.timeParameterActive = false;
+                }
+                if (state.cycleOffsetParameterActive && !Exists(state.cycleOffsetParameter)) {
+                    state.cycleOffsetParameterActive = false;
+                }
             }
-            
+
             controller.Rewrite(AnimationRewriter.RewriteBinding(binding => {
                 if (binding.GetPropType() == EditorCurveBindingType.Aap && !IsFloat(binding.propertyName)) {
                     return null;
