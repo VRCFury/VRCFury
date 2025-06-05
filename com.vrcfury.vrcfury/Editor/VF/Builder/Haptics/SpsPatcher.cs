@@ -733,7 +733,7 @@ namespace VF.Builder.Haptics {
         }
         private static string ReadFile(string path, bool isMainShader = false) {
             string content;
-            if (isMainShader && !path.EndsWith(".shader")) {
+            if (isMainShader && !path.EndsWith(".shader") && !path.EndsWith(".shader.orig")) {
                 var sourceAsset = AssetDatabase.LoadAllAssetsAtPath(path).OfType<TextAsset>().FirstOrDefault();
                 if (sourceAsset != null) {
                     content = sourceAsset.text;
