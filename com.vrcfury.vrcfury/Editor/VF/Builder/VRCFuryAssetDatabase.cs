@@ -217,12 +217,6 @@ namespace VF.Builder {
             paths.Reverse();
             foreach (var p in paths) {
                 if (AssetDatabase.IsValidFolder(p)) continue;
-                if (Directory.Exists(p)) {
-                    // The directory exists, but it's not in the asset database
-                    // This usually means the asset database is corrupt and doesn't know the folder exists
-                    // Should be safe to manually delete it and have the asset database make it again
-                    Directory.Delete(p, true);
-                }
                 var parent = GetDirectoryName(p);
                 if (string.IsNullOrEmpty(parent)) continue;
                 var basename = Path.GetFileName(p);
