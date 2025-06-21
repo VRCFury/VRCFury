@@ -15,7 +15,7 @@ namespace VF.Utils {
 
         protected abstract bool IsValidType();
 
-        protected void AssertValidType() {
+        private void AssertValidType() {
             if (!IsValidType()) throw new Exception("Blendtree is unexpectedly the wrong type");
         }
         
@@ -29,27 +29,29 @@ namespace VF.Utils {
             return tree;
         }
 
-        protected void Add(Motion motion, Action<ChildMotion> with) {
+        protected delegate void WithChildMotion(ref ChildMotion child);
+        protected void Add(Motion motion, WithChildMotion with) {
             AssertValidType();
             if (motion == null) throw new Exception("motion cannot be null");
             
             var children = tree.children;
-            var newChild = new ChildMotion();
-            newChild.timeScale = 1;
-            newChild.motion = motion;
-            with(newChild);
+            var newChild = new ChildMotion {
+                timeScale = 1,
+                motion = motion
+            };
+            with(ref newChild);
             ArrayUtility.Add(ref children, newChild);
             tree.children = children;
         }
     }
 
     internal class VFBlendTreeDirect : VFBlendTree {
-        public VFBlendTreeDirect(BlendTree tree) : base(tree) {}
+        private VFBlendTreeDirect(BlendTree tree) : base(tree) {}
 
         public const string AlwaysOneParam = "__vrcf_dbt_always_one";
 
         public void Add(string param, Motion motion) {
-            Add(motion, child => {
+            Add(motion, (ref ChildMotion child) => {
                 child.directBlendParameter = param;
             });
         }
@@ -73,10 +75,10 @@ namespace VF.Utils {
     }
     
     internal class VFBlendTree1D : VFBlendTree {
-        public VFBlendTree1D(BlendTree tree) : base(tree) {}
+        private VFBlendTree1D(BlendTree tree) : base(tree) {}
 
         public void Add(float threshold, Motion motion) {
-            Add(motion, child => {
+            Add(motion, (ref ChildMotion child) => {
                 child.threshold = threshold;
             });
         }
@@ -101,10 +103,10 @@ namespace VF.Utils {
     }
     
     internal class VFBlendTree2D : VFBlendTree {
-        public VFBlendTree2D(BlendTree tree) : base(tree) {}
+        private VFBlendTree2D(BlendTree tree) : base(tree) {}
 
         public void Add(Vector2 position, Motion motion) {
-            Add(motion, child => {
+            Add(motion, (ref ChildMotion child) => {
                 child.position = position;
             });
         }
