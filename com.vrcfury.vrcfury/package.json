@@ -1,20 +1,20 @@
 {
   "name": "com.vrcfury.vrcfury",
   "displayName": "VRCFury",
-  "version": "0.0.0",
+  "version": "1.1236.0",
   "description": "Non-Destructive Tools for VRChat Avatars",
-  "unity" : "2019.4",
+  "unity": "2019.4",
   "author": {
     "name": "VRCFury"
   },
-  "legacyFolders" : {
+  "legacyFolders": {
     "Assets\\VRCFury": "00b990f230095454f82c345d433841ae",
     "Assets\\VRCFury-installer": "",
     "Packages\\com.vrcfury.legacyprefabs": "",
     "Packages\\com.vrcfury.updater": "",
     "Packages\\com.vrcfury.installer": ""
   },
-  "legacyFiles" : {
+  "legacyFiles": {
     "Packages\\com.vrcfury.legacyprefabs.tgz": "",
     "Packages\\com.vrcfury.updater.tgz": ""
   },
