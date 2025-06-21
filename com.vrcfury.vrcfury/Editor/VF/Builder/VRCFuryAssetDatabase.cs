@@ -216,7 +216,14 @@ namespace VF.Builder {
             }
             paths.Reverse();
             foreach (var p in paths) {
-                if (AssetDatabase.IsValidFolder(p)) continue;
+                if (!p.Contains("/")) {
+                    // All first level paths are not considered part of the asset database ("Assets", "Packages")
+                    continue;
+                }
+                if (AssetDatabase.IsValidFolder(p)) {
+                    // Already exists in the database, all good
+                    continue;
+                }
                 if (Directory.Exists(p)) {
                     // The directory exists, but it's not in the asset database
                     // This usually means the asset database is corrupt and doesn't know the folder exists
