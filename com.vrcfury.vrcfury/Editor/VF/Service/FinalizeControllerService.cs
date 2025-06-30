@@ -30,20 +30,6 @@ namespace VF.Service {
                     .OrderBy(p => p.name)
                     .ToArray();
             }
-
-            // If you have a transition without conditions or an exit time, unity prints a warning in the console
-            // and people incorrectly attribute this issue to VRCF when it really came from some other input controller.
-            // We can just go ahead and remove these invalid conditions.
-            foreach (var controller in controllers.GetAllUsedControllers()) {
-                foreach (var layer in controller.GetLayers()) {
-                    layer.RewriteTransitions(transition => {
-                        if (transition is AnimatorStateTransition t && !t.hasExitTime && !t.conditions.Any()) {
-                            return null;
-                        }
-                        return transition;
-                    });
-                }
-            }
         }
 
         private void ApplyFixes() {

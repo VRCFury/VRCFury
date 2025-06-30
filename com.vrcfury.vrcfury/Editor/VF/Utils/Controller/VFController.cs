@@ -162,6 +162,7 @@ namespace VF.Utils.Controller {
             var output = new VFControllerWithVrcType(ac, type);
             output.RemoveInvalidParameters();
             output.FixNullStateMachines();
+            output.FixBadTransitions();
             output.RemoveBadBehaviours();
             output.ReplaceSyncedLayers();
             output.RemoveDuplicateStateMachines();
@@ -271,6 +272,25 @@ namespace VF.Utils.Controller {
         private void RemoveBadBehaviours() {
             foreach (var layer in layers) {
                 layer.RemoveBadBehaviours();
+            }
+        }
+        
+        private void FixBadTransitions() {
+            foreach (var layer in layers) {
+                // layer.RewriteTransitions will automatically fix if the transitions array is null
+                layer.RewriteTransitions(t => {
+                    // Remove any transitions that are null
+                    if (t == null) return null;
+                    // Fix conditions arrays that are null
+                    if (t.conditions == null) {
+                        t.conditions = new AnimatorCondition[] { };
+                    }
+                    // Remove any transitions that are missing required conditions
+                    if (t is AnimatorStateTransition st && !st.hasExitTime && !t.conditions.Any()) {
+                        return null;
+                    }
+                    return t;
+                });
             }
         }
 

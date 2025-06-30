@@ -223,6 +223,7 @@ namespace VF.Utils.Controller {
             Func<AnimatorTransitionBase, OneOrMany<AnimatorTransitionBase>> action
         ) where T : AnimatorTransitionBase {
             var changed = false;
+            if (input == null) input = new T[] { };
             var output = input.SelectMany(oneTransition => {
                 var result = action(oneTransition).Get();
                 changed |= result.Count != 1 || result[0] != oneTransition;
