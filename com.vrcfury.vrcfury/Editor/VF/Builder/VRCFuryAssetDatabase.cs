@@ -230,6 +230,9 @@ namespace VF.Builder {
                     // Should be safe to manually delete it and have the asset database make it again
                     Directory.Delete(p, true);
                 }
+                if (File.Exists(p + ".meta")) {
+                    File.Delete(p + ".meta");
+                }
                 var parent = GetDirectoryName(p);
                 if (string.IsNullOrEmpty(parent)) continue;
                 var basename = Path.GetFileName(p);
