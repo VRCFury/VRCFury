@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using UnityEditor.UI;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 
@@ -138,6 +140,16 @@ namespace VF.Model.Feature {
                 if (skin.bones.Any(bone => bone != null && bone.IsChildOf(obj))) return true;
             }
             return false;
+        }
+
+        // Provide export function 
+        public List<(GameObject, HumanBodyBones, string)> GetLinkTargets() {
+            var outList = new List<(GameObject, HumanBodyBones, string)>();
+            foreach (LinkTo link in linkTo) {
+                outList.Add((link.obj, link.bone, link.offset));
+            }
+
+            return outList;
         }
     }
 }
