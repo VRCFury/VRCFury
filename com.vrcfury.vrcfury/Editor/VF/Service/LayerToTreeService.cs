@@ -108,7 +108,11 @@ namespace VF.Service {
             states = states.Where(state => !IsUnreachableState(layer, state)).ToArray();
 
             var hasEulerRotation = states.Any(state => {
-                if (state.motion is BlendTree) return false;
+                // Technically if this state contains a blendtree, it should be safe to optimize anyways since
+                // the rotation would already be quaternion based anyways. HOWEVER, due to the way action loading works,
+                // toggles are ALWAYS a blend tree (containing a bunch of things with always-1 weights), and they may be
+                // flattened down to a single clip later on. This means it's unsafe for us to optimize rotations in a blendtree here.
+                // if (state.motion is BlendTree) return false;
                 return new AnimatorIterator.Clips().From(state.motion)
                     .SelectMany(clip => clip.GetAllBindings())
                     .Where(binding => validateBindingsService.IsValid(binding))
