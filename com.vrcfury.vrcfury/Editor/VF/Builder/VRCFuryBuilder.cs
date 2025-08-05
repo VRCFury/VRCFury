@@ -39,7 +39,7 @@ namespace VF.Builder {
         internal static bool ShouldRun(VFGameObject avatarObject) {
             if (avatarObject
                 .GetComponentsInSelfAndChildren<VRCFuryComponent>()
-                .Any()) {
+                .Any(c => !(c is VRCFuryDebugInfo))) {
                 // There's a vrcfury component
                 return true;
             }
