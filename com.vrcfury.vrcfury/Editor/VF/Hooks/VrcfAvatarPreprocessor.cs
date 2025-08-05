@@ -15,8 +15,7 @@ namespace VF.Hooks {
         public bool OnPreprocessAvatar(GameObject obj) {
             // This is only here just in case the RunPreprocessorsOnlyOncePatch harmony patch didn't work (user running on a platform that doesn't support harmony)
             var go = (VFGameObject)obj;
-            var c = obj.GetComponent<VRCFuryTest>();
-            if (c != null && c.state == VRCFuryTest.State.Finished) {
+            if (!RunPreprocessorsOnlyOncePatch.ShouldRunPreprocessors(go)) {
                 Debug.LogWarning("Skipping " + GetType().FullName + " preprocessor because preprocessors already ran on this object");
                 return true;
             }

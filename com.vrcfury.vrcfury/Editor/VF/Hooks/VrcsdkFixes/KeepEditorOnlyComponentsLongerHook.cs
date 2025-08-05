@@ -45,9 +45,7 @@ namespace VF.Hooks.VrcsdkFixes {
         public class VrcfRemoveEditorOnlyComponents : VrcfAvatarPreprocessor {
             protected override int order => Int32.MaxValue;
             protected override void Process(VFGameObject obj) {
-                if (IsActuallyUploadingHook.Get()) {
-                    EditorOnlyUtils.RemoveEditorOnlyComponents(obj);
-                }
+                EditorOnlyUtils.RemoveEditorOnlyComponents(obj);
             }
         }
     }

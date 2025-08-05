@@ -39,7 +39,6 @@ namespace VF.Builder {
         internal static bool ShouldRun(VFGameObject avatarObject) {
             if (avatarObject
                 .GetComponentsInSelfAndChildren<VRCFuryComponent>()
-                .Where(c => !(c is VRCFuryDebugInfo))
                 .Any()) {
                 // There's a vrcfury component
                 return true;
@@ -48,15 +47,6 @@ namespace VF.Builder {
                 return true;
             }
             return false;
-        }
-
-        public static void StripAllVrcfComponents(VFGameObject obj) {
-            foreach (var c in obj.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
-                if (c is VRCFuryDebugInfo && !IsActuallyUploadingHook.Get()) {
-                    continue;
-                }
-                Object.DestroyImmediate(c);
-            }
         }
 
         private static void Run(VFGameObject avatarObject) {
@@ -89,9 +79,6 @@ namespace VF.Builder {
                 );
             } finally {
                 progress.Close();
-                
-                // Make absolutely positively certain that we've removed every non-standard component from the avatar before it gets uploaded
-                StripAllVrcfComponents(avatarObject);
 
                 // Make sure all new assets we've created have actually been saved to disk
                 AssetDatabase.SaveAssets();

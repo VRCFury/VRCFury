@@ -5,6 +5,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
+using VF.Hooks;
 using VF.Inspector;
 using VF.Menu;
 using VF.Model;
@@ -70,7 +71,7 @@ namespace VF {
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
                     if (IsWithinAv3EmulatorClone(obj)) continue;
-                    if (obj.GetComponentsInSelfAndChildren<VRCFuryTest>().Any()) continue;
+                    if (!RunPreprocessorsOnlyOncePatch.ShouldStartPreprocessors(obj)) continue;
                     if (!VRCFuryBuilder.ShouldRun(obj)) continue;
 
                     var orig = obj.Clone();
