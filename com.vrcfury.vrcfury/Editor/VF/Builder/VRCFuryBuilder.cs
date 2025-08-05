@@ -77,6 +77,10 @@ namespace VF.Builder {
                     avatarObject,
                     progress
                 );
+
+                if (avatarObject.GetComponent<VRCFuryTest>() == null) {
+                    avatarObject.AddComponent<VRCFuryTest>();
+                }
             } finally {
                 progress.Close();
 

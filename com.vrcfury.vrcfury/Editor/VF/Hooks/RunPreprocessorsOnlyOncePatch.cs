@@ -80,11 +80,10 @@ namespace VF.Hooks {
             public int callbackOrder => int.MinValue;
             public bool OnPreprocessAvatar(GameObject obj) {
                 var go = (VFGameObject)obj;
-                var c = go.GetComponent<VRCFuryTest>();
 
                 if (Application.isPlaying) {
                     var state = GetPlayModeState(go);
-                    if (c != null || state == PlayModeState.Finished) {
+                    if (go.GetComponent<VRCFuryTest>() != null || state == PlayModeState.Finished) {
                         playModeState[go] = PlayModeState.Finished;
                     } else if (state == PlayModeState.HarmonyPatchCalled || state == PlayModeState.Fresh) {
                         playModeState[go] = PlayModeState.FirstPass;
@@ -92,15 +91,12 @@ namespace VF.Hooks {
                         playModeState[go] = PlayModeState.Finished;
                     }
                 } else {
-                    if (c != null) {
+                    if (go.GetComponent<VRCFuryTest>() != null) {
                         ShowFailDialog();
                         return false;
                     }
                 }
-
-                if (c == null) {
-                    go.AddComponent<VRCFuryTest>();
-                }
+                
                 return true;
             }
         }
