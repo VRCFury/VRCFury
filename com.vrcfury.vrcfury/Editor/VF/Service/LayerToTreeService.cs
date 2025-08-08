@@ -28,6 +28,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
+        [VFAutowired] private readonly LayerSourceService layerSourceService;
 
         [FeatureBuilderAction(FeatureOrder.LayerToTree)]
         public void Apply() {
@@ -112,7 +113,9 @@ namespace VF.Service {
                 // the rotation would already be quaternion based anyways. HOWEVER, due to the way action loading works,
                 // toggles are ALWAYS a blend tree (containing a bunch of things with always-1 weights), and they may be
                 // flattened down to a single clip later on. This means it's unsafe for us to optimize rotations in a blendtree here.
-                // if (state.motion is BlendTree) return false;
+                // If we didn't create the layer (it came from the descriptor or a full controller), then it should still be safe
+                // to optimize.
+                if (state.motion is BlendTree && !layerSourceService.DidCreate(layer)) return false;
                 return new AnimatorIterator.Clips().From(state.motion)
                     .SelectMany(clip => clip.GetAllBindings())
                     .Where(binding => validateBindingsService.IsValid(binding))
