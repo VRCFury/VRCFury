@@ -94,7 +94,12 @@ namespace VF.Builder {
         public static (bool,RuntimeAnimatorController) GetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type) {
             var matching = GetAllControllers(avatar).Where(layer => layer.type == type).ToArray();
             if (matching.Length == 0) {
-                throw new VRCFBuilderException("Failed to find playable layer on avatar descriptor with type " + type);
+                var msg = "Failed to find playable layer on avatar descriptor with type " + type;
+                if (type == VRCAvatarDescriptor.AnimLayerType.Additive ||
+                    type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                    msg += "\n\nThis asset requires your avatar rig to be HUMANOID, but your fbx rig definition is probably not humanoid.";
+                }
+                throw new VRCFBuilderException(msg);
             }
             if (matching.Length > 1) {
                 throw new VRCFBuilderException("Found multiple playable layers on avatar descriptor with same type?? " + type);
