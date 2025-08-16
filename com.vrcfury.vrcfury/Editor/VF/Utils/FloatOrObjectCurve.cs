@@ -77,15 +77,7 @@ namespace VF.Utils {
 
         public FloatOrObjectCurve Clone() {
             if (isFloat) {
-                var copy = new AnimationCurve();
-#if UNITY_2022_1_OR_NEWER
-                copy.CopyFrom(floatCurve);
-#else
-                copy.keys = floatCurve.keys.ToArray();
-                copy.preWrapMode = floatCurve.preWrapMode;
-                copy.postWrapMode = floatCurve.postWrapMode;
-#endif
-                return copy;
+                return floatCurve.Clone();
             } else {
                 return objectCurve.ToArray();
             }
@@ -94,24 +86,24 @@ namespace VF.Utils {
         public FloatOrObjectCurve Scale(float multiplier) {
             if (!isFloat) return this;
             var clone = Clone();
-            clone.floatCurve.keys = clone.floatCurve.keys.Select(k => {
+            clone.floatCurve.MutateKeys(k => {
                 k.value *= multiplier;
                 k.inTangent *= multiplier;
                 k.outTangent *= multiplier;
                 return k;
-            }).ToArray();
+            });
             return clone;
         }
         
         public FloatOrObjectCurve ScaleTime(float multiplier) {
             if (isFloat) {
                 var clone = Clone();
-                clone.floatCurve.keys = clone.floatCurve.keys.Select(k => {
+                clone.floatCurve.MutateKeys(k => {
                     k.time *= multiplier;
                     k.inTangent /= multiplier;
                     k.outTangent /= multiplier;
                     return k;
-                }).ToArray();
+                });
                 return clone;
             } else {
                 return objectCurve.Select(k => {
@@ -127,13 +119,13 @@ namespace VF.Utils {
                 var postWrapmode = clone.floatCurve.postWrapMode;
                 clone.floatCurve.postWrapMode = clone.floatCurve.preWrapMode;
                 clone.floatCurve.preWrapMode = postWrapmode;
-                clone.floatCurve.keys = clone.floatCurve.keys.Select(k => {
+                clone.floatCurve.MutateKeys(k => {
                     k.time = totalLength - k.time;
                     var x = -k.inTangent;
                     k.inTangent = -k.outTangent;
                     k.outTangent = x;
                     return k;
-                }).ToArray();
+                });
                 return clone;
             } else {
                 return objectCurve.Select(k => {
