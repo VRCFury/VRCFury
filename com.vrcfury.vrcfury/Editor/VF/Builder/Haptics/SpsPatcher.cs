@@ -233,7 +233,8 @@ namespace VF.Builder.Haptics {
             return (pass, patchedPrograms);
         }
 
-        private static string PatchProgram(string program, bool isCgProgram, string spsMain, string cgIncludes, bool isSurfaceShader) {
+        private static string PatchProgram(string originalProgram, bool isCgProgram, string spsMain, string cgIncludes, bool isSurfaceShader) {
+            var program = originalProgram;
             var newVertFunction = "spsVert";
             var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
             string oldVertFunction = null;
@@ -342,6 +343,12 @@ namespace VF.Builder.Haptics {
 
                 var paramList = foundOldVert[0].Item1;
                 returnType = foundOldVert[0].Item2;
+
+                if (paramList.Trim().IsEmpty()) {
+                    // Used occasionally as an "empty" pass. The vertex shader doesn't accept any params, so it's basically impossible
+                    // for the pass to render anything, so just return it as is.
+                    return originalProgram;
+                }
 
                 var rewrittenInputParams = RewriteParamList(paramList, rewriteFirstParamTypeTo: "SpsInputs");
                 newInputParams = rewrittenInputParams.rewritten;
