@@ -59,6 +59,7 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (!addMenuItemProp.boolValue) return new VisualElement();
                 var toggles = VRCFuryEditorUtils.Section("Menu Toggle", "A menu item will be created for this socket");
+                toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useGlobalMenuParameter"), "Use global parameter (no prefix)", tooltip: "When enabled, the toggle parameter will not include the usual VRCFury prefix. This can help share a single parameter name across features/avatars. Be careful to avoid name conflicts."));
                 toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?", tooltip: "If checked, this socket will be eligible to be chosen during 'Auto Mode', which is an option in your menu which will automatically enable the socket nearest to a plug."));
                 toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("menuIcon"), "Menu Icon", tooltip: "Override the menu icon used for this socket's individual toggle. Looking to move or change the icon of the main SPS menu? Add a VRCFury 'SPS Options' component to the avatar root."));
                 return toggles;
