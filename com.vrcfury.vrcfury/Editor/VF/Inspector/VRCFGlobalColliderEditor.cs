@@ -26,13 +26,17 @@ namespace VF.Inspector {
             
             container.Add(VRCFuryEditorUtils.Info(
                 "This will add a collider which can be used to interact with other player's physbones and trigger haptics.\n\n" +
-                "Note: This steals one of the colliders from your avatar's fingers. If you don't need to interact with physbones, you can use" +
-                " a VRCFury Haptic Touch Sender instead, which can only trigger haptics and does not steal a finger."
+                "Note: This steals one of the colliders from your avatar's fingers by default. If you don't need to interact with physbones," +
+                " you can use a VRCFury Haptic Touch Sender instead, which can only trigger haptics and does  not steal a finger."
             ));
-            
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("rootTransform"), "Root Transform Override"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("radius"), "Radius"));
             container.Add(VRCFuryEditorUtils.Prop(serializedObject.FindProperty("height"), "Height"));
+            container.Add(VRCFuryEditorUtils.Prop(
+                serializedObject.FindProperty("colliderOverride"),
+                label: "Collider Override",
+                tooltip: "Only hand and finger colliders affect physbones, but other colliders are available here for advanced setups."
+            ));
 
             return container;
         }
