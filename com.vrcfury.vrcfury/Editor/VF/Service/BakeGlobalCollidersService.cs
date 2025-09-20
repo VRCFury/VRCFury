@@ -139,7 +139,13 @@ namespace VF.Service {
                     objOverride = childObj,
                     onlyIfChildOfHead = true
                 });
-                if (globalContact.height <= globalContact.radius * 2) {
+                if (!IsFinger(bone)) {
+                    collider.transform = childObj;
+                    collider.radius = globalContact.radius;
+                    collider.height = globalContact.height;
+                    // Non-fingers need this for some reason...?
+                    collider.rotation = Quaternion.AngleAxis(90, Vector3.right);
+                } else if (globalContact.height <= globalContact.radius * 2) {
                     // It's a sphere
                     collider.transform = childObj;
                     collider.height = 0;
@@ -192,6 +198,11 @@ namespace VF.Service {
                 VRCFuryGlobalCollider.Override.RightFingerMiddle
             };
             return autoFingers.Contains(o);
+        }
+
+        private static bool IsFinger(HumanBodyBones bone) {
+            string name = bone.ToString();
+            return name.Contains("Proximal") || name.Contains("Intermediate") || name.Contains("Distal");
         }
     }
 }
