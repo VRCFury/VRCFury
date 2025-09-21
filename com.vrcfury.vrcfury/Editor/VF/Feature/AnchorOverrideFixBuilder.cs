@@ -24,7 +24,7 @@ namespace VF.Feature {
                 root = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Hips);
             }
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
-                if (skin.probeAnchor == null) skin.probeAnchor = root;
+                skin.probeAnchor = root;
             }
         }
         
@@ -32,8 +32,8 @@ namespace VF.Feature {
         public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
-                "This feature will set the anchor override for every mesh on your avatar to your chest (unless the " +
-                "mesh already has one). This will prevent different meshes from being lit differently on your body."));
+                "This feature will set the anchor override for every mesh on your avatar to your chest. " +
+                "This will prevent different meshes from being lit differently on your body."));
             return content;
         }
     }
