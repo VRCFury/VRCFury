@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
@@ -24,10 +25,12 @@ namespace VF.Feature {
                 root = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Hips);
             }
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
-                skin.probeAnchor = root;
+                if (((VFGameObject)skin.gameObject).GetComponentInSelfOrParent<VRCFuryKeepAnchorOverride>() == null) {
+                    skin.probeAnchor = root;
+                }
             }
         }
-        
+
         [FeatureEditor]
         public static VisualElement Editor() {
             var content = new VisualElement();
