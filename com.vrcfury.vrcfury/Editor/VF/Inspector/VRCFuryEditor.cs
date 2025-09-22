@@ -60,13 +60,13 @@ namespace VF.Inspector {
             }
 
             foreach (var c in vf.GetAllFeatures().OfType<MoveCollider>()) {
-                var transform = c.rootTransform != null ? c.rootTransform : (Transform)vf.owner();
-                var worldHeight = c.height * vf.owner().worldScale.x;
-                var worldRadius = c.radius * vf.owner().worldScale.x;
+                VFGameObject obj = c.rootTransform != null ? c.rootTransform : vf.owner();
+                var worldHeight = c.height * obj.worldScale.x;
+                var worldRadius = c.radius * obj.worldScale.x;
 
                 VRCFuryGizmoUtils.DrawCapsule(
-                    transform.position,
-                    transform.rotation * Quaternion.Euler(90, 0, 0),
+                    obj.worldPosition,
+                    obj.worldRotation * Quaternion.Euler(90, 0, 0),
                     worldHeight,
                     worldRadius,
                     Color.green
