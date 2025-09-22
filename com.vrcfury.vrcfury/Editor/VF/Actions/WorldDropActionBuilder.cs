@@ -19,7 +19,8 @@ namespace VF.Actions {
         public AnimationClip Build(WorldDropAction model, string actionName) {
             var onClip = NewClip();
             if (model.obj != null && worldDropService != null) {
-                model.obj.AddComponent<VRCFuryKeepAnchorOverride>();
+                var keepAnchorOverride = model.obj.AddComponent<VRCFuryKeepAnchorOverride>();
+                keepAnchorOverride.isWorldDrop = true;
                 var param = worldDropService.Add(model.obj, actionName);
                 // Doing this through an AAP will delay the drop by one frame, but that's exactly what we want
                 // because we want Turn On toggles to activate first (to reset the position) before the drop happens!
