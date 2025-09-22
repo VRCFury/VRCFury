@@ -34,7 +34,7 @@ namespace VF.Inspector {
                 });
             }
         }
-        
+
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFury vf, GizmoType gizmoType) {
             foreach (var g in vf.GetAllFeatures().OfType<Gizmo>()) {
@@ -57,6 +57,20 @@ namespace VF.Inspector {
                 if (g.sphereRadius > 0) {
                     VRCFuryGizmoUtils.DrawSphere(worldPos, g.sphereRadius * vf.owner().worldScale.x, Color.red);
                 }
+            }
+
+            foreach (var c in vf.GetAllFeatures().OfType<MoveCollider>()) {
+                VFGameObject obj = c.rootTransform != null ? c.rootTransform : vf.owner();
+                var worldHeight = c.height * obj.worldScale.x;
+                var worldRadius = c.radius * obj.worldScale.x;
+
+                VRCFuryGizmoUtils.DrawCapsule(
+                    obj.worldPosition,
+                    obj.worldRotation * Quaternion.Euler(90, 0, 0),
+                    worldHeight,
+                    worldRadius,
+                    Color.green
+                );
             }
         }
     }
