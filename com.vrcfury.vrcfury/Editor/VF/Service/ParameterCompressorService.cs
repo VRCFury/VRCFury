@@ -54,15 +54,17 @@ namespace VF.Service {
             }
 
             var numbersToOptimize =
-                paramsToOptimize.Where(i => i.type != VRCExpressionParameters.ValueType.Bool).ToList();
+                paramsToOptimize.Where(i => i.type != VRCExpressionParameters.ValueType.Bool).Take(255).ToList(); // max 255 numbers
             var boolsToOptimize =
                 paramsToOptimize.Where(i => i.type == VRCExpressionParameters.ValueType.Bool).ToList();
+            
+            // calculate remaing space after all optimizable floats and bools are unsynced, add 8 for index
+            var boolsInParallel = maxBits - (paramz.GetRaw().CalcTotalCost() - numbersToOptimize.Count() * 8 - boolsToOptimize.Count() + 8);
 
-            var boolsInParallel = maxBits - (paramz.GetRaw().CalcTotalCost() - numbersToOptimize.Count() * 8 - boolsToOptimize.Count() + 16);
+            if (boolsInParallel <= 0) boolsInParallel = 1; // just in case, it will fail later
+            boolsToOptimize = boolsToOptimize.Take(boolsInParallel * 255).ToList(); // max 255 batches
 
-            if (boolsInParallel <= 0) boolsInParallel = 1;
-
-            if (boolsToOptimize.Count <= boolsInParallel) boolsToOptimize.Clear();
+            if (boolsToOptimize.Count <= boolsInParallel) boolsToOptimize.Clear(); // can fit all remaining bools without compression
             var boolBatches = boolsToOptimize.Select(i => i.name)
                 .Chunk(boolsInParallel)
                 .Select(chunk => chunk.ToList())
@@ -250,7 +252,6 @@ namespace VF.Service {
             return paramz.GetRaw().parameters
                 .Select(p => (p.name, p.valueType))
                 .Where(p => eligible.Contains(p))
-                .Take(255)
                 .ToList();
         }
 
