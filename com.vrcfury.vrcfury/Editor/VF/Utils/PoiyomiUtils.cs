@@ -1,19 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 
 namespace VF.Utils {
     internal class PoiyomiUtils {
-        private static readonly Type ShaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
+        [CanBeNull]
+        public static readonly Type ShaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ThryEditor.ShaderOptimizer")
+            ?? ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
         private static readonly MethodInfo IsShaderUsingThryOptimizer = ShaderOptimizer?.GetMethod(
             "IsShaderUsingThryOptimizer",
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
         );
         private static readonly MethodInfo SetLockedForAllMaterials = ShaderOptimizer?.GetMethod(
             "SetLockedForAllMaterials",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+        );
+        private static readonly MethodInfo GetRenamedPropertySuffix = ShaderOptimizer?.GetMethod(
+            "GetRenamedPropertySuffix",
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
         );
         
@@ -44,7 +53,6 @@ namespace VF.Utils {
         }
 
         public class PoiProp {
-            public string renamedTo;
             public bool animated;
         }
 
@@ -57,20 +65,25 @@ namespace VF.Utils {
 
             if (lockedPropsCache.TryGetValue(mat, out var cached)) return cached;
 
-            var matRenameSuffix = mat.GetTag("thry_rename_suffix", false, "");
+            var matRenameSuffix = GetRenameSuffix(mat);
 
             var count = ShaderUtil.GetPropertyCount(shader);
             for (var i = 0; i < count; i++) {
                 var propertyName = ShaderUtil.GetPropertyName(shader, i);
+
+                var ogName = propertyName;
+                if (matRenameSuffix != null && ogName.EndsWith("_" + matRenameSuffix)) {
+                    ogName = ogName.Substring(0, ogName.Length - matRenameSuffix.Length - 1);
+                }
+                
                 var propType = ShaderUtil.GetPropertyType(shader, i);
-                var animatedTag = mat.GetTag(propertyName + "Animated", false, "");
+                var animatedTag = mat.GetTag(ogName + "Animated", false, "");
 
                 var isAnimated = animatedTag != "";
-                var renameSuffix = (animatedTag == "2" && matRenameSuffix != "") ? $"_{matRenameSuffix}" : "";
+                var renameSuffix = animatedTag == "2" ? $"_{matRenameSuffix}" : "";
                 void Add(string suffix) {
-                    output[$"{propertyName}{suffix}"] = new PoiProp() {
+                    output[$"{ogName}{renameSuffix}{suffix}"] = new PoiProp {
                         animated = isAnimated,
-                        renamedTo = $"{propertyName}{renameSuffix}{suffix}"
                     };
                 }
 
@@ -98,6 +111,12 @@ namespace VF.Utils {
             }
 
             return lockedPropsCache[mat] = output;
+        }
+
+        [CanBeNull]
+        public static string GetRenameSuffix(Material mat) {
+            if (GetRenamedPropertySuffix == null) return null;
+            return (string)GetRenamedPropertySuffix.Invoke(null, new object[] { mat });
         }
 
         public static void LockPoiyomi(Material mat) {

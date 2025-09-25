@@ -108,7 +108,7 @@ namespace VF.Inspector {
                     .SelectMany(skin => skin.bones)
                     .Where(bone => bone != null)
                     .ToArray();
-                var isInsideBone = bones.Any(bone => target.transform.IsChildOf(bone));
+                var isInsideBone = bones.Any(bone => target.owner().IsChildOf(bone));
                 var displayWarning = bones.Length > 0 && !isInsideBone;
                 boneWarning.SetVisible(displayWarning);
                 
@@ -220,6 +220,7 @@ namespace VF.Inspector {
                 var avatar = VRCAvatarUtils.GuessAvatarObject(c);
                 if (avatar != null) {
                     foreach (var light in avatar.GetComponentsInSelfAndChildren<Light>()) {
+                        if (light.type != LightType.Point && light.type != LightType.Spot) continue;
                         var path = light.owner().GetPath(avatar, true);
                         var type = VRCFuryHapticSocketEditor.GetLegacyDpsLightType(light);
                         if (type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Tip)
@@ -261,7 +262,7 @@ namespace VF.Inspector {
                 }
                 if (lightPaths.Any()) {
                     var warning = VRCFuryEditorUtils.Warn(
-                        "This avatar contains lights! Beware that these lights may interfere with SPS if they are enabled at the same time.\n\n" +
+                        "This avatar contains point or spot lights! Beware that these lights may interfere with SPS if they are enabled at the same time.\n\n" +
                         lightPaths.Join('\n')
                     );
                     output.Add(warning);
@@ -325,13 +326,13 @@ namespace VF.Inspector {
         [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         //[DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFuryHapticPlug plug, GizmoType gizmoType) {
-            var transform = plug.transform;
+            var transform = plug.owner();
             
             var cache = gizmoCache.GetOrCreateValue(plug);
-            if (cache.time == 0 || transform.position != cache.position || transform.rotation != cache.rotation || EditorApplication.timeSinceStartup > cache.time + 1) {
+            if (cache.time == 0 || transform.worldPosition != cache.position || transform.worldRotation != cache.rotation || EditorApplication.timeSinceStartup > cache.time + 1) {
                 cache.time = EditorApplication.timeSinceStartup;
-                cache.position = transform.position;
-                cache.rotation = transform.rotation;
+                cache.position = transform.worldPosition;
+                cache.rotation = transform.worldRotation;
                 cache.size = null;
                 cache.error = null;
                 try {
@@ -364,7 +365,7 @@ namespace VF.Inspector {
             var worldEnd = worldRoot + worldForward * worldLength;
             VRCFuryGizmoUtils.DrawCappedCylinder(worldRoot, worldEnd, worldRadius, color);
 
-            if (Selection.activeGameObject == plug.gameObject) {
+            if (Selection.activeGameObject == plug.owner()) {
                 VRCFuryGizmoUtils.DrawText(
                     worldRoot + (worldEnd - worldRoot) / 2,
                     "SPS Plug" + (error == null ? "" : $"\n({error})"),
@@ -385,7 +386,7 @@ namespace VF.Inspector {
         public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug plug) {
             var renderers = new List<Renderer>();
             if (plug.autoRenderer) {
-                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(plug.gameObject, !plug.useLegacyRendererFinder));
+                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(plug.owner(), !plug.useLegacyRendererFinder));
             } else {
                 renderers.AddRange(plug.configureTpsMesh.Where(r => r != null));
             }
@@ -399,7 +400,7 @@ namespace VF.Inspector {
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
             bool deferMaterialConfig = false
         ) {
-            var transform = plug.transform;
+            var transform = plug.owner();
             if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.sendersOnly)) {
                 return null;
             }

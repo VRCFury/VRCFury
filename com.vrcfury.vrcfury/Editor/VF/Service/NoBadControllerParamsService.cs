@@ -23,7 +23,7 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.UpgradeWrongParamTypes)]
         public void Apply() {
             foreach (var c in controllers.GetAllUsedControllers()) {
-                foreach (var tree in new AnimatorIterator.Trees().From(c.GetRaw())) {
+                foreach (var tree in new AnimatorIterator.Trees().From(c)) {
                     if (tree.blendType == BlendTreeType.Direct) {
                         tree.RewriteChildren(child => {
                             if (child.directBlendParameter == VFBlendTreeDirect.AlwaysOneParam) {
@@ -33,15 +33,15 @@ namespace VF.Service {
                         });
                     }
                 }
-                UpgradeWrongParamTypes(c.GetRaw());
-                RemoveWrongParamTypes(c.GetRaw());
+                UpgradeWrongParamTypes(c);
+                RemoveWrongParamTypes(c);
             }
         }
 
         public static void RemoveWrongParamTypes(VFController controller) {
-            var badBool = new Lazy<string>(() => controller.NewBool("InvalidParam"));
-            var badFloat = new Lazy<string>(() => controller.NewFloat("InvalidParamFloat"));
-            var badThreshold = new Lazy<string>(() => controller.NewBool("BadIntThreshold", def: true));
+            var badBool = new Lazy<string>(() => controller._NewBool("InvalidParam"));
+            var badFloat = new Lazy<string>(() => controller._NewFloat("InvalidParamFloat"));
+            var badThreshold = new Lazy<string>(() => controller._NewBool("BadIntThreshold", def: true));
             AnimatorCondition InvalidCondition() => new AnimatorCondition {
                 mode = AnimatorConditionMode.If,
                 parameter = badBool.Value,
@@ -54,7 +54,7 @@ namespace VF.Service {
             var paramTypes = controller.parameters
                 .ToImmutableDictionary(p => p.name, p => p.type);
             foreach (var layer in controller.GetLayers()) {
-                AnimatorIterator.RewriteConditions(layer, condition => {
+                layer.RewriteConditions(condition => {
                     var mode = condition.mode;
 
                     if (!paramTypes.TryGetValue(condition.parameter, out var type)) {
@@ -97,30 +97,58 @@ namespace VF.Service {
                 });
             }
 
+            bool Exists(string p) =>
+                p != null && paramTypes.ContainsKey(p);
             bool IsFloat(string p) =>
                 p != null && paramTypes.TryGetValue(p, out var type) && type == AnimatorControllerParameterType.Float;
-            bool IsBool(string p) =>
-                p != null && paramTypes.TryGetValue(p, out var type) && type == AnimatorControllerParameterType.Bool;
 
+            // Bad tree weights are weird.
+            // * If the parameter doesn't exist, the value is always 0
+            // * Otherwise, if the parameter is not a float, it uses the first float in the controller
+            //   If there is no other float, the value is always 0
             foreach (var tree in new AnimatorIterator.Trees().From(controller)) {
                 tree.RewriteParameters(p => {
-                    if (!IsFloat(p)) return badFloat.Value;
-                    return p;
+                    if (paramTypes.TryGetValue(p, out var type)) {
+                        if (type == AnimatorControllerParameterType.Float) {
+                            // It's valid
+                            return p;
+                        } else {
+                            // It exists but isn't a float, use the first float in the controller
+                            var firstFloat = controller.parameters
+                                .FirstOrDefault(pr => pr.type == AnimatorControllerParameterType.Float);
+                            if (firstFloat != null) {
+                                return firstFloat.name;
+                            } else {
+                                return badFloat.Value;
+                            }
+                        }
+                    } else {
+                        // It doesn't exist
+                        return badFloat.Value;
+                    }
                 });
             }
 
+            // Fix bad state fields
+            // Unity treats bad state fields very strangely.
+            // * If the parameter doesn't exist, it's as if the checkbox isn't even checked
+            // * Otherwise, if the parameter is the wrong type, its value gets used anyways
             foreach (var state in new AnimatorIterator.States().From(controller)) {
-                if (state.mirrorParameterActive && !IsBool(state.mirrorParameter))
-                    state.mirrorParameter = badBool.Value;
-                if (state.speedParameterActive && !IsFloat(state.speedParameter))
-                    state.speedParameter = badFloat.Value;
-                if (state.timeParameterActive && !IsFloat(state.timeParameter))
-                    state.timeParameter = badFloat.Value;
-                if (state.cycleOffsetParameterActive && !IsFloat(state.cycleOffsetParameter))
-                    state.cycleOffsetParameter = badFloat.Value;
+                if (state.mirrorParameterActive && !Exists(state.mirrorParameter)) {
+                    state.mirrorParameterActive = false;
+                }
+                if (state.speedParameterActive && !Exists(state.speedParameter)) {
+                    state.speedParameterActive = false;
+                }
+                if (state.timeParameterActive && !Exists(state.timeParameter)) {
+                    state.timeParameterActive = false;
+                }
+                if (state.cycleOffsetParameterActive && !Exists(state.cycleOffsetParameter)) {
+                    state.cycleOffsetParameterActive = false;
+                }
             }
-            
-            controller.GetRaw().Rewrite(AnimationRewriter.RewriteBinding(binding => {
+
+            controller.Rewrite(AnimationRewriter.RewriteBinding(binding => {
                 if (binding.GetPropType() == EditorCurveBindingType.Aap && !IsFloat(binding.propertyName)) {
                     return null;
                 }
@@ -148,7 +176,7 @@ namespace VF.Service {
             foreach (var p in controller.parameters) {
                 UpgradeType(p.name, p.type);
             }
-            foreach (var condition in new AnimatorIterator.Conditions().From(controller)) {
+            foreach (var condition in controller.layers.SelectMany(layer => layer.allTransitions).SelectMany(transition => transition.conditions)) {
                 var mode = condition.mode;
                 if (mode == AnimatorConditionMode.Equals || mode == AnimatorConditionMode.NotEqual) {
                     UpgradeType(condition.parameter, AnimatorControllerParameterType.Int);
@@ -197,7 +225,7 @@ namespace VF.Service {
 
             // Fix all of the usages
             foreach (var layer in controller.GetLayers()) {
-                AnimatorIterator.RewriteConditions(layer, c => {
+                layer.RewriteConditions(c => {
                     if (!paramTypes.TryGetValue(c.parameter, out var type)) {
                         return c;
                     }

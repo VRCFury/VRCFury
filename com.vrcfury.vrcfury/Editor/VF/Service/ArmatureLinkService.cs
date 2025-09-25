@@ -126,15 +126,12 @@ namespace VF.Service {
             
             Debug.Log("Armature Linking " + model.propBone.asVf().GetPath(avatarObject));
 
-            var linkMode = GetLinkMode(model, avatarObject);
-            var links = GetLinks(model, linkMode, avatarObject);
+            var links = GetLinks(model, avatarObject);
             if (links == null) {
                 return;
             }
 
-            var keepBoneOffsets = GetKeepBoneOffsets(model, linkMode);
-
-            var (_, _, scalingFactor) = GetScalingFactor(model, links, linkMode);
+            var (_, _, scalingFactor) = GetScalingFactor(model, links);
 
             var rootName = GetRootName(links.propMain, avatarObject);
 
@@ -211,7 +208,7 @@ namespace VF.Service {
                     }
                     parents.Reverse();
                     foreach (var parent in parents) {
-                        if (anim.activated.Contains(parent) || !parent.active) {
+                        if (anim.activated.Contains(parent) || !parent.active || animLink.ContainsValue(parent)) {
                             animatedParents.Add(parent);
                         }
                     }
@@ -219,8 +216,23 @@ namespace VF.Service {
 
                 // Move it on over
 
-                VFGameObject addedObject;
-                if (!string.IsNullOrWhiteSpace(model.forceMergedName) && linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) {
+                if (model.alignPosition) {
+                    propBone.worldPosition = avatarBone.worldPosition;
+                    AddDebugInfo($"Aligned to parent position");
+                }
+                if (model.alignRotation) {
+                    propBone.worldRotation = avatarBone.worldRotation;
+                    AddDebugInfo($"Aligned to parent rotation");
+                }
+                if (model.forceOneWorldScale) {
+                    propBone.worldScale = Vector3.one;
+                    AddDebugInfo($"Forced to 1 world scale");
+                } else if (model.alignScale) {
+                    propBone.worldScale = avatarBone.worldScale * scalingFactor;
+                    AddDebugInfo($"Aligned to parent scale (with multiplier {scalingFactor})");
+                }
+
+                if (!string.IsNullOrWhiteSpace(model.forceMergedName) && !model.recursive) {
                     // Special logic for force naming
                     var exists = avatarBone.Find(model.forceMergedName);
                     if (exists != null) {
@@ -229,63 +241,42 @@ namespace VF.Service {
                             $" '{exists.GetPath(avatarObject)}', but that object already exists at the destination.");
                     }
                     mover.Move(propBone, avatarBone, model.forceMergedName, defer: true);
-                    addedObject = propBone;
+                    pruneCheck.Add(propBone);
                     AddDebugInfo($"Forcefully named {model.forceMergedName} by Armature Link Force Naming." +
                                  $" Note that this may break toggles or offset animations for this object!");
                 } else {
                     var newName = $"[VF{new Random().Next(100,999)}] {propBone.name}";
                     if (propBone.name != rootName) newName += $" from {rootName}";
-                    addedObject = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone);
-                    var current = addedObject;
+                    var current = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone.parent);
+                    pruneCheck.Add(current);
 
-                    foreach (var a in animatedParents) {
-                        current = GameObjects.Create($"Toggle From {a.name}", current);
-                        current.active = a.active;
-                        animLink.Put(a, current);
-                        AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {a.name}");
-                    }
-
-                    var transformAnimated =
-                        anim.positionIsAnimated.Contains(propBone)
-                        || anim.rotationIsAnimated.Contains(propBone)
-                        || anim.scaleIsAnimated.Contains(propBone);
-                    if (transformAnimated) {
-                        current = GameObjects.Create("Original Parent (Retained for transform animation)", current, propBone.parent);
-
-                        // In a weird edge case, sometimes people mark all their clothing bones with an initial scale of 0,
-                        // to mark them as initially "hidden". In this case, we need to make sure that the transform maintainer
-                        // doesn't just permanently set the scale to 0.
-                        if (current.localScale.x == 0 || current.localScale.y == 0 || current.localScale.z == 0) {
-                            current.localScale = Vector3.one;
-                        }
-                        AddDebugInfo($"Detected that this object's transform is animated, so a wrapper object was added to keep its original parent transform");
+                    foreach (var parent in animatedParents) {
+                        // If this animated parent come from a toggle created during another armature link,
+                        // We have to follow the link back to find the original toggle source
+                        var original = animLink
+                            .Where(pair => pair.Value == parent)
+                            .Select(pair => pair.Key)
+                            .DefaultIfEmpty(parent)
+                            .First();
+                        current = GameObjects.Create($"Toggle From {original.name}", current);
+                        current.active = original.active;
+                        animLink.Put(original, current);
+                        AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {original.name}");
                     }
 
                     mover.Move(propBone, current, "Original Object", defer: true);
-                }
-                
-                if (!keepBoneOffsets) {
-                    addedObject.worldPosition = avatarBone.worldPosition;
-                    addedObject.worldRotation = avatarBone.worldRotation;
-                    addedObject.worldScale = avatarBone.worldScale * scalingFactor;
-                    AddDebugInfo($"Keep offsets is set to NO, so this object was snapped to its parent's transform");
-                }
-                if (model.forceOneWorldScale) {
-                    addedObject.worldScale = Vector3.one;
                 }
 
                 if (ShouldReuseBone()) {
                     RewriteSkins(propBone, avatarBone, avatarObject);
                 }
-
-                pruneCheck.Add(addedObject);
             }
         }
 
         private static void RewriteSkins(VFGameObject fromBone, VFGameObject toBone, VFGameObject avatarObject) {
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 // Update skins to use bones and bind poses from the original avatar
-                if (skin.bones.Contains(fromBone.transform)) {
+                if (skin.bones.Contains((Transform)fromBone)) {
                     var mesh = skin.GetMutableMesh("Needed to change bone bind-poses for Armature Link to re-use bones on base armature");
                     if (mesh != null) {
                         mesh.bindposes = skin.bones.Zip(mesh.bindposes, (a,b) => (a,b))
@@ -299,11 +290,11 @@ namespace VF.Service {
                     }
 
                     skin.bones = skin.bones
-                        .Select(b => b == fromBone ? toBone.transform : b)
+                        .Select(b => b == fromBone ? (Transform)toBone : b)
                         .ToArray();
                     VRCFuryEditorUtils.MarkDirty(skin);
                 }
-                
+
                 // We never rewrite rootBone because of two reasons:
                 // 1. It defines the origin of the bounds (which may rotate and be impossible to reproduce)
                 // 2. It defines the origin for verts that are not weight painted (unusual, but really hard
@@ -311,13 +302,14 @@ namespace VF.Service {
             }
         }
 
-        public static (float, float, float) GetScalingFactor(ArmatureLink model, Links links, ArmatureLink.ArmatureLinkMode linkMode) {
+        public static (float, float, float) GetScalingFactor(ArmatureLink model, Links links) {
             var avatarMainScale = Math.Abs(links.avatarMain.worldScale.x);
             var propMainScale = Math.Abs(links.propMain.worldScale.x);
+
             var scalingFactor = model.skinRewriteScalingFactor;
 
-            if (scalingFactor <= 0) {
-                if (linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot) {
+            if (model.autoScaleFactor) {
+                if (!model.recursive) {
                     scalingFactor = 1;
                 } else {
                     scalingFactor = propMainScale / avatarMainScale;
@@ -388,53 +380,19 @@ namespace VF.Service {
             return reasons;
         }
 
-        public static ArmatureLink.ArmatureLinkMode GetLinkMode(ArmatureLink model, VFGameObject avatarObject) {
-            if (model.linkMode == ArmatureLink.ArmatureLinkMode.Auto) {
-                var usesBonesFromProp = false;
-                var propRoot = model.propBone.asVf();
-                if (propRoot != null) {
-                    foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                        if (skin.owner().IsChildOf(propRoot)) continue;
-                        usesBonesFromProp |= skin.rootBone && skin.rootBone.asVf().IsChildOf(propRoot);
-                        usesBonesFromProp |= skin.bones.Any(bone => bone && bone.asVf().IsChildOf(propRoot));
-                    }
-                }
-
-                return usesBonesFromProp
-                    ? ArmatureLink.ArmatureLinkMode.SkinRewrite
-                    : ArmatureLink.ArmatureLinkMode.ReparentRoot;
-            }
-
-            return model.linkMode;
-        }
-
         private static string GetRootName(VFGameObject rootBone, VFGameObject avatarObject) {
             if (rootBone == null) return "Unknown";
 
             var isBone = false;
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 isBone |= skin.rootBone == rootBone;
-                isBone |= skin.bones.Contains(rootBone.transform);
+                isBone |= skin.bones.Contains((Transform)rootBone);
             }
             isBone |= rootBone.name.ToLower().Trim() == "armature";
 
             if (isBone) return GetRootName(rootBone.parent, avatarObject);
 
             return rootBone.name;
-        }
-
-        public static bool GetKeepBoneOffsets(ArmatureLink model, ArmatureLink.ArmatureLinkMode linkMode) {
-            if (model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Auto) {
-                return linkMode == ArmatureLink.ArmatureLinkMode.ReparentRoot;
-            }
-            return model.keepBoneOffsets2 == ArmatureLink.KeepBoneOffsets.Yes;
-        }
-
-        public enum ExtraBoneHack {
-            None,
-            ClothesHaveIt,
-            AvatarHasIt,
-            AvatarHasFake
         }
 
         public class Links {
@@ -444,8 +402,7 @@ namespace VF.Service {
 
             public VFGameObject propMain;
             public VFGameObject avatarMain;
-            public ExtraBoneHack chestUpHack = ExtraBoneHack.None;
-            public ExtraBoneHack topFut = ExtraBoneHack.None;
+            public ISet<String> hacksUsed = new HashSet<string>();
             
             // left=bone in prop | right=bone in avatar
             public readonly Stack<(VFGameObject, VFGameObject)> mergeBones
@@ -460,7 +417,7 @@ namespace VF.Service {
             try {
                 var linkFrom = model.propBone;
                 if (linkFrom == null || !obj.IsChildOf(linkFrom)) return null;
-                var links = GetLinks(model, GetLinkMode(model, avatarObject), avatarObject);
+                var links = GetLinks(model, avatarObject);
                 return links.mergeBones
                     .Where(pair => pair.Item1 == obj)
                     .Select(pair => pair.Item2)
@@ -470,7 +427,7 @@ namespace VF.Service {
             }
         }
 
-        public static Links GetLinks(ArmatureLink model, ArmatureLink.ArmatureLinkMode linkMode, VFGameObject avatarObject) {
+        public static Links GetLinks(ArmatureLink model, VFGameObject avatarObject) {
             VFGameObject propBone = model.propBone;
             if (propBone == null) return null;
 
@@ -502,7 +459,7 @@ namespace VF.Service {
 
                     if (!string.IsNullOrWhiteSpace(to.offset)) {
                         var path = obj.GetPath(avatarObject);
-                        var finalPath = ClipRewriter.Join(path, to.offset);
+                        var finalPath = ClipRewritersService.Join(path, to.offset);
                         obj = avatarObject.Find(finalPath);
                         if (obj == null) throw new Exception($"Failed to find object at path '{finalPath}'");
                     }
@@ -520,6 +477,14 @@ namespace VF.Service {
             if (avatarBone == null) {
                 throw new Exception(exceptions.Join('\n'));
             }
+            
+            if (avatarBone.name.ToLower().Contains("armature") || avatarBone.name.ToLower().Contains("skeleton")) {
+                var hips = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Hips);
+                var spine = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Spine);
+                if (hips == avatarBone && spine.parent != hips) {
+                    throw new Exception("Your avatar's fbx rig definition has the 'Hips' bone set incorrectly to the armature root instead of the actual Hips.");
+                }
+            }
 
             var removeBoneSuffix = model.removeBoneSuffix;
             if (string.IsNullOrWhiteSpace(model.removeBoneSuffix)) {
@@ -533,7 +498,7 @@ namespace VF.Service {
             var links = new Links();
             links.mergeBones.Push((propBone, avatarBone));
 
-            if (linkMode != ArmatureLink.ArmatureLinkMode.ReparentRoot) {
+            if (model.recursive) {
                 var checkStack = new Stack<(VFGameObject, VFGameObject)>();
                 checkStack.Push((propBone, avatarBone));
                 while (checkStack.Count > 0) {
@@ -547,38 +512,26 @@ namespace VF.Service {
 
                         // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
                         var recurseButDoNotLink = false;
-                        if (childAvatarBone == null) {
-                            // Clothes have ChestUp, but avatar does not?
-                            if (childPropBone.name.Contains("ChestUp")) {
-                                childAvatarBone = checkAvatarBone;
-                                links.chestUpHack = ExtraBoneHack.ClothesHaveIt;
-                                recurseButDoNotLink = true;
-                            }
-                            // Clothes have TopFut, but avatar does not?
-                            if (childPropBone.name == "TopFut_L" || childPropBone.name == "TopFut_R") {
-                                childAvatarBone = checkAvatarBone;
-                                links.topFut = ExtraBoneHack.ClothesHaveIt;
-                                recurseButDoNotLink = true;
-                            }
-                        }
-                        if (childAvatarBone == null) {
-                            childAvatarBone = checkAvatarBone.Find("ChestUp/" + searchName);
-                            if (childAvatarBone != null) links.chestUpHack = ExtraBoneHack.AvatarHasIt;
-                        }
-                        if (childAvatarBone == null) {
-                            childAvatarBone = checkAvatarBone.Find("TopFut_L/" + searchName);
-                            if (childAvatarBone != null) links.topFut = ExtraBoneHack.AvatarHasIt;
-                        }
-                        if (childAvatarBone == null) {
-                            childAvatarBone = checkAvatarBone.Find("TopFut_R/" + searchName);
-                            if (childAvatarBone != null) links.topFut = ExtraBoneHack.AvatarHasIt;
-                        }
-                        if (childAvatarBone == null) {
-                            // Clothes have real ChestUp, but avatar has ChestUp that is fake and empty?
-                            // (happens on some versions of rex)
-                            if (checkAvatarBone.name.Contains("ChestUp")) {
-                                childAvatarBone = checkAvatarBone.parent.Find(searchName);
-                                if (childAvatarBone != null) links.chestUpHack = ExtraBoneHack.AvatarHasFake;
+                        foreach (var b in new[] { "ChestUp", "TopFut_L", "TopFut_R", "HeadGRP" }) {
+                            if (childAvatarBone == null) {
+                                if (childPropBone.name == b) {
+                                    childAvatarBone = checkAvatarBone;
+                                    links.hacksUsed.Add("Clothes have extra mid-bone: " + b);
+                                    recurseButDoNotLink = true;
+                                    break;
+                                }
+                                childAvatarBone = checkAvatarBone.Find(b + "/" + searchName);
+                                if (childAvatarBone != null) {
+                                    links.hacksUsed.Add("Avatar has extra mid-bone: " + b);
+                                    break;
+                                }
+                                if (checkAvatarBone.name == b) {
+                                    childAvatarBone = checkAvatarBone.parent.Find(searchName);
+                                    if (childAvatarBone != null) {
+                                        links.hacksUsed.Add("Avatar has fake mid-bone: " + b);
+                                        break;
+                                    }
+                                }
                             }
                         }
 

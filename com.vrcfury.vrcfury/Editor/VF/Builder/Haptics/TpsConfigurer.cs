@@ -34,7 +34,11 @@ namespace VF.Builder.Haptics {
                 var staticMesh = renderer.GetMesh();
                 var meshFilter = obj.GetComponent<MeshFilter>();
                 var mats = renderer.sharedMaterials;
-                var anchor = renderer.probeAnchor;
+                var shadowCastingMode = renderer.shadowCastingMode;
+                var receiveShadows = renderer.receiveShadows;
+                var lightProbeUsage = renderer.lightProbeUsage;
+                var reflectionProbeUsage = renderer.reflectionProbeUsage;
+                var probeAnchor = renderer.probeAnchor;
 
                 Object.DestroyImmediate(renderer);
                 Object.DestroyImmediate(meshFilter);
@@ -42,7 +46,11 @@ namespace VF.Builder.Haptics {
                 var newSkin = obj.AddComponent<SkinnedMeshRenderer>();
                 newSkin.SetMesh(staticMesh);
                 newSkin.sharedMaterials = mats;
-                newSkin.probeAnchor = anchor;
+                newSkin.shadowCastingMode = shadowCastingMode;
+                newSkin.receiveShadows = receiveShadows;
+                newSkin.lightProbeUsage = lightProbeUsage;
+                newSkin.reflectionProbeUsage = reflectionProbeUsage;
+                newSkin.probeAnchor = probeAnchor;
                 renderer = newSkin;
             }
 
@@ -137,7 +145,7 @@ namespace VF.Builder.Haptics {
         }
 
         public static bool IsLocked(Material mat) {
-            return mat && mat.shader && mat.shader.name.ToLower().Contains("locked");
+            return mat != null && mat.shader && mat.shader.name.ToLower().Contains("locked");
         }
 
         public static bool HasDpsOrTpsMaterial(Renderer r) {

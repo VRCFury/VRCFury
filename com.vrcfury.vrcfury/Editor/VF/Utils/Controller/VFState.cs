@@ -1,22 +1,27 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
-using VF.Builder.Exceptions;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
+using Object = UnityEngine.Object;
 
 namespace VF.Utils.Controller {
-    internal class VFState {
+    internal class VFState : VFBehaviourContainer {
+        private VFLayer layer;
         private ChildAnimatorState node;
+        private readonly AnimatorState state;
         private readonly AnimatorStateMachine stateMachine;
 
         private static readonly float X_OFFSET = 250;
         private static readonly float Y_OFFSET = 80;
 
-        public VFState(ChildAnimatorState node, AnimatorStateMachine stateMachine) {
+        public VFState(VFLayer layer, ChildAnimatorState node, AnimatorStateMachine stateMachine) {
+            this.layer = layer;
             this.node = node;
+            this.state = node.state;
             this.stateMachine = stateMachine;
         }
 
@@ -36,7 +41,7 @@ namespace VF.Utils.Controller {
             pos.y = v.y;
             node.position = pos;
             var states = stateMachine.states;
-            var index = Array.FindIndex(states, n => n.state == node.state);
+            var index = Array.FindIndex(states, n => n.state == state);
             if (index >= 0) {
                 states[index] = node;
                 stateMachine.states = states;
@@ -53,27 +58,27 @@ namespace VF.Utils.Controller {
         }
 
         public VFState WithAnimation(Motion motion) {
-            node.state.motion = motion;
+            state.motion = motion;
             return this;
         }
         public VFState MotionTime(VFAFloat param) {
-            node.state.timeParameterActive = true;
-            node.state.timeParameter = param;
+            state.timeParameterActive = true;
+            state.timeParameter = param;
             return this;
         }
         public VFState Speed(float speed) {
-            node.state.speed = speed;
+            state.speed = speed;
             return this;
         }
 
         private VRCAvatarParameterDriver GetDriver() {
-            var exists = node.state.behaviours
+            var exists = state.behaviours
                 .OfType<VRCAvatarParameterDriver>()
                 .FirstOrDefault(b => !b.localOnly);
             if (exists != null) {
                 return exists;
             }
-            var driver = node.state.VAddStateMachineBehaviour<VRCAvatarParameterDriver>();
+            var driver = this.AddBehaviour<VRCAvatarParameterDriver>();
             driver.localOnly = false;
             return driver;
         }
@@ -135,24 +140,24 @@ namespace VF.Utils.Controller {
         }
 
         public VFEntryTransition TransitionsFromEntry() {
-            return new VFEntryTransition(() => VrcfObjectFactory.Register(stateMachine.AddEntryTransition(node.state)));
+            return new VFEntryTransition(() => VrcfObjectFactory.Register(stateMachine.AddEntryTransition(state)));
         }
         public VFTransition TransitionsFromAny() {
-            return new VFTransition(() => VrcfObjectFactory.Register(stateMachine.AddAnyStateTransition(node.state)));
+            return new VFTransition(() => VrcfObjectFactory.Register(stateMachine.AddAnyStateTransition(state)));
         }
         public VFTransition TransitionsTo(VFState other) {
-            return new VFTransition(() => VrcfObjectFactory.Register(node.state.AddTransition(other.node.state)));
+            return new VFTransition(() => VrcfObjectFactory.Register(state.AddTransition(other.state)));
         }
         public VFTransition TransitionsTo(AnimatorState other) {
-            return new VFTransition(() => VrcfObjectFactory.Register(node.state.AddTransition(other)));
+            return new VFTransition(() => VrcfObjectFactory.Register(state.AddTransition(other)));
         }
         public VFTransition TransitionsToExit() {
-            return new VFTransition(() => VrcfObjectFactory.Register(node.state.AddExitTransition()));
+            return new VFTransition(() => VrcfObjectFactory.Register(state.AddExitTransition()));
         }
 
-        public AnimatorState GetRaw() {
-            return node.state;
-        }
+        //public AnimatorState GetRaw() {
+        //    return state;
+        //}
 
         public static void FakeAnyState(params (VFState,VFCondition)[] states) {
             if (states.Length <= 1) return;
@@ -174,5 +179,17 @@ namespace VF.Utils.Controller {
                 }
             }
         }
+
+        public void SetAsDefaultState() {
+            stateMachine.defaultState = state;
+        }
+
+        public StateMachineBehaviour[] behaviours {
+            get => state.behaviours;
+            set => state.behaviours = value;
+        }
+
+        public string prettyName => $"{layer.prettyName} State {state.name}";
+        public Object behaviourContainer => state;
     }
 }

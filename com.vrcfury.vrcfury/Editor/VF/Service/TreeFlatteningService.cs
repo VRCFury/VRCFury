@@ -22,7 +22,7 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.TreeFlattening)]
         public void Optimize() {
             var alwaysOneParams = GetAlwaysOneParams();
-            foreach (var state in new AnimatorIterator.States().From(fx.GetRaw()).Where(VFLayer.Created)) {
+            foreach (var state in new AnimatorIterator.States().From(fx).Where(VFLayer.Created)) {
                 if (state.motion is BlendTree tree) {
                     Optimize(tree, alwaysOneParams);
                     if (tree.blendType == BlendTreeType.Direct
@@ -35,7 +35,7 @@ namespace VF.Service {
 
             foreach (var c in controllers.GetAllUsedControllers()) {
                 foreach (var layer in c.GetLayers()) {
-                    AnimatorIterator.RewriteConditions(layer, cond => {
+                    layer.RewriteConditions(cond => {
                         if (cond.parameter == VFBlendTreeDirect.AlwaysOneParam)
                             cond.parameter = c.One();
                         return cond;
@@ -62,9 +62,11 @@ namespace VF.Service {
                 .Select(p => p.name);
             animatedParams.UnionWith(vrcControlled);
             var driven = controllers.GetAllUsedControllers()
-                .SelectMany(c => new AnimatorIterator.Behaviours().From(c.GetRaw()))
+                .SelectMany(c => c.layers)
+                .SelectMany(l => l.allBehaviours)
                 .OfType<VRCAvatarParameterDriver>()
-                .SelectMany(driver => driver.parameters.Select(p => p.name));
+                .SelectMany(driver => driver.parameters)
+                .Select(p => p.name);
             animatedParams.UnionWith(driven);
             var aaps = fx.GetClips()
                 .SelectMany(clip => clip.GetFloatBindings())

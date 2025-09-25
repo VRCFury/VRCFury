@@ -36,12 +36,11 @@ namespace VF.Hooks {
             callbacks.Add(c);
         }
         
-        private class VrcPreuploadHook : IVRCSDKPreprocessAvatarCallback {
-            public int callbackOrder => int.MinValue;
+        private class VrcPreuploadHook : VrcfAvatarPreprocessor {
+            protected override int order => int.MinValue;
 
-            public bool OnPreprocessAvatar(GameObject _vrcCloneObject) {
+            protected override void Process(VFGameObject _) {
                 callbacks.Clear();
-                return true;
             }
         }
     }

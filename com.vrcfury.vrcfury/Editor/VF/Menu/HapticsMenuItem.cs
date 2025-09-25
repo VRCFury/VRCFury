@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
@@ -28,7 +29,7 @@ namespace VF.Menu {
             DialogUtils.DisplayDialog(DialogTitle,
                 $"{(plug ? "Plug" : "Socket")} created!\n\nDon't forget to attach it to an appropriate bone on your avatar and rotate it so it faces the correct direction!", "Ok");
             
-            var sv = EditorWindow.GetWindow<SceneView>();
+            var sv = EditorWindowFinder.GetWindows<SceneView>().FirstOrDefault();
             if (sv != null) sv.drawGizmos = true;
         }
     }

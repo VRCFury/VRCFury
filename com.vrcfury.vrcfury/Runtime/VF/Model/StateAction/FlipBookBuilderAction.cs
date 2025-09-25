@@ -5,11 +5,11 @@ namespace VF.Model.StateAction {
     [Serializable]
     internal class FlipBookBuilderAction : Action {
         [Obsolete] public List<State> states;
-        public List<FlipBookPage> pages;
+        public List<FlipBookPage> pages = new List<FlipBookPage>();
 
         [Serializable]
         public class FlipBookPage {
-            public State state;
+            public State state = new State();
         }
 
         public override bool Upgrade(int fromVersion) {

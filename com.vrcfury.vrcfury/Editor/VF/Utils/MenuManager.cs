@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -140,8 +141,12 @@ namespace VF.Utils {
             string name,
             Func<VRCExpressionsMenu.Control,bool> predicate = null
         ) {
-            string Normalize(string a) =>
-                Regex.Replace(Regex.Replace(a.ToLower(), @"<.*?>", ""), @"\s\s+", " ").Trim();
+            string Normalize(string a) => a
+                .ToLower()
+                .RemoveHtmlTags()
+                .Replace("\n", " ")
+                .Replace("\\n", " ")
+                .NormalizeSpaces();
             string[] GetSlugs(string a) => Regex.Replace(a, @"<.*?>", "`")
                 .Split('`')
                 .Select(slug => Normalize(slug))
@@ -305,26 +310,8 @@ namespace VF.Utils {
 
         private VRCExpressionsMenu.Control CloneControl(VRCExpressionsMenu.Control from) {
             var control = NewControl();
-            control.name = from.name;
-            control.icon = from.icon;
-            control.type = from.type;
-            control.parameter = CloneControlParam(from.parameter);
-            control.value = from.value;
-            control.style = from.style;
-            control.subMenu = from.subMenu;
-            control.labels = from.labels;
-            control.subParameters = from.subParameters == null
-                ? null
-                : new List<VRCExpressionsMenu.Control.Parameter>(from.subParameters)
-                    .Select(p => CloneControlParam(p))
-                    .ToArray();
+            UnitySerializationUtils.CloneSerializable(from, control);
             return control;
-        }
-        private VRCExpressionsMenu.Control.Parameter CloneControlParam(VRCExpressionsMenu.Control.Parameter from) {
-            if (from == null) return null;
-            return new VRCExpressionsMenu.Control.Parameter {
-                name = from.name
-            };
         }
 
         public static IList<string> Slice(IEnumerable<string> arr, int count) {
@@ -333,11 +320,13 @@ namespace VF.Utils {
 
         public void SortMenu() {
             rootMenu.ForEachMenu((menu, path) => {
-                menu.controls.Sort((a, b) => {
+                // Do not use .Sort, because it's unstable and will not maintain order if you return 0
+                // .OrderBy is a stable sort.
+                menu.controls = menu.controls.OrderBy(a => a, Comparer<VRCExpressionsMenu.Control>.Create((a,b) => {
                     sortPositions.TryGetValue(a, out var aPos);
                     sortPositions.TryGetValue(b, out var bPos);
                     return aPos - bPos;
-                });
+                })).ToList();
             });
         }
 

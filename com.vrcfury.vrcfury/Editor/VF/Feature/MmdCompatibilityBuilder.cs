@@ -67,7 +67,6 @@ namespace VF.Feature {
                 .ToImmutableHashSet();
             var layersToDisable = fx.GetLayers()
                 .Where(l => layerNamesToDisable.Contains(l.name))
-                .Select(l => l.stateMachine)
                 .ToArray();
             
             if (layersToDisable.Length == 0 && string.IsNullOrWhiteSpace(model.globalParam)) {
@@ -88,10 +87,10 @@ namespace VF.Feature {
 
             if (layersToDisable.Length > 0) {
                 foreach (var l in layersToDisable) {
-                    var driveOff = detected.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
+                    var driveOff = detected.AddBehaviour<VRCAnimatorLayerControl>();
                     layerControlService.Register(driveOff, l);
                     driveOff.goalWeight = 0;
-                    var driveOn = notDetected.GetRaw().VAddStateMachineBehaviour<VRCAnimatorLayerControl>();
+                    var driveOn = notDetected.AddBehaviour<VRCAnimatorLayerControl>();
                     layerControlService.Register(driveOn, l);
                     driveOn.goalWeight = 1;
                 }

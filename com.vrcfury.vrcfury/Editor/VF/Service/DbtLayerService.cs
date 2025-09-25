@@ -12,7 +12,7 @@ namespace VF.Service {
 
         public VFBlendTreeDirect Create(string name = null) {
             if (name == null) {
-                name = $"DBT for {parent.parent.GetType().Name}";
+                name = parent.parent.GetType().Name;
             }
             var directLayer = fx.NewLayer(name);
             var tree = VFBlendTreeDirect.Create("DBT");

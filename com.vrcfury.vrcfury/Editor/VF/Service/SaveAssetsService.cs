@@ -18,32 +18,38 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.SaveAssets)]
         public void Run() {
-            var tmpDir = tmpDirService.GetTempDir();
+            // This works without WithoutAssetEditing in <2022, but in unity 6+, saving an asset during AssetEditing
+            // causes the Asset Path to never show up until AssetEditing is ended, which breaks NeedsSaved and
+            // AttachAsset
+            VRCFuryAssetDatabase.WithoutAssetEditing(() => {
+                var tmpDir = tmpDirService.GetTempDir();
 
-            // Save mats and meshes
-            foreach (var component in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
-                SaveUnsavedComponentAssets(component, tmpDir);
-            }
-            
-            // Special handling for mask and controller names
-            foreach (var controller in controllers.GetAllUsedControllers()) {
-                foreach (var layer in controller.GetLayers()) {
-                    if (layer.mask != null) {
-                        layer.mask.name = "Mask for " + layer.name;
-                    }
+                // Save mats and meshes
+                foreach (var component in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
+                    SaveUnsavedComponentAssets(component, tmpDir);
                 }
-                SaveAssetAndChildren(
-                    controller.GetRaw(),
-                    $"VRCFury {controller.GetType().ToString()}",
-                    tmpDir,
-                    true
-                );
-            }
 
-            // Save everything else
-            foreach (var component in avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                SaveUnsavedComponentAssets(component, tmpDir);
-            }
+                // Special handling for mask and controller names
+                foreach (var controller in controllers.GetAllUsedControllers()) {
+                    foreach (var layer in controller.GetLayers()) {
+                        if (layer.mask != null) {
+                            layer.mask.name = "Mask for " + layer.name;
+                        }
+                    }
+
+                    SaveAssetAndChildren(
+                        controller.GetRaw(),
+                        $"VRCFury {controller.GetType().ToString()}",
+                        tmpDir,
+                        true
+                    );
+                }
+
+                // Save everything else
+                foreach (var component in avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
+                    SaveUnsavedComponentAssets(component, tmpDir);
+                }
+            });
         }
 
         public static void SaveUnsavedComponentAssets(UnityEngine.Component component, string tmpDir) {
@@ -54,7 +60,7 @@ namespace VF.Service {
                 } else if (asset is VRCExpressionParameters) {
                     filename = "VRCFury Params";
                 } else {
-                    filename = $"VRCFury {asset.GetType().Name} for {component.owner().name}";
+                    filename = $"VRCFury {asset.name} - {component.owner().name}";
                 }
                 SaveAssetAndChildren(
                     asset,

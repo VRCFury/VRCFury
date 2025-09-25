@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using VF.Injector;
 
 namespace VF.Service {
@@ -26,6 +27,7 @@ namespace VF.Service {
                 : new Source { objectPath = "__global", offset = 0, originalParamName = uniqueName };
         }
 
+        [Serializable]
         public struct Source {
             public string objectPath;
             public string originalParamName;

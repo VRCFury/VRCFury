@@ -2,41 +2,50 @@
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using VRC.SDKBase.Editor.BuildPipeline;
-using Debug = UnityEngine.Debug;
+using VF.Builder;
+#if VRC_NEW_PUBLIC_SDK
+using VRC.SDK3A.Editor;
+#endif
 
 namespace VF.Hooks {
-    internal class IsActuallyUploadingHook : IVRCSDKPreprocessAvatarCallback {
-        public int callbackOrder => int.MinValue;
+    internal static class IsActuallyUploadingHook {
+        
         private static bool actuallyUploading = false;
-        public bool OnPreprocessAvatar(GameObject obj) {
-            EditorApplication.delayCall += () => actuallyUploading = false;
-            actuallyUploading = DetermineIfActuallyUploading();
-            return true;
-        }
-
-        private static bool DetermineIfActuallyUploading() {
-            if (Application.isPlaying) return false;
-            var stack = new StackTrace().GetFrames();
-            if (stack == null) return true;
-            var preprocessFrame = stack
-                .Select((frame, i) => (frame, i))
-                .Where(f => f.frame.GetMethod().Name == "OnPreprocessAvatar" &&
-                            (f.frame.GetMethod().DeclaringType?.FullName ?? "").StartsWith("VRC."))
-                .Select(pair => pair.i)
-                .DefaultIfEmpty(-1)
-                .Last();
-            if (preprocessFrame < 0) return false; // Not called through preprocessor hook
-            if (preprocessFrame >= stack.Length - 1) return true;
-
-            var callingClass = stack[preprocessFrame + 1].GetMethod().DeclaringType?.FullName;
-            if (callingClass == null) return true;
-            Debug.Log("Build was invoked by " + callingClass);
-            return callingClass.StartsWith("VRC.");
-        }
-
         public static bool Get() {
             return actuallyUploading;
+        }
+
+#if VRC_NEW_PUBLIC_SDK
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            VRCSdkControlPanel.OnSdkPanelEnable += (_, _2) => {
+                if (VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder)) {
+                    builder.OnSdkBuildStart += (_3, _4) => actuallyUploading = true;
+                    builder.OnSdkBuildFinish += (_3, _4) => actuallyUploading = false;
+                }
+            };
+        }
+#endif
+
+        private static void LegacyUpdate() {
+            if (Application.isPlaying) {
+                actuallyUploading = false;
+            } else {
+                var stack = new StackTrace().GetFrames();
+                actuallyUploading = stack.Any(frame =>
+                    (frame.GetMethod().DeclaringType?.FullName ?? "").Contains("VRC.SDK3.Builder.VRCAvatarBuilder"));
+                EditorApplication.delayCall += () => actuallyUploading = false;
+            }
+        }
+
+        internal class LegacyPreprocessor : VrcfAvatarPreprocessor {
+            protected override int order => int.MinValue;
+
+            protected override void Process(VFGameObject _) {
+#if ! VRC_NEW_PUBLIC_SDK
+                LegacyUpdate();
+#endif
+            }
         }
     }
 }

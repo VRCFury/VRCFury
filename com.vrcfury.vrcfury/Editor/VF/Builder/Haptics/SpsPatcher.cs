@@ -233,7 +233,8 @@ namespace VF.Builder.Haptics {
             return (pass, patchedPrograms);
         }
 
-        private static string PatchProgram(string program, bool isCgProgram, string spsMain, string cgIncludes, bool isSurfaceShader) {
+        private static string PatchProgram(string originalProgram, bool isCgProgram, string spsMain, string cgIncludes, bool isSurfaceShader) {
+            var program = originalProgram;
             var newVertFunction = "spsVert";
             var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
             string oldVertFunction = null;
@@ -343,13 +344,18 @@ namespace VF.Builder.Haptics {
                 var paramList = foundOldVert[0].Item1;
                 returnType = foundOldVert[0].Item2;
 
+                if (paramList.Trim().IsEmpty()) {
+                    // Used occasionally as an "empty" pass. The vertex shader doesn't accept any params, so it's basically impossible
+                    // for the pass to render anything, so just return it as is.
+                    return originalProgram;
+                }
+
                 var rewrittenInputParams = RewriteParamList(paramList, rewriteFirstParamTypeTo: "SpsInputs");
                 newInputParams = rewrittenInputParams.rewritten;
                 oldStructType = rewrittenInputParams.firstParamType;
                 mainParamName = rewrittenInputParams.firstParamName;
-                var firstParamType = rewrittenInputParams.firstParamType;
                 var rewrittenPassParams = RewriteParamList(paramList, stripTypes: true,
-                    rewriteFirstParamNameTo: $"({firstParamType}){mainParamName}");
+                    rewriteFirstParamNameTo: $"({oldStructType}){mainParamName}");
                 newPassParams = rewrittenPassParams.rewritten;
             } else {
                 oldStructType = "appdata_full";
@@ -379,6 +385,7 @@ namespace VF.Builder.Haptics {
             void AddParamIfMissing(string keyword, string defaultName, string defaultType) {
                 newStructBody.Add($"#ifndef SPS_STRUCT_{keyword}_NAME");
                 newStructBody.Add($"  {defaultType} {defaultName} : {keyword};");
+                newStructBody.Add($"  #define SPS_STRUCT_{keyword}_TYPE {defaultType}");
                 newStructBody.Add($"  #define SPS_STRUCT_{keyword}_TYPE_{defaultType}");
                 newStructBody.Add($"  #define SPS_STRUCT_{keyword}_NAME {defaultName}");
                 newStructBody.Add($"#endif");
@@ -404,7 +411,9 @@ namespace VF.Builder.Haptics {
             newBody.Add($"struct SpsInputs{extends} {{");
             newBody.AddRange(newStructBody);
             newBody.Add("};");
-            
+
+            newBody.Add("#define SPS_VANILLA_VERT_PARAM_TYPE " + oldStructType);
+
             newBody.Add(spsMain);
 
             newBody.Add($"{returnType} {newVertFunction}({newInputParams}) {{");
@@ -448,6 +457,7 @@ namespace VF.Builder.Haptics {
                     if (keyword.EndsWith("0")) {
                         keyword = keyword.Substring(0, keyword.Length - 1);
                     }
+                    output.Add($"#define SPS_STRUCT_{keyword}_TYPE {type}");
                     output.Add($"#define SPS_STRUCT_{keyword}_TYPE_{type}");
                     output.Add($"#define SPS_STRUCT_{keyword}_NAME {name}");
                 }
@@ -726,19 +736,15 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            return (ReadFile(path), isBuiltIn);
+            return (ReadFile(path, true), isBuiltIn);
         }
-        private static string ReadFile(string path) {
+        private static string ReadFile(string path, bool isMainShader = false) {
             string content;
-            if (path.EndsWith("orlshader")) {
-                var sourceAsset = AssetDatabase.LoadAllAssetsAtPath(path).OfType<TextAsset>().FirstOrDefault();
-                if (sourceAsset == null) throw new Exception("Failed to find orlshader source");
-                content = sourceAsset.text;
-            } else if (path.EndsWith("lilcontainer")) {
+            if (isMainShader && !path.EndsWith(".shader") && !path.EndsWith(".shader.orig")) {
                 var sourceAsset = AssetDatabase.LoadAllAssetsAtPath(path).OfType<TextAsset>().FirstOrDefault();
                 if (sourceAsset != null) {
                     content = sourceAsset.text;
-                } else {
+                } else if (path.EndsWith(".lilcontainer")) {
                     var lilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
                     var unpackMethod = lilShaderContainer.GetMethods()
                         .First(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
@@ -746,6 +752,8 @@ namespace VF.Builder.Haptics {
                     var shaderLibsPath = (string)lilShaderContainer.GetField("shaderLibsPath",
                         BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
                     content = content.Replace("\"Includes", "\"" + shaderLibsPath);
+                } else {
+                    throw new Exception("Failed to find source for post-processed shader: " + path);
                 }
             } else {
                 StreamReader sr = new StreamReader(path);

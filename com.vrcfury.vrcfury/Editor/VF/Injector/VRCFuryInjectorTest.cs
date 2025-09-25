@@ -13,7 +13,7 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Injector {
     internal static class VRCFuryInjectorTest {
         [InitializeOnLoadMethod]
-        public static void Init() {
+        private static void Init() {
             try {
                 TestUnsafe();
             } catch (Exception e) {
@@ -73,12 +73,22 @@ namespace VF.Injector {
                         injector.Set(Activator.CreateInstance(modelType));
                         injector.Set("actionName", null);
                         injector.Set("animObject", null);
-                        injector.Set("offClip", null);
                         injector.Set(typeof(ActionClipService), null);
                         var buildMethod = builderType.GetMethod("Build");
                         injector.VerifyMethod(buildMethod);
                     } catch (Exception e) {
-                        throw new Exception("Failed to verify action build context for " + builderType.Name, e);
+                        throw new Exception("Failed to verify Build method for " + builderType.Name, e);
+                    }
+                    try {
+                        var injector = new VRCFuryInjector();
+                        injector.Set(Activator.CreateInstance(modelType));
+                        injector.Set("animObject", null);
+                        var buildMethod = builderType.GetMethod("BuildOff");
+                        if (buildMethod != null) {
+                            injector.VerifyMethod(buildMethod);
+                        }
+                    } catch (Exception e) {
+                        throw new Exception("Failed to verify BuildOff method for " + builderType.Name, e);
                     }
                 }
             }

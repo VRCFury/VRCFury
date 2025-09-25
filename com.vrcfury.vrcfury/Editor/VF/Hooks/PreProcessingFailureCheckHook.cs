@@ -1,8 +1,9 @@
-﻿using UnityEditor;
+﻿using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
-using VRC.SDKBase.Editor.BuildPipeline;
+using VF.Utils;
 
 namespace VF.Hooks {
     /**
@@ -11,32 +12,32 @@ namespace VF.Hooks {
      * that our IVRCSDKPreprocessAvatarCallback may be called by someone else before us, like Av3Emu.
      */
     internal static class PreProcessingFailureCheckHook {
-        private static VFGameObject uploadingObject = null;
+        private static readonly HashSet<VFGameObject> failed = new HashSet<VFGameObject>();
         
         private static void CheckForFailure() {
             // If the uploading object still exists at this point, it means the preprocess hooks failed
             // somewhere between calling our start hook and our end hook.
             if (!Application.isPlaying) return;
-            if (uploadingObject == null) return;
-            var failMarker = GameObjects.Create($"{uploadingObject.name} (Preprocess hooks failed)");
-            SceneManager.MoveGameObjectToScene(failMarker, uploadingObject.scene);
-            uploadingObject.Destroy();
+            foreach (var obj in failed.NotNull()) {
+                var failMarker = GameObjects.Create($"{obj.name} (Preprocess hooks failed)");
+                SceneManager.MoveGameObjectToScene(failMarker, obj.scene);
+                obj.Destroy();
+            }
+            failed.Clear();
         }
         
-        internal class FailureCheckStart : IVRCSDKPreprocessAvatarCallback {
-            public int callbackOrder => int.MinValue;
-            public bool OnPreprocessAvatar(GameObject obj) {
-                uploadingObject = obj;
+        internal class FailureCheckStart : VrcfAvatarPreprocessor {
+            protected override int order => int.MinValue;
+            protected override void Process(VFGameObject obj) {
+                failed.Add(obj);
                 EditorApplication.delayCall += CheckForFailure;
-                return true;
             }
         }
 
-        internal class FailureCheckEnd : IVRCSDKPreprocessAvatarCallback {
-            public int callbackOrder => int.MaxValue;
-            public bool OnPreprocessAvatar(GameObject obj) {
-                uploadingObject = null;
-                return true;
+        internal class FailureCheckEnd : VrcfAvatarPreprocessor {
+            protected override int order => int.MaxValue;
+            protected override void Process(VFGameObject obj) {
+                failed.Remove(obj);
             }
         }
     }

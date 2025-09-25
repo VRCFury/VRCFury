@@ -9,13 +9,10 @@ unity-editor \
     -quit \
     -manualLicenseFile $FILE_PATH
 
-platforms=(editmode playmode)
-
-for platform in "${platforms[@]}"; do
-    unity-editor \
-        -runTests \
-        -projectPath /opt/project/.github/workflows/test_project \
-        -logfile /dev/stdout \
-        -testPlatform $platform \
-        -quit
-done
+unity-editor \
+    -batchmode \
+    -nographics \
+    -logfile /dev/stdout \
+    -projectPath /opt/project/.github/workflows/test_project \
+    -runTests \
+    -testPlatform editmode

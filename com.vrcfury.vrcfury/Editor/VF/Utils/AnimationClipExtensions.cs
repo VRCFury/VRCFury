@@ -108,30 +108,103 @@ namespace VF.Utils {
                 }
             }
 #endif
+
+            if (ext.originalSourceClip != null) {
+                var nonStandardEulerOrders = new Dictionary<string, int>();
+                using (var so = new SerializedObject(ext.originalSourceClip)) {
+                    so.Update();
+                    void ProcessArray(string arrayPath) {
+                        var length = so.FindProperty(arrayPath)?.arraySize ?? 0;
+                        if (length == 0) return;
+                        foreach (var i in Enumerable.Range(0, length)) {
+                            var rotationOrderProp = so.FindProperty($"{arrayPath}.Array.data[{i}].curve.m_RotationOrder");
+                            if (rotationOrderProp == null || rotationOrderProp.propertyType != SerializedPropertyType.Integer) continue;
+                            var rotationOrder = rotationOrderProp.intValue;
+                            if (rotationOrder == 4) continue;
+                            var pathProp = so.FindProperty($"{arrayPath}.Array.data[{i}].path");
+                            if (pathProp == null || pathProp.propertyType != SerializedPropertyType.String) continue;
+                            var path = pathProp.stringValue;
+                            nonStandardEulerOrders[path] = rotationOrder;
+                        }
+                    }
+                    ProcessArray("m_EulerCurves");
+                    ProcessArray("m_EditorCurves");
+                    ProcessArray("m_EulerEditorCurves");
+                }
+                if (nonStandardEulerOrders.Any()) {
+                    using (var so = new SerializedObject(clip)) {
+                        so.Update();
+                        var changedOne = false;
+                        void ProcessArray(string arrayPath) {
+                            var length = so.FindProperty(arrayPath)?.arraySize ?? 0;
+                            if (length == 0) return;
+                            foreach (var i in Enumerable.Range(0, length)) {
+                                var pathProp = so.FindProperty($"{arrayPath}.Array.data[{i}].path");
+                                if (pathProp == null || pathProp.propertyType != SerializedPropertyType.String) continue;
+                                var path = pathProp.stringValue;
+                                if (nonStandardEulerOrders.TryGetValue(path, out var rotationOrder)) {
+                                    var rotationOrderProp = so.FindProperty($"{arrayPath}.Array.data[{i}].curve.m_RotationOrder");
+                                    if (rotationOrderProp == null || rotationOrderProp.propertyType != SerializedPropertyType.Integer) continue;
+                                    rotationOrderProp.intValue = rotationOrder;
+                                    changedOne = true;
+                                }
+                            }
+                        }
+                        ProcessArray("m_EulerCurves");
+                        ProcessArray("m_EditorCurves");
+                        ProcessArray("m_EulerEditorCurves");
+                        if (changedOne) {
+                            so.ApplyModifiedPropertiesWithoutUndo();
+                        }
+                    }
+                }
+            }
         }
         private static AnimationClipExt GetExt(AnimationClip clip) {
             if (clipDb.TryGetValue(clip, out var cached)) return cached;
 
             var ext = clipDb[clip] = new AnimationClipExt();
+            ext.originalSourceClip = clip;
 
             if (AssetDatabase.IsMainAsset(clip)) {
                 var path = AssetDatabase.GetAssetPath(clip);
-                if (!string.IsNullOrEmpty(path)) {
-                    if (Path.GetFileName(path).StartsWith("proxy_")) {
-                        ext.originalSourceIsProxyClip = true;
-                    }
-                    ext.originalSourceClip = clip;
+                if (string.IsNullOrEmpty(path)) {
+                    ext.changedFromOriginalSourceClip = true;
+                } else if (Path.GetFileName(path).StartsWith("proxy_")) {
+                    ext.originalSourceIsProxyClip = true;
                 }
+            } else {
+                ext.changedFromOriginalSourceClip = true;
             }
 
             // Don't use ToDictionary, since animationclips can have duplicate bindings somehow
             foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
+                if (b.path == null || b.propertyName == null || b.type == null) {
+                    Debug.LogWarning($"Clip {AssetDatabase.GetAssetPath(clip)} {clip.name} contains an invalid binding");
+                    ext.changedFromOriginalSourceClip = true;
+                    continue;
+                }
                 var curve = AnimationUtility.GetObjectReferenceCurve(clip, b);
-                if (curve != null) ext.curves[b] = curve;
+                if (curve == null) {
+                    Debug.LogWarning($"Clip {AssetDatabase.GetAssetPath(clip)} {clip.name} contains a binding that is missing a curve");
+                    ext.changedFromOriginalSourceClip = true;
+                    continue;
+                }
+                ext.curves[b] = curve;
             }
             foreach (var b in AnimationUtility.GetCurveBindings(clip)) {
+                if (b.path == null || b.propertyName == null || b.type == null) {
+                    Debug.LogWarning($"Clip {AssetDatabase.GetAssetPath(clip)} {clip.name} contains an invalid binding");
+                    ext.changedFromOriginalSourceClip = true;
+                    continue;
+                }
                 var curve = AnimationUtility.GetEditorCurve(clip, b);
-                if (curve != null) ext.curves[b] = curve;
+                if (curve == null) {
+                    Debug.LogWarning($"Clip {AssetDatabase.GetAssetPath(clip)} {clip.name} contains a binding that is missing a curve");
+                    ext.changedFromOriginalSourceClip = true;
+                    continue;
+                }
+                ext.curves[b] = curve;
             }
             return ext;
         }
@@ -217,7 +290,7 @@ namespace VF.Utils {
 
         public static void SetCurve(this AnimationClip clip, string path, Type type, string propertyName, FloatOrObjectCurve curve) {
             EditorCurveBinding binding;
-            if (curve.IsFloat) {
+            if (curve == null || curve.IsFloat) {
                 binding = EditorCurveBinding.FloatCurve(path, type, propertyName);
             } else {
                 binding = EditorCurveBinding.PPtrCurve(path, type, propertyName);
@@ -244,7 +317,7 @@ namespace VF.Utils {
                 "__vrcf_length",
                 typeof(GameObject),
                 "m_IsActive",
-                FloatOrObjectCurve.DummyFloatCurve(length)
+                length == 0 ? null : FloatOrObjectCurve.DummyFloatCurve(length)
             );
         }
         
@@ -258,9 +331,9 @@ namespace VF.Utils {
         }
 
         public static void SetScale(this AnimationClip clip, VFGameObject obj, Vector3 scale) {
-            clip.SetCurve(obj.transform, "m_LocalScale.x", scale.x);
-            clip.SetCurve(obj.transform, "m_LocalScale.y", scale.y);
-            clip.SetCurve(obj.transform, "m_LocalScale.z", scale.z);
+            clip.SetCurve((Transform)obj, "m_LocalScale.x", scale.x);
+            clip.SetCurve((Transform)obj, "m_LocalScale.y", scale.y);
+            clip.SetCurve((Transform)obj, "m_LocalScale.z", scale.z);
         }
 
         public static int GetLengthInFrames(this AnimationClip clip) {

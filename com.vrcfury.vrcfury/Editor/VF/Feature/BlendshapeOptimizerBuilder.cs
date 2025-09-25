@@ -26,6 +26,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly AnimatorHolderService animators;
 
         [FeatureEditor]
         public static VisualElement Editor() {
@@ -193,7 +194,7 @@ namespace VF.Feature {
                 .SelectMany(clip => clip.GetFloatCurves())
                 .Select(pair => {
                     var (binding, curve) = pair;
-                    binding.path = ClipRewriter.Join(prefix, binding.path, allowAdvancedOperators: false);
+                    binding.path = ClipRewritersService.Join(prefix, binding.path, allowAdvancedOperators: false);
                     return (binding, curve);
                 })
                 .ToList();
@@ -201,10 +202,10 @@ namespace VF.Feature {
 
         private ICollection<string> CollectAnimatedBlendshapesForMesh(SkinnedMeshRenderer skin) {
             var animatedBindings = controllers.GetAllUsedControllers()
-                .Select(c => c.GetRaw())
                 .SelectMany(controller => GetBindings(avatarObject, controller))
-                .Concat(avatarObject.GetComponentsInSelfAndChildren<Animator>()
-                    .SelectMany(animator => GetBindings(animator.owner(), animator.runtimeAnimatorController as AnimatorController)))
+                .Concat(animators.GetSubControllers().SelectMany(pair =>
+                    GetBindings(pair.owner, pair.controller)
+                ))
                 .ToList();
 
             var skinPath = skin.owner().GetPath(avatarObject);

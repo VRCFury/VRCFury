@@ -8,7 +8,6 @@ using UnityEngine;
 using VF.Actions;
 using VF.Builder.Exceptions;
 using VF.Component;
-using VF.Feature;
 using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
@@ -24,53 +23,35 @@ using Object = UnityEngine.Object;
 namespace VF.Builder {
 
     internal class VRCFuryBuilder {
-        internal enum Status {
-            Success,
-            Failed
-        }
-
-        internal Status SafeRun(VFGameObject avatarObject) {
+        internal static void RunMain(VFGameObject avatarObject) {
             Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
-            var result = VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                VRCFuryAssetDatabase.WithAssetEditing(() => {
-                    try {
-                        MaterialLocker.injectedAvatarObject = avatarObject;
-                        Run(avatarObject);
-                    } finally {
-                        MaterialLocker.injectedAvatarObject = null;
-                    }
-                });
+            VRCFuryAssetDatabase.WithAssetEditing(() => {
+                try {
+                    MaterialLocker.injectedAvatarObject = avatarObject;
+                    Run(avatarObject);
+                } finally {
+                    MaterialLocker.injectedAvatarObject = null;
+                }
             });
-
-            return result ? Status.Success : Status.Failed;
         }
 
         internal static bool ShouldRun(VFGameObject avatarObject) {
-            return avatarObject
+            if (avatarObject
                 .GetComponentsInSelfAndChildren<VRCFuryComponent>()
-                .Where(c => !(c is VRCFuryDebugInfo || c is VRCFuryTest))
-                .Any();
+                .Any(c => !(c is VRCFuryDebugInfo))) {
+                // There's a vrcfury component
+                return true;
+            }
+            if (ParameterCompressorService.IsMobileBuildWithSavedData(avatarObject)) {
+                return true;
+            }
+            return false;
         }
 
-        public static void StripAllVrcfComponents(VFGameObject obj) {
-            foreach (var c in obj.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
-                if (c is VRCFuryDebugInfo && !IsActuallyUploadingHook.Get()) {
-                    continue;
-                }
-                Object.DestroyImmediate(c);
-            }
-        }
-
-        private void Run(VFGameObject avatarObject) {
-            if (!Application.isPlaying && VRCFuryTestCopyMenuItem.IsTestCopy(avatarObject)) {
-                throw new VRCFBuilderException(
-                    "VRCFury Test Copies cannot be uploaded. Please upload the original avatar which was" +
-                    " used to create this test instead.");
-            }
-
+        private static void Run(VFGameObject avatarObject) {
             EditorOnlyUtils.RemoveEditorOnlyObjects(avatarObject);
-            
+
             if (!ShouldRun(avatarObject)) {
                 Debug.Log("VRCFury components not found in avatar. Skipping.");
                 return;
@@ -96,11 +77,12 @@ namespace VF.Builder {
                     avatarObject,
                     progress
                 );
+
+                if (avatarObject.GetComponent<VRCFuryTest>() == null) {
+                    avatarObject.AddComponent<VRCFuryTest>();
+                }
             } finally {
                 progress.Close();
-                
-                // Make absolutely positively certain that we've removed every non-standard component from the avatar before it gets uploaded
-                StripAllVrcfComponents(avatarObject);
 
                 // Make sure all new assets we've created have actually been saved to disk
                 AssetDatabase.SaveAssets();
@@ -198,8 +180,8 @@ namespace VF.Builder {
                 c.Upgrade();
             }
             foreach (var vrcFury in avatarObject.GetComponentsInSelfAndChildren<VRCFury>()) {
-                var configObject = vrcFury.gameObject;
-                if (VRCFuryEditorUtils.IsInRagdollSystem(configObject.transform)) {
+                var configObject = vrcFury.owner();
+                if (VRCFuryEditorUtils.IsInRagdollSystem(configObject)) {
                     continue;
                 }
 

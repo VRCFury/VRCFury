@@ -4,6 +4,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
@@ -28,7 +29,7 @@ namespace VF.Service {
                 var uniqueOwners = new HashSet<string>();
                 foreach (var layer in controller.GetLayers()) {
                     // Ignore empty layers (bask mask, junk layers, etc)
-                    if (layer.stateMachine.defaultState == null) continue;
+                    if (!layer.hasDefaultState) continue;
                     uniqueOwners.Add(controller.GetLayerOwner(layer));
                 }
                 ownersByController[type] = uniqueOwners;
@@ -37,43 +38,39 @@ namespace VF.Service {
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetLayers()) {
                     var layerOwner = controller.GetLayerOwner(layer);
-                    AnimatorIterator.ForEachBehaviourRW(layer, (b, add) => {
-                        if (b is VRCPlayableLayerControl playableControl) {
-                            var drivesTypeName = VRCFEnumUtils.GetName(playableControl.layer);
-                            var drivesType = VRCFEnumUtils.Parse<VRCAvatarDescriptor.AnimLayerType>(drivesTypeName);
-                            
-                            // In theory, this should probably work for all types of controllers, but for some reason it doesn't.
-                            // (see Hailey avatar, Gesture Controller, SB_FX Weight layer)
-                            // For now, only worry about things driving action
-                            if (drivesType != VRCAvatarDescriptor.AnimLayerType.Action) {
-                                return true;
-                            }
-
-                            if (!ownersByController.TryGetValue(drivesType, out var uniqueOwnersOnType)) {
-                                // They're driving a controller that doesn't exist?
-                                // uhh... keep it I guess
-                                return true;
-                            }
-                            if (!uniqueOwnersOnType.Contains(layerOwner)) return false;
-                            if (uniqueOwnersOnType.Count == 1) return true;
-
-                            var drivesController = controllers.GetController(drivesType);
-                            var drivesLayers = drivesController.GetLayers()
-                                .Where(l => drivesController.GetLayerOwner(l) == layerOwner)
-                                .ToList();
-                            foreach (var drivesLayer in drivesLayers) {
-                                var layerControl = (VRCAnimatorLayerControl)add(typeof(VRCAnimatorLayerControl));
-                                layerControl.playable =
-                                    VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(drivesTypeName);
-                                layerControl.goalWeight = playableControl.goalWeight;
-                                layerControl.blendDuration = 0;
-                                layerControl.debugString = playableControl.debugString;
-                                animatorLayerControlManager.Register(layerControl, drivesLayer);
-                            }
-                            return false;
+                    layer.RewriteBehaviours<VRCPlayableLayerControl>(playableControl => {
+                        var drivesTypeName = VRCFEnumUtils.GetName(playableControl.layer);
+                        var drivesType = VRCFEnumUtils.Parse<VRCAvatarDescriptor.AnimLayerType>(drivesTypeName);
+                        
+                        // In theory, this should probably work for all types of controllers, but for some reason it doesn't.
+                        // (see Hailey avatar, Gesture Controller, SB_FX Weight layer)
+                        // For now, only worry about things driving action
+                        if (drivesType != VRCAvatarDescriptor.AnimLayerType.Action) {
+                            return playableControl;
                         }
 
-                        return true;
+                        if (!ownersByController.TryGetValue(drivesType, out var uniqueOwnersOnType)) {
+                            // They're driving a controller that doesn't exist?
+                            // uhh... keep it I guess
+                            return playableControl;
+                        }
+                        if (!uniqueOwnersOnType.Contains(layerOwner)) return null;
+                        if (uniqueOwnersOnType.Count == 1) return playableControl;
+
+                        var drivesController = controllers.GetController(drivesType);
+                        var drivesLayers = drivesController.GetLayers()
+                            .Where(l => drivesController.GetLayerOwner(l) == layerOwner)
+                            .ToList();
+                        return drivesLayers.Select(drivesLayer => {
+                            var layerControl = VrcfObjectFactory.Create<VRCAnimatorLayerControl>();
+                            layerControl.playable =
+                                VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(drivesTypeName);
+                            layerControl.goalWeight = playableControl.goalWeight;
+                            layerControl.blendDuration = 0;
+                            layerControl.debugString = playableControl.debugString;
+                            animatorLayerControlManager.Register(layerControl, drivesLayer);
+                            return layerControl;
+                        }).ToArray();
                     });
                 }
             }
@@ -85,7 +82,7 @@ namespace VF.Service {
                 action.EnsureEmptyBaseLayer();
                 var enableLayer = action.NewLayer("VRCF Force Enable");
                 var enable = enableLayer.NewState("Enable");
-                var enableControl = enable.GetRaw().VAddStateMachineBehaviour<VRCPlayableLayerControl>();
+                var enableControl = enable.AddBehaviour<VRCPlayableLayerControl>();
                 enableControl.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                 enableControl.goalWeight = 1;
                 var i = 0;

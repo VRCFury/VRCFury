@@ -7,7 +7,7 @@ namespace VF.Upgradeable {
         [SerializeField] private int version = -1;
         public int Version { get => version; set => version = value; }
         void ISerializationCallbackReceiver.OnAfterDeserialize() { this.IUpgradeableOnAfterDeserialize(); }
-        void ISerializationCallbackReceiver.OnBeforeSerialize() { PreSerialize(); this.IUpgradeableOnBeforeSerialize(); }
+        void ISerializationCallbackReceiver.OnBeforeSerialize() { this.IUpgradeableOnBeforeSerialize(); }
 
         public virtual bool Upgrade(int fromVersion) {
             return false;
@@ -15,10 +15,6 @@ namespace VF.Upgradeable {
 
         public virtual int GetLatestVersion() {
             return 0;
-        }
-
-        protected virtual void PreSerialize() {
-            
         }
     }
 }

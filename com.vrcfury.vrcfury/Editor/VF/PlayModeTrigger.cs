@@ -5,6 +5,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
+using VF.Hooks;
 using VF.Inspector;
 using VF.Menu;
 using VF.Model;
@@ -36,6 +37,7 @@ namespace VF {
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
             if (state == PlayModeStateChange.ExitingEditMode) {
                 addedTriggerObjectThisPlayMode = false;
+                TmpFilePackage.Cleanup();
             }
         }
 
@@ -69,9 +71,7 @@ namespace VF {
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
                     if (IsWithinAv3EmulatorClone(obj)) continue;
-                    if (obj.GetComponentsInSelfAndChildren<VRCFuryTest>().Length > 0) {
-                        continue;
-                    }
+                    if (!RunPreprocessorsOnlyOncePatch.ShouldStartPreprocessors(obj)) continue;
                     if (!VRCFuryBuilder.ShouldRun(obj)) continue;
 
                     var orig = obj.Clone();
@@ -81,9 +81,9 @@ namespace VF {
                     obj.name = orig.name;
                     orig.Destroy();
                 }
-                if (root.gameObject == null) continue; // it was deleted
+                if (root == null) continue; // it was deleted
                 foreach (var socket in root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
-                    RescanOnStartComponent.AddToObject(socket.gameObject);
+                    RescanOnStartComponent.AddToObject(socket.owner());
                     var obj = socket.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;
@@ -101,7 +101,7 @@ namespace VF {
                     Object.DestroyImmediate(socket);
                 }
                 foreach (var plug in root.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
-                    RescanOnStartComponent.AddToObject(plug.gameObject);
+                    RescanOnStartComponent.AddToObject(plug.owner());
                     var obj = plug.owner();
                     if (!obj.activeInHierarchy) continue;
                     if (ContainsAnyPrefabs(obj)) continue;

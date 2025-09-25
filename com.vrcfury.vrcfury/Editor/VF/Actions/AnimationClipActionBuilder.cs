@@ -18,6 +18,7 @@ namespace VF.Actions {
     internal class AnimationClipActionBuilder : ActionBuilder<AnimationClipAction> {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] [CanBeNull] private readonly FullBodyEmoteService fullBodyEmoteService;
+        [VFAutowired] [CanBeNull] private readonly ClipRewritersService clipRewritersService;
         
         public Motion Build(AnimationClipAction clipAction, VFGameObject animObject) {
             var input = clipAction.motion;
@@ -27,14 +28,12 @@ namespace VF.Actions {
             var copy = input.Clone();
             foreach (var clip in new AnimatorIterator.Clips().From(copy)) {
                 AddFullBodyClip(clip);
-                
+
+                var rewriters = (clipRewritersService ?? new ClipRewritersService(avatarObject));
                 var rewriter = AnimationRewriter.Combine(
-                    ClipRewriter.CreateNearestMatchPathRewriter(
-                        animObject: animObject,
-                        rootObject: avatarObject
-                    ),
-                    ClipRewriter.AdjustRootScale(avatarObject),
-                    ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
+                    rewriters.CreateNearestMatchPathRewriter(animObject),
+                    rewriters.AdjustRootScale(),
+                    rewriters.AnimatorBindingsAlwaysTargetRoot()
                 );
                 clip.Rewrite(rewriter);
             }

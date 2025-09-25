@@ -30,7 +30,7 @@ namespace VF.Service {
         private VFGameObject avatarObject => globals.avatarObject;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly AvatarBindingStateService bindingstateService;
-        [VFAutowired] private readonly ClipRewriteService clipRewriteService;
+        [VFAutowired] private readonly AllClipsService allClipsService;
         private readonly List<PendingClip> pendingClips = new List<PendingClip>();
 
         public class PendingClip {
@@ -41,7 +41,7 @@ namespace VF.Service {
         public void ApplyClipToRestingState(AnimationClip clip, string owner = null) {
             var copy = clip.Clone();
             pendingClips.Add(new PendingClip { clip = copy, owner = owner ?? globals.currentFeatureNameProvider() });
-            clipRewriteService.AddAdditionalManagedClip(copy);
+            allClipsService.AddAdditionalManagedClip(copy);
         }
 
         public void OnPhaseChanged() {
@@ -50,7 +50,7 @@ namespace VF.Service {
             var debugLog = new List<string>();
             
             foreach (var pending in pendingClips) {
-                bindingstateService.ApplyClip(pending.clip);
+                bindingstateService.ApplyClip(pending.clip, pending.owner);
                 foreach (var (binding,curve) in pending.clip.GetAllCurves()) {
                     var value = curve.GetLast();
                     debugLog.Add($"{binding.path} {binding.type.Name} {binding.propertyName} = {value}\n  via {pending.owner}");
@@ -74,19 +74,19 @@ namespace VF.Service {
                             return UnitySerializationUtils.IterateResult.Skip;
                         }
                         if (visit.value is State action) {
-                            var built = actionClipService.LoadStateAdv("", action);
-                            ApplyClipToRestingState(built.implicitRestingClip, owner: $"{component.GetType().Name} on {path}");
+                            var built = actionClipService.BuildOff(action);
+                            ApplyClipToRestingState(built, owner: $"{component.GetType().Name} on {path}");
                         }
                         if (visit.value is FullController fc) {
                             if (!string.IsNullOrWhiteSpace(fc.toggleParam)) {
                                 var rootObj = component.owner();
                                 if (fc.rootObjOverride != null) rootObj = fc.rootObjOverride;
-                                var built = actionClipService.LoadStateAdv("", new State {
+                                var built = actionClipService.BuildOff(new State {
                                     actions = {
                                         new ObjectToggleAction { obj = rootObj, mode = ObjectToggleAction.Mode.TurnOn }
                                     }
                                 });
-                                ApplyClipToRestingState(built.implicitRestingClip, owner: owner);
+                                ApplyClipToRestingState(built, owner: owner);
                             }
                         }
                         return UnitySerializationUtils.IterateResult.Continue;

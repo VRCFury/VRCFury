@@ -20,6 +20,7 @@ namespace VF.Model.Feature {
         public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
         public bool allowMissingAssets = false;
         public string injectSpsDepthParam;
+        public string injectSpsVelocityParam;
 
         [Obsolete] public GuidController controller;
         [Obsolete] public GuidMenu menu;

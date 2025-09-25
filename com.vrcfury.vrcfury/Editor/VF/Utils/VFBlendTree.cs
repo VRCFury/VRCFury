@@ -1,4 +1,5 @@
 ﻿using System;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Utils.Controller;
@@ -14,7 +15,7 @@ namespace VF.Utils {
 
         protected abstract bool IsValidType();
 
-        protected void AssertValidType() {
+        private void AssertValidType() {
             if (!IsValidType()) throw new Exception("Blendtree is unexpectedly the wrong type");
         }
         
@@ -27,24 +28,34 @@ namespace VF.Utils {
             tree.blendType = type;
             return tree;
         }
+
+        protected delegate void WithChildMotion(ref ChildMotion child);
+        protected void Add(Motion motion, WithChildMotion with) {
+            AssertValidType();
+            if (motion == null) throw new Exception("motion cannot be null");
+            
+            var children = tree.children;
+            var newChild = new ChildMotion {
+                timeScale = 1,
+                motion = motion
+            };
+            with(ref newChild);
+            ArrayUtility.Add(ref children, newChild);
+            tree.children = children;
+        }
     }
 
     internal class VFBlendTreeDirect : VFBlendTree {
-        public VFBlendTreeDirect(BlendTree tree) : base(tree) {}
+        private VFBlendTreeDirect(BlendTree tree) : base(tree) {}
 
         public const string AlwaysOneParam = "__vrcf_dbt_always_one";
 
         public void Add(string param, Motion motion) {
-            AssertValidType();
-            if (motion == null) throw new Exception("motion cannot be null");
-            tree.AddChild(motion);
-            var children = tree.children;
-            var child = children[children.Length - 1];
-            child.directBlendParameter = param;
-            children[children.Length - 1] = child;
-            tree.children = children;
+            Add(motion, (ref ChildMotion child) => {
+                child.directBlendParameter = param;
+            });
         }
-        
+
         public void Add(Motion motion) {
             Add(AlwaysOneParam, motion);
         }
@@ -64,12 +75,12 @@ namespace VF.Utils {
     }
     
     internal class VFBlendTree1D : VFBlendTree {
-        public VFBlendTree1D(BlendTree tree) : base(tree) {}
+        private VFBlendTree1D(BlendTree tree) : base(tree) {}
 
         public void Add(float threshold, Motion motion) {
-            AssertValidType();
-            if (motion == null) throw new Exception("motion cannot be null");
-            tree.AddChild(motion, threshold);
+            Add(motion, (ref ChildMotion child) => {
+                child.threshold = threshold;
+            });
         }
         
         protected override bool IsValidType() {
@@ -92,12 +103,12 @@ namespace VF.Utils {
     }
     
     internal class VFBlendTree2D : VFBlendTree {
-        public VFBlendTree2D(BlendTree tree) : base(tree) {}
+        private VFBlendTree2D(BlendTree tree) : base(tree) {}
 
         public void Add(Vector2 position, Motion motion) {
-            AssertValidType();
-            if (motion == null) throw new Exception("motion cannot be null");
-            tree.AddChild(motion, position);
+            Add(motion, (ref ChildMotion child) => {
+                child.position = position;
+            });
         }
         
         protected override bool IsValidType() {

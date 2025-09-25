@@ -40,7 +40,7 @@ namespace VF.Service {
                 mode = AnimatorConditionMode.If
             };
             foreach (var layer in fx.GetLayers()) {
-                AnimatorIterator.RewriteConditions(layer, c => {
+                layer.RewriteConditions(c => {
                     if (c.IsForGesture()) {
                         if (c.IncludesValue(0)) {
                             return AnimatorTransitionBaseExtensions.Rewritten.Or(c, gesturesDisabled);

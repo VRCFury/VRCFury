@@ -61,7 +61,7 @@ namespace VF.Utils {
             }
 
             if (needsCompressed) {
-                Debug.LogWarning($"VRCFury is compressing texture {AssetDatabase.GetAssetPath(original)}");
+                Debug.LogWarning($"VRCFury is compressing texture {AssetDatabase.GetAssetPath(original)} {original.name}");
                 var compressedTypeTest = new Texture2D(256, 256, original.format, false);
                 compressedTypeTest.Compress(false);
                 var autoCompressFormat = compressedTypeTest.format;

@@ -26,7 +26,7 @@ namespace VF.Model {
 
         public static bool RunningFakeUpgrade = false;
 
-        public IEnumerable<FeatureModel> GetAllFeatures() {
+        public IList<FeatureModel> GetAllFeatures() {
             var output = new List<FeatureModel>();
 #pragma warning disable 0612
             if (config?.features != null) {
@@ -41,7 +41,7 @@ namespace VF.Model {
         
         public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
-            IEnumerable<FeatureModel> Migrate(FeatureModel input) {
+            IList<FeatureModel> Migrate(FeatureModel input) {
                 var m = input.Migrate(new FeatureModel.MigrateRequest {
                     fakeUpgrade = RunningFakeUpgrade,
                     gameObject = gameObject

@@ -77,29 +77,6 @@ namespace VF.Utils {
             return MuscleBindingType.Body;
         }
 
-        public static bool IsValid(this EditorCurveBinding binding, VFGameObject baseObject) {
-            var obj = baseObject.Find(binding.path);
-            if (obj == null) return false;
-            if (binding.type == null) return false;
-            if (binding.type == typeof(GameObject)) return true;
-            // because we delete the animator during the build
-            if (binding.path == "" && binding.type == typeof(Animator)) return true;
-            if (!typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) {
-                // This can happen if the component type they were animating is no longer available, such as
-                // if the script no longer exists in the project.
-                return false;
-            }
-            if (obj.GetComponent(binding.type) != null) return true;
-            if (binding.type == typeof(BoxCollider) && obj.GetComponent<VRCStation>() != null) return true;
-#if VRCSDK_HAS_VRCCONSTRAINTS
-            // Due to "half-upgraded" assets, animations may point to the wrong kind of constraint
-            // This will be fixed later in the build in UpgradeToVrcConstraintsService
-            if (typeof(IConstraint).IsAssignableFrom(binding.type) && obj.GetComponent<IVRCConstraint>() != null) return true;
-            if (typeof(IVRCConstraint).IsAssignableFrom(binding.type) && obj.GetComponent<IConstraint>() != null) return true;
-#endif
-            return false;
-        }
-
         public static string PrettyString(this EditorCurveBinding binding) {
             return $"({binding.path} {binding.type?.Name} {binding.propertyName})";
         }

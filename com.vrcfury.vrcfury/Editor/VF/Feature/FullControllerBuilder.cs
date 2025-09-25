@@ -28,7 +28,6 @@ namespace VF.Feature {
 
     [FeatureTitle("Full Controller")]
     internal class FullControllerBuilder : FeatureBuilder<FullController> {
-        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
@@ -40,8 +39,10 @@ namespace VF.Feature {
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager avatarMenu => menuService.GetMenu();
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly ClipRewritersService clipRewritersService;
 
         public string injectSpsDepthParam = null;
+        public string injectSpsVelocityParam = null;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -64,7 +65,7 @@ namespace VF.Feature {
                 }
             }
 
-            var toMerge = new List<(VRCAvatarDescriptor.AnimLayerType, VFController)>();
+            var fromControllers = new List<VFControllerWithVrcType>();
             foreach (var c in model.controllers) {
                 var source = c.controller.Get();
                 if (source == null) {
@@ -72,17 +73,33 @@ namespace VF.Feature {
                     continue;
                 }
                 var copy = VFController.CopyAndLoadController(source, c.type);
-                if (copy) {
-                    toMerge.Add((c.type, copy));
+                if (copy != null) {
+                    fromControllers.Add(copy);
                 }
             }
 
             // Record the offsets so we can fix them later
-            animatorLayerControlManager.RegisterControllerSet(toMerge);
+            animatorLayerControlManager.RegisterControllerSet(fromControllers);
 
-            foreach (var (type, from) in toMerge) {
-                var targetController = controllers.GetController(type);
-                Merge(from, targetController);
+            foreach (var from in fromControllers) {
+                var to = controllers.GetController(from.vrcType);
+
+                // Fail if trying to merge a controller that is on the avatar descriptor
+                if (VrcfObjectCloner.GetOriginal(to.GetRaw()) != null && to.GetRaw().GetCloneSource() == from.GetRaw().GetCloneSource()) {
+                    if (AssetDatabase.GetAssetPath(to.GetRaw().GetCloneSource())?.ToLower().Contains("goloco") ?? false) {
+                        throw new Exception(
+                            "You've installed GogoLoco using VRCFury, but your avatar descriptor also contains GogoLoco controllers." +
+                            " Make sure your Avatar Descriptor does not contain any gogoloco files."
+                        );
+                    } else {
+                        throw new Exception(
+                            "This Full Controller component is setup to merge the same controller file that is already on your avatar descriptor. VRCFury Full Controller components" +
+                            " should only contain the things you want to ADD to your avatar. Do not include your avatar's base files."
+                        );
+                    }
+                }
+
+                Merge(from, to);
             }
 
             foreach (var m in model.menus) {
@@ -189,16 +206,22 @@ namespace VF.Feature {
         private string RewriteParamNameUncached(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (VRChatGlobalParams.Contains(name)) return name;
-            if (name == model.injectSpsDepthParam) {
+            if (!string.IsNullOrEmpty(model.injectSpsDepthParam) && name == model.injectSpsDepthParam) {
                 if (injectSpsDepthParam == null) {
                     injectSpsDepthParam = controllers.MakeUniqueParamName(name);
                 }
                 return injectSpsDepthParam;
             }
+            if (!string.IsNullOrEmpty(model.injectSpsVelocityParam) && name == model.injectSpsVelocityParam) {
+                if (injectSpsVelocityParam == null) {
+                    injectSpsVelocityParam = controllers.MakeUniqueParamName(name);
+                }
+                return injectSpsVelocityParam;
+            }
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
                     var prms = p.parameters.Get();
-                    return prms && prms.parameters.Any(param => param.name == name);
+                    return prms != null && prms.parameters.Any(param => param.name == name);
                 });
                 if (!synced) return name;
             }
@@ -217,12 +240,34 @@ namespace VF.Feature {
                 return "Go/" + name;
             }
 
-            if (model.globalParams.Contains("*")) {
-                if (model.globalParams.Contains("!" + name)) return controllers.MakeUniqueParamName(name);
-                return name;
+            var isGlobal = false;
+            foreach (var _global in model.globalParams) {
+                var global = _global;
+                var negative = false;
+                var wildcard = false;
+                if (global.StartsWith("!")) {
+                    negative = true;
+                    global = global.Substring(1);
+                }
+                if (global.EndsWith("*")) {
+                    wildcard = true;
+                    global = global.Substring(0, global.Length - 1);
+                }
+                if (name == global || (wildcard && name.StartsWith(global))) {
+                    if (negative) {
+                        isGlobal = false;
+                        break;
+                    } else {
+                        isGlobal = true;
+                    }
+                }
             }
-            if (model.globalParams.Contains(name)) return name;
-            return controllers.MakeUniqueParamName(name); 
+
+            if (isGlobal) {
+                return name;
+            } else {
+                return controllers.MakeUniqueParamName(name);
+            }
         }
 
         private static string RewritePath(FullController model, string path) {
@@ -235,11 +280,11 @@ namespace VF.Feature {
                 while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
 
                 if (from == "") {
-                    path = ClipRewriter.Join(to, path);
+                    path = ClipRewritersService.Join(to, path);
                     if (rewrite.delete) return null;
                 } else if (path.StartsWith(from + "/")) {
                     path = path.Substring(from.Length + 1);
-                    path = ClipRewriter.Join(to, path);
+                    path = ClipRewritersService.Join(to, path);
                     if (rewrite.delete) return null;
                 } else if (path == from) {
                     path = to;
@@ -250,9 +295,8 @@ namespace VF.Feature {
             return path;
         }
 
-        private void Merge(VFController from, ControllerManager toMain) {
-            var to = toMain.GetRaw();
-            var type = toMain.GetType();
+        private void Merge(VFController from, ControllerManager to) {
+            var type = to.GetType();
 
             // Check for gogoloco
             foreach (var p in from.parameters) {
@@ -262,15 +306,14 @@ namespace VF.Feature {
             }
 
             // Rewrite clips
-            ((AnimatorController)from).Rewrite(AnimationRewriter.Combine(
+            from.Rewrite(AnimationRewriter.Combine(
                 AnimationRewriter.RewritePath(path => RewritePath(model, path)),
-                ClipRewriter.CreateNearestMatchPathRewriter(
-                    animObject: GetBaseObject(model, featureBaseObject),
-                    rootObject: avatarObject,
+                clipRewritersService.CreateNearestMatchPathRewriter(
+                    GetBaseObject(model, featureBaseObject),
                     rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
                 ),
-                ClipRewriter.AdjustRootScale(avatarObject),
-                ClipRewriter.AnimatorBindingsAlwaysTargetRoot()
+                clipRewritersService.AdjustRootScale(),
+                clipRewritersService.AnimatorBindingsAlwaysTargetRoot()
             ));
 
             // Rewrite params
@@ -278,12 +321,55 @@ namespace VF.Feature {
             from.RewriteParameters(RewriteParamName);
 
             var myLayers = from.GetLayers();
+            
+            // Rip out default Action if this controller handles everything
+            if (type == VRCAvatarDescriptor.AnimLayerType.Action) {
+                var menuUsesVrcEmote = false;
+                avatarMenu.GetRaw().ForEachMenu(ForEachItem: (item,path) => {
+                    if (item?.parameter?.name == "VRCEmote") {
+                        menuUsesVrcEmote = true;
+                    }
+                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                });
+                var transitionParams = from.GetLayers()
+                    .SelectMany(l => l.allTransitions)
+                    .SelectMany(transition => transition.conditions)
+                    .Select(condition => condition.parameter)
+                    .ToImmutableHashSet();
+                var afkCustomized = transitionParams.Contains("AFK");
+                var vrcEmoteCustomized = transitionParams.Contains("VRCEmote");
+                if (afkCustomized && (vrcEmoteCustomized || !menuUsesVrcEmote)) {
+                    foreach (var layer in to.GetLayers()) {
+                        if (to.GetLayerOwner(layer) == LayerSourceService.VrcDefaultSource) {
+                            layer.Remove();
+                        }
+                    }
+                }
+            }
+
+            // Rip out the base controller if it's locomotion
+            if (type == VRCAvatarDescriptor.AnimLayerType.Base || type == VRCAvatarDescriptor.AnimLayerType.TPose ||
+                type == VRCAvatarDescriptor.AnimLayerType.IKPose || type == VRCAvatarDescriptor.AnimLayerType.Sitting) {
+                foreach (var layer in to.GetLayers()) {
+                    var owner = to.GetLayerOwner(layer);
+                    if (owner == LayerSourceService.AvatarDescriptorSource || owner == LayerSourceService.VrcDefaultSource) {
+                        layer.Remove();
+                    } else {
+                        throw new VRCFBuilderException(
+                            $"Your avatar contains multiple locomotion implementations ({VRCFEnumUtils.GetName(type)}).\n\n" +
+                            "You can only use one of these:\n" +
+                            $"{globals.currentFeatureNameProvider()}\n" +
+                            layerSourceService.GetSource(layer)
+                        );
+                    }
+                }
+            }
 
             // Merge Layers
             foreach (var layer in from.GetLayers()) {
                 layerSourceService.SetSourceToCurrent(layer);
             }
-            toMain.TakeOwnershipOf(from);
+            to.TakeOwnershipOf(from);
 
             // Parameter smoothing
             if (type == VRCAvatarDescriptor.AnimLayerType.FX && model.smoothedPrms.Count > 0) {
@@ -291,7 +377,7 @@ namespace VF.Feature {
                 foreach (var smoothedParam in model.smoothedPrms) {
                     var rewritten = RewriteParamName(smoothedParam.name);
                     if (smoothedDict.ContainsKey(rewritten)) continue;
-                    var exists = toMain.GetRaw().GetParam(rewritten);
+                    var exists = to.GetParam(rewritten);
                     if (exists == null) continue;
                     if (exists.type != AnimatorControllerParameterType.Float) continue;
                     var target = new VFAFloat(exists.name, exists.defaultFloat);
@@ -323,12 +409,12 @@ namespace VF.Feature {
                     smoothedDict[rewritten] = smoothed;
                 }
 
-                toMain.GetRaw().RewriteParameters(name => {
+                to.RewriteParameters(name => {
                     if (smoothedDict.TryGetValue(name, out var smoothed)) {
                         return smoothed;
                     }
                     return name;
-                }, false, myLayers.Select(l => l.stateMachine).ToArray());
+                }, false, myLayers);
             }
         }
 
@@ -486,9 +572,12 @@ namespace VF.Feature {
                     "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
                     "parameters (such as gestures) are included by default.\n" +
                     "\n" +
-                    "If you want to make all parameters global, you can use enter a * . " +
+                    "If you want to make all parameters global, you can use enter a *\n" +
+                    "\n" +
+                    "You can also make a specific prefix global by adding a * to the end: MyGlobalParams/*\n" +
+                    "\n" +
                     "If you want to make all parameters global except for a few, you can mark specific parameters " +
-                    "as not global by prefixing them with a ! ."
+                    "as not global by prefixing them with a !"
                 );
                 adv.Add(a);
                 adv.Add(b);
@@ -524,6 +613,7 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "(Deprecated) Make all unsynced params global"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allowMissingAssets"), "(Deprecated) Don't fail if assets are missing"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsDepthParam"), "Inject nearest SPS depth (in plug lengths) as a parameter"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsVelocityParam"), "Inject nearest SPS velocity (in plug lengths / sec) as a parameter"));
 
             content.Add(adv);
 
@@ -537,9 +627,21 @@ namespace VF.Feature {
                     .NotNull()
                     .ToList();
                 var usesWdOff = controllers
-                    .SelectMany(c => new AnimatorIterator.States().From(c))
+                    .SelectMany(c => new AnimatorIterator.States().From(new VFController(c)))
                     .Any(state => !state.writeDefaultValues);
-                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(controllers, avatarObject, baseObject, path => RewritePath(model, path), suggestPathRewrites: true).ToList();
+                var rewrites = prop.FindPropertyRelative("rewriteBindings");
+                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
+                    controllers,
+                    avatarObject,
+                    baseObject,
+                    path => RewritePath(model, path),
+                    addPathRewrite: path => {
+                        VRCFuryEditorUtils.AddToList(rewrites, entry => {
+                            entry.FindPropertyRelative("from").stringValue = path;
+                            entry.FindPropertyRelative("to").stringValue = "";
+                        });
+                    }
+                ).ToList();
                 if (usesWdOff) {
                     warnings.Add(VRCFuryEditorUtils.Warn(
                         "This controller uses WD off!" +
@@ -558,8 +660,10 @@ namespace VF.Feature {
             return content;
         }
 
+        // https://creators.vrchat.com/avatars/animator-parameters/
         public static readonly HashSet<string> VRChatGlobalParams = new HashSet<string> {
             "IsLocal",
+            "PreviewMode",
             "Viseme",
             "Voice",
             "GestureLeft",
@@ -580,7 +684,7 @@ namespace VF.Feature {
             "MuteSelf",
             "InStation",
             "Earmuffs",
-
+            "IsOnFriendsList",
             "AvatarVersion",
 
             "Supine",
@@ -592,7 +696,8 @@ namespace VF.Feature {
             "EyeHeightAsMeters",
             "EyeHeightAsPercent",
             
-            "IsOnFriendsList",
+            "IsAnimatorEnabled",
+            
         };
     }
 

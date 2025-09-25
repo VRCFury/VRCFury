@@ -32,8 +32,7 @@ void sps_light_parse(float range, half4 color, out int type) {
 void sps_light_search(
 	inout int ioType,
 	inout float3 ioRootLocal,
-	inout float3 ioRootNormal,
-	inout float4 ioColor
+	inout float3 ioRootNormal
 ) {
 	// Collect useful info about all the nearby lights that unity tells us about
 	// (usually the brightest 4)

@@ -19,7 +19,7 @@ namespace VF.Service {
     [VFService]
     internal class ObjectMoveService {
         [VFAutowired] private readonly VFGameObject avatarObject;
-        [VFAutowired] private readonly ClipRewriteService clipRewriteService;
+        [VFAutowired] private readonly AllClipsService allClipsService;
 
         private readonly List<(string, string)> deferred = new List<(string, string)>();
 
@@ -68,7 +68,7 @@ namespace VF.Service {
                 return path;
             });
 
-            clipRewriteService.RewriteAllClips(rewriter);
+            allClipsService.RewriteAllClips(rewriter);
             deferred.Clear();
         }
     }

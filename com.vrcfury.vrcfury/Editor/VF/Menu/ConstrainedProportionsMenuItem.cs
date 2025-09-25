@@ -1,59 +1,78 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Haptics;
 using VF.Utils;
+using Object = UnityEngine.Object;
 
 namespace VF.Menu {
-    internal class ConstrainedProportionsMenuItem : UnityEditor.AssetModificationProcessor {
+    internal class ConstrainedProportionsMenuItem {
         private const string EditorPref = "com.vrcfury.constrainedProportions";
+        
+        private static readonly HashSet<Transform> unlocked = new HashSet<Transform>();
 
-        private static Action reset;
-
-        private static void Reset() {
-            try {
-                reset?.Invoke();
-            } catch (Exception) {
-            }
-
-            reset = null;
-        }
+        private static readonly PropertyInfo constrainProportionsScale = typeof(Transform)
+            .GetProperty("constrainProportionsScale",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
         [InitializeOnLoadMethod]
         private static void Init() {
             EditorApplication.delayCall += UpdateMenu;
-            AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
-            Selection.selectionChanged += () => {
-                Reset();
-                if (!Get()) return;
+            
+            if (constrainProportionsScale == null) {
+                Debug.LogWarning("Failed to find constrainProportionsScale");
+                return;
+            }
 
-                foreach (var t in Selection.transforms) {
-                    FixTransform(t);
+            HarmonyUtils.Patch(
+                typeof(PrefixClass),
+                nameof(PrefixClass.DoAllGOsHaveConstrainProportionsEnabled),
+                typeof(Selection),
+                "DoAllGOsHaveConstrainProportionsEnabled",
+                internalReplacementClass: typeof(ReplacementClass)
+            );
+            HarmonyUtils.Patch(
+                typeof(PrefixClass),
+                nameof(PrefixClass.SetConstrainProportions),
+                "UnityEditor.ConstrainProportionsTransformScale",
+                "SetConstrainProportions"
+            );
+            Selection.selectionChanged += () => unlocked.Clear();
+        }
+
+        private static IEnumerable<Transform> Transforms(IEnumerable<Object> objs) {
+            return objs.Select(o => {
+                if (o is GameObject go) return go.transform;
+                if (o is Transform t) return t;
+                return null;
+            }).NotNull();
+        }
+
+        private static bool ShouldForceLock(UnityEngine.Object[] targetObjects) {
+            unlocked.UnionWith(Transforms(targetObjects).Where(t => HapticUtils.IsNonUniformScale(t)));
+            return Get() && Transforms(targetObjects).All(t => !unlocked.Contains(t));
+        }
+
+        public static class PrefixClass {
+            public static bool DoAllGOsHaveConstrainProportionsEnabled(UnityEngine.Object[] __0, ref bool __result) {
+                if (ShouldForceLock(__0)) {
+                    __result = true;
+                    return false;
                 }
-            };
+                return true;
+            }
+            public static void SetConstrainProportions(UnityEngine.Object[] __0) {
+                unlocked.UnionWith(Transforms(__0));
+            }
         }
-        
-        private static void OnBeforeAssemblyReload() {
-            Reset();
-        }
-        
-        private static void FixTransform(Transform transform) {
-            var so = new SerializedObject(transform);
-            var prop = so.FindProperty("m_ConstrainProportionsScale");
-            if (prop == null || prop.propertyType != SerializedPropertyType.Boolean) return;
-            var oldValue = prop.boolValue;
-            var newValue = !HapticUtils.IsNonUniformScale(transform);
-            if (oldValue == newValue) return;
-
-            var shouldReset = prop.isInstantiatedPrefab && !prop.prefabOverride && !Application.isPlaying;
-            prop.boolValue = newValue;
-            prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-
-            if (shouldReset) {
-                reset += () => {
-                    PrefabUtility.RevertPropertyOverride(new SerializedObject(prop.serializedObject.targetObject).FindProperty(prop.propertyPath), InteractionMode.AutomatedAction);
-                };
+        public static class ReplacementClass {
+            public static bool DoAllGOsHaveConstrainProportionsEnabled(UnityEngine.Object[] targetObjects) {
+                if (ShouldForceLock(targetObjects)) return true;
+                // OG Behaviour
+                return Transforms(targetObjects).All(t => (bool)constrainProportionsScale.GetValue(t));
             }
         }
 
@@ -79,11 +98,6 @@ namespace VF.Menu {
             }
             EditorPrefs.SetBool(EditorPref, !Get());
             UpdateMenu();
-        }
-        
-        static string[] OnWillSaveAssets(string[] paths) {
-            Reset();
-            return paths;
         }
     }
 }

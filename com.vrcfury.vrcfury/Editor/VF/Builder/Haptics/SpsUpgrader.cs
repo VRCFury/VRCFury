@@ -19,7 +19,7 @@ namespace VF.Builder.Haptics {
         
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();
-            if (avatarObject == null) avatarObject = Selection.activeGameObject.transform.root;
+            if (avatarObject == null) avatarObject = Selection.activeGameObject.asVf().root;
 
             var messages = Apply(avatarObject, true, Mode.Manual);
             if (string.IsNullOrWhiteSpace(messages)) {
@@ -46,7 +46,7 @@ namespace VF.Builder.Haptics {
                 "Ok"
             );
 
-            SceneView sv = EditorWindow.GetWindow<SceneView>();
+            var sv = EditorWindowFinder.GetWindows<SceneView>().FirstOrDefault();
             if (sv != null) sv.drawGizmos = true;
         }
 
@@ -77,13 +77,14 @@ namespace VF.Builder.Haptics {
             var addedPlug = new HashSet<VFGameObject>();
             var foundParentConstraint = false;
 
-            bool AlreadyExistsAboveOrBelow(VFGameObject obj, IEnumerable<VFGameObject> list) {
+            bool AlreadyExistsAboveOrBelow(VFGameObject obj, IEnumerable<VFGameObject> enumerable) {
+                var set = enumerable.ToImmutableHashSet();
                 var parentIsDeleted = obj.GetSelfAndAllParents()
                     .Any(t => objectsToDelete.Contains(t));
                 if (parentIsDeleted) return true;
                 return obj.GetSelfAndAllChildren()
                     .Concat(obj.GetSelfAndAllParents())
-                    .Any(list.Contains);
+                    .Any(set.Contains);
             }
 
             string GetPath(VFGameObject obj) {
@@ -110,7 +111,7 @@ namespace VF.Builder.Haptics {
             }
 
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
-                hasExistingPlug.Add(c.transform);
+                hasExistingPlug.Add(c.owner());
                 foreach (var renderer in VRCFuryHapticPlugEditor.GetRenderers(c)) {
                     hasExistingPlug.Add(renderer.owner());
                 }
@@ -263,7 +264,7 @@ namespace VF.Builder.Haptics {
                     if (!dryRun) {
                         foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
                             if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
-                                var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.transform);
+                                var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.owner());
                                 if (info != null) {
                                     var type = info.Item1;
                                     var position = info.Item2;

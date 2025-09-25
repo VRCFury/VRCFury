@@ -77,12 +77,15 @@ namespace VF.Feature.Base {
 
         // Finalize Controllers
         UpgradeToVrcConstraints, // Needs to happen before any step starts looking at or cleaning up "invalid" animation bindings
+        DisableSyncForAaps,
+        MakeAllSyncedDriversLocal,
+        RemoveVrcGlobalsFromExpressionParams,
         ParameterCompressor,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
+        ApplyModifiedMaterialProperties, // Needs to run before RecordAllDefaults
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
-        LocomotionConflictResolver,
         ActionConflictResolver,
         TrackingConflictResolver,
         FixPartiallyWeightedAaps, // Needs to run before PositionDefaultsLayer, before OptimizeBlendTrees, after everything setting AAPs, after TrackingConflictResolver (creates aaps), before anything that would remove the defaults layer like CleanupEmptyLayers
@@ -108,16 +111,15 @@ namespace VF.Feature.Base {
         FixMipmapStreaming,
         FixAudio,
         FixMenuIconTextures,
+        
+        AddDebugVrcParameter,
 
         MarkThingsAsDirtyJustInCase,
         
-        RemoveJunkAnimators,
+        // Needs to happen after everything is done using the animator, and before SaveAssets
+        ResetAnimatorAfter,
 
         SaveAssets,
-        
-        // Needs to happen after everything is done using the animator
-        ResetAnimatorAfter,
-        
         Validation,
         HideAddedComponents,
         BackupAfter,

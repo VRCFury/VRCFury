@@ -116,10 +116,6 @@ namespace VF.Service {
         public void AdjustWriteDefaults() {
             var settings = GetBuildSettings();
 
-            if (settings.ignoredBroken) {
-                fx.NewBool($"VF/BrokenWd", usePrefix: false, synced: true, networkSynced: false);
-            }
-
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var layer in GetMaintainedLayers(controller)) {
                     // Direct blend trees break with wd off 100% of the time, so they are a rare case where the layer
@@ -140,6 +136,10 @@ namespace VF.Service {
             }
         }
 
+        public bool IsStillBroken() {
+            return GetBuildSettings().ignoredBroken;
+        }
+
         private class BuildSettings {
             public bool applyToUnmanagedLayers;
             public bool useWriteDefaults;
@@ -151,14 +151,13 @@ namespace VF.Service {
                 return _buildSettings;
             }
             
-            var allManagedStateMachines = controllers.GetAllUsedControllers()
+            var allManagedLayers = controllers.GetAllUsedControllers()
                 .SelectMany(controller => controller.GetManagedLayers())
-                .Select(l => l.stateMachine)
                 .ToImmutableHashSet();
 
             var analysis = DetectExistingWriteDefaults(
-                controllers.GetAllUsedControllers().Select(c => (c.GetType(), c.GetRaw())),
-                allManagedStateMachines
+                controllers.GetAllUsedControllers(),
+                allManagedLayers
             );
 
             var fixSetting = globals.allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
@@ -220,7 +219,7 @@ namespace VF.Service {
             return _buildSettings;
         }
 
-        private IEnumerable<VFLayer> GetMaintainedLayers(ControllerManager controller) {
+        private IList<VFLayer> GetMaintainedLayers(ControllerManager controller) {
             var settings = GetBuildSettings();
             return settings.applyToUnmanagedLayers ? controller.GetLayers() : controller.GetManagedLayers();
         }
@@ -244,16 +243,16 @@ namespace VF.Service {
         }
         
         // Returns: Broken, Should Use Write Defaults, Reason, Bad States
-        public static DetectionResults DetectExistingWriteDefaults(
-            IEnumerable<(VRCAvatarDescriptor.AnimLayerType, VFController)> avatarControllers,
-            ISet<AnimatorStateMachine> stateMachinesToIgnore = null
-        ) {
-            var controllerInfos = avatarControllers.Select(tuple => {
-                var (type, controller) = tuple;
+        public static DetectionResults DetectExistingWriteDefaults<T>(
+            ICollection<T> avatarControllers,
+            ISet<VFLayer> layersToIgnore = null
+        ) where T : VFControllerWithVrcType {
+            var controllerInfos = avatarControllers.Select(controller => {
+                var type = controller.vrcType;
                 var info = new ControllerInfo();
                 info.type = type;
                 foreach (var layer in controller.GetLayers()) {
-                    var ignore = stateMachinesToIgnore != null && stateMachinesToIgnore.Contains(layer.stateMachine);
+                    var ignore = layersToIgnore != null && layersToIgnore.Contains(layer);
                     if (!ignore) {
                         foreach (var state in new AnimatorIterator.States().From(layer)) {
                             List<string> list;

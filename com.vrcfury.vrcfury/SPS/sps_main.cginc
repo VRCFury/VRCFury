@@ -5,11 +5,16 @@
 #include "sps_utils.cginc"
 
 // SPS Penetration Shader
-void sps_apply_real(inout float3 vertex, inout float3 normal, inout float4 tangent, uint vertexId, inout float4 color)
-{
+void sps_apply_real(
+	inout SPS_STRUCT_POSITION_TYPE vertex,
+	inout SPS_STRUCT_NORMAL_TYPE normal,
+	inout SPS_STRUCT_TANGENT_TYPE tangent,
+	uint vertexId,
+	inout SPS_STRUCT_COLOR_TYPE color
+) {
 	const float worldLength = _SPS_Length;
-	const float3 origVertex = vertex;
-	const float3 origNormal = normal;
+	const float3 origVertex = vertex.xyz;
+	const float3 origNormal = normal.xyz;
 	const float3 origTangent = tangent.xyz;
 	float3 bakedVertex;
 	float3 bakedNormal;
@@ -17,12 +22,14 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, inout float4 tange
 	float active;
 	SpsGetBakedPosition(vertexId, bakedVertex, bakedNormal, bakedTangent, active);
 
+	bakedVertex *= (_SPS_Length / _SPS_BakedLength);
+	
 	if (active == 0) return;
 
 	float3 rootPos;
 	int type = SPS_TYPE_INVALID;
 	float3 frontNormal;
-	sps_light_search(type, rootPos, frontNormal, color);
+	sps_light_search(type, rootPos, frontNormal);
 	if (type == SPS_TYPE_INVALID) return;
 
 	float orfDistance = length(rootPos);
@@ -130,50 +137,29 @@ void sps_apply_real(inout float3 vertex, inout float3 normal, inout float4 tange
 	}
 
 	float3 deformedVertex = bezierPos + bezierRight * bakedVertex.x * holeShrink + bezierUp * bakedVertex.y * holeShrink;
-	vertex = lerp(origVertex, deformedVertex, dumbLerp);
+	vertex.xyz = lerp(origVertex, deformedVertex, dumbLerp);
 	if (length(bakedNormal) != 0) {
 		float3 deformedNormal = bezierRight * bakedNormal.x + bezierUp * bakedNormal.y + bezierForward * bakedNormal.z;
-		normal = lerp(origNormal, deformedNormal, dumbLerp);
+		normal.xyz = lerp(origNormal, deformedNormal, dumbLerp);
 	}
 	if (length(bakedTangent) != 0) {
 		float3 deformedTangent = bezierRight * bakedTangent.x + bezierUp * bakedTangent.y + bezierForward * bakedTangent.z;
 		tangent.xyz = lerp(origTangent, deformedTangent, dumbLerp);
 	}
 }
+
 void sps_apply(inout SpsInputs o) {
 
-	#if defined(SPS_STRUCT_TANGENT_TYPE_float3)
-		float4 tangent = float4(o.SPS_STRUCT_TANGENT_NAME,1);
-	#endif
-	#if defined(SPS_STRUCT_COLOR_TYPE_float3)
-		float4 color = float4(o.SPS_STRUCT_COLOR_NAME,1);
-	#endif
-	
 	// When VERTEXLIGHT_ON is missing, there are no lights nearby, and the 4light arrays will be full of junk
 	// Temporarily disable this check since apparently it causes some passes to not apply SPS
 	//#ifdef VERTEXLIGHT_ON
 	sps_apply_real(
-		o.SPS_STRUCT_POSITION_NAME.xyz,
+		o.SPS_STRUCT_POSITION_NAME,
 		o.SPS_STRUCT_NORMAL_NAME,
-		#if defined(SPS_STRUCT_TANGENT_TYPE_float3)
-			tangent,
-		#else
-			o.SPS_STRUCT_TANGENT_NAME,
-		#endif
+		o.SPS_STRUCT_TANGENT_NAME,
 		o.SPS_STRUCT_SV_VertexID_NAME,
-		#if defined(SPS_STRUCT_COLOR_TYPE_float3)
-			color
-		#else
-			o.SPS_STRUCT_COLOR_NAME
-		#endif
+		o.SPS_STRUCT_COLOR_NAME
 	);
 	//#endif
 
-	#if defined(SPS_STRUCT_TANGENT_TYPE_float3)
-		o.SPS_STRUCT_TANGENT_NAME = tangent.xyz;
-	#endif
-	#if defined(SPS_STRUCT_COLOR_TYPE_float3)
-		o.SPS_STRUCT_COLOR_NAME = color.xyz;
-	#endif
 }
-

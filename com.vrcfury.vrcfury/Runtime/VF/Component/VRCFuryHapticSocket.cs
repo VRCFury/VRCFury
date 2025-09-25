@@ -33,7 +33,7 @@ namespace VF.Component {
         [NonSerialized] public bool sendersOnly = false;
         
         public List<DepthActionNew> depthActions2 = new List<DepthActionNew>();
-        public State activeActions;
+        public State activeActions = new State();
         public bool useHipAvoidance = true;
 
         public bool enablePlugLengthParameter;
@@ -70,7 +70,7 @@ namespace VF.Component {
         
         [Serializable]
         public class DepthActionNew {
-            public State actionSet;
+            public State actionSet = new State();
             public Vector2 range = new Vector2(-0.25f, 0);
             public DepthActionUnits units = DepthActionUnits.Meters;
             public bool enableSelf;

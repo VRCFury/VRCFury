@@ -9,14 +9,20 @@ using VF.Utils;
 namespace VF.Actions {
     [FeatureTitle("SCSS Shader Inventory")]
     internal class ScssShaderInventoryActionBuilder : ActionBuilder<ShaderInventoryAction> {
-        public AnimationClip Build(ShaderInventoryAction model, AnimationClip offClip) {
-            var onClip = NewClip();
+        public AnimationClip Build(ShaderInventoryAction model) {
+            return MakeClip(model, 1);
+        }
+        public AnimationClip BuildOff(ShaderInventoryAction model) {
+            return MakeClip(model, 0);
+        }
+        
+        private AnimationClip MakeClip(ShaderInventoryAction model, float value) {
+            var clip = NewClip();
             var renderer = model.renderer;
-            if (renderer == null) return onClip;
+            if (renderer == null) return clip;
             var propertyName = $"material._InventoryItem{model.slot:D2}Animated";
-            offClip.SetCurve(renderer, propertyName, 0);
-            onClip.SetCurve(renderer, propertyName, 1);
-            return onClip;
+            clip.SetCurve(renderer, propertyName, value);
+            return clip;
         }
 
         [FeatureEditor]

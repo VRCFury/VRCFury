@@ -289,7 +289,8 @@ namespace VF.Inspector {
             Func<string,string> formatEnum = null,
             string tooltip = null,
             VisualElement fieldOverride = null,
-            bool forceLabelOnOwnLine = false
+            bool forceLabelOnOwnLine = false,
+            Action onChange = null
         ) {
             VisualElement field = null;
             var isCheckbox = false;
@@ -311,6 +312,14 @@ namespace VF.Inspector {
                             formatSelectedValueCallback: formatEnum,
                             formatListItemCallback: formatEnum
                         ) { bindingPath = prop.propertyPath };
+                        break;
+                    }
+                    case SerializedPropertyType.Boolean: {
+                        var toggle = new Toggle { bindingPath = prop.propertyPath };
+                        toggle.RegisterValueChangedCallback(e => {
+                            onChange?.Invoke();
+                        });
+                        field = toggle;
                         break;
                     }
                     case SerializedPropertyType.Generic: {
@@ -619,8 +628,12 @@ namespace VF.Inspector {
         }
 
         public static VisualElement Warn(string message) {
+            return Warn(WrappedLabel(message));
+        }
+        
+        public static VisualElement Warn(VisualElement message) {
             var i = Section().BorderColor(Color.yellow).Border(2);
-            i.Add(WrappedLabel(message));
+            i.Add(message);
             return i;
         }
         
@@ -720,9 +733,14 @@ namespace VF.Inspector {
             return AssetDatabase.LoadAssetAtPath<T>(path);
         }
         
+        private abstract class PropsReflection : ReflectionHelper {
+            private static readonly Type ScriptAttributeUtility = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ScriptAttributeUtility");
+            public delegate FieldInfo GetFieldInfoFromProperty_(SerializedProperty property, out System.Type type);
+            public static readonly GetFieldInfoFromProperty_ GetFieldInfoFromProperty = ScriptAttributeUtility?.GetMatchingDelegate<GetFieldInfoFromProperty_>("GetFieldInfoFromProperty");
+        }
         public static Type GetPropertyType(SerializedProperty prop) {
-            if (UnityReflection.Props.GetFieldInfoFromProperty == null) return null;
-            UnityReflection.Props.GetFieldInfoFromProperty(prop, out var type);
+            if (PropsReflection.GetFieldInfoFromProperty == null) return null;
+            PropsReflection.GetFieldInfoFromProperty(prop, out var type);
             return type;
         }
 

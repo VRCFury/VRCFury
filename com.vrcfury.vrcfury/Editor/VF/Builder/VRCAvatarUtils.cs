@@ -22,8 +22,7 @@ namespace VF.Builder {
             public Action setToDefault;
         }
         
-        private static IEnumerable<FoundController>
-            GetAllControllers(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.CustomAnimLayer[] layers) {
+        private static IList<FoundController> GetAllControllers(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.CustomAnimLayer[] layers) {
             
             var output = new List<FoundController>();
 
@@ -62,12 +61,12 @@ namespace VF.Builder {
 
             return output;
         }
-        public static IEnumerable<FoundController> GetAllControllers(VRCAvatarDescriptor avatar) {
-            return Enumerable.Concat(
-                GetAllControllers(avatar, avatar.baseAnimationLayers),
-                GetAllControllers(avatar, avatar.specialAnimationLayers));
+        public static IList<FoundController> GetAllControllers(VRCAvatarDescriptor avatar) {
+            return GetAllControllers(avatar, avatar.baseAnimationLayers)
+                .Concat(GetAllControllers(avatar, avatar.specialAnimationLayers))
+                .ToArray();
         }
-        
+
         private static AnimatorController GetDefaultController(VRCAvatarDescriptor.AnimLayerType type) {
             string guid = null;
             if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
@@ -76,6 +75,9 @@ namespace VF.Builder {
             } else if (type == VRCAvatarDescriptor.AnimLayerType.Action) {
                 // vrc_AvatarV3ActionLayer
                 guid = "3e479eeb9db24704a828bffb15406520";
+            } else if (type == VRCAvatarDescriptor.AnimLayerType.Base) {
+                // vrc_AvatarV3LocomotionLayer
+                guid = "4e4e1a372a526074884b7311d6fc686b";
             }
             if (guid == null) return null;
             var path = AssetDatabase.GUIDToAssetPath(guid);
@@ -92,7 +94,12 @@ namespace VF.Builder {
         public static (bool,RuntimeAnimatorController) GetAvatarController(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.AnimLayerType type) {
             var matching = GetAllControllers(avatar).Where(layer => layer.type == type).ToArray();
             if (matching.Length == 0) {
-                throw new VRCFBuilderException("Failed to find playable layer on avatar descriptor with type " + type);
+                var msg = "Failed to find playable layer on avatar descriptor with type " + type;
+                if (type == VRCAvatarDescriptor.AnimLayerType.Additive ||
+                    type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                    msg += "\n\nThis asset requires your avatar rig to be HUMANOID, but your fbx rig definition is probably not humanoid.";
+                }
+                throw new VRCFBuilderException(msg);
             }
             if (matching.Length > 1) {
                 throw new VRCFBuilderException("Found multiple playable layers on avatar descriptor with same type?? " + type);

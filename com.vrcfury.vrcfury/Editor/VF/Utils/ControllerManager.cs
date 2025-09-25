@@ -13,10 +13,8 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Utils {
-    internal class ControllerManager {
-        private readonly VFController ctrl;
+    internal class ControllerManager : VFControllerWithVrcType {
         private readonly Func<ParamManager> paramManager;
-        private readonly VRCAvatarDescriptor.AnimLayerType type;
         private readonly Func<int> currentFeatureNumProvider;
         private readonly Func<string> currentFeatureClipPrefixProvider;
         private readonly Func<string, string> makeUniqueParamName;
@@ -30,27 +28,17 @@ namespace VF.Utils {
             Func<string> currentFeatureClipPrefixProvider,
             Func<string, string> makeUniqueParamName,
             LayerSourceService layerSourceService
-        ) {
-            this.ctrl = ctrl;
+        ) : base(ctrl.GetRaw(), type) {
             this.paramManager = paramManager;
-            this.type = type;
             this.currentFeatureNumProvider = currentFeatureNumProvider;
             this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
             this.makeUniqueParamName = makeUniqueParamName;
             this.layerSourceService = layerSourceService;
         }
 
-        public VFController GetRaw() {
-            return ctrl;
-        }
-
-        public new VRCAvatarDescriptor.AnimLayerType GetType() {
-            return type;
-        }
-
         public VFLayer EnsureEmptyBaseLayer() {
-            var oldLayer0 = ctrl.GetLayer(0);
-            if (oldLayer0 != null && oldLayer0.stateMachine.defaultState == null) {
+            var oldLayer0 = GetLayer(0);
+            if (oldLayer0 != null && !oldLayer0.hasDefaultState) {
                 return oldLayer0;
             }
             var newLayer0 = NewLayer("Base Mask", insertAt: 0);
@@ -60,61 +48,25 @@ namespace VF.Utils {
             return newLayer0;
         }
 
-        public VFLayer NewLayer(string name, int insertAt = -1) {
-            var newLayer = ctrl.NewLayer(NewLayerName(name), insertAt);
-            layerSourceService.SetSourceToCurrent(newLayer);
-            return newLayer;
-        }
-
-        /**
-         * BEWARE: This consumes the ENTIRE asset file containing "other"
-         * The animator controller (and its sub-assets) should be owned by vrcfury, and should
-         * be the ONLY THING in that file!!!
-         */
-        public void TakeOwnershipOf(AnimatorController other, bool putOnTop = false, bool prefix = true) {
-            // Merge Layers
-            if (prefix) {
-                other.layers = other.layers.Select((layer, i) => {
-                    layer.name = NewLayerName(layer.name);
-                    return layer;
-                }).ToArray();
-            }
-
-            if (putOnTop) {
-                ctrl.layers = other.layers.Concat(ctrl.layers).ToArray();
-            } else {
-                ctrl.layers = ctrl.layers.Concat(other.layers).ToArray();
-            }
-
-            other.layers = new AnimatorControllerLayer[] { };
-            
-            // Merge Params
-            foreach (var p in other.parameters) {
-                ctrl.NewParam(p.name, p.type, n => {
-                    n.defaultBool = p.defaultBool;
-                    n.defaultFloat = p.defaultFloat;
-                    n.defaultInt = p.defaultInt;
-                });
-            }
-
-            other.parameters = new AnimatorControllerParameter[] { };
-        }
-
-        public string NewLayerName(string name) {
+        protected override string NewLayerName(string name) {
             return "[VF" + currentFeatureNumProvider() + "] " + name;
         }
 
-        public IEnumerable<VFLayer> GetLayers() {
-            return ctrl.GetLayers();
-        }
-        public IEnumerable<VFLayer> GetManagedLayers() {
-            return GetLayers().Where(l => IsManaged(l));
-        }
-        public IEnumerable<VFLayer> GetUnmanagedLayers() {
-            return GetLayers().Where(l => !IsManaged(l));
+        public override VFLayer NewLayer(string name, int insertAt = -1) {
+            var newLayer = base.NewLayer(name, insertAt);
+            layerSourceService.SetSourceToCurrent(newLayer);
+            layerSourceService.MarkCreated(newLayer);
+            return newLayer;
         }
 
-        private bool IsManaged(AnimatorStateMachine layer) {
+        public IList<VFLayer> GetManagedLayers() {
+            return GetLayers().Where(l => IsManaged(l)).ToArray();
+        }
+        public IList<VFLayer> GetUnmanagedLayers() {
+            return GetLayers().Where(l => !IsManaged(l)).ToArray();
+        }
+
+        private bool IsManaged(VFLayer layer) {
             return layerSourceService.GetSource(layer) != LayerSourceService.AvatarDescriptorSource;
         }
 
@@ -133,7 +85,7 @@ namespace VF.Utils {
                 param.SetNetworkSynced(networkSynced, true);
                 GetParamManager().AddSyncedParam(param);
             }
-            return ctrl.NewBool(name, def);
+            return _NewBool(name, def);
         }
         public VFAInteger NewInt(string name, bool synced = false, bool networkSynced = true, int def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) name = makeUniqueParamName(name);
@@ -146,7 +98,7 @@ namespace VF.Utils {
                 param.SetNetworkSynced(networkSynced, true);
                 GetParamManager().AddSyncedParam(param);
             }
-            return ctrl.NewInt(name, def);
+            return _NewInt(name, def);
         }
         public VFAFloat NewFloat(string name, bool synced = false, float def = 0, bool saved = false, bool usePrefix = true) {
             if (usePrefix) {
@@ -161,7 +113,7 @@ namespace VF.Utils {
                 param.defaultValue = def;
                 GetParamManager().AddSyncedParam(param);
             }
-            return ctrl.NewFloat(name, def);
+            return _NewFloat(name, def);
         }
         public BlendtreeMath.VFAap MakeAap(string name, float def = 0, bool usePrefix = true) {
             return new BlendtreeMath.VFAap(NewFloat(name, def: def, usePrefix: usePrefix));
@@ -208,22 +160,18 @@ namespace VF.Utils {
         }
 
         [CanBeNull]
-        public string GetLayerOwner(AnimatorStateMachine stateMachine) {
-            return layerSourceService.GetSource(stateMachine);
-        }
-
-        public bool IsSourceAvatarDescriptor(AnimatorStateMachine stateMachine) {
-            return GetLayerOwner(stateMachine) == LayerSourceService.AvatarDescriptorSource;
+        public string GetLayerOwner(VFLayer layer) {
+            return layerSourceService.GetSource(layer);
         }
 
         public void ForEachClip(Action<AnimationClip> action) {
-            foreach (var clip in new AnimatorIterator.Clips().From(GetRaw())) {
+            foreach (var clip in new AnimatorIterator.Clips().From(this)) {
                 action(clip);
             }
         }
 
         public IImmutableSet<AnimationClip> GetClips() {
-            return new AnimatorIterator.Clips().From(GetRaw());
+            return new AnimatorIterator.Clips().From(this);
         }
     }
 }

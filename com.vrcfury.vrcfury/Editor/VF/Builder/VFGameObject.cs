@@ -19,14 +19,14 @@ namespace VF.Builder {
             _gameObject = gameObject;
         }
 
-        public GameObject gameObject => _gameObject;
-        public Transform transform => _gameObject == null ? null : _gameObject.transform;
+        private GameObject gameObject => _gameObject;
+        private Transform transform => _gameObject == null ? null : _gameObject.transform;
         public static implicit operator VFGameObject(GameObject d) => d == null ? null : new VFGameObject(d);
         public static implicit operator VFGameObject(Transform d) => d == null ? null : new VFGameObject(d.gameObject);
         public static implicit operator GameObject(VFGameObject d) => d?.gameObject;
         public static implicit operator Object(VFGameObject d) => d?.gameObject;
         public static implicit operator Transform(VFGameObject d) => d?.transform;
-        public static implicit operator bool(VFGameObject d) => d?.gameObject;
+        public static implicit operator bool(VFGameObject d) => d?.gameObject != null;
         public static bool operator ==(VFGameObject a, VFGameObject b) => a?.Equals(b) ?? b?.Equals(null) ?? true;
         public static bool operator !=(VFGameObject a, VFGameObject b) => !(a == b);
         public override bool Equals(object other) {
@@ -154,10 +154,12 @@ namespace VF.Builder {
 
         public UnityEngine.Component[] GetComponents(Type t) {
             // Components can sometimes be null for some reason. Perhaps when they're corrupt?
-            return gameObject.GetComponents(t).NotNull().ToArray();
+            // The OfType is required because unity can be tricked into blindly returning things that are NOT components
+            // if someone messed with the metadata or class type.
+            return gameObject.GetComponents(t).NotNull().OfType<UnityEngine.Component>().ToArray();
         }
         public T[] GetComponents<T>() {
-            return gameObject.GetComponents<T>().NotNull().ToArray();
+            return gameObject.GetComponents<T>().NotNull().OfType<T>().ToArray();
         }
         
         public T GetComponentInSelfOrParent<T>() {
@@ -165,15 +167,15 @@ namespace VF.Builder {
         }
         
         public UnityEngine.Component[] GetComponentsInSelfAndChildren(Type type) {
-            return gameObject.GetComponentsInChildren(type, true).NotNull().ToArray();
+            return gameObject.GetComponentsInChildren(type, true).NotNull().OfType<UnityEngine.Component>().ToArray();
         }
 
         public T[] GetComponentsInSelfAndChildren<T>() {
-            return gameObject.GetComponentsInChildren<T>(true).NotNull().ToArray();
+            return gameObject.GetComponentsInChildren<T>(true).NotNull().OfType<T>().ToArray();
         }
         
         public T[] GetComponentsInSelfAndParents<T>() {
-            return gameObject.GetComponentsInParent<T>(true).NotNull().ToArray();
+            return gameObject.GetComponentsInParent<T>(true).NotNull().OfType<T>().ToArray();
         }
         
         public UnityEngine.Component AddComponent(Type type) {
@@ -294,6 +296,10 @@ namespace VF.Builder {
 
         public int GetInstanceID() {
             return _gameObject.GetInstanceID();
+        }
+
+        public bool HasTag(string tag) {
+            return gameObject.CompareTag(tag);
         }
     }
 }

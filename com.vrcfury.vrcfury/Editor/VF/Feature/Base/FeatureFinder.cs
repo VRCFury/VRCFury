@@ -25,7 +25,7 @@ namespace VF.Feature.Base {
                     output.Add(modelType, type);
                 }
             }
-            Debug.Log("VRCFury loaded " + output.Count + " builder types");
+            //Debug.Log("VRCFury loaded " + output.Count + " builder types");
             return output;
         }); 
 

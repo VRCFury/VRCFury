@@ -7,10 +7,8 @@ using VF.Utils;
 namespace VF {
     internal static class GuidWrapperExtensions {
         [CanBeNull]
-        public static T Get<T>(this GuidWrapper<T> wrapper) where T : Object {
-            if (wrapper == null) return null;
-            if (wrapper.objRef is T t) return t;
-            return VrcfObjectId.IdToObject<T>(wrapper.id);
+        public static T Get<T>([CanBeNull] this GuidWrapper<T> wrapper) where T : Object {
+            return wrapper?.objRef as T;
         }
 
         [InitializeOnLoadMethod]
@@ -26,12 +24,17 @@ namespace VF {
                 }
 
                 if (wrapper.objRef != null) {
+                    // Object is set and available
                     var newId = VrcfObjectId.ObjectToId(wrapper.objRef);
                     if (wrapper.id != newId) {
                         wrapper.id = newId;
                         changed = true;
                     }
                 } else {
+                    // Object is either:
+                    // * missing (asset was deleted)
+                    // * totally unset (user cleared the field or never put anything in it)
+                    // * reference came from an old version of unity which stored "missing" as "unset" and we need to restore the reference from id
                     var newObjRef = VrcfObjectId.IdToObject<Object>(wrapper.id);
                     if (newObjRef != wrapper.objRef) {
                         wrapper.objRef = newObjRef;

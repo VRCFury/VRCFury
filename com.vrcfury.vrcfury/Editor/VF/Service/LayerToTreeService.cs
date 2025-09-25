@@ -9,8 +9,10 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature;
 using VF.Feature.Base;
+using VF.Hooks;
 using VF.Injector;
 using VF.Inspector;
+using VF.Menu;
 using VF.Model.Feature;
 using VF.Utils;
 using VF.Utils.Controller;
@@ -18,7 +20,6 @@ using VF.Utils.Controller;
 namespace VF.Service {
     [VFService]
     internal class LayerToTreeService {
-        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService layerControlService;
         [VFAutowired] private readonly FixWriteDefaultsService fixWriteDefaults;
@@ -26,9 +27,15 @@ namespace VF.Service {
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
+        [VFAutowired] private readonly LayerSourceService layerSourceService;
 
         [FeatureBuilderAction(FeatureOrder.LayerToTree)]
         public void Apply() {
+            if (DisableDbtOptimizerMenuItem.Get() && Application.isPlaying) {
+                return;
+            }
+
             var applyToUnmanaged = globals.allFeaturesInRun
                 .OfType<DirectTreeOptimizer>()
                 .Any();
@@ -77,37 +84,41 @@ namespace VF.Service {
                 throw new DoNotOptimizeException($"Layer is targeted by an Animator Layer Control");
             }
 
-            if (layer.stateMachine.stateMachines.Length > 0) {
+            if (layer.hasSubMachines) {
                 throw new DoNotOptimizeException("Contains submachine");
             }
 
-            var hasBehaviour = new AnimatorIterator.Behaviours().From(layer).Any();
+            var hasBehaviour = layer.allBehaviours.Any();
             if (hasBehaviour) {
                 throw new DoNotOptimizeException($"Contains behaviours");
             }
 
-            var hasExitTime = new AnimatorIterator.Transitions()
-                .From(layer)
+            var hasExitTime = layer.allTransitions
                 .Any(b => b is AnimatorStateTransition t && t.hasExitTime);
             if (hasExitTime) {
                 throw new DoNotOptimizeException($"Contains a transition using exit time");
             }
             
-            var hasNonZeroTransitonTime = new AnimatorIterator.Transitions()
-                .From(layer)
+            var hasNonZeroTransitonTime = layer.allTransitions
                 .Any(b => b is AnimatorStateTransition t && t.duration != 0);
             if (hasNonZeroTransitonTime) {
                 throw new DoNotOptimizeException($"Contains a transition with a non-0 duration");
             }
 
-            var states = layer.stateMachine.states;
-            states = states.Where(child => !IsUnreachableState(layer, child.state)).ToArray();
+            var states = layer.allStates.ToArray();
+            states = states.Where(state => !IsUnreachableState(layer, state)).ToArray();
 
             var hasEulerRotation = states.Any(state => {
-                if (state.state.motion is BlendTree) return false;
-                return new AnimatorIterator.Clips().From(state.state.motion)
+                // Technically if this state contains a blendtree, it should be safe to optimize anyways since
+                // the rotation would already be quaternion based anyways. HOWEVER, due to the way action loading works,
+                // toggles are ALWAYS a blend tree (containing a bunch of things with always-1 weights), and they may be
+                // flattened down to a single clip later on. This means it's unsafe for us to optimize rotations in a blendtree here.
+                // If we didn't create the layer (it came from the descriptor or a full controller), then it should still be safe
+                // to optimize.
+                if (state.motion is BlendTree && !layerSourceService.DidCreate(layer)) return false;
+                return new AnimatorIterator.Clips().From(state.motion)
                     .SelectMany(clip => clip.GetAllBindings())
-                    .Where(binding => binding.IsValid(avatarObject))
+                    .Where(binding => validateBindingsService.IsValid(binding))
                     .Select(binding => binding.Normalize(true))
                     .Any(b => b.propertyName == EditorCurveBindingExtensions.NormalizedRotationProperty);
             });
@@ -129,7 +140,7 @@ namespace VF.Service {
             }
 
             if (states.Length == 1) {
-                var state = states[0].state;
+                var state = states[0];
                 var onClip = Make0LengthClipForState(layer, state);
                 if (onClip != null) {
                     directTree.Value.Add(onClip);
@@ -137,14 +148,14 @@ namespace VF.Service {
                 return;
             }
             if (states.Length == 3) {
-                states = states.Where(child => !IsEntryOnlyState(layer, child.state)).ToArray();
+                states = states.Where(state => !IsEntryOnlyState(layer, state)).ToArray();
             }
             if (states.Length != 2) {
                 throw new DoNotOptimizeException($"Contains {states.Length} states");
             }
             
-            var state0 = states[0].state;
-            var state1 = states[1].state;
+            var state0 = states[0];
+            var state1 = states[1];
 
             var state0Condition = GetSingleCondition(GetTransitionsTo(layer, state0));
             var state1Condition = GetSingleCondition(GetTransitionsTo(layer, state1));
@@ -175,25 +186,25 @@ namespace VF.Service {
         }
         
         private static bool IsEntryOnlyState(VFLayer layer, AnimatorState state) {
-            return layer.stateMachine.defaultState == state && GetTransitionsTo(layer, state).Count == 0;
+            return layer.defaultState == state && GetTransitionsTo(layer, state).Count == 0;
         }
         
         private static bool IsUnreachableState(VFLayer layer, AnimatorState state) {
-            return layer.stateMachine.defaultState != state && GetTransitionsTo(layer, state).Count == 0;
+            return layer.defaultState != state && GetTransitionsTo(layer, state).Count == 0;
         }
         
         private static ICollection<AnimatorTransitionBase> GetTransitionsTo(VFLayer layer, AnimatorState state) {
             var output = new List<AnimatorTransitionBase>();
             var ignoreTransitions = new HashSet<AnimatorTransitionBase>();
-            var entryState = layer.stateMachine.defaultState;
+            var entryState = layer.defaultState;
 
-            if (layer.stateMachine.entryTransitions.Length == 1 &&
-                layer.stateMachine.entryTransitions[0].conditions.Length == 0) {
-                entryState = layer.stateMachine.entryTransitions[0].destinationState;
-                ignoreTransitions.Add(layer.stateMachine.entryTransitions[0]);
+            if (layer.entryTransitions.Length == 1 &&
+                layer.entryTransitions[0].conditions.Length == 0) {
+                entryState = layer.entryTransitions[0].destinationState;
+                ignoreTransitions.Add(layer.entryTransitions[0]);
             }
 
-            foreach (var t in new AnimatorIterator.Transitions().From(layer)) {
+            foreach (var t in layer.allTransitions) {
                 if (ignoreTransitions.Contains(t)) continue;
                 if (t.destinationState == state || (t.isExit && entryState == state)) {
                     output.Add(t);
@@ -218,8 +229,8 @@ namespace VF.Service {
                 (on, off) = (off, on);
             }
 
-            var onValid = on.HasValidBinding(avatarObject);
-            var offValid = off.HasValidBinding(avatarObject);
+            var onValid = validateBindingsService.HasValidBinding(on);
+            var offValid = validateBindingsService.HasValidBinding(off);
             if (!onValid && !offValid) throw new DoNotOptimizeException($"Contains no valid bindings");
 
             var param = new VFAFloat(condition.parameter, 0);
@@ -267,12 +278,18 @@ namespace VF.Service {
 
             if (state.timeParameterActive) {
                 // TODO: This could also break if the animation tangents are not linear
+                // TODO: We could detect if this is always 1 or always 0 and optimize it away
                 if (string.IsNullOrWhiteSpace(state.timeParameter)) {
                     throw new DoNotOptimizeException($"{state.name} contains a motion time clip without a valid parameter");
                 }
                 var subTree = VFBlendTree1D.Create($"Layer {layer.name} - {state.name}", state.timeParameter);
-                subTree.Add(0, startMotion);
-                subTree.Add(1, endMotion);
+                if (state.speed >= 0) {
+                    subTree.Add(0, startMotion);
+                    subTree.Add(1, endMotion);
+                } else {
+                    subTree.Add(0, endMotion);
+                    subTree.Add(1, startMotion);
+                }
                 return subTree;
             } else if (state.motion is AnimationClip) {
                 if (clipsInMotion.Any(clip => clip.GetLengthInFrames() > 5)) {
@@ -295,7 +312,7 @@ namespace VF.Service {
         private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(VFLayer layer) {
             return new AnimatorIterator.Clips().From(layer)
                 .SelectMany(clip => clip.GetAllBindings())
-                .Where(binding => binding.IsValid(avatarObject))
+                .Where(binding => validateBindingsService.IsValid(binding))
                 .Select(binding => binding.Normalize(true))
                 .ToImmutableHashSet();
         }

@@ -8,7 +8,7 @@ namespace VF.Actions {
     }
 
     internal abstract class ActionBuilder {
-        protected AnimationClip NewClip() {
+        protected static AnimationClip NewClip() {
             return VrcfObjectFactory.Create<AnimationClip>();
         }
     }

@@ -1,3 +1,4 @@
+using System;
 using System.Reflection;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -5,6 +6,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Model;
 using VF.Utils;
+using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
     [CustomPropertyDrawer(typeof(GuidWrapper<>), true)]
@@ -16,46 +18,64 @@ namespace VF.Inspector {
             return wrapper.FindPropertyRelative("objRef");
         }
         public static void SetValue(SerializedProperty prop, Object val) {
-            GetIdProp(prop).stringValue = VrcfObjectId.ObjectToId(val);
             GetObjRefProp(prop).objectReferenceValue = val;
+            UpdateFallbackId(prop);
         }
-        public static Object GetValue(SerializedProperty prop) {
-            return VrcfObjectId.IdToObject<Object>(GetIdProp(prop).stringValue);
-        }
-        public static VrcfObjectId GetId(SerializedProperty prop) {
-            return VrcfObjectId.FromId(GetIdProp(prop).stringValue);
+        public static void UpdateFallbackId(SerializedProperty prop) {
+            GetIdProp(prop).stringValue = VrcfObjectId.ObjectToId(GetObjRefProp(prop).objectReferenceValue);
         }
 
         public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+            var objRefProp = GetObjRefProp(prop);
+            var idProp = GetIdProp(prop);
+            
             var output = new VisualElement();
 
             var objField = new ObjectField();
             var type = fieldInfo.FieldType.GetField("typeDetector").FieldType;
             objField.objectType = type;
-            objField.SetValueWithoutNotify(GetValue(prop));
+            objField.bindingPath = objRefProp.propertyPath;
             output.Add(objField);
 
+            var lastSeenLabel = VRCFuryEditorUtils.WrappedLabel("");
+            output.Add(lastSeenLabel);
+
+            void UpdateLastSeenLabel() {
+                if (objRefProp.objectReferenceValue != null || idProp.stringValue == "") {
+                    lastSeenLabel.text = "";
+                    lastSeenLabel.SetVisible(false);
+                } else {
+                    var parsed = VrcfObjectId.FromId(idProp.stringValue);
+                    var missingId = "";
+                    if (!string.IsNullOrWhiteSpace(parsed.objectName)) {
+                        missingId = $"{parsed.objectName} from {parsed.fileName}";
+                    } else if (!string.IsNullOrWhiteSpace(parsed.fileName)) {
+                        missingId = parsed.fileName;
+                    } else if (!string.IsNullOrWhiteSpace(parsed.guid)) {
+                        missingId = $"GUID {parsed.guid}";
+                    } else {
+                        missingId = "?";
+                    }
+                    lastSeenLabel.text = $"Last seen at {missingId}";
+                    lastSeenLabel.SetVisible(true);
+                }
+            }
+
             objField.RegisterValueChangedCallback(change => {
-                SetValue(prop, change.newValue);
-                prop.serializedObject.ApplyModifiedProperties();
+                if (change.newValue != null || change.previousValue != null) {
+                    UpdateFallbackId(prop);
+                    prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                }
+                UpdateLastSeenLabel();
+            });
+            objField.RegisterCallback<KeyDownEvent>(evt => {
+                if (evt.keyCode == KeyCode.Delete) {
+                    SetValue(prop, null);
+                    prop.serializedObject.ApplyModifiedProperties();
+                    UpdateLastSeenLabel();
+                }
             });
 
-            output.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (objField.value != null) return new VisualElement();
-
-                var parsed = GetId(prop);
-                var missingId = "";
-                if (!string.IsNullOrWhiteSpace(parsed.objectName)) {
-                    missingId = $"{parsed.objectName} from {parsed.fileName}";
-                } else if (!string.IsNullOrWhiteSpace(parsed.fileName)) {
-                    missingId = parsed.fileName;
-                } else if (!string.IsNullOrWhiteSpace(parsed.guid)) {
-                    missingId = $"GUID {parsed.guid}";
-                } else {
-                    return new VisualElement();
-                }
-                return VRCFuryEditorUtils.WrappedLabel($"Missing asset: {missingId}");
-            }, GetIdProp(prop)));
             return output;
         }
     }

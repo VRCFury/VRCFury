@@ -24,14 +24,13 @@ namespace VF.Feature {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly FixWriteDefaultsService writeDefaultsManager;
-        [VFAutowired] private readonly ClipRewriteService clipRewriteService;
+        [VFAutowired] private readonly AllClipsService allClipsService;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly GlobalsService globals;
 
-        private readonly List<VFState> exclusiveTagTriggeringStates = new List<VFState>();
         private VFCondition isOn;
         private Action<VFState, bool> drive;
         private AnimationClip savedRestingClip;
@@ -40,9 +39,10 @@ namespace VF.Feature {
         public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
             + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
             + "If you want the toggle to be called 'Shirt' in the root menu, you'd put:\nShirt\n\n"
-            + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants";
+            + "If you want the toggle to be called 'Pants' in a submenu called 'Clothing', you'd put:\nClothing/Pants\n\n"
+            + "If you want to include a '/' character in the label without making a subfolder, add a backslash just before it: \\/";
 
-        private static ISet<string> SeparateList(string str) {
+        public static ISet<string> SeparateList(string str) {
             return str.Split(',')
                 .Select(tag => tag.Trim())
                 .Where(tag => !string.IsNullOrWhiteSpace(tag))
@@ -184,7 +184,7 @@ namespace VF.Feature {
 
             Motion restingClip = null;
             if (weight != null) {
-                var builtAction = actionClipService.LoadStateAdv(onName, action, null, ActionClipService.MotionTimeMode.Always);
+                var builtAction = actionClipService.LoadStateAdv(onName, action, motionTime: ActionClipService.MotionTimeMode.Always);
                 inState = onState = layer.NewState(onName);
                 onState.WithAnimation(builtAction.onClip).MotionTime(weight);
                 onState.TransitionsToExit().When(onCase.Not());
@@ -263,7 +263,6 @@ namespace VF.Feature {
                 restingClip = builtAction.onClip;
             }
 
-            exclusiveTagTriggeringStates.Add(inState);
             off.TransitionsTo(inState).When(onCase);
 
             if (model.enableDriveGlobalParam) {
@@ -281,7 +280,7 @@ namespace VF.Feature {
             }
 
             if (defaultOn && !model.separateLocal && !model.securityEnabled) {
-                layer.GetRawStateMachine().defaultState = onState.GetRaw();
+                onState.SetAsDefaultState();
                 off.TransitionsFromEntry().When();
             }
 
@@ -289,40 +288,72 @@ namespace VF.Feature {
                 loadedRestingClip = true;
                 if (restingClip.IsStatic()) {
                     savedRestingClip = restingClip.EvaluateMotion(1);
-                    clipRewriteService.AddAdditionalManagedClip(savedRestingClip);
+                    allClipsService.AddAdditionalManagedClip(savedRestingClip);
                 }
             }
         }
 
         [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
         public void ApplyExclusiveTags() {
-            if (exclusiveTagTriggeringStates.Count == 0) return;
+            if (!IsFirst()) return;
 
-            var allOthersOffCondition = fx.Always();
+            var allToggles = globals.allBuildersInRun
+                .OfType<ToggleBuilder>()
+                .Where(toggle => toggle.isOn != null && toggle.drive != null)
+                .ToArray();
 
-            var myTags = GetExclusiveTags();
-            foreach (var other in globals.allBuildersInRun
-                         .OfType<ToggleBuilder>()
-                         .Where(b => b != this)) {
-                var otherTags = other.GetExclusiveTags();
-                var conflictsWithOther = myTags.Any(myTag => otherTags.Contains(myTag));
-                if (conflictsWithOther) {
-                    if (other.isOn != null && other.drive != null) {
-                        foreach (var state in exclusiveTagTriggeringStates) {
-                            other.drive(state, false);
-                        }
-                        allOthersOffCondition = allOthersOffCondition.And(other.isOn.Not());
+            var tagToToggles = new VFMultimapSet<string, ToggleBuilder>();
+            foreach (var toggle in allToggles) {
+                foreach (var tag in toggle.GetExclusiveTags()) {
+                    tagToToggles.Put(tag, toggle);
+                }
+            }
+            var existingGroups = new List<ISet<ToggleBuilder>>();
+            foreach (var tag in tagToToggles.GetKeys()) {
+                var groupToggles = tagToToggles.Get(tag);
+                if (groupToggles.Count == 1) {
+                    // A group of one :(
+                    continue;
+                }
+                if (existingGroups.Any(a => a.SetEquals(groupToggles))) {
+                    // An identical group already got added
+                    continue;
+                }
+                existingGroups.Add(groupToggles);
+
+                var layer = fx.NewLayer($"Exclusive Tag - {tag}");
+                layer.NewState("Idle");
+                foreach (var toggle in groupToggles) {
+                    var state = layer.NewState(toggle.model.name);
+                    state.TransitionsFromAny().When(toggle.isOn);
+                    foreach (var other in groupToggles.Where(o => o != toggle)) {
+                        other.drive(state, false);
                     }
                 }
             }
 
-            if (model.exclusiveOffState && isOn != null && drive != null) {
-                var layer = fx.NewLayer(model.name + " - Off Trigger");
-                var off = layer.NewState("Idle");
-                var on = layer.NewState("Trigger");
-                off.TransitionsTo(on).When(allOthersOffCondition);
-                on.TransitionsTo(off).When(allOthersOffCondition.Not().Or(isOn.Not()));
-                drive(on, true);
+            var exclusiveOffLayer = new Lazy<(VFLayer,VFState)>(() => {
+                var layer = fx.NewLayer("Exclusive Tag - Off States");
+                var idle = layer.NewState("Idle");
+                return (layer,idle);
+            });
+            foreach (var toggle in allToggles.Where(t => t.model.exclusiveOffState)) {
+                var conflictsWith = toggle.GetExclusiveTags()
+                    .SelectMany(tag => tagToToggles.Get(tag))
+                    .Where(t => t != toggle)
+                    .ToArray();
+                if (conflictsWith.Any()) {
+                    var triggerWhen = toggle.isOn.Not();
+                    foreach (var other in conflictsWith) {
+                        triggerWhen = triggerWhen.And(other.isOn.Not());
+                    }
+                    var state = exclusiveOffLayer.Value.Item1.NewState(toggle.model.name);
+                    state.TransitionsFromAny().When(triggerWhen);
+                    toggle.drive(state, true);
+                }
+            }
+            if (exclusiveOffLayer.IsValueCreated) {
+                exclusiveOffLayer.Value.Item2.TransitionsFromAny().When(fx.Always());
             }
         }
 
@@ -621,7 +652,9 @@ namespace VF.Feature {
             ));
 
             content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-                var baseObject = avatarObject != null ? avatarObject : componentObject.root;
+                var baseObject = avatarObject != null ? avatarObject : componentObject.NullSafe()?.root;
+                // componentObject can be null when this method is called while the editor is being torn down (leaving prefab mode)
+                if (baseObject == null) return new VisualElement();
 
                 var turnsOff = model.state.actions
                     .OfType<ObjectToggleAction>()
