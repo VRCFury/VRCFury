@@ -75,7 +75,14 @@ namespace VF.Service {
             var bitsToAdd = 8 + (numbersToOptimize.Any() ? 8 : 0) + (boolsToOptimize.Any() ? boolsInParallel : 0);
             var bitsToRemove = paramsToOptimize
                 .Sum(p => VRCExpressionParameters.TypeCost(p.type));
-            if (bitsToAdd >= bitsToRemove) return; // Don't optimize if it won't save space
+            if (bitsToAdd >= bitsToRemove) paramsToOptimize.Clear(); // Don't optimize if it won't save space
+
+            // save configuration if on desktop
+            if (BuildTargetUtils.IsDesktop()) {
+                SaveDesktop(paramsToOptimize);
+            }
+
+            if (paramsToOptimize.Count() == 0) return; // we're done
 
             foreach (var param in paramsToOptimize) {
                 var vrcPrm = paramz.GetParam(param.name);
@@ -424,6 +431,10 @@ namespace VF.Service {
                 Debug.Log($"No Parameter Compressing Required");
                 paramsToOptimize.Clear();
             }
+            return paramsToOptimize;
+        }
+
+        private void SaveDesktop(IList<(string name, VRCExpressionParameters.ValueType type)> paramsToOptimize){
             if (IsActuallyUploadingHook.Get()) {
                 var paramList = paramz.GetRaw().Clone().parameters.Select(p => {
                     var source = parameterSourceService.GetSource(p.name);
@@ -451,7 +462,6 @@ namespace VF.Service {
                     }
                 });
             }
-            return paramsToOptimize;
         }
     }
 }
