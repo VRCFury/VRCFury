@@ -34,8 +34,14 @@ namespace VF.Service {
         [VFAutowired] private readonly ParameterSourceService parameterSourceService;
         [VFAutowired] private readonly OriginalAvatarService originalAvatarService;
 
+        private int maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
+
         [FeatureBuilderAction(FeatureOrder.ParameterCompressor)]
         public void Apply() {
+            if (maxBits > 9999) {
+                // Some modified versions of the VRChat SDK have a broken value for this
+                maxBits = 256;
+            }
             IList<(string name, VRCExpressionParameters.ValueType type)> paramsToOptimize;
             if (BuildTargetUtils.IsDesktop()) {
                 paramsToOptimize = AlignForDesktop();
@@ -43,17 +49,18 @@ namespace VF.Service {
                 paramsToOptimize = AlignForMobile();
             }
 
-            if (!paramsToOptimize.Any()) {
-                return;
-            }
-
-            var boolsInParallel = 8;
-
             var numbersToOptimize =
-                paramsToOptimize.Where(i => i.type != VRCExpressionParameters.ValueType.Bool).ToList();
+                paramsToOptimize.Where(i => i.type != VRCExpressionParameters.ValueType.Bool).Take(255).ToList(); // max 255 numbers
             var boolsToOptimize =
                 paramsToOptimize.Where(i => i.type == VRCExpressionParameters.ValueType.Bool).ToList();
-            if (boolsToOptimize.Count <= boolsInParallel) boolsToOptimize.Clear();
+            
+            // calculate remaing space after all optimizable floats and bools are unsynced, add 8 for index
+            var boolsInParallel = maxBits - (paramz.GetRaw().CalcTotalCost() - numbersToOptimize.Count() * 8 - boolsToOptimize.Count() + 8);
+
+            if (boolsInParallel <= 0) boolsInParallel = 1; // just in case, it will fail later
+            boolsToOptimize = boolsToOptimize.Take(boolsInParallel * 255).ToList(); // max 255 batches
+
+            if (boolsToOptimize.Count <= boolsInParallel) boolsToOptimize.Clear(); // can fit all remaining bools without compression
             var boolBatches = boolsToOptimize.Select(i => i.name)
                 .Chunk(boolsInParallel)
                 .Select(chunk => chunk.ToList())
@@ -64,7 +71,14 @@ namespace VF.Service {
             var bitsToAdd = 8 + (numbersToOptimize.Any() ? 8 : 0) + (boolsToOptimize.Any() ? boolsInParallel : 0);
             var bitsToRemove = paramsToOptimize
                 .Sum(p => VRCExpressionParameters.TypeCost(p.type));
-            if (bitsToAdd >= bitsToRemove) return; // Don't optimize if it won't save space
+            if (bitsToAdd >= bitsToRemove) paramsToOptimize.Clear(); // Don't optimize if it won't save space
+
+            // save configuration if on desktop
+            if (BuildTargetUtils.IsDesktop()) {
+                SaveDesktop(paramsToOptimize);
+            }
+
+            if (paramsToOptimize.Count() == 0) return; // we're done
 
             foreach (var param in paramsToOptimize) {
                 var vrcPrm = paramz.GetParam(param.name);
@@ -241,7 +255,6 @@ namespace VF.Service {
             return paramz.GetRaw().parameters
                 .Select(p => (p.name, p.valueType))
                 .Where(p => eligible.Contains(p))
-                .Take(255)
                 .ToList();
         }
 
@@ -410,6 +423,14 @@ namespace VF.Service {
 
         public IList<(string, VRCExpressionParameters.ValueType)> AlignForDesktop() {
             var paramsToOptimize = GetParamsToOptimize();
+             if (paramz.GetRaw().CalcTotalCost() <= maxBits && BuildTargetUtils.IsDesktop()) {
+                Debug.Log($"No Parameter Compressing Required");
+                paramsToOptimize.Clear();
+            }
+            return paramsToOptimize;
+        }
+
+        private void SaveDesktop(IList<(string name, VRCExpressionParameters.ValueType type)> paramsToOptimize){
             if (IsActuallyUploadingHook.Get()) {
                 var paramList = paramz.GetRaw().Clone().parameters.Select(p => {
                     var source = parameterSourceService.GetSource(p.name);
@@ -437,7 +458,6 @@ namespace VF.Service {
                     }
                 });
             }
-            return paramsToOptimize;
         }
     }
 }
