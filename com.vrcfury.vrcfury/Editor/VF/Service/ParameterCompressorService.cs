@@ -49,10 +49,6 @@ namespace VF.Service {
                 paramsToOptimize = AlignForMobile();
             }
 
-            if (!paramsToOptimize.Any()) {
-                return;
-            }
-
             var numbersToOptimize =
                 paramsToOptimize.Where(i => i.type != VRCExpressionParameters.ValueType.Bool).Take(255).ToList(); // max 255 numbers
             var boolsToOptimize =
