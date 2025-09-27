@@ -5,6 +5,7 @@ using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Component;
 using VF.Feature.Base;
+using VF.Hooks;
 using VF.Injector;
 using VF.Model.Feature;
 using VRC.SDK3.Avatars.Components;
@@ -22,26 +23,51 @@ namespace VF.Service {
             var globalContacts = avatarObject.GetComponentsInSelfAndChildren<VRCFuryGlobalCollider>();
             if (globalContacts.Length == 0) return;
 
-            var fingers = new List<(HumanBodyBones, VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)> {
-                ( HumanBodyBones.LeftRingIntermediate, avatar.collider_fingerRingL, c => avatar.collider_fingerRingL = c ),
-                ( HumanBodyBones.RightRingIntermediate, avatar.collider_fingerRingR, c => avatar.collider_fingerRingR = c ),
-                ( HumanBodyBones.LeftLittleIntermediate, avatar.collider_fingerLittleL, c => avatar.collider_fingerLittleL = c ),
-                ( HumanBodyBones.RightLittleIntermediate, avatar.collider_fingerLittleR, c => avatar.collider_fingerLittleR = c ),
-                ( HumanBodyBones.LeftMiddleIntermediate, avatar.collider_fingerMiddleL, c => avatar.collider_fingerMiddleL = c ),
-                ( HumanBodyBones.RightMiddleIntermediate, avatar.collider_fingerMiddleR, c => avatar.collider_fingerMiddleR = c ),
-            };
-            
+            var fingers = new List<(VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)>();
+
+            void AddRing() {
+                fingers.Add(( avatar.collider_fingerRingL, c => avatar.collider_fingerRingL = c ));
+                fingers.Add(( avatar.collider_fingerRingR, c => avatar.collider_fingerRingR = c ));
+            }
+            void AddLittle() {
+                fingers.Add(( avatar.collider_fingerLittleL, c => avatar.collider_fingerLittleL = c ));
+                fingers.Add(( avatar.collider_fingerLittleR, c => avatar.collider_fingerLittleR = c ));
+            }
+            void AddMiddle() {
+                fingers.Add(( avatar.collider_fingerMiddleL, c => avatar.collider_fingerMiddleL = c ));
+                fingers.Add(( avatar.collider_fingerMiddleR, c => avatar.collider_fingerMiddleR = c ));
+            }
+            void AddIndex() {
+                fingers.Add(( avatar.collider_fingerIndexL, c => avatar.collider_fingerIndexL = c ));
+                fingers.Add(( avatar.collider_fingerIndexR, c => avatar.collider_fingerIndexR = c ));
+            }
+
+            if (!IsFingerUsed(avatar.collider_fingerLittleL)) {
+                // If avatar has no little finger, de-prioritize ring, because it's likely that ring is the avatar's little finger
+                AddLittle();
+                AddMiddle();
+                AddRing();
+            } else {
+                AddRing();
+                AddMiddle();
+                AddLittle();
+            }
+            // Only even consider index at all if it isn't used
+            if (!IsFingerUsed(avatar.collider_fingerIndexL)) {
+                AddIndex();
+            }
+
             // Put unused fingers on the front of the list
             {
-                var unused = new List<(HumanBodyBones, VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)>();
-                var used = new List<(HumanBodyBones, VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)>();
+                var unused = new List<(VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)>();
+                var used = new List<(VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)>();
                 while (fingers.Count >= 2) {
                     var left = fingers[0];
                     var right = fingers[1];
                     fingers.RemoveRange(0, 2);
-                    if (IsFingerCustom(left.Item1, left.Item2) || IsFingerCustom(right.Item1, right.Item2)) {
+                    if (IsFingerCustom(left.Item1) || IsFingerCustom(right.Item1)) {
                         // Some other script already customized this finger
-                    } else if (!IsFingerUsed(left.Item1, left.Item2) && (left.Item2.isMirrored || !IsFingerUsed(right.Item1, right.Item2))) {
+                    } else if (!IsFingerUsed(left.Item1) && (left.Item1.isMirrored || !IsFingerUsed(right.Item1))) {
                         unused.Add(left);
                         unused.Add(right);
                     } else {
@@ -63,8 +89,8 @@ namespace VF.Service {
                 PhysboneUtils.RemoveFromPhysbones(globalContact.owner());
 
                 var target = globalContact.GetTransform();
-                var finger = fingers[i].Item2;
-                var setFinger = fingers[i].Item3;
+                var finger = fingers[i].Item1;
+                var setFinger = fingers[i].Item2;
                 finger.isMirrored = false;
                 finger.state = VRCAvatarDescriptor.ColliderConfig.State.Custom;
                 finger.position = Vector3.zero;
@@ -109,28 +135,20 @@ namespace VF.Service {
             }
             if (i % 2 == 1) {
                 // If an odd number, disable the matching mirrored finger
-                var finger = fingers[i].Item2;
-                var setFinger = fingers[i].Item3;
+                var finger = fingers[i].Item1;
+                var setFinger = fingers[i].Item2;
                 finger.isMirrored = false;
                 finger.state = VRCAvatarDescriptor.ColliderConfig.State.Disabled;
                 setFinger(finger);
             }
         }
         
-        private bool IsFingerCustom(HumanBodyBones bone, VRCAvatarDescriptor.ColliderConfig config) {
-            if (config.state != VRCAvatarDescriptor.ColliderConfig.State.Custom) return false;
-            VFGameObject configObj = config.transform;
-            if (configObj == null) return false;
-            var boneObj = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone);
-            if (boneObj == null) return true;
-            if (configObj.IsChildOf(boneObj)) return false;
-            return true;
+        private bool IsFingerCustom(VRCAvatarDescriptor.ColliderConfig config) {
+            return IsFingerUsed(config) && !OriginalContactsHook.usedTransforms.Contains(config.transform);
         }
 
-        private bool IsFingerUsed(HumanBodyBones bone, VRCAvatarDescriptor.ColliderConfig config) {
-            if (config.state == VRCAvatarDescriptor.ColliderConfig.State.Disabled) return false;
-            if (VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, bone) == null) return false;
-            return true;
+        private bool IsFingerUsed(VRCAvatarDescriptor.ColliderConfig config) {
+            return config.state != VRCAvatarDescriptor.ColliderConfig.State.Disabled && config.transform != null;
         }
     }
 }
