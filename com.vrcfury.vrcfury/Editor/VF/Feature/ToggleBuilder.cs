@@ -32,7 +32,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly GlobalsService globals;
 
         private VFCondition isOn;
-        private Action<VFState, bool> drive;
+        public Action<VFState, bool> drive;
         private AnimationClip savedRestingClip;
         private bool loadedRestingClip = false;
 
