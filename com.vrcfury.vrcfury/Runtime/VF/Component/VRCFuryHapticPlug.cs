@@ -26,7 +26,6 @@ namespace VF.Component {
         public float spsAnimatedEnabled = 1;
         public bool useLegacyRendererFinder = false;
         public bool addDpsTipLight = false;
-        public bool spsKeepImports = false;
         [DoNotApplyRestingState]
         public State postBakeActions;
         public bool spsOverrun = true;
