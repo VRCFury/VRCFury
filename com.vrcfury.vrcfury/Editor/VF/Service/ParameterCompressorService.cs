@@ -346,6 +346,12 @@ namespace VF.Service {
                     - compress.Sum(p => VRCExpressionParameters.TypeCost(p.valueType));
             }
 
+            /**
+             * Attempts to expand the number of used number and bool slots up until the avatar's bits are full,
+             * to increase parallelism and reduce the time needed for a full sync.
+             * If both bools and numbers are compressed, it attempts to keep the batch count the same so it's not
+             * wasting time syncing only bools or only numbers during some batches.
+             */
             public void Optimize(int originalCost) {
                 var boolCount = compress.Count(p => p.valueType == VRCExpressionParameters.ValueType.Bool);
                 var numberCount = compress.Count(p => p.valueType != VRCExpressionParameters.ValueType.Bool);
@@ -505,7 +511,7 @@ namespace VF.Service {
         private OptimizationDecision AlignForDesktop() {
             var paramsToOptimize = GetParamsToOptimize();
             if (IsActuallyUploadingHook.Get()) {
-                var paramList = paramz.GetRaw().Clone().parameters.Select(p => {
+                var paramList = paramz.GetRaw().parameters.Select(p => {
                     var source = parameterSourceService.GetSource(p.name);
                     return new SavedParam() {
                         parameter = p.Clone(),
@@ -517,7 +523,9 @@ namespace VF.Service {
                     parameters = paramList,
                     saveVersion = 3,
                     unityVersion = Application.unityVersion,
-                    vrcfuryVersion = VRCFPackageUtils.Version
+                    vrcfuryVersion = VRCFPackageUtils.Version,
+                    boolSlots = paramsToOptimize.boolSlots,
+                    numberSlots = paramsToOptimize.numberSlots
                 };
                 var saveText = JsonUtility.ToJson(saveData, true);
                 var originalAvatar = originalAvatarService.GetOriginal();
