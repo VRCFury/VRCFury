@@ -505,12 +505,12 @@ namespace VF.Service {
         private OptimizationDecision AlignForDesktop() {
             var paramsToOptimize = GetParamsToOptimize();
             if (IsActuallyUploadingHook.Get()) {
-                var paramList = paramz.GetRaw().Clone().parameters.Select(p => {
+                var paramList = paramz.GetRaw().parameters.Select(p => {
                     var source = parameterSourceService.GetSource(p.name);
                     return new SavedParam() {
                         parameter = p.Clone(),
                         source = source,
-                        compressed = paramsToOptimize.compress.Any(o => o.name == p.name)
+                        compressed = paramsToOptimize.compress.Contains(p)
                     };
                 }).ToList();
                 var saveData = new SavedData() {
