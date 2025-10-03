@@ -159,17 +159,25 @@ namespace VF.Service {
         }
 
         private static void RemoveFromContactList(List<string> collisionTags, string fingerCollisionTag, bool isLeft) {
-            if (RemoveFromList(collisionTags, "Finger")) {
-                AddToList(collisionTags, "FingerL");
-                AddToList(collisionTags, "FingerR");
-            }
-
             var suffix = isLeft ? "L" : "R";
+            
+            if (RemoveFromList(collisionTags, "Finger")) {
+                AddToList(collisionTags, "FingerIndex");
+                AddToList(collisionTags, "FingerMiddle");
+                AddToList(collisionTags, "FingerRing");
+                AddToList(collisionTags, "FingerLittle");
+            }
+            
             if (RemoveFromList(collisionTags, "Finger" + suffix)) {
                 AddToList(collisionTags, "FingerIndex" + suffix);
                 AddToList(collisionTags, "FingerMiddle" + suffix);
                 AddToList(collisionTags, "FingerRing" + suffix);
                 AddToList(collisionTags, "FingerLittle" + suffix);
+            }
+            
+            if (RemoveFromList(collisionTags, fingerCollisionTag)) {
+                AddToList(collisionTags, fingerCollisionTag + "L");
+                AddToList(collisionTags, fingerCollisionTag + "R");
             }
 
             RemoveFromList(collisionTags, fingerCollisionTag + suffix);
