@@ -8,7 +8,9 @@ using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
 using VF.Model.Feature;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Service {
     [VFService]
@@ -23,23 +25,23 @@ namespace VF.Service {
             var globalContacts = avatarObject.GetComponentsInSelfAndChildren<VRCFuryGlobalCollider>();
             if (globalContacts.Length == 0) return;
 
-            var fingers = new List<(VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)>();
+            var fingers = new List<(VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>, string)>();
 
             void AddRing() {
-                fingers.Add(( avatar.collider_fingerRingL, c => avatar.collider_fingerRingL = c ));
-                fingers.Add(( avatar.collider_fingerRingR, c => avatar.collider_fingerRingR = c ));
+                fingers.Add(( avatar.collider_fingerRingL, c => avatar.collider_fingerRingL = c, "FingerRing" ));
+                fingers.Add(( avatar.collider_fingerRingR, c => avatar.collider_fingerRingR = c, "FingerRing" ));
             }
             void AddLittle() {
-                fingers.Add(( avatar.collider_fingerLittleL, c => avatar.collider_fingerLittleL = c ));
-                fingers.Add(( avatar.collider_fingerLittleR, c => avatar.collider_fingerLittleR = c ));
+                fingers.Add(( avatar.collider_fingerLittleL, c => avatar.collider_fingerLittleL = c, "FingerLittle" ));
+                fingers.Add(( avatar.collider_fingerLittleR, c => avatar.collider_fingerLittleR = c, "FingerLittle" ));
             }
             void AddMiddle() {
-                fingers.Add(( avatar.collider_fingerMiddleL, c => avatar.collider_fingerMiddleL = c ));
-                fingers.Add(( avatar.collider_fingerMiddleR, c => avatar.collider_fingerMiddleR = c ));
+                fingers.Add(( avatar.collider_fingerMiddleL, c => avatar.collider_fingerMiddleL = c, "FingerMiddle" ));
+                fingers.Add(( avatar.collider_fingerMiddleR, c => avatar.collider_fingerMiddleR = c, "FingerMiddle" ));
             }
             void AddIndex() {
-                fingers.Add(( avatar.collider_fingerIndexL, c => avatar.collider_fingerIndexL = c ));
-                fingers.Add(( avatar.collider_fingerIndexR, c => avatar.collider_fingerIndexR = c ));
+                fingers.Add(( avatar.collider_fingerIndexL, c => avatar.collider_fingerIndexL = c, "FingerIndex" ));
+                fingers.Add(( avatar.collider_fingerIndexR, c => avatar.collider_fingerIndexR = c, "FingerIndex" ));
             }
 
             if (!IsFingerUsed(avatar.collider_fingerLittleL)) {
@@ -59,8 +61,8 @@ namespace VF.Service {
 
             // Put unused fingers on the front of the list
             {
-                var unused = new List<(VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)>();
-                var used = new List<(VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>)>();
+                var unused = new List<(VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>, string)>();
+                var used = new List<(VRCAvatarDescriptor.ColliderConfig, Action<VRCAvatarDescriptor.ColliderConfig>, string)>();
                 while (fingers.Count >= 2) {
                     var left = fingers[0];
                     var right = fingers[1];
@@ -96,6 +98,8 @@ namespace VF.Service {
                 finger.position = Vector3.zero;
                 finger.radius = globalContact.radius;
                 finger.rotation = Quaternion.identity;
+                var isLeft = i % 2 == 0;
+                var fingerCollisionTag = fingers[i].Item3;
 
                 // Vrchat places the capsule for fingers in a very strange place, but essentially it will:
                 // If collider length is 0, it will be a sphere centered on the set transform
@@ -131,6 +135,17 @@ namespace VF.Service {
                     finger.height -= finger.radius * 2;
                 }
                 setFinger(finger);
+
+                var closestBone = ClosestBoneUtils.GetClosestHumanoidBone(target);
+                if (closestBone == HumanBodyBones.Head || closestBone == HumanBodyBones.Jaw) {
+                    foreach (var receiver in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
+                        var rBone = ClosestBoneUtils.GetClosestHumanoidBone(target);
+                        if (rBone == HumanBodyBones.Head || rBone == HumanBodyBones.Jaw) {
+                            RemoveFromContactList(receiver.collisionTags, fingerCollisionTag, isLeft);
+                        }
+                    }
+                }
+                
                 i++;
             }
             if (i % 2 == 1) {
@@ -141,6 +156,31 @@ namespace VF.Service {
                 finger.state = VRCAvatarDescriptor.ColliderConfig.State.Disabled;
                 setFinger(finger);
             }
+        }
+
+        private static void RemoveFromContactList(List<string> collisionTags, string fingerCollisionTag, bool isLeft) {
+            if (RemoveFromList(collisionTags, "Finger")) {
+                AddToList(collisionTags, "FingerL");
+                AddToList(collisionTags, "FingerR");
+            }
+
+            var suffix = isLeft ? "L" : "R";
+            if (RemoveFromList(collisionTags, "Finger" + suffix)) {
+                AddToList(collisionTags, "FingerIndex" + suffix);
+                AddToList(collisionTags, "FingerMiddle" + suffix);
+                AddToList(collisionTags, "FingerRing" + suffix);
+                AddToList(collisionTags, "FingerLittle" + suffix);
+            }
+
+            RemoveFromList(collisionTags, fingerCollisionTag + suffix);
+        }
+
+        private static bool RemoveFromList(List<string> list, string element) {
+            return list.RemoveAll(e => e == element) > 0;
+        }
+        private static void AddToList(List<string> list, string element) {
+            RemoveFromList(list, element);
+            list.Add(element);
         }
         
         private bool IsFingerCustom(VRCAvatarDescriptor.ColliderConfig config) {
