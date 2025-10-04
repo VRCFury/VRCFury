@@ -346,19 +346,11 @@ namespace VF.Service {
                     - compress.Sum(p => VRCExpressionParameters.TypeCost(p.valueType));
             }
 
-            private int CalcRound(int boolSlots, int numberSlots) {
-                var bools = compress.Count(p => p.valueType == VRCExpressionParameters.ValueType.Bool);
-                var nums = compress.Count(p => p.valueType != VRCExpressionParameters.ValueType.Bool);
-
-                var boolRounds = Math.Ceiling((float) bools / boolSlots);
-                var numRounds = Math.Ceiling((float) nums / numberSlots);
-
-                return (int) Math.Max(boolRounds, numRounds);
-            }
-
             /**
-             * Minimized the total number of rounds required to sync all params
-             * Starts with 1 number slot, then converts bool slots into number slots until the number of rounds stops decreasing
+             * Attempts to expand the number of used number and bool slots up until the avatar's bits are full,
+             * to increase parallelism and reduce the time needed for a full sync.
+             * If both bools and numbers are compressed, it attempts to keep the batch count the same so it's not
+             * wasting time syncing only bools or only numbers during some batches.
              */
             public void Optimize(int originalCost) {
                 var boolCount = compress.Count(p => p.valueType == VRCExpressionParameters.ValueType.Bool);
