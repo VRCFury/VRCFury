@@ -346,23 +346,32 @@ namespace VF.Service {
                     - compress.Sum(p => VRCExpressionParameters.TypeCost(p.valueType));
             }
 
+            private int CalcRound(int boolSlots, int numberSlots) {
+                var bools = compress.Count(p => p.valueType == VRCExpressionParameters.ValueType.Bool);
+                var nums = compress.Count(p => p.valueType != VRCExpressionParameters.ValueType.Bool);
+
+                var boolRounds = Math.Ceiling((float) bools / boolSlots);
+                var numRounds = Math.Ceiling((float) nums / numberSlots);
+
+                return (int) Math.Max(boolRounds, numRounds);
+            }
+
+            /**
+             * Minimized the total number of rounds required to sync all params
+             * Starts with 1 number slot, then converts bool slots into number slots until the number of rounds stops decreasing
+             */
             public void Optimize(int originalCost) {
                 var boolCount = compress.Count(p => p.valueType == VRCExpressionParameters.ValueType.Bool);
                 var numberCount = compress.Count(p => p.valueType != VRCExpressionParameters.ValueType.Bool);
-                boolSlots = 8;
-                numberSlots = 1;
                 var currentCost = originalCost + CalcOffset();
                 var maxCost = VRCExpressionParametersExtensions.GetMaxCost();
-                while (true) {
-                    if (boolSlots < boolCount && currentCost <= maxCost - 1 || ((float)boolSlots / numberSlots) < ((float)boolCount / numberCount)) {
-                        boolSlots++;
-                        currentCost += 1;
-                    } else if (numberSlots < numberCount && currentCost <= maxCost - 8) {
-                        numberSlots++;
-                        currentCost += 8;
-                    } else {
-                        break;
-                    }
+                var budget = maxCost - currentCost;
+                numberSlots = 1;
+                boolSlots = Math.Max(budget - 8, 1); // needs to be a positive value
+
+                while (boolSlots > 8 && CalcRound(boolSlots, numberSlots) > CalcRound(boolSlots - 8, numberSlots + 1)) {
+                    boolSlots -= 8;
+                    numberSlots += 1;
                 }
             }
         }
