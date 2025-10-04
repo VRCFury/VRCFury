@@ -336,7 +336,7 @@ namespace VF.Service {
             return true;
         }
 
-        private class OptimizationDecision {
+        private class OptimizationDecision { 
             public int numberSlots = 0;
             public int boolSlots = 0;
             public IList<VRCExpressionParameters.Parameter> compress = new VRCExpressionParameters.Parameter[] { };
