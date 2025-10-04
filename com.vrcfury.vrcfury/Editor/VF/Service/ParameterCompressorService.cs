@@ -49,18 +49,7 @@ namespace VF.Service {
                 return;
             }
 
-            var numbersToOptimize =
-                decision.compress.Where(i => i.valueType != VRCExpressionParameters.ValueType.Bool).ToList();
-            var boolsToOptimize =
-                decision.compress.Where(i => i.valueType == VRCExpressionParameters.ValueType.Bool).ToList();
-            var numberBatches = numbersToOptimize
-                .Chunk(decision.numberSlots)
-                .Select(chunk => chunk.ToList())
-                .ToList();
-            var boolBatches = boolsToOptimize
-                .Chunk(decision.boolSlots)
-                .Select(chunk => chunk.ToList())
-                .ToList();
+            var (numberBatches, boolBatches) = decision.GetBatches();
 
             var syncPointer = fx.NewInt("SyncPointer", synced: true);
             var syncInts = Enumerable.Range(0, decision.numberSlots)
@@ -346,6 +335,30 @@ namespace VF.Service {
                     - compress.Sum(p => VRCExpressionParameters.TypeCost(p.valueType));
             }
 
+            public (
+                List<List<VRCExpressionParameters.Parameter>> numberBatches,
+                List<List<VRCExpressionParameters.Parameter>> boolBatches
+            ) GetBatches(int offsetNumberSlots = 0) {
+                var numbersToOptimize =
+                    compress.Where(i => i.valueType != VRCExpressionParameters.ValueType.Bool).ToList();
+                var boolsToOptimize =
+                    compress.Where(i => i.valueType == VRCExpressionParameters.ValueType.Bool).ToList();
+                var numberBatches = numbersToOptimize
+                    .Chunk(numberSlots + offsetNumberSlots)
+                    .Select(chunk => chunk.ToList())
+                    .ToList();
+                var boolBatches = boolsToOptimize
+                    .Chunk(boolSlots)
+                    .Select(chunk => chunk.ToList())
+                    .ToList();
+                return (numberBatches, boolBatches);
+            }
+
+            public int GetNumRounds(int offsetNumberSlots = 0) {
+                var batches = GetBatches(offsetNumberSlots);
+                return Math.Max(batches.numberBatches.Count, batches.boolBatches.Count);
+            }
+
             /**
              * Attempts to expand the number of used number and bool slots up until the avatar's bits are full,
              * to increase parallelism and reduce the time needed for a full sync.
@@ -355,17 +368,17 @@ namespace VF.Service {
             public void Optimize(int originalCost) {
                 var boolCount = compress.Count(p => p.valueType == VRCExpressionParameters.ValueType.Bool);
                 var numberCount = compress.Count(p => p.valueType != VRCExpressionParameters.ValueType.Bool);
-                boolSlots = 8;
-                numberSlots = 1;
+                boolSlots = boolCount > 0 ? 1 : 0;
+                numberSlots = numberCount > 0 ? 1 : 0;
                 var currentCost = originalCost + CalcOffset();
                 var maxCost = VRCExpressionParametersExtensions.GetMaxCost();
                 while (true) {
-                    if (boolSlots < boolCount && currentCost <= maxCost - 1 || ((float)boolSlots / numberSlots) < ((float)boolCount / numberCount)) {
-                        boolSlots++;
-                        currentCost += 1;
-                    } else if (numberSlots < numberCount && currentCost <= maxCost - 8) {
+                    if (numberSlots < numberCount && currentCost <= maxCost - 8 && GetNumRounds(1) < GetNumRounds()) {
                         numberSlots++;
                         currentCost += 8;
+                    } else if (boolSlots < boolCount && currentCost <= maxCost - 1) {
+                        boolSlots++;
+                        currentCost += 1;
                     } else {
                         break;
                     }
