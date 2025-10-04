@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -179,7 +180,6 @@ namespace VF.Service {
                 return new OptimizationDecision();
             }
 
-            var allParams = paramz.GetRaw().parameters.Select(p => p.name).ToHashSet();
             var drivenParams = new HashSet<string>();
             var addDrivenParams = new HashSet<string>();
 
@@ -216,7 +216,7 @@ namespace VF.Service {
                 return decision;
             }
 
-            var nonMenuParams = new HashSet<string>(allParams);
+            var nonMenuParams = new HashSet<string>(paramz.GetRaw().parameters.Select(p => p.name));
             nonMenuParams.ExceptWith(GetParamsUsedInMenu(true));
             nonMenuParams.ExceptWith(drivenParams);
 
