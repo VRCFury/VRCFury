@@ -71,13 +71,14 @@ namespace VF.Service {
             Action addDefault = () => { };
             VFState lastSendState = null;
             VFState lastReceiveState = null;
+            var nextStateSpacing = 1;
             for (int i = 0; i < numberBatches.Count || i < boolBatches.Count; i++) {
                 var syncIndex = i + 1;
                 var numberBatch = i < numberBatches.Count ? numberBatches[i] : new List<VRCExpressionParameters.Parameter>();
                 var boolBatch = i < boolBatches.Count ? boolBatches[i] : new List<VRCExpressionParameters.Parameter>();
 
                 // What is this sync index called?
-                var title = $"#{syncIndex}: " + numberBatch.Concat(boolBatch).Select(p => p.name).Join("\n");
+                var title = $"#{syncIndex}:\n" + numberBatch.Concat(boolBatch).Select(p => p.name).Join("\n");
 
                 // Create and wire up send and receive states
                 var sendState = layer.NewState($"Send {title}");
@@ -93,11 +94,12 @@ namespace VF.Service {
                     sendState.Move(local, 1, 0);
                     receiveState.Move(local, 3, 0);
                 } else {
-                    sendState.Move(lastSendState, 0, 1);
-                    receiveState.Move(lastReceiveState, 0, 1);
+                    sendState.Move(lastSendState, 0, nextStateSpacing);
+                    receiveState.Move(lastReceiveState, 0, nextStateSpacing);
                 }
                 lastSendState = sendState;
                 lastReceiveState = receiveState;
+                nextStateSpacing = (int)Math.Ceiling((title.Split("\n").Length+1) / 5f);
 
                 for (var slotNum = 0; slotNum < numberBatch.Count(); slotNum++) {
                     var originalParam = numberBatch[slotNum].name;
@@ -226,7 +228,7 @@ namespace VF.Service {
 
             if (nonMenuParams.Count > 0) {
                 errorMessage += "\n\n"
-                    + "These parameters were not compressable because they are not used in your menu:\n"
+                    + "These parameters were not compressable because they are not used in your menu, and not driven. If these aren't related to OSC, you should probably delete them:\n"
                     + nonMenuParams.JoinWithMore(20);
             }
             
