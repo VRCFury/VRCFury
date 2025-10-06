@@ -2,6 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
@@ -14,10 +15,12 @@ namespace VF.Actions {
     [FeatureHideTitleInEditor]
     internal class WorldDropActionBuilder : ActionBuilder<WorldDropAction> {
         [VFAutowired] [CanBeNull] private readonly WorldDropService worldDropService;
-        
+
         public AnimationClip Build(WorldDropAction model, string actionName) {
             var onClip = NewClip();
             if (model.obj != null && worldDropService != null) {
+                var keepAnchorOverride = model.obj.AddComponent<VRCFuryKeepAnchorOverride>();
+                keepAnchorOverride.isWorldDrop = true;
                 var param = worldDropService.Add(model.obj, actionName);
                 // Doing this through an AAP will delay the drop by one frame, but that's exactly what we want
                 // because we want Turn On toggles to activate first (to reset the position) before the drop happens!
@@ -25,7 +28,7 @@ namespace VF.Actions {
             }
             return onClip;
         }
-        
+
         [FeatureEditor]
         public static VisualElement Editor(SerializedProperty prop) {
             var row = new VisualElement().Row();
