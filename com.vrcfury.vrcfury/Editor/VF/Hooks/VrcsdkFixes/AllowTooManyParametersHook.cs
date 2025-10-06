@@ -26,10 +26,7 @@ namespace VF.Hooks.VrcsdkFixes {
                 if (
                     __1.Contains("VRCExpressionParameters has too many parameters")
                     && __0 is VRCAvatarDescriptor avatar
-                    && avatar.owner()
-                        .GetComponentsInSelfAndChildren<VRCFury>()
-                        .SelectMany(v => v.GetAllFeatures())
-                        .Any(f => f is UnlimitedParameters)
+                    && VRCFuryBuilder.ShouldRun(avatar.owner())
                 ) {
                     return false;
                 }
