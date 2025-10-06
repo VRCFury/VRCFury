@@ -72,27 +72,34 @@ namespace VF.Utils {
 
         public static string CONSTRUCTOR = "CONSTRUCTOR";
 
+        public enum PatchMode {
+            Prefix,
+            Postfix,
+            Transpiler,
+            Finalizer
+        }
+
         public static void Patch(
-            Type prefixClass,
-            string prefixMethodName,
+            Type patchClass,
+            string patchMethodName,
             NameOrType originalClass,
             string originalMethodName,
             bool warnIfMissing = true,
-            bool postfix = false,
+            PatchMode patchMode = PatchMode.Prefix,
             Type internalReplacementClass = null
         ) {
             if (GetHarmony() == null) return;
-            var prefixMethod = prefixClass.GetMethod(prefixMethodName,
+            var patchMethod = patchClass.GetMethod(patchMethodName,
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            if (prefixMethod == null) {
-                Debug.LogWarning($"VRCFury Failed to find prefix method to patch: {prefixClass.Name}.{prefixMethodName}");
+            if (patchMethod == null) {
+                Debug.LogWarning($"VRCFury Failed to find patch method: {patchClass.Name}.{patchMethodName}");
                 return;
             }
             if (originalClass.type == null) {
                 if (warnIfMissing) Debug.LogWarning($"VRCFury Failed to find original class to patch: {originalClass.name}");
                 return;
             }
-            var originalMethod = FindOriginal(prefixMethod, originalClass.type, originalMethodName);
+            var originalMethod = FindOriginal(patchMethod, originalClass.type, originalMethodName);
             if (originalMethod == null) {
                 if (warnIfMissing) Debug.LogWarning($"VRCFury Failed to find original method to patch: {originalClass.name}.{originalMethodName}");
                 return;
@@ -101,16 +108,16 @@ namespace VF.Utils {
                 if (internalReplacementClass != null) {
                     var flags = BindingFlags.Public;
                     flags |= originalMethod.IsStatic ? BindingFlags.Static : BindingFlags.Instance;
-                    var replacement = internalReplacementClass.GetMethod(prefixMethodName, flags);
+                    var replacement = internalReplacementClass.GetMethod(patchMethodName, flags);
                     if (replacement != null) {
-                        ReplaceMethod(originalMethod, replacement);
+                        Patch_Replace(originalMethod, replacement);
                         return;
                     }
                 }
-                Debug.LogWarning($"VRCFury tried to patch a method, but it was internal, and a replcement wasn't available: {originalClass.name}.{originalMethod.Name}");
+                Debug.LogWarning($"VRCFury tried to patch a method, but it was internal, and a replacement wasn't available: {originalClass.name}.{originalMethod.Name}");
                 return;
             }
-            PatchInternal(originalMethod, prefixMethod, postfix: postfix);
+            Patch_Simple(originalMethod, patchMethod, patchMode: patchMode);
         }
 
         [CanBeNull] 
@@ -148,24 +155,23 @@ namespace VF.Utils {
             return (method.MethodImplementationFlags & MethodImplAttributes.InternalCall) != 0;
         }
  
-        private static void PatchInternal(MethodBase original, MethodInfo prefix, bool postfix = false) {
-            if (original == null || prefix == null) return;
-            
-            if (IsInternal(original)) {
-                Debug.LogWarning($"VRCFury attempted to use harmony to patch a method that is internal: {original.Name}. This version of unity might not be supported.");
-                return;
-            }
-            
+        private static void Patch_Simple(MethodBase original, MethodInfo patch, PatchMode patchMode = PatchMode.Prefix) {
             var harmonyInst = GetHarmony();
             if (harmonyInst == null) return;
             if (harmonyPatch == null) return;
             if (harmonyMethodConstructor == null) return;
-            var harmonyMethod = harmonyMethodConstructor.Invoke(new object[] { prefix });
+            var harmonyMethod = harmonyMethodConstructor.Invoke(new object[] { patch });
             //Debug.Log($"Patching {original.DeclaringType?.Name}.{original.Name}");
-            if (postfix) {
-                ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, null, harmonyMethod);
-            } else {
+            if (patchMode == PatchMode.Prefix) {
                 ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, harmonyMethod);
+            } else if (patchMode == PatchMode.Postfix) {
+                ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, null, harmonyMethod);
+            } else if (patchMode == PatchMode.Transpiler) {
+                ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, null, null, harmonyMethod);
+            } else if (patchMode == PatchMode.Finalizer) {
+                ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, null, null, null, harmonyMethod);
+            } else {
+                throw new Exception("Unknown patch mode: " + patchMode);
             }
         }
         
@@ -175,7 +181,7 @@ namespace VF.Utils {
          * FORGET ABOUT the patch, so that unpatchAll doesn't attempt to unpatch it later.
          * Luckily, when unity reloads scripts, it seems to clear out the patch anyways, so it's not a big deal.
          */
-        private static void ReplaceMethod(MethodBase original, MethodBase replacement) {
+        private static void Patch_Replace(MethodBase original, MethodBase replacement) {
             if (original == null || replacement == null) return;
             if (GetOriginalInstructions == null || UpdatePatchInfo == null || harmonyPatch == null || harmonyMethodConstructor == null || PatchInfoConstructor == null) return;
             
@@ -190,10 +196,8 @@ namespace VF.Utils {
                 nameof(Transpile),
                 BindingFlags.Static | BindingFlags.NonPublic
             );
-            var harmonyMethod = harmonyMethodConstructor.Invoke(new object[] { transpiler });
             replacementMethod = replacement;
-            //Debug.Log($"Replacing {original.DeclaringType?.Name}.{original.Name}");
-            ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, null, null, harmonyMethod);
+            Patch_Simple(original, transpiler, PatchMode.Transpiler);
 
             // Tell Harmony to "forget about" the patch, so it doesn't try to unpatch it later and break things
             UpdatePatchInfo.Invoke(null, new object[] {

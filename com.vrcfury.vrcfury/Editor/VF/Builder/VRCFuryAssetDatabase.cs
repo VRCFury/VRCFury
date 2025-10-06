@@ -162,20 +162,6 @@ namespace VF.Builder {
             }
         }
 
-        /** In case you're running code that counts on the system locale being standardized... */
-        public static void WithStandardizedLocale(Action go) {
-            var oldCulture = Thread.CurrentThread.CurrentCulture;
-            var oldUICulture = Thread.CurrentThread.CurrentUICulture;
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
-            try {
-                go();
-            } finally {
-                Thread.CurrentThread.CurrentCulture = oldCulture;
-                Thread.CurrentThread.CurrentUICulture = oldUICulture;
-            }
-        }
-
         public static void Delete(string path) {
             Debug.Log("Deleting " + path);
             AssetDatabase.DeleteAsset(path);

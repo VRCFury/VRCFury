@@ -28,10 +28,10 @@ namespace VF.Hooks.UnityFixes {
             );
             HarmonyUtils.Patch(
                 typeof(FixAnimatorLayerScrollHook),
-                nameof(Postfix),
+                nameof(Finalizer),
                 LayerControllerView,
                 "ResetUI",
-                postfix: true
+                patchMode: HarmonyUtils.PatchMode.Finalizer
             );
         }
 
@@ -41,7 +41,7 @@ namespace VF.Hooks.UnityFixes {
             savedScroll = (Vector2)LayerControllerView_m_LayerScroll.GetValue(__instance);
         }
 
-        private static void Postfix(object __instance) {
+        private static void Finalizer(object __instance) {
             LayerControllerView_m_LayerScroll.SetValue(__instance, savedScroll);
         }
     }
