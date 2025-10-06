@@ -99,7 +99,7 @@ namespace VF.Service {
                 }
                 lastSendState = sendState;
                 lastReceiveState = receiveState;
-                nextStateSpacing = (int)Math.Ceiling((title.Split("\n").Length+1) / 5f);
+                nextStateSpacing = (int)Math.Ceiling((title.Split('\n').Length+1) / 5f);
 
                 for (var slotNum = 0; slotNum < numberBatch.Count(); slotNum++) {
                     var originalParam = numberBatch[slotNum].name;
