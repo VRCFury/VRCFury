@@ -44,6 +44,10 @@ namespace VF.Feature.Base {
         // Needs to run after all possible toggles have been created and applied
         CollectToggleExclusiveTags,
         
+        // Advanced colliders need to run before global colliders so that custom fingers are used first
+        AdvancedColliders,
+        GlobalColliders,
+        
         // Needs to happen after all controller params (and their types) are in place
         DriveNonFloatTypes,
         

@@ -43,5 +43,11 @@ namespace VF.Utils {
             return string.Join(separator+"", source);
 #endif
         }
+
+        public static string JoinWithMore(this ICollection<string> source, int max) {
+            var count = source.Count();
+            return source.Take(count).Join('\n')
+                   + (count > max ? ("\n ... and " + (count - max) + " more") : "");
+        }
     }
 }

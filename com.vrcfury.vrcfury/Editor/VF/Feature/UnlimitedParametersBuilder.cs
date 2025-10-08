@@ -10,43 +10,17 @@ namespace VF.Feature {
     [FeatureTitle("Parameter Compressor")]
     [FeatureOnlyOneAllowed]
     [FeatureRootOnly]
+    [FeatureFailWhenAdded(
+        "VRCFury Parameter Compressor is now automatically enabled by default (when needed) for all avatars" +
+        " using any VRCFury component. Adding the Parameter Compressor component is no longer needed."
+    )]
     internal class UnlimitedParametersBuilder : FeatureBuilder<UnlimitedParameters> {
         [FeatureEditor]
-        public static VisualElement Editor(SerializedProperty prop) {
+        public static VisualElement Editor() {
             var content = new VisualElement();
-            content.Add(VRCFuryEditorUtils.Info(
-                "This component will optimize all synced float parameters used in radial menu toggles into 16 total bits"));
-            content.Add(VRCFuryEditorUtils.Warn(
-                "This feature is in BETA - Please report any issues on the VRCFury discord"));
-            
-            var checkedBox2 = new Toggle() { value = true };
-            checkedBox2.SetEnabled(false);
-            content.Add(VRCFuryEditorUtils.Prop(null, "Compress Int/Float Toggles", fieldOverride: checkedBox2));
-            
-            var checkedBox = new Toggle() { value = true };
-            checkedBox.SetEnabled(false);
-            content.Add(VRCFuryEditorUtils.Prop(null, "Compress Radials", fieldOverride: checkedBox));
-
-            var includePuppetsProp = prop.FindPropertyRelative("includePuppets");
-            content.Add(VRCFuryEditorUtils.Prop(includePuppetsProp, "Compress Puppets"));
-            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (includePuppetsProp.boolValue) {
-                    return VRCFuryEditorUtils.Warn(
-                        "Warning: Compressing puppets may cause them to not move as smoothly for remote clients as you control them.");
-                }
-                return new VisualElement();
-            }, includePuppetsProp));
-            
-            var includeBoolsProp = prop.FindPropertyRelative("includeBools");
-            content.Add(VRCFuryEditorUtils.Prop(includeBoolsProp, "Compress Bool Toggles"));
-            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (includeBoolsProp.boolValue) {
-                    return VRCFuryEditorUtils.Warn(
-                        "Warning: Compressing bools often doesn't save much space, and can, in some rare cases, cause unusual sync issues with complex avatar systems.");
-                }
-                return new VisualElement();
-            }, includeBoolsProp));
-
+            content.Add(VRCFuryEditorUtils.Error(
+                "This component is deprecated and now does nothing." +
+                " The VRCFury Parameter Compressor is now applied automatically for all avatars using VRCFury (if you are over the limit)."));
             return content;
         }
     }

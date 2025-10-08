@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -10,7 +11,6 @@ using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
-using VF.Model.Feature;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Core;
@@ -29,58 +29,35 @@ namespace VF.Service {
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
-        [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ParameterSourceService parameterSourceService;
         [VFAutowired] private readonly OriginalAvatarService originalAvatarService;
+        [VFAutowired] private readonly ExceptionService excService;
 
         [FeatureBuilderAction(FeatureOrder.ParameterCompressor)]
         public void Apply() {
-            IList<(string name, VRCExpressionParameters.ValueType type)> paramsToOptimize;
+            RemoveDuplicates();
+            
+            OptimizationDecision decision;
             if (BuildTargetUtils.IsDesktop()) {
-                paramsToOptimize = AlignForDesktop();
+                decision = AlignForDesktop();
             } else {
-                paramsToOptimize = AlignForMobile();
+                decision = AlignForMobile();
             }
 
-            if (!paramsToOptimize.Any()) {
+            if (!decision.compress.Any()) {
                 return;
             }
 
-            var boolsInParallel = 8;
-
-            var numbersToOptimize =
-                paramsToOptimize.Where(i => i.type != VRCExpressionParameters.ValueType.Bool).ToList();
-            var boolsToOptimize =
-                paramsToOptimize.Where(i => i.type == VRCExpressionParameters.ValueType.Bool).ToList();
-            if (boolsToOptimize.Count <= boolsInParallel) boolsToOptimize.Clear();
-            var boolBatches = boolsToOptimize.Select(i => i.name)
-                .Chunk(boolsInParallel)
-                .Select(chunk => chunk.ToList())
-                .ToList();
-
-            paramsToOptimize = numbersToOptimize.Concat(boolsToOptimize).ToList();
-
-            var bitsToAdd = 8 + (numbersToOptimize.Any() ? 8 : 0) + (boolsToOptimize.Any() ? boolsInParallel : 0);
-            var bitsToRemove = paramsToOptimize
-                .Sum(p => VRCExpressionParameters.TypeCost(p.type));
-            if (bitsToAdd >= bitsToRemove) return; // Don't optimize if it won't save space
-
-            foreach (var param in paramsToOptimize) {
-                var vrcPrm = paramz.GetParam(param.name);
-                vrcPrm.SetNetworkSynced(false);
-            }
+            var (numberBatches, boolBatches) = decision.GetBatches();
 
             var syncPointer = fx.NewInt("SyncPointer", synced: true);
-            VFAInteger syncData = null;
-            if (numbersToOptimize.Any()) {
-                syncData = fx.NewInt("SyncDataNum", synced: true);
-            }
-            var syncBools = new List<VFABool>();
-            if (boolBatches.Any()) {
-                syncBools.AddRange(Enumerable.Range(0, boolsInParallel)
-                    .Select(i => fx.NewBool("SyncDataBool", synced: true)));
-            }
+            var syncInts = Enumerable.Range(0, decision.numberSlots)
+                .Select(i => fx.NewInt("SyncDataNum" + i, synced: true))
+                .ToList();
+            var syncBools = Enumerable.Range(0, decision.boolSlots)
+                .Select(i => fx.NewBool("SyncDataBool" + i, synced: true))
+                .ToList();
 
             var layer = fx.NewLayer("Parameter Compressor");
             var entry = layer.NewState("Entry").Move(-3, -1);
@@ -94,18 +71,14 @@ namespace VF.Service {
             Action addDefault = () => { };
             VFState lastSendState = null;
             VFState lastReceiveState = null;
-            for (int i = 0; i < numbersToOptimize.Count || i < boolBatches.Count; i++) {
+            var nextStateSpacing = 1;
+            for (int i = 0; i < numberBatches.Count || i < boolBatches.Count; i++) {
                 var syncIndex = i + 1;
+                var numberBatch = i < numberBatches.Count ? numberBatches[i] : new List<VRCExpressionParameters.Parameter>();
+                var boolBatch = i < boolBatches.Count ? boolBatches[i] : new List<VRCExpressionParameters.Parameter>();
 
                 // What is this sync index called?
-                var title = $"#{syncIndex}:";
-                if (i < numbersToOptimize.Count) {
-                    title += " " + paramsToOptimize[i].name;
-                }
-                if (i < boolBatches.Count) {
-                    if (i < numbersToOptimize.Count) title += " +";
-                    title += " Bool Batch " + syncIndex;
-                }
+                var title = $"#{syncIndex}:\n" + numberBatch.Concat(boolBatch).Select(p => p.name).Join("\n");
 
                 // Create and wire up send and receive states
                 var sendState = layer.NewState($"Send {title}");
@@ -121,27 +94,29 @@ namespace VF.Service {
                     sendState.Move(local, 1, 0);
                     receiveState.Move(local, 3, 0);
                 } else {
-                    sendState.Move(lastSendState, 0, 1);
-                    receiveState.Move(lastReceiveState, 0, 1);
+                    sendState.Move(lastSendState, 0, nextStateSpacing);
+                    receiveState.Move(lastReceiveState, 0, nextStateSpacing);
                 }
                 lastSendState = sendState;
                 lastReceiveState = receiveState;
+                nextStateSpacing = (int)Math.Ceiling((title.Split('\n').Length+1) / 5f);
 
-                if (i < numbersToOptimize.Count) {
-                    var (originalParam,type) = paramsToOptimize[i];
+                for (var slotNum = 0; slotNum < numberBatch.Count(); slotNum++) {
+                    var originalParam = numberBatch[slotNum].name;
+                    var type = numberBatch[slotNum].valueType;
                     var lastSynced = fx.NewFloat($"{originalParam}/LastSynced", def: -100);
                     sendState.DrivesCopy(originalParam, lastSynced);
 
                     VFAFloat currentValue;
                     if (type == VRCExpressionParameters.ValueType.Float) {
                         currentValue = fx.NewFloat(originalParam, usePrefix: false);
-                        sendState.DrivesCopy(originalParam, syncData, -1, 1, 0, 254);
-                        receiveState.DrivesCopy(syncData, originalParam, 0, 254, -1, 1);
+                        sendState.DrivesCopy(originalParam, syncInts[slotNum], -1, 1, 0, 254);
+                        receiveState.DrivesCopy(syncInts[slotNum], originalParam, 0, 254, -1, 1);
                     } else if (type == VRCExpressionParameters.ValueType.Int) {
                         currentValue = fx.NewFloat($"{originalParam}/Current");
                         local.DrivesCopy(originalParam, currentValue);
-                        sendState.DrivesCopy(originalParam, syncData);
-                        receiveState.DrivesCopy(syncData, originalParam);
+                        sendState.DrivesCopy(originalParam, syncInts[slotNum]);
+                        receiveState.DrivesCopy(syncInts[slotNum], originalParam);
                     } else {
                         throw new Exception("Unknown type?");
                     }
@@ -150,19 +125,15 @@ namespace VF.Service {
                     shortcutCondition = shortcutCondition.Or(diff.IsGreaterThan(0));
                     local.TransitionsTo(sendState).When(shortcutCondition);
                 }
-
-                if (i < boolBatches.Count) {
-                    var batch = boolBatches[i].ToArray();
-                    for (var numWithinBatch = 0; numWithinBatch < batch.Count(); numWithinBatch++) {
-                        var originalParam = batch[numWithinBatch];
-                        var lastSynced = fx.NewInt($"{originalParam}/LastSynced", def: -100);
-                        sendState.DrivesCopy(originalParam, lastSynced);
-                        sendState.DrivesCopy(originalParam, syncBools[numWithinBatch]);
-                        receiveState.DrivesCopy(syncBools[numWithinBatch], originalParam);
-                        var shortcutCondition = new VFABool(originalParam, false).IsTrue().And(lastSynced.IsLessThan(1));
-                        shortcutCondition = shortcutCondition.Or(new VFABool(originalParam, false).IsFalse().And(lastSynced.IsGreaterThan(0)));
-                        local.TransitionsTo(sendState).When(shortcutCondition);
-                    }
+                for (var slotNum = 0; slotNum < boolBatch.Count(); slotNum++) {
+                    var originalParam = boolBatch[slotNum].name;
+                    var lastSynced = fx.NewInt($"{originalParam}/LastSynced", def: -100);
+                    sendState.DrivesCopy(originalParam, lastSynced);
+                    sendState.DrivesCopy(originalParam, syncBools[slotNum]);
+                    receiveState.DrivesCopy(syncBools[slotNum], originalParam);
+                    var shortcutCondition = new VFABool(originalParam, false).IsTrue().And(lastSynced.IsLessThan(1));
+                    shortcutCondition = shortcutCondition.Or(new VFABool(originalParam, false).IsFalse().And(lastSynced.IsGreaterThan(0)));
+                    local.TransitionsTo(sendState).When(shortcutCondition);
                 }
 
                 if (i == 0) {
@@ -179,75 +150,153 @@ namespace VF.Service {
             addRoundRobins();
             addDefault();
 
-            Debug.Log($"Radial Toggle Optimizer: Reduced {bitsToRemove} bits into {bitsToAdd} bits.");
+            var originalCost = paramz.GetRaw().CalcTotalCost();
+            foreach (var param in decision.compress) {
+                param.SetNetworkSynced(false);
+            }
+            var newCost = paramz.GetRaw().CalcTotalCost();
+
+            Debug.Log($"Parameter Compressor: Compressed {originalCost} bits into {newCost} bits.");
         }
 
-        private IList<(string name,VRCExpressionParameters.ValueType type)> GetParamsToOptimize() {
-            var eligible = new HashSet<(string,VRCExpressionParameters.ValueType)>();
-            
-            var model = globals.allFeaturesInRun.OfType<UnlimitedParameters>().FirstOrDefault();
-            if (model == null) return eligible.ToList();
+        private void RemoveDuplicates() {
+            var seenParams = new HashSet<string>();
+            paramz.GetRaw().parameters = paramz.GetRaw().parameters.Where(p => seenParams.Add(p.name)).ToArray();
+        }
 
-            var addDriven = new HashSet<string>(controllers.GetAllUsedControllers()
-                .SelectMany(controller => controller.layers)
-                .SelectMany(layer => layer.allBehaviours)
-                .OfType<VRCAvatarParameterDriver>()
-                .SelectMany(driver => driver.parameters)
-                .Where(p => p.type == VRC_AvatarParameterDriver.ChangeType.Add)
-                .Select(p => p.name));
+        private OptimizationDecision GetParamsToOptimize() {
+            var originalCost = paramz.GetRaw().CalcTotalCost();
+            var maxCost = VRCExpressionParametersExtensions.GetMaxCost();
+            if (originalCost <= maxCost) {
+                return new OptimizationDecision();
+            }
+
+            var drivenParams = new HashSet<string>();
+            var addDrivenParams = new HashSet<string>();
+
+            foreach (var drivenParam in controllers.GetAllUsedControllers()
+                         .SelectMany(controller => controller.layers)
+                         .SelectMany(layer => layer.allBehaviours)
+                         .OfType<VRCAvatarParameterDriver>()
+                         .SelectMany(driver => driver.parameters)) {
+                drivenParams.Add(drivenParam.name);
+                if (drivenParam.type == VRC_AvatarParameterDriver.ChangeType.Add) addDrivenParams.Add(drivenParam.name);
+            }
 
             // Go/Float is driven by an add driver, but it's safe to compress. The driver is only used while you're
             // actively holding a button in the menu.
-            addDriven.Remove("Go/Float");
-
-            void AttemptToAdd(string paramName) {
-                if (string.IsNullOrEmpty(paramName)) return;
-
-                if (addDriven.Contains(paramName)) return;
-                
-                var vrcParam = paramz.GetParam(paramName);
-                if (vrcParam == null) return;
-                var networkSynced = vrcParam.IsNetworkSynced();
-                if (!networkSynced) return;
-
-                var shouldOptimize = vrcParam.valueType == VRCExpressionParameters.ValueType.Int ||
-                                      vrcParam.valueType == VRCExpressionParameters.ValueType.Float;
-
-                shouldOptimize |= vrcParam.valueType == VRCExpressionParameters.ValueType.Bool && model.includeBools;
-
-                if (shouldOptimize) {
-                    eligible.Add((paramName, vrcParam.valueType));
-                }
+            addDrivenParams.Remove("Go/Float");
+            
+            var decision = GetParamsToOptimize(false, false, addDrivenParams, originalCost);
+            if (originalCost + decision.CalcOffset() <= maxCost) {
+                return decision;
+            }
+            
+            decision = GetParamsToOptimize(false, true, addDrivenParams, originalCost);
+            if (originalCost + decision.CalcOffset() <= maxCost) {
+                return decision;
+            }
+            
+            decision = GetParamsToOptimize(true, false, addDrivenParams, originalCost);
+            if (originalCost + decision.CalcOffset() <= maxCost) {
+                return decision;
             }
 
+            decision = GetParamsToOptimize(true, true, addDrivenParams, originalCost);
+            if (originalCost + decision.CalcOffset() <= maxCost) {
+                return decision;
+            }
+
+            var nonMenuParams = new HashSet<string>(paramz.GetRaw().parameters.Select(p => p.name));
+            nonMenuParams.ExceptWith(GetParamsUsedInMenu(true));
+            nonMenuParams.ExceptWith(drivenParams);
+
+            var errorMessage =
+                "Your avatar is out of space for parameters! Your avatar uses "
+                + originalCost + "/" + maxCost
+                + " bits.";
+
+            if (decision.CalcOffset() < 0) {
+                errorMessage +=
+                    " VRCFury attempted to compress your parameters to fit, but even with maximum compression," +
+                    " VRCFury could only get it down to " + (originalCost + decision.CalcOffset()) + "/" +
+                    maxCost + " bits.";
+            }
+            
+            errorMessage += " Ask your avatar creator, or the creator of the last prop you've added, " +
+                            "if there are any parameters you can remove to make space.";
+
+            if (nonMenuParams.Count > 0) {
+                errorMessage += "\n\n"
+                    + "These parameters were not compressable because they are not used in your menu, and not driven. If these aren't related to OSC, you should probably delete them:\n"
+                    + nonMenuParams.JoinWithMore(20);
+            }
+            
+            excService.ThrowIfActuallyUploading(new SneakyException(errorMessage));
+            return new OptimizationDecision();
+        }
+
+        private ISet<string> GetParamsUsedInMenu(bool includePuppets) {
+            var paramNames = new HashSet<string>();
+            void AttemptToAdd(string paramName) {
+                if (string.IsNullOrEmpty(paramName)) return;
+                paramNames.Add(paramName);
+            }
             menu.GetRaw().ForEachMenu(ForEachItem: (control, list) => {
                 if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet) {
                     AttemptToAdd(control.GetSubParameter(0)?.name);
                 } else if (control.type == VRCExpressionsMenu.Control.ControlType.Button || control.type == VRCExpressionsMenu.Control.ControlType.Toggle) {
                     AttemptToAdd(control.parameter?.name);
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.FourAxisPuppet && model.includePuppets) {
+                } else if (control.type == VRCExpressionsMenu.Control.ControlType.FourAxisPuppet && includePuppets) {
                     AttemptToAdd(control.GetSubParameter(0)?.name);
                     AttemptToAdd(control.GetSubParameter(1)?.name);
                     AttemptToAdd(control.GetSubParameter(2)?.name);
                     AttemptToAdd(control.GetSubParameter(3)?.name);
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet && model.includePuppets) {
+                } else if (control.type == VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet && includePuppets) {
                     AttemptToAdd(control.GetSubParameter(0)?.name);
                     AttemptToAdd(control.GetSubParameter(1)?.name);
                 }
 
                 return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
             });
+            return paramNames;
+        }
 
-            return paramz.GetRaw().parameters
-                .Select(p => (p.name, p.valueType))
-                .Where(p => eligible.Contains(p))
-                .Take(255)
-                .ToList();
+        private OptimizationDecision GetParamsToOptimize(bool includePuppets, bool includeBools, ISet<string> addDriven, int originalCost) {
+
+            var eligible = new List<VRCExpressionParameters.Parameter>();
+            var usedInMenu = GetParamsUsedInMenu(includePuppets);
+
+            foreach (var param in paramz.GetRaw().parameters) {
+                if (!usedInMenu.Contains(param.name)) continue;
+                if (addDriven.Contains(param.name)) continue;
+
+                var networkSynced = param.IsNetworkSynced();
+                if (!networkSynced) continue;
+
+                var shouldOptimize = param.valueType == VRCExpressionParameters.ValueType.Int ||
+                                     param.valueType == VRCExpressionParameters.ValueType.Float;
+
+                shouldOptimize |= param.valueType == VRCExpressionParameters.ValueType.Bool && includeBools;
+
+                if (shouldOptimize) {
+                    eligible.Add(param);
+                }
+            }
+            
+            var decision = new OptimizationDecision {
+                compress = eligible
+            };
+            decision.Optimize(originalCost);
+
+            return decision;
         }
 
         [Serializable]
         public class SavedData {
             public List<SavedParam> parameters = new List<SavedParam>();
+            public int numberSlots;
+            public int boolSlots;
             public string unityVersion;
             public string vrcfuryVersion;
             public int saveVersion;
@@ -278,7 +327,68 @@ namespace VF.Service {
             return true;
         }
 
-        private IList<(string, VRCExpressionParameters.ValueType)> AlignForMobile() {
+        private class OptimizationDecision {
+            public int numberSlots = 0;
+            public int boolSlots = 0;
+            public IList<VRCExpressionParameters.Parameter> compress = new VRCExpressionParameters.Parameter[] { };
+
+            public int CalcOffset() {
+                return 8 + numberSlots * 8 + boolSlots
+                    - compress.Sum(p => VRCExpressionParameters.TypeCost(p.valueType));
+            }
+
+            public (
+                List<List<VRCExpressionParameters.Parameter>> numberBatches,
+                List<List<VRCExpressionParameters.Parameter>> boolBatches
+            ) GetBatches(int offsetNumberSlots = 0) {
+                var numbersToOptimize =
+                    compress.Where(i => i.valueType != VRCExpressionParameters.ValueType.Bool).ToList();
+                var boolsToOptimize =
+                    compress.Where(i => i.valueType == VRCExpressionParameters.ValueType.Bool).ToList();
+                var numberBatches = numbersToOptimize
+                    .Chunk(numberSlots + offsetNumberSlots)
+                    .Select(chunk => chunk.ToList())
+                    .ToList();
+                var boolBatches = boolsToOptimize
+                    .Chunk(boolSlots)
+                    .Select(chunk => chunk.ToList())
+                    .ToList();
+                return (numberBatches, boolBatches);
+            }
+
+            public int GetNumRounds(int offsetNumberSlots = 0) {
+                var batches = GetBatches(offsetNumberSlots);
+                return Math.Max(batches.numberBatches.Count, batches.boolBatches.Count);
+            }
+
+            /**
+             * Attempts to expand the number of used number and bool slots up until the avatar's bits are full,
+             * to increase parallelism and reduce the time needed for a full sync.
+             * If both bools and numbers are compressed, it attempts to keep the batch count the same so it's not
+             * wasting time syncing only bools or only numbers during some batches.
+             */
+            public void Optimize(int originalCost) {
+                var boolCount = compress.Count(p => p.valueType == VRCExpressionParameters.ValueType.Bool);
+                var numberCount = compress.Count(p => p.valueType != VRCExpressionParameters.ValueType.Bool);
+                boolSlots = boolCount > 0 ? 1 : 0;
+                numberSlots = numberCount > 0 ? 1 : 0;
+                var currentCost = originalCost + CalcOffset();
+                var maxCost = VRCExpressionParametersExtensions.GetMaxCost();
+                while (true) {
+                    if (numberSlots < numberCount && currentCost <= maxCost - 8 && GetNumRounds(1) < GetNumRounds()) {
+                        numberSlots++;
+                        currentCost += 8;
+                    } else if (boolSlots < boolCount && currentCost <= maxCost - 1) {
+                        boolSlots++;
+                        currentCost += 1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        private OptimizationDecision AlignForMobile() {
             // Mobile
             var blueprintId = avatarObject.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
             var savePath = GetSavePath(blueprintId);
@@ -296,7 +406,7 @@ namespace VF.Service {
             var desktopDataStr = File.ReadAllText(savePath);
             var desktopData = JsonUtility.FromJson<SavedData>(desktopDataStr);
 
-            if (desktopData.saveVersion != 2) {
+            if (desktopData.saveVersion != 3) {
                 throw new SneakyException(
                     "The desktop version of this avatar was uploaded with an incompatible version of VRCFury." + 
                     " Please ensure the VRCFury version matches, and upload the desktop version first.\n\n" +
@@ -360,7 +470,7 @@ namespace VF.Service {
                 }
             }
 
-            var paramsToOptimize = new List<(string, VRCExpressionParameters.ValueType)>();
+            var paramsToOptimize = new List<VRCExpressionParameters.Parameter>();
             var reordered = new List<VRCExpressionParameters.Parameter>();
             var matchedMobileParams = new List<VRCExpressionParameters.Parameter>();
             var rand = new Random().Next(100_000_000, 900_000_000);
@@ -380,7 +490,7 @@ namespace VF.Service {
                     newParam.name = $"__missing_param_from_desktop_{rand}_{fillerI++}_{desktopParam.name}";
                 }
                 if (desktopEntry.compressed) {
-                    paramsToOptimize.Add((newParam.name, newParam.valueType));
+                    paramsToOptimize.Add(newParam);
                 }
                 reordered.Add(newParam);
             }
@@ -405,25 +515,32 @@ namespace VF.Service {
             }
 
             paramsService.GetParams().GetRaw().parameters = reordered.ToArray();
-            return paramsToOptimize;
+
+            return new OptimizationDecision() {
+                boolSlots = desktopData.boolSlots,
+                numberSlots = desktopData.numberSlots,
+                compress = paramsToOptimize
+            };
         }
 
-        public IList<(string, VRCExpressionParameters.ValueType)> AlignForDesktop() {
+        private OptimizationDecision AlignForDesktop() {
             var paramsToOptimize = GetParamsToOptimize();
             if (IsActuallyUploadingHook.Get()) {
-                var paramList = paramz.GetRaw().Clone().parameters.Select(p => {
+                var paramList = paramz.GetRaw().parameters.Select(p => {
                     var source = parameterSourceService.GetSource(p.name);
                     return new SavedParam() {
                         parameter = p.Clone(),
                         source = source,
-                        compressed = paramsToOptimize.Any(o => o.name == p.name)
+                        compressed = paramsToOptimize.compress.Contains(p)
                     };
                 }).ToList();
                 var saveData = new SavedData() {
                     parameters = paramList,
-                    saveVersion = 2,
+                    saveVersion = 3,
                     unityVersion = Application.unityVersion,
-                    vrcfuryVersion = VRCFPackageUtils.Version
+                    vrcfuryVersion = VRCFPackageUtils.Version,
+                    boolSlots = paramsToOptimize.boolSlots,
+                    numberSlots = paramsToOptimize.numberSlots
                 };
                 var saveText = JsonUtility.ToJson(saveData, true);
                 var originalAvatar = originalAvatarService.GetOriginal();

@@ -28,10 +28,10 @@ namespace VF.Hooks {
             
             HarmonyUtils.Patch(
                 typeof(PreventComponentDeletionHook),
-                nameof(PreprocessorPostfix),
+                nameof(PreprocessorFinalizer),
                 typeof(VRCBuildPipelineCallbacks),
                 nameof(VRCBuildPipelineCallbacks.OnPreprocessAvatar),
-                postfix: true
+                patchMode: HarmonyUtils.PatchMode.Finalizer
             );
         }
 
@@ -51,7 +51,7 @@ namespace VF.Hooks {
             inPreprocessor = true;
         }
 
-        private static void PreprocessorPostfix() {
+        private static void PreprocessorFinalizer() {
             inPreprocessor = false;
         }
     }
