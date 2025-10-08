@@ -29,7 +29,7 @@ jobs:
           - vrcsdkVersion: 3.7.0
             unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono-3.0.1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/cache@v4
         with:
@@ -84,7 +84,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: repo
       - name: Copy license
@@ -95,7 +95,7 @@ jobs:
           cp CONTRIBUTING.md com.vrcfury.vrcfury/CONTRIBUTING.md
           cp .github/files/CONTRIBUTING.md.meta com.vrcfury.vrcfury/CONTRIBUTING.md.meta
       - name: Checkout version manifest
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: versions
           repository: VRCFury/vrcfury-updater-manifest
