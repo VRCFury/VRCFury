@@ -18,7 +18,6 @@ namespace VF.Feature
 {
 
     [FeatureTitle("Outfit")]
-    [FeatureRootOnly]
     internal class OutfitBuilder : FeatureBuilder<Outfit>
     {
         [VFAutowired] private readonly GlobalsService globals;
