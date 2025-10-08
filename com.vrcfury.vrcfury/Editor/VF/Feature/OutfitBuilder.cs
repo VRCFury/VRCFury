@@ -34,6 +34,7 @@ namespace VF.Feature
             "  All accessories: Accessories/*\n" +
             "  All items in Clothing with 'Party' at the end: Clothing/*Party" +
             "  Everything: *";
+
         [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
         public void Apply()
         {
@@ -66,6 +67,7 @@ namespace VF.Feature
             {
                 bool handled = false;
 
+                // Toggle on has priority over off
                 foreach (string toggle_name in model.toggleOn)
                 {
                     if (WildcardMatch(toggle_name, toggle.model.name))
@@ -77,6 +79,7 @@ namespace VF.Feature
 
                 if (handled) continue;
 
+                // Toggle off
                 foreach (string toggle_name in model.toggleOff)
                 {
                     if (WildcardMatch(toggle_name, toggle.model.name))
@@ -84,7 +87,6 @@ namespace VF.Feature
                         toggle.drive(on, false);
                     }
                 }
-
             }
         }
 
@@ -232,6 +234,8 @@ namespace VF.Feature
             return container;
         }
 
+        // Pulled from MoveMenuItemBuilder
+        // Added a callback on completion to update the list
         public static VisualElement SelectButton(
             VFGameObject avatarObject,
             bool foldersOnly,
