@@ -3,13 +3,15 @@ using System.Collections.Generic;
 
 namespace VF.Model.Feature
 {
+
     [Serializable]
-    internal class Outfit : NewFeatureModel
+    internal class Outfit : FeatureModel
     {
         public string name = "";
 
-        public List<string> toggleOn = new List<string>();
-        public List<string> toggleOff = new List<string>();
-        public bool allOff = false;
+        public string[] toggleOn;
+        public string[] toggleOff;
+
+        public List<Action> actions = new List<Action>();
     }
 }

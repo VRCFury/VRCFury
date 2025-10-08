@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using UnityEditor;
 using UnityEngine.UIElements;
@@ -10,7 +9,10 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
-using Toggle = VF.Model.Feature.Toggle;
+using UnityEngine;
+using System.Collections.Generic;
+using System;
+using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Feature
 {
@@ -26,13 +28,13 @@ namespace VF.Feature
         private MenuManager menu => menuService.GetMenu();
 
         public const string togglePathTooltip =
-            "Menu path to other toggles.\n\n" +
-            "Supports wildcards:\n" +
+            "\n\nSupports wildcards:\n" +
             "  *  matches any sequence of characters (including none)\n" +
             "  ?  matches exactly one character\n\n" +
             "Examples:\n" +
-            "  All accessories:             Accessories/Jewelery/*\n" +
-            "  All clothing with 'Party':   Clothing/*Party";
+            "  All accessories: Accessories/*\n" +
+            "  All items in Clothing with 'Party' at the end: Clothing/*Party" +
+            "  Everything: *";
         [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
         public void Apply()
         {
@@ -76,12 +78,6 @@ namespace VF.Feature
 
                 if (handled) continue;
 
-                if (model.allOff)
-                {
-                    toggle.drive(on, false);
-                    continue;
-                }
-
                 foreach (string toggle_name in model.toggleOff)
                 {
                     if (WildcardMatch(toggle_name, toggle.model.name))
@@ -98,22 +94,20 @@ namespace VF.Feature
         {
             var content = new VisualElement();
 
-            var flex = new VisualElement().Row();
-            content.Add(flex);
+            content.Add(VRCFuryEditorUtils.Info("This feature will add a menu item that will toggle on or off a selection of other toggles on the avatar."));
 
             var pathProp = prop.FindPropertyRelative("name");
-            flex.Add(VRCFuryEditorUtils.Prop(pathProp, "Menu Path", tooltip: ToggleBuilder.menuPathTooltip).FlexGrow(1));
+            content.Add(VRCFuryEditorUtils.Prop(pathProp, "Menu Path", tooltip: ToggleBuilder.menuPathTooltip).FlexGrow(1));
 
-            var c = new VisualElement();
+            var toggleOnProp = prop.FindPropertyRelative("toggleOn");
+            var sectionOn = VRCFuryEditorUtils.Section();
+            sectionOn.Add(ToggleMenuPathListDrawer.BuildList(toggleOnProp, avatarObject, "Turn On", "These toggles will be enabled." + togglePathTooltip));
+            content.Add(sectionOn);
 
-            var toggleOn = prop.FindPropertyRelative("toggleOn");
-            content.Add(VRCFuryEditorUtils.Prop(toggleOn, tooltip: togglePathTooltip).FlexGrow(1));
-
-            var toggleOff = prop.FindPropertyRelative("toggleOff");
-            content.Add(VRCFuryEditorUtils.Prop(toggleOff, tooltip: togglePathTooltip).FlexGrow(1));
-
-            var allOff = prop.FindPropertyRelative("allOff");
-            content.Add(VRCFuryEditorUtils.Prop(allOff, "Turn everything else off"));
+            var toggleOffProp = prop.FindPropertyRelative("toggleOff");
+            var sectionOff = VRCFuryEditorUtils.Section();
+            sectionOff.Add(ToggleMenuPathListDrawer.BuildList(toggleOffProp, avatarObject, "Turn Off", "These toggles will be disabled." + togglePathTooltip));
+            content.Add(sectionOff);
 
             return content;
         }
@@ -157,6 +151,185 @@ namespace VF.Feature
                 p++;
 
             return p == pattern.Length;
+        }
+    }
+
+    internal static class ToggleMenuPathListDrawer
+    {
+        public static VisualElement BuildList(
+            SerializedProperty listProp,
+            VFGameObject avatarObject,
+            string label,
+            string tooltip = null
+        )
+        {
+            var container = new VisualElement();
+            container.Add(new Label(label) { tooltip = tooltip, style = { unityFontStyleAndWeight = FontStyle.Bold } });
+
+            void RefreshList()
+            {
+                container.Clear();
+                var (labelBox, tooltipBox) = VRCFuryEditorUtils.CreateTooltip(label, tooltip);
+                container.Add(labelBox);
+                container.Add(tooltipBox);
+
+                for (int i = 0; i < listProp.arraySize; i++)
+                {
+                    int index = i;
+                    var row = new VisualElement().Row();
+
+                    var itemProp = listProp.GetArrayElementAtIndex(index);
+
+                    // TextField for manual edit
+                    var textField = new TextField { value = itemProp.stringValue };
+                    textField.style.flexGrow = 1;
+                    textField.style.width = 100;
+                    textField.RegisterValueChangedCallback(e => {
+                        itemProp.stringValue = e.newValue;
+                        itemProp.serializedObject.ApplyModifiedProperties();
+                        RefreshList();
+                    });
+                    row.Add(textField);
+
+                    // Search button
+                    var searchButton = new Button(() => {
+                        SelectButton(
+                            avatarObject,
+                            foldersOnly: false,
+                            prop: itemProp,
+                            label: null,
+                            immediate: true,
+                            onComplete: RefreshList
+                        );
+                    })
+                    { text = "Select" };
+                    row.Add(searchButton);
+
+                    // Remove button
+                    var removeButton = new Button(() => {
+                        listProp.DeleteArrayElementAtIndex(index);
+                        listProp.serializedObject.ApplyModifiedProperties();
+                        RefreshList();
+                    })
+                    { text = "X" };
+                    row.Add(removeButton);
+
+                    container.Add(row);
+                }
+
+                // Add button
+                var addButton = new Button(() => {
+                    listProp.arraySize++;
+                    listProp.serializedObject.ApplyModifiedProperties();
+                    RefreshList();
+                })
+                { text = "Add" };
+                container.Add(addButton);
+            }
+
+            // Initial build
+            RefreshList();
+
+            return container;
+        }
+
+        public static VisualElement SelectButton(
+            VFGameObject avatarObject,
+            bool foldersOnly,
+            SerializedProperty prop,
+            string label = "Menu Path",
+            Func<string> append = null,
+            string selectLabel = "Select",
+            string tooltip = null,
+            bool immediate = false,
+            Vector2? pos = null,
+            Action onComplete = null
+        )
+        {
+            void Apply(string path)
+            {
+                if (append != null)
+                {
+                    if (path != "") path += "/";
+                    path += append();
+                }
+                prop.stringValue = path;
+                prop.serializedObject.ApplyModifiedProperties();
+
+                onComplete?.Invoke();
+            }
+
+            void OnClick()
+            {
+                if (avatarObject == null) return;
+
+                var controlPaths = new List<IList<string>>();
+                MenuEstimator.Estimate(avatarObject).GetRaw().ForEachMenu(ForEachItem: (control, path) => {
+                    if (!foldersOnly || control.type == VRCExpressionsMenu.Control.ControlType.SubMenu)
+                    {
+                        controlPaths.Add(path);
+                    }
+
+                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                });
+
+                string PathToString(IList<string> path)
+                {
+                    return path.Select(p => p.Replace("/", "\\/")).Join('/');
+                }
+
+                void AddItem(VrcfSearchWindow.Group group, IList<string> prefix)
+                {
+                    var children = controlPaths
+                        .Where(path => path.Count == prefix.Count + 1)
+                        .Where(path => prefix.Select((segment, i) => path[i] == segment).All(c => c))
+                        .ToList();
+                    if (prefix.Count == 0)
+                    {
+                        if (foldersOnly)
+                        {
+                            group.Add("<Select this folder>", "");
+                        }
+
+                        foreach (var child in children)
+                        {
+                            AddItem(group, child);
+                        }
+                    }
+                    else
+                    {
+                        if (children.Count > 0)
+                        {
+                            var subGroup = group.AddGroup(prefix.Last());
+                            subGroup.Add("<Select this folder>", PathToString(prefix));
+                            foreach (var child in children)
+                            {
+                                AddItem(subGroup, child);
+                            }
+                        }
+                        else
+                        {
+                            group.Add(prefix.Last(), PathToString(prefix));
+                        }
+                    }
+                }
+
+                var window = new VrcfSearchWindow("Avatar Menu Items");
+                AddItem(window.GetMainGroup(), new string[] { });
+
+                window.Open(Apply, pos);
+            }
+
+            if (immediate)
+            {
+                OnClick();
+                return null;
+            }
+
+            var row = new VisualElement().Row();
+            row.Add(VRCFuryEditorUtils.Prop(prop, label, tooltip: tooltip).FlexGrow(1));
+            row.Add(new Button(OnClick) { text = selectLabel });
+            return row;
         }
     }
 }
