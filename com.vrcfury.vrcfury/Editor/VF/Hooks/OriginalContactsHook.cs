@@ -56,8 +56,12 @@ namespace VF.Hooks {
                 throw new Exception("Collider fix methods could not be found, maybe VRCF doesn't support this VRCSDK version?");
             }
 
-            var editor = ScriptableObject.CreateInstance(Reflection.AvatarDescriptorEditor3);
+            var editor = Editor.CreateEditor(avatar);
             try {
+                if (!Reflection.AvatarDescriptorEditor3.IsInstanceOfType(editor)) {
+                    throw new Exception("Avatar descriptor editor was not a AvatarDescriptorEditor3");
+                }
+
                 Reflection.avatarDescriptor.SetValue(editor, avatar);
                 Reflection.UpdateAutoColliders.Invoke(editor, new object[] { });
 
