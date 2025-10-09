@@ -17,9 +17,6 @@ namespace VF.Service {
      *
      * In theory, we could skip the safety setter IF it's guaranteed that the weight will always be >= 1 in all other usages of the AAP
      * but this is complicated to keep track of for limited benefit.
-     *
-     * WARNING: If your aap is animated from a direct blendtree OUTSIDE of the main shared direct blendtree, you must set useWeightProtection to false
-     * and ensure that you weight protect the variable in your own tree.
      */
     [VFService]
     internal class FixPartiallyWeightedAapsService {

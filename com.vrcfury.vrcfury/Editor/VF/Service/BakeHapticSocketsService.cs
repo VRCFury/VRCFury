@@ -35,6 +35,7 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
+        [VFAutowired] private readonly WhenObjectEnabledService whenObjectEnabledService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
@@ -79,8 +80,8 @@ namespace VF.Service {
                 multiOn = fx.NewBool("multi", synced: true, networkSynced: false, saved: saved);
                 var multiFolder = $"{spsOptions.GetOptionsPath()}/<b>Dual Mode<\\/b>\n<size=20>Allows 2 active sockets";
                 menu.NewMenuToggle($"{multiFolder}/Enable Dual Mode", multiOn);
-                menu.NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Everyone else must use SPS or TPS - NO DPS!");
-                menu.NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Nobody else can use a hole at the same time");
+                menu.NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Everyone nearby must use SPS - NO DPS!");
+                menu.NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>Nobody else can use a socket at the same time");
                 menu.NewMenuButton($"{multiFolder}/<b>WARNING<\\/b>\n<size=20>DO NOT ENABLE MORE THAN 2");
             }
 
@@ -217,18 +218,23 @@ namespace VF.Service {
                         hapticContacts.AddReceiver(req);
                     }
 
+                    var animRoot = new Lazy<VFGameObject>(() => GameObjects.Create("Animations", bakeResult.worldSpace));
+                    
+                    var animRootEnabled = new Lazy<VFAFloat>(() => whenObjectEnabledService.WhenEnabled(animRoot.Value));
+
                     var animObjects = new List<VFGameObject>();
                     var Contacts = new Lazy<SpsDepthContacts>(() => {
                         var scale = scaleFactorService.GetAdv(bakeResult.bakeRoot, bakeResult.worldSpace);
                         if (scale == null) throw new Exception("Scale cannot be null at this point. Is this a mobile build somehow?");
                         var (scaleFactor, scaleFactorContact1, scaleFactorContact2) = scale.Value;
-                        var animRoot = GameObjects.Create("Animations", bakeResult.worldSpace);
-                        animObjects.Add(animRoot);
+                        animObjects.Add(animRoot.Value);
                         animObjects.Add(scaleFactorContact1);
                         animObjects.Add(scaleFactorContact2);
-                        var directTree = directTreeService.Create($"{name} - Depth Calculations");
+                        var directTreeRoot = directTreeService.Create($"{name} - Depth Calculations");
+                        var directTree = VFBlendTreeDirect.Create($"{name} - Socket Enabled");
+                        directTreeRoot.Add(animRootEnabled.Value, directTree);
                         var math = directTreeService.GetMath(directTree);
-                        return new SpsDepthContacts(animRoot, name, hapticContacts, directTree, math, fx, frameTimeService, socket.useHipAvoidance, scaleFactor);
+                        return new SpsDepthContacts(animRoot.Value, name, hapticContacts, directTree, math, fx, frameTimeService, socket.useHipAvoidance, scaleFactor);
                     });
 
                     if (socket.depthActions2.Count > 0) {
@@ -237,10 +243,11 @@ namespace VF.Service {
                             socket.depthActions2,
                             socket.owner(),
                             name,
-                            Contacts.Value
+                            Contacts.Value,
+                            animRootEnabled.Value
                         );
                     }
-                    
+
                     var injectDepthToFullControllerParams = globals.allBuildersInRun
                         .OfType<FullControllerBuilder>()
                         .Where(fc => fc.featureBaseObject.IsChildOf(socket.owner()))

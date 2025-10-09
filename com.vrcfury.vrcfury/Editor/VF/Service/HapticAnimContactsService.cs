@@ -4,6 +4,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -23,7 +24,8 @@ namespace VF.Service {
             ICollection<VRCFuryHapticSocket.DepthActionNew> actions,
             VFGameObject spsComponentOwner,
             string name,
-            SpsDepthContacts contacts
+            SpsDepthContacts contacts,
+            VFAFloat enabled
         ) {
             var actionNum = 0;
             foreach (var depthAction in actions) {
@@ -35,7 +37,9 @@ namespace VF.Service {
                     : depthAction.units == VRCFuryHapticSocket.DepthActionUnits.Meters
                     ? ( depthAction.enableSelf ? contacts.closestDistanceMeters.Value : contacts.others.distanceMeters.Value )
                     : ( depthAction.enableSelf ? contacts.closestDistanceLocal.Value : contacts.others.distanceLocal.Value );
-                var dbt = dbtLayerService.Create($"{layerName} - {actionNum} - Action");
+                var dbtRoot = dbtLayerService.Create($"{layerName} - Depth Action {actionNum} - Smoothing");
+                var dbt = VFBlendTreeDirect.Create("When Enabled");
+                dbtRoot.Add(enabled, dbt);
                 var math = dbtLayerService.GetMath(dbt);
                 var mapped = math.Map(
                     $"{prefix}/Mapped",
@@ -50,7 +54,7 @@ namespace VF.Service {
                     depthAction.smoothingSeconds
                 );
 
-                var layer = fx.NewLayer($"{layerName} - {actionNum} - Action");
+                var layer = fx.NewLayer($"{layerName} - Depth Action {actionNum} - Action");
                 var off = layer.NewState("Off");
                 var on = layer.NewState("On");
 
@@ -69,13 +73,11 @@ namespace VF.Service {
                     on.WithAnimation(tree);
                 }
 
-                if (depthAction.reverseClip) {
-                    off.TransitionsTo(on).When(fx.Always());
-                } else {
-                    var onWhen = smoothed.IsGreaterThan(0.01f);
-                    off.TransitionsTo(on).When(onWhen);
-                    on.TransitionsTo(off).When(onWhen.Not());
-                }
+                VFCondition onWhen = enabled.IsGreaterThan(0);
+                if (!depthAction.reverseClip) onWhen = onWhen.And(smoothed.IsGreaterThan(0.01f));
+                
+                off.TransitionsTo(on).When(onWhen);
+                on.TransitionsTo(off).When(onWhen.Not());
             }
         }
     }

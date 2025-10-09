@@ -35,6 +35,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
+        [VFAutowired] private readonly WhenObjectEnabledService whenObjectEnabledService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
@@ -296,7 +297,10 @@ namespace VF.Service {
 
             // Depth Actions
             if (plug.depthActions2.Count > 0) {
-                var directTree = directTreeService.Create($"{name} - Depth Calculations");
+                var directTreeRoot = directTreeService.Create($"{name} - Depth Calculations");
+                var directTree = VFBlendTreeDirect.Create($"{name} - Plug Enabled");
+                var enabled = whenObjectEnabledService.WhenEnabled(bakeRoot);
+                directTreeRoot.Add(enabled, directTree);
                 var math = directTreeService.GetMath(directTree);
                 var contacts = new SpsDepthContacts(
                     worldSpace,
@@ -315,7 +319,8 @@ namespace VF.Service {
                     plug.depthActions2,
                     plug.owner(),
                     name,
-                    contacts
+                    contacts,
+                    enabled
                 );
             }
 

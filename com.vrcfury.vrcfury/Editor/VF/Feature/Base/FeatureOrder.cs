@@ -78,6 +78,9 @@ namespace VF.Feature.Base {
 
         // Needs to run after everything else is done messing with rest state
         ApplyToggleRestingState,
+        
+        // Needs to happen after objects have moved around and objects no longer turn on and off
+        WhenObjectEnabledService,
 
         // Finalize Controllers
         UpgradeToVrcConstraints, // Needs to happen before any step starts looking at or cleaning up "invalid" animation bindings
