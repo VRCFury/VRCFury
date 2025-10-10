@@ -42,7 +42,7 @@ namespace VF.Feature
                 .OfType<ToggleBuilder>()
                 .ToArray();
 
-            var param = fx.NewBool(model.name, false, false, false, false, true);
+            var param = fx.NewBool(model.name, true, false, false, false, true);
 
             menu.NewMenuButton(
                 model.name,
