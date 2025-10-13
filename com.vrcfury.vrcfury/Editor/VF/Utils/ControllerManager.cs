@@ -155,7 +155,7 @@ namespace VF.Utils {
             return NewBool("IsLocal", usePrefix: false);
         }
         public VFABool IsAnimatorEnabled() {
-            return NewBool("IsAnimatorEnabled", usePrefix: false);
+            return NewBool("IsAnimatorEnabled", usePrefix: false, def: true);
         }
         public VFCondition IsMmd() {
             return NewBool("Seated", usePrefix: false).IsFalse()
