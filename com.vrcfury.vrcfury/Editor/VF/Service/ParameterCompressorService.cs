@@ -61,8 +61,8 @@ namespace VF.Service {
             }
 
             var batchCount = Math.Max(numberBatches.Count, boolBatches.Count);
-            var INDEX_BITS = decision.GetIndexBits();
-            var syncIndex = Enumerable.Range(0, INDEX_BITS)
+            var indexBitCount = decision.GetIndexBitCount();
+            var syncIndex = Enumerable.Range(0, indexBitCount)
                 .Select(i => fx.NewBool($"SyncIndex{i}", synced: true))
                 .ToArray();
             var syncInts = Enumerable.Range(0, decision.numberSlots)
@@ -84,9 +84,9 @@ namespace VF.Service {
             VFState recvUnlatchState = null;
             var yOffset = 2;
             foreach (var batchNum in Enumerable.Range(0, batchCount)) {
-                var syncId = ((batchNum - 1) % ((1 << INDEX_BITS) - 1)) + 1;
+                var syncId = ((batchNum - 1) % ((1 << indexBitCount) - 1)) + 1;
                 if (batchNum == 0) syncId = 0;
-                var syncIds = Enumerable.Range(0, INDEX_BITS).Select(i => (syncId & 1<<(INDEX_BITS-1-i)) > 0).ToArray();
+                var syncIds = Enumerable.Range(0, indexBitCount).Select(i => (syncId & 1<<(indexBitCount-1-i)) > 0).ToArray();
                 var numberBatch = batchNum < numberBatches.Count ? numberBatches[batchNum] : new List<VRCExpressionParameters.Parameter>();
                 var boolBatch = batchNum < boolBatches.Count ? boolBatches[batchNum] : new List<VRCExpressionParameters.Parameter>();
 
@@ -98,7 +98,7 @@ namespace VF.Service {
                 var latchTitlePrefix = (batchNum == 0) ? "Latch & " : "";
                 var sendState = layer.NewState($"{latchTitlePrefix}Send {title}").Move(entry, -1, yOffset);
                 var receiveConditions = new List<VFCondition>();
-                foreach (var i in Enumerable.Range(0, INDEX_BITS)) {
+                foreach (var i in Enumerable.Range(0, indexBitCount)) {
                     doAtEnd += () => sendState.Drives(syncIndex[i], syncIds[i]);
                     receiveConditions.Add(syncIndex[i].Is(syncIds[i]));
                 }
@@ -204,41 +204,31 @@ namespace VF.Service {
             // Go/Float is driven by an add driver, but it's safe to compress. The driver is only used while you're
             // actively holding a button in the menu.
             addDrivenParams.Remove("Go/Float");
-            
-            var decision = GetParamsToOptimize(false, false, addDrivenParams, originalCost);
-            if (originalCost + decision.CalcOffset() <= maxCost) {
-                return decision;
-            }
-            
-            decision = GetParamsToOptimize(false, true, addDrivenParams, originalCost);
-            if (originalCost + decision.CalcOffset() <= maxCost) {
-                return decision;
-            }
-            
-            decision = GetParamsToOptimize(true, false, addDrivenParams, originalCost);
-            if (originalCost + decision.CalcOffset() <= maxCost) {
-                return decision;
-            }
 
-            decision = GetParamsToOptimize(true, true, addDrivenParams, originalCost);
-            if (originalCost + decision.CalcOffset() <= maxCost) {
-                return decision;
+            var attemptFuncs = new Func<OptimizationDecision>[] {
+                () => GetParamsToOptimize(false, false, addDrivenParams, originalCost),
+                () => GetParamsToOptimize(false, true, addDrivenParams, originalCost),
+                () => GetParamsToOptimize(true, false, addDrivenParams, originalCost),
+                () => GetParamsToOptimize(true, true, addDrivenParams, originalCost)
+            };
+
+            var minCost = originalCost;
+            foreach (var attemptFunc in attemptFuncs) {
+                var decision = attemptFunc.Invoke();
+                minCost = Math.Min(minCost, decision.GetFinalCost(originalCost));
+                if (minCost <= maxCost) return decision;
             }
 
             var nonMenuParams = new HashSet<string>(paramz.GetRaw().parameters.Select(p => p.name));
             nonMenuParams.ExceptWith(GetParamsUsedInMenu(true));
             nonMenuParams.ExceptWith(drivenParams);
 
-            var errorMessage =
-                "Your avatar is out of space for parameters! Your avatar uses "
-                + originalCost + "/" + maxCost
-                + " bits.";
+            var errorMessage = $"Your avatar is out of space for parameters! Your avatar uses {originalCost}/{maxCost} bits.";
 
-            if (decision.CalcOffset() < 0) {
+            if (minCost < originalCost) {
                 errorMessage +=
                     " VRCFury attempted to compress your parameters to fit, but even with maximum compression," +
-                    " VRCFury could only get it down to " + (originalCost + decision.CalcOffset()) + "/" +
-                    maxCost + " bits.";
+                    $" VRCFury could only get it down to {minCost}/{maxCost} bits.";
             }
             
             errorMessage += " Ask your avatar creator, or the creator of the last prop you've added, " +
@@ -350,7 +340,17 @@ namespace VF.Service {
             public int boolSlots = 0;
             public IList<VRCExpressionParameters.Parameter> compress = new VRCExpressionParameters.Parameter[] { };
 
-            public int GetIndexBits() {
+            public OptimizationDecision TempCopy(Action<OptimizationDecision> with) {
+                var copy = new OptimizationDecision {
+                    numberSlots = numberSlots,
+                    boolSlots = boolSlots,
+                    compress = compress.ToList()
+                };
+                with.Invoke(copy);
+                return copy;
+            }
+
+            public int GetIndexBitCount() {
                 var batches = GetBatches();
                 var batchCount = Math.Max(batches.numberBatches.Count, batches.boolBatches.Count);
                 if (batchCount <= 2) {
@@ -360,9 +360,12 @@ namespace VF.Service {
                 }
             }
 
-            public int CalcOffset() {
-                return GetIndexBits() + numberSlots * 8 + boolSlots
-                    - compress.Sum(p => VRCExpressionParameters.TypeCost(p.valueType));
+            public int GetFinalCost(int originalCost) {
+                return originalCost
+                       + GetIndexBitCount()
+                       + numberSlots * 8
+                       + boolSlots
+                       - compress.Sum(p => VRCExpressionParameters.TypeCost(p.valueType));
             }
 
             public (
@@ -395,16 +398,18 @@ namespace VF.Service {
                 var numberCount = compress.Count(p => p.valueType != VRCExpressionParameters.ValueType.Bool);
                 boolSlots = boolCount > 0 ? 1 : 0;
                 numberSlots = numberCount > 0 ? 1 : 0;
-                var currentCost = originalCost + CalcOffset();
                 var maxCost = VRCExpressionParametersExtensions.GetMaxCost();
                 //maxCost = 50;
                 while (true) {
-                    if (numberSlots < numberCount && currentCost <= maxCost - 8 && (boolCount == 0 || (float)numberSlots / numberCount < (float)boolSlots / boolCount)) {
+                    if (numberSlots < numberCount
+                        && TempCopy(o => o.numberSlots++).GetFinalCost(originalCost) <= maxCost
+                        && (boolCount == 0 || (float)numberSlots / numberCount < (float)boolSlots / boolCount)
+                    ) {
                         numberSlots++;
-                        currentCost += 8;
-                    } else if (boolSlots < boolCount && currentCost <= maxCost - 1) {
+                    } else if (boolSlots < boolCount
+                        && TempCopy(o => o.boolSlots++).GetFinalCost(originalCost) <= maxCost
+                    ) {
                         boolSlots++;
-                        currentCost += 1;
                     } else {
                         break;
                     }
