@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using UnityEngine;
 using VF.Builder;
@@ -28,7 +28,6 @@ namespace VF.Service {
         private ParamManager paramz => paramsService.GetParams();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
-        [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ParameterSourceService parameterSourceService;
         [VFAutowired] private readonly OriginalAvatarService originalAvatarService;
@@ -51,104 +50,123 @@ namespace VF.Service {
 
             var (numberBatches, boolBatches) = decision.GetBatches();
 
-            var syncPointer = fx.NewInt("SyncPointer", synced: true);
+            VRCExpressionParameters.Parameter MakeParam(string name, VRCExpressionParameters.ValueType type, bool synced) {
+                var param = new VRCExpressionParameters.Parameter {
+                    name = controllers.MakeUniqueParamName(name),
+                    valueType = type
+                };
+                param.SetNetworkSynced(synced);
+                paramz.AddSyncedParam(param);
+                return param;
+            }
+
+            var batchCount = Math.Max(numberBatches.Count, boolBatches.Count);
+            var INDEX_BITS = decision.GetIndexBits();
+            var syncIndex = Enumerable.Range(0, INDEX_BITS)
+                .Select(i => fx.NewBool($"SyncIndex{i}", synced: true))
+                .ToArray();
             var syncInts = Enumerable.Range(0, decision.numberSlots)
-                .Select(i => fx.NewInt("SyncDataNum" + i, synced: true))
+                .Select(i => MakeParam("SyncDataNum" + i, VRCExpressionParameters.ValueType.Int, true))
                 .ToList();
             var syncBools = Enumerable.Range(0, decision.boolSlots)
-                .Select(i => fx.NewBool("SyncDataBool" + i, synced: true))
+                .Select(i => MakeParam("SyncDataBool" + i, VRCExpressionParameters.ValueType.Bool, true))
                 .ToList();
 
             var layer = fx.NewLayer("Parameter Compressor");
-            var entry = layer.NewState("Entry").Move(-3, -1);
-            var local = layer.NewState("Local").Move(0, 2);
-            entry.TransitionsTo(local).When(fx.IsLocal().IsTrue());
-            entry.TransitionsToExit().When(fx.Always());
+            var entry = layer.NewState("Entry").Move(0, 2);
+            entry.TransitionsFromAny().When(fx.IsAnimatorEnabled().IsFalse());
+            var remoteLost = layer.NewState("Receive (Lost)").Move(entry, 0, 1);
+            entry.TransitionsTo(remoteLost).When(fx.IsLocal().IsFalse());
 
-            var math = dbtLayerService.GetMath(dbtLayerService.Create());
-
-            Action addRoundRobins = () => { };
-            Action addDefault = () => { };
-            VFState lastSendState = null;
-            VFState lastReceiveState = null;
-            var nextStateSpacing = 1;
-            for (int i = 0; i < numberBatches.Count || i < boolBatches.Count; i++) {
-                var syncIndex = i + 1;
-                var numberBatch = i < numberBatches.Count ? numberBatches[i] : new List<VRCExpressionParameters.Parameter>();
-                var boolBatch = i < boolBatches.Count ? boolBatches[i] : new List<VRCExpressionParameters.Parameter>();
+            Action doAtEnd = () => { };
+            Action<VFState,VFState,VFCondition> whenNextStateReady = null;
+            VFState sendLatchState = null;
+            VFState recvUnlatchState = null;
+            var yOffset = 2;
+            foreach (var batchNum in Enumerable.Range(0, batchCount)) {
+                var syncId = ((batchNum - 1) % ((1 << INDEX_BITS) - 1)) + 1;
+                if (batchNum == 0) syncId = 0;
+                var syncIds = Enumerable.Range(0, INDEX_BITS).Select(i => (syncId & 1<<(INDEX_BITS-1-i)) > 0).ToArray();
+                var numberBatch = batchNum < numberBatches.Count ? numberBatches[batchNum] : new List<VRCExpressionParameters.Parameter>();
+                var boolBatch = batchNum < boolBatches.Count ? boolBatches[batchNum] : new List<VRCExpressionParameters.Parameter>();
 
                 // What is this sync index called?
-                var title = $"#{syncIndex}:\n" + numberBatch.Concat(boolBatch).Select(p => p.name).Join("\n");
+                var title = $"({syncIds.Select(b => b ? "1" : "0").Join("")}):\n"
+                            + numberBatch.Concat(boolBatch).Select(p => p.name).Join("\n");
 
                 // Create and wire up send and receive states
-                var sendState = layer.NewState($"Send {title}");
-                var receiveState = layer.NewState($"Receive {title}");
-                sendState
-                    .Drives(syncPointer, syncIndex)
-                    .TransitionsTo(local)
-                    .WithTransitionExitTime(0.1f)
-                    .When(fx.Always());
-                receiveState.TransitionsFromEntry().When(syncPointer.IsEqualTo(syncIndex));
-                receiveState.TransitionsToExit().When(fx.Always());
-                if (i == 0) {
-                    sendState.Move(local, 1, 0);
-                    receiveState.Move(local, 3, 0);
-                } else {
-                    sendState.Move(lastSendState, 0, nextStateSpacing);
-                    receiveState.Move(lastReceiveState, 0, nextStateSpacing);
+                var latchTitlePrefix = (batchNum == 0) ? "Latch & " : "";
+                var sendState = layer.NewState($"{latchTitlePrefix}Send {title}").Move(entry, -1, yOffset);
+                var receiveConditions = new List<VFCondition>();
+                foreach (var i in Enumerable.Range(0, INDEX_BITS)) {
+                    doAtEnd += () => sendState.Drives(syncIndex[i], syncIds[i]);
+                    receiveConditions.Add(syncIndex[i].Is(syncIds[i]));
                 }
-                lastSendState = sendState;
-                lastReceiveState = receiveState;
-                nextStateSpacing = (int)Math.Ceiling((title.Split('\n').Length+1) / 5f);
+                var receiveState = layer.NewState($"{latchTitlePrefix}Receive {title}").Move(entry, batchNum == 0 ? 2 : 1, batchNum == 0 ? 1 : yOffset);
+                var receiveCondition = VFCondition.All(receiveConditions);
+                VFState receiveState2 = null;
 
-                for (var slotNum = 0; slotNum < numberBatch.Count(); slotNum++) {
-                    var originalParam = numberBatch[slotNum].name;
-                    var type = numberBatch[slotNum].valueType;
-                    var lastSynced = fx.NewFloat($"{originalParam}/LastSynced", def: -100);
-                    sendState.DrivesCopy(originalParam, lastSynced);
+                void WithReceiveState(Action<VFState> with) {
+                    with.Invoke(receiveState);
+                    if (receiveState2 != null) with.Invoke(receiveState2);
+                }
 
-                    VFAFloat currentValue;
-                    if (type == VRCExpressionParameters.ValueType.Float) {
-                        currentValue = fx.NewFloat(originalParam, usePrefix: false);
-                        sendState.DrivesCopy(originalParam, syncInts[slotNum], -1, 1, 0, 254);
-                        receiveState.DrivesCopy(syncInts[slotNum], originalParam, 0, 254, -1, 1);
-                    } else if (type == VRCExpressionParameters.ValueType.Int) {
-                        currentValue = fx.NewFloat($"{originalParam}/Current");
-                        local.DrivesCopy(originalParam, currentValue);
-                        sendState.DrivesCopy(originalParam, syncInts[slotNum]);
-                        receiveState.DrivesCopy(syncInts[slotNum], originalParam);
+                if (batchNum == 0) {
+                    entry.TransitionsTo(sendState).When(fx.IsLocal().IsTrue());
+                    receiveState2 = layer.NewState($"Receive {title}").Move(entry, 1, yOffset);
+                    remoteLost.TransitionsTo(receiveState2).When(receiveCondition);
+                    sendLatchState = sendState;
+                    recvUnlatchState = receiveState;
+                    doAtEnd += () => {
+                        whenNextStateReady?.Invoke(sendState, receiveState, receiveCondition);
+                    };
+                }
+                whenNextStateReady?.Invoke(sendState, receiveState, receiveCondition);
+                whenNextStateReady = (nextSend, nextRecv, nextRecvCond) => {
+                    sendState.TransitionsTo(nextSend).WithTransitionExitTime(0.1f).When();
+                    WithReceiveState(rcv => {
+                        rcv.TransitionsTo(nextRecv).When(nextRecvCond);
+                        rcv.TransitionsTo(remoteLost).When(receiveCondition.Not().And(nextRecvCond.Not()));
+                        rcv.TransitionsTo(remoteLost).WithTransitionExitTime(0.15f).When();
+                    });
+                };
+                
+                yOffset += (int)Math.Ceiling((title.Split('\n').Length+1) / 5f);
+
+                void SyncParam(VRCExpressionParameters.Parameter original, VRCExpressionParameters.Parameter slot) {
+                    var latch = MakeParam(original.name, original.valueType, false);
+                    VRCExpressionParameters.Parameter sendFrom;
+                    if (batchNum == 0) {
+                        // No need to latch things in the first batch when sending
+                        sendFrom = original;
+                    } else {
+                        sendLatchState?.DrivesCopy(original.name, latch.name);
+                        sendFrom = latch;
+                    }
+                    recvUnlatchState?.DrivesCopy(latch.name, original.name);
+                    // We abuse doAtEnd here, since the latch/unlatch needs to happen before the data drivers
+                    if (original.valueType == VRCExpressionParameters.ValueType.Float) {
+                        doAtEnd += () => {
+                            sendState.DrivesCopy(sendFrom.name, slot.name, -1, 1, 0, 254);
+                            WithReceiveState(rcv => rcv.DrivesCopy(slot.name, latch.name, 0, 254, -1, 1));
+                        };
+                    } else if (original.valueType == VRCExpressionParameters.ValueType.Int || original.valueType == VRCExpressionParameters.ValueType.Bool) {
+                        doAtEnd += () => {
+                            sendState.DrivesCopy(sendFrom.name, slot.name);
+                            WithReceiveState(rcv => rcv.DrivesCopy(slot.name, latch.name));
+                        };
                     } else {
                         throw new Exception("Unknown type?");
                     }
-                    var diff = math.Subtract(currentValue, lastSynced);
-                    var shortcutCondition = diff.IsLessThan(0);
-                    shortcutCondition = shortcutCondition.Or(diff.IsGreaterThan(0));
-                    local.TransitionsTo(sendState).When(shortcutCondition);
                 }
-                for (var slotNum = 0; slotNum < boolBatch.Count(); slotNum++) {
-                    var originalParam = boolBatch[slotNum].name;
-                    var lastSynced = fx.NewInt($"{originalParam}/LastSynced", def: -100);
-                    sendState.DrivesCopy(originalParam, lastSynced);
-                    sendState.DrivesCopy(originalParam, syncBools[slotNum]);
-                    receiveState.DrivesCopy(syncBools[slotNum], originalParam);
-                    var shortcutCondition = new VFABool(originalParam, false).IsTrue().And(lastSynced.IsLessThan(1));
-                    shortcutCondition = shortcutCondition.Or(new VFABool(originalParam, false).IsFalse().And(lastSynced.IsGreaterThan(0)));
-                    local.TransitionsTo(sendState).When(shortcutCondition);
+                foreach (var slotNum in Enumerable.Range(0, numberBatch.Count())) {
+                    SyncParam(numberBatch[slotNum], syncInts[slotNum]);
                 }
-
-                if (i == 0) {
-                    addDefault = () => {
-                        local.TransitionsTo(sendState).When(fx.Always());
-                    };
-                } else {
-                    var fromI = syncIndex - 1; // Needs to be set outside the lambda
-                    addRoundRobins += () => {
-                        local.TransitionsTo(sendState).When(syncPointer.IsEqualTo(fromI));
-                    };
+                foreach (var slotNum in Enumerable.Range(0, boolBatch.Count())) {
+                    SyncParam(boolBatch[slotNum], syncBools[slotNum]);
                 }
             }
-            addRoundRobins();
-            addDefault();
+            doAtEnd?.Invoke();
 
             var originalCost = paramz.GetRaw().CalcTotalCost();
             foreach (var param in decision.compress) {
@@ -332,21 +350,31 @@ namespace VF.Service {
             public int boolSlots = 0;
             public IList<VRCExpressionParameters.Parameter> compress = new VRCExpressionParameters.Parameter[] { };
 
+            public int GetIndexBits() {
+                var batches = GetBatches();
+                var batchCount = Math.Max(batches.numberBatches.Count, batches.boolBatches.Count);
+                if (batchCount <= 2) {
+                    return 1;
+                } else {
+                    return 2;
+                }
+            }
+
             public int CalcOffset() {
-                return 8 + numberSlots * 8 + boolSlots
+                return GetIndexBits() + numberSlots * 8 + boolSlots
                     - compress.Sum(p => VRCExpressionParameters.TypeCost(p.valueType));
             }
 
             public (
                 List<List<VRCExpressionParameters.Parameter>> numberBatches,
                 List<List<VRCExpressionParameters.Parameter>> boolBatches
-            ) GetBatches(int offsetNumberSlots = 0) {
+            ) GetBatches() {
                 var numbersToOptimize =
                     compress.Where(i => i.valueType != VRCExpressionParameters.ValueType.Bool).ToList();
                 var boolsToOptimize =
                     compress.Where(i => i.valueType == VRCExpressionParameters.ValueType.Bool).ToList();
                 var numberBatches = numbersToOptimize
-                    .Chunk(numberSlots + offsetNumberSlots)
+                    .Chunk(numberSlots)
                     .Select(chunk => chunk.ToList())
                     .ToList();
                 var boolBatches = boolsToOptimize
@@ -354,11 +382,6 @@ namespace VF.Service {
                     .Select(chunk => chunk.ToList())
                     .ToList();
                 return (numberBatches, boolBatches);
-            }
-
-            public int GetNumRounds(int offsetNumberSlots = 0) {
-                var batches = GetBatches(offsetNumberSlots);
-                return Math.Max(batches.numberBatches.Count, batches.boolBatches.Count);
             }
 
             /**
@@ -374,8 +397,9 @@ namespace VF.Service {
                 numberSlots = numberCount > 0 ? 1 : 0;
                 var currentCost = originalCost + CalcOffset();
                 var maxCost = VRCExpressionParametersExtensions.GetMaxCost();
+                //maxCost = 50;
                 while (true) {
-                    if (numberSlots < numberCount && currentCost <= maxCost - 8 && GetNumRounds(1) < GetNumRounds()) {
+                    if (numberSlots < numberCount && currentCost <= maxCost - 8 && (boolCount == 0 || (float)numberSlots / numberCount < (float)boolSlots / boolCount)) {
                         numberSlots++;
                         currentCost += 8;
                     } else if (boolSlots < boolCount && currentCost <= maxCost - 1) {
