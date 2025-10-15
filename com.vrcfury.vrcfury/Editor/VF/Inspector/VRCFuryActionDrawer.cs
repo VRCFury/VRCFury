@@ -28,6 +28,9 @@ namespace VF.Inspector {
             
             var desktopActive = prop.FindPropertyRelative("desktopActive");
             var androidActive = prop.FindPropertyRelative("androidActive");
+            var localActive = prop.FindPropertyRelative("localOnly");
+            var remoteActive = prop.FindPropertyRelative("remoteOnly");
+            var friendsActive = prop.FindPropertyRelative("friendsOnly");
             col.AddManipulator(new ContextualMenuManipulator(e => {
                 if (e.menu.MenuItems().OfType<DropdownMenuAction>().Any(i => i.name == "Desktop Only")) {
                     return;
@@ -45,6 +48,21 @@ namespace VF.Inspector {
                     desktopActive.boolValue = false;
                     prop.serializedObject.ApplyModifiedProperties();
                 }, androidActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
+                 e.menu.AppendAction("Local Only", a => {
+                    localActive.boolValue = !localActive.boolValue;
+                    remoteActive.boolValue = false;
+                    friendsActive.boolValue = false;
+                    prop.serializedObject.ApplyModifiedProperties();
+                }, localActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
+                e.menu.AppendAction("Remote Only", a => {
+                    remoteActive.boolValue = !remoteActive.boolValue;
+                    localActive.boolValue = false;
+                    prop.serializedObject.ApplyModifiedProperties();
+                }, remoteActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
+                e.menu.AppendAction("Friends Only", a => {
+                    friendsActive.boolValue = !friendsActive.boolValue;
+                    prop.serializedObject.ApplyModifiedProperties();
+                }, friendsActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
             }));
             
             col.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
@@ -62,9 +80,12 @@ namespace VF.Inspector {
                 
                 if (desktopActive.boolValue) AddFlag("Desktop Only");
                 if (androidActive.boolValue) AddFlag("Quest+Android+iOS Only");
+                if (localActive.boolValue) AddFlag("Local Only");
+                if (remoteActive.boolValue) AddFlag("Remote Only");
+                if (friendsActive.boolValue) AddFlag("Friends Only");
 
                 return row;
-            }, desktopActive, androidActive));
+            }, desktopActive, androidActive, localActive, remoteActive, friendsActive));
 
             return col;
         }

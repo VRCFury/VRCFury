@@ -130,11 +130,15 @@ namespace VF.Service {
             var clip = (Motion)methodInjector.FillMethod(buildMethod, builder);
 
             Motion output = clip;
-            if (fx != null && (action.localOnly || action.remoteOnly)) {
+            if (fx != null) {
                 if (action.localOnly) {
                     output = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0).create(output, null);
-                } else {
+                } 
+                if (action.remoteOnly) {
                     output = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0).create(null, output);
+                }
+                if (action.friendsOnly) {
+                    output = BlendtreeMath.GreaterThan(fx.IsOnFriendsList().AsFloat(), 0).Or(BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0)).create(output, null);
                 }
             }
 

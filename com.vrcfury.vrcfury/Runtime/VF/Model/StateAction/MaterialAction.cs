@@ -23,5 +23,14 @@ namespace VF.Model.StateAction {
         public override int GetLatestVersion() {
             return 1;
         }
+
+        public override bool Equals(Action other) => Equals(other as MaterialAction); 
+        public bool Equals(MaterialAction other) {
+            if (other == null) return false;
+            if (renderer != other.renderer) return false;
+            if (materialIndex != other.materialIndex) return false;
+            if (mat.id != other.mat.id) return false;
+            return true;
+        }
     }
 }
