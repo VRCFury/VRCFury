@@ -205,22 +205,21 @@ namespace VF.Service {
             // actively holding a button in the menu.
             addDrivenParams.Remove("Go/Float");
 
-            var attemptFuncs = new Func<OptimizationDecision>[] {
-                () => GetParamsToOptimize(false, false, addDrivenParams, originalCost),
-                () => GetParamsToOptimize(false, true, addDrivenParams, originalCost),
-                () => GetParamsToOptimize(true, false, addDrivenParams, originalCost),
-                () => GetParamsToOptimize(true, true, addDrivenParams, originalCost)
+            var attemptOptions = new Func<ParamSelectionOptions>[] {
+                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true },
+                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true },
+                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true, includeButtons = true },
             };
 
             var minCost = originalCost;
-            foreach (var attemptFunc in attemptFuncs) {
-                var decision = attemptFunc.Invoke();
+            foreach (var attemptOptionFunc in attemptOptions) {
+                var decision = GetParamsToOptimize(attemptOptionFunc.Invoke(), addDrivenParams, originalCost);
                 minCost = Math.Min(minCost, decision.GetFinalCost(originalCost));
                 if (minCost <= maxCost) return decision;
             }
 
             var nonMenuParams = new HashSet<string>(paramz.GetRaw().parameters.Select(p => p.name));
-            nonMenuParams.ExceptWith(GetParamsUsedInMenu(true));
+            nonMenuParams.ExceptWith(GetParamsUsedInMenu(null));
             nonMenuParams.ExceptWith(drivenParams);
 
             var errorMessage = $"Your avatar is out of space for parameters! Your avatar uses {originalCost}/{maxCost} bits.";
@@ -244,25 +243,35 @@ namespace VF.Service {
             return new OptimizationDecision();
         }
 
-        private ISet<string> GetParamsUsedInMenu(bool includePuppets) {
+        public class ParamSelectionOptions {
+            public bool includeToggles;
+            public bool includeRadials;
+            public bool includePuppets;
+            public bool includeButtons;
+        }
+
+        private ISet<string> GetParamsUsedInMenu([CanBeNull] ParamSelectionOptions options) {
             var paramNames = new HashSet<string>();
-            void AttemptToAdd(string paramName) {
-                if (string.IsNullOrEmpty(paramName)) return;
-                paramNames.Add(paramName);
+            void AttemptToAdd([CanBeNull] VRCExpressionsMenu.Control.Parameter param) {
+                if (param == null) return;
+                if (string.IsNullOrEmpty(param.name)) return;
+                paramNames.Add(param.name);
             }
             menu.GetRaw().ForEachMenu(ForEachItem: (control, list) => {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet) {
-                    AttemptToAdd(control.GetSubParameter(0)?.name);
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.Button || control.type == VRCExpressionsMenu.Control.ControlType.Toggle) {
-                    AttemptToAdd(control.parameter?.name);
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.FourAxisPuppet && includePuppets) {
-                    AttemptToAdd(control.GetSubParameter(0)?.name);
-                    AttemptToAdd(control.GetSubParameter(1)?.name);
-                    AttemptToAdd(control.GetSubParameter(2)?.name);
-                    AttemptToAdd(control.GetSubParameter(3)?.name);
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet && includePuppets) {
-                    AttemptToAdd(control.GetSubParameter(0)?.name);
-                    AttemptToAdd(control.GetSubParameter(1)?.name);
+                if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet && (options == null || options.includeRadials)) {
+                    AttemptToAdd(control.GetSubParameter(0));
+                } else if (control.type == VRCExpressionsMenu.Control.ControlType.Button && (options == null || options.includeButtons)) {
+                    AttemptToAdd(control.parameter);
+                } else if (control.type == VRCExpressionsMenu.Control.ControlType.Toggle && (options == null || options.includeToggles)) {
+                    AttemptToAdd(control.parameter);
+                } else if (control.type == VRCExpressionsMenu.Control.ControlType.FourAxisPuppet && (options == null || options.includePuppets)) {
+                    AttemptToAdd(control.GetSubParameter(0));
+                    AttemptToAdd(control.GetSubParameter(1));
+                    AttemptToAdd(control.GetSubParameter(2));
+                    AttemptToAdd(control.GetSubParameter(3));
+                } else if (control.type == VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet && (options == null || options.includePuppets)) {
+                    AttemptToAdd(control.GetSubParameter(0));
+                    AttemptToAdd(control.GetSubParameter(1));
                 }
 
                 return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
@@ -270,28 +279,17 @@ namespace VF.Service {
             return paramNames;
         }
 
-        private OptimizationDecision GetParamsToOptimize(bool includePuppets, bool includeBools, ISet<string> addDriven, int originalCost) {
-
+        private OptimizationDecision GetParamsToOptimize(ParamSelectionOptions options, ISet<string> addDriven, int originalCost) {
             var eligible = new List<VRCExpressionParameters.Parameter>();
-            var usedInMenu = GetParamsUsedInMenu(includePuppets);
+            var usedInMenu = GetParamsUsedInMenu(options);
 
             foreach (var param in paramz.GetRaw().parameters) {
+                if (!param.IsNetworkSynced()) continue;
                 if (!usedInMenu.Contains(param.name)) continue;
-                if (addDriven.Contains(param.name)) continue;
-
-                var networkSynced = param.IsNetworkSynced();
-                if (!networkSynced) continue;
-
-                var shouldOptimize = param.valueType == VRCExpressionParameters.ValueType.Int ||
-                                     param.valueType == VRCExpressionParameters.ValueType.Float;
-
-                shouldOptimize |= param.valueType == VRCExpressionParameters.ValueType.Bool && includeBools;
-
-                if (shouldOptimize) {
-                    eligible.Add(param);
-                }
+                if (addDriven.Contains(param.name) && !options.includePuppets) continue;
+                eligible.Add(param);
             }
-            
+
             var decision = new OptimizationDecision {
                 compress = eligible
             };
