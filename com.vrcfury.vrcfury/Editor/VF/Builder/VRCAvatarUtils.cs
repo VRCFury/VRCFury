@@ -133,6 +133,7 @@ namespace VF.Builder {
             }
         }
 
+        [CanBeNull]
         public static VRCExpressionsMenu GetAvatarMenu(VRCAvatarDescriptor avatar) {
             return avatar.customExpressions ? avatar.expressionsMenu : null;
         }
@@ -143,6 +144,7 @@ namespace VF.Builder {
             VRCFuryEditorUtils.MarkDirty(avatar);
         }
 
+        [CanBeNull]
         public static VRCExpressionParameters GetAvatarParams(VRCAvatarDescriptor avatar) {
             return avatar.customExpressions ? avatar.expressionParameters : null;
         }

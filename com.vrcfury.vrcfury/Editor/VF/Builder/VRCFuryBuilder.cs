@@ -43,9 +43,6 @@ namespace VF.Builder {
                 // There's a vrcfury component
                 return true;
             }
-            if (ParameterCompressorService.IsMobileBuildWithSavedData(avatarObject)) {
-                return true;
-            }
             return false;
         }
 

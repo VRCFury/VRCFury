@@ -30,7 +30,7 @@ namespace VF.Service {
                 }
 
                 // Special handling for mask and controller names
-                foreach (var controller in controllers.GetAllUsedControllers()) {
+                foreach (var controller in controllers.GetAllMutatedControllers()) {
                     foreach (var layer in controller.GetLayers()) {
                         if (layer.mask != null) {
                             layer.mask.name = "Mask for " + layer.name;

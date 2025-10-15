@@ -73,6 +73,8 @@ namespace VF.Menu {
         public const int autoUpgradeConstraintsPriority = settingsPriority + 104;
         public const string unpackWarning = settings + "Warn when unpacking prefabs";
         public const int unpackWarningPriority = settingsPriority + 105;
+        public const string alignMobile = settings + "Align Mobile Parameters to match Desktop";
+        public const int alignMobilePriority = settingsPriority + 106;
         
         public const string compressHeader = settings + "When avatar is over parameter limit:";
         public const int compressHeaderPriority = settingsPriority + 200;

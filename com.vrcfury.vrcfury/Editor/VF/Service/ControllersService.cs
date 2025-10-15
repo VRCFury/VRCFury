@@ -45,16 +45,26 @@ namespace VF.Service {
         public ControllerManager GetFx() {
             return GetController(VRCAvatarDescriptor.AnimLayerType.FX);
         }
+        public IList<ControllerManager> GetAllMutatedControllers() {
+            return _controllers.Values.ToArray();
+        }
         public IList<ControllerManager> GetAllUsedControllers() {
             return VRCAvatarUtils.GetAllControllers(avatar)
                 .Where(c => c.controller != null)
                 .Select(c => GetController(c.type))
                 .ToArray();
         }
+        public IList<VFController> GetAllReadOnlyControllers() {
+            return VRCAvatarUtils.GetAllControllers(avatar)
+                .Select(found => found.controller as AnimatorController)
+                .NotNull()
+                .Select(c => new VFController(c))
+                .ToArray();
+        }
         
         private bool IsParamUsed(string name) {
-            if (paramz.GetRaw().FindParameter(name) != null) return true;
-            foreach (var c in GetAllUsedControllers()) {
+            if (paramsService.GetReadOnlyParams()?.FindParameter(name) != null) return true;
+            foreach (var c in GetAllReadOnlyControllers()) {
                 if (c.GetParam(name) != null) return true;
             }
             return false;

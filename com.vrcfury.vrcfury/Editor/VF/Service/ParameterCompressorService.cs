@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
-using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
 using VF.Menu;
@@ -22,28 +20,36 @@ using VRC.SDKBase;
 using Random = System.Random;
 
 namespace VF.Service {
-    [VFService]
     internal class ParameterCompressorService {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ParamsService paramsService;
-        private ParamManager paramz => paramsService.GetParams();
-        [VFAutowired] private readonly MenuService menuService;
-        private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ParameterSourceService parameterSourceService;
         [VFAutowired] private readonly OriginalAvatarService originalAvatarService;
         [VFAutowired] private readonly ExceptionService excService;
+        [VFAutowired] private readonly MenuService menuService;
+        private VRCExpressionsMenu menuReadOnly => menuService.GetReadOnlyMenu();
 
-        [FeatureBuilderAction(FeatureOrder.ParameterCompressor)]
         public void Apply() {
-            RemoveDuplicates();
-            
+            var paramz = paramsService.GetReadOnlyParams();
+            if (paramz == null) paramz = VrcfObjectFactory.Create<VRCExpressionParameters>();
+            var mutated = paramz.Clone();
+            Apply(mutated);
+
+            if (!paramz.IsSameAs(mutated)) {
+                paramsService.GetParams().GetRaw().parameters = paramz.parameters;
+            }
+        }
+
+        private void Apply(VRCExpressionParameters paramz) {
+            paramz.RemoveDuplicates();
+
             OptimizationDecision decision;
             if (BuildTargetUtils.IsDesktop()) {
-                decision = AlignForDesktop();
+                decision = AlignForDesktop(paramz);
             } else {
-                decision = AlignForMobile();
+                decision = AlignForMobile(paramz);
             }
 
             if (!decision.compress.Any()) {
@@ -58,7 +64,7 @@ namespace VF.Service {
                     valueType = type
                 };
                 param.SetNetworkSynced(synced);
-                paramz.AddSyncedParam(param);
+                paramz.Add(param);
                 return param;
             }
 
@@ -170,22 +176,24 @@ namespace VF.Service {
             }
             doAtEnd?.Invoke();
 
-            var originalCost = paramz.GetRaw().CalcTotalCost();
+            var originalCost = paramz.CalcTotalCost();
             foreach (var param in decision.compress) {
                 param.SetNetworkSynced(false);
             }
-            var newCost = paramz.GetRaw().CalcTotalCost();
+            var newCost = paramz.CalcTotalCost();
+
+            var wdoff = fx.GetLayers().SelectMany(layer => layer.allStates).Any(state => !state.writeDefaultValues);
+            if (wdoff) {
+                foreach (var state in layer.allStates) {
+                    state.writeDefaultValues = false;
+                }
+            }
 
             Debug.Log($"Parameter Compressor: Compressed {originalCost} bits into {newCost} bits.");
         }
 
-        private void RemoveDuplicates() {
-            var seenParams = new HashSet<string>();
-            paramz.GetRaw().parameters = paramz.GetRaw().parameters.Where(p => seenParams.Add(p.name)).ToArray();
-        }
-
-        private OptimizationDecision GetParamsToOptimize() {
-            var originalCost = paramz.GetRaw().CalcTotalCost();
+        private OptimizationDecision GetParamsToOptimize(VRCExpressionParameters paramz) {
+            var originalCost = paramz.CalcTotalCost();
             var maxCost = VRCExpressionParametersExtensions.GetMaxCost();
             if (originalCost <= maxCost) {
                 return new OptimizationDecision();
@@ -194,7 +202,8 @@ namespace VF.Service {
             var drivenParams = new HashSet<string>();
             var addDrivenParams = new HashSet<string>();
 
-            foreach (var drivenParam in controllers.GetAllUsedControllers()
+            // Avoid making this clone controllers
+            foreach (var drivenParam in controllers.GetAllReadOnlyControllers()
                          .SelectMany(controller => controller.layers)
                          .SelectMany(layer => layer.allBehaviours)
                          .OfType<VRCAvatarParameterDriver>()
@@ -215,7 +224,7 @@ namespace VF.Service {
             ParamSelectionOptions bestParameterOptions = null;
             foreach (var attemptOptionFunc in attemptOptions) {
                 var options = attemptOptionFunc.Invoke();
-                var decision = GetParamsToOptimize(options, addDrivenParams, originalCost);
+                var decision = GetParamsToOptimize(paramz, options, addDrivenParams, originalCost);
                 var cost = decision.GetFinalCost(originalCost);
                 if (cost < bestCost) {
                     bestCost = cost;
@@ -239,7 +248,9 @@ namespace VF.Service {
                 }
             }
 
-            var nonMenuParams = new HashSet<string>(paramz.GetRaw().parameters.Select(p => p.name));
+            var nonMenuParams = new HashSet<string>(paramz.parameters
+                .Where(p => p.IsNetworkSynced())
+                .Select(p => p.name));
             nonMenuParams.ExceptWith(GetParamsUsedInMenu(null));
             nonMenuParams.ExceptWith(drivenParams);
             nonMenuParams.RemoveWhere(s => s.StartsWith("FT/"));
@@ -262,7 +273,7 @@ namespace VF.Service {
             }
 
             excService.ThrowIfActuallyUploading(new SneakyException(errorMessage));
-            return bestDecision;
+            return new OptimizationDecision();
         }
 
         public class ParamSelectionOptions {
@@ -279,33 +290,37 @@ namespace VF.Service {
                 if (string.IsNullOrEmpty(param.name)) return;
                 paramNames.Add(param.name);
             }
-            menu.GetRaw().ForEachMenu(ForEachItem: (control, list) => {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet && (options == null || options.includeRadials)) {
-                    AttemptToAdd(control.GetSubParameter(0));
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.Button && (options == null || options.includeButtons)) {
-                    AttemptToAdd(control.parameter);
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.Toggle && (options == null || options.includeToggles)) {
-                    AttemptToAdd(control.parameter);
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.FourAxisPuppet && (options == null || options.includePuppets)) {
-                    AttemptToAdd(control.GetSubParameter(0));
-                    AttemptToAdd(control.GetSubParameter(1));
-                    AttemptToAdd(control.GetSubParameter(2));
-                    AttemptToAdd(control.GetSubParameter(3));
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet && (options == null || options.includePuppets)) {
-                    AttemptToAdd(control.GetSubParameter(0));
-                    AttemptToAdd(control.GetSubParameter(1));
-                }
 
-                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
-            });
+            // Don't use MenuService to avoid making a clone if this isn't a vrcfury asset
+            if (menuReadOnly != null) {
+                menuReadOnly.ForEachMenu(ForEachItem: (control, list) => {
+                    if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet && (options == null || options.includeRadials)) {
+                        AttemptToAdd(control.GetSubParameter(0));
+                    } else if (control.type == VRCExpressionsMenu.Control.ControlType.Button && (options == null || options.includeButtons)) {
+                        AttemptToAdd(control.parameter);
+                    } else if (control.type == VRCExpressionsMenu.Control.ControlType.Toggle && (options == null || options.includeToggles)) {
+                        AttemptToAdd(control.parameter);
+                    } else if (control.type == VRCExpressionsMenu.Control.ControlType.FourAxisPuppet && (options == null || options.includePuppets)) {
+                        AttemptToAdd(control.GetSubParameter(0));
+                        AttemptToAdd(control.GetSubParameter(1));
+                        AttemptToAdd(control.GetSubParameter(2));
+                        AttemptToAdd(control.GetSubParameter(3));
+                    } else if (control.type == VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet && (options == null || options.includePuppets)) {
+                        AttemptToAdd(control.GetSubParameter(0));
+                        AttemptToAdd(control.GetSubParameter(1));
+                    }
+
+                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                });
+            }
             return paramNames;
         }
 
-        private OptimizationDecision GetParamsToOptimize(ParamSelectionOptions options, ISet<string> addDriven, int originalCost) {
+        private OptimizationDecision GetParamsToOptimize(VRCExpressionParameters paramz, ParamSelectionOptions options, ISet<string> addDriven, int originalCost) {
             var eligible = new List<VRCExpressionParameters.Parameter>();
             var usedInMenu = GetParamsUsedInMenu(options);
 
-            foreach (var param in paramz.GetRaw().parameters) {
+            foreach (var param in paramz.parameters) {
                 if (!param.IsNetworkSynced()) continue;
                 if (!usedInMenu.Contains(param.name)) continue;
                 if (addDriven.Contains(param.name) && !options.includePuppets) continue;
@@ -343,16 +358,6 @@ namespace VF.Service {
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if (string.IsNullOrEmpty(localAppData)) return null;
             return Path.Combine(localAppData, "VRCFury", "DesktopSyncData", blueprintId + ".json");
-        }
-
-        public static bool IsMobileBuildWithSavedData(VFGameObject avatarObject) {
-            if (BuildTargetUtils.IsDesktop()) return false;
-            var blueprintId = avatarObject.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
-            var savePath = GetSavePath(blueprintId);
-            if (savePath == null || !File.Exists(savePath)) {
-                return false;
-            }
-            return true;
         }
 
         private class OptimizationDecision {
@@ -437,7 +442,11 @@ namespace VF.Service {
             }
         }
 
-        private OptimizationDecision AlignForMobile() {
+        private OptimizationDecision AlignForMobile(VRCExpressionParameters paramz) {
+            if (!AlignMobileParamsMenuItem.Get()) {
+                return GetParamsToOptimize(paramz);
+            }
+
             // Mobile
             var blueprintId = avatarObject.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
             var savePath = GetSavePath(blueprintId);
@@ -449,7 +458,7 @@ namespace VF.Service {
                     + blueprintId,
                     "Ok"
                 );
-                return GetParamsToOptimize();
+                return GetParamsToOptimize(paramz);
             }
 
             var desktopDataStr = File.ReadAllText(savePath);
@@ -475,7 +484,7 @@ namespace VF.Service {
             }
             
             // Align params with desktop copy
-            var mobileParams = paramz.GetRaw().Clone().parameters.ToArray();
+            var mobileParams = paramz.Clone().parameters.ToArray();
             var mobileParamsBySource = mobileParams.ToDictionary(
                 p => parameterSourceService.GetSource(p.name),
                 p => p
@@ -572,10 +581,10 @@ namespace VF.Service {
             };
         }
 
-        private OptimizationDecision AlignForDesktop() {
-            var paramsToOptimize = GetParamsToOptimize();
+        private OptimizationDecision AlignForDesktop(VRCExpressionParameters paramz) {
+            var paramsToOptimize = GetParamsToOptimize(paramz);
             if (IsActuallyUploadingHook.Get()) {
-                var paramList = paramz.GetRaw().parameters.Select(p => {
+                var paramList = paramz.parameters.Select(p => {
                     var source = parameterSourceService.GetSource(p.name);
                     return new SavedParam() {
                         parameter = p.Clone(),

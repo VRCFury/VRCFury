@@ -1,4 +1,5 @@
-﻿using VF.Builder;
+﻿using JetBrains.Annotations;
+using VF.Builder;
 using VF.Injector;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
@@ -24,6 +25,11 @@ namespace VF.Service {
                 initializing = false;
             }
             return _menu;
+        }
+
+        [CanBeNull]
+        public VRCExpressionsMenu GetReadOnlyMenu() {
+            return VRCAvatarUtils.GetAvatarMenu(avatar);
         }
     }
 }
