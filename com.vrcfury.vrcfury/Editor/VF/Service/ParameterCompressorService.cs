@@ -38,7 +38,7 @@ namespace VF.Service {
             Apply(mutated);
 
             if (!paramz.IsSameAs(mutated)) {
-                paramsService.GetParams().GetRaw().parameters = paramz.parameters;
+                paramsService.GetParams().GetRaw().parameters = mutated.parameters;
             }
         }
 
