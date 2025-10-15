@@ -51,6 +51,7 @@ namespace VF.Inspector {
                  e.menu.AppendAction("Local Only", a => {
                     localActive.boolValue = !localActive.boolValue;
                     remoteActive.boolValue = false;
+                    friendsActive.boolValue = false;
                     prop.serializedObject.ApplyModifiedProperties();
                 }, localActive.boolValue ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
                 e.menu.AppendAction("Remote Only", a => {
