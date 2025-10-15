@@ -22,5 +22,13 @@ namespace VF.Model.StateAction {
         public override int GetLatestVersion() {
             return 1;
         }
+
+        public override bool Equals(Action other) => Equals(other as FlipbookAction); 
+        public bool Equals(FlipbookAction other) {
+            if (other == null) return false;
+            if (renderer != other.renderer) return false;
+            if (frame != other.frame) return false;
+            return true;
+        }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VF.Model.StateAction;
 using VRC.SDK3.Dynamics.PhysBone.Components;
@@ -28,17 +29,17 @@ namespace VF.Model.Feature {
         public GuidTexture2d icon;
         public bool enableDriveGlobalParam;
         public string driveGlobalParam = "";
-        public bool separateLocal;
-        public State localState;
+        [Obsolete] public bool separateLocal;
+        [Obsolete] public State localState;
         public bool hasTransition;
         public State transitionStateIn;
         public State transitionStateOut;
         public float transitionTimeIn = 0;
         public float transitionTimeOut = 0;
-        public State localTransitionStateIn;
-        public State localTransitionStateOut;
-        public float localTransitionTimeIn = 0;
-        public float localTransitionTimeOut = 0;
+        [Obsolete] public State localTransitionStateIn;
+        [Obsolete] public State localTransitionStateOut;
+        [Obsolete] public float localTransitionTimeIn = 0;
+        [Obsolete] public float localTransitionTimeOut = 0;
         public bool simpleOutTransition = true;
         [Range(0,1)]
         public float defaultSliderValue = 0;
@@ -71,12 +72,53 @@ namespace VF.Model.Feature {
                     includeInRest = false;
                 }
             }
+            if (fromVersion < 4) {
+                if (separateLocal) {
+                    state = CombineRemoteLocal(state, localState);
+                    localState = null;
+                    transitionStateIn = CombineRemoteLocal(transitionStateIn, localTransitionStateIn);
+                    localTransitionStateIn = null;
+                    transitionStateOut = CombineRemoteLocal(transitionStateOut, localTransitionStateOut);
+                    localTransitionStateOut = null;
+                    transitionTimeIn = Math.Max(transitionTimeIn, localTransitionTimeIn);
+                    localTransitionTimeIn = 0;
+                    transitionTimeOut = Math.Max(transitionTimeOut, localTransitionTimeOut);
+                    localTransitionTimeOut = 0;
+                    separateLocal = false;
+                }
+            }
             return false;
 #pragma warning restore 0612
         }
 
         public override int GetLatestVersion() {
-            return 3;
+            return 4;
+        }
+
+        private State CombineRemoteLocal(State remote, State local) {
+            if (remote == null) remote = new State();
+            if (local == null) local = new State();
+            
+            var bothActions = remote.actions.Intersect(local.actions).ToList();
+            var localActions = local.actions;
+            var remoteActions = remote.actions;
+
+                        
+            State combined = new State();
+            foreach (var a in bothActions) {
+                combined.actions.Add(a);
+                localActions.Remove(a);
+                remoteActions.Remove(a);
+            }
+            foreach (var a in localActions) {
+                a.localOnly = true;
+                combined.actions.Add(a);
+            }
+            foreach (var a in remoteActions) {
+                a.remoteOnly = true;
+                combined.actions.Add(a);
+            }
+            return combined;
         }
     }
 }

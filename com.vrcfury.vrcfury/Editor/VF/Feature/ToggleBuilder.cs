@@ -73,6 +73,15 @@ namespace VF.Feature {
             return (model.name, model.usePrefixOnParam);
         }
 
+        private bool SeperateLocal() {
+            bool seperateLocal = model.state.actions.Any(a => a.localOnly || a.remoteOnly || a.friendsOnly);
+            if (model.hasTransition) {
+                seperateLocal |= model.transitionStateIn.actions.Any(a => a.localOnly || a.remoteOnly || a.friendsOnly);
+                seperateLocal |= model.transitionStateOut.actions.Any(a => a.localOnly || a.remoteOnly || a.friendsOnly);
+            }
+            return seperateLocal;
+        }
+
         [FeatureBuilderAction]
         public void Apply() {
             var hasTitle = !string.IsNullOrEmpty(model.name);
@@ -145,13 +154,8 @@ namespace VF.Feature {
             var layer = fx.NewLayer(layerName);
             var off = layer.NewState("Off");
 
-            if (model.separateLocal) {
-                var isLocal = fx.IsLocal().IsTrue();
-                Apply(layer, off, onCase.And(isLocal.Not()), weight, defaultOn, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
-                Apply(layer, off, onCase.And(isLocal), weight, defaultOn, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
-            } else {
-                Apply(layer, off, onCase, weight, defaultOn, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
-            }
+
+            Apply(layer, off, onCase, weight, defaultOn, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
         }
 
         private void Apply(
@@ -279,7 +283,7 @@ namespace VF.Feature {
                 }
             }
 
-            if (defaultOn && !model.separateLocal && !model.securityEnabled) {
+            if (defaultOn && !SeperateLocal() && !model.securityEnabled) {
                 onState.SetAsDefaultState();
                 off.TransitionsFromEntry().When();
             }
@@ -396,7 +400,6 @@ namespace VF.Feature {
             var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
             var enableIconProp = prop.FindPropertyRelative("enableIcon");
             var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
-            var separateLocalProp = prop.FindPropertyRelative("separateLocal");
             var hasTransitionProp = prop.FindPropertyRelative("hasTransition");
             var simpleOutTransitionProp = prop.FindPropertyRelative("simpleOutTransition");
             var defaultSliderProp = prop.FindPropertyRelative("defaultSliderValue");
@@ -487,11 +490,6 @@ namespace VF.Feature {
                         prop.serializedObject.ApplyModifiedProperties();
                     });
 
-                    advMenu.AddItem(new GUIContent("Separate Local State"), separateLocalProp.boolValue, () => {
-                        separateLocalProp.boolValue = !separateLocalProp.boolValue;
-                        prop.serializedObject.ApplyModifiedProperties();
-                    });
-
                     advMenu.AddItem(new GUIContent("Enable Transition State"), hasTransitionProp.boolValue, () => {
                         hasTransitionProp.boolValue = !hasTransitionProp.boolValue;
                         prop.serializedObject.ApplyModifiedProperties();
@@ -577,15 +575,7 @@ namespace VF.Feature {
                     return single;
                 }
 
-                var remoteSingle = MakeSingle("transitionStateIn", "state", "transitionStateOut", "transitionTimeIn", "transitionTimeOut");
-                var c = new VisualElement();
-                if (separateLocalProp.boolValue) {
-                    var localSingle = MakeSingle("localTransitionStateIn", "localState", "localTransitionStateOut", "localTransitionTimeIn", "localTransitionTimeOut");
-                    c.Add(MakeTabbed("In local:", localSingle));
-                    c.Add(MakeTabbed("In remote:", remoteSingle));
-                } else {
-                    c = remoteSingle;
-                }
+                var c = MakeSingle("transitionStateIn", "state", "transitionStateOut", "transitionTimeIn", "transitionTimeOut");
                 
                 var output = new VisualElement();
                 if (sliderProp.boolValue) {
@@ -607,7 +597,7 @@ namespace VF.Feature {
                     output.Add(MakeTabbed("When toggle is enabled:", c));
                 }
                 return output;
-            }, sliderProp, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));
+            }, sliderProp, hasTransitionProp, simpleOutTransitionProp));
 
             // Tags
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {

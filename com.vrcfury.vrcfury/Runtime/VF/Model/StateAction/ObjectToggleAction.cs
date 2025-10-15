@@ -23,5 +23,13 @@ namespace VF.Model.StateAction {
             TurnOff,
             Toggle
         }
+
+        public override bool Equals(Action other) => Equals(other as ObjectToggleAction); 
+        public bool Equals(ObjectToggleAction other) {
+            if (other == null) return false;
+            if (obj != other.obj) return false;
+            if (mode != other.mode) return false;
+            return true;
+        }
     }
 }
