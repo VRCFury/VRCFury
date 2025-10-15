@@ -110,6 +110,60 @@ namespace VF.Model.Feature {
                 localActions.Remove(a);
                 remoteActions.Remove(a);
             }
+
+            var localFlipbookLengths = localActions.OfType<FlipBookBuilderAction>().Select(a => a.pages.Count()).Distinct().ToList();
+            foreach (var l in localFlipbookLengths) {
+                var localFlipbooks = localActions.OfType<FlipBookBuilderAction>().Where(a => a.pages.Count == l).ToList();
+                var remoteFlipbooks = remoteActions.OfType<FlipBookBuilderAction>().Where(a => a.pages.Count == l).ToList();
+                if (localFlipbooks.Any() && remoteFlipbooks.Any()) {
+                    var combinedFlipbook = new FlipBookBuilderAction();
+                    for (var i = 0; i < l; i++) {
+                        var localFlipbookState = new State();
+                        var remoteFlipbookState = new State();
+                        foreach (var localFlipbook in localFlipbooks.ToList()) {
+                            localFlipbookState.actions = localFlipbookState.actions.Union(localFlipbook.pages[i].state.actions).ToList();
+                        }
+                        foreach (var remoteFlipbook in remoteFlipbooks.ToList()) {
+                            remoteFlipbookState.actions = remoteFlipbookState.actions.Union(remoteFlipbook.pages[i].state.actions).ToList();
+                        }
+                        var combinedFlipbookState = CombineRemoteLocal(remoteFlipbookState, localFlipbookState);
+                        combinedFlipbook.pages.Add(new FlipBookBuilderAction.FlipBookPage() { state = combinedFlipbookState });
+                    }
+                    combined.actions.Add(combinedFlipbook);
+                    foreach (var a in localFlipbooks.ToList()) localActions.Remove(a);
+                    foreach (var a in remoteFlipbooks.ToList()) remoteActions.Remove(a);
+                }
+            }
+
+            var localSmoothLoopLenghts = localActions.OfType<SmoothLoopAction>().Select(a => a.loopTime).Distinct().ToList();
+            foreach (var l in localSmoothLoopLenghts) {
+                var localSmoothLoops = localActions.OfType<SmoothLoopAction>().Where(a => a.loopTime == l).ToList();
+                var remoteSmoothLoops = remoteActions.OfType<SmoothLoopAction>().Where(a => a.loopTime == l).ToList();
+
+                if (localSmoothLoops.Any() && remoteSmoothLoops.Any()) {
+                    var localState1 = new State();
+                    var localState2 = new State();
+                    var remoteState1 = new State();
+                    var remoteState2 = new State();
+
+                    foreach (var localSmoothLoop in localSmoothLoops.ToList()) {
+                        localState1.actions = localState1.actions.Union(localSmoothLoop.state1.actions).ToList();
+                        localState2.actions = localState2.actions.Union(localSmoothLoop.state2.actions).ToList();
+                    }
+                    foreach (var remoteSmoothLoop in remoteSmoothLoops.ToList()) {
+                        remoteState1.actions = remoteState1.actions.Union(remoteSmoothLoop.state1.actions).ToList();
+                        remoteState2.actions = remoteState2.actions.Union(remoteSmoothLoop.state2.actions).ToList();
+                    }
+
+                    var combinedState1 = CombineRemoteLocal(remoteState1, localState1);
+                    var combinedState2 = CombineRemoteLocal(remoteState2, localState2);
+
+                    combined.actions.Add(new SmoothLoopAction() { state1 = combinedState1, state2 = combinedState2, loopTime = l });
+                    foreach (var a in localSmoothLoops.ToList()) localActions.Remove(a);
+                    foreach (var a in remoteSmoothLoops.ToList()) remoteActions.Remove(a);
+                }
+            }
+
             foreach (var a in localActions) {
                 a.localOnly = true;
                 combined.actions.Add(a);
