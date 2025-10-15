@@ -213,6 +213,8 @@ namespace VF.Service {
             }
 
             var attemptOptions = new Func<ParamSelectionOptions>[] {
+                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, maxBatches = 10, },
+                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true, maxBatches = 10 },
                 () => new ParamSelectionOptions { includeToggles = true, includeRadials = true },
                 () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true },
                 () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true, includeButtons = true },
@@ -225,6 +227,7 @@ namespace VF.Service {
             foreach (var attemptOptionFunc in attemptOptions) {
                 var options = attemptOptionFunc.Invoke();
                 var decision = GetParamsToOptimize(paramz, options, addDrivenParams, originalCost);
+                if (options.maxBatches > 0 && decision.GetBatchCount() > options.maxBatches) continue;
                 var cost = decision.GetFinalCost(originalCost);
                 if (cost < bestCost) {
                     bestCost = cost;
@@ -281,6 +284,7 @@ namespace VF.Service {
             public bool includeRadials;
             public bool includePuppets;
             public bool includeButtons;
+            public int maxBatches;
         }
 
         private ISet<string> GetParamsUsedInMenu([CanBeNull] ParamSelectionOptions options) {
@@ -376,9 +380,7 @@ namespace VF.Service {
             }
 
             public int GetIndexBitCount() {
-                var batches = GetBatches();
-                var batchCount = Math.Max(batches.numberBatches.Count, batches.boolBatches.Count);
-                if (batchCount <= 2) {
+                if (GetBatchCount() <= 2) {
                     return 1;
                 } else {
                     return 2;
@@ -391,6 +393,11 @@ namespace VF.Service {
                        + numberSlots * 8
                        + boolSlots
                        - compress.Sum(p => VRCExpressionParameters.TypeCost(p.valueType));
+            }
+
+            public int GetBatchCount() {
+                var batches = GetBatches();
+                return Math.Max(batches.numberBatches.Count, batches.boolBatches.Count);
             }
 
             public (
