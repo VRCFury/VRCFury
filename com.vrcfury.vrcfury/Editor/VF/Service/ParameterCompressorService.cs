@@ -201,10 +201,6 @@ namespace VF.Service {
                 if (drivenParam.type == VRC_AvatarParameterDriver.ChangeType.Add) addDrivenParams.Add(drivenParam.name);
             }
 
-            // Go/Float is driven by an add driver, but it's safe to compress. The driver is only used while you're
-            // actively holding a button in the menu.
-            addDrivenParams.Remove("Go/Float");
-
             var attemptOptions = new Func<ParamSelectionOptions>[] {
                 () => new ParamSelectionOptions { includeToggles = true, includeRadials = true },
                 () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true },
