@@ -5,12 +5,14 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
+using VF.Menu;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Core;
@@ -207,36 +209,60 @@ namespace VF.Service {
                 () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true, includeButtons = true },
             };
 
-            var minCost = originalCost;
+            var bestCost = originalCost;
+            var bestDecision = new OptimizationDecision();
+            var bestWasSuccess = false;
+            ParamSelectionOptions bestParameterOptions = null;
             foreach (var attemptOptionFunc in attemptOptions) {
-                var decision = GetParamsToOptimize(attemptOptionFunc.Invoke(), addDrivenParams, originalCost);
-                minCost = Math.Min(minCost, decision.GetFinalCost(originalCost));
-                if (minCost <= maxCost) return decision;
+                var options = attemptOptionFunc.Invoke();
+                var decision = GetParamsToOptimize(options, addDrivenParams, originalCost);
+                var cost = decision.GetFinalCost(originalCost);
+                if (cost < bestCost) {
+                    bestCost = cost;
+                    bestDecision = decision;
+                    bestParameterOptions = options;
+                }
+                if (cost <= maxCost) {
+                    bestWasSuccess = true;
+                    break;
+                }
+            }
+
+            var setting = CompressorMenuItem.Get();
+            if (bestWasSuccess) {
+                if (setting == CompressorMenuItem.Value.Compress) return bestDecision;
+                if (setting == CompressorMenuItem.Value.Ask) {
+                    var msg = $"Your avatar is out of space for parameters! Your avatar uses {originalCost}/{maxCost} bits.";
+                    msg += " VRCFury can compress your parameters to fit, at the expense of slightly slower toggle syncing in game. Is this okay?";
+                    var ok = EditorUtility.DisplayDialog("Out of parameter space", msg, "Ok (Accept Compression)", "Fail the Build");
+                    if (ok) return bestDecision;
+                }
             }
 
             var nonMenuParams = new HashSet<string>(paramz.GetRaw().parameters.Select(p => p.name));
             nonMenuParams.ExceptWith(GetParamsUsedInMenu(null));
             nonMenuParams.ExceptWith(drivenParams);
+            nonMenuParams.RemoveWhere(s => s.StartsWith("FT/"));
 
             var errorMessage = $"Your avatar is out of space for parameters! Your avatar uses {originalCost}/{maxCost} bits.";
 
-            if (minCost < originalCost) {
+            if (!bestWasSuccess && bestCost < originalCost && setting != CompressorMenuItem.Value.Fail) {
                 errorMessage +=
                     " VRCFury attempted to compress your parameters to fit, but even with maximum compression," +
-                    $" VRCFury could only get it down to {minCost}/{maxCost} bits.";
+                    $" VRCFury could only get it down to {bestCost}/{maxCost} bits.";
             }
-            
+
             errorMessage += " Ask your avatar creator, or the creator of the last prop you've added, " +
                             "if there are any parameters you can remove to make space.";
 
-            if (nonMenuParams.Count > 0) {
+            if (nonMenuParams.Count > 0 && setting != CompressorMenuItem.Value.Fail) {
                 errorMessage += "\n\n"
-                    + "These parameters were not compressable because they are not used in your menu, and not driven. If these aren't related to OSC, you should probably delete them:\n"
-                    + nonMenuParams.JoinWithMore(20);
+                                + "These parameters were not compressable because they are not used in your menu, and not driven. If these aren't related to OSC, you should probably delete them:\n"
+                                + nonMenuParams.JoinWithMore(20);
             }
-            
+
             excService.ThrowIfActuallyUploading(new SneakyException(errorMessage));
-            return new OptimizationDecision();
+            return bestDecision;
         }
 
         public class ParamSelectionOptions {
