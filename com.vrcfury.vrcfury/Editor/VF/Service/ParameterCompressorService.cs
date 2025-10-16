@@ -189,6 +189,7 @@ namespace VF.Service {
                     state.writeDefaultValues = false;
                 }
             }
+            NoBadControllerParamsService.UpgradeWrongParamTypes(fx);
 
             Debug.Log($"Parameter Compressor: Compressed {originalCost} bits into {newCost} bits.");
         }
