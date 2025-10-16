@@ -358,7 +358,7 @@ namespace VF.Feature {
                         throw new VRCFBuilderException(
                             $"Your avatar contains multiple locomotion implementations ({VRCFEnumUtils.GetName(type)}).\n\n" +
                             "You can only use one of these:\n" +
-                            $"{globals.currentFeatureNameProvider()}\n" +
+                            $"{globals.currentFeatureName}\n" +
                             layerSourceService.GetSource(layer)
                         );
                     }

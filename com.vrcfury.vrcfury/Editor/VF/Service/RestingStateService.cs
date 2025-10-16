@@ -40,7 +40,7 @@ namespace VF.Service {
 
         public void ApplyClipToRestingState(AnimationClip clip, string owner = null) {
             var copy = clip.Clone();
-            pendingClips.Add(new PendingClip { clip = copy, owner = owner ?? globals.currentFeatureNameProvider() });
+            pendingClips.Add(new PendingClip { clip = copy, owner = owner ?? globals.currentFeatureName });
             allClipsService.AddAdditionalManagedClip(copy);
         }
 

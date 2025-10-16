@@ -16,7 +16,7 @@ namespace VF.Service {
             if (_menu == null) {
                 var menu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
                 var initializing = true;
-                _menu = new MenuManager(menu, () => initializing ? 0 : globals.currentMenuSortPosition());
+                _menu = new MenuManager(menu, () => initializing ? 0 : globals.currentMenuSortPosition);
 
                 var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
                 if (origMenu != null) _menu.MergeMenu(origMenu);

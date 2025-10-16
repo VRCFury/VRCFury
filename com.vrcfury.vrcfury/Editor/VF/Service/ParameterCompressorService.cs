@@ -20,6 +20,7 @@ using VRC.SDKBase;
 using Random = System.Random;
 
 namespace VF.Service {
+    [VFService]
     internal class ParameterCompressorService {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
