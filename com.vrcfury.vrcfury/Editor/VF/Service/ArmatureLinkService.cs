@@ -527,7 +527,7 @@ namespace VF.Service {
                                     break;
                                 }
                                 if (checkAvatarBone.name == b) {
-                                    childAvatarBone = checkAvatarBone.parent.Find(searchName);
+                                    childAvatarBone = VRCFObjectPathCache.Find(checkAvatarBone, "../" + searchName);
                                     if (childAvatarBone != null) {
                                         links.hacksUsed.Add("Avatar has fake mid-bone: " + b);
                                         break;
