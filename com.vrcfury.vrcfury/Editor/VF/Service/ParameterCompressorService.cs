@@ -321,7 +321,7 @@ namespace VF.Service {
 
         private ISet<string> GetParamsUsedInMenu(ParamSelectionOptions options) {
             var paramNames = new HashSet<string>();
-            void AttemptToAdd([CanBeNull] VRCExpressionsMenu.Control.Parameter param) {
+            void AttemptToAdd(VRCExpressionsMenu.Control.Parameter param) {
                 if (param == null) return;
                 if (string.IsNullOrEmpty(param.name)) return;
                 paramNames.Add(param.name);
