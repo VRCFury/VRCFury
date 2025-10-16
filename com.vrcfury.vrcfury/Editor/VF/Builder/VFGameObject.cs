@@ -301,5 +301,9 @@ namespace VF.Builder {
         public bool HasTag(string tag) {
             return gameObject.CompareTag(tag);
         }
+
+        public bool IsAssetTransform() {
+            return !transform.gameObject.scene.IsValid();
+        }
     }
 }
