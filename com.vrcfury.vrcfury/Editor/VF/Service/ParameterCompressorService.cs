@@ -186,7 +186,7 @@ namespace VF.Service {
             }
             var newCost = paramz.CalcTotalCost();
 
-            var wdoff = fx.GetLayers().SelectMany(layer => layer.allStates).Any(state => !state.writeDefaultValues);
+            var wdoff = fx.GetLayers().SelectMany(l => l.allStates).Any(state => !state.writeDefaultValues);
             if (wdoff) {
                 foreach (var state in layer.allStates) {
                     state.writeDefaultValues = false;
@@ -319,7 +319,7 @@ namespace VF.Service {
             public int maxBatches;
         }
 
-        private ISet<string> GetParamsUsedInMenu([CanBeNull] ParamSelectionOptions options) {
+        private ISet<string> GetParamsUsedInMenu(ParamSelectionOptions options) {
             var paramNames = new HashSet<string>();
             void AttemptToAdd([CanBeNull] VRCExpressionsMenu.Control.Parameter param) {
                 if (param == null) return;
