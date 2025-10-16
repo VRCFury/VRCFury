@@ -11,6 +11,7 @@ using VF.Builder.Exceptions;
 using VF.Hooks;
 using VF.Injector;
 using VF.Menu;
+using VF.Model;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Core;
@@ -31,6 +32,8 @@ namespace VF.Service {
         [VFAutowired] private readonly ExceptionService excService;
         [VFAutowired] private readonly MenuService menuService;
         private VRCExpressionsMenu menuReadOnly => menuService.GetReadOnlyMenu();
+        
+        private const float BATCH_TIME = 0.1f;
 
         public void Apply() {
             var paramz = paramsService.GetReadOnlyParams();
@@ -132,11 +135,11 @@ namespace VF.Service {
                 }
                 whenNextStateReady?.Invoke(sendState, receiveState, receiveCondition);
                 whenNextStateReady = (nextSend, nextRecv, nextRecvCond) => {
-                    sendState.TransitionsTo(nextSend).WithTransitionExitTime(0.1f).When();
+                    sendState.TransitionsTo(nextSend).WithTransitionExitTime(BATCH_TIME).When();
                     WithReceiveState(rcv => {
                         rcv.TransitionsTo(nextRecv).When(nextRecvCond);
                         rcv.TransitionsTo(remoteLost).When(receiveCondition.Not().And(nextRecvCond.Not()));
-                        rcv.TransitionsTo(remoteLost).WithTransitionExitTime(0.15f).When();
+                        rcv.TransitionsTo(remoteLost).WithTransitionExitTime(BATCH_TIME * 1.5f).When();
                     });
                 };
                 
@@ -191,7 +194,34 @@ namespace VF.Service {
             }
             NoBadControllerParamsService.UpgradeWrongParamTypes(fx);
 
-            Debug.Log($"Parameter Compressor: Compressed {originalCost} bits into {newCost} bits.");
+            // Debug info
+            {
+                var types = new List<string>();
+                if (decision.options != null) {
+                    if (decision.options.includeToggles) types.Add("Toggles");
+                    if (decision.options.includeRadials) types.Add("Radials");
+                    if (decision.options.includePuppets) types.Add("Puppets");
+                    if (decision.options.includeButtons) types.Add("Buttons");
+                }
+
+                var typesInfo = "";
+                if (types.Count > 0) {
+                    typesInfo = "These menu parameters were compressed:\n" + types.Join(", ") + "\n\n";
+                }
+
+                var time = decision.GetBatchCount() * BATCH_TIME;
+                
+                var debug = avatarObject.AddComponent<VRCFuryDebugInfo>();
+                debug.title = "Parameter Compressor";
+                debug.debugInfo =
+                    "VRCFury compressed the parameters on this avatar to make them fit VRC's limit.\n\n"
+                    + $"It compressed {originalCost} bits down to {newCost} bits.\n\n"
+                    + typesInfo
+                    + $"Syncing these parameters will only happen once every {time} seconds.";
+                debug.warn = true;
+
+                Debug.Log($"Parameter Compressor: Compressed {originalCost} bits into {newCost} bits.");
+            }
         }
 
         private OptimizationDecision GetParamsToOptimize(VRCExpressionParameters paramz) {
@@ -334,7 +364,8 @@ namespace VF.Service {
             }
 
             var decision = new OptimizationDecision {
-                compress = eligible
+                compress = eligible,
+                options = options
             };
             decision.Optimize(originalCost);
 
@@ -370,6 +401,7 @@ namespace VF.Service {
             public int numberSlots = 0;
             public int boolSlots = 0;
             public IList<VRCExpressionParameters.Parameter> compress = new VRCExpressionParameters.Parameter[] { };
+            public ParamSelectionOptions options;
 
             public OptimizationDecision TempCopy(Action<OptimizationDecision> with) {
                 var copy = new OptimizationDecision {
