@@ -2,9 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
@@ -14,7 +12,6 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VRC.Dynamics;
-using VRC.SDK3.Dynamics.Constraint.Components;
 
 namespace VF.Feature {
     [FeatureTitle("Anchor Override Fix")]
@@ -52,13 +49,9 @@ namespace VF.Feature {
         }
 
         private static bool IsWorldConstraint(VFConstraint c, ISet<VFGameObject> worldAnimatedObjs) {
-            if (c.GetComponent() is VRCConstraintBase vc) {
-                if (vc.FreezeToWorld) return true;
-                if (worldAnimatedObjs.Contains(c.GetComponent().owner())) return true;
-            }
-            if (c.GetSources().Any(o => o.IsAssetTransform())) {
-                return true;
-            }
+            if (c.IsWorld()) return true;
+            if (worldAnimatedObjs.Contains(c.GetComponent().owner())) return true;
+            if (c.GetSources().Any(o => o.IsAssetTransform())) return true;
             return false;
         }
         
