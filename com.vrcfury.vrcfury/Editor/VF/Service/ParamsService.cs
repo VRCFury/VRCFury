@@ -26,7 +26,6 @@ namespace VF.Service {
                 prms = origParams.Clone();
             } else {
                 prms = VrcfObjectFactory.Create<VRCExpressionParameters>();
-                prms.parameters = new VRCExpressionParameters.Parameter[]{};
             }
             VRCAvatarUtils.SetAvatarParams(avatar, prms);
             return new ParamManager(prms);
@@ -36,9 +35,12 @@ namespace VF.Service {
             _params = null;
         }
 
-        [CanBeNull]
         public VRCExpressionParameters GetReadOnlyParams() {
-            return VRCAvatarUtils.GetAvatarParams(avatar);
+            var p = VRCAvatarUtils.GetAvatarParams(avatar);
+            if (p == null) {
+                p = VrcfObjectFactory.Create<VRCExpressionParameters>();
+            }
+            return p;
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Utils {
@@ -43,6 +44,10 @@ namespace VF.Utils {
             }
             if (obj == null) {
                 throw new Exception("Failed to create instance of Object " + type.FullName);
+            }
+
+            if (obj is VRCExpressionParameters vp) {
+                vp.parameters = new VRCExpressionParameters.Parameter[] { };
             }
 
             Register(obj);

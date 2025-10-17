@@ -36,24 +36,20 @@ namespace VF.Service {
         private const float BATCH_TIME = 0.1f;
 
         public void Apply() {
-            var paramz = paramsService.GetReadOnlyParams();
-            if (paramz == null) paramz = VrcfObjectFactory.Create<VRCExpressionParameters>();
-            var mutated = paramz.Clone();
-            Apply(mutated);
-
-            if (!paramz.IsSameAs(mutated)) {
-                paramsService.GetParams().GetRaw().parameters = mutated.parameters;
-            }
-        }
-
-        private void Apply(VRCExpressionParameters paramz) {
-            paramz.RemoveDuplicates();
-
             OptimizationDecisionWithInfo decisionWithInfo;
-            if (BuildTargetUtils.IsDesktop()) {
-                decisionWithInfo = AlignForDesktop(paramz);
-            } else {
-                decisionWithInfo = AlignForMobile(paramz);
+            {
+                // This is written weird to make sure we don't clone the params if we don't have to
+                var readOnlyParams = paramsService.GetReadOnlyParams();
+                var mutated = readOnlyParams.Clone();
+                mutated.RemoveDuplicates();
+                if (BuildTargetUtils.IsDesktop()) {
+                    decisionWithInfo = AlignForDesktop(mutated);
+                } else {
+                    decisionWithInfo = AlignForMobile(mutated);
+                }
+                if (!readOnlyParams.IsSameAs(mutated)) {
+                    paramsService.GetParams().GetRaw().parameters = mutated.parameters;
+                }
             }
 
             var decision = decisionWithInfo.decision;
@@ -61,6 +57,7 @@ namespace VF.Service {
                 return;
             }
 
+            var paramz = paramsService.GetParams().GetRaw();
             var (numberBatches, boolBatches) = decision.GetBatches();
 
             VRCExpressionParameters.Parameter MakeParam(string name, VRCExpressionParameters.ValueType type, bool synced) {
@@ -140,7 +137,7 @@ namespace VF.Service {
                     WithReceiveState(rcv => {
                         rcv.TransitionsTo(nextRecv).When(nextRecvCond);
                         rcv.TransitionsTo(remoteLost).When(receiveCondition.Not().And(nextRecvCond.Not()));
-                        rcv.TransitionsTo(remoteLost).WithTransitionExitTime(BATCH_TIME * 1.5f).When();
+                        rcv.TransitionsTo(remoteLost).WithTransitionExitTime(BATCH_TIME * 5f).When();
                     });
                 };
                 
