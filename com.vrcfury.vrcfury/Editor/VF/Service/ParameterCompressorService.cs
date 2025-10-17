@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -137,7 +138,7 @@ namespace VF.Service {
                     WithReceiveState(rcv => {
                         rcv.TransitionsTo(nextRecv).When(nextRecvCond);
                         rcv.TransitionsTo(remoteLost).When(receiveCondition.Not().And(nextRecvCond.Not()));
-                        rcv.TransitionsTo(remoteLost).WithTransitionExitTime(BATCH_TIME * 5f).When();
+                        rcv.TransitionsTo(remoteLost).WithTransitionExitTime(BATCH_TIME * 1.5f).When();
                     });
                 };
                 
@@ -179,7 +180,8 @@ namespace VF.Service {
             doAtEnd?.Invoke();
 
             var originalCost = paramz.CalcTotalCost();
-            foreach (var param in decision.compress) {
+            var compressNames = decision.compress.Select(p => p.name).ToImmutableHashSet();
+            foreach (var param in paramz.parameters.Where(p => compressNames.Contains(p.name))) {
                 param.SetNetworkSynced(false);
             }
             var newCost = paramz.CalcTotalCost();
