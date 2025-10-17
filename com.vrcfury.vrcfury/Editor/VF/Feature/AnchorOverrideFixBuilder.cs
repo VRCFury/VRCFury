@@ -51,7 +51,7 @@ namespace VF.Feature {
         private static bool IsWorldConstraint(VFConstraint c, ISet<VFGameObject> worldAnimatedObjs) {
             if (c.IsWorld()) return true;
             if (worldAnimatedObjs.Contains(c.GetComponent().owner())) return true;
-            if (c.GetSources().Any(o => o.IsAssetTransform())) return true;
+            if (c.GetSources().Any(o => o != null && o.IsAssetTransform())) return true;
             return false;
         }
         

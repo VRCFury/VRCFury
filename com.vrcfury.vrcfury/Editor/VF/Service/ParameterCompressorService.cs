@@ -34,7 +34,7 @@ namespace VF.Service {
         [VFAutowired] private readonly MenuService menuService;
         private VRCExpressionsMenu menuReadOnly => menuService.GetReadOnlyMenu();
         
-        private const float BATCH_TIME = 0.1f;
+        private const float BATCH_TIME = 0.12f;
 
         public void Apply() {
             OptimizationDecisionWithInfo decisionWithInfo;
