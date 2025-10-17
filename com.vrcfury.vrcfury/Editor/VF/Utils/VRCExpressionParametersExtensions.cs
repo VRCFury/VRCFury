@@ -13,11 +13,16 @@ namespace VF.Utils {
             VRCFuryEditorUtils.MarkDirty(p);
         }
 
+        private static bool HasDexProtect = ReflectionUtils.GetTypeFromAnyAssembly("DexProtectEditor.Attr") != null;
+
         public static int GetMaxCost() {
             var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
             if (maxBits > 9999) {
                 // Some modified versions of the VRChat SDK have a broken value for this
                 maxBits = 256;
+            }
+            if (HasDexProtect) {
+                maxBits -= 19;
             }
             return maxBits;
         }
