@@ -207,15 +207,20 @@ namespace VF.Service {
 
                 var nonMenuParamsInfo = decisionWithInfo.FormatNonMenuParams(100);
 
-                var time = decision.GetBatchCount() * BATCH_TIME;
+                var batchCount = decision.GetBatchCount();
+                var time = batchCount * BATCH_TIME;
                 
                 var debug = avatarObject.AddComponent<VRCFuryDebugInfo>();
                 debug.title = "Parameter Compressor";
                 debug.debugInfo =
                     "VRCFury compressed the parameters on this avatar to make them fit VRC's limit."
-                    + $"\n\nIt compressed {originalCost} bits down to {newCost} bits."
-                    + (types.Count > 0 ? $"\n\nThese menu parameters were compressed:\n{types.Join(", ")}" : "")
-                    + $"\n\nSyncing these parameters will only happen once every {time} seconds."
+                    + $"\n\nOld Total: {originalCost} bits"
+                    + $"\nNew Total: {newCost} bits"
+                    + (types.Count > 0 ? $"\nCompressed types: {types.Join(", ")}" : "")
+                    + $"\nTotal time per sync: {time} seconds"
+                    + $"\nBools per batch: {decision.boolSlots}"
+                    + $"\nNumbers per batch: {decision.numberSlots}"
+                    + $"\nBatches per sync: {batchCount}"
                     + (string.IsNullOrEmpty(nonMenuParamsInfo) ? "" : $"\n\n{nonMenuParamsInfo}");
                 debug.warn = true;
 
