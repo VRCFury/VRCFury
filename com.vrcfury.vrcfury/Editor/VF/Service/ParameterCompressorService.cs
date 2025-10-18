@@ -207,7 +207,6 @@ namespace VF.Service {
 
                 var nonMenuParamsInfo = decisionWithInfo.FormatNonMenuParams(100);
 
-                var batchCount = decision.GetBatchCount();
                 var time = batchCount * BATCH_TIME;
                 
                 var debug = avatarObject.AddComponent<VRCFuryDebugInfo>();
