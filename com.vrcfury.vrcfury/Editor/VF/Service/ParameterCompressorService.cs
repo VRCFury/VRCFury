@@ -244,8 +244,10 @@ namespace VF.Service {
             }
 
             var attemptOptions = new Func<ParamSelectionOptions>[] {
-                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, maxBatches = 10, },
-                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true, maxBatches = 10 },
+                () => new ParamSelectionOptions { includeRadials = true, maxTime = 3f, },
+                () => new ParamSelectionOptions { includeToggles = true, maxTime = 1f, },
+                () => new ParamSelectionOptions { includeRadials = true, includeToggles = true, maxTime = 1f, },
+                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true, maxTime = 1f },
                 () => new ParamSelectionOptions { includeToggles = true, includeRadials = true },
                 () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true },
                 () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true, includeButtons = true },
@@ -258,7 +260,7 @@ namespace VF.Service {
             foreach (var attemptOptionFunc in attemptOptions) {
                 var options = attemptOptionFunc.Invoke();
                 var decision = GetParamsToOptimize(paramz, options, addDrivenParams, originalCost);
-                if (options.maxBatches > 0 && decision.GetBatchCount() > options.maxBatches) continue;
+                if (options.maxTime > 0 && decision.GetBatchCount() * BATCH_TIME > options.maxTime) continue;
                 var cost = decision.GetFinalCost(originalCost);
                 if (cost < bestCost) {
                     bestCost = cost;
@@ -320,7 +322,7 @@ namespace VF.Service {
             public bool includeRadials;
             public bool includePuppets;
             public bool includeButtons;
-            public int maxBatches;
+            public float maxTime;
         }
 
         private ISet<string> GetParamsUsedInMenu(ParamSelectionOptions options) {
