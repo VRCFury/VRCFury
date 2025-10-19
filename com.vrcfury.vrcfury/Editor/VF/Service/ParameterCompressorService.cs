@@ -152,7 +152,7 @@ namespace VF.Service {
                 whenNextStateReady = (nextSend, nextRecv, nextRecvCond) => {
                     sendState.TransitionsTo(nextSend).WithTransitionExitTime(BATCH_TIME).When();
                     WithReceiveState(rcv => {
-                        rcv.TransitionsTo(remoteLost).WithTransitionExitTime(BATCH_TIMEOUT).When();
+                        //rcv.TransitionsTo(remoteLost).WithTransitionExitTime(BATCH_TIMEOUT).When();
                         rcv.TransitionsTo(nextRecv).When(nextRecvCond);
                         rcv.TransitionsTo(remoteLost).When(receiveCondition.Not().And(nextRecvCond.Not()));
                     });
