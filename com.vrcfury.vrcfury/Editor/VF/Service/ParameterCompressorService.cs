@@ -223,7 +223,10 @@ namespace VF.Service {
 
                 var nonMenuParamsInfo = decisionWithInfo.FormatNonMenuParams(100);
 
-                var time = batchCount * BATCH_TIME;
+                var minSyncTime = batchCount * BATCH_TIME;
+                // Assume we just missed to the batch, so it has to do 2 full loops AND account for the extra
+                // frame hack needed above, which can add half a frame per batch. Assume 30fps.
+                var maxSyncTime = batchCount * (BATCH_TIME + (1 / 30f) * 0.5f) * 2;
                 
                 var debug = avatarObject.AddComponent<VRCFuryDebugInfo>();
                 debug.title = "Parameter Compressor";
@@ -232,7 +235,7 @@ namespace VF.Service {
                     + $"\n\nOld Total: {originalCost} bits"
                     + $"\nNew Total: {newCost} bits"
                     + (types.Count > 0 ? $"\nCompressed types: {types.Join(", ")}" : "")
-                    + $"\nTotal time per sync: {time} seconds"
+                    + $"\nSync delay: {minSyncTime.ToString("N1")} - {maxSyncTime.ToString("N1")} seconds"
                     + $"\nBools per batch: {decision.boolSlots}"
                     + $"\nNumbers per batch: {decision.numberSlots}"
                     + $"\nBatches per sync: {batchCount}"
