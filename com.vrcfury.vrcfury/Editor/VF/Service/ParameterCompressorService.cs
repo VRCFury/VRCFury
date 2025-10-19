@@ -240,6 +240,19 @@ namespace VF.Service {
                 debug.warn = true;
 
                 Debug.Log($"Parameter Compressor: Compressed {originalCost} bits into {newCost} bits.");
+
+                // Patch av3emu to use 0.1 sync time instead of its default (0.2)
+                EditorApplication.delayCall += () => {
+                    EditorApplication.delayCall += () => {
+                        if (avatarObject == null) return;
+                        var type = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Runtime");
+                        var field = type?.GetField("NonLocalSyncInterval");
+                        if (type == null || field == null) return;
+                        var runtime = avatarObject.GetComponent(type);
+                        if (runtime == null) return;
+                        field.SetValue(runtime, 0.1f);
+                    };
+                };
             }
         }
 
