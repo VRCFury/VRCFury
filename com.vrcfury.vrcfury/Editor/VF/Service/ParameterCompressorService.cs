@@ -34,7 +34,8 @@ namespace VF.Service {
         [VFAutowired] private readonly MenuService menuService;
         private VRCExpressionsMenu menuReadOnly => menuService.GetReadOnlyMenu();
         
-        private const float BATCH_TIME = 0.12f;
+        private const float BATCH_TIME = 0.1f;
+        private const float BATCH_TIMEOUT = BATCH_TIME * 2f;
 
         public void Apply() {
             OptimizationDecisionWithInfo decisionWithInfo;
@@ -88,6 +89,12 @@ namespace VF.Service {
             entry.TransitionsFromAny().When(fx.IsAnimatorEnabled().IsFalse());
             var remoteLost = layer.NewState("Receive (Lost)").Move(entry, 0, 1);
             entry.TransitionsTo(remoteLost).When(fx.IsLocal().IsFalse());
+            // var clip = VrcfObjectFactory.Create<AnimationClip>();
+            // clip.SetCurve("Body", typeof(SkinnedMeshRenderer), "material._Color.r", 1);
+            // clip.SetCurve("Body", typeof(SkinnedMeshRenderer), "material._Color.g", 0);
+            // clip.SetCurve("Body", typeof(SkinnedMeshRenderer), "material._Color.b", 0);
+            // clip.SetCurve("Body", typeof(SkinnedMeshRenderer), "material._Color.a", 1);
+            // remoteLost.WithAnimation(clip);
 
             Action doAtEnd = () => { };
             Action<VFState,VFState,VFCondition> whenNextStateReady = null;
@@ -107,7 +114,16 @@ namespace VF.Service {
 
                 // Create and wire up send and receive states
                 var latchTitlePrefix = (batchNum == 0) ? "Latch & " : "";
+                // We can't just go to the next send after 0.1s, because of a weird unity animator quirk where it will exit
+                // "early" if it thinks the exit time is closer to the current frame than the next frame, which would potentially
+                // make it update faster than the sync rate and lose a packet. To fix this, we have to add exactly one extra frame by going through
+                // an additional state between each send.
+                var sendStateExtraFrame = layer.NewState("Extra Frame").Move(entry, -2, yOffset);
                 var sendState = layer.NewState($"{latchTitlePrefix}Send {title}").Move(entry, -1, yOffset);
+                sendStateExtraFrame.TransitionsTo(sendState).When(fx.Always());
+                // if (batchNum == 0) {
+                //     sendState.WithAnimation(clip);
+                // }
                 var receiveConditions = new List<VFCondition>();
                 foreach (var i in Enumerable.Range(0, indexBitCount)) {
                     doAtEnd += () => sendState.Drives(syncIndex[i], syncIds[i]);
@@ -129,16 +145,16 @@ namespace VF.Service {
                     sendLatchState = sendState;
                     recvUnlatchState = receiveState;
                     doAtEnd += () => {
-                        whenNextStateReady?.Invoke(sendState, receiveState, receiveCondition);
+                        whenNextStateReady?.Invoke(sendStateExtraFrame, receiveState, receiveCondition);
                     };
                 }
-                whenNextStateReady?.Invoke(sendState, receiveState, receiveCondition);
+                whenNextStateReady?.Invoke(sendStateExtraFrame, receiveState, receiveCondition);
                 whenNextStateReady = (nextSend, nextRecv, nextRecvCond) => {
                     sendState.TransitionsTo(nextSend).WithTransitionExitTime(BATCH_TIME).When();
                     WithReceiveState(rcv => {
+                        rcv.TransitionsTo(remoteLost).WithTransitionExitTime(BATCH_TIMEOUT).When();
                         rcv.TransitionsTo(nextRecv).When(nextRecvCond);
                         rcv.TransitionsTo(remoteLost).When(receiveCondition.Not().And(nextRecvCond.Not()));
-                        rcv.TransitionsTo(remoteLost).WithTransitionExitTime(BATCH_TIME * 1.5f).When();
                     });
                 };
                 
