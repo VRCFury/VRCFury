@@ -19,6 +19,7 @@ using VRC.Core;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDKBase;
+using static VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu.Control;
 using Random = System.Random;
 
 namespace VF.Service {
@@ -35,7 +36,6 @@ namespace VF.Service {
         private VRCExpressionsMenu menuReadOnly => menuService.GetReadOnlyMenu();
         
         private const float BATCH_TIME = 0.1f;
-        private const float BATCH_TIMEOUT = BATCH_TIME * 2f;
 
         public void Apply() {
             OptimizationDecisionWithInfo decisionWithInfo;
@@ -212,14 +212,8 @@ namespace VF.Service {
 
             // Debug info
             {
-                var types = new List<string>();
                 var options = decisionWithInfo.options;
-                if (options != null) {
-                    if (options.includeToggles) types.Add("Toggles");
-                    if (options.includeRadials) types.Add("Radials");
-                    if (options.includePuppets) types.Add("Puppets");
-                    if (options.includeButtons) types.Add("Buttons");
-                }
+                var types = options?.FormatTypes();
 
                 var nonMenuParamsInfo = decisionWithInfo.FormatNonMenuParams(100);
 
@@ -234,7 +228,7 @@ namespace VF.Service {
                     "VRCFury compressed the parameters on this avatar to make them fit VRC's limit."
                     + $"\n\nOld Total: {originalCost} bits"
                     + $"\nNew Total: {newCost} bits"
-                    + (types.Count > 0 ? $"\nCompressed types: {types.Join(", ")}" : "")
+                    + (!string.IsNullOrEmpty(types) ? $"\nCompressed types: {types}" : "")
                     + $"\nSync delay: {minSyncTime.ToString("N1")} - {maxSyncTime.ToString("N1")} seconds"
                     + $"\nBools per batch: {decision.boolSlots}"
                     + $"\nNumbers per batch: {decision.numberSlots}"
@@ -280,32 +274,34 @@ namespace VF.Service {
             }
 
             var attemptOptions = new Func<ParamSelectionOptions>[] {
-                () => new ParamSelectionOptions { includeRadials = true, maxTime = 3f, },
-                () => new ParamSelectionOptions { includeToggles = true, maxTime = 1f, },
-                () => new ParamSelectionOptions { includeRadials = true, includeToggles = true, maxTime = 1f, },
-                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true, maxTime = 1f },
-                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true },
-                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true },
-                () => new ParamSelectionOptions { includeToggles = true, includeRadials = true, includePuppets = true, includeButtons = true },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.RadialPuppet } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.Toggle } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.RadialPuppet, ControlType.Toggle } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.TwoAxisPuppet, ControlType.FourAxisPuppet } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.RadialPuppet, ControlType.TwoAxisPuppet, ControlType.FourAxisPuppet } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.Toggle, ControlType.TwoAxisPuppet, ControlType.FourAxisPuppet } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.RadialPuppet, ControlType.Toggle, ControlType.TwoAxisPuppet, ControlType.FourAxisPuppet } },
             };
 
             var bestCost = originalCost;
             var bestDecision = new OptimizationDecision();
             var bestWasSuccess = false;
+            var bestTime = 0f;
             ParamSelectionOptions bestParameterOptions = null;
             foreach (var attemptOptionFunc in attemptOptions) {
                 var options = attemptOptionFunc.Invoke();
-                var decision = GetParamsToOptimize(paramz, options, addDrivenParams, originalCost);
-                if (options.maxTime > 0 && decision.GetBatchCount() * BATCH_TIME > options.maxTime) continue;
+                var decision = GetParamsToOptimize(paramz, options.allowedMenuTypes.ToImmutableHashSet(), addDrivenParams, originalCost);
                 var cost = decision.GetFinalCost(originalCost);
-                if (cost < bestCost) {
-                    bestCost = cost;
-                    bestDecision = decision;
-                    bestParameterOptions = options;
-                }
+                if (cost >= bestCost) continue;
+                var syncTime = decision.GetBatchCount() * BATCH_TIME;
+                // If we already have a working solution, only accept a more aggressive option if it cuts the sync time at least in half
+                if (bestWasSuccess && syncTime > bestTime / 2) continue;
+                bestCost = cost;
+                bestDecision = decision;
+                bestParameterOptions = options;
                 if (cost <= maxCost) {
                     bestWasSuccess = true;
-                    break;
+                    if (syncTime <= 1) break; // If sync time is less than 1s, don't need to try any more aggressive options
                 }
             }
             
@@ -354,54 +350,77 @@ namespace VF.Service {
         }
 
         public class ParamSelectionOptions {
-            public bool includeToggles;
-            public bool includeRadials;
-            public bool includePuppets;
-            public bool includeButtons;
-            public float maxTime;
+            public IList<ControlType> allowedMenuTypes;
+
+            public string FormatTypes() {
+                return MenuTypePriority.Where(t => allowedMenuTypes.Contains(t)).Select(t => t.ToString()).Join(", ");
+            }
         }
 
-        private ISet<string> GetParamsUsedInMenu(ParamSelectionOptions options) {
-            var paramNames = new HashSet<string>();
-            void AttemptToAdd(VRCExpressionsMenu.Control.Parameter param) {
+        private static readonly IList<ControlType> MenuTypePriority = new[] {
+            // Make sure these are in priority order, since it matters if a param is used by multiple menu item types
+            ControlType.RadialPuppet,
+            ControlType.Toggle,
+            ControlType.TwoAxisPuppet,
+            ControlType.FourAxisPuppet,
+            ControlType.Button
+        };
+
+        private ISet<string> GetParamsUsedInMenu(ISet<ControlType> allowedMenuTypes) {
+            var paramNameToMenuType = new Dictionary<string, ControlType>();
+            void AttemptToAdd(Parameter param, ControlType menuType) {
                 if (param == null) return;
                 if (string.IsNullOrEmpty(param.name)) return;
-                paramNames.Add(param.name);
+                var menuTypePriority = MenuTypePriority.IndexOf(menuType);
+                if (menuTypePriority < 0) return;
+                if (paramNameToMenuType.TryGetValue(param.name, out var oldMenuType)) {
+                    var oldMenuTypePriority = MenuTypePriority.IndexOf(oldMenuType);
+                    if (menuTypePriority < oldMenuTypePriority) return;
+                }
+                paramNameToMenuType[param.name] = menuType;
             }
 
             // Don't use MenuService to avoid making a clone if this isn't a vrcfury asset
             if (menuReadOnly != null) {
                 menuReadOnly.ForEachMenu(ForEachItem: (control, list) => {
-                    if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet && (options == null || options.includeRadials)) {
-                        AttemptToAdd(control.GetSubParameter(0));
-                    } else if (control.type == VRCExpressionsMenu.Control.ControlType.Button && (options == null || options.includeButtons)) {
-                        AttemptToAdd(control.parameter);
-                    } else if (control.type == VRCExpressionsMenu.Control.ControlType.Toggle && (options == null || options.includeToggles)) {
-                        AttemptToAdd(control.parameter);
-                    } else if (control.type == VRCExpressionsMenu.Control.ControlType.FourAxisPuppet && (options == null || options.includePuppets)) {
-                        AttemptToAdd(control.GetSubParameter(0));
-                        AttemptToAdd(control.GetSubParameter(1));
-                        AttemptToAdd(control.GetSubParameter(2));
-                        AttemptToAdd(control.GetSubParameter(3));
-                    } else if (control.type == VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet && (options == null || options.includePuppets)) {
-                        AttemptToAdd(control.GetSubParameter(0));
-                        AttemptToAdd(control.GetSubParameter(1));
+                    if (control.type == ControlType.RadialPuppet) {
+                        AttemptToAdd(control.GetSubParameter(0), control.type);
+                    } else if (control.type == ControlType.Button) {
+                        AttemptToAdd(control.parameter, control.type);
+                    } else if (control.type == ControlType.Toggle) {
+                        AttemptToAdd(control.parameter, control.type);
+                    } else if (control.type == ControlType.FourAxisPuppet) {
+                        AttemptToAdd(control.GetSubParameter(0), control.type);
+                        AttemptToAdd(control.GetSubParameter(1), control.type);
+                        AttemptToAdd(control.GetSubParameter(2), control.type);
+                        AttemptToAdd(control.GetSubParameter(3), control.type);
+                    } else if (control.type == ControlType.TwoAxisPuppet) {
+                        AttemptToAdd(control.GetSubParameter(0), control.type);
+                        AttemptToAdd(control.GetSubParameter(1), control.type);
                     }
 
                     return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
                 });
             }
-            return paramNames;
+            return paramNameToMenuType
+                .Where(pair => allowedMenuTypes == null || allowedMenuTypes.Contains(pair.Value))
+                .Select(pair => pair.Key)
+                .ToImmutableHashSet();
         }
 
-        private OptimizationDecision GetParamsToOptimize(VRCExpressionParameters paramz, ParamSelectionOptions options, ISet<string> addDriven, int originalCost) {
+        private OptimizationDecision GetParamsToOptimize(
+            VRCExpressionParameters paramz,
+            ISet<ControlType> allowedMenuTypes,
+            ISet<string> addDriven,
+            int originalCost
+        ) {
             var eligible = new List<VRCExpressionParameters.Parameter>();
-            var usedInMenu = GetParamsUsedInMenu(options);
+            var usedInMenu = GetParamsUsedInMenu(allowedMenuTypes);
 
             foreach (var param in paramz.parameters) {
                 if (!param.IsNetworkSynced()) continue;
                 if (!usedInMenu.Contains(param.name)) continue;
-                if (addDriven.Contains(param.name) && !options.includePuppets) continue;
+                if (addDriven.Contains(param.name) && !allowedMenuTypes.Contains(ControlType.FourAxisPuppet)) continue;
                 eligible.Add(param);
             }
 
