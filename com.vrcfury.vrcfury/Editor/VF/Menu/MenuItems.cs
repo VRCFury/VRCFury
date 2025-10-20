@@ -61,17 +61,29 @@ namespace VF.Menu {
         public const string uploadMode = settings + "Enable VRCFury for uploads";
         public const int uploadModePriority = settingsPriority + 1;
         public const string constrainedProportions = settings + "Automatically enable Constrained Proportions";
-        public const int constrainedProportionsPriority = settingsPriority + 2;
+
+        public const int constrainedProportionsPriority = settingsPriority + 100;
         public const string hapticToggle = settings + "Enable SPS Haptics";
-        public const int hapticTogglePriority = settingsPriority + 3;
+        public const int hapticTogglePriority = settingsPriority + 101;
         public const string dpsAutoUpgrade = settings + "Auto-Upgrade DPS with contacts";
-        public const int dpsAutoUpgradePriority = settingsPriority + 4;
+        public const int dpsAutoUpgradePriority = settingsPriority + 102;
         public const string boundingBoxFix = settings + "Automatically fix bounding boxes";
-        public const int boundingBoxFixPriority = settingsPriority + 5;
+        public const int boundingBoxFixPriority = settingsPriority + 103;
         public const string autoUpgradeConstraints = settings + "Automatically upgrade to VRC Constraints";
-        public const int autoUpgradeConstraintsPriority = settingsPriority + 6;
+        public const int autoUpgradeConstraintsPriority = settingsPriority + 104;
         public const string unpackWarning = settings + "Warn when unpacking prefabs";
-        public const int unpackWarningPriority = settingsPriority + 7;
+        public const int unpackWarningPriority = settingsPriority + 105;
+        public const string alignMobile = settings + "Align Mobile Parameters to match Desktop";
+        public const int alignMobilePriority = settingsPriority + 106;
+        
+        public const string compressHeader = settings + "When avatar is over parameter limit:";
+        public const int compressHeaderPriority = settingsPriority + 200;
+        public const string compressCompress = settings + "Compress parameters to fit";
+        public const int compressCompressPriority = settingsPriority + 201;
+        public const string compressAsk = settings + "Ask";
+        public const int compressAskPriority = settingsPriority + 202;
+        public const string compressFail = settings + "Fail the build (Vanilla Behaviour)";
+        public const int compressFailPriority = settingsPriority + 203;
 
         [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
         private static void Run() {

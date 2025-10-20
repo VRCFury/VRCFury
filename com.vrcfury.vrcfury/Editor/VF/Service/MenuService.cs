@@ -1,4 +1,5 @@
-﻿using VF.Builder;
+﻿using JetBrains.Annotations;
+using VF.Builder;
 using VF.Injector;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
@@ -15,7 +16,7 @@ namespace VF.Service {
             if (_menu == null) {
                 var menu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
                 var initializing = true;
-                _menu = new MenuManager(menu, () => initializing ? 0 : globals.currentMenuSortPosition());
+                _menu = new MenuManager(menu, () => initializing ? 0 : globals.currentMenuSortPosition);
 
                 var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
                 if (origMenu != null) _menu.MergeMenu(origMenu);
@@ -24,6 +25,11 @@ namespace VF.Service {
                 initializing = false;
             }
             return _menu;
+        }
+
+        [CanBeNull]
+        public VRCExpressionsMenu GetReadOnlyMenu() {
+            return VRCAvatarUtils.GetAvatarMenu(avatar);
         }
     }
 }

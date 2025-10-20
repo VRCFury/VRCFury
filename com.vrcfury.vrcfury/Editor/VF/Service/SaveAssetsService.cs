@@ -30,7 +30,7 @@ namespace VF.Service {
                 }
 
                 // Special handling for mask and controller names
-                foreach (var controller in controllers.GetAllUsedControllers()) {
+                foreach (var controller in controllers.GetAllMutatedControllers()) {
                     foreach (var layer in controller.GetLayers()) {
                         if (layer.mask != null) {
                             layer.mask.name = "Mask for " + layer.name;
@@ -77,7 +77,8 @@ namespace VF.Service {
             MutableManager.ForEachChild(obj, asset => {
                 if (asset == obj) return true;
                 if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
-                if (!NeedsSaved(asset)) return false;
+                if (!VrcfObjectFactory.DidCreate(asset)) return false;
+                if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) return true;
                 if (asset is AnimationClip vac) {
                     if (reuseOriginalClips) {
                         var useOriginalClip = vac.GetUseOriginalUserClip();
@@ -100,12 +101,8 @@ namespace VF.Service {
             return unsavedChildren;
         }
 
-        private static bool NeedsSaved(Object asset) {
-            return VrcfObjectFactory.DidCreate(asset) && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset));
-        }
-
         public static void SaveAssetAndChildren(Object asset, string filename, string tmpDir, bool reuseOriginalClips) {
-            if (!NeedsSaved(asset)) return;
+            if (!VrcfObjectFactory.DidCreate(asset)) return;
 
             var unsavedChildren = GetUnsavedChildren(asset, true, reuseOriginalClips);
 
@@ -118,7 +115,9 @@ namespace VF.Service {
             }
             
             // Save the main asset
-            VRCFuryAssetDatabase.SaveAsset(asset, tmpDir, filename);
+            if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) {
+                VRCFuryAssetDatabase.SaveAsset(asset, tmpDir, filename);
+            }
 
             // Attach children
             foreach (var subAsset in unsavedChildren) {
