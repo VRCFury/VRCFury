@@ -303,7 +303,7 @@ namespace VF.Service {
                     bestWasSuccess = true;
                     if (syncTime <= 1) break; // If sync time is less than 1s, don't need to try any more aggressive options
                 }
-            }
+            } 
             
             var nonMenuParams = new HashSet<string>(paramz.parameters
                 .Where(p => p.IsNetworkSynced())
