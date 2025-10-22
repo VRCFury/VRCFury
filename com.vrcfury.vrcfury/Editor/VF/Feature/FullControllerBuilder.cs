@@ -686,18 +686,13 @@ namespace VF.Feature {
             "Earmuffs",
             "IsOnFriendsList",
             "AvatarVersion",
-
-            "Supine",
-            "GroundProximity",
+            "IsAnimatorEnabled",
 
             "ScaleModified",
             "ScaleFactor",
             "ScaleFactorInverse",
             "EyeHeightAsMeters",
             "EyeHeightAsPercent",
-            
-            "IsAnimatorEnabled",
-            
         };
     }
 

@@ -36,5 +36,9 @@ namespace VF.Utils {
                    && param.defaultValue == other.defaultValue
                    && param.IsNetworkSynced() == other.IsNetworkSynced();
         }
+
+        public static int TypeCost(this VRCExpressionParameters.Parameter param) {
+            return VRCExpressionParameters.TypeCost(param.valueType);
+        }
     }
 }
