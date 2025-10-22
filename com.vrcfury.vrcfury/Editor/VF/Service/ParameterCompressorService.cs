@@ -18,6 +18,8 @@ using VF.Utils.Controller;
 using VRC.Core;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDK3.Dynamics.Contact.Components;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 using VRC.SDKBase;
 using static VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu.Control;
 using Random = System.Random;
@@ -215,7 +217,7 @@ namespace VF.Service {
                 var options = decisionWithInfo.options;
                 var types = options?.FormatTypes();
 
-                var nonMenuParamsInfo = decisionWithInfo.FormatNonMenuParams(100);
+                var paramWarnings = decisionWithInfo.FormatWarnings(100);
 
                 var minSyncTime = batchCount * BATCH_TIME;
                 // Assume we just missed to the batch, so it has to do 2 full loops AND account for the extra
@@ -226,17 +228,15 @@ namespace VF.Service {
                 debug.title = "Parameter Compressor";
                 debug.debugInfo =
                     "VRCFury compressed the parameters on this avatar to make them fit VRC's limit."
-                    + $"\n\nOld Total: {originalCost} bits"
-                    + $"\nNew Total: {newCost} bits"
+                    + $"\n\nOld Total: {FormatBitsPlural(originalCost)}"
+                    + $"\nNew Total: {FormatBitsPlural(newCost)}"
                     + (!string.IsNullOrEmpty(types) ? $"\nCompressed types: {types}" : "")
                     + $"\nSync delay: {minSyncTime.ToString("N1")} - {maxSyncTime.ToString("N1")} seconds"
                     + $"\nBools per batch: {decision.boolSlots}"
                     + $"\nNumbers per batch: {decision.numberSlots}"
                     + $"\nBatches per sync: {batchCount}"
-                    + (string.IsNullOrEmpty(nonMenuParamsInfo) ? "" : $"\n\n{nonMenuParamsInfo}");
+                    + (string.IsNullOrEmpty(paramWarnings) ? "" : $"\n\n{paramWarnings}");
                 debug.warn = true;
-
-                Debug.Log($"Parameter Compressor: Compressed {originalCost} bits into {newCost} bits.");
 
                 // Patch av3emu to use 0.1 sync time instead of its default (0.2)
                 EditorApplication.delayCall += () => {
@@ -303,18 +303,47 @@ namespace VF.Service {
                     bestWasSuccess = true;
                     if (syncTime <= 1) break; // If sync time is less than 1s, don't need to try any more aggressive options
                 }
-            } 
-            
-            var nonMenuParams = new HashSet<string>(paramz.parameters
-                .Where(p => p.IsNetworkSynced())
-                .Select(p => p.name));
-            nonMenuParams.ExceptWith(GetParamsUsedInMenu(null));
-            nonMenuParams.ExceptWith(drivenParams);
-            nonMenuParams.RemoveWhere(s => s.StartsWith("FT/"));
+            }
+
+            var controllerUsedParams = new HashSet<string>();
+            foreach (var c in controllers.GetAllReadOnlyControllers()) {
+                c.RewriteParameters(p => {
+                    controllerUsedParams.Add(p);
+                    return p;
+                }, includeWrites: false);
+            }
+
+            var contactParams = new HashSet<string>();
+            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
+                contactParams.Add(c.parameter);
+            }
+            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()) {
+                contactParams.Add(c.parameter + "_IsGrabbed");
+                contactParams.Add(c.parameter + "_Angle");
+                contactParams.Add(c.parameter + "_Stretch");
+                contactParams.Add(c.parameter + "_Squish");
+                contactParams.Add(c.parameter + "_IsPosed");
+            }
+
+            var allMenuParamsStr = GetParamsUsedInMenu(null);
+            var buttonMenuParamsStr = GetParamsUsedInMenu(new [] {ControlType.Button,ControlType.SubMenu}.ToImmutableHashSet());
+
+            var allSyncedParams = new HashSet<VRCExpressionParameters.Parameter>(paramz.parameters.Where(p => p.IsNetworkSynced()).ToArray());
+            var warnUnusedParams = allSyncedParams.Where(p => !controllerUsedParams.Contains(p.name)).ToList();
+            allSyncedParams.ExceptWith(warnUnusedParams);
+            var warnContactParams = allSyncedParams.Where(p => contactParams.Contains(p.name)).ToList();
+            allSyncedParams.ExceptWith(warnContactParams);
+            var warnButtonParams = allSyncedParams.Where(p => buttonMenuParamsStr.Contains(p.name)).ToList();
+            allSyncedParams.ExceptWith(warnButtonParams);
+            var warnOscOnlyParams = allSyncedParams.Where(p => !allMenuParamsStr.Contains(p.name) && !drivenParams.Contains(p.name) && !p.name.StartsWith("FT/")).ToList();
+            allSyncedParams.ExceptWith(warnOscOnlyParams);
 
             var decisionWithInfo = new OptimizationDecisionWithInfo {
                 decision = bestDecision,
-                nonMenuParams = nonMenuParams,
+                warnUnusedParams = warnUnusedParams,
+                warnContactParams = warnContactParams,
+                warnButtonParams = warnButtonParams,
+                warnOscOnlyParams = warnOscOnlyParams,
                 options = bestParameterOptions
             };
 
@@ -340,9 +369,11 @@ namespace VF.Service {
             errorMessage += " Ask your avatar creator, or the creator of the last prop you've added, " +
                             "if there are any parameters you can remove to make space.";
 
-            var nonMenuParamsInfo = decisionWithInfo.FormatNonMenuParams(20);
-            if (setting != CompressorMenuItem.Value.Fail && !string.IsNullOrEmpty(nonMenuParamsInfo)) {
-                errorMessage += $"\n\n{nonMenuParamsInfo}";
+            if (setting != CompressorMenuItem.Value.Fail) {
+                var paramWarnings = decisionWithInfo.FormatWarnings(20);
+                if (!string.IsNullOrEmpty(paramWarnings)) {
+                    errorMessage += $"\n\n{paramWarnings}";
+                }
             }
 
             excService.ThrowIfActuallyUploading(new SneakyException(errorMessage));
@@ -363,7 +394,8 @@ namespace VF.Service {
             ControlType.Toggle,
             ControlType.TwoAxisPuppet,
             ControlType.FourAxisPuppet,
-            ControlType.Button
+            ControlType.Button,
+            ControlType.SubMenu,
         };
 
         private ISet<string> GetParamsUsedInMenu(ISet<ControlType> allowedMenuTypes) {
@@ -384,19 +416,24 @@ namespace VF.Service {
             if (menuReadOnly != null) {
                 menuReadOnly.ForEachMenu(ForEachItem: (control, list) => {
                     if (control.type == ControlType.RadialPuppet) {
+                        AttemptToAdd(control.parameter, ControlType.SubMenu);
                         AttemptToAdd(control.GetSubParameter(0), control.type);
                     } else if (control.type == ControlType.Button) {
                         AttemptToAdd(control.parameter, control.type);
                     } else if (control.type == ControlType.Toggle) {
                         AttemptToAdd(control.parameter, control.type);
                     } else if (control.type == ControlType.FourAxisPuppet) {
+                        AttemptToAdd(control.parameter, ControlType.SubMenu);
                         AttemptToAdd(control.GetSubParameter(0), control.type);
                         AttemptToAdd(control.GetSubParameter(1), control.type);
                         AttemptToAdd(control.GetSubParameter(2), control.type);
                         AttemptToAdd(control.GetSubParameter(3), control.type);
                     } else if (control.type == ControlType.TwoAxisPuppet) {
+                        AttemptToAdd(control.parameter, ControlType.SubMenu);
                         AttemptToAdd(control.GetSubParameter(0), control.type);
                         AttemptToAdd(control.GetSubParameter(1), control.type);
+                    } else if (control.type == ControlType.SubMenu) {
+                        AttemptToAdd(control.parameter, ControlType.SubMenu);
                     }
 
                     return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
@@ -460,13 +497,27 @@ namespace VF.Service {
         private class OptimizationDecisionWithInfo {
             public OptimizationDecision decision;
             public ParamSelectionOptions options;
-            public ISet<string> nonMenuParams;
+            public IList<VRCExpressionParameters.Parameter> warnUnusedParams;
+            public IList<VRCExpressionParameters.Parameter> warnContactParams;
+            public IList<VRCExpressionParameters.Parameter> warnButtonParams;
+            public IList<VRCExpressionParameters.Parameter> warnOscOnlyParams;
 
-            public string FormatNonMenuParams(int maxCount) {
-                if (nonMenuParams == null || nonMenuParams.Count == 0) return "";
-                return "These parameters were not compressable because they are not used in your menu, and not driven." +
-                       " If these aren't related to OSC, you should probably delete them:\n" +
-                       nonMenuParams.JoinWithMore(maxCount);
+            public string FormatWarnings(int maxCount) {
+                var lines = new [] {
+                    FormatWarnings("These params are totally unused in all controllers:", warnUnusedParams, maxCount),
+                    FormatWarnings("These params are generated from a contact or physbone, which usually should happen on each remote, NOT synced:", warnContactParams, maxCount),
+                    FormatWarnings("These params are used by a momentary button in your menu, which are often used by presets and often shouldn't be synced:", warnButtonParams, maxCount),
+                    FormatWarnings("These params can only change using OSC, they canot change if you are not running an OSC app:", warnOscOnlyParams, maxCount),
+                }.NotNull().Join("\n\n");
+                if (!string.IsNullOrEmpty(lines)) {
+                    return "Want to improve performance and reduce sync? VRCFury has detected that these params should possibly be marked as not network synced in your Parameters file:\n\n" + lines;
+                }
+                return "";
+            }
+            [CanBeNull]
+            private static string FormatWarnings(string title, IList<VRCExpressionParameters.Parameter> list, int maxCount) {
+                if (list == null || list.Count == 0) return null;
+                return title + "\n" + list.Select(p => $"{p.name} ({FormatBitsPlural(p.TypeCost())})").JoinWithMore(maxCount);
             }
         }
 
@@ -498,7 +549,7 @@ namespace VF.Service {
                        + GetIndexBitCount()
                        + numberSlots * 8
                        + boolSlots
-                       - compress.Sum(p => VRCExpressionParameters.TypeCost(p.valueType));
+                       - compress.Sum(p => p.TypeCost());
             }
 
             public int GetBatchCount() {
@@ -728,6 +779,10 @@ namespace VF.Service {
                 });
             }
             return decisionWithInfo;
+        }
+
+        private static string FormatBitsPlural(int numBits) {
+            return numBits + " bit" + (numBits != 1 ? "s" : "");
         }
     }
 }
