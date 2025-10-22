@@ -126,13 +126,9 @@ namespace VF.Service {
 
             // If we're moving a finger to the head, make sure any head receivers exclude this finger so it doesn't trigger itself
             if (found.isFinger) {
-                var closestBone = ClosestBoneUtils.GetClosestHumanoidBone(transform);
-                if (closestBone == HumanBodyBones.Head || closestBone == HumanBodyBones.Jaw) {
-                    foreach (var receiver in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                        var rBone = ClosestBoneUtils.GetClosestHumanoidBone(receiver.owner());
-                        if (rBone == HumanBodyBones.Head || rBone == HumanBodyBones.Jaw) {
-                            RemoveFromContactList(receiver.collisionTags, colliderName);
-                        }
+                foreach (var receiver in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
+                    if (receiver.allowSelf) {
+                        RemoveFromContactList(receiver.collisionTags, colliderName);
                     }
                 }
             }
