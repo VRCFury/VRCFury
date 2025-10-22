@@ -13,7 +13,7 @@ namespace VF.Feature {
     internal class RemoveHandGesturesBuilder : FeatureBuilder<RemoveHandGestures2> {
         [VFAutowired] private readonly ControllersService controllers;
         
-        private static readonly ISet<string> GestureParams = new HashSet<string>(new [] {
+        public static readonly ISet<string> GestureParams = new HashSet<string>(new [] {
             "GestureLeft",
             "GestureRight",
             "GestureLeftWeight",
