@@ -736,7 +736,7 @@ namespace VF.Service {
                 );
             }
 
-            paramsService.GetParams().GetRaw().parameters = reordered.ToArray();
+            paramz.parameters = reordered.ToArray();
 
             return new OptimizationDecisionWithInfo {
                 decision = new OptimizationDecision() {
