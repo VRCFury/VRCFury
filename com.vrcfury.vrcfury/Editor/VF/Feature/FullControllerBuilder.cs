@@ -414,7 +414,7 @@ namespace VF.Feature {
                         return smoothed;
                     }
                     return name;
-                }, false, myLayers);
+                }, includeWrites: false, includeCopyDriverReads: false, limitToLayers: myLayers);
             }
         }
 

@@ -28,7 +28,7 @@ namespace VF.Feature {
                         return controller.Zero();
                     }
                     return p;
-                }, includeWrites: false, limitToLayers: controller.GetUnmanagedLayers());
+                }, includeWrites: false, includeCopyDriverReads: false, limitToLayers: controller.GetUnmanagedLayers());
             }
         }
 

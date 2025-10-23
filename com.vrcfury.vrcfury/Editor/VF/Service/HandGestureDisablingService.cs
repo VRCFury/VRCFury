@@ -50,7 +50,7 @@ namespace VF.Service {
                     return GetBuffered(param);
                 }
                 return param;
-            }, includeWrites: false);
+            }, includeWrites: false, includeCopyDriverReads: false);
         }
     }
 }
