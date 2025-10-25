@@ -28,6 +28,7 @@ namespace VF.Service {
                 prms = VrcfObjectFactory.Create<VRCExpressionParameters>();
             }
             VRCAvatarUtils.SetAvatarParams(avatar, prms);
+            prms.RemoveDuplicates();
             return new ParamManager(prms);
         }
 

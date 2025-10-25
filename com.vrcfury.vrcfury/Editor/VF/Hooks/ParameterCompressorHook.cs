@@ -1,5 +1,6 @@
 ﻿using VF.Builder;
 using VF.Service;
+using VF.Service.Compressor;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Hooks {
