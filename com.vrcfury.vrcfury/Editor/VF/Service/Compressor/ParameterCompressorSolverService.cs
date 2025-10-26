@@ -68,12 +68,19 @@ namespace VF.Service.Compressor {
                 var options = attemptOptionFunc.Invoke();
                 var decision = GetParamsToOptimize(paramz, options.allowedMenuTypes.ToImmutableHashSet(), addDrivenParams, originalCost, useBadPriorityMethod);
                 var cost = decision.GetFinalCost(originalCost);
-                if (cost >= bestCost) continue;
                 var batchCount = decision.GetBatchCount();
-                if (useBadPriorityMethod && batchCount > 255) continue;
+                if (useBadPriorityMethod && batchCount > 255) {
+                    // Bad priority method only supports up to 255 batches
+                    continue;
+                }
                 var syncTime = batchCount * ParameterCompressorService.BATCH_TIME;
-                // If we already have a working solution, only accept a more aggressive option if it cuts the sync time at least in half
-                if (bestWasSuccess && syncTime > bestTime / 2) continue;
+                // If we already have a working solution,
+                if (bestWasSuccess) {
+                    // Only accept a more aggressive option if it cuts the sync time at least in half
+                    if (syncTime > bestTime / 2) continue;
+                    // Don't switch from a working solution to a non-working one
+                    if (cost > maxCost) continue;
+                }
                 bestCost = cost;
                 bestDecision = decision;
                 bestParameterOptions = options;
