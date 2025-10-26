@@ -57,7 +57,7 @@ namespace VF.Service.Compressor {
                 var titleId = syncIds.Select(b => b ? "1" : "0").Join("");
                 var receiveConditions = new List<VFCondition>();
                 foreach (var i in Enumerable.Range(0, indexBitCount)) {
-                    sendIdDriver += (sendState) => sendState.Drives(syncIndex[i], syncIds[i]);
+                    sendIdDriver += s => s.Drives(syncIndex[i], syncIds[i]);
                     receiveConditions.Add(syncIndex[i].Is(syncIds[i]));
                 }
                 var receiveCondition = VFCondition.All(receiveConditions);
