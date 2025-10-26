@@ -61,9 +61,9 @@ namespace VF.Service.Compressor {
 
             var bestCost = originalCost;
             var bestDecision = new OptimizationDecision();
+            ParamSelectionOptions bestParameterOptions = null;
             var bestWasSuccess = false;
             var bestTime = 0f;
-            ParamSelectionOptions bestParameterOptions = null;
             foreach (var attemptOptionFunc in attemptOptions) {
                 var options = attemptOptionFunc.Invoke();
                 var decision = GetParamsToOptimize(paramz, options.allowedMenuTypes.ToImmutableHashSet(), addDrivenParams, originalCost, useBadPriorityMethod);
@@ -87,10 +87,11 @@ namespace VF.Service.Compressor {
                 bestCost = cost;
                 bestDecision = decision;
                 bestParameterOptions = options;
-                if (cost <= maxCost) {
-                    bestWasSuccess = true;
-                    if (syncTime <= 1) break; // If sync time is less than 1s, don't need to try any more aggressive options
-                }
+                bestWasSuccess = cost <= maxCost;
+                bestTime = syncTime;
+
+                // If sync time is less than 1s, don't need to try any more aggressive options
+                if (bestWasSuccess && syncTime <= 1) break;
             }
 
             var controllerUsedParams = new HashSet<string>();
