@@ -74,12 +74,15 @@ namespace VF.Service.Compressor {
                     continue;
                 }
                 var syncTime = batchCount * ParameterCompressorService.BATCH_TIME;
-                // If we already have a working solution,
                 if (bestWasSuccess) {
+                    // If we already have a working solution,
                     // Only accept a more aggressive option if it cuts the sync time at least in half
                     if (syncTime > bestTime / 2) continue;
                     // Don't switch from a working solution to a non-working one
                     if (cost > maxCost) continue;
+                } else {
+                    // If we don't have a working solution yet, just try to find the lowest bits possible
+                    if (cost >= bestCost) continue;
                 }
                 bestCost = cost;
                 bestDecision = decision;
