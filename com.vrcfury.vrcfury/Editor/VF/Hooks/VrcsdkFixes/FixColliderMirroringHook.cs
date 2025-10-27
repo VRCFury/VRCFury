@@ -7,7 +7,7 @@ namespace VF.Hooks.VrcsdkFixes {
     /**
      * The vrcsdk incorrectly mirrors colliders across the world origin rather than across the avatar origin
      */
-    public class FixColliderMirroringHook {
+    internal class FixColliderMirroringHook {
         [InitializeOnLoadMethod]
         private static void Init() {
             HarmonyUtils.Patch(
