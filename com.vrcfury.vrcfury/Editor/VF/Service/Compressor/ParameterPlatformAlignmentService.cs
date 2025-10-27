@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -193,12 +194,13 @@ namespace VF.Service.Compressor {
         public void SaveToDiskAfterBuild(OptimizationDecision decision, VRCExpressionParameters paramz) {
             if (!IsActuallyUploadingHook.Get()) return;
 
+            var compressNames = decision.compress.Select(p => p.name).ToImmutableHashSet();
             var paramList = paramz.parameters.Select(p => {
                 var source = parameterSourceService.GetSource(p.name);
                 return new SavedParam() {
                     parameter = p.Clone(),
                     source = source,
-                    compressed = decision.compress.Contains(p)
+                    compressed = compressNames.Contains(p.name)
                 };
             }).ToList();
             var saveData = new SavedData() {
