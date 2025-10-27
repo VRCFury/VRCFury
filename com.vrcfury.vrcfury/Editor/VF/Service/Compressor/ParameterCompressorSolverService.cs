@@ -61,7 +61,7 @@ namespace VF.Service.Compressor {
 
             var bestCost = originalCost;
             var bestDecision = new OptimizationDecision();
-            ParamSelectionOptions bestParameterOptions = null;
+            var bestParameterOptions = new ParamSelectionOptions();
             var bestWasSuccess = false;
             var bestTime = 0f;
             foreach (var attemptOptionFunc in attemptOptions) {
@@ -170,7 +170,7 @@ namespace VF.Service.Compressor {
         }
 
         public class ParamSelectionOptions {
-            public IList<VRCExpressionsMenu.Control.ControlType> allowedMenuTypes;
+            public IList<VRCExpressionsMenu.Control.ControlType> allowedMenuTypes = new List<VRCExpressionsMenu.Control.ControlType>();
 
             public string FormatTypes() {
                 return MenuTypePriority.Where(t => allowedMenuTypes.Contains(t)).Select(t => t.ToString()).Join(", ");

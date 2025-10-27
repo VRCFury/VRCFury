@@ -6,12 +6,12 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Service.Compressor {
     internal class ParameterCompressorSolverOutput {
-        public OptimizationDecision decision;
-        public ParameterCompressorSolverService.ParamSelectionOptions options;
-        public IList<VRCExpressionParameters.Parameter> warnUnusedParams;
-        public IList<VRCExpressionParameters.Parameter> warnContactParams;
-        public IList<VRCExpressionParameters.Parameter> warnButtonParams;
-        public IList<VRCExpressionParameters.Parameter> warnOscOnlyParams;
+        public OptimizationDecision decision = new OptimizationDecision();
+        public ParameterCompressorSolverService.ParamSelectionOptions options = new ParameterCompressorSolverService.ParamSelectionOptions();
+        public IList<VRCExpressionParameters.Parameter> warnUnusedParams = new List<VRCExpressionParameters.Parameter>();
+        public IList<VRCExpressionParameters.Parameter> warnContactParams = new List<VRCExpressionParameters.Parameter>();
+        public IList<VRCExpressionParameters.Parameter> warnButtonParams = new List<VRCExpressionParameters.Parameter>();
+        public IList<VRCExpressionParameters.Parameter> warnOscOnlyParams = new List<VRCExpressionParameters.Parameter>();
 
         public string FormatWarnings(int maxCount) {
             var lines = new [] {
@@ -28,7 +28,7 @@ namespace VF.Service.Compressor {
 
         [CanBeNull]
         private static string FormatWarnings(string title, IList<VRCExpressionParameters.Parameter> list, int maxCount) {
-            if (list == null || list.Count == 0) return null;
+            if (list.Count == 0) return null;
             return title + "\n" + list.Select(p => $"{p.name} ({ParameterCompressorService.FormatBitsPlural(VRCExpressionParameterExtensions.TypeCost(p))})").JoinWithMore(maxCount);
         }
     }

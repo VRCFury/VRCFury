@@ -33,7 +33,7 @@ namespace VF.Service.Compressor {
                 mutated.RemoveDuplicates();
                 if (BuildTargetUtils.IsDesktop()) {
                     decisionWithInfo = solverService.GetParamsToOptimize();
-                    platformAlignmentService.SaveToDiskAfterBuild(decisionWithInfo.decision ?? new OptimizationDecision(), mutated);
+                    platformAlignmentService.SaveToDiskAfterBuild(decisionWithInfo.decision, mutated);
                 } else {
                     decisionWithInfo = platformAlignmentService.AlignForMobile(mutated);
                     if (decisionWithInfo == null) {
@@ -46,10 +46,8 @@ namespace VF.Service.Compressor {
             }
 
             var decision = decisionWithInfo.decision;
-            if (decision == null || !decision.compress.Any()) {
-                return;
-            }
-            
+            if (!decision.compress.Any()) return;
+
             var paramz = paramsService.GetParams().GetRaw();
             var originalCost = paramz.CalcTotalCost();
 
@@ -75,7 +73,7 @@ namespace VF.Service.Compressor {
         private void CreateDebugInfo(ParameterCompressorSolverOutput decisionWithInfo, int originalCost, int newCost) {
             var options = decisionWithInfo.options;
             var decision = decisionWithInfo.decision;
-            var types = options?.FormatTypes();
+            var types = options.FormatTypes();
 
             var paramWarnings = decisionWithInfo.FormatWarnings(100);
 

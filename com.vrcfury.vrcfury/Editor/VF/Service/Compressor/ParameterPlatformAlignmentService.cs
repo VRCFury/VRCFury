@@ -182,7 +182,7 @@ namespace VF.Service.Compressor {
             paramz.parameters = reordered.ToArray();
 
             return new ParameterCompressorSolverOutput {
-                decision = new OptimizationDecision() {
+                decision = new OptimizationDecision {
                     boolSlots = desktopData.boolSlots,
                     numberSlots = desktopData.numberSlots,
                     compress = paramsToOptimize,
