@@ -18,7 +18,7 @@ namespace VF.Service.Compressor {
                 FormatWarnings("These params are totally unused in all controllers:", warnUnusedParams, maxCount),
                 FormatWarnings("These params are generated from a contact or physbone, which usually should happen on each remote, NOT synced:", warnContactParams, maxCount),
                 FormatWarnings("These params are used by a momentary button in your menu, which are often used by presets and often shouldn't be synced:", warnButtonParams, maxCount),
-                FormatWarnings("These params can only change using OSC, they canot change if you are not running an OSC app:", warnOscOnlyParams, maxCount),
+                FormatWarnings("These params can only change using OSC, they cannot change if you are not running an OSC app:", warnOscOnlyParams, maxCount),
             }.NotNull().Join("\n\n");
             if (!string.IsNullOrEmpty(lines)) {
                 return "Want to improve performance and reduce sync? VRCFury has detected that these params should possibly be marked as not network synced in your Parameters file:\n\n" + lines;
