@@ -11,6 +11,7 @@ using VF.Menu;
 using VF.Model;
 using VF.Service;
 using VF.Utils;
+using VF.VrcfEditorOnly;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
@@ -137,7 +138,7 @@ namespace VF {
         }
 
         [DefaultExecutionOrder(-10000)]
-        public class RescanOnStartComponent : MonoBehaviour {
+        public class RescanOnStartComponent : MonoBehaviour, IVrcfEditorOnly {
             private void Start() {
                 Rescan();
                 var obj = gameObject;

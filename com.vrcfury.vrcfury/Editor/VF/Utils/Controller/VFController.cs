@@ -8,6 +8,7 @@ using VF.Builder;
 using VF.Inspector;
 using VF.Service;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase;
 
 namespace VF.Utils.Controller {
     internal class VFController {
@@ -360,7 +361,7 @@ namespace VF.Utils.Controller {
             ctrl.parameters = ctrl.parameters.Where(p => VRCFEnumUtils.IsValid(p.type)).ToArray();
         }
 
-        public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<VFLayer> limitToLayers = null) {
+        public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, bool includeCopyDriverReads = true, ICollection<VFLayer> limitToLayers = null) {
             string RewriteParamName(string str) {
                 if (string.IsNullOrEmpty(str)) return str;
                 return rewriteParamNameNullUnsafe(str);
@@ -399,11 +400,15 @@ namespace VF.Utils.Controller {
             
             foreach (var b in affectsLayers.SelectMany(layer => layer.allBehaviours)) {
                 // VRCAvatarParameterDriver
-                if (includeWrites && b is VRCAvatarParameterDriver oldB) {
+                if (b is VRCAvatarParameterDriver oldB) {
                     foreach (var p in oldB.parameters) {
-                        p.name = RewriteParamName(p.name);
+                        if (includeWrites) {
+                            p.name = RewriteParamName(p.name);
+                        }
 #if VRCSDK_HAS_DRIVER_COPY
-                        p.source = RewriteParamName(p.source);
+                        if (p.type == VRC_AvatarParameterDriver.ChangeType.Copy && includeCopyDriverReads) {
+                            p.source = RewriteParamName(p.source);
+                        }
 #endif
                     }
                     VRCFuryEditorUtils.MarkDirty(b);

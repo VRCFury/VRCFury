@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
+using VF.Hooks;
 
 namespace VF.Builder {
     internal static class VRCFArmatureUtils {
@@ -27,7 +28,7 @@ namespace VF.Builder {
         public static VFGameObject FindBoneOnArmatureOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
             var bonePath = FindBonePathOrException(avatarObject, findBone);
 
-            var found = avatarObject.Find(bonePath);
+            var found = VRCFObjectPathCache.Find(avatarObject, bonePath);
             if (found == null) {
                 throw new VRCFBuilderException(
                     "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +

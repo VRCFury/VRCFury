@@ -1,13 +1,10 @@
-using UnityEditor;
-using UnityEditor.Animations;
+using System.Collections.Generic;
 using UnityEngine.UIElements;
-using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
-using VF.Utils;
 
 namespace VF.Feature {
     [FeatureTitle("Remove Built-in Hand Gestures")]
@@ -15,16 +12,23 @@ namespace VF.Feature {
     [FeatureRootOnly]
     internal class RemoveHandGesturesBuilder : FeatureBuilder<RemoveHandGestures2> {
         [VFAutowired] private readonly ControllersService controllers;
+        
+        public static readonly ISet<string> GestureParams = new HashSet<string>(new [] {
+            "GestureLeft",
+            "GestureRight",
+            "GestureLeftWeight",
+            "GestureRightWeight",
+        });
 
         [FeatureBuilderAction]
         public void Apply() {
             foreach (var controller in controllers.GetAllUsedControllers()) {
-                foreach (var layer in controller.GetUnmanagedLayers()) {
-                    layer.RewriteConditions(c => {
-                        if (c.IsForGesture()) return c.IncludesValue(0);
-                        return c;
-                    });
-                }
+                controller.RewriteParameters(p => {
+                    if (GestureParams.Contains(p)) {
+                        return controller.Zero();
+                    }
+                    return p;
+                }, includeWrites: false, includeCopyDriverReads: false, limitToLayers: controller.GetUnmanagedLayers());
             }
         }
 

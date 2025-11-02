@@ -28,5 +28,17 @@ namespace VF.Utils {
             UnitySerializationUtils.CloneSerializable(param, clone);
             return clone;
         }
+        
+        public static bool IsSameAs(this VRCExpressionParameters.Parameter param, VRCExpressionParameters.Parameter other) {
+            return param.name == other.name
+                   && param.valueType == other.valueType
+                   && param.saved == other.saved
+                   && param.defaultValue == other.defaultValue
+                   && param.IsNetworkSynced() == other.IsNetworkSynced();
+        }
+
+        public static int TypeCost(this VRCExpressionParameters.Parameter param) {
+            return VRCExpressionParameters.TypeCost(param.valueType);
+        }
     }
 }

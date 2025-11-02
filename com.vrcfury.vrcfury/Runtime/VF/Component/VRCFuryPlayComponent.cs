@@ -1,8 +1,9 @@
 using UnityEditor;
 using UnityEngine;
+using VF.VrcfEditorOnly;
 
 namespace VF.Component {
-    internal abstract class VRCFuryPlayComponent : MonoBehaviour {
+    internal abstract class VRCFuryPlayComponent : MonoBehaviour, IVrcfEditorOnly {
 #if UNITY_EDITOR
         private void OnValidate() {
             hideFlags |= HideFlags.DontSaveInBuild | HideFlags.DontSaveInEditor | HideFlags.NotEditable;

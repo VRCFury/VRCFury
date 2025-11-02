@@ -44,7 +44,8 @@ namespace VF.Utils {
 #endif
         }
 
-        public static string JoinWithMore(this ICollection<string> source, int max) {
+        public static string JoinWithMore(this IEnumerable<string> e, int max) {
+            var source = e.ToList();
             var count = source.Count();
             return source.Take(count).Join('\n')
                    + (count > max ? ("\n ... and " + (count - max) + " more") : "");

@@ -1,4 +1,5 @@
-﻿using VF.Builder;
+﻿using JetBrains.Annotations;
+using VF.Builder;
 using VF.Injector;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
@@ -11,19 +12,35 @@ namespace VF.Service {
         
         private ParamManager _params;
         public ParamManager GetParams() {
-            if (_params == null) {
-                var origParams = VRCAvatarUtils.GetAvatarParams(avatar);
-                VRCExpressionParameters prms;
-                if (origParams != null) {
-                    prms = origParams.Clone();
-                } else {
-                    prms = VrcfObjectFactory.Create<VRCExpressionParameters>();
-                    prms.parameters = new VRCExpressionParameters.Parameter[]{};
-                }
-                VRCAvatarUtils.SetAvatarParams(avatar, prms);
-                _params = new ParamManager(prms);
-            }
+            if (_params == null) _params = MakeParams();
             return _params;
+        }
+
+        private ParamManager MakeParams() {
+            var origParams = VRCAvatarUtils.GetAvatarParams(avatar);
+            VRCExpressionParameters prms;
+            if (VrcfObjectFactory.DidCreate(origParams)) {
+                // We probably made this in an earlier preprocessor hook, so we can just adopt it
+                prms = origParams;
+            } else if (origParams != null) {
+                prms = origParams.Clone();
+            } else {
+                prms = VrcfObjectFactory.Create<VRCExpressionParameters>();
+            }
+            VRCAvatarUtils.SetAvatarParams(avatar, prms);
+            return new ParamManager(prms);
+        }
+
+        public void ClearCache() {
+            _params = null;
+        }
+
+        public VRCExpressionParameters GetReadOnlyParams() {
+            var p = VRCAvatarUtils.GetAvatarParams(avatar);
+            if (p == null) {
+                p = VrcfObjectFactory.Create<VRCExpressionParameters>();
+            }
+            return p;
         }
     }
 }

@@ -458,10 +458,11 @@ namespace VF.Service {
                     }
 
                     if (!string.IsNullOrWhiteSpace(to.offset)) {
-                        var path = obj.GetPath(avatarObject);
-                        var finalPath = ClipRewritersService.Join(path, to.offset);
-                        obj = avatarObject.Find(finalPath);
-                        if (obj == null) throw new Exception($"Failed to find object at path '{finalPath}'");
+                        var offsetObj = VRCFObjectPathCache.Find(obj, to.offset);
+                        if (offsetObj == null) {
+                            throw new Exception($"Failed to find object at path '{ClipRewritersService.Join(obj.GetPath(avatarObject), to.offset)}'");
+                        }
+                        obj = offsetObj;
                     }
                     
                     // This is just here to ensure that the target is inside the avatar
@@ -508,7 +509,7 @@ namespace VF.Service {
                         if (!string.IsNullOrWhiteSpace(removeBoneSuffix)) {
                             searchName = searchName.Replace(removeBoneSuffix, "");
                         }
-                        var childAvatarBone = checkAvatarBone.Find(searchName);
+                        var childAvatarBone = VRCFObjectPathCache.Find(checkAvatarBone, searchName);
 
                         // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
                         var recurseButDoNotLink = false;
@@ -520,24 +521,19 @@ namespace VF.Service {
                                     recurseButDoNotLink = true;
                                     break;
                                 }
-                                childAvatarBone = checkAvatarBone.Find(b + "/" + searchName);
+                                childAvatarBone = VRCFObjectPathCache.Find(checkAvatarBone, b + "/" + searchName);
                                 if (childAvatarBone != null) {
                                     links.hacksUsed.Add("Avatar has extra mid-bone: " + b);
                                     break;
                                 }
                                 if (checkAvatarBone.name == b) {
-                                    childAvatarBone = checkAvatarBone.parent.Find(searchName);
+                                    childAvatarBone = VRCFObjectPathCache.Find(checkAvatarBone, "../" + searchName);
                                     if (childAvatarBone != null) {
                                         links.hacksUsed.Add("Avatar has fake mid-bone: " + b);
                                         break;
                                     }
                                 }
                             }
-                        }
-
-                        if (childAvatarBone != null) {
-                            var marshmallowChild = GetMarshmallowChild(childAvatarBone);
-                            if (marshmallowChild != null) childAvatarBone = marshmallowChild;
                         }
 
                         if (childAvatarBone != null) {
@@ -556,24 +552,6 @@ namespace VF.Service {
             links.avatarMain = avatarBone;
 
             return links;
-        }
-
-        /**
-         * Marshmallow PB unity package inserts fake bones in the armature, breaking our link.
-         * Detect if this happens, and return the proper child bone instead.
-         */
-        private static VFGameObject GetMarshmallowChild(VFGameObject orig) {
-            var scaleConstraint = orig.GetConstraints().FirstOrDefault(c => c.IsScale());
-            if (scaleConstraint == null) return null;
-            var sources = scaleConstraint.GetSources();
-            if (sources.Length != 1) return null;
-            var source = sources[0];
-            if (source == null) return null;
-            var scaleTargetInMarshmallow = source
-                .GetSelfAndAllParents()
-                .Any(t => t.name.ToLower().Contains("marshmallow"));
-            if (!scaleTargetInMarshmallow) return null;
-            return orig.Find(orig.name);
         }
     }
 }

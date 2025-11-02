@@ -101,8 +101,8 @@ namespace VF.Utils {
                 return clip;
             }
 
-            public Motion MakeCopier(VFAFloat from, float minSupported = 0, float maxSupported = float.MaxValue, float multiplier = 1) {
-                var name = $"AAP: {Name()} = {from.Name()}";
+            public Motion MakeCopier(string from, float minSupported = 0, float maxSupported = float.MaxValue, float multiplier = 1) {
+                var name = $"AAP: {Name()} = {from}";
                 if (multiplier != 1) name += $" * {multiplier}";
                 if (minSupported >= 0) {
                     var direct = VFBlendTreeDirect.Create(name);

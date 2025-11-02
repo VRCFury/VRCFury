@@ -5,18 +5,23 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using JetBrains.Annotations;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
-using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
+using VF.Menu;
+using VF.Model;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Core;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDK3.Dynamics.Contact.Components;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 using VRC.SDKBase;
+using static VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu.Control;
 using Random = System.Random;
 
 namespace VF.Service {
@@ -25,156 +30,241 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ParamsService paramsService;
-        private ParamManager paramz => paramsService.GetParams();
-        [VFAutowired] private readonly MenuService menuService;
-        private MenuManager menu => menuService.GetMenu();
-        [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ParameterSourceService parameterSourceService;
         [VFAutowired] private readonly OriginalAvatarService originalAvatarService;
         [VFAutowired] private readonly ExceptionService excService;
+        [VFAutowired] private readonly MenuService menuService;
+        private VRCExpressionsMenu menuReadOnly => menuService.GetReadOnlyMenu();
+        
+        private const float BATCH_TIME = 0.1f;
 
-        [FeatureBuilderAction(FeatureOrder.ParameterCompressor)]
         public void Apply() {
-            RemoveDuplicates();
-            
-            OptimizationDecision decision;
-            if (BuildTargetUtils.IsDesktop()) {
-                decision = AlignForDesktop();
-            } else {
-                decision = AlignForMobile();
+            OptimizationDecisionWithInfo decisionWithInfo;
+            {
+                // This is written weird to make sure we don't clone the params if we don't have to
+                var readOnlyParams = paramsService.GetReadOnlyParams();
+                var mutated = readOnlyParams.Clone();
+                mutated.RemoveDuplicates();
+                if (BuildTargetUtils.IsDesktop()) {
+                    decisionWithInfo = AlignForDesktop(mutated);
+                } else {
+                    decisionWithInfo = AlignForMobile(mutated);
+                }
+                if (!readOnlyParams.IsSameAs(mutated)) {
+                    paramsService.GetParams().GetRaw().parameters = mutated.parameters;
+                }
             }
 
-            if (!decision.compress.Any()) {
+            var decision = decisionWithInfo.decision;
+            if (decision == null || !decision.compress.Any()) {
                 return;
             }
 
+            var paramz = paramsService.GetParams().GetRaw();
             var (numberBatches, boolBatches) = decision.GetBatches();
 
-            var syncPointer = fx.NewInt("SyncPointer", synced: true);
+            VRCExpressionParameters.Parameter MakeParam(string name, VRCExpressionParameters.ValueType type, bool synced) {
+                var param = new VRCExpressionParameters.Parameter {
+                    name = controllers.MakeUniqueParamName(name),
+                    valueType = type
+                };
+                param.SetNetworkSynced(synced);
+                paramz.Add(param);
+                return param;
+            }
+
+            var batchCount = Math.Max(numberBatches.Count, boolBatches.Count);
+            var indexBitCount = decision.GetIndexBitCount();
+            var syncIndex = Enumerable.Range(0, indexBitCount)
+                .Select(i => fx.NewBool($"SyncIndex{i}", synced: true))
+                .ToArray();
             var syncInts = Enumerable.Range(0, decision.numberSlots)
-                .Select(i => fx.NewInt("SyncDataNum" + i, synced: true))
+                .Select(i => MakeParam("SyncDataNum" + i, VRCExpressionParameters.ValueType.Int, true))
                 .ToList();
             var syncBools = Enumerable.Range(0, decision.boolSlots)
-                .Select(i => fx.NewBool("SyncDataBool" + i, synced: true))
+                .Select(i => MakeParam("SyncDataBool" + i, VRCExpressionParameters.ValueType.Bool, true))
                 .ToList();
 
             var layer = fx.NewLayer("Parameter Compressor");
-            var entry = layer.NewState("Entry").Move(-3, -1);
-            var local = layer.NewState("Local").Move(0, 2);
-            entry.TransitionsTo(local).When(fx.IsLocal().IsTrue());
-            entry.TransitionsToExit().When(fx.Always());
+            var entry = layer.NewState("Entry").Move(0, 2);
+            entry.TransitionsFromAny().When(fx.IsAnimatorEnabled().IsFalse());
+            var remoteLost = layer.NewState("Receive (Lost)").Move(entry, 0, 1);
+            entry.TransitionsTo(remoteLost).When(fx.IsLocal().IsFalse());
+            // var clip = VrcfObjectFactory.Create<AnimationClip>();
+            // clip.SetCurve("Body", typeof(SkinnedMeshRenderer), "material._Color.r", 1);
+            // clip.SetCurve("Body", typeof(SkinnedMeshRenderer), "material._Color.g", 0);
+            // clip.SetCurve("Body", typeof(SkinnedMeshRenderer), "material._Color.b", 0);
+            // clip.SetCurve("Body", typeof(SkinnedMeshRenderer), "material._Color.a", 1);
+            // remoteLost.WithAnimation(clip);
 
-            var math = dbtLayerService.GetMath(dbtLayerService.Create());
-
-            Action addRoundRobins = () => { };
-            Action addDefault = () => { };
-            VFState lastSendState = null;
-            VFState lastReceiveState = null;
-            var nextStateSpacing = 1;
-            for (int i = 0; i < numberBatches.Count || i < boolBatches.Count; i++) {
-                var syncIndex = i + 1;
-                var numberBatch = i < numberBatches.Count ? numberBatches[i] : new List<VRCExpressionParameters.Parameter>();
-                var boolBatch = i < boolBatches.Count ? boolBatches[i] : new List<VRCExpressionParameters.Parameter>();
+            Action doAtEnd = () => { };
+            Action<VFState,VFState,VFCondition> whenNextStateReady = null;
+            VFState sendLatchState = null;
+            VFState recvUnlatchState = null;
+            var yOffset = 2;
+            foreach (var batchNum in Enumerable.Range(0, batchCount)) {
+                var syncId = ((batchNum - 1) % ((1 << indexBitCount) - 1)) + 1;
+                if (batchNum == 0) syncId = 0;
+                var syncIds = Enumerable.Range(0, indexBitCount).Select(i => (syncId & 1<<(indexBitCount-1-i)) > 0).ToArray();
+                var numberBatch = batchNum < numberBatches.Count ? numberBatches[batchNum] : new List<VRCExpressionParameters.Parameter>();
+                var boolBatch = batchNum < boolBatches.Count ? boolBatches[batchNum] : new List<VRCExpressionParameters.Parameter>();
 
                 // What is this sync index called?
-                var title = $"#{syncIndex}:\n" + numberBatch.Concat(boolBatch).Select(p => p.name).Join("\n");
+                var title = $"({syncIds.Select(b => b ? "1" : "0").Join("")}):\n"
+                            + numberBatch.Concat(boolBatch).Select(p => p.name).Join("\n");
 
                 // Create and wire up send and receive states
-                var sendState = layer.NewState($"Send {title}");
-                var receiveState = layer.NewState($"Receive {title}");
-                sendState
-                    .Drives(syncPointer, syncIndex)
-                    .TransitionsTo(local)
-                    .WithTransitionExitTime(0.1f)
-                    .When(fx.Always());
-                receiveState.TransitionsFromEntry().When(syncPointer.IsEqualTo(syncIndex));
-                receiveState.TransitionsToExit().When(fx.Always());
-                if (i == 0) {
-                    sendState.Move(local, 1, 0);
-                    receiveState.Move(local, 3, 0);
-                } else {
-                    sendState.Move(lastSendState, 0, nextStateSpacing);
-                    receiveState.Move(lastReceiveState, 0, nextStateSpacing);
+                var latchTitlePrefix = (batchNum == 0) ? "Latch & " : "";
+                // We can't just go to the next send after 0.1s, because of a weird unity animator quirk where it will exit
+                // "early" if it thinks the exit time is closer to the current frame than the next frame, which would potentially
+                // make it update faster than the sync rate and lose a packet. To fix this, we have to add exactly one extra frame by going through
+                // an additional state between each send.
+                var sendStateExtraFrame = layer.NewState("Extra Frame").Move(entry, -2, yOffset);
+                var sendState = layer.NewState($"{latchTitlePrefix}Send {title}").Move(entry, -1, yOffset);
+                sendStateExtraFrame.TransitionsTo(sendState).When(fx.Always());
+                // if (batchNum == 0) {
+                //     sendState.WithAnimation(clip);
+                // }
+                var receiveConditions = new List<VFCondition>();
+                foreach (var i in Enumerable.Range(0, indexBitCount)) {
+                    doAtEnd += () => sendState.Drives(syncIndex[i], syncIds[i]);
+                    receiveConditions.Add(syncIndex[i].Is(syncIds[i]));
                 }
-                lastSendState = sendState;
-                lastReceiveState = receiveState;
-                nextStateSpacing = (int)Math.Ceiling((title.Split('\n').Length+1) / 5f);
+                var receiveState = layer.NewState($"{latchTitlePrefix}Receive {title}").Move(entry, batchNum == 0 ? 2 : 1, batchNum == 0 ? 1 : yOffset);
+                var receiveCondition = VFCondition.All(receiveConditions);
+                VFState receiveState2 = null;
 
-                for (var slotNum = 0; slotNum < numberBatch.Count(); slotNum++) {
-                    var originalParam = numberBatch[slotNum].name;
-                    var type = numberBatch[slotNum].valueType;
-                    var lastSynced = fx.NewFloat($"{originalParam}/LastSynced", def: -100);
-                    sendState.DrivesCopy(originalParam, lastSynced);
+                void WithReceiveState(Action<VFState> with) {
+                    with.Invoke(receiveState);
+                    if (receiveState2 != null) with.Invoke(receiveState2);
+                }
 
-                    VFAFloat currentValue;
-                    if (type == VRCExpressionParameters.ValueType.Float) {
-                        currentValue = fx.NewFloat(originalParam, usePrefix: false);
-                        sendState.DrivesCopy(originalParam, syncInts[slotNum], -1, 1, 0, 254);
-                        receiveState.DrivesCopy(syncInts[slotNum], originalParam, 0, 254, -1, 1);
-                    } else if (type == VRCExpressionParameters.ValueType.Int) {
-                        currentValue = fx.NewFloat($"{originalParam}/Current");
-                        local.DrivesCopy(originalParam, currentValue);
-                        sendState.DrivesCopy(originalParam, syncInts[slotNum]);
-                        receiveState.DrivesCopy(syncInts[slotNum], originalParam);
+                if (batchNum == 0) {
+                    entry.TransitionsTo(sendState).When(fx.IsLocal().IsTrue());
+                    receiveState2 = layer.NewState($"Receive {title}").Move(entry, 1, yOffset);
+                    remoteLost.TransitionsTo(receiveState2).When(receiveCondition);
+                    sendLatchState = sendState;
+                    recvUnlatchState = receiveState;
+                    doAtEnd += () => {
+                        whenNextStateReady?.Invoke(sendStateExtraFrame, receiveState, receiveCondition);
+                    };
+                }
+                whenNextStateReady?.Invoke(sendStateExtraFrame, receiveState, receiveCondition);
+                whenNextStateReady = (nextSend, nextRecv, nextRecvCond) => {
+                    sendState.TransitionsTo(nextSend).WithTransitionExitTime(BATCH_TIME).When();
+                    WithReceiveState(rcv => {
+                        //rcv.TransitionsTo(remoteLost).WithTransitionExitTime(BATCH_TIMEOUT).When();
+                        rcv.TransitionsTo(nextRecv).When(nextRecvCond);
+                        rcv.TransitionsTo(remoteLost).When(receiveCondition.Not().And(nextRecvCond.Not()));
+                    });
+                };
+                
+                yOffset += (int)Math.Ceiling((title.Split('\n').Length+1) / 5f);
+
+                void SyncParam(VRCExpressionParameters.Parameter original, VRCExpressionParameters.Parameter slot) {
+                    var latch = MakeParam(original.name, original.valueType, false);
+                    VRCExpressionParameters.Parameter sendFrom;
+                    if (batchNum == 0) {
+                        // No need to latch things in the first batch when sending
+                        sendFrom = original;
+                    } else {
+                        sendLatchState?.DrivesCopy(original.name, latch.name);
+                        sendFrom = latch;
+                    }
+                    recvUnlatchState?.DrivesCopy(latch.name, original.name);
+                    // We abuse doAtEnd here, since the latch/unlatch needs to happen before the data drivers
+                    if (original.valueType == VRCExpressionParameters.ValueType.Float) {
+                        doAtEnd += () => {
+                            sendState.DrivesCopy(sendFrom.name, slot.name, -1, 1, 0, 254);
+                            WithReceiveState(rcv => rcv.DrivesCopy(slot.name, latch.name, 0, 254, -1, 1));
+                        };
+                    } else if (original.valueType == VRCExpressionParameters.ValueType.Int || original.valueType == VRCExpressionParameters.ValueType.Bool) {
+                        doAtEnd += () => {
+                            sendState.DrivesCopy(sendFrom.name, slot.name);
+                            WithReceiveState(rcv => rcv.DrivesCopy(slot.name, latch.name));
+                        };
                     } else {
                         throw new Exception("Unknown type?");
                     }
-                    var diff = math.Subtract(currentValue, lastSynced);
-                    var shortcutCondition = diff.IsLessThan(0);
-                    shortcutCondition = shortcutCondition.Or(diff.IsGreaterThan(0));
-                    local.TransitionsTo(sendState).When(shortcutCondition);
                 }
-                for (var slotNum = 0; slotNum < boolBatch.Count(); slotNum++) {
-                    var originalParam = boolBatch[slotNum].name;
-                    var lastSynced = fx.NewInt($"{originalParam}/LastSynced", def: -100);
-                    sendState.DrivesCopy(originalParam, lastSynced);
-                    sendState.DrivesCopy(originalParam, syncBools[slotNum]);
-                    receiveState.DrivesCopy(syncBools[slotNum], originalParam);
-                    var shortcutCondition = new VFABool(originalParam, false).IsTrue().And(lastSynced.IsLessThan(1));
-                    shortcutCondition = shortcutCondition.Or(new VFABool(originalParam, false).IsFalse().And(lastSynced.IsGreaterThan(0)));
-                    local.TransitionsTo(sendState).When(shortcutCondition);
+                foreach (var slotNum in Enumerable.Range(0, numberBatch.Count())) {
+                    SyncParam(numberBatch[slotNum], syncInts[slotNum]);
                 }
-
-                if (i == 0) {
-                    addDefault = () => {
-                        local.TransitionsTo(sendState).When(fx.Always());
-                    };
-                } else {
-                    var fromI = syncIndex - 1; // Needs to be set outside the lambda
-                    addRoundRobins += () => {
-                        local.TransitionsTo(sendState).When(syncPointer.IsEqualTo(fromI));
-                    };
+                foreach (var slotNum in Enumerable.Range(0, boolBatch.Count())) {
+                    SyncParam(boolBatch[slotNum], syncBools[slotNum]);
                 }
             }
-            addRoundRobins();
-            addDefault();
+            doAtEnd?.Invoke();
 
-            var originalCost = paramz.GetRaw().CalcTotalCost();
-            foreach (var param in decision.compress) {
+            var originalCost = paramz.CalcTotalCost();
+            var compressNames = decision.compress.Select(p => p.name).ToImmutableHashSet();
+            foreach (var param in paramz.parameters.Where(p => compressNames.Contains(p.name))) {
                 param.SetNetworkSynced(false);
             }
-            var newCost = paramz.GetRaw().CalcTotalCost();
+            var newCost = paramz.CalcTotalCost();
 
-            Debug.Log($"Parameter Compressor: Compressed {originalCost} bits into {newCost} bits.");
+            var wdoff = fx.GetLayers().SelectMany(l => l.allStates).Any(state => !state.writeDefaultValues);
+            if (wdoff) {
+                foreach (var state in layer.allStates) {
+                    state.writeDefaultValues = false;
+                }
+            }
+            NoBadControllerParamsService.UpgradeWrongParamTypes(fx);
+
+            // Debug info
+            {
+                var options = decisionWithInfo.options;
+                var types = options?.FormatTypes();
+
+                var paramWarnings = decisionWithInfo.FormatWarnings(100);
+
+                var minSyncTime = batchCount * BATCH_TIME;
+                // Assume we just missed to the batch, so it has to do 2 full loops AND account for the extra
+                // frame hack needed above, which can add half a frame per batch. Assume 30fps.
+                var maxSyncTime = batchCount * (BATCH_TIME + (1 / 30f) * 0.5f) * 2;
+                
+                var debug = avatarObject.AddComponent<VRCFuryDebugInfo>();
+                debug.title = "Parameter Compressor";
+                debug.debugInfo =
+                    "VRCFury compressed the parameters on this avatar to make them fit VRC's limit."
+                    + $"\n\nOld Total: {FormatBitsPlural(originalCost)}"
+                    + $"\nNew Total: {FormatBitsPlural(newCost)}"
+                    + (!string.IsNullOrEmpty(types) ? $"\nCompressed types: {types}" : "")
+                    + $"\nSync delay: {minSyncTime.ToString("N1")} - {maxSyncTime.ToString("N1")} seconds"
+                    + $"\nBools per batch: {decision.boolSlots}"
+                    + $"\nNumbers per batch: {decision.numberSlots}"
+                    + $"\nBatches per sync: {batchCount}"
+                    + (string.IsNullOrEmpty(paramWarnings) ? "" : $"\n\n{paramWarnings}");
+                debug.warn = true;
+
+                // Patch av3emu to use 0.1 sync time instead of its default (0.2)
+                EditorApplication.delayCall += () => {
+                    EditorApplication.delayCall += () => {
+                        if (avatarObject == null) return;
+                        var type = ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Runtime");
+                        var field = type?.GetField("NonLocalSyncInterval");
+                        if (type == null || field == null) return;
+                        var runtime = avatarObject.GetComponent(type);
+                        if (runtime == null) return;
+                        field.SetValue(runtime, 0.1f);
+                    };
+                };
+            }
         }
 
-        private void RemoveDuplicates() {
-            var seenParams = new HashSet<string>();
-            paramz.GetRaw().parameters = paramz.GetRaw().parameters.Where(p => seenParams.Add(p.name)).ToArray();
-        }
-
-        private OptimizationDecision GetParamsToOptimize() {
-            var originalCost = paramz.GetRaw().CalcTotalCost();
+        private OptimizationDecisionWithInfo GetParamsToOptimize(VRCExpressionParameters paramz) {
+            var originalCost = paramz.CalcTotalCost();
             var maxCost = VRCExpressionParametersExtensions.GetMaxCost();
             if (originalCost <= maxCost) {
-                return new OptimizationDecision();
+                return new OptimizationDecisionWithInfo();
             }
 
             var drivenParams = new HashSet<string>();
             var addDrivenParams = new HashSet<string>();
 
-            foreach (var drivenParam in controllers.GetAllUsedControllers()
+            // Avoid making this clone controllers
+            foreach (var drivenParam in controllers.GetAllReadOnlyControllers()
                          .SelectMany(controller => controller.layers)
                          .SelectMany(layer => layer.allBehaviours)
                          .OfType<VRCAvatarParameterDriver>()
@@ -183,107 +273,194 @@ namespace VF.Service {
                 if (drivenParam.type == VRC_AvatarParameterDriver.ChangeType.Add) addDrivenParams.Add(drivenParam.name);
             }
 
-            // Go/Float is driven by an add driver, but it's safe to compress. The driver is only used while you're
-            // actively holding a button in the menu.
-            addDrivenParams.Remove("Go/Float");
-            
-            var decision = GetParamsToOptimize(false, false, addDrivenParams, originalCost);
-            if (originalCost + decision.CalcOffset() <= maxCost) {
-                return decision;
-            }
-            
-            decision = GetParamsToOptimize(false, true, addDrivenParams, originalCost);
-            if (originalCost + decision.CalcOffset() <= maxCost) {
-                return decision;
-            }
-            
-            decision = GetParamsToOptimize(true, false, addDrivenParams, originalCost);
-            if (originalCost + decision.CalcOffset() <= maxCost) {
-                return decision;
+            var attemptOptions = new Func<ParamSelectionOptions>[] {
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.RadialPuppet } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.Toggle } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.RadialPuppet, ControlType.Toggle } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.TwoAxisPuppet, ControlType.FourAxisPuppet } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.RadialPuppet, ControlType.TwoAxisPuppet, ControlType.FourAxisPuppet } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.Toggle, ControlType.TwoAxisPuppet, ControlType.FourAxisPuppet } },
+                () => new ParamSelectionOptions { allowedMenuTypes = new [] { ControlType.RadialPuppet, ControlType.Toggle, ControlType.TwoAxisPuppet, ControlType.FourAxisPuppet } },
+            };
+
+            var bestCost = originalCost;
+            var bestDecision = new OptimizationDecision();
+            var bestWasSuccess = false;
+            var bestTime = 0f;
+            ParamSelectionOptions bestParameterOptions = null;
+            foreach (var attemptOptionFunc in attemptOptions) {
+                var options = attemptOptionFunc.Invoke();
+                var decision = GetParamsToOptimize(paramz, options.allowedMenuTypes.ToImmutableHashSet(), addDrivenParams, originalCost);
+                var cost = decision.GetFinalCost(originalCost);
+                if (cost >= bestCost) continue;
+                var syncTime = decision.GetBatchCount() * BATCH_TIME;
+                // If we already have a working solution, only accept a more aggressive option if it cuts the sync time at least in half
+                if (bestWasSuccess && syncTime > bestTime / 2) continue;
+                bestCost = cost;
+                bestDecision = decision;
+                bestParameterOptions = options;
+                if (cost <= maxCost) {
+                    bestWasSuccess = true;
+                    if (syncTime <= 1) break; // If sync time is less than 1s, don't need to try any more aggressive options
+                }
             }
 
-            decision = GetParamsToOptimize(true, true, addDrivenParams, originalCost);
-            if (originalCost + decision.CalcOffset() <= maxCost) {
-                return decision;
+            var controllerUsedParams = new HashSet<string>();
+            foreach (var c in controllers.GetAllReadOnlyControllers()) {
+                c.RewriteParameters(p => {
+                    controllerUsedParams.Add(p);
+                    return p;
+                }, includeWrites: false);
             }
 
-            var nonMenuParams = new HashSet<string>(paramz.GetRaw().parameters.Select(p => p.name));
-            nonMenuParams.ExceptWith(GetParamsUsedInMenu(true));
-            nonMenuParams.ExceptWith(drivenParams);
+            var contactParams = new HashSet<string>();
+            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
+                contactParams.Add(c.parameter);
+            }
+            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()) {
+                contactParams.Add(c.parameter + "_IsGrabbed");
+                contactParams.Add(c.parameter + "_Angle");
+                contactParams.Add(c.parameter + "_Stretch");
+                contactParams.Add(c.parameter + "_Squish");
+                contactParams.Add(c.parameter + "_IsPosed");
+            }
 
-            var errorMessage =
-                "Your avatar is out of space for parameters! Your avatar uses "
-                + originalCost + "/" + maxCost
-                + " bits.";
+            var allMenuParamsStr = GetParamsUsedInMenu(null);
+            var buttonMenuParamsStr = GetParamsUsedInMenu(new [] {ControlType.Button,ControlType.SubMenu}.ToImmutableHashSet());
 
-            if (decision.CalcOffset() < 0) {
+            var allSyncedParams = new HashSet<VRCExpressionParameters.Parameter>(paramz.parameters.Where(p => p.IsNetworkSynced()).ToArray());
+            var warnUnusedParams = allSyncedParams.Where(p => !controllerUsedParams.Contains(p.name)).ToList();
+            allSyncedParams.ExceptWith(warnUnusedParams);
+            var warnContactParams = allSyncedParams.Where(p => contactParams.Contains(p.name)).ToList();
+            allSyncedParams.ExceptWith(warnContactParams);
+            var warnButtonParams = allSyncedParams.Where(p => buttonMenuParamsStr.Contains(p.name)).ToList();
+            allSyncedParams.ExceptWith(warnButtonParams);
+            var warnOscOnlyParams = allSyncedParams.Where(p => !allMenuParamsStr.Contains(p.name) && !drivenParams.Contains(p.name) && !p.name.StartsWith("FT/")).ToList();
+            allSyncedParams.ExceptWith(warnOscOnlyParams);
+
+            var decisionWithInfo = new OptimizationDecisionWithInfo {
+                decision = bestDecision,
+                warnUnusedParams = warnUnusedParams,
+                warnContactParams = warnContactParams,
+                warnButtonParams = warnButtonParams,
+                warnOscOnlyParams = warnOscOnlyParams,
+                options = bestParameterOptions
+            };
+
+            var setting = CompressorMenuItem.Get();
+            if (bestWasSuccess) {
+                if (setting == CompressorMenuItem.Value.Compress) return decisionWithInfo;
+                if (setting == CompressorMenuItem.Value.Ask) {
+                    var msg = $"Your avatar is out of space for parameters! Your avatar uses {originalCost}/{maxCost} bits.";
+                    msg += " VRCFury can compress your parameters to fit, at the expense of slightly slower toggle syncing in game. Is this okay?";
+                    var ok = EditorUtility.DisplayDialog("Out of parameter space", msg, "Ok (Accept Compression)", "Fail the Build");
+                    if (ok) return decisionWithInfo;
+                }
+            }
+
+            var errorMessage = $"Your avatar is out of space for parameters! Your avatar uses {originalCost}/{maxCost} bits.";
+
+            if (!bestWasSuccess && bestCost < originalCost && setting != CompressorMenuItem.Value.Fail) {
                 errorMessage +=
                     " VRCFury attempted to compress your parameters to fit, but even with maximum compression," +
-                    " VRCFury could only get it down to " + (originalCost + decision.CalcOffset()) + "/" +
-                    maxCost + " bits.";
+                    $" VRCFury could only get it down to {bestCost}/{maxCost} bits.";
             }
-            
+
             errorMessage += " Ask your avatar creator, or the creator of the last prop you've added, " +
                             "if there are any parameters you can remove to make space.";
 
-            if (nonMenuParams.Count > 0) {
-                errorMessage += "\n\n"
-                    + "These parameters were not compressable because they are not used in your menu, and not driven. If these aren't related to OSC, you should probably delete them:\n"
-                    + nonMenuParams.JoinWithMore(20);
+            if (setting != CompressorMenuItem.Value.Fail) {
+                var paramWarnings = decisionWithInfo.FormatWarnings(20);
+                if (!string.IsNullOrEmpty(paramWarnings)) {
+                    errorMessage += $"\n\n{paramWarnings}";
+                }
             }
-            
+
             excService.ThrowIfActuallyUploading(new SneakyException(errorMessage));
-            return new OptimizationDecision();
+            return new OptimizationDecisionWithInfo();
         }
 
-        private ISet<string> GetParamsUsedInMenu(bool includePuppets) {
-            var paramNames = new HashSet<string>();
-            void AttemptToAdd(string paramName) {
-                if (string.IsNullOrEmpty(paramName)) return;
-                paramNames.Add(paramName);
+        public class ParamSelectionOptions {
+            public IList<ControlType> allowedMenuTypes;
+
+            public string FormatTypes() {
+                return MenuTypePriority.Where(t => allowedMenuTypes.Contains(t)).Select(t => t.ToString()).Join(", ");
             }
-            menu.GetRaw().ForEachMenu(ForEachItem: (control, list) => {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.RadialPuppet) {
-                    AttemptToAdd(control.GetSubParameter(0)?.name);
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.Button || control.type == VRCExpressionsMenu.Control.ControlType.Toggle) {
-                    AttemptToAdd(control.parameter?.name);
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.FourAxisPuppet && includePuppets) {
-                    AttemptToAdd(control.GetSubParameter(0)?.name);
-                    AttemptToAdd(control.GetSubParameter(1)?.name);
-                    AttemptToAdd(control.GetSubParameter(2)?.name);
-                    AttemptToAdd(control.GetSubParameter(3)?.name);
-                } else if (control.type == VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet && includePuppets) {
-                    AttemptToAdd(control.GetSubParameter(0)?.name);
-                    AttemptToAdd(control.GetSubParameter(1)?.name);
-                }
-
-                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
-            });
-            return paramNames;
         }
 
-        private OptimizationDecision GetParamsToOptimize(bool includePuppets, bool includeBools, ISet<string> addDriven, int originalCost) {
+        private static readonly IList<ControlType> MenuTypePriority = new[] {
+            // Make sure these are in priority order, since it matters if a param is used by multiple menu item types
+            ControlType.RadialPuppet,
+            ControlType.Toggle,
+            ControlType.TwoAxisPuppet,
+            ControlType.FourAxisPuppet,
+            ControlType.Button,
+            ControlType.SubMenu,
+        };
 
+        private ISet<string> GetParamsUsedInMenu(ISet<ControlType> allowedMenuTypes) {
+            var paramNameToMenuType = new Dictionary<string, ControlType>();
+            void AttemptToAdd(Parameter param, ControlType menuType) {
+                if (param == null) return;
+                if (string.IsNullOrEmpty(param.name)) return;
+                var menuTypePriority = MenuTypePriority.IndexOf(menuType);
+                if (menuTypePriority < 0) return;
+                if (paramNameToMenuType.TryGetValue(param.name, out var oldMenuType)) {
+                    var oldMenuTypePriority = MenuTypePriority.IndexOf(oldMenuType);
+                    if (menuTypePriority < oldMenuTypePriority) return;
+                }
+                paramNameToMenuType[param.name] = menuType;
+            }
+
+            // Don't use MenuService to avoid making a clone if this isn't a vrcfury asset
+            if (menuReadOnly != null) {
+                menuReadOnly.ForEachMenu(ForEachItem: (control, list) => {
+                    if (control.type == ControlType.RadialPuppet) {
+                        AttemptToAdd(control.parameter, ControlType.SubMenu);
+                        AttemptToAdd(control.GetSubParameter(0), control.type);
+                    } else if (control.type == ControlType.Button) {
+                        AttemptToAdd(control.parameter, control.type);
+                    } else if (control.type == ControlType.Toggle) {
+                        AttemptToAdd(control.parameter, control.type);
+                    } else if (control.type == ControlType.FourAxisPuppet) {
+                        AttemptToAdd(control.parameter, ControlType.SubMenu);
+                        AttemptToAdd(control.GetSubParameter(0), control.type);
+                        AttemptToAdd(control.GetSubParameter(1), control.type);
+                        AttemptToAdd(control.GetSubParameter(2), control.type);
+                        AttemptToAdd(control.GetSubParameter(3), control.type);
+                    } else if (control.type == ControlType.TwoAxisPuppet) {
+                        AttemptToAdd(control.parameter, ControlType.SubMenu);
+                        AttemptToAdd(control.GetSubParameter(0), control.type);
+                        AttemptToAdd(control.GetSubParameter(1), control.type);
+                    } else if (control.type == ControlType.SubMenu) {
+                        AttemptToAdd(control.parameter, ControlType.SubMenu);
+                    }
+
+                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                });
+            }
+            return paramNameToMenuType
+                .Where(pair => allowedMenuTypes == null || allowedMenuTypes.Contains(pair.Value))
+                .Select(pair => pair.Key)
+                .ToImmutableHashSet();
+        }
+
+        private OptimizationDecision GetParamsToOptimize(
+            VRCExpressionParameters paramz,
+            ISet<ControlType> allowedMenuTypes,
+            ISet<string> addDriven,
+            int originalCost
+        ) {
             var eligible = new List<VRCExpressionParameters.Parameter>();
-            var usedInMenu = GetParamsUsedInMenu(includePuppets);
+            var usedInMenu = GetParamsUsedInMenu(allowedMenuTypes);
 
-            foreach (var param in paramz.GetRaw().parameters) {
+            foreach (var param in paramz.parameters) {
+                if (!param.IsNetworkSynced()) continue;
                 if (!usedInMenu.Contains(param.name)) continue;
-                if (addDriven.Contains(param.name)) continue;
-
-                var networkSynced = param.IsNetworkSynced();
-                if (!networkSynced) continue;
-
-                var shouldOptimize = param.valueType == VRCExpressionParameters.ValueType.Int ||
-                                     param.valueType == VRCExpressionParameters.ValueType.Float;
-
-                shouldOptimize |= param.valueType == VRCExpressionParameters.ValueType.Bool && includeBools;
-
-                if (shouldOptimize) {
-                    eligible.Add(param);
-                }
+                if (addDriven.Contains(param.name) && !allowedMenuTypes.Contains(ControlType.FourAxisPuppet)) continue;
+                eligible.Add(param);
             }
-            
+
             var decision = new OptimizationDecision {
                 compress = eligible
             };
@@ -317,14 +494,31 @@ namespace VF.Service {
             return Path.Combine(localAppData, "VRCFury", "DesktopSyncData", blueprintId + ".json");
         }
 
-        public static bool IsMobileBuildWithSavedData(VFGameObject avatarObject) {
-            if (BuildTargetUtils.IsDesktop()) return false;
-            var blueprintId = avatarObject.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
-            var savePath = GetSavePath(blueprintId);
-            if (savePath == null || !File.Exists(savePath)) {
-                return false;
+        private class OptimizationDecisionWithInfo {
+            public OptimizationDecision decision;
+            public ParamSelectionOptions options;
+            public IList<VRCExpressionParameters.Parameter> warnUnusedParams;
+            public IList<VRCExpressionParameters.Parameter> warnContactParams;
+            public IList<VRCExpressionParameters.Parameter> warnButtonParams;
+            public IList<VRCExpressionParameters.Parameter> warnOscOnlyParams;
+
+            public string FormatWarnings(int maxCount) {
+                var lines = new [] {
+                    FormatWarnings("These params are totally unused in all controllers:", warnUnusedParams, maxCount),
+                    FormatWarnings("These params are generated from a contact or physbone, which usually should happen on each remote, NOT synced:", warnContactParams, maxCount),
+                    FormatWarnings("These params are used by a momentary button in your menu, which are often used by presets and often shouldn't be synced:", warnButtonParams, maxCount),
+                    FormatWarnings("These params can only change using OSC, they canot change if you are not running an OSC app:", warnOscOnlyParams, maxCount),
+                }.NotNull().Join("\n\n");
+                if (!string.IsNullOrEmpty(lines)) {
+                    return "Want to improve performance and reduce sync? VRCFury has detected that these params should possibly be marked as not network synced in your Parameters file:\n\n" + lines;
+                }
+                return "";
             }
-            return true;
+            [CanBeNull]
+            private static string FormatWarnings(string title, IList<VRCExpressionParameters.Parameter> list, int maxCount) {
+                if (list == null || list.Count == 0) return null;
+                return title + "\n" + list.Select(p => $"{p.name} ({FormatBitsPlural(p.TypeCost())})").JoinWithMore(maxCount);
+            }
         }
 
         private class OptimizationDecision {
@@ -332,21 +526,47 @@ namespace VF.Service {
             public int boolSlots = 0;
             public IList<VRCExpressionParameters.Parameter> compress = new VRCExpressionParameters.Parameter[] { };
 
-            public int CalcOffset() {
-                return 8 + numberSlots * 8 + boolSlots
-                    - compress.Sum(p => VRCExpressionParameters.TypeCost(p.valueType));
+            public OptimizationDecision TempCopy(Action<OptimizationDecision> with) {
+                var copy = new OptimizationDecision {
+                    numberSlots = numberSlots,
+                    boolSlots = boolSlots,
+                    compress = compress.ToList()
+                };
+                with.Invoke(copy);
+                return copy;
+            }
+
+            public int GetIndexBitCount() {
+                if (GetBatchCount() <= 2) {
+                    return 1;
+                } else {
+                    return 2;
+                }
+            }
+
+            public int GetFinalCost(int originalCost) {
+                return originalCost
+                       + GetIndexBitCount()
+                       + numberSlots * 8
+                       + boolSlots
+                       - compress.Sum(p => p.TypeCost());
+            }
+
+            public int GetBatchCount() {
+                var batches = GetBatches();
+                return Math.Max(batches.numberBatches.Count, batches.boolBatches.Count);
             }
 
             public (
                 List<List<VRCExpressionParameters.Parameter>> numberBatches,
                 List<List<VRCExpressionParameters.Parameter>> boolBatches
-            ) GetBatches(int offsetNumberSlots = 0) {
+            ) GetBatches() {
                 var numbersToOptimize =
                     compress.Where(i => i.valueType != VRCExpressionParameters.ValueType.Bool).ToList();
                 var boolsToOptimize =
                     compress.Where(i => i.valueType == VRCExpressionParameters.ValueType.Bool).ToList();
                 var numberBatches = numbersToOptimize
-                    .Chunk(numberSlots + offsetNumberSlots)
+                    .Chunk(numberSlots)
                     .Select(chunk => chunk.ToList())
                     .ToList();
                 var boolBatches = boolsToOptimize
@@ -354,11 +574,6 @@ namespace VF.Service {
                     .Select(chunk => chunk.ToList())
                     .ToList();
                 return (numberBatches, boolBatches);
-            }
-
-            public int GetNumRounds(int offsetNumberSlots = 0) {
-                var batches = GetBatches(offsetNumberSlots);
-                return Math.Max(batches.numberBatches.Count, batches.boolBatches.Count);
             }
 
             /**
@@ -372,15 +587,18 @@ namespace VF.Service {
                 var numberCount = compress.Count(p => p.valueType != VRCExpressionParameters.ValueType.Bool);
                 boolSlots = boolCount > 0 ? 1 : 0;
                 numberSlots = numberCount > 0 ? 1 : 0;
-                var currentCost = originalCost + CalcOffset();
                 var maxCost = VRCExpressionParametersExtensions.GetMaxCost();
+                //maxCost = 50;
                 while (true) {
-                    if (numberSlots < numberCount && currentCost <= maxCost - 8 && GetNumRounds(1) < GetNumRounds()) {
+                    if (numberSlots < numberCount
+                        && TempCopy(o => o.numberSlots++).GetFinalCost(originalCost) <= maxCost
+                        && (boolCount == 0 || (float)numberSlots / numberCount < (float)boolSlots / boolCount)
+                    ) {
                         numberSlots++;
-                        currentCost += 8;
-                    } else if (boolSlots < boolCount && currentCost <= maxCost - 1) {
+                    } else if (boolSlots < boolCount
+                        && TempCopy(o => o.boolSlots++).GetFinalCost(originalCost) <= maxCost
+                    ) {
                         boolSlots++;
-                        currentCost += 1;
                     } else {
                         break;
                     }
@@ -388,7 +606,11 @@ namespace VF.Service {
             }
         }
 
-        private OptimizationDecision AlignForMobile() {
+        private OptimizationDecisionWithInfo AlignForMobile(VRCExpressionParameters paramz) {
+            if (!AlignMobileParamsMenuItem.Get()) {
+                return GetParamsToOptimize(paramz);
+            }
+
             // Mobile
             var blueprintId = avatarObject.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
             var savePath = GetSavePath(blueprintId);
@@ -400,7 +622,7 @@ namespace VF.Service {
                     + blueprintId,
                     "Ok"
                 );
-                return GetParamsToOptimize();
+                return GetParamsToOptimize(paramz);
             }
 
             var desktopDataStr = File.ReadAllText(savePath);
@@ -426,7 +648,7 @@ namespace VF.Service {
             }
             
             // Align params with desktop copy
-            var mobileParams = paramz.GetRaw().Clone().parameters.ToArray();
+            var mobileParams = paramz.Clone().parameters.ToArray();
             var mobileParamsBySource = mobileParams.ToDictionary(
                 p => parameterSourceService.GetSource(p.name),
                 p => p
@@ -514,24 +736,26 @@ namespace VF.Service {
                 );
             }
 
-            paramsService.GetParams().GetRaw().parameters = reordered.ToArray();
+            paramz.parameters = reordered.ToArray();
 
-            return new OptimizationDecision() {
-                boolSlots = desktopData.boolSlots,
-                numberSlots = desktopData.numberSlots,
-                compress = paramsToOptimize
+            return new OptimizationDecisionWithInfo {
+                decision = new OptimizationDecision() {
+                    boolSlots = desktopData.boolSlots,
+                    numberSlots = desktopData.numberSlots,
+                    compress = paramsToOptimize
+                },
             };
         }
 
-        private OptimizationDecision AlignForDesktop() {
-            var paramsToOptimize = GetParamsToOptimize();
+        private OptimizationDecisionWithInfo AlignForDesktop(VRCExpressionParameters paramz) {
+            var decisionWithInfo = GetParamsToOptimize(paramz);
             if (IsActuallyUploadingHook.Get()) {
-                var paramList = paramz.GetRaw().parameters.Select(p => {
+                var paramList = paramz.parameters.Select(p => {
                     var source = parameterSourceService.GetSource(p.name);
                     return new SavedParam() {
                         parameter = p.Clone(),
                         source = source,
-                        compressed = paramsToOptimize.compress.Contains(p)
+                        compressed = decisionWithInfo.decision?.compress.Contains(p) ?? false
                     };
                 }).ToList();
                 var saveData = new SavedData() {
@@ -539,8 +763,8 @@ namespace VF.Service {
                     saveVersion = 3,
                     unityVersion = Application.unityVersion,
                     vrcfuryVersion = VRCFPackageUtils.Version,
-                    boolSlots = paramsToOptimize.boolSlots,
-                    numberSlots = paramsToOptimize.numberSlots
+                    boolSlots = decisionWithInfo.decision?.boolSlots ?? 0,
+                    numberSlots = decisionWithInfo.decision?.numberSlots ?? 0
                 };
                 var saveText = JsonUtility.ToJson(saveData, true);
                 var originalAvatar = originalAvatarService.GetOriginal();
@@ -554,7 +778,11 @@ namespace VF.Service {
                     }
                 });
             }
-            return paramsToOptimize;
+            return decisionWithInfo;
+        }
+
+        private static string FormatBitsPlural(int numBits) {
+            return numBits + " bit" + (numBits != 1 ? "s" : "");
         }
     }
 }
