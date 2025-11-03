@@ -34,7 +34,7 @@ namespace VF.Service.Compressor {
             var layer = fx.NewLayer("Parameter Compressor");
             layer.weight = 0;
             var entry = layer.NewState("Entry").Move(0, 2);
-            entry.TransitionsFromAny().When(fx.IsAnimatorEnabled().IsFalse());
+            //entry.TransitionsFromAny().When(fx.IsAnimatorEnabled().IsFalse());
             var remoteLost = layer.NewState("Receive (Lost)").Move(entry, 0, 1);
             entry.TransitionsTo(remoteLost).When(fx.IsLocal().IsFalse());
             var local = layer.NewState("Local").Move(entry, -2, 1);
