@@ -37,10 +37,13 @@ namespace VF.Service {
                 return output;
             });
             var cachedBuffered = new Dictionary<string, VFAFloat>();
+            Action doAtEnd = () => { };
+
             VFAFloat GetBuffered(string paramName) {
                 return cachedBuffered.GetOrCreate(paramName, () => {
                     var buffered = fx.MakeAap(paramName + " (Buffered)");
-                    whenNotInhibitedTree.Value.Add(buffered.MakeCopier(paramName));
+                    // This is deferred so that the parameter rewrite doesn't rewrite our own usage of the original
+                    doAtEnd += () => whenNotInhibitedTree.Value.Add(buffered.MakeCopier(paramName));
                     return buffered;
                 });
             }
@@ -51,6 +54,8 @@ namespace VF.Service {
                 }
                 return param;
             }, includeWrites: false, includeCopyDriverReads: false);
+
+            doAtEnd();
         }
     }
 }
