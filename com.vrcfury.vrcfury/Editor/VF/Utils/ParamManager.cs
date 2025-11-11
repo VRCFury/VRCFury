@@ -1,3 +1,4 @@
+using System;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Utils {
@@ -7,7 +8,6 @@ namespace VF.Utils {
 
         public ParamManager(VRCExpressionParameters syncedParams) {
             this.syncedParams = syncedParams;
-            this.syncedParams.RemoveDuplicates();
         }
 
         public void AddSyncedParam(VRCExpressionParameters.Parameter param) {

@@ -9,7 +9,7 @@ namespace VF.Hooks {
      * Records the original paths to every gameobject, before any other systems (ndmf, armature link, etc)
      * have a chance to move them around.
      */
-    public class OriginalPathsHook : IVRCSDKPreprocessAvatarCallback {
+    internal class OriginalPathsHook : IVRCSDKPreprocessAvatarCallback {
 
         public int callbackOrder => int.MinValue + 100;
 
