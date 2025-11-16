@@ -1,5 +1,6 @@
 ﻿using UnityEditor;
 using UnityEngine;
+using VF.Component;
 using VF.Menu;
 using VF.Model;
 using VF.Utils;
@@ -39,7 +40,7 @@ namespace VF.Hooks {
 
         private static bool DestroyImmediatePrefix(Object __0) {
             if (!IsActuallyUploadingHook.Get() && inPreprocessor) {
-                if (__0 is VRCFuryTest || __0 is VRCFuryDebugInfo) {
+                if (__0 is VRCFuryTest || __0 is VRCFuryDebugInfo || __0 is VRCFuryPlayComponent) {
                     // Keep it! Prevent the deletion!
                     return false;
                 }
