@@ -115,3 +115,6 @@ For more information, please refer to <https://unlicense.org>
   * Added public api for SPS Socket creation
 * Ximmer-VR
   * Made Toggle sliders work with global parameters
+* meowvelyn
+   * Added Global parameter option to SPS Socket toggle
+
