@@ -36,6 +36,8 @@ namespace VF.Component {
         public State activeActions = new State();
         public bool useHipAvoidance = true;
 
+        public bool enableGlobalParam;
+        public string globalParam = "";
         public bool enablePlugLengthParameter;
         public string plugLengthParameterName;
         public bool enablePlugWidthParameter;
@@ -159,3 +161,4 @@ namespace VF.Component {
         }
     }
 }
+
