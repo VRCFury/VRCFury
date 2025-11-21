@@ -79,6 +79,8 @@ For more information, please refer to <https://unlicense.org>
   * Made colliders merge properly within Armature Link (unused)
 * lyuma
   * Improvements to VRCFury/Av3Emu compatibility
+* meowvelyn
+   * Added Global parameter option to SPS Socket toggle
 * Morghus
   * Created numerous setup prefabs
   * Fix DirectTreeOptimizer for clips with partial keyframes
@@ -115,6 +117,3 @@ For more information, please refer to <https://unlicense.org>
   * Added public api for SPS Socket creation
 * Ximmer-VR
   * Made Toggle sliders work with global parameters
-* meowvelyn
-   * Added Global parameter option to SPS Socket toggle
-
