@@ -97,7 +97,12 @@ namespace VF.Service {
                     
                     VFABool toggleParam = null;
                     if (socket.addMenuItem) {
-                        toggleParam = fx.NewBool(name, synced: true, saved: saved);
+                        if (socket.enableGlobalParam) {
+                            toggleParam = fx.NewBool(socket.globalParam, synced: true, saved: saved, usePrefix: false);
+                        }
+                        else {
+                            toggleParam = fx.NewBool(name, synced: true, saved: saved);
+                        }
                         var icon = socket.menuIcon?.Get();
                         menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", toggleParam, icon: icon);
                     }
@@ -443,3 +448,4 @@ namespace VF.Service {
         }
     }
 }
+
