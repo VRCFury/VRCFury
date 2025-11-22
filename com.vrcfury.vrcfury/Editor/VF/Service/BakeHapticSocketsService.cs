@@ -97,7 +97,7 @@ namespace VF.Service {
                     
                     VFABool toggleParam = null;
                     if (socket.addMenuItem) {
-                        if (socket.enableGlobalParam) {
+                        if (socket.enableGlobalParam && !string.IsNullOrWhiteSpace(socket.globalParam)) {
                             toggleParam = fx.NewBool(socket.globalParam, synced: true, saved: saved, usePrefix: false);
                         }
                         else {
@@ -448,4 +448,5 @@ namespace VF.Service {
         }
     }
 }
+
 
