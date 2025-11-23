@@ -100,6 +100,7 @@ namespace VF.Service {
                         toggleParam = fx.NewBool(name, synced: true, saved: saved);
                         var icon = socket.menuIcon?.Get();
                         menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", toggleParam, icon: icon);
+                        exclusiveTriggers.Add((name, toggleParam));
                     }
 
                     if (!BuildTargetUtils.IsDesktop()) {
@@ -323,8 +324,6 @@ namespace VF.Service {
                             .create(localTree, remoteTree);
                         var directTree = directTreeService.Create($"{name} - Toggle");
                         directTree.Add(toggleParam.AsFloat(), onTree);
-
-                        exclusiveTriggers.Add((name, toggleParam));
 
                         if (socket.enableAuto && autoOnClip != null) {
                             var autoReceiverObj = GameObjects.Create("AutoDistance", bakeResult.worldSpace);
