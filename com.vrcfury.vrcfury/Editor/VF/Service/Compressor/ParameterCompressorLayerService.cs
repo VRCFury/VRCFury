@@ -15,7 +15,14 @@ namespace VF.Service.Compressor {
         [VFAutowired] private readonly CompressorLayerUtilsService layerUtilsService;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
-        
+
+        private static int CalculateSyncId(int batchNum, int batchCount, int bits) {
+            var numIds = 1 << bits;
+            if (batchNum == 0) return 0;
+            if (batchNum == batchCount - 1) return numIds - 1;
+            return ((batchNum - 1) % (numIds - 2)) + 1;
+        }
+
         public void BuildLayer(OptimizationDecision decision) {
             var (numberBatches, boolBatches) = decision.GetBatches();
 
@@ -51,8 +58,7 @@ namespace VF.Service.Compressor {
             foreach (var batchNum in Enumerable.Range(0, batchCount)) {
                 Action<VFState> sendIdDriver = s => { };
 
-                var syncId = ((batchNum - 1) % ((1 << indexBitCount) - 1)) + 1;
-                if (batchNum == 0) syncId = 0;
+                var syncId = CalculateSyncId(batchNum, batchCount, indexBitCount);
                 var syncIds = Enumerable.Range(0, indexBitCount).Select(i => (syncId & 1<<(indexBitCount-1-i)) > 0).ToArray();
                 var titleId = syncIds.Select(b => b ? "1" : "0").Join("");
                 var receiveConditions = new List<VFCondition>();
