@@ -71,6 +71,10 @@ namespace VF.Builder {
                     if (motion is BlendTree tree) {
                         return tree.children.Select(child => child.motion);
                     }
+                    if (motion is AnimationClip clip) {
+                        var settings = AnimationUtility.GetAnimationClipSettings(clip);
+                        return new Motion[] { settings.additiveReferencePoseClip };
+                    }
 
                     return new Motion[] { };
                 });

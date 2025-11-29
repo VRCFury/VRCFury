@@ -349,23 +349,19 @@ namespace VF.Service {
                 }
 
                 if (scanInternals) {
-                    var so = new SerializedObject(component);
-                    var prop = so.GetIterator();
-                    do {
-                        if (prop.propertyPath.StartsWith("ignoreTransforms.Array")) {
+                    MutableManager.ForEachChildObjectReference(component, (path,value,set) => {
+                        if (path.StartsWith("ignoreTransforms.Array")) {
                             // TODO: If we remove objects that are in these physbone ignoreTransforms arrays, we should
                             // probably also remove them from the array instead of just leaving it null
-                            continue;
+                            return;
                         }
-                        if (prop.propertyType == SerializedPropertyType.ObjectReference) {
-                            VFGameObject target = null;
-                            if (prop.objectReferenceValue is Transform t) target = t;
-                            else if (prop.objectReferenceValue is GameObject g) target = g;
-                            if (target != null && target.IsChildOf(avatarObject)) {
-                                reasons.Put(target, prop.propertyPath + " in " + component.GetType().Name + " on " + component.owner().GetPath(avatarObject, true));
-                            }
+                        VFGameObject target = null;
+                        if (value is Transform t) target = t;
+                        else if (value is GameObject g) target = g;
+                        if (target != null && target.IsChildOf(avatarObject)) {
+                            reasons.Put(target, path + " in " + component.GetType().Name + " on " + component.owner().GetPath(avatarObject, true));
                         }
-                    } while (prop.Next(true));
+                    });
                 }
             }
 

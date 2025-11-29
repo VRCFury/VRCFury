@@ -94,8 +94,14 @@ namespace VF.Service {
             });
             if (clipReplacements.Count > 0) {
                 foreach (var o in unsavedChildren) {
-                    if (o is AnimationClip) continue;
                     MutableManager.RewriteInternals(o, clipReplacements);
+                }
+            }
+            foreach (var o in unsavedChildren) {
+                if (o is AnimationClip clip) {
+                    // There's a bug in unity where if you change the reference pose using SerializedObject, sometimes it won't update
+                    // unity's internal cache and it'll blow up. This forces the cache to refresh. This bug still exists as of Unity 6.2.
+                    AnimationUtility.SetAnimationClipSettings(clip, AnimationUtility.GetAnimationClipSettings(clip));
                 }
             }
             return unsavedChildren;
