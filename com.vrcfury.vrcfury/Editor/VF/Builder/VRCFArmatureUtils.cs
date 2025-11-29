@@ -10,11 +10,15 @@ using VF.Hooks;
 
 namespace VF.Builder {
     internal static class VRCFArmatureUtils {
-        private static ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>> cache
-            = new ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>>();
+        private class Cached {
+            public Dictionary<HumanBodyBones, string> paths = new Dictionary<HumanBodyBones, string>();
+            public Dictionary<HumanBodyBones, VFGameObject> objects = new Dictionary<HumanBodyBones, VFGameObject>();
+        }
+
+        private static ConditionalWeakTable<Transform, Cached> cache = new ConditionalWeakTable<Transform, Cached>();
 
         public static void ClearCache() {
-            cache = new ConditionalWeakTable<Transform, Dictionary<HumanBodyBones, string>>();
+            cache = new ConditionalWeakTable<Transform, Cached>();
         }
 
         public static VFGameObject FindBoneOnArmatureOrNull(VFGameObject avatarObject, HumanBodyBones findBone) {
@@ -26,62 +30,58 @@ namespace VF.Builder {
         }
 
         public static VFGameObject FindBoneOnArmatureOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
-            var bonePath = FindBonePathOrException(avatarObject, findBone);
-
-            var found = VRCFObjectPathCache.Find(avatarObject, bonePath);
-            if (found == null) {
+            var data = Load(avatarObject);
+            if (data.objects.TryGetValue(findBone, out var obj)) {
+                return obj;
+            }
+            if (data.paths.TryGetValue(findBone, out var path)) {
                 throw new VRCFBuilderException(
                     "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +
                     "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n" +
-                    bonePath);
+                    path);
             }
-
-            return found;
+            if (!data.paths.ContainsKey(HumanBodyBones.Hips)) {
+                throw new Exception($"{findBone} bone could not be found because avatar's rig is not set to humanoid");
+            }
+            throw new VRCFBuilderException($"{findBone} bone isn't set in this avatar's rig");
         }
 
         public static void WarmupCache(VFGameObject avatarObject) {
             Load(avatarObject);
         }
-        
-        private static string FindBonePathOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
-            var lookup = Load(avatarObject);
 
-            if (!lookup.TryGetValue(findBone, out var path)) {
-                if (!lookup.ContainsKey(HumanBodyBones.Hips)) {
-                    throw new Exception($"{findBone} bone could not be found because avatar's rig is not set to humanoid");
-                }
-                throw new VRCFBuilderException(
-                    $"{findBone} bone isn't set in this avatar's rig");
-            }
-
-            return path;
-        }
-
-        private static Dictionary<HumanBodyBones, string> Load(VFGameObject avatarObject) {
+        private static Cached Load(VFGameObject avatarObject) {
             if (cache.TryGetValue(avatarObject, out var cached)) {
                 return cached;
             }
+            cached = LoadUncached(avatarObject);
+            cache.Add(avatarObject, cached);
+            return cached;
+        }
 
+        private static Cached LoadUncached(VFGameObject avatarObject) {
+            var output = new Cached();
             var animator = avatarObject.GetComponent<Animator>();
             if (!animator) {
-                return new Dictionary<HumanBodyBones, string>();
+                return output;
             }
             if (!animator.avatar) {
-                return new Dictionary<HumanBodyBones, string>();
+                return output;
             }
 
             var so = new SerializedObject(animator.avatar);
             var skeletonIndexToBoneHash = GetSkeletonIndexToBoneHash(so);
             var boneHashToPath = GetBoneHashToPath(so);
-            var output = new Dictionary<HumanBodyBones, string>();
+
             foreach (var bone in GetAllBones()) {
                 var skeletonIndex = GetSkeletonIndex(so, bone);
                 if (!skeletonIndexToBoneHash.TryGetValue(skeletonIndex, out var boneHash)) continue;
                 if (!boneHashToPath.TryGetValue(boneHash, out var path)) continue;
-                output[bone] = path;
+                output.paths[bone] = path;
+                var obj = VRCFObjectPathCache.Find(avatarObject, path);
+                if (obj != null) output.objects[bone] = obj;
             }
-            
-            cache.Add(avatarObject, output);
+
             return output;
         }
 
@@ -157,14 +157,8 @@ namespace VF.Builder {
         }
 
         public static IDictionary<HumanBodyBones, VFGameObject> GetAllBones(VFGameObject avatarObject) {
-            var dict = new Dictionary<HumanBodyBones, VFGameObject>();
-            foreach (var bone in GetAllBones()) {
-                var obj = FindBoneOnArmatureOrNull(avatarObject, bone);
-                if (obj != null) {
-                    dict[bone] = obj;
-                }
-            }
-            return dict;
+            var data = Load(avatarObject);
+            return data.objects;
         }
     }
 }
