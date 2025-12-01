@@ -286,7 +286,8 @@ namespace VF.Feature {
 
             if (!loadedRestingClip) {
                 loadedRestingClip = true;
-                var restingMotionLoops = new AnimatorIterator.Clips().From(restingClip).Any(clip => clip.isLooping);
+                var restingMotionLoops = new AnimatorIterator.Clips().From(restingClip)
+                    .Any(clip => clip.IsLooping() && !clip.IsStatic());
                 if (!restingMotionLoops) {
                     savedRestingClip = restingClip.EvaluateMotion(1);
                     allClipsService.AddAdditionalManagedClip(savedRestingClip);
