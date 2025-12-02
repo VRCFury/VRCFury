@@ -428,7 +428,7 @@ namespace VF.Service {
             if (propBone == null) return null;
 
             foreach (var b in VRCFArmatureUtils.GetAllBones(avatarObject).Values) {
-                if (b.IsChildOf(propBone)) {
+                if (b != null && b.IsChildOf(propBone)) {
                     throw new VRCFBuilderException(
                         "Link From is part of the avatar's armature." +
                         " The object dragged into Armature Link should not be a bone from the avatar's armature." +
