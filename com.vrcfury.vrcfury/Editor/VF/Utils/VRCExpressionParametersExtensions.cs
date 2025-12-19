@@ -13,7 +13,9 @@ namespace VF.Utils {
             VRCFuryEditorUtils.MarkDirty(p);
         }
 
-        private static bool HasDexProtect = ReflectionUtils.GetTypeFromAnyAssembly("DexProtectEditor.Attr") != null;
+        private static readonly Lazy<bool> HasDexProtect = new Lazy<bool>(() => {
+            return AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "DexProtectEditor");
+        });
 
         public static int GetMaxCost() {
             var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
@@ -21,7 +23,7 @@ namespace VF.Utils {
                 // Some modified versions of the VRChat SDK have a broken value for this
                 maxBits = 256;
             }
-            if (HasDexProtect) {
+            if (HasDexProtect.Value) {
                 maxBits -= 19;
             }
             return maxBits;
