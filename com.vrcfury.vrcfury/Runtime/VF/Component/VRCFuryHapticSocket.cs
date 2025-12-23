@@ -26,6 +26,8 @@ namespace VF.Component {
         public float length;
         public bool unitsInMeters = true;
         public bool addMenuItem = true;
+    // If true, the menu toggle parameter will be created without a prefix (as a global parameter)
+    public bool useGlobalMenuParameter = false;
         public GuidTexture2d menuIcon;
         public bool enableAuto = true;
         public Vector3 position;

@@ -97,7 +97,8 @@ namespace VF.Service {
                     
                     VFABool toggleParam = null;
                     if (socket.addMenuItem) {
-                        toggleParam = fx.NewBool(name, synced: true, saved: saved);
+                        var usePrefix = !socket.useGlobalMenuParameter;
+                        toggleParam = fx.NewBool(name, synced: true, saved: saved, usePrefix: usePrefix);
                         var icon = socket.menuIcon?.Get();
                         menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", toggleParam, icon: icon);
                         exclusiveTriggers.Add((name, toggleParam));
