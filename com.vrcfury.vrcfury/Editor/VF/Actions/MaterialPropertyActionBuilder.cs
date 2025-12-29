@@ -328,7 +328,7 @@ namespace VF.Actions {
             return renderers;
         }
 
-        private static ShaderUtil.ShaderPropertyType? FindMaterialPropertyType(
+        private static ShaderPropertyType? FindMaterialPropertyType(
             IList<Renderer> renderers,
             string propName
         ) {
@@ -349,9 +349,9 @@ namespace VF.Actions {
                 return setting;
             }
             switch (FindMaterialPropertyType(renderers, propName)) {
-                case ShaderUtil.ShaderPropertyType.Color:
+                case ShaderPropertyType.Color:
                     return MaterialPropertyAction.Type.Color;
-                case ShaderUtil.ShaderPropertyType.Vector:
+                case ShaderPropertyType.Vector:
                     return MaterialPropertyAction.Type.Vector;
                 case MaterialExtensions.StPropertyType:
                     return MaterialPropertyAction.Type.St;

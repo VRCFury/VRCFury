@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using VF.Builder;
 
 namespace VF.Utils {
@@ -67,16 +68,16 @@ namespace VF.Utils {
 
             var matRenameSuffix = GetRenameSuffix(mat);
 
-            var count = ShaderUtil.GetPropertyCount(shader);
+            var count = shader.GetPropertyCount();
             for (var i = 0; i < count; i++) {
-                var propertyName = ShaderUtil.GetPropertyName(shader, i);
+                var propertyName = shader.GetPropertyName(i);
 
                 var ogName = propertyName;
                 if (matRenameSuffix != null && ogName.EndsWith("_" + matRenameSuffix)) {
                     ogName = ogName.Substring(0, ogName.Length - matRenameSuffix.Length - 1);
                 }
                 
-                var propType = ShaderUtil.GetPropertyType(shader, i);
+                var propType = shader.GetPropertyType(i);
                 var animatedTag = mat.GetTag(ogName + "Animated", false, "");
 
                 var isAnimated = animatedTag != "";
@@ -87,7 +88,7 @@ namespace VF.Utils {
                     };
                 }
 
-                if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
+                if (propType == ShaderPropertyType.Texture) {
                     Add("_ST.x");
                     Add("_ST.y");
                     Add("_ST.z");
@@ -96,12 +97,12 @@ namespace VF.Utils {
                     Add("_TexelSize.y");
                     Add("_TexelSize.z");
                     Add("_TexelSize.w");
-                } else if (propType == ShaderUtil.ShaderPropertyType.Vector) {
+                } else if (propType == ShaderPropertyType.Vector) {
                     Add(".x");
                     Add(".y");
                     Add(".z");
                     Add(".w");
-                } else if (propType == ShaderUtil.ShaderPropertyType.Color) {
+                } else if (propType == ShaderPropertyType.Color) {
                     Add(".r");
                     Add(".g");
                     Add(".b");

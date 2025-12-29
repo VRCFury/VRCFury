@@ -5,12 +5,13 @@ using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using VF.Builder;
 using VF.Inspector;
 
 namespace VF.Utils {
     internal static class RendererExtensions {
-        public static ShaderUtil.ShaderPropertyType? GetPropertyType(this Renderer renderer, string propertyName) {
+        public static ShaderPropertyType? GetPropertyType(this Renderer renderer, string propertyName) {
             return renderer.sharedMaterials
                 .NotNull()
                 .Select(m => m.GetPropertyType(propertyName))

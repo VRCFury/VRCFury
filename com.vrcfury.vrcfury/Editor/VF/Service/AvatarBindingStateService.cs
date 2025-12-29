@@ -4,6 +4,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
@@ -188,7 +189,7 @@ namespace VF.Service {
             if (mat == null) return mat;
 
             var type = mat.GetPropertyType(propName);
-            if (type == ShaderUtil.ShaderPropertyType.Float || type == ShaderUtil.ShaderPropertyType.Range) {
+            if (type == ShaderPropertyType.Float || type == ShaderPropertyType.Range) {
                 var oldValue = mat.GetFloat(propName);
                 var newValue = val;
                 if (oldValue == newValue) return mat;
@@ -205,7 +206,7 @@ namespace VF.Service {
             // This is /technically/ incorrect, since if a property is missing, the proper (matching unity)
             // behaviour is that it should be set to 0. However, unit really tries to not allow you to be missing
             // one component in your animator (by deleting them all at once), so it's probably not a big deal.
-            if (bundleType == ShaderUtil.ShaderPropertyType.Color) {
+            if (bundleType == ShaderPropertyType.Color) {
                 var oldValue = mat.GetColor(bundleName);
                 var newValue = oldValue;
                 if (bundleSuffix == "r") newValue.r = val;
@@ -217,7 +218,7 @@ namespace VF.Service {
                 mat.SetColor(bundleName, newValue);
                 return mat;
             }
-            if (bundleType == ShaderUtil.ShaderPropertyType.Vector) {
+            if (bundleType == ShaderPropertyType.Vector) {
                 var oldValue = mat.GetVector(bundleName);
                 var newValue = oldValue;
                 if (bundleSuffix == "x") newValue.x = val;
