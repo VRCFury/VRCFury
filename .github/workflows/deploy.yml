@@ -10,24 +10,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        gameciVersion:
+          - 3.2.1
         vrcsdkVersion:
           - 3.3.0
           - 3.0.9
           - 2022.06.03.00.04
         unityImage:
-          - unityci/editor:ubuntu-2019.4.31f1-windows-mono-2.0.0
-          - unityci/editor:ubuntu-2019.4.31f1-android-2.0.0
+          - unityci/editor:ubuntu-2019.4.31f1-windows-mono
+          - unityci/editor:ubuntu-2019.4.31f1-android
         include:
           - vrcsdkVersion: 3.5.0
-            unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono-3.0.1
+            unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono
           - vrcsdkVersion: 3.5.0
-            unityImage: unityci/editor:ubuntu-2022.3.6f1-android-3.0.1
+            unityImage: unityci/editor:ubuntu-2022.3.6f1-android
           - vrcsdkVersion: 3.5.2
-            unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono-3.0.1
+            unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono
           - vrcsdkVersion: 3.6.1
-            unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono-3.0.1
+            unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono
           - vrcsdkVersion: 3.7.0
-            unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono-3.0.1
+            unityImage: unityci/editor:ubuntu-2022.3.6f1-windows-mono
     steps:
       - uses: actions/checkout@v5
 
@@ -72,7 +74,7 @@ jobs:
           docker run --rm \
               --env UNITY_LICENSE \
               --volume="${PWD}:/opt/project" \
-              ${{ matrix.unityImage }} \
+              ${{ matrix.unityImage }}-${{ matrix.gameciVersion }} \
               /opt/project/.github/workflows/test_ci.sh
 
   deploy:
