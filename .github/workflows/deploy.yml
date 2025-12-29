@@ -29,8 +29,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Delete git metadata to save disk
-        run: rm -R .git
+      # Github's "ubuntu-latest" comes with a ton of unused stuff that pushes us over the disk limit
+      - name: Clean up node
+        run: |
+          rm -R .git
+          rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          docker image prune --all --force
+          docker builder prune -a
 
       - name: Download VRCSDK
         run: |
