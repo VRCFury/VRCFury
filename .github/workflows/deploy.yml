@@ -1,6 +1,9 @@
 name: 'Deploy'
 on: push
 
+env:
+  GAMECI_VERSION: 3.2.1
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -10,8 +13,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gameciVersion:
-          - 3.2.1
         vrcsdkVersion:
           - 3.3.0
           - 3.0.9
@@ -74,7 +75,7 @@ jobs:
           docker run --rm \
               --env UNITY_LICENSE \
               --volume="${PWD}:/opt/project" \
-              ${{ matrix.unityImage }}-${{ matrix.gameciVersion }} \
+              ${{ matrix.unityImage }}-${{ env.GAMECI_VERSION }} \
               /opt/project/.github/workflows/test_ci.sh
 
   deploy:
