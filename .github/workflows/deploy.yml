@@ -27,14 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/cache@v4
-        with:
-          path: ${{ env.PROJECT_PATH }}/Library
-          key: Library-${{ matrix.vrcsdkUnityVersion[0] }}-${{ matrix.vrcsdkUnityVersion[1] }}-${{ matrix.platform }}
-          restore-keys: |
-            Library-${{ matrix.vrcsdkUnityVersion[0] }}-${{ matrix.vrcsdkUnityVersion[1] }}-
-            Library-${{ matrix.vrcsdkUnityVersion[0] }}-
-            Library-
+      - name: Delete git metadata to save disk
+        run: rm -R .git
 
       - name: Download VRCSDK
         run: |
@@ -44,6 +38,7 @@ jobs:
           if [[ "$VERSION" == "2022.06.03.00.04" ]]; then
             curl -L -o "vrcsdk.zip" "https://github.com/VRCFury/VRCFury/releases/download/old-vrcsdk/VRCSDK.zip"
             unzip "vrcsdk.zip" -d "$PROJECT_PATH/Assets"
+            rm "vrcsdk.zip"
           else
             MANIFEST_URL="https://vrchat.github.io/packages/index.json"
             echo "Downloading manifest from $MANIFEST_URL"
@@ -58,6 +53,8 @@ jobs:
             mkdir -p "$PROJECT_PATH/Packages/com.vrchat.base"
             unzip avatars.zip -d "$PROJECT_PATH/Packages/com.vrchat.avatars"
             unzip base.zip -d "$PROJECT_PATH/Packages/com.vrchat.base"
+            rm "avatars.zip"
+            rm "base.zip"
           fi
 
       - name: Run Tests
