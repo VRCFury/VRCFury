@@ -13,7 +13,8 @@ namespace VF.Service.Compressor {
         public VRCExpressionParameters.Parameter MakeParam(string name, VRCExpressionParameters.ValueType type, bool synced) {
             var param = new VRCExpressionParameters.Parameter {
                 name = controllers.MakeUniqueParamName(name),
-                valueType = type
+                valueType = type,
+                saved = false
             };
             param.SetNetworkSynced(synced);
             paramsService.GetParams().GetRaw().Add(param);

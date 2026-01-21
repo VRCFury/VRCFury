@@ -322,6 +322,10 @@ namespace VF.Inspector {
                         field = toggle;
                         break;
                     }
+                    case SerializedPropertyType.Color: {
+                        field = new ColorField { bindingPath = prop.propertyPath, hdr = true };
+                        break;
+                    }
                     case SerializedPropertyType.Generic: {
                         if (prop.type == "State") {
                             return VRCFuryActionSetDrawer.render(prop, label, labelWidth, tooltip);
