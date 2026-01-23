@@ -154,6 +154,9 @@ namespace VF.Utils {
         public VFABool IsLocal() {
             return NewBool("IsLocal", usePrefix: false);
         }
+        public VFABool IsOnFriendsList() {
+            return NewBool("IsOnFriendsList", usePrefix: false);
+        }
         public VFABool IsAnimatorEnabled() {
             return NewBool("IsAnimatorEnabled", usePrefix: false, def: true);
         }
