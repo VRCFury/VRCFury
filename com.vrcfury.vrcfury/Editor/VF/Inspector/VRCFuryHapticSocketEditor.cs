@@ -101,8 +101,12 @@ namespace VF.Inspector {
             
             var plugParams = VRCFuryEditorUtils.Section("Global Plug Parameters");
             adv.Add(plugParams);
+            var enableGlobalParamProp = serializedObject.FindProperty("enableGlobalParam");
             var enablePlugLengthParameterProp = serializedObject.FindProperty("enablePlugLengthParameter");
             var enablePlugWidthParameterProp = serializedObject.FindProperty("enablePlugWidthParameter");
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(enableGlobalParamProp, "Use Global Parameter for Menu Toggle",
+                tooltip: "If enabled, the menu toggle for this socket will use the parameter name specified below."));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("globalParam")));
             plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugLengthParameterProp, "Plug Length (meters)"));
             plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugLengthParameterName")));
             plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Radius (meters)"));
@@ -489,3 +493,4 @@ namespace VF.Inspector {
         }
     }
 }
+
