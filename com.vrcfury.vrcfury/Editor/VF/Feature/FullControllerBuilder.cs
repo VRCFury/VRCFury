@@ -113,7 +113,7 @@ namespace VF.Feature {
 
                 var copy = menu.Clone();
                 copy.RewriteParameters(RewriteParamName);
-                var prefix = MenuManager.SplitPath(m.prefix);
+                var prefix = MenuManager.SplitPath(MenuManager.PrependFolders(m.prefix, featureBaseObject));
                 avatarMenu.MergeMenu(prefix, copy);
             }
 
@@ -552,6 +552,11 @@ namespace VF.Feature {
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers")));
             
             content.Add(VRCFuryEditorUtils.WrappedLabel("Menu"));
+            content.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                var fullPath = MenuManager.PrependFolders("", componentObject);
+                if (!string.IsNullOrEmpty(fullPath)) return "Folder Menu Prefix: " + fullPath;
+                return "";
+            }));
             content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus")));
             
             content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters"));

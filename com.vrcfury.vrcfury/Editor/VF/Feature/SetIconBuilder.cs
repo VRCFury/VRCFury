@@ -12,12 +12,12 @@ namespace VF.Feature {
     internal class SetIconBuilder : FeatureBuilder<SetIcon> {
         
         [FeatureEditor]
-        public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject) {
+        public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject, VFGameObject componentObject) {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info("This feature will override the menu icon for the given menu path. You can use slashes to look in subfolders."));
 
             var pathProp = prop.FindPropertyRelative("path");
-            content.Add(MoveMenuItemBuilder.SelectButton(avatarObject, false, pathProp));
+            content.Add(MoveMenuItemBuilder.SelectButton(avatarObject, componentObject, false, pathProp));
             
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("icon"), "Icon"));
             return content;

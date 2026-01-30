@@ -25,8 +25,8 @@ namespace VF.Feature {
             var fromPath = prop.FindPropertyRelative("fromPath");
             var toPath = prop.FindPropertyRelative("toPath");
             
-            content.Add(SelectButton(avatarObject, false, fromPath, label: "From Path"));
-            content.Add(SelectButton(avatarObject, true, toPath, label: "To Path", append: () => {
+            content.Add(SelectButton(avatarObject, null, false, fromPath, label: "From Path"));
+            content.Add(SelectButton(avatarObject, null, true, toPath, label: "To Path", append: () => {
                 return GetLastMenuSlug(fromPath.stringValue, "New Thing");
             }));
 
@@ -45,6 +45,7 @@ namespace VF.Feature {
 
         public static VisualElement SelectButton(
             [CanBeNull] VFGameObject avatarObject,
+            [CanBeNull] VFGameObject componentObject,
             bool foldersOnly,
             SerializedProperty prop,
             string label = "Menu Path",
@@ -58,6 +59,11 @@ namespace VF.Feature {
                 if (append != null) {
                     if (path != "") path += "/";
                     path += append();
+                }
+                if (componentObject != null) {
+                    var folderPrefix = MenuManager.PrependFolders("", componentObject);
+                    if (path.StartsWith(folderPrefix)) path = path.Replace(folderPrefix,"");
+                    if (path.StartsWith("/")) path = path.Substring(1);
                 }
                 prop.stringValue = path;
                 prop.serializedObject.ApplyModifiedProperties();
