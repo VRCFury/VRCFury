@@ -10,27 +10,24 @@ namespace VF.Hooks.Av3EmuFixes {
      */
     internal static class Av3EmuSyncTimeFixHook {
         [ReflectionHelperOptional]
-        private abstract class Reflection : ReflectionHelper {
-            public static readonly Type LyumaAv3RuntimeType =
-                ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Runtime")
-                ?? ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Runtime");
-            public static readonly FieldInfo NonLocalSyncInterval = LyumaAv3RuntimeType?.VFField("NonLocalSyncInterval");
+        private abstract class Av3EmuReflection : ReflectionHelper {
+            public static readonly FieldInfo NonLocalSyncInterval = Av3EmuAnimatorFixHook.LyumaAv3Runtime?.VFField("NonLocalSyncInterval");
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
+                typeof(Av3EmuSyncTimeFixHook),
+                nameof(Prefix),
+                Av3EmuAnimatorFixHook.LyumaAv3Runtime,
+                "Awake"
+            );
         }
 
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (!ReflectionHelper.IsReady<Reflection>()) return;
-            HarmonyUtils.Patch(
-                typeof(Av3EmuSyncTimeFixHook),
-                nameof(Prefix),
-                Reflection.LyumaAv3RuntimeType,
-                "Awake",
-                warnIfMissing: false
-            );
+            if (!ReflectionHelper.IsReady<Av3EmuReflection>()) return;
+            Av3EmuReflection.Patch.apply();
         }
 
         private static bool Prefix(object __instance) {
-            Reflection.NonLocalSyncInterval.SetValue(__instance, 0.1f);
+            Av3EmuReflection.NonLocalSyncInterval.SetValue(__instance, 0.1f);
             return true;
         }
     }

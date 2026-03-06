@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -12,7 +12,7 @@ using VF.Builder;
 namespace VF.Utils {
     internal class PoiyomiUtils {
         [ReflectionHelperOptional]
-        private abstract class Reflection : ReflectionHelper {
+        private abstract class PoiReflection : ReflectionHelper {
             [CanBeNull]
             public static readonly Type ShaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ThryEditor.ShaderOptimizer")
                 ?? ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
@@ -22,7 +22,7 @@ namespace VF.Utils {
         }
 
         [CanBeNull]
-        public static Type ShaderOptimizer => Reflection.ShaderOptimizer;
+        public static Type ShaderOptimizer => PoiReflection.ShaderOptimizer;
 
         private static readonly Dictionary<Material, Dictionary<string, PoiProp>> lockedPropsCache
             = new Dictionary<Material, Dictionary<string, PoiProp>>();
@@ -37,8 +37,8 @@ namespace VF.Utils {
         private static bool IsPoiUnlocked(Material mat) {
             if (mat == null || mat.shader == null) return false;
             if (mat.shader.name.StartsWith("Hidden/Locked/")) return false;
-            if (Reflection.IsShaderUsingThryOptimizer == null) return false;
-            return (bool)ReflectionUtils.CallWithOptionalParams(Reflection.IsShaderUsingThryOptimizer, null, mat.shader);
+            if (PoiReflection.IsShaderUsingThryOptimizer == null) return false;
+            return (bool)ReflectionUtils.CallWithOptionalParams(PoiReflection.IsShaderUsingThryOptimizer, null, mat.shader);
         }
         
         private static bool IsPoiLocked(Material mat) {
@@ -113,19 +113,19 @@ namespace VF.Utils {
 
         [CanBeNull]
         public static string GetRenameSuffix(Material mat) {
-            if (Reflection.GetRenamedPropertySuffix == null) return null;
-            return (string)Reflection.GetRenamedPropertySuffix.Invoke(null, new object[] { mat });
+            if (PoiReflection.GetRenamedPropertySuffix == null) return null;
+            return (string)PoiReflection.GetRenamedPropertySuffix.Invoke(null, new object[] { mat });
         }
 
         public static void LockPoiyomi(Material mat) {
             if (!IsPoiUnlocked(mat)) return;
 
-            if (Reflection.SetLockedForAllMaterials == null) {
+            if (PoiReflection.SetLockedForAllMaterials == null) {
                 throw new Exception("Failed to find Poiyomi's lockdown method. Try updating poiyomi or locking the material manually.");
             }
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
                 var result =
-                    (bool)ReflectionUtils.CallWithOptionalParams(Reflection.SetLockedForAllMaterials, null, new Material[] { mat }, 1);
+                    (bool)ReflectionUtils.CallWithOptionalParams(PoiReflection.SetLockedForAllMaterials, null, new Material[] { mat }, 1);
                 if (!result) {
                     throw new Exception("Poiyomi's lockdown method returned false without an exception. Check the console for the reason.");
                 }

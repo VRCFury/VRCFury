@@ -17,6 +17,19 @@ namespace VF.Menu {
         private abstract class Reflection : ReflectionHelper {
             public static readonly PropertyInfo ConstrainProportionsScale = typeof(Transform)
                 .VFProperty("constrainProportionsScale");
+            public static readonly HarmonyUtils.PatchObj DoAllGOsHaveConstrainProportionsEnabledPatch = HarmonyUtils.Patch(
+                typeof(PrefixClass),
+                nameof(PrefixClass.DoAllGOsHaveConstrainProportionsEnabled),
+                typeof(Selection),
+                "DoAllGOsHaveConstrainProportionsEnabled",
+                internalReplacementClass: typeof(ReplacementClass)
+            );
+            public static readonly HarmonyUtils.PatchObj SetConstrainProportionsPatch = HarmonyUtils.Patch(
+                typeof(PrefixClass),
+                nameof(PrefixClass.SetConstrainProportions),
+                "UnityEditor.ConstrainProportionsTransformScale",
+                "SetConstrainProportions"
+            );
         }
 
         [InitializeOnLoadMethod]
@@ -25,19 +38,8 @@ namespace VF.Menu {
 
             EditorApplication.delayCall += UpdateMenu;
 
-            HarmonyUtils.Patch(
-                typeof(PrefixClass),
-                nameof(PrefixClass.DoAllGOsHaveConstrainProportionsEnabled),
-                typeof(Selection),
-                "DoAllGOsHaveConstrainProportionsEnabled",
-                internalReplacementClass: typeof(ReplacementClass)
-            );
-            HarmonyUtils.Patch(
-                typeof(PrefixClass),
-                nameof(PrefixClass.SetConstrainProportions),
-                "UnityEditor.ConstrainProportionsTransformScale",
-                "SetConstrainProportions"
-            );
+            Reflection.DoAllGOsHaveConstrainProportionsEnabledPatch.apply();
+            Reflection.SetConstrainProportionsPatch.apply();
             Selection.selectionChanged += () => unlocked.Clear();
         }
 

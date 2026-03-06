@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
@@ -19,7 +20,7 @@ namespace VF.Hooks.Av3EmuFixes {
      */
     internal class Av3EmuAnimatorFixHook : VrcfAvatarPreprocessor {
         [ReflectionHelperOptional]
-        private abstract class Reflection : ReflectionHelper {
+        private abstract class Av3EmuReflection : ReflectionHelper {
             public static readonly Type Av3EmulatorType =
                 ReflectionUtils.GetTypeFromAnyAssembly("Lyuma.Av3Emulator.Runtime.LyumaAv3Emulator")
                 ?? ReflectionUtils.GetTypeFromAnyAssembly("LyumaAv3Emulator");
@@ -37,10 +38,13 @@ namespace VF.Hooks.Av3EmuFixes {
             public static readonly FieldInfo ScannedAvatars = Av3EmulatorType?.VFField("scannedAvatars");
         }
 
+        [CanBeNull]
+        public static Type LyumaAv3Runtime => Av3EmuReflection.LyumaAv3Runtime;
+
         protected override int order => int.MaxValue;
         private static bool restartPending = false;
         protected override void Process(VFGameObject obj) {
-            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            if (!ReflectionHelper.IsReady<Av3EmuReflection>()) return;
             if (Application.isPlaying && !restartPending) {
                 restartPending = true;
                 EditorApplication.delayCall += () => {
@@ -71,18 +75,18 @@ namespace VF.Hooks.Av3EmuFixes {
             try {
                 Debug.Log("VRCFury is forcing av3emu to reload");
 
-                DestroyAllOfType(Reflection.LyumaAv3Runtime);
-                DestroyAllOfType(Reflection.LyumaAv3Menu);
-                DestroyAllOfType(Reflection.GestureManagerAv3Menu);
+                DestroyAllOfType(Av3EmuReflection.LyumaAv3Runtime);
+                DestroyAllOfType(Av3EmuReflection.LyumaAv3Menu);
+                DestroyAllOfType(Av3EmuReflection.GestureManagerAv3Menu);
 
-                var emulators = ObjectExtensions.FindObjectsByType(Reflection.Av3EmulatorType);
+                var emulators = ObjectExtensions.FindObjectsByType(Av3EmuReflection.Av3EmulatorType);
                 foreach (var emulator in emulators) {
-                    ClearField(emulator, Reflection.Runtimes);
-                    ClearField(emulator, Reflection.ForceActiveRuntimes);
-                    ClearField(emulator, Reflection.ScannedAvatars);
+                    ClearField(emulator, Av3EmuReflection.Runtimes);
+                    ClearField(emulator, Av3EmuReflection.ForceActiveRuntimes);
+                    ClearField(emulator, Av3EmuReflection.ScannedAvatars);
                     // Tell av3emu to not run hooks so we don't loop forever
-                    Reflection.RunPreprocessAvatarHook.SetValue(emulator, false);
-                    Reflection.RestartEmulator.SetValue(emulator, true);
+                    Av3EmuReflection.RunPreprocessAvatarHook.SetValue(emulator, false);
+                    Av3EmuReflection.RestartEmulator.SetValue(emulator, true);
                 }
 
                 if (emulators.Length >= 1) {

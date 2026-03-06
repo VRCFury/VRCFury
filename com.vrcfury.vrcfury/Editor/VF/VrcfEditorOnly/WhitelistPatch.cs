@@ -11,7 +11,6 @@ using VF.Utils;
 
 namespace VF.VrcfEditorOnly {
     internal static class WhitelistPatch {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type AvatarValidationSdkBase =
                 ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Validation.AvatarValidation");

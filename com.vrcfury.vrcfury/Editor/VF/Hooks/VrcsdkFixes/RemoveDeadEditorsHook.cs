@@ -11,15 +11,20 @@ namespace VF.Hooks.VrcsdkFixes {
      * because the target doesn't exist so the serializedObject can't be created.
      */
     internal static class RemoveDeadEditorsHook {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            HarmonyUtils.Patch(
+        [ReflectionHelperOptional]
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(RemoveDeadEditorsHook),
                 nameof(Prefix),
                 "VRC_AnimatorPlayAudioEditor",
-                "OnEnable",
-                warnIfMissing: false
+                "OnEnable"
             );
+        }
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.Patch.apply();
         }
 
         private static bool Prefix(Editor __instance) {

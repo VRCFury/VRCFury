@@ -13,17 +13,18 @@ namespace VF.Hooks.UnityFixes {
             public static readonly Type Edge = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.Edge");
             public static readonly FieldInfo m_FromNode = Edge?.VFField("m_FromNode");
             public static readonly PropertyInfo m_Graph = m_FromNode?.FieldType?.VFProperty("graph");
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
+                typeof(FixUnityWakeUpExceptionHook),
+                nameof(Prefix),
+                Edge,
+                "WakeUp"
+            );
         }
 
         [InitializeOnLoadMethod]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
-            HarmonyUtils.Patch(
-                typeof(FixUnityWakeUpExceptionHook),
-                nameof(Prefix),
-                Reflection.Edge,
-                "WakeUp"
-            );
+            Reflection.Patch.apply();
         }
 
         private static bool Prefix(object __instance, ref bool __result) {

@@ -5,20 +5,26 @@ using VF.Utils;
 
 namespace VF.Hooks.UnityFixes {
     internal static class UnpackWarningHook {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            HarmonyUtils.Patch(
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj UnpackPrefabPatch = HarmonyUtils.Patch(
                 typeof(UnpackWarningHook),
                 nameof(Prefix),
                 "UnityEditor.SceneHierarchy",
                 "UnpackPrefab"
             );
-            HarmonyUtils.Patch(
+            public static readonly HarmonyUtils.PatchObj UnpackPrefabCompletelyPatch = HarmonyUtils.Patch(
                 typeof(UnpackWarningHook),
                 nameof(Prefix),
                 "UnityEditor.SceneHierarchy",
                 "UnpackPrefabCompletely"
             );
+        }
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.UnpackPrefabPatch.apply();
+            Reflection.UnpackPrefabCompletelyPatch.apply();
         } 
 
         private static bool Prefix() {

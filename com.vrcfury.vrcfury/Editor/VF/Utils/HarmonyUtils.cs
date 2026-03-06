@@ -75,29 +75,30 @@ namespace VF.Utils {
             Finalizer
         }
 
-        public static void Patch(
+        public class PatchObj {
+            public string error;
+            public Action apply;
+        }
+
+        public static PatchObj Patch(
             Type patchClass,
             string patchMethodName,
             NameOrType originalClass,
             string originalMethodName,
-            bool warnIfMissing = true,
             PatchMode patchMode = PatchMode.Prefix,
             Type internalReplacementClass = null
         ) {
-            if (GetHarmony() == null) return;
+            if (GetHarmony() == null) return new PatchObj { apply = () => { /* harmony not loading will already result in enough errors */ } };
             var patchMethod = patchClass.VFStaticMethod(patchMethodName);
             if (patchMethod == null) {
-                Debug.LogWarning($"VRCFury Failed to find patch method: {patchClass.Name}.{patchMethodName}");
-                return;
+                return new PatchObj { error = $"VRCFury Failed to find patch method: {patchClass.Name}.{patchMethodName}" };
             }
             if (originalClass.type == null) {
-                if (warnIfMissing) Debug.LogWarning($"VRCFury Failed to find original class to patch: {originalClass.name}");
-                return;
+                return new PatchObj { error = $"VRCFury Failed to find original class to patch: {originalClass.name}" };
             }
             var originalMethod = FindOriginal(patchMethod, originalClass.type, originalMethodName);
             if (originalMethod == null) {
-                if (warnIfMissing) Debug.LogWarning($"VRCFury Failed to find original method to patch: {originalClass.name}.{originalMethodName}");
-                return;
+                return new PatchObj { error = $"VRCFury Failed to find original method to patch: {originalClass.name}.{originalMethodName}" };
             }
             if (IsInternal(originalMethod)) {
                 if (internalReplacementClass != null) {
@@ -105,14 +106,12 @@ namespace VF.Utils {
                         ? internalReplacementClass.VFStaticMethod(patchMethodName)
                         : internalReplacementClass.VFMethod(patchMethodName);
                     if (replacement != null) {
-                        Patch_Replace(originalMethod, replacement);
-                        return;
+                        return new PatchObj { apply = () => Patch_Replace(originalMethod, replacement) };
                     }
                 }
-                Debug.LogWarning($"VRCFury tried to patch a method, but it was internal, and a replacement wasn't available: {originalClass.name}.{originalMethod.Name}");
-                return;
+                return new PatchObj { error = $"VRCFury tried to patch a method, but it was internal, and a replacement wasn't available: {originalClass.name}.{originalMethod.Name}" };
             }
-            Patch_Simple(originalMethod, patchMethod, patchMode: patchMode);
+            return new PatchObj { apply = () => Patch_Simple(originalMethod, patchMethod, patchMode: patchMode) };
         }
 
         [CanBeNull] 

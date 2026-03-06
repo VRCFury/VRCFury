@@ -11,14 +11,19 @@ using Object = UnityEngine.Object;
 
 namespace VF.Hooks.VrcsdkFixes {
     internal static class AllowTooManyParametersHook {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            HarmonyUtils.Patch(
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(AllowTooManyParametersHook),
                 nameof(Prefix),
                 "VRCSdkControlPanel",
                 "OnGUIError"
             );
+        }
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.Patch.apply();
         }
 
         private static bool Prefix(Object __0, string __1) {

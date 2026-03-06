@@ -10,14 +10,19 @@ namespace VF.Hooks.VrcsdkFixes {
      * dialog. These errors are non-actionable.
      */
     internal static class SuppressAmplitudeErrorsHook {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            HarmonyUtils.Patch(
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(SuppressAmplitudeErrorsHook),
                 nameof(Prefix),
                 typeof(Debug),
                 nameof(Debug.LogError)
             );
+        }
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.Patch.apply();
         }
 
         private static bool Prefix(object __0) {

@@ -15,26 +15,27 @@ namespace VF.Hooks.UnityFixes {
             public static readonly Type LayerControllerView = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.LayerControllerView");
             public static readonly FieldInfo LayerControllerView_m_LayerScroll = LayerControllerView?
                 .VFField("m_LayerScroll");
+            public static readonly HarmonyUtils.PatchObj PrefixPatch = HarmonyUtils.Patch(
+                typeof(FixAnimatorLayerScrollHook),
+                nameof(Prefix),
+                LayerControllerView,
+                "ResetUI"
+            );
+            public static readonly HarmonyUtils.PatchObj FinalizerPatch = HarmonyUtils.Patch(
+                typeof(FixAnimatorLayerScrollHook),
+                nameof(Finalizer),
+                LayerControllerView,
+                "ResetUI",
+                patchMode: HarmonyUtils.PatchMode.Finalizer
+            );
         }
         
         [InitializeOnLoadMethod]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             if (Reflection.LayerControllerView_m_LayerScroll.FieldType != typeof(Vector2)) return;
-
-            HarmonyUtils.Patch(
-                typeof(FixAnimatorLayerScrollHook),
-                nameof(Prefix),
-                Reflection.LayerControllerView,
-                "ResetUI"
-            );
-            HarmonyUtils.Patch(
-                typeof(FixAnimatorLayerScrollHook),
-                nameof(Finalizer),
-                Reflection.LayerControllerView,
-                "ResetUI",
-                patchMode: HarmonyUtils.PatchMode.Finalizer
-            );
+            Reflection.PrefixPatch.apply();
+            Reflection.FinalizerPatch.apply();
         }
 
         private static Vector2 savedScroll;

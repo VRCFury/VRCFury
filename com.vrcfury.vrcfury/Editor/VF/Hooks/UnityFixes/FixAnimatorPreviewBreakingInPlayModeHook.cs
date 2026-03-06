@@ -25,6 +25,15 @@ namespace VF.Hooks.UnityFixes {
         private abstract class Reflection : ReflectionHelper {
             public static readonly MethodInfo[] ShimPrefixMethods = typeof(ShimPrefix)
                 .GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Static);
+            public static readonly HarmonyUtils.PatchObj[] ShimPrefixPatches = ShimPrefixMethods
+                .Select(prefix => HarmonyUtils.Patch(
+                    typeof(ShimPrefix),
+                    prefix.Name,
+                    typeof(Animator),
+                    prefix.Name,
+                    internalReplacementClass: typeof(ShimReplacments)
+                ))
+                .ToArray();
             public delegate RuntimeAnimatorController GetAnimatorControllerInternal_(ref PlayableHandle handle);
             public static readonly GetAnimatorControllerInternal_ GetAnimatorControllerInternal = typeof(AnimatorControllerPlayable)
                 .GetMatchingDelegate<GetAnimatorControllerInternal_>("GetAnimatorControllerInternal");
@@ -34,14 +43,8 @@ namespace VF.Hooks.UnityFixes {
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
 
-            foreach (var prefix in Reflection.ShimPrefixMethods) {
-                HarmonyUtils.Patch(
-                    typeof(ShimPrefix),
-                    prefix.Name,
-                    typeof(Animator),
-                    prefix.Name,
-                    internalReplacementClass: typeof(ShimReplacments)
-                );
+            foreach (var patch in Reflection.ShimPrefixPatches) {
+                patch.apply();
             }
             Scheduler.Schedule(() => {
                 previewedPlayableCache.Clear();
@@ -237,4 +240,3 @@ namespace VF.Hooks.UnityFixes {
         }
     }
 }
-

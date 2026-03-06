@@ -11,17 +11,18 @@ namespace VF.Hooks.VrcsdkFixes {
             public static readonly Type AnimatorControllerTool = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.AnimatorControllerTool");
             public static readonly PropertyInfo AnimatorControllerTool_animatorController = AnimatorControllerTool?
                 .VFProperty("animatorController");
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
+                typeof(FixDupAnimatorWindowHook),
+                nameof(Prefix),
+                "AvatarParameterDriverEditor",
+                "GetCurrentController"
+            );
         }
 
         [InitializeOnLoadMethod]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
-            HarmonyUtils.Patch(
-                typeof(FixDupAnimatorWindowHook),
-                nameof(Prefix),
-                "AvatarParameterDriverEditor",
-                "GetCurrentController"
-            );    
+            Reflection.Patch.apply();
         }
         
         public static AnimatorController GetPreviewedAnimatorController() {

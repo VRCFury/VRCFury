@@ -15,6 +15,7 @@ namespace VF.Utils {
         private static bool IsMissing(object value) {
             if (value == null) return true;
             if (value is ICollection collection && collection.Count == 0) return true;
+            if (value is HarmonyUtils.PatchObj patch && !string.IsNullOrWhiteSpace(patch.error)) return true;
             return false;
         }
 
@@ -38,8 +39,11 @@ namespace VF.Utils {
             foreach (var helper in helpers) {
                 //if (helper.GetCustomAttribute<ReflectionHelperOptionalAttribute>() != null) continue;
                 foreach (var field in helper.GetFields(BindingFlags.Public | BindingFlags.Static)) {
-                    if (IsMissing(field.GetValue(null))) {
-                        notReady.Add(helper.FullName + "." + field.Name);
+                    var value = field.GetValue(null);
+                    if (value is HarmonyUtils.PatchObj patch && patch.error != null) {
+                        notReady.Add($"{helper.FullName}.{field.Name}: {patch.error}");
+                    } else if (IsMissing(value)) {
+                        notReady.Add($"{helper.FullName}.{field.Name}");
                     }
                 }
             }

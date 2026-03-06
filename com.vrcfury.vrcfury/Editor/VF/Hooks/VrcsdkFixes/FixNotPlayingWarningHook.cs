@@ -10,14 +10,19 @@ namespace VF.Hooks.VrcsdkFixes {
      * when it tries to access Animator.properties. This fixes the issue by subbing in null if the animator doesn't have a controller.
      */
     internal static class FixNotPlayingWarningHook {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            HarmonyUtils.Patch(
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(FixNotPlayingWarningHook),
                 nameof(Prefix),
                 "VRC.Dynamics.AnimParameterAccessAvatarSDK",
                 HarmonyUtils.CONSTRUCTOR
             );
+        }
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.Patch.apply();
         }
 
         static void Prefix(ref Animator __0) {

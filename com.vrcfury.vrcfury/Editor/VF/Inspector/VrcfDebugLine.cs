@@ -15,10 +15,10 @@ using Object = UnityEngine.Object;
 namespace VF.Inspector {
     internal static class VrcfDebugLine {
         [ReflectionHelperOptional]
-        private abstract class Reflection : ReflectionHelper {
+        private abstract class NdmfReflection : ReflectionHelper {
             public static readonly Type AvatarProcessor = ReflectionUtils.GetTypeFromAnyAssembly("nadena.dev.ndmf.AvatarProcessor");
         }
-        private static readonly bool ndmfPresent = Reflection.AvatarProcessor != null;
+        private static readonly bool ndmfPresent = NdmfReflection.AvatarProcessor != null;
 
         public static string GetDebugChars([CanBeNull] VFGameObject avatarObject = null, bool? isStillBroken = null) {
             var output = "";

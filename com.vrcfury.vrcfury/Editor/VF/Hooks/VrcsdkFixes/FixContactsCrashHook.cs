@@ -15,23 +15,25 @@ namespace VF.Hooks.VrcsdkFixes {
                 .GetTypeFromAnyAssembly("VRC.Dynamics.VRCAvatarDynamicsScheduler");
             public static readonly FieldInfo CurrentJobHandleField = VRCAvatarDynamicsScheduler?
                 .VFStaticField("_currentDynamicsJobHandle");
-        }
-        
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            if (!ReflectionHelper.IsReady<Reflection>()) return;
-            HarmonyUtils.Patch(
+            public static readonly HarmonyUtils.PatchObj AddContactPatch = HarmonyUtils.Patch(
                 typeof(FixContactsCrashHook),
                 nameof(Prefix),
                 "VRC.Dynamics.ContactManager",
                 "AddContact"
             );
-            HarmonyUtils.Patch(
+            public static readonly HarmonyUtils.PatchObj RemoveContactPatch = HarmonyUtils.Patch(
                 typeof(FixContactsCrashHook),
                 nameof(Prefix),
                 "VRC.Dynamics.ContactManager",
                 "RemoveContact"
             );
+        }
+        
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.AddContactPatch.apply();
+            Reflection.RemoveContactPatch.apply();
         }
 
         static void Prefix() {

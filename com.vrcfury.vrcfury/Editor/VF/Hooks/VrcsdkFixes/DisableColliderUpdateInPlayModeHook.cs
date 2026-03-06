@@ -9,14 +9,19 @@ namespace VF.Hooks.VrcsdkFixes {
      * correctly.
      */
     internal static class DisableColliderUpdateInPlayModeHook {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            HarmonyUtils.Patch(
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(DisableColliderUpdateInPlayModeHook),
                 nameof(Prefix),
                 "AvatarDescriptorEditor3",
                 "UpdateAutoColliders"
             );
+        }
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.Patch.apply();
         }
 
         private static bool Prefix() {

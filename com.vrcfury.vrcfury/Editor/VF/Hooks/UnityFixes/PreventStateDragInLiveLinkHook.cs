@@ -15,17 +15,18 @@ namespace VF.Hooks.UnityFixes {
             public static readonly Type AnimatorControllerTool = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.AnimatorControllerTool");
             public static readonly PropertyInfo AnimatorControllerTool_liveLink = AnimatorControllerTool?
                 .VFProperty("liveLink");
-        }
-
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            if (!ReflectionHelper.IsReady<Reflection>()) return;
-            HarmonyUtils.Patch(
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(PreventStateDragInLiveLinkHook),
                 nameof(Prefix),
                 "UnityEditor.Graphs.GraphGUI",
                 "DragNodes"
             );
+        }
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.Patch.apply();
         }
 
         private static bool Prefix() {
