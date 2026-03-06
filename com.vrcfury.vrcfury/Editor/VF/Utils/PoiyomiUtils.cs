@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -11,22 +11,19 @@ using VF.Builder;
 
 namespace VF.Utils {
     internal class PoiyomiUtils {
+        [ReflectionHelperOptional]
+        private abstract class Reflection : ReflectionHelper {
+            [CanBeNull]
+            public static readonly Type ShaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ThryEditor.ShaderOptimizer")
+                ?? ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
+            public static readonly MethodInfo IsShaderUsingThryOptimizer = ShaderOptimizer?.VFStaticMethod("IsShaderUsingThryOptimizer");
+            public static readonly MethodInfo SetLockedForAllMaterials = ShaderOptimizer?.VFStaticMethod("SetLockedForAllMaterials");
+            public static readonly MethodInfo GetRenamedPropertySuffix = ShaderOptimizer?.VFStaticMethod("GetRenamedPropertySuffix");
+        }
+
         [CanBeNull]
-        public static readonly Type ShaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ThryEditor.ShaderOptimizer")
-            ?? ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
-        private static readonly MethodInfo IsShaderUsingThryOptimizer = ShaderOptimizer?.GetMethod(
-            "IsShaderUsingThryOptimizer",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-        );
-        private static readonly MethodInfo SetLockedForAllMaterials = ShaderOptimizer?.GetMethod(
-            "SetLockedForAllMaterials",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-        );
-        private static readonly MethodInfo GetRenamedPropertySuffix = ShaderOptimizer?.GetMethod(
-            "GetRenamedPropertySuffix",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-        );
-        
+        public static Type ShaderOptimizer => Reflection.ShaderOptimizer;
+
         private static readonly Dictionary<Material, Dictionary<string, PoiProp>> lockedPropsCache
             = new Dictionary<Material, Dictionary<string, PoiProp>>();
 
@@ -40,8 +37,8 @@ namespace VF.Utils {
         private static bool IsPoiUnlocked(Material mat) {
             if (mat == null || mat.shader == null) return false;
             if (mat.shader.name.StartsWith("Hidden/Locked/")) return false;
-            if (IsShaderUsingThryOptimizer == null) return false;
-            return (bool)ReflectionUtils.CallWithOptionalParams(IsShaderUsingThryOptimizer, null, mat.shader);
+            if (Reflection.IsShaderUsingThryOptimizer == null) return false;
+            return (bool)ReflectionUtils.CallWithOptionalParams(Reflection.IsShaderUsingThryOptimizer, null, mat.shader);
         }
         
         private static bool IsPoiLocked(Material mat) {
@@ -116,19 +113,19 @@ namespace VF.Utils {
 
         [CanBeNull]
         public static string GetRenameSuffix(Material mat) {
-            if (GetRenamedPropertySuffix == null) return null;
-            return (string)GetRenamedPropertySuffix.Invoke(null, new object[] { mat });
+            if (Reflection.GetRenamedPropertySuffix == null) return null;
+            return (string)Reflection.GetRenamedPropertySuffix.Invoke(null, new object[] { mat });
         }
 
         public static void LockPoiyomi(Material mat) {
             if (!IsPoiUnlocked(mat)) return;
 
-            if (SetLockedForAllMaterials == null) {
+            if (Reflection.SetLockedForAllMaterials == null) {
                 throw new Exception("Failed to find Poiyomi's lockdown method. Try updating poiyomi or locking the material manually.");
             }
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
                 var result =
-                    (bool)ReflectionUtils.CallWithOptionalParams(SetLockedForAllMaterials, null, new Material[] { mat }, 1);
+                    (bool)ReflectionUtils.CallWithOptionalParams(Reflection.SetLockedForAllMaterials, null, new Material[] { mat }, 1);
                 if (!result) {
                     throw new Exception("Poiyomi's lockdown method returned false without an exception. Check the console for the reason.");
                 }
@@ -140,3 +137,4 @@ namespace VF.Utils {
         }
     }
 }
+

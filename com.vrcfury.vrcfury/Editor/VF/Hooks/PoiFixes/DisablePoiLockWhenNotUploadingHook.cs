@@ -1,16 +1,25 @@
-﻿using System.Reflection;
+using System;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;
 
 namespace VF.Hooks.PoiFixes {
     internal static class DisablePoiLockWhenNotUploadingHook {
+        [ReflectionHelperOptional]
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Type LockMaterialsOnUpload =
+                PoiyomiUtils.ShaderOptimizer?.VFNestedType("LockMaterialsOnUpload");
+        }
+
         [InitializeOnLoadMethod]
         private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+
             HarmonyUtils.Patch(
                 typeof(DisablePoiLockWhenNotUploadingHook),
                 nameof(Prefix),
-                PoiyomiUtils.ShaderOptimizer?.GetNestedType("LockMaterialsOnUpload"),
+                Reflection.LockMaterialsOnUpload,
                 "OnPreprocessAvatar",
                 warnIfMissing: false
             );
@@ -26,3 +35,4 @@ namespace VF.Hooks.PoiFixes {
         }
     }
 }
+

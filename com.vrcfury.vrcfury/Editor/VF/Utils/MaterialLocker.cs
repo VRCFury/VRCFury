@@ -36,10 +36,11 @@ namespace VF.Utils {
             PoiyomiUtils.LockPoiyomi(mat);
         }
 
-        private static class D4rkReflection {
+        [ReflectionHelperOptional]
+        private abstract class D4rkReflection : ReflectionHelper {
             public static readonly Type d4rkAvatarOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("d4rkAvatarOptimizer");
-            public static readonly PropertyInfo WritePropertiesAsStaticValues = d4rkAvatarOptimizer?.GetProperty("WritePropertiesAsStaticValues", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            public static readonly PropertyInfo ApplyOnUpload = d4rkAvatarOptimizer?.GetProperty("ApplyOnUpload", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly PropertyInfo WritePropertiesAsStaticValues = d4rkAvatarOptimizer?.VFProperty("WritePropertiesAsStaticValues");
+            public static readonly PropertyInfo ApplyOnUpload = d4rkAvatarOptimizer?.VFProperty("ApplyOnUpload");
             public static bool IsApplyOnUpload(object o) => (bool)(ApplyOnUpload?.GetValue(o) ?? true);
             public static bool IsWritePropertiesAsStaticValues(object o) => (bool)(WritePropertiesAsStaticValues?.GetValue(o) ?? false);
         }
@@ -68,3 +69,4 @@ namespace VF.Utils {
         }
     }
 }
+

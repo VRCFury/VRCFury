@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -17,15 +17,15 @@ namespace VF.Utils {
         
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type animStateType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
-            public static readonly PropertyInfo selectionField = animStateType?.GetProperty("selection");
-            public static readonly PropertyInfo gameObjectField = selectionField?.PropertyType.GetProperty("gameObject");
-            public static readonly PropertyInfo animationClipField = animStateType?.GetProperty("activeAnimationClip");
+            public static readonly PropertyInfo selectionField = animStateType?.VFProperty("selection");
+            public static readonly PropertyInfo gameObjectField = selectionField?.PropertyType.VFProperty("gameObject");
+            public static readonly PropertyInfo animationClipField = animStateType?.VFProperty("activeAnimationClip");
 #if ! UNITY_6000_0_OR_NEWER
-            public static readonly MethodInfo startRecording = animStateType?.GetMethod("StartRecording");
+            public static readonly MethodInfo startRecording = animStateType?.VFMethod("StartRecording");
 #endif
-            public static readonly PropertyInfo isRecordingProperty = animStateType?.GetProperty("recording", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly PropertyInfo isRecordingProperty = animStateType?.VFProperty("recording");
             public static readonly Type AnimationWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationWindow");
-            public static readonly PropertyInfo AnimationWindowState = AnimationWindow?.GetProperty("state", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly PropertyInfo AnimationWindowState = AnimationWindow?.VFProperty("state");
         }
 
         [InitializeOnLoadMethod]
@@ -167,3 +167,4 @@ namespace VF.Utils {
         }
     }
 }
+

@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -14,20 +15,24 @@ namespace VF.Hooks {
     /**
      * Records the transforms used by the vrc contacts at the start of the build, so we can see if something changed them later.
      */
-    internal class OriginalContactsHook : IVRCSDKPreprocessAvatarCallback {
+    internal class OriginalContactsHook : VrcfAvatarPreprocessor {
         
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type AvatarDescriptorEditor3 = ReflectionUtils.GetTypeFromAnyAssembly("AvatarDescriptorEditor3");
-            public static readonly MethodInfo UpdateAutoColliders = AvatarDescriptorEditor3?.GetMethod("UpdateAutoColliders", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            public static readonly MethodInfo MirrorCollider = AvatarDescriptorEditor3?.GetMethod("MirrorCollider", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            public static readonly FieldInfo avatarDescriptor = AvatarDescriptorEditor3?.GetField("avatarDescriptor", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly MethodInfo UpdateAutoColliders = AvatarDescriptorEditor3?.VFMethod("UpdateAutoColliders");
+            public static readonly MethodInfo MirrorCollider = AvatarDescriptorEditor3?.VFMethod("MirrorCollider");
+            public static readonly FieldInfo avatarDescriptor = AvatarDescriptorEditor3?.VFField("avatarDescriptor");
+            public static readonly FieldInfo[] ColliderFields = typeof(VRCAvatarDescriptor).GetFields()
+                .Where(f => f.FieldType == typeof(VRCAvatarDescriptor.ColliderConfig))
+                .ToArray();
         }
 
         public static Exception fixException = null;
         public static readonly ISet<Transform> usedTransforms = new HashSet<Transform>();
-        public int callbackOrder => int.MinValue + 100;
-        public bool OnPreprocessAvatar(GameObject obj) {
-            var go = (VFGameObject)obj;
+
+        protected override int order => int.MinValue + 100;
+        protected override void Process(VFGameObject go) {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
 
             var avatar = go.GetComponent<VRCAvatarDescriptor>();
             if (avatar != null) {
@@ -41,8 +46,6 @@ namespace VF.Hooks {
 
                 RecordUsedTransforms(avatar);
             }
-
-            return true;
         }
 
         /**
@@ -65,19 +68,17 @@ namespace VF.Hooks {
                 Reflection.avatarDescriptor.SetValue(editor, avatar);
                 Reflection.UpdateAutoColliders.Invoke(editor, new object[] { });
 
-                foreach (var f in avatar.GetType().GetFields()) {
-                    if (f.FieldType == typeof(VRCAvatarDescriptor.ColliderConfig)) {
-                        var collider = (VRCAvatarDescriptor.ColliderConfig)f.GetValue(avatar);
-                        if (collider.isMirrored && f.Name.EndsWith("L") && Reflection.MirrorCollider != null) {
-                            var so = new SerializedObject(avatar);
-                            var leftProp = so.FindProperty(f.Name);
-                            var rightProp = so.FindProperty(f.Name.Substring(0, f.Name.Length - 1) + "R");
-                            if (leftProp != null && rightProp != null) {
-                                Reflection.MirrorCollider.Invoke(editor, new object[] { leftProp, rightProp });
-                                // In case harmony isn't present so this didn't already get fixed
-                                FixColliderMirroringHook.FixPositionOffset(leftProp, rightProp);
-                                so.ApplyModifiedPropertiesWithoutUndo();
-                            }
+                foreach (var f in Reflection.ColliderFields) {
+                    var collider = (VRCAvatarDescriptor.ColliderConfig)f.GetValue(avatar);
+                    if (collider.isMirrored && f.Name.EndsWith("L") && Reflection.MirrorCollider != null) {
+                        var so = new SerializedObject(avatar);
+                        var leftProp = so.FindProperty(f.Name);
+                        var rightProp = so.FindProperty(f.Name.Substring(0, f.Name.Length - 1) + "R");
+                        if (leftProp != null && rightProp != null) {
+                            Reflection.MirrorCollider.Invoke(editor, new object[] { leftProp, rightProp });
+                            // In case harmony isn't present so this didn't already get fixed
+                            FixColliderMirroringHook.FixPositionOffset(leftProp, rightProp);
+                            so.ApplyModifiedPropertiesWithoutUndo();
                         }
                     }
                 }
@@ -88,14 +89,13 @@ namespace VF.Hooks {
 
         private static void RecordUsedTransforms(VRCAvatarDescriptor avatar) {
             usedTransforms.Clear();
-            foreach (var f in avatar.GetType().GetFields()) {
-                if (f.FieldType == typeof(VRCAvatarDescriptor.ColliderConfig)) {
-                    var collider = (VRCAvatarDescriptor.ColliderConfig)f.GetValue(avatar);
-                    if (collider.transform != null) {
-                        usedTransforms.Add(collider.transform);
-                    }
+            foreach (var f in Reflection.ColliderFields) {
+                var collider = (VRCAvatarDescriptor.ColliderConfig)f.GetValue(avatar);
+                if (collider.transform != null) {
+                    usedTransforms.Add(collider.transform);
                 }
             }
         }
     }
 }
+

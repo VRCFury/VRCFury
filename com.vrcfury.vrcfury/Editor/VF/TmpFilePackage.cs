@@ -16,6 +16,10 @@ using Object = System.Object;
 
 namespace VF {
     internal static class TmpFilePackage {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Action Resolve = typeof(Client).GetMatchingDelegate<Action>("Resolve");
+        }
+
         private const string TmpDirPath = "Packages/com.vrcfury.temp";
         private const string TmpPackagePath = TmpDirPath + "/" + "package.json";
 
@@ -79,13 +83,7 @@ namespace VF {
         }
 
         private static void ReresolvePackages() {
-            var method = typeof(Client).GetMethod("Resolve",
-                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
-                null,
-                new Type[] {},
-                null
-            );
-            method.Invoke(null, null);
+            Reflection.Resolve?.Invoke();
         }
 
         [InitializeOnLoadMethod]

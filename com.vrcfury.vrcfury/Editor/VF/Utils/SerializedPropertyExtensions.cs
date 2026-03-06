@@ -23,7 +23,7 @@ namespace VF.Utils {
                     obj = e[index];
                 } else {
                     var type = obj.GetType();
-                    var f = type.GetField(slug, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+                    var f = type.VFField(slug);
                     if (f == null) return null;
                     obj = f.GetValue(obj);
                 }

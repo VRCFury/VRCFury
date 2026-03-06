@@ -31,22 +31,26 @@ namespace VF.Hooks {
             };
         }
 #else
+
+
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Type SdkBuilder = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Editor.VRC_SdkBuilder");
+            public static readonly FieldInfo RunExportAndTestAvatarBlueprint = SdkBuilder?.VFStaticField("RunExportAndTestAvatarBlueprint");
+            public static readonly FieldInfo RunExportAndUploadAvatarBlueprint = SdkBuilder?.VFStaticField("RunExportAndUploadAvatarBlueprint");
+        }
+
         [InitializeOnLoadMethod]
         private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
             try {
-                PatchPreuploadMethod("RunExportAndTestAvatarBlueprint");
-                PatchPreuploadMethod("RunExportAndUploadAvatarBlueprint");
+                PatchPreuploadMethod(Reflection.RunExportAndTestAvatarBlueprint);
+                PatchPreuploadMethod(Reflection.RunExportAndUploadAvatarBlueprint);
             } catch (Exception e) {
                 Debug.LogError(new Exception("VRCFury prefab fix patch failed", e));
             }
         }
 
-        private static void PatchPreuploadMethod(string fieldName) {
-            var sdkBuilder = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Editor.VRC_SdkBuilder");
-            if (sdkBuilder == null) throw new Exception("Failed to find SdkBuilder");
-            var runField = sdkBuilder.GetField(fieldName,
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            if (runField == null) throw new Exception($"Failed to find {fieldName}");
+        private static void PatchPreuploadMethod(FieldInfo runField) {
             void Fix(GameObject obj) => PreInstantiate(obj);
             var runObj = runField.GetValue(null);
             if (runObj is Action<GameObject> run1) {
@@ -57,7 +61,7 @@ namespace VF.Hooks {
                     return run2(obj);
                 }));
             } else {
-                throw new Exception($"Invalid {fieldName}");
+                throw new Exception("Invalid");
             }
         }
 #endif

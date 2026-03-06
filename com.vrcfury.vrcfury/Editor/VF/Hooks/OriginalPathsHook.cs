@@ -9,13 +9,11 @@ namespace VF.Hooks {
      * Records the original paths to every gameobject, before any other systems (ndmf, armature link, etc)
      * have a chance to move them around.
      */
-    internal class OriginalPathsHook : IVRCSDKPreprocessAvatarCallback {
+    internal class OriginalPathsHook : VrcfAvatarPreprocessor {
 
-        public int callbackOrder => int.MinValue + 100;
+        protected override int order => int.MinValue + 100;
 
-        public bool OnPreprocessAvatar(GameObject _obj) {
-            var avatarObject = (VFGameObject)_obj;
-
+        protected override void Process(VFGameObject avatarObject) {
             // We need to warm up the bone cache before ndmf runs because it might do some
             // gimmicks that change humanoid bones to proxies
             VRCFArmatureUtils.ClearCache();
@@ -23,8 +21,6 @@ namespace VF.Hooks {
             ClosestBoneUtils.ClearCache();
             VRCFObjectPathCache.ClearCache();
             VRCFObjectPathCache.WarmupCache(avatarObject);
-
-            return true;
         }
     }
 }

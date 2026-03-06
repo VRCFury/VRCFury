@@ -22,9 +22,19 @@ namespace VF.Hooks.UnityFixes {
      * Note: You CANNOT use Harmony Prefix on a unity extern!
      */
     internal static class FixAnimatorPreviewBreakingInPlayModeHook {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly MethodInfo[] ShimPrefixMethods = typeof(ShimPrefix)
+                .GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Static);
+            public delegate RuntimeAnimatorController GetAnimatorControllerInternal_(ref PlayableHandle handle);
+            public static readonly GetAnimatorControllerInternal_ GetAnimatorControllerInternal = typeof(AnimatorControllerPlayable)
+                .GetMatchingDelegate<GetAnimatorControllerInternal_>("GetAnimatorControllerInternal");
+        }
+
         [InitializeOnLoadMethod]
         private static void Init() {
-            foreach (var prefix in typeof(ShimPrefix).GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Static)) {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+
+            foreach (var prefix in Reflection.ShimPrefixMethods) {
                 HarmonyUtils.Patch(
                     typeof(ShimPrefix),
                     prefix.Name,
@@ -158,13 +168,10 @@ namespace VF.Hooks.UnityFixes {
             return null;
         }
 
-        private static readonly MethodInfo GetAnimatorControllerInternal = typeof(AnimatorControllerPlayable)
-            .GetMethod("GetAnimatorControllerInternal", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         [CanBeNull]
         private static RuntimeAnimatorController GetControllerForPlayable(AnimatorControllerPlayable playable) {
-            if (GetAnimatorControllerInternal == null) return null;
             var handle = playable.GetHandle();
-            var c = GetAnimatorControllerInternal.Invoke(null, new object[] { handle }) as RuntimeAnimatorController;
+            var c = Reflection.GetAnimatorControllerInternal(ref handle);
             while (c is AnimatorOverrideController oc) {
                 c = oc.runtimeAnimatorController;
             }
@@ -230,3 +237,4 @@ namespace VF.Hooks.UnityFixes {
         }
     }
 }
+

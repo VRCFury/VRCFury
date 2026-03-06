@@ -95,7 +95,7 @@ namespace VF.Injector {
                 if (listItemType != null) {
                     var list = Activator.CreateInstance(typeof(List<>).MakeGenericType(listItemType));
                     foreach (var s in GetServices(listItemType, context)) {
-                        list.GetType().GetMethod("Add").Invoke(list, new object[] { s });
+                        list.GetType().VFMethod("Add").Invoke(list, new object[] { s });
                     }
                     return list;
                 }

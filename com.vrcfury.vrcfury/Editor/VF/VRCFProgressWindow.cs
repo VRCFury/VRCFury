@@ -10,6 +10,11 @@ using VF.Utils;
 
 namespace VF {
     internal class VRCFProgressWindow : EditorWindow {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly MethodInfo RepaintImmediately =
+                typeof(VRCFProgressWindow).VFMethod("RepaintImmediately");
+        }
+
         [InitializeOnLoadMethod]
         private static void Init() {
             EditorApplication.delayCall += () => {
@@ -63,7 +68,12 @@ namespace VF {
         }
 
         private void RepaintNow() {
-            GetType().GetMethod("RepaintImmediately", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).Invoke(this, new object[]{});
+            if (ReflectionHelper.IsReady<Reflection>()) {
+                Reflection.RepaintImmediately.Invoke(this, new object[] { });
+            } else {
+                Repaint();
+            }
         }
     }
 }
+

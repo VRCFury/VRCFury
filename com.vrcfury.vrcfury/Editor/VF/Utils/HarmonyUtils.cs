@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -10,27 +10,34 @@ using UnityEngine;
 
 namespace VF.Utils {
     internal static class HarmonyUtils {
-        private static readonly Type harmonyType = ReflectionUtils.GetTypeFromAnyAssembly("HarmonyLib.Harmony");
-        private static readonly MethodInfo harmonyPatch = harmonyType?.GetMethod("Patch");
-        private static readonly Type harmonyMethodType = ReflectionUtils.GetTypeFromAnyAssembly("HarmonyLib.HarmonyMethod");
-        private static readonly ConstructorInfo harmonyMethodConstructor = harmonyMethodType?.GetConstructor(new Type[] { typeof(MethodInfo) });
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Type HarmonyType = ReflectionUtils.GetTypeFromAnyAssembly("HarmonyLib.Harmony");
+            public static readonly MethodInfo HarmonyPatch = HarmonyType?.VFMethod("Patch");
+            public static readonly ConstructorInfo HarmonyConstructor = HarmonyType?.VFConstructor(new[] { typeof(string) });
+            public static readonly MethodInfo HarmonyUnpatchAll = HarmonyType?.VFMethod("UnpatchAll");
+            public static readonly Type HarmonyMethodType = ReflectionUtils.GetTypeFromAnyAssembly("HarmonyLib.HarmonyMethod");
+            public static readonly ConstructorInfo HarmonyMethodConstructor = HarmonyMethodType?.VFConstructor(new[] { typeof(MethodInfo) });
+            public static readonly Type PatchInfoType = ReflectionUtils.GetTypeFromAnyAssembly("HarmonyLib.PatchInfo");
+            public static readonly ConstructorInfo PatchInfoConstructor = PatchInfoType?.VFConstructor();
 
-        private static readonly ConstructorInfo PatchInfoConstructor =
-            ReflectionUtils.GetTypeFromAnyAssembly("HarmonyLib.PatchInfo")?.GetConstructor(new Type[] { });
+            private static readonly Type HarmonySharedStateType =
+                ReflectionUtils.GetTypeFromAnyAssembly("HarmonyLib.HarmonySharedState");
+            public static readonly MethodInfo UpdatePatchInfo = HarmonySharedStateType?.VFStaticMethod("UpdatePatchInfo");
 
-        private static readonly MethodInfo UpdatePatchInfo = ReflectionUtils
-            .GetTypeFromAnyAssembly("HarmonyLib.HarmonySharedState")?
-            .GetMethod("UpdatePatchInfo", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-
-        private static readonly MethodInfo GetOriginalInstructions = ReflectionUtils
-            .GetTypeFromAnyAssembly("HarmonyLib.PatchProcessor")?.GetMethod(
-                "GetOriginalInstructions",
-                BindingFlags.Public | BindingFlags.Static,
-                null,
-                new[] { typeof(MethodBase), typeof(ILGenerator) },
-                null);
+            public static readonly MethodInfo GetOriginalInstructions = ReflectionUtils
+                .GetTypeFromAnyAssembly("HarmonyLib.PatchProcessor")
+                ?.VFStaticMethod("GetOriginalInstructions", new[] { typeof(MethodBase), typeof(ILGenerator) });
+            public static readonly MethodInfo TranspileMethod = typeof(HarmonyUtils).VFStaticMethod(nameof(Transpile));
+        }
 
         private static readonly Lazy<object> harmony = new Lazy<object>(() => {
+            if (!ReflectionHelper.IsReady<Reflection>()) {
+                Debug.LogWarning(
+                    "VRCFury's bug patches are disabled because Harmony is not available in this project. The VRCSDK may be very out of date, or something may be wrong." +
+                    " You may experience bugs in Unity, the VRCSDK, or other plugins that VRCFury would usually fix for you."
+                );
+                return null;
+            }
             if (RuntimeInformation.ProcessArchitecture == Architecture.Arm ||
                 RuntimeInformation.ProcessArchitecture == Architecture.Arm64) {
                 Debug.LogWarning(
@@ -39,20 +46,9 @@ namespace VF.Utils {
                 );
                 return null;
             }
-            if (harmonyType == null) {
-                Debug.LogWarning(
-                    "VRCFury's bug patches are disabled because Harmony is not available in this project. The VRCSDK may be very out of date, or something may be wrong." +
-                    " You may experience bugs in Unity, the VRCSDK, or other plugins that VRCFury would usually fix for you."
-                );
-                return null;
-            }
-            var constructor = harmonyType.GetConstructor(new Type[] { typeof(string) });
-            if (constructor == null) return null;
-            var unpatchAll = harmonyType.GetMethod("UnpatchAll", BindingFlags.Instance | BindingFlags.Public);
-            if (unpatchAll == null) return null;
-            var harmonyInst = constructor.Invoke(new object[] { "com.vrcfury.harmony" });
+            var harmonyInst = Reflection.HarmonyConstructor.Invoke(new object[] { "com.vrcfury.harmony" });
             AssemblyReloadEvents.beforeAssemblyReload += () => {
-                ReflectionUtils.CallWithOptionalParams(unpatchAll, harmonyInst);
+                ReflectionUtils.CallWithOptionalParams(Reflection.HarmonyUnpatchAll, harmonyInst);
             };
             return harmonyInst;
         });
@@ -89,8 +85,7 @@ namespace VF.Utils {
             Type internalReplacementClass = null
         ) {
             if (GetHarmony() == null) return;
-            var patchMethod = patchClass.GetMethod(patchMethodName,
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            var patchMethod = patchClass.VFStaticMethod(patchMethodName);
             if (patchMethod == null) {
                 Debug.LogWarning($"VRCFury Failed to find patch method: {patchClass.Name}.{patchMethodName}");
                 return;
@@ -106,9 +101,9 @@ namespace VF.Utils {
             }
             if (IsInternal(originalMethod)) {
                 if (internalReplacementClass != null) {
-                    var flags = BindingFlags.Public;
-                    flags |= originalMethod.IsStatic ? BindingFlags.Static : BindingFlags.Instance;
-                    var replacement = internalReplacementClass.GetMethod(patchMethodName, flags);
+                    var replacement = originalMethod.IsStatic
+                        ? internalReplacementClass.VFStaticMethod(patchMethodName)
+                        : internalReplacementClass.VFMethod(patchMethodName);
                     if (replacement != null) {
                         Patch_Replace(originalMethod, replacement);
                         return;
@@ -158,18 +153,16 @@ namespace VF.Utils {
         private static void Patch_Simple(MethodBase original, MethodInfo patch, PatchMode patchMode = PatchMode.Prefix) {
             var harmonyInst = GetHarmony();
             if (harmonyInst == null) return;
-            if (harmonyPatch == null) return;
-            if (harmonyMethodConstructor == null) return;
-            var harmonyMethod = harmonyMethodConstructor.Invoke(new object[] { patch });
+            var harmonyMethod = Reflection.HarmonyMethodConstructor.Invoke(new object[] { patch });
             //Debug.Log($"Patching {original.DeclaringType?.Name}.{original.Name}");
             if (patchMode == PatchMode.Prefix) {
-                ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, harmonyMethod);
+                ReflectionUtils.CallWithOptionalParams(Reflection.HarmonyPatch, harmonyInst, original, harmonyMethod);
             } else if (patchMode == PatchMode.Postfix) {
-                ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, null, harmonyMethod);
+                ReflectionUtils.CallWithOptionalParams(Reflection.HarmonyPatch, harmonyInst, original, null, harmonyMethod);
             } else if (patchMode == PatchMode.Transpiler) {
-                ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, null, null, harmonyMethod);
+                ReflectionUtils.CallWithOptionalParams(Reflection.HarmonyPatch, harmonyInst, original, null, null, harmonyMethod);
             } else if (patchMode == PatchMode.Finalizer) {
-                ReflectionUtils.CallWithOptionalParams(harmonyPatch, harmonyInst, original, null, null, null, harmonyMethod);
+                ReflectionUtils.CallWithOptionalParams(Reflection.HarmonyPatch, harmonyInst, original, null, null, null, harmonyMethod);
             } else {
                 throw new Exception("Unknown patch mode: " + patchMode);
             }
@@ -183,7 +176,6 @@ namespace VF.Utils {
          */
         private static void Patch_Replace(MethodBase original, MethodBase replacement) {
             if (original == null || replacement == null) return;
-            if (GetOriginalInstructions == null || UpdatePatchInfo == null || harmonyPatch == null || harmonyMethodConstructor == null || PatchInfoConstructor == null) return;
             
             if (!IsInternal(original)) {
                 Debug.LogWarning($"VRCFury attempted to use harmony to replace a method that is not an internal: {original.Name}. This version of unity might not be supported.");
@@ -192,24 +184,22 @@ namespace VF.Utils {
 
             var harmonyInst = GetHarmony(); // We make a fresh harmony, because we can't unpatch these
             if (harmonyInst == null) return;
-            var transpiler = typeof(HarmonyUtils).GetMethod(
-                nameof(Transpile),
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
             replacementMethod = replacement;
-            Patch_Simple(original, transpiler, PatchMode.Transpiler);
+            Patch_Simple(original, Reflection.TranspileMethod, PatchMode.Transpiler);
 
             // Tell Harmony to "forget about" the patch, so it doesn't try to unpatch it later and break things
-            UpdatePatchInfo.Invoke(null, new object[] {
+            ReflectionUtils.CallWithOptionalParams(
+                Reflection.UpdatePatchInfo,
+                null,
                 original,
                 original,
-                PatchInfoConstructor.Invoke(new object[] { })
-            });
+                Reflection.PatchInfoConstructor.Invoke(new object[] { })
+            );
         }
 
         private static MethodBase replacementMethod;
         static object Transpile(IEnumerable<object> orig, ILGenerator ilGenerator) {
-            return GetOriginalInstructions.Invoke(null, new object[] { replacementMethod, ilGenerator });
+            return Reflection.GetOriginalInstructions.Invoke(null, new object[] { replacementMethod, ilGenerator });
         }
     }
 }

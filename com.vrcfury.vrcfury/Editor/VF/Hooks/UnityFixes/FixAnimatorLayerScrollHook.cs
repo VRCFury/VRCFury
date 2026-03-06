@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -11,25 +11,27 @@ namespace VF.Hooks.UnityFixes {
      * This hook fixes that issue.
      */
     internal static class FixAnimatorLayerScrollHook {
-        private static readonly Type LayerControllerView = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.LayerControllerView");
-        private static readonly FieldInfo LayerControllerView_m_LayerScroll = LayerControllerView?
-            .GetField("m_LayerScroll", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Type LayerControllerView = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.LayerControllerView");
+            public static readonly FieldInfo LayerControllerView_m_LayerScroll = LayerControllerView?
+                .VFField("m_LayerScroll");
+        }
         
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (LayerControllerView_m_LayerScroll == null) return;
-            if (LayerControllerView_m_LayerScroll.FieldType != typeof(Vector2)) return;
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            if (Reflection.LayerControllerView_m_LayerScroll.FieldType != typeof(Vector2)) return;
 
             HarmonyUtils.Patch(
                 typeof(FixAnimatorLayerScrollHook),
                 nameof(Prefix),
-                LayerControllerView,
+                Reflection.LayerControllerView,
                 "ResetUI"
             );
             HarmonyUtils.Patch(
                 typeof(FixAnimatorLayerScrollHook),
                 nameof(Finalizer),
-                LayerControllerView,
+                Reflection.LayerControllerView,
                 "ResetUI",
                 patchMode: HarmonyUtils.PatchMode.Finalizer
             );
@@ -38,11 +40,12 @@ namespace VF.Hooks.UnityFixes {
         private static Vector2 savedScroll;
 
         private static void Prefix(object __instance) {
-            savedScroll = (Vector2)LayerControllerView_m_LayerScroll.GetValue(__instance);
+            savedScroll = (Vector2)Reflection.LayerControllerView_m_LayerScroll.GetValue(__instance);
         }
 
         private static void Finalizer(object __instance) {
-            LayerControllerView_m_LayerScroll.SetValue(__instance, savedScroll);
+            Reflection.LayerControllerView_m_LayerScroll.SetValue(__instance, savedScroll);
         }
     }
 }
+

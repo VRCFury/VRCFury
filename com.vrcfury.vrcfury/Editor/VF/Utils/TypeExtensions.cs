@@ -5,13 +5,77 @@ using JetBrains.Annotations;
 namespace VF.Utils {
     internal static class TypeExtensions {
         [CanBeNull]
-        public static MethodInfo GetMethod(this Type type, string name, bool Static) {
-            var flags = BindingFlags.Public | BindingFlags.NonPublic;
-            if (Static) flags |= BindingFlags.Static;
-            else flags |= BindingFlags.Instance;
-            return type.GetMethod(name, flags);
+        public static PropertyInfo VFProperty(this Type type, string name) {
+            return type.GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         }
-        
+
+        [CanBeNull]
+        public static FieldInfo VFField(this Type type, string name) {
+            return type.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        }
+
+        [CanBeNull]
+        public static FieldInfo VFStaticField(this Type type, string name) {
+            return type.GetField(name, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        }
+
+        [CanBeNull]
+        public static EventInfo VFEvent(this Type type, string name) {
+            return type.GetEvent(name, BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        }
+
+        [CanBeNull]
+        public static Type VFNestedType(this Type type, string name) {
+            return type.GetNestedType(name, BindingFlags.Public | BindingFlags.NonPublic);
+        }
+
+        [CanBeNull]
+        public static MethodInfo VFMethod(this Type type, string name) {
+            return type.GetMethod(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        }
+
+        [CanBeNull]
+        public static MethodInfo VFMethod(this Type type, string name, Type[] argTypes) {
+            return type.GetMethod(
+                name,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                argTypes,
+                null
+            );
+        }
+
+        [CanBeNull]
+        public static MethodInfo VFStaticMethod(this Type type, string name) {
+            return type.GetMethod(name, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        }
+
+        [CanBeNull]
+        public static MethodInfo VFStaticMethod(this Type type, string name, Type[] argTypes) {
+            return type.GetMethod(
+                name,
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                argTypes,
+                null
+            );
+        }
+
+        [CanBeNull]
+        public static ConstructorInfo VFConstructor(this Type type) {
+            return type.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
+        }
+
+        [CanBeNull]
+        public static ConstructorInfo VFConstructor(this Type type, Type[] argTypes) {
+            return type.GetConstructor(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                argTypes,
+                null
+            );
+        }
+
         [CanBeNull]
         public static T GetMatchingDelegate<T>(
             this Type methodClass,
@@ -24,5 +88,6 @@ namespace VF.Utils {
             }
             return null;
         }
+
     }
 }

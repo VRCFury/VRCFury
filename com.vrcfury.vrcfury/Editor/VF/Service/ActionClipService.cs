@@ -126,7 +126,7 @@ namespace VF.Service {
             methodInjector.Set(this);
             methodInjector.Set("actionName", name);
             methodInjector.Set("animObject", animObject);
-            var buildMethod = builder.GetType().GetMethod("Build");
+            var buildMethod = builder.GetType().VFMethod("Build");
             var clip = (Motion)methodInjector.FillMethod(buildMethod, builder);
 
             Motion output = clip;
@@ -149,7 +149,7 @@ namespace VF.Service {
                 if (!modelTypeToBuilder.TryGetValue(action.GetType(), out var builder)) {
                     throw new Exception($"Unknown action type {action.GetType().Name}");
                 }
-                var buildMethod = builder.GetType().GetMethod("BuildOff");
+                var buildMethod = builder.GetType().VFMethod("BuildOff");
                 if (buildMethod == null) continue;
                 var methodInjector = new VRCFuryInjector();
                 methodInjector.Set(action);

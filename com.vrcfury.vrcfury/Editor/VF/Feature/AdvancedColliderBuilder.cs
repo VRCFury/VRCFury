@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -17,11 +18,15 @@ namespace VF.Feature {
     [FeatureTitle("Advanced Collider")]
     [FeatureRootOnly]
     internal class AdvancedColliderBuilder : FeatureBuilder<AdvancedCollider> {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly FieldInfo[] ColliderFields = typeof(VRCAvatarDescriptor).GetFields()
+                .Where(f => f.FieldType == typeof(VRCAvatarDescriptor.ColliderConfig))
+                .ToArray();
+        }
 
         [VFAutowired] private AvatarColliderService avatarColliderService;
         
-        private static readonly List<string> availableColliders = typeof(VRCAvatarDescriptor).GetFields()
-            .Where(f => f.FieldType == typeof(VRCAvatarDescriptor.ColliderConfig))
+        private static readonly List<string> availableColliders = Reflection.ColliderFields
             .Select(f => f.Name.Replace("collider_", ""))
             .ToList();
 

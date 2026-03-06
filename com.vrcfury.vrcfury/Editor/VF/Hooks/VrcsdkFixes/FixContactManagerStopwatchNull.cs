@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Reflection;
 using UnityEditor;
@@ -10,27 +10,30 @@ namespace VF.Hooks.VrcsdkFixes {
      * you enter play mode after reloading scripts.
      */
     internal static class FixContactManagerStopwatchNull {
-        private static readonly Type contactManagerType = ReflectionUtils.GetTypeFromAnyAssembly("VRC.Dynamics.ContactManager");
-        private static readonly FieldInfo stopwatchField = contactManagerType?
-            .GetField("_stopwatch", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Type contactManagerType = ReflectionUtils.GetTypeFromAnyAssembly("VRC.Dynamics.ContactManager");
+            public static readonly FieldInfo stopwatchField = contactManagerType?
+                .VFField("_stopwatch");
+        }
 
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (contactManagerType == null || stopwatchField == null) return;
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
             HarmonyUtils.Patch(
                 typeof(FixContactManagerStopwatchNull),
                 nameof(Prefix),
-                contactManagerType,
+                Reflection.contactManagerType,
                 "HandleDynamicsFrameComplete"
             );
         }
 
         private static bool Prefix(object __instance) {
-            var stopwatch = stopwatchField.GetValue(__instance);
+            var stopwatch = Reflection.stopwatchField.GetValue(__instance);
             if (stopwatch == null) {
-                stopwatchField.SetValue(__instance, Stopwatch.StartNew());
+                Reflection.stopwatchField.SetValue(__instance, Stopwatch.StartNew());
             }
             return true;
         }
     }
 }
+

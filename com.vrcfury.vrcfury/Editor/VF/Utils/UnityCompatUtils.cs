@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using UnityEngine;
 using VF.Builder;
@@ -22,7 +22,7 @@ namespace VF.Utils {
             public static readonly GetCurrentPrefabStage_ GetCurrentPrefabStage = PrefabStageUtility?.GetMatchingDelegate<GetCurrentPrefabStage_>("GetCurrentPrefabStage");
             public delegate object OpenPrefab_(string prefabAssetPath, GameObject openedFromInstance);
             public static readonly OpenPrefab_ OpenPrefab = PrefabStageUtility?.GetMatchingDelegate<OpenPrefab_>("OpenPrefab");
-            public static readonly PropertyInfo autoSave = PrefabStage?.GetProperty("autoSave", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly PropertyInfo autoSave = PrefabStage?.VFProperty("autoSave");
         }
         
         public static void OpenPrefab(string path, VFGameObject focus) {
@@ -44,3 +44,4 @@ namespace VF.Utils {
         }
     }
 }
+

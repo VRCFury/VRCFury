@@ -189,13 +189,13 @@ namespace VF.Service {
             public bool isFace;
 
             public VRC_AnimatorTrackingControl.TrackingType GetValue(VRC_AnimatorTrackingControl c) {
-                var field = c.GetType().GetField(fieldName);
+                var field = c.GetType().VFField(fieldName);
                 if (field == null) return VRC_AnimatorTrackingControl.TrackingType.NoChange;
                 return (VRC_AnimatorTrackingControl.TrackingType)field.GetValue(c);
             }
             
             public void SetValue(VRC_AnimatorTrackingControl c, VRC_AnimatorTrackingControl.TrackingType value) {
-                var field = c.GetType().GetField(fieldName);
+                var field = c.GetType().VFField(fieldName);
                 field.SetValue(c, value);
             }
         }

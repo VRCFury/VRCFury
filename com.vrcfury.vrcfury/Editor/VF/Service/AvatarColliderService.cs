@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using JetBrains.Annotations;
 using UnityEngine;
 using VF.Builder;
@@ -15,6 +16,12 @@ using VRC.SDK3.Dynamics.Contact.Components;
 namespace VF.Service {
     [VFService]
     internal class AvatarColliderService {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly FieldInfo[] ColliderFields = typeof(VRCAvatarDescriptor).GetFields()
+                .Where(f => f.FieldType == typeof(VRCAvatarDescriptor.ColliderConfig))
+                .ToArray();
+        }
+
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly GlobalsService globals;
@@ -38,8 +45,7 @@ namespace VF.Service {
             if (OriginalContactsHook.fixException != null) {
                 throw OriginalContactsHook.fixException;
             }
-            return avatar.GetType().GetFields()
-                .Where(f => f.FieldType == typeof(VRCAvatarDescriptor.ColliderConfig))
+            return Reflection.ColliderFields
                 .ToImmutableDictionary(
                     f => f.Name,
                     f => {

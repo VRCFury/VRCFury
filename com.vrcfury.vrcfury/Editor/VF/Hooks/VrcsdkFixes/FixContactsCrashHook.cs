@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+using System;
 using System.Reflection;
 using UnityEditor;
 using VF.Utils;
@@ -11,13 +10,16 @@ namespace VF.Hooks.VrcsdkFixes {
      * We can fix this by forcing the VRCSDK to finalize the background processing before the any new contact is attempted to be added.
      */
     internal static class FixContactsCrashHook {
-        private static readonly FieldInfo currentJobHandleField = ReflectionUtils
-            .GetTypeFromAnyAssembly("VRC.Dynamics.VRCAvatarDynamicsScheduler")?
-            .GetField("_currentDynamicsJobHandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Type VRCAvatarDynamicsScheduler = ReflectionUtils
+                .GetTypeFromAnyAssembly("VRC.Dynamics.VRCAvatarDynamicsScheduler");
+            public static readonly FieldInfo CurrentJobHandleField = VRCAvatarDynamicsScheduler?
+                .VFStaticField("_currentDynamicsJobHandle");
+        }
         
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (currentJobHandleField == null) return;
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
             HarmonyUtils.Patch(
                 typeof(FixContactsCrashHook),
                 nameof(Prefix),
@@ -33,11 +35,12 @@ namespace VF.Hooks.VrcsdkFixes {
         }
 
         static void Prefix() {
-            var currentJobHandle = currentJobHandleField.GetValue(null);
+            var currentJobHandle = Reflection.CurrentJobHandleField.GetValue(null);
             if (currentJobHandle == null) return;
-            var completeMethod = currentJobHandle.GetType().GetMethod("Complete", new Type[] { });
+            var completeMethod = currentJobHandle.GetType().VFMethod("Complete", Type.EmptyTypes);
             if (completeMethod == null) return;
             completeMethod.Invoke(currentJobHandle, new object[] {});
         }
     }
 }
+

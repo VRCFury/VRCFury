@@ -74,7 +74,7 @@ namespace VF.Injector {
                         injector.Set("actionName", null);
                         injector.Set("animObject", null);
                         injector.Set(typeof(ActionClipService), null);
-                        var buildMethod = builderType.GetMethod("Build");
+                        var buildMethod = builderType.VFMethod("Build");
                         injector.VerifyMethod(buildMethod);
                     } catch (Exception e) {
                         throw new Exception("Failed to verify Build method for " + builderType.Name, e);
@@ -83,7 +83,7 @@ namespace VF.Injector {
                         var injector = new VRCFuryInjector();
                         injector.Set(Activator.CreateInstance(modelType));
                         injector.Set("animObject", null);
-                        var buildMethod = builderType.GetMethod("BuildOff");
+                        var buildMethod = builderType.VFMethod("BuildOff");
                         if (buildMethod != null) {
                             injector.VerifyMethod(buildMethod);
                         }

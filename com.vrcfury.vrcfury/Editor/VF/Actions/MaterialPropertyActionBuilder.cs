@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -20,8 +19,12 @@ namespace VF.Actions {
     internal class MaterialPropertyActionBuilder : ActionBuilder<MaterialPropertyAction> {
         [VFAutowired] private readonly VFGameObject avatarObject;
 
-        private static readonly MethodInfo lilTranslator = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilLanguageManager")?
-            .GetMethod("GetLoc", BindingFlags.Static | BindingFlags.Public, null, new[] { typeof(string) }, null);
+        [ReflectionHelperOptional]
+        private abstract class LilReflection : ReflectionHelper {
+            public static readonly Type LilLanguageManager = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilLanguageManager");
+            public delegate string GetLoc_(string key);
+            public static readonly GetLoc_ GetLoc = LilLanguageManager?.GetMatchingDelegate<GetLoc_>("GetLoc");
+        }
 
         public AnimationClip Build(MaterialPropertyAction materialPropertyAction) {
             var onClip = NewClip();
@@ -214,8 +217,8 @@ namespace VF.Actions {
                             var readableName = description;
                             readableName = readableName.RemoveAfter("--");
 
-                            if (shader.name.Contains("lil") && lilTranslator != null) {
-                                readableName = (string)lilTranslator.Invoke(null, new[] { readableName });
+                            if (shader.name.Contains("lil") && ReflectionHelper.IsReady<LilReflection>()) {
+                                readableName = LilReflection.GetLoc(readableName);
                             }
 
                             if (propertyName.StartsWith("m_start")) {

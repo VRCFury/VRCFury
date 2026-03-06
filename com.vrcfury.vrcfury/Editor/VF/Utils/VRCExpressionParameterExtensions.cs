@@ -4,11 +4,13 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Utils {
     internal static class VRCExpressionParameterExtensions {
-        private static readonly FieldInfo networkSyncedField =
-            typeof(VRCExpressionParameters.Parameter).GetField("networkSynced");
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly FieldInfo networkSyncedField =
+                typeof(VRCExpressionParameters.Parameter).VFField("networkSynced");
+        }
 
         public static bool IsNetworkSynced(this VRCExpressionParameters.Parameter param) {
-            return networkSyncedField == null || (bool)networkSyncedField.GetValue(param);
+            return Reflection.networkSyncedField == null || (bool)Reflection.networkSyncedField.GetValue(param);
         }
 
         public static void SetNetworkSynced(this VRCExpressionParameters.Parameter param, bool networkSynced, bool optional = false) {
@@ -16,11 +18,11 @@ namespace VF.Utils {
                 if (networkSynced || optional) return;
                 throw new Exception("Your VRCSDK is too old to support non-synced parameters. Please update the VRCSDK.");
             }
-            networkSyncedField.SetValue(param, networkSynced);
+            Reflection.networkSyncedField.SetValue(param, networkSynced);
         }
 
         public static bool SupportsUnsynced() {
-            return networkSyncedField != null;
+            return Reflection.networkSyncedField != null;
         }
 
         public static VRCExpressionParameters.Parameter Clone(this VRCExpressionParameters.Parameter param) {

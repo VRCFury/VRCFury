@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -21,8 +21,7 @@ namespace VF.Hooks.GestureManagerFixes {
         }
 
         private static bool Prefix(object __0) {
-            var animatorField = __0.GetType().GetField("AvatarAnimator",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var animatorField = __0.GetType().VFField("AvatarAnimator");
             if (animatorField == null) return true;
             var animator = animatorField.GetValue(__0) as Animator;
             if (animator == null || animator.avatar == null) {

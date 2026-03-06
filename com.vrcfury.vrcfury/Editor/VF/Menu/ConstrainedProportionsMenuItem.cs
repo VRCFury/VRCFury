@@ -14,18 +14,16 @@ namespace VF.Menu {
         
         private static readonly HashSet<Transform> unlocked = new HashSet<Transform>();
 
-        private static readonly PropertyInfo constrainProportionsScale = typeof(Transform)
-            .GetProperty("constrainProportionsScale",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly PropertyInfo ConstrainProportionsScale = typeof(Transform)
+                .VFProperty("constrainProportionsScale");
+        }
 
         [InitializeOnLoadMethod]
         private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+
             EditorApplication.delayCall += UpdateMenu;
-            
-            if (constrainProportionsScale == null) {
-                Debug.LogWarning("Failed to find constrainProportionsScale");
-                return;
-            }
 
             HarmonyUtils.Patch(
                 typeof(PrefixClass),
@@ -72,7 +70,7 @@ namespace VF.Menu {
             public static bool DoAllGOsHaveConstrainProportionsEnabled(UnityEngine.Object[] targetObjects) {
                 if (ShouldForceLock(targetObjects)) return true;
                 // OG Behaviour
-                return Transforms(targetObjects).All(t => (bool)constrainProportionsScale.GetValue(t));
+                return Transforms(targetObjects).All(t => (bool)Reflection.ConstrainProportionsScale.GetValue(t));
             }
         }
 

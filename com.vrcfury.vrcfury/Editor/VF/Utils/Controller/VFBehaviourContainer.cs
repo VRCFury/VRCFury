@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
@@ -20,7 +20,7 @@ namespace VF.Utils.Controller {
             var location = c.prettyName;
 
             var field = obj.GetType()
-                .GetProperty("behaviours_Internal", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                .VFProperty("behaviours_Internal");
             if (field != null) {
                 // 2022+
                 var raw = field.GetValue(obj) as ScriptableObject[];
@@ -32,7 +32,7 @@ namespace VF.Utils.Controller {
                 }
             } else {
                 // 2019
-                var oldField = obj.GetType().GetProperty("behaviours", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var oldField = obj.GetType().VFProperty("behaviours");
                 if (oldField == null) return;
                 var raw = oldField.GetValue(obj) as StateMachineBehaviour[];
                 if (raw == null) return;
@@ -45,3 +45,4 @@ namespace VF.Utils.Controller {
         }
     }
 }
+
