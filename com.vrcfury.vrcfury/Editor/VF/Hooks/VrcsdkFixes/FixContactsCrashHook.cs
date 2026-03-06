@@ -10,6 +10,7 @@ namespace VF.Hooks.VrcsdkFixes {
      * We can fix this by forcing the VRCSDK to finalize the background processing before the any new contact is attempted to be added.
      */
     internal static class FixContactsCrashHook {
+        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type VRCAvatarDynamicsScheduler = ReflectionUtils
                 .GetTypeFromAnyAssembly("VRC.Dynamics.VRCAvatarDynamicsScheduler");

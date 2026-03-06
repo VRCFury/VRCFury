@@ -13,9 +13,9 @@ namespace VF.Inspector {
         }
         
         public BindingBlock() {
-            this.RegisterCallback(Reflection.bindEventType, evt => {
-                evt.StopPropagation();
-            });
+            if (Reflection.bindEventType != null) {
+                this.RegisterCallback(Reflection.bindEventType, evt => { evt.StopPropagation(); });
+            }
         }
     }
 }

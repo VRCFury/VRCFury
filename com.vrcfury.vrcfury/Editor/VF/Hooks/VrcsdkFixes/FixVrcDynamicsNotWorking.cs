@@ -9,6 +9,7 @@ namespace VF.Hooks.VrcsdkFixes {
      */
     internal static class FixVrcDynamicsNotWorking {
 
+        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type VRCAvatarDynamicsScheduler = ReflectionUtils.GetTypeFromAnyAssembly("VRC.Dynamics.VRCAvatarDynamicsScheduler");
             public static readonly FieldInfo latestCompletedFrameNumber = VRCAvatarDynamicsScheduler?
