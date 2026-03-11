@@ -1,4 +1,7 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -12,6 +15,14 @@ using Object = UnityEngine.Object;
 namespace VF.Service {
     [VFService]
     internal class SaveAssetsService {
+        private class WorkLogManifestEntry {
+            public string outputPath;
+            public List<string> workLog = new List<string>();
+        }
+
+        private static readonly Dictionary<Object, WorkLogManifestEntry> workLogManifest
+            = new Dictionary<Object, WorkLogManifestEntry>();
+
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly TmpDirService tmpDirService;
@@ -49,6 +60,8 @@ namespace VF.Service {
                 foreach (var component in avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                     SaveUnsavedComponentAssets(component, tmpDir);
                 }
+
+                FlushWorkLogManifest(tmpDir);
             });
         }
 
@@ -117,13 +130,15 @@ namespace VF.Service {
             foreach (var subAsset in unsavedChildren) {
                 if (subAsset is Texture2D) {
                     VRCFuryAssetDatabase.SaveAsset(subAsset, tmpDir, filename + "_" + subAsset.name);
+                    RecordWorkLog(subAsset);
                 }
             }
-            
+
             // Save the main asset
             if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) {
                 VRCFuryAssetDatabase.SaveAsset(asset, tmpDir, filename);
             }
+            RecordWorkLog(asset);
 
             // Attach children
             foreach (var subAsset in unsavedChildren) {
@@ -138,7 +153,60 @@ namespace VF.Service {
                 }
 
                 VRCFuryAssetDatabase.AttachAsset(subAsset, asset);
+                RecordWorkLog(subAsset);
             }
+        }
+
+        private static void RecordWorkLog(Object obj) {
+            if (obj is AnimatorTransitionBase
+                || obj is Motion
+                || obj is AnimatorState
+                || obj is StateMachineBehaviour
+                || obj is AnimatorStateMachine
+                || obj is AvatarMask) {
+                // Nobody cares about where these came from
+                return;
+            }
+
+            var workLog = obj.GetWorkLog();
+            if (workLog.Count <= 0) return;
+
+            var outputPath = AssetDatabase.GetAssetPath(obj);
+            if (string.IsNullOrEmpty(outputPath)) return;
+
+            var manifestEntry = workLogManifest.GetOrCreate(
+                obj,
+                () => new WorkLogManifestEntry {
+                    outputPath = AssetDatabase.IsMainAsset(obj) ? outputPath : $"{outputPath} ({obj.GetType().Name} {obj.name})"
+                }
+            );
+            manifestEntry.workLog = workLog.ToList();
+        }
+
+        public static void FlushWorkLogManifest(string outputDir) {
+            WriteWorkLogManifest(outputDir, workLogManifest.Values);
+            workLogManifest.Clear();
+        }
+
+        private static void WriteWorkLogManifest(string outputDir, IEnumerable<WorkLogManifestEntry> manifestEntries) {
+            VRCFuryAssetDatabase.CreateFolder(outputDir);
+
+            var manifestPath = outputDir + "/_ work-log.txt";
+            var builder = new StringBuilder();
+            foreach (var entry in manifestEntries
+                         .Where(entry => entry.workLog.Count > 0)
+                         .OrderBy(entry => entry.outputPath)) {
+                builder.AppendLine($"{entry.outputPath}:");
+
+                foreach (var item in entry.workLog) {
+                    builder.AppendLine($"* {item}");
+                }
+                builder.AppendLine();
+            }
+            builder.AppendLine();
+
+            File.AppendAllText(manifestPath, builder.ToString());
+            AssetDatabase.ImportAsset(manifestPath);
         }
     }
 }

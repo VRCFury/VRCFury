@@ -75,20 +75,11 @@ namespace VF.Builder {
 
         [PreferBinarySerialization]
         internal class BinaryContainer : ScriptableObject {
-            
+
         }
 
         public static void SaveAsset(Object obj, string dir, string filename) {
             CreateFolder(dir);
-            
-            var reasons = ObjectExtensions.cloneReasons.Get(obj);
-            if (reasons.Count > 0) {
-                var reasonsPath = GetUniquePath(dir, filename + "-reasons", "txt");
-                var writer = new StreamWriter(reasonsPath, false);
-                writer.WriteLine(reasons.Join('\n'));
-                writer.Close();
-                AssetDatabase.ImportAsset(reasonsPath);
-            }
 
             string ext;
             if (obj is AnimationClip) {

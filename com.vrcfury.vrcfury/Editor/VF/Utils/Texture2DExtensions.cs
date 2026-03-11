@@ -40,32 +40,33 @@ namespace VF.Utils {
 
             if (!needsResized && !needsCompressed) return original;
             
-            var texture = original.Clone("Needed to resize / change compression to satisfy VRCSDK requirements");
+            var texture = original.Clone();
             texture.ForceReadable();
 
             if (needsResized) {
-                Debug.LogWarning($"VRCFury is resizing texture {AssetDatabase.GetAssetPath(original)} from {original.width}.{original.height} to {outputWidth}x{outputHeight}");
+                texture.WorkLog($"Resized from {original.width}x{original.height} to {outputWidth}x{outputHeight} to satisfy VRCSDK requirements");
                 var renderTexture = RenderTexture.GetTemporary(outputWidth, outputHeight);
                 Graphics.Blit(texture, renderTexture);
 
                 var scaled = new Texture2D(outputWidth, outputHeight, TextureFormat.RGBA32, false);
                 VrcfObjectFactory.Register(scaled);
+                scaled.name = texture.name;
                 scaled.filterMode = FilterMode.Bilinear;
                 scaled.wrapMode = TextureWrapMode.Clamp;
                 RenderTexture.active = renderTexture;
                 scaled.ReadPixels(new Rect(0, 0, outputWidth, outputHeight), 0, 0);
                 RenderTexture.active = null;
                 RenderTexture.ReleaseTemporary(renderTexture);
+                scaled.MarkClonedFrom(texture);
                 texture = scaled;
                 needsCompressed = true;
             }
 
             if (needsCompressed) {
-                Debug.LogWarning($"VRCFury is compressing texture {AssetDatabase.GetAssetPath(original)} {original.name}");
                 var compressedTypeTest = new Texture2D(256, 256, original.format, false);
                 compressedTypeTest.Compress(false);
                 var autoCompressFormat = compressedTypeTest.format;
-                Debug.LogWarning($"Using type {autoCompressFormat}");
+                texture.WorkLog($"Compressed to satisfy VRCSDK requirements ({autoCompressFormat})");
                 EditorUtility.CompressTexture(texture, autoCompressFormat, TextureCompressionQuality.Best);
             }
 
