@@ -75,8 +75,7 @@ namespace VF.Builder.Haptics {
             Graphics.Blit(texture, tmp);
             RenderTexture previous = RenderTexture.active;
             RenderTexture.active = tmp;
-            Texture2D myTexture2D = new Texture2D(texture.width, texture.height);
-            VrcfObjectFactory.Register(myTexture2D);
+            var myTexture2D = VrcfObjectFactory.CreateTexture2D(texture.width, texture.height);
             myTexture2D.ReadPixels(new Rect(0, 0, tmp.width, tmp.height), 0, 0);
             myTexture2D.Apply();
             RenderTexture.active = previous;

@@ -44,12 +44,17 @@ namespace VF.Utils {
             texture.ForceReadable();
 
             if (needsResized) {
-                texture.WorkLog($"Resized from {original.width}x{original.height} to {outputWidth}x{outputHeight} to satisfy VRCSDK requirements");
                 var renderTexture = RenderTexture.GetTemporary(outputWidth, outputHeight);
                 Graphics.Blit(texture, renderTexture);
 
-                var scaled = new Texture2D(outputWidth, outputHeight, TextureFormat.RGBA32, false);
-                VrcfObjectFactory.Register(scaled, suppressCreatedWorkLog: true);
+                var scaled = VrcfObjectFactory.CreateTexture2D(
+                    outputWidth,
+                    outputHeight,
+                    TextureFormat.RGBA32,
+                    false,
+                    false,
+                    copyWorkLogFrom: texture
+                );
                 scaled.name = texture.name;
                 scaled.filterMode = FilterMode.Bilinear;
                 scaled.wrapMode = TextureWrapMode.Clamp;
@@ -57,17 +62,24 @@ namespace VF.Utils {
                 scaled.ReadPixels(new Rect(0, 0, outputWidth, outputHeight), 0, 0);
                 RenderTexture.active = null;
                 RenderTexture.ReleaseTemporary(renderTexture);
-                scaled.MarkClonedFrom(texture);
                 texture = scaled;
+                texture.WorkLog($"Resized from {original.width}x{original.height} to {outputWidth}x{outputHeight} to satisfy VRCSDK requirements");
                 needsCompressed = true;
             }
 
             if (needsCompressed) {
-                var compressedTypeTest = new Texture2D(256, 256, original.format, false);
+                var compressedTypeTest = VrcfObjectFactory.CreateTexture2D(
+                    256,
+                    256,
+                    original.format,
+                    false,
+                    false,
+                    copyWorkLogFrom: original
+                );
                 compressedTypeTest.Compress(false);
                 var autoCompressFormat = compressedTypeTest.format;
-                texture.WorkLog($"Compressed to satisfy VRCSDK requirements ({autoCompressFormat})");
                 EditorUtility.CompressTexture(texture, autoCompressFormat, TextureCompressionQuality.Best);
+                texture.WorkLog($"Compressed to satisfy VRCSDK requirements ({autoCompressFormat})");
             }
 
             return texture;

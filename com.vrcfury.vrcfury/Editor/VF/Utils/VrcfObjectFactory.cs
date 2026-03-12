@@ -32,10 +32,10 @@ namespace VF.Utils {
             }
         }
 
-        public static T Create<T>(bool suppressCreatedWorkLog = false) where T : Object {
-            return Create(typeof(T), suppressCreatedWorkLog) as T;
+        public static T Create<T>(Object copyWorkLogFrom = null) where T : Object {
+            return Create(typeof(T), copyWorkLogFrom) as T;
         }
-        public static Object Create(Type type, bool suppressCreatedWorkLog = false) {
+        public static Object Create(Type type, Object copyWorkLogFrom = null) {
             Object obj;
             if (typeof(ScriptableObject).IsAssignableFrom(type)) {
                 obj = ScriptableObject.CreateInstance(type) as Object;
@@ -50,14 +50,33 @@ namespace VF.Utils {
                 vp.parameters = new VRCExpressionParameters.Parameter[] { };
             }
 
-            Register(obj, suppressCreatedWorkLog);
+            Register(obj, copyWorkLogFrom);
             return obj;
         }
 
-        public static T Register<T>(T obj, bool suppressCreatedWorkLog = false) where T : Object {
+        public static Material CreateMaterial(Shader shader, Object copyWorkLogFrom = null) {
+            var obj = new Material(shader);
+            return Register(obj, copyWorkLogFrom);
+        }
+
+        public static Texture2D CreateTexture2D(
+            int width,
+            int height,
+            TextureFormat textureFormat = TextureFormat.RGBA32,
+            bool mipChain = false,
+            bool linear = false,
+            Object copyWorkLogFrom = null
+        ) {
+            var obj = new Texture2D(width, height, textureFormat, mipChain, linear);
+            return Register(obj, copyWorkLogFrom);
+        }
+
+        public static T Register<T>(T obj, Object copyWorkLogFrom = null) where T : Object {
             created.Add(obj);
             obj.hideFlags = HideFlags.DontSaveInEditor;
-            if (!suppressCreatedWorkLog) {
+            if (copyWorkLogFrom != null) {
+                obj.MarkClonedFrom(copyWorkLogFrom);
+            } else {
                 obj.WorkLog("Created fresh");
             }
             return obj;

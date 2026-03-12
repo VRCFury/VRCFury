@@ -50,9 +50,6 @@ namespace VF.Utils {
             }
 
             var clone = VrcfObjectCloner.Clone(original);
-            if (clone != original) {
-                clone.MarkClonedFrom(original);
-            }
             if (reason != null) {
                 clone.WorkLog(reason);
             }

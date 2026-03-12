@@ -61,8 +61,7 @@ namespace VF.Builder.Haptics {
             public int patchedPrograms;
         }
         private static PatchResult PatchUnsafe(Shader shader, bool keepImports, string parentHash = null) {
-            var testMat = new Material(shader);
-            VrcfObjectFactory.Register(testMat);
+            var testMat = VrcfObjectFactory.CreateMaterial(shader);
             for (int i = 0; i < testMat.passCount; i++) {
                 ShaderUtil.CompilePass(testMat, i, true);
             }

@@ -14,7 +14,7 @@ using Object = UnityEngine.Object;
 namespace VF.Utils {
     internal static class RecorderUtils {
         private static Action restore = null;
-        
+
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type animStateType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
             public static readonly PropertyInfo selectionField = animStateType?.VFProperty("selection");
@@ -65,7 +65,7 @@ namespace VF.Utils {
                     "Ok");
                 return;
             }
-            
+
             // Open / focus the animation tab
             var animationWindow = EditorWindowFinder.GetWindows(Reflection.AnimationWindow).FirstOrDefault();
             if (animationWindow == null) {
@@ -76,7 +76,7 @@ namespace VF.Utils {
 
             animationWindow.Focus();
             var animState = Reflection.AnimationWindowState.GetValue(animationWindow);
-            
+
             var avatarObject = baseObj.GetComponentInSelfOrParent<VRCAvatarDescriptor>().NullSafe()?.owner();
             if (avatarObject == null) {
                 avatarObject = baseObj.GetComponentInSelfOrParent<Animator>().NullSafe()?.owner();
@@ -104,7 +104,7 @@ namespace VF.Utils {
                     if (expandedInClone != null) CollapseUtils.SetExpanded(expandedInClone, true);
                 }
             }
-            
+
             var prefix = baseObj.GetPath(avatarObject);
             var baseObjInClone = clone.Find(prefix);
             Selection.activeGameObject = baseObjInClone;
@@ -119,7 +119,7 @@ namespace VF.Utils {
                 Object.DestroyImmediate(a);
             }
             var animator = clone.AddComponent<Animator>();
-            var controller = new AnimatorController();
+            var controller = VrcfObjectFactory.Create<AnimatorController>();
             controller.AddLayer("Temp Controller For Recording");
             var layer = controller.layers.Last();
             var state = layer.stateMachine.AddState("Main");
