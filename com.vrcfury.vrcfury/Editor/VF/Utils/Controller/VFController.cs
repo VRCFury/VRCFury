@@ -62,6 +62,9 @@ namespace VF.Utils.Controller {
          * be the ONLY THING in that file!!!
          */
         public void TakeOwnershipOf(VFController other, bool putOnTop = false, bool prefix = true) {
+            ctrl.WorkLog(
+                $"Merged in {other.ctrl.layers.Length} layers and {other.parameters.Length} parameters from controller {other.ctrl.GetPathAndName()}"
+            );
             // Merge Layers
             if (prefix) {
                 foreach (var layer in other.layers) {

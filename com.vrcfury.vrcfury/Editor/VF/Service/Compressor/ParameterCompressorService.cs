@@ -41,7 +41,11 @@ namespace VF.Service.Compressor {
                     }
                 }
                 if (!readOnlyParams.IsSameAs(mutated)) {
-                    paramsService.GetParams().GetRaw().parameters = mutated.parameters;
+                    var writableParams = paramsService.GetParams().GetRaw();
+                    writableParams.parameters = mutated.parameters;
+                    writableParams.WorkLog(
+                        $"Updated {writableParams.parameters.Length} expression parameters while preparing parameter compression"
+                    );
                 }
             }
 
@@ -56,12 +60,18 @@ namespace VF.Service.Compressor {
             } else {
                 newLayerService.BuildLayer(decision);
             }
+            fx.GetRaw().WorkLog(
+                $"Added parameter compression logic to FX controller for {decision.compress.Count} parameters"
+            );
             
             var compressNames = decision.compress.Select(p => p.name).ToImmutableHashSet();
             foreach (var param in paramz.parameters.Where(p => compressNames.Contains(p.name))) {
                 param.SetNetworkSynced(false);
             }
             var newCost = paramz.CalcTotalCost();
+            paramz.WorkLog(
+                $"Compressed {decision.compress.Count} expression parameters to fit VRChat limits ({originalCost} bits to {newCost} bits)"
+            );
 
             NoBadControllerParamsService.UpgradeWrongParamTypes(fx);
             // Hopefully temporary until we can work out a better "re-save and/or re-dirty everything in a build hook at the end of the build" system

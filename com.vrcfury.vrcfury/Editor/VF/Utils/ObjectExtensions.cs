@@ -67,13 +67,7 @@ namespace VF.Utils {
                     workLog.Put(to, item);
                 }
             } else {
-                var path = AssetDatabase.GetAssetPath(from);
-                if (string.IsNullOrEmpty(path)) {
-                    path = $"Unsaved asset ({from.GetType().Name} {from.name})";
-                } else if (!AssetDatabase.IsMainAsset(from)) {
-                    path = $"{path} ({from.GetType().Name} {from.name})";
-                }
-                workLog.Put(to, $"Imported from {path}");
+                workLog.Put(to, $"Imported from {from.GetPathAndName()}");
             }
         }
 
@@ -90,6 +84,18 @@ namespace VF.Utils {
 
         public static IList<string> GetWorkLog(this Object obj) {
             return workLog.Get(obj);
+        }
+
+        public static string GetPathAndName(this Object obj) {
+            if (obj == null) return "(null)";
+            var path = AssetDatabase.GetAssetPath(obj);
+            if (string.IsNullOrEmpty(path)) {
+                path = "(generated)";
+            }
+            if (AssetDatabase.IsMainAsset(obj)) {
+                return path;
+            }
+            return $"{path} ({obj.name})";
         }
 
         /**

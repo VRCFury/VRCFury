@@ -15,13 +15,7 @@ using Object = UnityEngine.Object;
 namespace VF.Service {
     [VFService]
     internal class SaveAssetsService {
-        private class WorkLogManifestEntry {
-            public string outputPath;
-            public List<string> workLog = new List<string>();
-        }
-
-        private static readonly Dictionary<Object, WorkLogManifestEntry> workLogManifest
-            = new Dictionary<Object, WorkLogManifestEntry>();
+        private static readonly HashSet<Object> workLogManifest = new HashSet<Object>();
 
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VFGameObject avatarObject;
@@ -174,29 +168,25 @@ namespace VF.Service {
             var outputPath = AssetDatabase.GetAssetPath(obj);
             if (string.IsNullOrEmpty(outputPath)) return;
 
-            var manifestEntry = workLogManifest.GetOrCreate(
-                obj,
-                () => new WorkLogManifestEntry {
-                    outputPath = AssetDatabase.IsMainAsset(obj) ? outputPath : $"{outputPath} ({obj.GetType().Name} {obj.name})"
-                }
-            );
-            manifestEntry.workLog = workLog.ToList();
+            workLogManifest.Add(obj);
         }
 
         public static void FlushWorkLogManifest(string outputDir) {
-            WriteWorkLogManifest(outputDir, workLogManifest.Values);
+            WriteWorkLogManifest(outputDir, workLogManifest);
             workLogManifest.Clear();
         }
 
-        private static void WriteWorkLogManifest(string outputDir, IEnumerable<WorkLogManifestEntry> manifestEntries) {
+        private static void WriteWorkLogManifest(string outputDir, IEnumerable<Object> manifestEntries) {
             VRCFuryAssetDatabase.CreateFolder(outputDir);
 
             var manifestPath = outputDir + "/_ work-log.txt";
             var builder = new StringBuilder();
             foreach (var entry in manifestEntries
+                         .Where(entry => entry != null)
+                         .Select(entry => (obj: entry, workLog: entry.GetWorkLog()))
                          .Where(entry => entry.workLog.Count > 0)
-                         .OrderBy(entry => entry.outputPath)) {
-                builder.AppendLine($"{entry.outputPath}:");
+                         .OrderBy(entry => entry.obj.GetPathAndName())) {
+                builder.AppendLine($"{entry.obj.GetPathAndName()}:");
 
                 foreach (var item in entry.workLog) {
                     builder.AppendLine($"* {item}");

@@ -49,7 +49,7 @@ namespace VF.Utils {
                 Graphics.Blit(texture, renderTexture);
 
                 var scaled = new Texture2D(outputWidth, outputHeight, TextureFormat.RGBA32, false);
-                VrcfObjectFactory.Register(scaled);
+                VrcfObjectFactory.Register(scaled, suppressCreatedWorkLog: true);
                 scaled.name = texture.name;
                 scaled.filterMode = FilterMode.Bilinear;
                 scaled.wrapMode = TextureWrapMode.Clamp;

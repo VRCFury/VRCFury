@@ -131,6 +131,7 @@ namespace VF.Service {
                 if (alwaysOneParams.Contains(param)) param = VFBlendTreeDirect.AlwaysOneParam;
                 if (!firstClipByWeightParam.TryGetValue(param, out var firstClip)) {
                     var clone = clip.Clone();
+                    clone.WorkLog("Flattened direct blend tree by merging clips with identical weights");
                     child.motion = clone;
                     firstClipByWeightParam[param] = clone;
                     return new [] { child };

@@ -24,8 +24,10 @@ namespace VF.Service {
                 prms = origParams;
             } else if (origParams != null) {
                 prms = origParams.Clone();
+                prms.WorkLog($"Loaded expression parameters for mutation from {origParams.GetPathAndName()} ({origParams.parameters.Length} entries)");
             } else {
                 prms = VrcfObjectFactory.Create<VRCExpressionParameters>();
+                prms.WorkLog("Created new expression parameters asset");
             }
             VRCAvatarUtils.SetAvatarParams(avatar, prms);
             prms.RemoveDuplicates();

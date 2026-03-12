@@ -32,10 +32,10 @@ namespace VF.Utils {
             }
         }
 
-        public static T Create<T>() where T : Object {
-            return Create(typeof(T)) as T;
+        public static T Create<T>(bool suppressCreatedWorkLog = false) where T : Object {
+            return Create(typeof(T), suppressCreatedWorkLog) as T;
         }
-        public static Object Create(Type type) {
+        public static Object Create(Type type, bool suppressCreatedWorkLog = false) {
             Object obj;
             if (typeof(ScriptableObject).IsAssignableFrom(type)) {
                 obj = ScriptableObject.CreateInstance(type) as Object;
@@ -50,13 +50,16 @@ namespace VF.Utils {
                 vp.parameters = new VRCExpressionParameters.Parameter[] { };
             }
 
-            Register(obj);
+            Register(obj, suppressCreatedWorkLog);
             return obj;
         }
 
-        public static T Register<T>(T obj) where T : Object {
+        public static T Register<T>(T obj, bool suppressCreatedWorkLog = false) where T : Object {
             created.Add(obj);
             obj.hideFlags = HideFlags.DontSaveInEditor;
+            if (!suppressCreatedWorkLog) {
+                obj.WorkLog("Created fresh");
+            }
             return obj;
         }
         

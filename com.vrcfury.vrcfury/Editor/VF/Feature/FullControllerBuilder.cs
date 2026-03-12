@@ -63,6 +63,9 @@ namespace VF.Feature {
                     }
                     paramz.AddSyncedParam(param);
                 }
+                paramz.GetRaw().WorkLog(
+                    $"Merged in {copy.parameters.Length} expression parameters from {prms.GetPathAndName()}"
+                );
             }
 
             var fromControllers = new List<VFControllerWithVrcType>();
