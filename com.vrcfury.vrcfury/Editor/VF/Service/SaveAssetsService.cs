@@ -13,53 +13,10 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Service {
-    [VFService]
-    internal class SaveAssetsService {
-        private static readonly HashSet<Object> workLogManifest = new HashSet<Object>();
+    internal class SaveAssetsSession {
+        private readonly HashSet<Object> workLogManifest = new HashSet<Object>();
 
-        [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly VFGameObject avatarObject;
-        [VFAutowired] private readonly TmpDirService tmpDirService;
-
-        [FeatureBuilderAction(FeatureOrder.SaveAssets)]
-        public void Run() {
-            // This works without WithoutAssetEditing in <2022, but in unity 6+, saving an asset during AssetEditing
-            // causes the Asset Path to never show up until AssetEditing is ended, which breaks NeedsSaved and
-            // AttachAsset
-            VRCFuryAssetDatabase.WithoutAssetEditing(() => {
-                var tmpDir = tmpDirService.GetTempDir();
-
-                // Save mats and meshes
-                foreach (var component in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
-                    SaveUnsavedComponentAssets(component, tmpDir);
-                }
-
-                // Special handling for mask and controller names
-                foreach (var controller in controllers.GetAllMutatedControllers()) {
-                    foreach (var layer in controller.GetLayers()) {
-                        if (layer.mask != null) {
-                            layer.mask.name = "Mask for " + layer.name;
-                        }
-                    }
-
-                    SaveAssetAndChildren(
-                        controller.GetRaw(),
-                        $"VRCFury {controller.GetType().ToString()}",
-                        tmpDir,
-                        true
-                    );
-                }
-
-                // Save everything else
-                foreach (var component in avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                    SaveUnsavedComponentAssets(component, tmpDir);
-                }
-
-                FlushWorkLogManifest(tmpDir);
-            });
-        }
-
-        public static void SaveUnsavedComponentAssets(UnityEngine.Component component, string tmpDir) {
+        public void SaveUnsavedComponentAssets(UnityEngine.Component component, string tmpDir) {
             foreach (var asset in GetUnsavedChildren(component, false, true)) {
                 string filename;
                 if (asset is VRCExpressionsMenu) {
@@ -114,7 +71,7 @@ namespace VF.Service {
             return unsavedChildren;
         }
 
-        public static void SaveAssetAndChildren(Object asset, string filename, string tmpDir, bool reuseOriginalClips) {
+        public void SaveAssetAndChildren(Object asset, string filename, string tmpDir, bool reuseOriginalClips) {
             if (!VrcfObjectFactory.DidCreate(asset)) return;
 
             var unsavedChildren = GetUnsavedChildren(asset, true, reuseOriginalClips);
@@ -151,7 +108,7 @@ namespace VF.Service {
             }
         }
 
-        private static void RecordWorkLog(Object obj) {
+        private void RecordWorkLog(Object obj) {
             if (obj is AnimatorTransitionBase
                 || obj is Motion
                 || obj is AnimatorState
@@ -171,7 +128,7 @@ namespace VF.Service {
             workLogManifest.Add(obj);
         }
 
-        public static void FlushWorkLogManifest(string outputDir) {
+        public void FlushWorkLogManifest(string outputDir) {
             WriteWorkLogManifest(outputDir, workLogManifest);
             workLogManifest.Clear();
         }
@@ -197,6 +154,52 @@ namespace VF.Service {
 
             File.AppendAllText(manifestPath, builder.ToString());
             AssetDatabase.ImportAsset(manifestPath);
+        }
+    }
+
+    [VFService]
+    internal class SaveAssetsService {
+        [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly TmpDirService tmpDirService;
+
+        [FeatureBuilderAction(FeatureOrder.SaveAssets)]
+        public void Run() {
+            // This works without WithoutAssetEditing in <2022, but in unity 6+, saving an asset during AssetEditing
+            // causes the Asset Path to never show up until AssetEditing is ended, which breaks NeedsSaved and
+            // AttachAsset
+            VRCFuryAssetDatabase.WithoutAssetEditing(() => {
+                var tmpDir = tmpDirService.GetTempDir();
+                var session = new SaveAssetsSession();
+
+                // Save mats and meshes
+                foreach (var component in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
+                    session.SaveUnsavedComponentAssets(component, tmpDir);
+                }
+
+                // Special handling for mask and controller names
+                foreach (var controller in controllers.GetAllMutatedControllers()) {
+                    foreach (var layer in controller.GetLayers()) {
+                        if (layer.mask != null) {
+                            layer.mask.name = "Mask for " + layer.name;
+                        }
+                    }
+
+                    session.SaveAssetAndChildren(
+                        controller.GetRaw(),
+                        $"VRCFury {controller.GetType().ToString()}",
+                        tmpDir,
+                        true
+                    );
+                }
+
+                // Save everything else
+                foreach (var component in avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
+                    session.SaveUnsavedComponentAssets(component, tmpDir);
+                }
+
+                session.FlushWorkLogManifest(tmpDir);
+            });
         }
     }
 }

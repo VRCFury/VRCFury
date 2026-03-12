@@ -114,8 +114,9 @@ namespace VF {
                             var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService);
                             if (bakeResult != null) {
                                 var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", bakeResult.name);
+                                var saver = new SaveAssetsSession();
                                 foreach (var renderer in bakeResult.renderers) {
-                                    SaveAssetsService.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
+                                    saver.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
                                 }
                                 HideAnnoyingGizmosService.Hide(bakeResult.bakeRoot);
                             }
