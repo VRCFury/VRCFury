@@ -104,10 +104,13 @@ namespace VF.Utils.Controller {
             name = WrapStateName(name);
             name = name.Replace(".", "");
 
-            var s = rootStateMachine.AddState(name);
-            VrcfObjectFactory.Register(s);
-            var node = GetLastNode().Value;
-            node.state.writeDefaultValues = true;
+            var s = VrcfObjectFactory.Create<AnimatorState>();
+            s.name = name;
+            s.writeDefaultValues = true;
+            var node = new ChildAnimatorState {
+                state = s
+            };
+            rootStateMachine.states = rootStateMachine.states.Concat(new[] { node }).ToArray();
 
             var state = new VFState(this, node, rootStateMachine);
             
@@ -127,12 +130,6 @@ namespace VF.Utils.Controller {
             return createdStates.Contains(state);
         }
 
-        private ChildAnimatorState? GetLastNode() {
-            var s = rootStateMachine.states;
-            if (s.Length == 0) return null;
-            return s[s.Length-1];
-        }
-
         public void Move(int newIndex) {
             var layers = ctrl.layers;
             var myLayer = layers
@@ -146,7 +143,10 @@ namespace VF.Utils.Controller {
         }
 
         public void Remove() {
-            ctrl.RemoveLayer(GetLayerId());
+            var layerId = GetLayerId();
+            ctrl.layers = ctrl.layers
+                .Where((_, index) => index != layerId)
+                .ToArray();
         }
 
         private IReadOnlyCollection<AnimatorStateMachine> allRawStateMachines =>

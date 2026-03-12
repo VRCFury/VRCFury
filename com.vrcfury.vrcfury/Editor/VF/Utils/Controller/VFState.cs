@@ -140,19 +140,50 @@ namespace VF.Utils.Controller {
         }
 
         public VFEntryTransition TransitionsFromEntry() {
-            return new VFEntryTransition(() => VrcfObjectFactory.Register(stateMachine.AddEntryTransition(state)));
+            return new VFEntryTransition(() => {
+                var transition = VrcfObjectFactory.Create<AnimatorTransition>();
+                transition.destinationState = state;
+                stateMachine.entryTransitions = stateMachine.entryTransitions
+                    .Concat(new[] { transition })
+                    .ToArray();
+                return transition;
+            });
         }
         public VFTransition TransitionsFromAny() {
-            return new VFTransition(() => VrcfObjectFactory.Register(stateMachine.AddAnyStateTransition(state)));
+            return new VFTransition(() => {
+                var transition = VrcfObjectFactory.Create<AnimatorStateTransition>();
+                transition.hasFixedDuration = true;
+                transition.destinationState = state;
+                stateMachine.anyStateTransitions = stateMachine.anyStateTransitions
+                    .Concat(new[] { transition })
+                    .ToArray();
+                return transition;
+            });
         }
         public VFTransition TransitionsTo(VFState other) {
-            return new VFTransition(() => VrcfObjectFactory.Register(state.AddTransition(other.state)));
+            return TransitionsTo(other.state);
         }
         public VFTransition TransitionsTo(AnimatorState other) {
-            return new VFTransition(() => VrcfObjectFactory.Register(state.AddTransition(other)));
+            return new VFTransition(() => {
+                var transition = VrcfObjectFactory.Create<AnimatorStateTransition>();
+                transition.hasFixedDuration = true;
+                transition.destinationState = other;
+                state.transitions = state.transitions
+                    .Concat(new[] { transition })
+                    .ToArray();
+                return transition;
+            });
         }
         public VFTransition TransitionsToExit() {
-            return new VFTransition(() => VrcfObjectFactory.Register(state.AddExitTransition()));
+            return new VFTransition(() => {
+                var transition = VrcfObjectFactory.Create<AnimatorStateTransition>();
+                transition.hasFixedDuration = true;
+                transition.isExit = true;
+                state.transitions = state.transitions
+                    .Concat(new[] { transition })
+                    .ToArray();
+                return transition;
+            });
         }
 
         //public AnimatorState GetRaw() {

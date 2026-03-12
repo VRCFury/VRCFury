@@ -44,15 +44,19 @@ namespace VF.Utils.Controller {
             // Unity breaks if name contains .
             name = name.Replace(".", "");
 
-            ctrl.AddLayer(name);
-            var sm = ctrl.layers.Last().stateMachine;
+            var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
+            sm.name = name;
+            var newLayer = new AnimatorControllerLayer {
+                name = name,
+                stateMachine = sm
+            };
+            ctrl.layers = ctrl.layers.Concat(new[] { newLayer }).ToArray();
             var layer = new VFLayer(ctrl, sm);
             if (insertAt >= 0) {
                 layer.Move(insertAt);
             }
             layer.weight = 1;
             sm.anyStatePosition = VFState.CalculateOffsetPosition(sm.entryPosition, 0, 1);
-            VrcfObjectFactory.Register(sm);
             return layer;
         }
         
@@ -93,7 +97,9 @@ namespace VF.Utils.Controller {
         }
 
         public void RemoveParameter(int i) {
-            ctrl.RemoveParameter(i);
+            ctrl.parameters = ctrl.parameters
+                .Where((_, index) => index != i)
+                .ToArray();
         }
 
         public VFABool _NewBool(string name, bool def = false) {
@@ -113,11 +119,12 @@ namespace VF.Utils.Controller {
             if (exists != null) {
                 return exists;
             }
-            ctrl.AddParameter(name, type);
-            var ps = ctrl.parameters;
-            var param = ps[ps.Length-1];
+            var param = new AnimatorControllerParameter {
+                name = name,
+                type = type
+            };
             with?.Invoke(param);
-            ctrl.parameters = ps;
+            ctrl.parameters = ctrl.parameters.Concat(new[] { param }).ToArray();
             return param;
         }
 
