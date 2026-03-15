@@ -78,9 +78,17 @@ namespace VF.Builder {
 
         }
 
-        public static void SaveAsset(Object obj, string dir, string filename) {
-            CreateFolder(dir);
+        public static void SaveAsset(Object obj, string fullPath) {
+            CreateFolder(GetDirectoryName(fullPath));
 
+            // If object was already part of another asset, or was recently deleted, we MUST
+            // call this first, or unity will throw an exception
+            AssetDatabase.RemoveObjectFromAsset(obj);
+            obj.hideFlags &= ~HideFlags.DontSaveInEditor;
+            AssetDatabase.CreateAsset(obj, fullPath);
+        }
+
+        public static void SaveAsset(Object obj, string dir, string filename) {
             string ext;
             if (obj is AnimationClip) {
                 ext = "anim";
@@ -108,11 +116,7 @@ namespace VF.Builder {
 #endif
 
             var fullPath = GetUniquePath(dir, filename, ext);
-            // If object was already part of another asset, or was recently deleted, we MUST
-            // call this first, or unity will throw an exception
-            AssetDatabase.RemoveObjectFromAsset(obj);
-            obj.hideFlags &= ~HideFlags.DontSaveInEditor;
-            AssetDatabase.CreateAsset(obj, fullPath);
+            SaveAsset(obj, fullPath);
         }
 
         public static void AttachAsset(Object objectToAttach, Object parent) {

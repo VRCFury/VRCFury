@@ -53,7 +53,7 @@ namespace VF.Actions {
                     var newPath = EditorUtility.SaveFilePanelInProject("VRCFury Recorder", "New Animation", "anim", "Path to new animation");
                     if (string.IsNullOrEmpty(newPath)) return;
                     clip = VrcfObjectFactory.Create<AnimationClip>();
-                    AssetDatabase.CreateAsset(clip, newPath);
+                    VRCFuryAssetDatabase.SaveAsset(clip, newPath);
                     GuidWrapperPropertyDrawer.SetValue(clipProp, clip);
                     clipProp.serializedObject.ApplyModifiedProperties();
                 }

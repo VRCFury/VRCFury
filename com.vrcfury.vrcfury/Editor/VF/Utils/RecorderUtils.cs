@@ -8,7 +8,6 @@ using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Component;
 using VF.Service;
-using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
@@ -120,9 +119,11 @@ namespace VF.Utils {
                 Object.DestroyImmediate(a);
             }
             var animator = clone.AddComponent<Animator>();
-            var controller = VrcfObjectFactory.Create<AnimatorController>();
-            var layer = new VFController(controller).NewLayer("Temp Controller For Recording");
-            layer.NewState("Main").WithAnimation(clip);
+            var controller = new AnimatorController();
+            controller.AddLayer("Temp Controller For Recording");
+            var layer = controller.layers.Last();
+            var state = layer.stateMachine.AddState("Main");
+            state.motion = clip;
             animator.runtimeAnimatorController = controller;
 
             var selection = Reflection.selectionField.GetValue(animState);
