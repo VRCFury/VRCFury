@@ -6,16 +6,21 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Menu;
 
 namespace VF.Service {
     [VFService]
     internal class RemoveNonQuestMaterialsService {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VFGameObject avatarObject;
-        
+
         [FeatureBuilderAction(FeatureOrder.RemoveNonQuestMaterials)]
         public void Apply() {
             if (BuildTargetUtils.IsDesktop()) {
+                return;
+            }
+
+            if (!RemoveNonMobileMaterialsMenuItem.Get()) {
                 return;
             }
 
@@ -37,31 +42,31 @@ namespace VF.Service {
             foreach (var renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 renderer.sharedMaterials = renderer.sharedMaterials.Select(m => {
                     if (!IsMobileMat(m)) {
-                        removedMats.Add($"{m.name} in {renderer.owner().GetPath(avatarObject, true)}");
+                            removedMats.Add($"{m.name} in {renderer.owner().GetPath(avatarObject, true)}");
                         if (renderer.owner().active && renderer.owner().parent == avatarObject) {
-                            removedFromActiveRootRenderer = true;
+                                removedFromActiveRootRenderer = true;
+                            }
+                            return null;
                         }
-                        return null;
-                    }
-                    return m;
-                }).ToArray();
-            }
+                        return m;
+                    }).ToArray();
+                }
 
             foreach (var light in avatarObject.GetComponentsInSelfAndChildren<Light>()) {
-                Object.DestroyImmediate(light);
-            }
-            
+                    Object.DestroyImmediate(light);
+                }
+
             if (removedFromActiveRootRenderer) {
-                var sorted = removedMats.OrderBy(a => a.Length).Take(10).ToArray();
-                var more = removedMats.Count - sorted.Length;
-                var moreText = more > 0 ? $"\n... and {more} more" : "";
-                EditorUtility.DisplayDialog("Invalid Mobile Materials", 
-                                            "You are currently building an avatar for Android/Quest/iOS and are using shaders that are not mobile compatible. " + 
-                                            "You have likely switched build target by mistake and simply need to switch back to Windows mode using the VRChat SDK Control Panel. " + 
-                                            "If you have not switched by mistake and want to build for mobile, you will need to change your materials to use shaders found in VRChat/Mobile.\n" +
-                                            "\n" +
-                                            sorted.Join('\n') + moreText, 
-                                            "OK");
+                    var sorted = removedMats.OrderBy(a => a.Length).Take(10).ToArray();
+                    var more = removedMats.Count - sorted.Length;
+                    var moreText = more > 0 ? $"\n... and {more} more" : "";
+                    EditorUtility.DisplayDialog("Invalid Mobile Materials",
+                                                "You are currently building an avatar for Android/Quest/iOS and are using shaders that are not mobile compatible. " +
+                                                "You have likely switched build target by mistake and simply need to switch back to Windows mode using the VRChat SDK Control Panel. " +
+                                                "If you have not switched by mistake and want to build for mobile, you will need to change your materials to use shaders found in VRChat/Mobile.\n" +
+                                                "\n" +
+                                                sorted.Join('\n') + moreText,
+                                                "OK");
             }
         }
 

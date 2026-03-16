@@ -13,7 +13,7 @@ using VF.Utils;
 namespace VF.Menu {
     internal static class MenuItems {
         private const string prefix = "Tools/VRCFury/";
-        
+
         public const string update = prefix + "Update VRCFury";
         public const int updatePriority = 1000;
 
@@ -75,7 +75,10 @@ namespace VF.Menu {
         public const int unpackWarningPriority = settingsPriority + 105;
         public const string alignMobile = settings + "Align Mobile Parameters to match Desktop";
         public const int alignMobilePriority = settingsPriority + 106;
-        
+        public const string removeNonMobileMaterials = settings + "Remove incompatible materials on mobile builds";
+        public const int removeNonMobileMaterialsPriority = settingsPriority + 107;
+
+
         public const string compressHeader = settings + "When avatar is over parameter limit:";
         public const int compressHeaderPriority = settingsPriority + 200;
         public const string compressCompress = settings + "Compress parameters to fit";
@@ -96,7 +99,7 @@ namespace VF.Menu {
         private static bool Check() {
             return SpsUpgrader.Check();
         }
-        
+
         [MenuItem("GameObject/VRCFury/Create SPS Socket", priority = 40)]
         [MenuItem(createSocket, priority = createSocketPriority)]
         public static void RunSocket() {
@@ -104,7 +107,7 @@ namespace VF.Menu {
                 HapticsMenuItem.Create(false);
             });
         }
-        
+
         [MenuItem("GameObject/VRCFury/Create SPS Plug", priority = 41)]
         [MenuItem(createPlug, priority = createPlugPriority)]
         public static void RunPlug() {
@@ -126,7 +129,7 @@ namespace VF.Menu {
                 ZawooDeleter.Run(MenuUtils.GetSelectedAvatar());
             });
         }
-        
+
         [MenuItem(nukeZawoo, true)]
         private static bool CheckNukeZawooParts() {
             return MenuUtils.GetSelectedAvatar() != null;
@@ -140,7 +143,7 @@ namespace VF.Menu {
         private static bool CheckForceRun() {
             return VRCFuryTestCopyMenuItem.CheckBuildTestCopy();
         }
-        
+
 #if UNITY_2022_1_OR_NEWER
         [MenuItem(recompileAll, priority = recompileAllPriority)]
         private static void RecompileAll() {
