@@ -26,6 +26,15 @@ jobs:
         platform:
           - windows
           - android
+        sdkKind:
+          - avatars
+        include:
+          - vrcsdkUnityVersion: [ 3.10.1, 2022.3.22f1 ]
+            platform: windows
+            sdkKind: worlds
+          - vrcsdkUnityVersion: [ 3.10.1, 2022.3.22f1 ]
+            platform: android
+            sdkKind: worlds
     steps:
       - uses: actions/checkout@v6
 
@@ -40,7 +49,21 @@ jobs:
       - name: Download VRCSDK
         run: |
           VERSION="${{ matrix.vrcsdkUnityVersion[0] }}"
+          SDK_KIND="${{ matrix.sdkKind }}"
           echo "Downloading VRCSDK $VERSION"
+
+          download_manifest_package() {
+            local package_name="$1"
+            local version="$2"
+            local zip_path="$package_name.zip"
+            local url="$(echo "$MANIFEST" | jq ".packages.\"$package_name\".versions.\"$version\".url" --raw-output)"
+
+            echo "$package_name URL is $url"
+            curl -L -o "$zip_path" "$url"
+            mkdir -p "$PROJECT_PATH/Packages/$package_name"
+            unzip "$zip_path" -d "$PROJECT_PATH/Packages/$package_name"
+            rm "$zip_path"
+          }
 
           if [[ "$VERSION" == "2022.06.03.00.04" ]]; then
             curl -L -o "vrcsdk.zip" "https://github.com/VRCFury/VRCFury/releases/download/old-vrcsdk/VRCSDK.zip"
@@ -50,21 +73,18 @@ jobs:
             MANIFEST_URL="https://vrchat.github.io/packages/index.json"
             echo "Downloading manifest from $MANIFEST_URL"
             MANIFEST="$(curl "$MANIFEST_URL")"
-            AV_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.avatars\".versions.\"$VERSION\".url" --raw-output)"
-            echo "Avatar SDK URL is $AV_URL"
-            BASE_URL="$(echo "$MANIFEST" | jq ".packages.\"com.vrchat.base\".versions.\"$VERSION\".url" --raw-output)"
-            echo "Base SDK URL is $BASE_URL"
-            curl -L -o "avatars.zip" "$AV_URL"
-            curl -L -o "base.zip" "$BASE_URL"
-            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.avatars"
-            mkdir -p "$PROJECT_PATH/Packages/com.vrchat.base"
-            unzip avatars.zip -d "$PROJECT_PATH/Packages/com.vrchat.avatars"
-            unzip base.zip -d "$PROJECT_PATH/Packages/com.vrchat.base"
-            rm "avatars.zip"
-            rm "base.zip"
+            download_manifest_package "com.vrchat.base" "$VERSION"
+
+            if [[ "$SDK_KIND" == "worlds" ]]; then
+              SDK_PACKAGE="com.vrchat.worlds"
+            else
+              SDK_PACKAGE="com.vrchat.avatars"
+            fi
+
+            download_manifest_package "$SDK_PACKAGE" "$VERSION"
           fi
 
-      - name: Run Tests
+      - name: Verify Compile
         id: tests
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
