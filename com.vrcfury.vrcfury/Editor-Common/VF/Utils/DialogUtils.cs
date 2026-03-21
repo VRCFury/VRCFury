@@ -1,15 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Exceptions;
-using VF.Inspector;
 
 namespace VF.Utils {
     internal static class DialogUtils {
+        public static Func<string> debugLineGetter;
+
         private static string FormatMessage(string message, Exception ex = null) {
             if (ex != null) {
                 var exLine = "(";
@@ -59,14 +58,16 @@ namespace VF.Utils {
                 var label = new Label(message);
                 infoBox.Add(label);
                 label.AddToClassList("label");
-                
-                var debugLine = new Label(VrcfDebugLine.GetOutputString());
-                root.Add(debugLine);
-                debugLine.style.position = Position.Absolute;
-                debugLine.style.right = 3;
-                debugLine.style.bottom = -2;
-                debugLine.style.opacity = 0.3f;
-                debugLine.style.fontSize = 8;
+
+                if (debugLineGetter != null) {
+                    var debugLine = new Label(debugLineGetter.Invoke());
+                    root.Add(debugLine);
+                    debugLine.style.position = Position.Absolute;
+                    debugLine.style.right = 3;
+                    debugLine.style.bottom = -2;
+                    debugLine.style.opacity = 0.3f;
+                    debugLine.style.fontSize = 8;
+                }
 
                 var buttons = new VisualElement().Row();
                 buttons.Add(new VisualElement().FlexGrow(1));

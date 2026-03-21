@@ -5,7 +5,6 @@ using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
-using VF.Inspector;
 using VF.Service;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
@@ -388,7 +387,7 @@ namespace VF.Utils.Controller {
                 }
 
                 ctrl.parameters = prms;
-                VRCFuryEditorUtils.MarkDirty(ctrl);
+                ctrl.Dirty();
             }
 
             // States
@@ -405,7 +404,7 @@ namespace VF.Utils.Controller {
                 if (state.timeParameterActive) {
                     state.timeParameter = RewriteParamName(state.timeParameter);
                 }
-                VRCFuryEditorUtils.MarkDirty(state);
+                state.Dirty();
             }
             
             foreach (var b in affectsLayers.SelectMany(layer => layer.allBehaviours)) {
@@ -421,7 +420,7 @@ namespace VF.Utils.Controller {
                         }
 #endif
                     }
-                    VRCFuryEditorUtils.MarkDirty(b);
+                    b.Dirty();
                 }
 
                 // VRCAnimatorPlayAudio

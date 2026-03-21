@@ -5,7 +5,6 @@ using UnityEditor.Compilation;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
-using VF.Builder.Haptics;
 using VF.Component;
 using VF.Model;
 using VF.Utils;
@@ -84,62 +83,6 @@ namespace VF.Menu {
         public const int compressAskPriority = settingsPriority + 202;
         public const string compressFail = settings + "Fail the build (Vanilla Behaviour)";
         public const int compressFailPriority = settingsPriority + 203;
-
-        [MenuItem(upgradeLegacyHaptics, priority = upgradeLegacyHapticsPriority)]
-        private static void Run() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                SpsUpgrader.Run();
-            });
-        }
-
-        [MenuItem(upgradeLegacyHaptics, true)]
-        private static bool Check() {
-            return SpsUpgrader.Check();
-        }
-        
-        [MenuItem("GameObject/VRCFury/Create SPS Socket", priority = 40)]
-        [MenuItem(createSocket, priority = createSocketPriority)]
-        public static void RunSocket() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                HapticsMenuItem.Create(false);
-            });
-        }
-        
-        [MenuItem("GameObject/VRCFury/Create SPS Plug", priority = 41)]
-        [MenuItem(createPlug, priority = createPlugPriority)]
-        public static void RunPlug() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                HapticsMenuItem.Create(true);
-            });
-        }
-
-        /*
-        [MenuItem(bakeHaptic, priority = bakeHapticPriority)]
-        public static void RunBake() {
-            HapticsMenuItem.RunBake();
-        }
-        */
-
-        [MenuItem(nukeZawoo, priority = nukeZawooPriority)]
-        private static void NukeZawooParts() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                ZawooDeleter.Run(MenuUtils.GetSelectedAvatar());
-            });
-        }
-        
-        [MenuItem(nukeZawoo, true)]
-        private static bool CheckNukeZawooParts() {
-            return MenuUtils.GetSelectedAvatar() != null;
-        }
-
-        [MenuItem(testCopy, priority = testCopyPriority)]
-        private static void RunForceRun() {
-            VRCFuryTestCopyMenuItem.RunBuildTestCopy();
-        }
-        [MenuItem(testCopy, true)]
-        private static bool CheckForceRun() {
-            return VRCFuryTestCopyMenuItem.CheckBuildTestCopy();
-        }
         
 #if UNITY_2022_1_OR_NEWER
         [MenuItem(recompileAll, priority = recompileAllPriority)]

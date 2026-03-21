@@ -34,8 +34,8 @@ namespace VF.Utils {
         private static void Init() {
             var notReady = new List<string>();
 
-            var helpers = typeof(ReflectionHelper).Assembly
-                .GetTypes()
+            var helpers = ReflectionUtils.GetVrcfEditorAssemblies()
+                .SelectMany(assembly => assembly.GetTypes())
                 .Where(cls => typeof(ReflectionHelper).IsAssignableFrom(cls))
                 .ToArray();
 

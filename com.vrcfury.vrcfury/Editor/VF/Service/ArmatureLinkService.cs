@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 using VF.Builder;
@@ -11,7 +10,6 @@ using VF.Feature;
 using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
-using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Utils;
@@ -292,7 +290,7 @@ namespace VF.Service {
                     skin.bones = skin.bones
                         .Select(b => b == fromBone ? (Transform)toBone : b)
                         .ToArray();
-                    VRCFuryEditorUtils.MarkDirty(skin);
+                    skin.Dirty();
                 }
 
                 // We never rewrite rootBone because of two reasons:

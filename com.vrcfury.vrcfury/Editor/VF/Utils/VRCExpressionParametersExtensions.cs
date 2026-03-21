@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Utils {
@@ -10,7 +9,7 @@ namespace VF.Utils {
             foreach (var param in p.parameters) {
                 param.name = each(param.name);
             }
-            VRCFuryEditorUtils.MarkDirty(p);
+            p.Dirty();
         }
 
         private static readonly Lazy<bool> HasDexProtect = new Lazy<bool>(() => {
@@ -45,7 +44,7 @@ namespace VF.Utils {
                 return;
             }
             paramz.parameters = paramz.parameters.Concat(new [] {param}).ToArray();
-            VRCFuryEditorUtils.MarkDirty(paramz);
+            paramz.Dirty();
         }
         
         public static VRCExpressionParameters.Parameter Get(this VRCExpressionParameters paramz, string name) {

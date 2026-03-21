@@ -95,18 +95,6 @@ namespace VF.Utils {
             return $"{path} ({obj.name})";
         }
 
-        /**
-         * Converts destroyed Objects ("fake-null") into "real" null values which can use null-coalescing
-         */
-        [CanBeNull]
-        public static T NullSafe<T>([CanBeNull] this T obj) where T : UnityEngine.Object {
-            return obj == null ? null : obj;
-        }
-        [CanBeNull]
-        public static VFGameObject NullSafe([CanBeNull] this VFGameObject obj) {
-            return obj == null ? null : obj;
-        }
-
         public static T[] FindObjectsByType<T>() where T : Object {
 #if UNITY_2022_1_OR_NEWER
             return Object.FindObjectsByType<T>(FindObjectsSortMode.None);

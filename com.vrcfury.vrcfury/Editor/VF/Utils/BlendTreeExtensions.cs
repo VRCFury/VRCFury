@@ -1,12 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
-using UnityEngine;
-using VF.Inspector;
-using VF.Utils.Controller;
 
 namespace VF.Utils {
     internal static class BlendTreeExtensions {
@@ -34,7 +30,7 @@ namespace VF.Utils {
             }).ToArray();
             if (updated) {
                 tree.children = newChildren;
-                VRCFuryEditorUtils.MarkDirty(tree);
+                tree.Dirty();
             }
         }
 
@@ -51,7 +47,7 @@ namespace VF.Utils {
                 }
                 return child;
             });
-            VRCFuryEditorUtils.MarkDirty(tree);
+            tree.Dirty();
         }
 
         public static bool GetNormalizedBlendValues(this BlendTree tree) {

@@ -11,10 +11,18 @@ namespace VF.Utils {
                 .Select(assembly => assembly.GetType(type))
                 .FirstOrDefault(t => t != null);
         }
-        
+
+        public static Assembly[] GetVrcfEditorAssemblies() {
+            return  AppDomain.CurrentDomain.GetAssemblies()
+                .Where(assembly => assembly.GetName().Name == "VRCFury-Editor"
+                    || assembly.GetName().Name == "VRCFury-Editor-Common"
+                    || assembly.GetName().Name == "VRCFury-Editor-Worlds")
+                .ToArray();
+        }
+
         public static Type[] GetTypes(Type id) {
-            var candidates = typeof(ReflectionUtils).Assembly
-                .GetTypes()
+            var candidates = GetVrcfEditorAssemblies()
+                .SelectMany(assembly => assembly.GetTypes())
                 .Where(t => !t.IsAbstract);
             if (typeof(Attribute).IsAssignableFrom(id)) {
                 return candidates.Where(t => t.GetCustomAttribute(id) != null).ToArray();

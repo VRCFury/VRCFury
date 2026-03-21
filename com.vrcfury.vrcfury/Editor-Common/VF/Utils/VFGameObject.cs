@@ -1,11 +1,9 @@
 using System;
-using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Utils;
-using VRC.Dynamics;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
@@ -41,6 +39,10 @@ namespace VF.Builder {
 
         public override string ToString() {
             return GetPath();
+        }
+
+        public void Dirty() {
+            gameObject.Dirty();
         }
 
         public Matrix4x4 worldToLocalMatrix => transform.worldToLocalMatrix;
@@ -136,22 +138,6 @@ namespace VF.Builder {
             return GetComponents<T>().FirstOrDefault();
         }
 
-        public VFConstraint[] GetConstraints(bool includeParents = false, bool includeChildren = false) {
-            var avatar = VRCAvatarUtils.GuessAvatarObject(this);
-            if (avatar == null) avatar = root;
-            return avatar.GetComponentsInSelfAndChildren<UnityEngine.Component>()
-                .Select(c => c.AsConstraint())
-                .NotNull()
-                .Where(c => {
-                    var affectedObject = c.GetAffectedObject();
-                    if (affectedObject == null) return false;
-                    if (includeParents) return IsChildOf(affectedObject);
-                    if (includeChildren) return affectedObject.IsChildOf(this);
-                    return affectedObject == this;
-                })
-                .ToArray();
-        }
-
         public UnityEngine.Component[] GetComponents(Type t) {
             // Components can sometimes be null for some reason. Perhaps when they're corrupt?
             // The OfType is required because unity can be tricked into blindly returning things that are NOT components
@@ -209,32 +195,6 @@ namespace VF.Builder {
                 return "Avatar Root";
             }
             return AnimationUtility.CalculateTransformPath(this, root);
-        }
-
-        public string GetAnimatedPath() {
-            var avatarObject = VRCAvatarUtils.GuessAvatarObject(this);
-            if (avatarObject == null) return "_avatarMissing/" + GetPath();
-            return GetPath(avatarObject);
-        }
-
-        public void Destroy() {
-            var b = VRCAvatarUtils.GuessAvatarObject(this) ?? root;
-            foreach (var c in b.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
-                if (c.GetRootTransform().IsChildOf(this))
-                    Object.DestroyImmediate(c);
-            }
-            foreach (var c in b.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>()) {
-                if (c.GetRootTransform().IsChildOf(this))
-                    Object.DestroyImmediate(c);
-            }
-            foreach (var c in b.GetComponentsInSelfAndChildren<ContactBase>()) {
-                if (c.GetRootTransform().IsChildOf(this))
-                    Object.DestroyImmediate(c);
-            }
-            foreach (var c in GetConstraints(includeChildren: true)) {
-                c.Destroy();
-            }
-            Object.DestroyImmediate(gameObject);
         }
 
         public VFGameObject Clone() {

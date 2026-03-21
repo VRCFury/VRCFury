@@ -5,7 +5,6 @@ using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Injector;
-using VF.Inspector;
 using VF.Menu;
 using VF.Utils;
 
@@ -96,7 +95,7 @@ namespace VF.Service {
                 ModifyBounds(sizeZ: stepSize, centerZ: stepSize);
             }
 
-            VRCFuryEditorUtils.MarkDirty(skin);
+            skin.Dirty();
         }
 
         private static Bounds CalculateFullBounds(VFGameObject avatarObject) {

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using VF.Inspector;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Utils {
@@ -38,7 +37,7 @@ namespace VF.Utils {
                         } else if (result == ForEachMenuItemResult.Delete) {
                             menu.controls.RemoveAt(i);
                             i--;
-                            VRCFuryEditorUtils.MarkDirty(menu);
+                            menu.Dirty();
                             recurse = false;
                         }
                     }
@@ -46,7 +45,7 @@ namespace VF.Utils {
                         stack.Push(Tuple.Create(itemPathArr, item.subMenu));
                     }
                 }
-                VRCFuryEditorUtils.MarkDirty(menu);
+                menu.Dirty();
             }
         }
         

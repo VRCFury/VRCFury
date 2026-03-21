@@ -1,7 +1,9 @@
 using System;
 using UnityEngine;
 using VF.Upgradeable;
-using VRC.SDK3.Avatars.ScriptableObjects;
+#if VRCF_AVATARS
+    using VRC.SDK3.Avatars.ScriptableObjects;
+#endif
 using Object = UnityEngine.Object;
 
 namespace VF.Model {
@@ -37,15 +39,41 @@ namespace VF.Model {
     }
     
     [Serializable]
-    internal class GuidMenu : GuidWrapper<VRCExpressionsMenu> {
-        public static implicit operator GuidMenu(VRCExpressionsMenu d) => new GuidMenu {
+    internal class GuidMenu : GuidWrapper<
+#if VRCF_AVATARS
+        VRCExpressionsMenu
+#else
+        Object
+#endif
+    > {
+        public static implicit operator GuidMenu(
+#if VRCF_AVATARS
+            VRCExpressionsMenu
+#else
+            Object
+#endif
+            d
+        ) => new GuidMenu {
             setter = d
         };
     }
     
     [Serializable]
-    internal class GuidParams : GuidWrapper<VRCExpressionParameters> {
-        public static implicit operator GuidParams(VRCExpressionParameters d) => new GuidParams {
+    internal class GuidParams : GuidWrapper<
+#if VRCF_AVATARS
+        VRCExpressionParameters
+#else
+        Object
+#endif
+    > {
+        public static implicit operator GuidParams(
+#if VRCF_AVATARS
+            VRCExpressionParameters
+#else
+            Object
+#endif
+                d
+        ) => new GuidParams {
             setter = d
         };
     }

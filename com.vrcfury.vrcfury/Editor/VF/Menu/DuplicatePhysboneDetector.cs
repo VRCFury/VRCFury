@@ -2,12 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.SceneManagement;
-using UnityEngine;
-using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Builder.Exceptions;
-using VF.Inspector;
 using VF.Utils;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
@@ -102,7 +98,7 @@ namespace VF.Menu {
                 foreach (var c in mutable) {
                     var obj = c.owner();
                     Object.DestroyImmediate(c, true);
-                    VRCFuryEditorUtils.MarkDirty(obj);
+                    obj.Dirty();
                 }
             }
         }

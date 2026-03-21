@@ -20,6 +20,11 @@ namespace VF.Inspector {
         }
         private static readonly bool ndmfPresent = NdmfReflection.AvatarProcessor != null;
 
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            DialogUtils.debugLineGetter = () => GetOutputString();
+        }
+
         public static string GetDebugChars([CanBeNull] VFGameObject avatarObject = null, bool? isStillBroken = null) {
             var output = "";
 

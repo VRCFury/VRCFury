@@ -8,7 +8,6 @@ using UnityEngine.Rendering;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
-using VF.Inspector;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
@@ -144,7 +143,7 @@ namespace VF.Service {
             renderer.sharedMaterials = renderer.sharedMaterials
                 .Select((mat,i) => (i == num) ? newMat : mat)
                 .ToArray();
-            VRCFuryEditorUtils.MarkDirty(renderer);
+            renderer.Dirty();
         }
 
         /**
@@ -181,7 +180,7 @@ namespace VF.Service {
                     }
                     return mat;
                 }).ToArray();
-                VRCFuryEditorUtils.MarkDirty(renderer);
+                renderer.Dirty();
             }
         }
 

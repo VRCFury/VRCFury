@@ -1,9 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Linq;
-using UnityEditor;
 using VF.Builder;
 using VF.Injector;
-using VF.Inspector;
 using VF.Model;
 using VF.Utils;
 
@@ -75,8 +73,8 @@ namespace VF.Service.Compressor {
 
             NoBadControllerParamsService.UpgradeWrongParamTypes(fx);
             // Hopefully temporary until we can work out a better "re-save and/or re-dirty everything in a build hook at the end of the build" system
-            VRCFuryEditorUtils.MarkDirty(fx.GetRaw());
-            VRCFuryEditorUtils.MarkDirty(paramz);
+            fx.GetRaw().Dirty();
+            paramz.Dirty();
             CreateDebugInfo(decisionWithInfo, originalCost, newCost);
         }
 

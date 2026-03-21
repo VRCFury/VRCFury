@@ -7,7 +7,6 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using VF.Builder;
-using VF.Inspector;
 
 namespace VF.Utils {
     internal static class RendererExtensions {
@@ -73,7 +72,7 @@ namespace VF.Utils {
         public static void SetMesh(this Renderer renderer, Mesh mesh) {
             if (renderer is SkinnedMeshRenderer skin) {
                 skin.sharedMesh = mesh;
-                VRCFuryEditorUtils.MarkDirty(skin);
+                skin.Dirty();
                 return;
             }
 
@@ -86,7 +85,7 @@ namespace VF.Utils {
                         owner.GetPath()
                     );
                 filter.sharedMesh = mesh;
-                VRCFuryEditorUtils.MarkDirty(filter);
+                filter.Dirty();
                 return;
             }
 

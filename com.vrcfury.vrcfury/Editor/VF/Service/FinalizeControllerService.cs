@@ -4,7 +4,6 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
-using VF.Inspector;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
@@ -82,7 +81,7 @@ namespace VF.Service {
                     }
                 }
             }
-            VRCFuryEditorUtils.MarkDirty(avatar);
+            avatar.Dirty();
         }
     }
 }

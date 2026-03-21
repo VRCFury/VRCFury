@@ -2,6 +2,7 @@
   "name": "com.vrcfury.api",
   "rootNamespace": "com.vrcfury.api",
   "references": [
+    "VRCFury-Editor-Common",
     "VRCFury-Editor",
     "VRCFury"
   ],
@@ -15,7 +16,15 @@
     "VRCSDK3A.dll"
   ],
   "autoReferenced": false,
-  "defineConstraints": [],
-  "versionDefines": [],
+  "defineConstraints": [
+    "VRCF_AVATARS"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.vrchat.avatars",
+      "expression": "",
+      "define": "VRCF_AVATARS"
+    }
+  ],
   "noEngineReferences": false
 }

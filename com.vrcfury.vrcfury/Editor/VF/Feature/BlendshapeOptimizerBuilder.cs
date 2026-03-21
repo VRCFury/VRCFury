@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -92,7 +91,7 @@ namespace VF.Feature {
                     // add ├ and └ for nicer looking log output
                     logOutput += (id != blendshapeCount-1 ? "\u251c" : "\u2514") + logOutputDetail;
                 }
-                VRCFuryEditorUtils.MarkDirty(mesh);
+                mesh.Dirty();
 
                 var newId = 0;
                 for (var id = 0; id < blendshapeCount; id++) {
@@ -103,7 +102,7 @@ namespace VF.Feature {
                             for (var i = 0; i < avatar.customEyeLookSettings.eyelidsBlendshapes.Length; i++) {
                                 if (avatar.customEyeLookSettings.eyelidsBlendshapes[i] == id) {
                                     avatar.customEyeLookSettings.eyelidsBlendshapes[i] = newId;
-                                    VRCFuryEditorUtils.MarkDirty(avatar);
+                                    avatar.Dirty();
                                 }
                             }
                         }

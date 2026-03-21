@@ -4,7 +4,6 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
-using VF.Inspector;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
@@ -50,7 +49,7 @@ namespace VF.Builder {
 
             if (changed) {
                 serialized.ApplyModifiedPropertiesWithoutUndo();
-                VRCFuryEditorUtils.MarkDirty(obj);
+                obj.Dirty();
             }
         }
 
@@ -120,7 +119,7 @@ namespace VF.Builder {
                             .ToArray();
                         mutableSm.SetStateMachineTransitions(sm, rewrittenTransitions);
                     }
-                    VRCFuryEditorUtils.MarkDirty(mutable);
+                    mutable.Dirty();
                 }
             }
 

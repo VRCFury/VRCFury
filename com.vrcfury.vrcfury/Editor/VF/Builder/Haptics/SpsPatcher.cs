@@ -10,7 +10,6 @@ using UnityEditor;
 using UnityEditor.Rendering;
 using UnityEngine;
 using VF.Builder.Exceptions;
-using VF.Inspector;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {
@@ -53,7 +52,7 @@ namespace VF.Builder.Haptics {
             var shader = mat.shader;
             var newShader = PatchUnsafe(shader, keepImports);
             mat.shader = newShader.shader;
-            VRCFuryEditorUtils.MarkDirty(mat);
+            mat.Dirty();
         }
 
         public class PatchResult {

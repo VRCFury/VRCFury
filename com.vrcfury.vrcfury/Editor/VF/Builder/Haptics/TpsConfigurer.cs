@@ -4,8 +4,6 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Component;
-using VF.Feature;
-using VF.Inspector;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
@@ -68,11 +66,11 @@ namespace VF.Builder.Haptics {
                 meshCopy.bindposes = new[] {
                     Matrix4x4.identity, 
                 };
-                VRCFuryEditorUtils.MarkDirty(meshCopy);
+                meshCopy.Dirty();
                 skin.bones = new Transform[] { mainBone };
                 skin.SetMesh(meshCopy);
                 mesh = meshCopy;
-                VRCFuryEditorUtils.MarkDirty(skin);
+                skin.Dirty();
             }
 
             skin.rootBone = bakeRoot;
@@ -126,7 +124,7 @@ namespace VF.Builder.Haptics {
             mat.SetFloat(TpsIsSkinnedMeshRenderer, 1);
             mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
             mat.SetTexture(TpsBakedMesh, SpsBaker.Bake(skin, activeFromMask, true));
-            VRCFuryEditorUtils.MarkDirty(mat);
+            mat.Dirty();
         }
         
         private static Vector4 ThreeToFour(Vector3 a) => new Vector4(a.x, a.y, a.z);
