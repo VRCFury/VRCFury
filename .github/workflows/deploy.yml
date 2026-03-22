@@ -82,13 +82,20 @@ jobs:
             fi
 
             download_manifest_package "$SDK_PACKAGE" "$VERSION"
+
+            if [[ "$SDK_KIND" == "worlds" ]]; then
+              # UdonSharp's import hook tries to create UdonSharpDataLocator.asset during
+              # package import. In CI, Unity can restart import mid-flight, which makes
+              # that CreateAsset path fail before we reach compile/test verification.
+              LOCATOR_FILE="$PROJECT_PATH/Packages/com.vrchat.worlds/Integrations/UdonSharp/Runtime/UdonSharpDataLocator.cs"
+              perl -0pi -e 's/private static void OnPostprocessAllAssets\(string\[] importedAssets, string\[] deletedAssets, string\[] movedAssets, string\[] movedFromAssetPaths\)\s*\{\s*/private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)\n        {\n            return;\n\n/s' "$LOCATOR_FILE"
+            fi
           fi
 
       - name: Verify Compile
         id: tests
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_WARMUP_FIRST: ${{ matrix.sdkKind == 'worlds' && '1' || '0' }}
         run: |
           IMAGE="unityci/editor:ubuntu-${{ matrix.vrcsdkUnityVersion[1] }}"
           if [ "${{ matrix.platform }}" = "android" ]; then
@@ -101,7 +108,6 @@ jobs:
           chmod +x .github/workflows/test_ci.sh
           docker run --rm \
               --env UNITY_LICENSE \
-              --env UNITY_WARMUP_FIRST \
               --volume="${PWD}:/opt/project" \
               "$IMAGE" \
               /opt/project/.github/workflows/test_ci.sh

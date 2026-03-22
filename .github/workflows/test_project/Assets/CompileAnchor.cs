@@ -1,2 +1,0 @@
-internal static class CompileAnchor {
-}
