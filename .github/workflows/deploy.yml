@@ -84,11 +84,11 @@ jobs:
             download_manifest_package "$SDK_PACKAGE" "$VERSION"
 
             if [[ "$SDK_KIND" == "worlds" ]]; then
-              # UdonSharp's import hook tries to create UdonSharpDataLocator.asset during
-              # package import. In CI, Unity can restart import mid-flight, which makes
-              # that CreateAsset path fail before we reach compile/test verification.
+              # UdonSharp can still touch the locator during assembly reload even if the
+              # postprocess hook is disabled. Stub DataPath directly so CI never tries
+              # to create or import UdonSharpDataLocator.asset.
               LOCATOR_FILE="$PROJECT_PATH/Packages/com.vrchat.worlds/Integrations/UdonSharp/Runtime/UdonSharpDataLocator.cs"
-              perl -0pi -e 's/private static void OnPostprocessAllAssets\(string\[] importedAssets, string\[] deletedAssets, string\[] movedAssets, string\[] movedFromAssetPaths\)\s*\{\s*/private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)\n        {\n            return;\n\n/s' "$LOCATOR_FILE"
+              perl -0pi -e 's/public static string DataPath\s*\{\s*get\s*\{\s*if\s*\(_dataPath == null\)\s*InitializeUdonSharpData\(\);\s*return _dataPath;\s*\}\s*\}/public static string DataPath\n        {\n            get\n            {\n                return "Assets\\/UdonSharp\\/UdonSharpDataLocator.asset";\n            }\n        }/s' "$LOCATOR_FILE"
             fi
           fi
 
