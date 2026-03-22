@@ -88,6 +88,7 @@ jobs:
         id: tests
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_WARMUP_FIRST: ${{ matrix.sdkKind == 'worlds' && '1' || '0' }}
         run: |
           IMAGE="unityci/editor:ubuntu-${{ matrix.vrcsdkUnityVersion[1] }}"
           if [ "${{ matrix.platform }}" = "android" ]; then
@@ -100,6 +101,7 @@ jobs:
           chmod +x .github/workflows/test_ci.sh
           docker run --rm \
               --env UNITY_LICENSE \
+              --env UNITY_WARMUP_FIRST \
               --volume="${PWD}:/opt/project" \
               "$IMAGE" \
               /opt/project/.github/workflows/test_ci.sh
