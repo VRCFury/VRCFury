@@ -9,7 +9,7 @@ unity-editor \
     -nographics \
     -logFile /dev/stdout \
     -quit \
-    -manualLicenseFile $FILE_PATH
+    -manualLicenseFile $FILE_PATH || true
 
 if [[ "${UNITY_WARMUP_FIRST:-0}" == "1" ]]; then
   # Worlds SDK import can fail on the first pass when UdonSharp initializes assets
@@ -20,7 +20,7 @@ if [[ "${UNITY_WARMUP_FIRST:-0}" == "1" ]]; then
       -nographics \
       -logfile /dev/stdout \
       -projectPath /opt/project/.github/workflows/test_project \
-      -quit
+      -quit || true
 fi
 
 unity-editor \
