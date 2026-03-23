@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Model;
 
+[Category("VRCFury")]
 public class TestBuild {
     [Test]
     public void Test() {

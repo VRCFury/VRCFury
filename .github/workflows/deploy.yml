@@ -73,6 +73,7 @@ jobs:
           unityVersion: ${{ matrix.vrcsdkUnityVersion[1] }}
           testMode: EditMode
           customImage: ${{ steps.image.outputs.image }}
+          customParameters: -testCategory VRCFury
           githubToken: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
