@@ -48,54 +48,10 @@ jobs:
 
       - name: Download VRCSDK
         run: |
-          VERSION="${{ matrix.vrcsdkUnityVersion[0] }}"
-          SDK_KIND="${{ matrix.sdkKind }}"
-          echo "Downloading VRCSDK $VERSION"
+          bash .github/workflows/download_vrcsdk.sh "${{ matrix.vrcsdkUnityVersion[0] }}" "${{ matrix.sdkKind }}"
 
-          download_manifest_package() {
-            local package_name="$1"
-            local version="$2"
-            local zip_path="$package_name.zip"
-            local url="$(echo "$MANIFEST" | jq ".packages.\"$package_name\".versions.\"$version\".url" --raw-output)"
-
-            echo "$package_name URL is $url"
-            curl -L -o "$zip_path" "$url"
-            mkdir -p "$PROJECT_PATH/Packages/$package_name"
-            unzip "$zip_path" -d "$PROJECT_PATH/Packages/$package_name"
-            rm "$zip_path"
-          }
-
-          if [[ "$VERSION" == "2022.06.03.00.04" ]]; then
-            curl -L -o "vrcsdk.zip" "https://github.com/VRCFury/VRCFury/releases/download/old-vrcsdk/VRCSDK.zip"
-            unzip "vrcsdk.zip" -d "$PROJECT_PATH/Assets"
-            rm "vrcsdk.zip"
-          else
-            MANIFEST_URL="https://vrchat.github.io/packages/index.json"
-            echo "Downloading manifest from $MANIFEST_URL"
-            MANIFEST="$(curl "$MANIFEST_URL")"
-            download_manifest_package "com.vrchat.base" "$VERSION"
-
-            if [[ "$SDK_KIND" == "worlds" ]]; then
-              SDK_PACKAGE="com.vrchat.worlds"
-            else
-              SDK_PACKAGE="com.vrchat.avatars"
-            fi
-
-            download_manifest_package "$SDK_PACKAGE" "$VERSION"
-
-            if [[ "$SDK_KIND" == "worlds" ]]; then
-              # UdonSharp can still touch the locator during assembly reload even if the
-              # postprocess hook is disabled. Stub DataPath directly so CI never tries
-              # to create or import UdonSharpDataLocator.asset.
-              LOCATOR_FILE="$PROJECT_PATH/Packages/com.vrchat.worlds/Integrations/UdonSharp/Runtime/UdonSharpDataLocator.cs"
-              perl -0pi -e 's/public static string DataPath\s*\{\s*get\s*\{\s*if\s*\(_dataPath == null\)\s*InitializeUdonSharpData\(\);\s*return _dataPath;\s*\}\s*\}/public static string DataPath\n        {\n            get\n            {\n                return "Assets\\/UdonSharp\\/UdonSharpDataLocator.asset";\n            }\n        }/s' "$LOCATOR_FILE"
-            fi
-          fi
-
-      - name: Verify Compile
-        id: tests
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      - name: Resolve Test Image
+        id: image
         run: |
           IMAGE="unityci/editor:ubuntu-${{ matrix.vrcsdkUnityVersion[1] }}"
           if [ "${{ matrix.platform }}" = "android" ]; then
@@ -104,13 +60,20 @@ jobs:
             IMAGE="$IMAGE-windows-mono"
           fi
           IMAGE="$IMAGE-${{ env.GAMECI_VERSION }}"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
-          chmod +x .github/workflows/test_ci.sh
-          docker run --rm \
-              --env UNITY_LICENSE \
-              --volume="${PWD}:/opt/project" \
-              "$IMAGE" \
-              /opt/project/.github/workflows/test_ci.sh
+      - name: Verify Compile
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .github/workflows/test_project
+          unityVersion: ${{ matrix.vrcsdkUnityVersion[1] }}
+          testMode: EditMode
+          customImage: ${{ steps.image.outputs.image }}
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     needs: test
