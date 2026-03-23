@@ -1,16 +1,16 @@
-﻿using UnityEditor;
+﻿using System;
 using UnityEngine;
 
 namespace VF.Component {
     [AddComponentMenu("")]
     internal class VRCFuryHideGizmoUnlessSelected : VRCFuryPlayComponent {
+        public static Func<VRCFuryHideGizmoUnlessSelected, bool> isSelected;
+
         private void Update() {
-#if UNITY_EDITOR
-            if (Selection.activeGameObject == gameObject)
+            if (isSelected?.Invoke(this) ?? false)
                 Show();
             else
                 Hide();
-#endif
         }
 
         private void OnDisable() {

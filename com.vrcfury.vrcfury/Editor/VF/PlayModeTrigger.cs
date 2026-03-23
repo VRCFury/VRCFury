@@ -139,7 +139,7 @@ namespace VF {
         }
 
         [DefaultExecutionOrder(-10000)]
-        public class RescanOnStartComponent : MonoBehaviour, IVrcfEditorOnly {
+        public class RescanOnStartComponent : VRCFuryPlayComponent {
             private void Start() {
                 Rescan();
                 var obj = gameObject;
