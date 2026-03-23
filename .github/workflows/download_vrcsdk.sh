@@ -23,17 +23,11 @@ download_manifest_package() {
 }
 
 patch_udonsharp_locator() {
+  # vrcsdk world sdk crashes during startup in fresh batch mode
+  # unless we prevent the udonsharp locator from initializing
   local locator_file="$PROJECT_PATH/Packages/com.vrchat.worlds/Integrations/UdonSharp/Runtime/UdonSharpDataLocator.cs"
-
   perl -0pi -e 's/foundLocators\.Add\(InitializeUdonSharpData\(\)\);/return "Assets\/UdonSharp";/' "$locator_file"
 }
-
-if [[ "$VERSION" == "2022.06.03.00.04" ]]; then
-  curl -L -o "vrcsdk.zip" "https://github.com/VRCFury/VRCFury/releases/download/old-vrcsdk/VRCSDK.zip"
-  unzip -o "vrcsdk.zip" -d "$PROJECT_PATH/Assets"
-  rm "vrcsdk.zip"
-  exit 0
-fi
 
 MANIFEST_URL="https://vrchat.github.io/packages/index.json"
 echo "Downloading manifest from $MANIFEST_URL"
