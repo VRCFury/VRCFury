@@ -6,7 +6,7 @@
         "VRCFury-Editor-Common",
         "VRC.SDKBase.Editor.BuildPipeline",
         "VRC.SDKBase.Editor",
-        "VRC.SDK3A.Editor"
+        "VRC.SDK3.Editor"
     ],
     "includePlatforms": [
         "Editor"
@@ -17,7 +17,6 @@
     "precompiledReferences": [
         "System.Collections.Immutable.dll",
         "VRCSDKBase.dll",
-        "VRCSDK3A.dll",
         "VRC.Dynamics.dll",
         "VRC.SDK3.Dynamics.PhysBone.dll",
         "VRC.SDK3.Dynamics.Contact.dll",

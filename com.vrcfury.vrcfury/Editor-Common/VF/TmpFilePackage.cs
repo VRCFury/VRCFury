@@ -1,18 +1,13 @@
 using System;
-using System.Collections.Immutable;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.PackageManager;
-using UnityEditor.VersionControl;
-using UnityEngine;
 using VF.Builder;
 using VF.Utils;
-using VRC.SDK3.Avatars.Components;
-using Object = System.Object;
 
 namespace VF {
     internal static class TmpFilePackage {
@@ -23,21 +18,13 @@ namespace VF {
         private const string TmpDirPath = "Packages/com.vrcfury.temp";
         private const string TmpPackagePath = TmpDirPath + "/" + "package.json";
 
-        public static void Cleanup() {
+        public static void Cleanup(ISet<string> usedFolders = null) {
             var tmpDir = GetPathNullable();
             if (tmpDir == null) return;
-            
-            var usedFolders = Resources.FindObjectsOfTypeAll<VRCAvatarDescriptor>()
-                .SelectMany(VRCAvatarUtils.GetAllControllers)
-                .Where(c => !c.isDefault && c.controller != null)
-                .Select(c => AssetDatabase.GetAssetPath(c.controller))
-                .Where(path => !string.IsNullOrEmpty(path))
-                .Select(VRCFuryAssetDatabase.GetDirectoryName)
-                .ToImmutableHashSet();
 
             VRCFuryAssetDatabase.WithAssetEditing(() => {
                 VRCFuryAssetDatabase.DeleteFiltered(tmpDir, path => {
-                    if (usedFolders.Any(used => path.StartsWith($"{used}/") || path == used || used.StartsWith($"{path}/"))) return false;
+                    if (usedFolders != null && usedFolders.Any(used => path.StartsWith($"{used}/") || path == used || used.StartsWith($"{path}/"))) return false;
                     if (path.StartsWith(tmpDir + "/SPS")) return false;
                     if (path.StartsWith(tmpDir + "/XR")) return false;
                     if (path.StartsWith(tmpDir + "/package.json")) return false;

@@ -38,7 +38,7 @@ namespace VF {
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
             if (state == PlayModeStateChange.ExitingEditMode) {
                 addedTriggerObjectThisPlayMode = false;
-                TmpFilePackage.Cleanup();
+                TmpDirService.Cleanup();
             }
         }
 
