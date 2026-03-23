@@ -21,6 +21,8 @@ namespace VF.Hooks {
             public static readonly Type WorldBuilderType =
                 ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Editor.VRCSdkControlPanelWorldBuilder");
             public static readonly MethodInfo FindScenes = WorldBuilderType?.VFMethod("FindScenes");
+            public static readonly FieldInfo _worldUploadCancellationTokenSource =
+                WorldBuilderType?.VFStaticField("_worldUploadCancellationTokenSource");
         }
 
         private static IVRCSdkWorldBuilderApi currentBuilder;
@@ -37,13 +39,15 @@ namespace VF.Hooks {
                 if (ReferenceEquals(currentBuilder, builder)) return;
 
                 if (currentBuilder != null) {
-                    currentBuilder.OnSdkBuildFinish -= OnSdkBuildFinish;
-                    currentBuilder.OnSdkBuildError -= OnSdkBuildError;
+                    currentBuilder.OnSdkBuildError -= OnSdkRestore;
+                    currentBuilder.OnSdkUploadFinish -= OnSdkRestore;
+                    currentBuilder.OnSdkUploadError -= OnSdkRestore;
                 }
 
                 currentBuilder = builder;
-                currentBuilder.OnSdkBuildFinish += OnSdkBuildFinish;
-                currentBuilder.OnSdkBuildError += OnSdkBuildError;
+                currentBuilder.OnSdkBuildError += OnSdkRestore;
+                currentBuilder.OnSdkUploadFinish += OnSdkRestore;
+                currentBuilder.OnSdkUploadError += OnSdkRestore;
             };
         }
 
@@ -54,10 +58,12 @@ namespace VF.Hooks {
                 RestoreOriginalScene();
             }
 
+            if (!ReflectionHelper.IsReady<Reflection>()) {
+                throw new Exception("VRCFury does not support this VRCSDK version");
+            }
             if (currentBuilder == null) {
                 throw new Exception("VRCFury could not find the VRChat world builder.");
             }
-
             if (!EditorSceneManager.SaveOpenScenes()) {
                 throw new Exception("Unity scenes failed to save.");
             }
@@ -69,10 +75,15 @@ namespace VF.Hooks {
             }
 
             originalScenePath = originalScene.path;
-            TmpFilePackage.Cleanup();
             var buildsDir = $"{TmpFilePackage.GetPath()}/Builds";
-            VRCFuryAssetDatabase.CreateFolder(buildsDir);
             clonedScenePath = $"{buildsDir}/VRCFury World Upload Temp.unity";
+
+            if (originalScenePath == clonedScenePath) {
+                throw new Exception("You are attempting to upload a VRCFury Temp Scene. This is wrong. Switch back to the original scene file in your project.");
+            }
+
+            TmpFilePackage.Cleanup();
+            VRCFuryAssetDatabase.CreateFolder(buildsDir);
 
             if (!AssetDatabase.CopyAsset(originalScenePath, clonedScenePath)) {
                 ClearState();
@@ -82,8 +93,13 @@ namespace VF.Hooks {
             restorePending = true;
 
             try {
+                // This prevents the vrcsdk from aborting when the scene closes, and tricks it into uploading
+                // our modified clone instead.
+                var token = Reflection._worldUploadCancellationTokenSource.GetValue(null);
+                Reflection._worldUploadCancellationTokenSource.SetValue(null, null);
                 EditorSceneManager.OpenScene(clonedScenePath, OpenSceneMode.Single);
-                RefreshWorldBuilderScenes();
+                Reflection._worldUploadCancellationTokenSource.SetValue(null, token);
+                Reflection.FindScenes.Invoke(currentBuilder, new object[] { });
             } catch {
                 try {
                     RestoreOriginalScene();
@@ -93,22 +109,8 @@ namespace VF.Hooks {
             }
         }
 
-        private static void OnSdkBuildFinish(object sender, string _) {
+        private static void OnSdkRestore(object sender, string _) {
             RestoreOriginalScene();
-        }
-
-        private static void OnSdkBuildError(object sender, string _) {
-            RestoreOriginalScene();
-        }
-
-        private static void RefreshWorldBuilderScenes() {
-            if (!ReflectionHelper.IsReady<Reflection>()) {
-                throw new Exception(
-                    "VRCFury does not support this VRCSDK version because VRCSdkControlPanelWorldBuilder.FindScenes could not be found."
-                );
-            }
-
-            Reflection.FindScenes.Invoke(currentBuilder, new object[] { });
         }
 
         private static void RestoreOriginalScene() {
@@ -121,9 +123,8 @@ namespace VF.Hooks {
             if (!string.IsNullOrWhiteSpace(reopenPath)
                 && AssetDatabase.LoadAssetAtPath<SceneAsset>(reopenPath) != null) {
                 EditorSceneManager.OpenScene(reopenPath, OpenSceneMode.Single);
-                if (currentBuilder != null && ReflectionHelper.IsReady<Reflection>()) {
-                    Reflection.FindScenes.Invoke(currentBuilder, new object[] { });
-                }
+            } else {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             }
         }
 
