@@ -4,6 +4,8 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Component;
+using VF.Hooks;
+using VF.Menu;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {
@@ -31,12 +33,12 @@ namespace VF.Builder.Haptics {
                     $" on the mesh instead.");
             }
 
-            SpsPatcher.Patch(m, plug.spsKeepImports);
+            SpsPatcher.Patch(m, SpsDevModeMenuItem.Get() && !IsActuallyUploadingHook.Get());
             {
                 // Prevent poi from stripping our parameters
-                var count = ShaderUtil.GetPropertyCount(m.shader);
+                var count = m.shader.GetPropertyCount();
                 for (var i = 0; i < count; i++) {
-                    var propertyName = ShaderUtil.GetPropertyName(m.shader, i);
+                    var propertyName = m.shader.GetPropertyName(i);
                     if (propertyName.StartsWith("_SPS_")) {
                        m.SetOverrideTag(propertyName + "Animated", "1");
                     }

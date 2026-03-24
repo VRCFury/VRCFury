@@ -262,7 +262,7 @@ namespace VF.Service {
             }
 
             var clipsInMotion = new AnimatorIterator.Clips().From(state.motion);
-            if (clipsInMotion.Any(clip => clip.isLooping)) {
+            if (clipsInMotion.Any(clip => clip.IsLooping())) {
                 throw new DoNotOptimizeException($"{state.name} contains non-static motion that loops");
             }
 

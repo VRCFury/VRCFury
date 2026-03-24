@@ -1,16 +1,13 @@
-using UnityEditor;
+using System;
 using UnityEngine;
+using VF.VrcfEditorOnly;
 
 namespace VF.Component {
-    internal abstract class VRCFuryPlayComponent : MonoBehaviour {
-#if UNITY_EDITOR
+    internal abstract class VRCFuryPlayComponent : MonoBehaviour, IVrcfEditorOnly {
+        public static Action<VRCFuryPlayComponent> onValidate;
+
         private void OnValidate() {
-            hideFlags |= HideFlags.DontSaveInBuild | HideFlags.DontSaveInEditor | HideFlags.NotEditable;
-            // Ensure this deletes itself if it ever winds up outside play mode
-            if (!Application.isPlaying) {
-                EditorApplication.delayCall += () => DestroyImmediate(this);
-            }
+            onValidate?.Invoke(this);
         }
-#endif
     }
 }

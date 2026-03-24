@@ -37,7 +37,8 @@ namespace VF.Inspector {
         
         [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(VRCFury vf, GizmoType gizmoType) {
-            foreach (var g in vf.GetAllFeatures().OfType<Gizmo>()) {
+            var allFeatures = vf.GetAllFeatures();
+            foreach (var g in allFeatures.OfType<Gizmo>()) {
                 var q = Quaternion.Euler(g.rotation);
                 Vector3 getPoint(Vector3 input) {
                     return vf.owner().TransformPoint(q * input);
@@ -57,6 +58,40 @@ namespace VF.Inspector {
                 if (g.sphereRadius > 0) {
                     VRCFuryGizmoUtils.DrawSphere(worldPos, g.sphereRadius * vf.owner().worldScale.x, Color.red);
                 }
+            }
+
+        }
+
+        [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.NonSelected)]
+        static void DrawGizmo2(VRCFury vf, GizmoType gizmoType) {
+            var allFeatures = vf.GetAllFeatures();
+
+            foreach (var collider in allFeatures.OfType<AdvancedCollider>()) {
+                var transform = collider.rootTransform;
+                if (transform == null) continue;
+                
+                if ((gizmoType & GizmoType.NonSelected) != 0) {
+                    if (!Selection.gameObjects.Contains(transform.gameObject)) {
+                        continue;
+                    }
+                }
+                
+                var worldHeight = collider.height * transform.lossyScale.x;
+                var worldRadius = collider.radius * transform.lossyScale.x;
+
+                VRCFuryGizmoUtils.DrawCapsule(
+                    transform.position,
+                    transform.rotation * Quaternion.Euler(90,0,0),
+                    worldHeight,
+                    worldRadius,
+                    Color.blue
+                );
+                VRCFuryGizmoUtils.DrawText(
+                    transform.position,
+                    collider.colliderName,
+                    Color.blue,
+                    true
+                );
             }
         }
     }

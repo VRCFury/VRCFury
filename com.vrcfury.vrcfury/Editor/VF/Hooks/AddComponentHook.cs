@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,37 +16,42 @@ using VF.Utils;
 
 namespace VF.Hooks {
     internal static class AddComponentHook {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly MethodInfo MenuChangedAddHandler = typeof(UnityEditor.Menu)
+                .VFEvent("menuChanged")
+                ?.GetAddMethod(true);
+
+            public delegate void RemoveMenuItem_(string path);
+            public delegate void AddMenuItem_(string path, string shortcut, bool @checked, int priority, Action execute, Func<bool> validate);
+            public delegate IEnumerable GetMenuItems_(string path, bool includeSeparators, bool localized);
+            public static readonly RemoveMenuItem_ RemoveMenuItem = typeof(UnityEditor.Menu).GetMatchingDelegate<RemoveMenuItem_>("RemoveMenuItem");
+            public static readonly AddMenuItem_ AddMenuItem = typeof(UnityEditor.Menu).GetMatchingDelegate<AddMenuItem_>("AddMenuItem");
+            public static readonly GetMenuItems_ GetMenuItems = typeof(UnityEditor.Menu).GetMatchingDelegate<GetMenuItems_>("GetMenuItems");
+        }
+
         private static bool addedThisFrame = false;
         
         [InitializeOnLoadMethod]
         private static void Init() {
             EditorApplication.delayCall += AddToMenu;
-            if (MenuChangedAddHandler != null) {
+            if (Reflection.MenuChangedAddHandler != null) {
                 Action onMenuChange = () => {
                     if (addedThisFrame) return;
                     EditorApplication.delayCall -= AddToMenu;
                     EditorApplication.delayCall += AddToMenu;
                 };
-                MenuChangedAddHandler.Invoke(null, new object[] { onMenuChange });
+                Reflection.MenuChangedAddHandler.Invoke(null, new object[] { onMenuChange });
             }
         } 
 
-        private static readonly MethodInfo MenuChangedAddHandler = typeof(UnityEditor.Menu).GetEvent("menuChanged",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetAddMethod(true);
-        private static readonly MethodInfo RemoveMenuItem = typeof(UnityEditor.Menu).GetMethod("RemoveMenuItem",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        private static readonly MethodInfo AddMenuItem = typeof(UnityEditor.Menu).GetMethod("AddMenuItem",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        private static readonly MethodInfo GetMenuItems = typeof(UnityEditor.Menu).GetMethod("GetMenuItems",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static void Add(string path, string shortcut, bool @checked, int priority, Action execute, Func<bool> validate) =>
-            AddMenuItem?.Invoke(null, new object[] { path, shortcut, @checked, priority, execute, validate });
-        private static void Remove(string path) => RemoveMenuItem?.Invoke(null, new object[] { path });
+            Reflection.AddMenuItem?.Invoke(path, shortcut, @checked, priority, execute, validate);
+        private static void Remove(string path) => Reflection.RemoveMenuItem?.Invoke(path);
         private static IList<string> List(string path) {
-            if (GetMenuItems == null) return new string[] { };
-            var l = (IEnumerable)GetMenuItems.Invoke(null, new object[] { path, false, false });
+            if (Reflection.GetMenuItems == null) return new string[] { };
+            var l = Reflection.GetMenuItems(path, false, false);
             return l.OfType<object>()
-                .Select(o => o.GetType().GetProperty("path")?.GetValue(o))
+                .Select(o => o.GetType().VFProperty("path")?.GetValue(o))
                 .NotNull()
                 .OfType<string>()
                 .ToList();
@@ -62,7 +67,7 @@ namespace VF.Hooks {
             EditorApplication.delayCall -= ResetAddedThisFrame;
             EditorApplication.delayCall += ResetAddedThisFrame;
 
-            if (GetMenuItems == null) {
+            if (Reflection.GetMenuItems == null) {
                 Remove("Component/UI/Button");
                 Remove("Component/UI/Slider");
                 Remove("Component/UI/Toggle");
@@ -127,3 +132,4 @@ namespace VF.Hooks {
         }
     }
 }
+

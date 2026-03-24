@@ -21,7 +21,7 @@ namespace VF.Service {
         }
         
         public void SetSourceToCurrent(VFLayer sm) {
-            SetSource(sm, globals.currentFeatureNameProvider());
+            SetSource(sm, globals.currentFeatureName);
         }
 
         public void CopySource(VFLayer from, VFLayer to) {

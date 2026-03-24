@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Utils {
@@ -31,10 +31,10 @@ namespace VF.Utils {
             }
         }
 
-        public static T Create<T>() where T : Object {
-            return Create(typeof(T)) as T;
+        public static T Create<T>(Object copyWorkLogFrom = null) where T : Object {
+            return Create(typeof(T), copyWorkLogFrom) as T;
         }
-        public static Object Create(Type type) {
+        public static Object Create(Type type, Object copyWorkLogFrom = null) {
             Object obj;
             if (typeof(ScriptableObject).IsAssignableFrom(type)) {
                 obj = ScriptableObject.CreateInstance(type) as Object;
@@ -45,13 +45,39 @@ namespace VF.Utils {
                 throw new Exception("Failed to create instance of Object " + type.FullName);
             }
 
-            Register(obj);
+            if (obj is VRCExpressionParameters vp) {
+                vp.parameters = new VRCExpressionParameters.Parameter[] { };
+            }
+
+            Register(obj, copyWorkLogFrom);
             return obj;
         }
 
-        public static T Register<T>(T obj) where T : Object {
+        public static Material CreateMaterial(Shader shader, Object copyWorkLogFrom = null) {
+            var obj = new Material(shader);
+            return Register(obj, copyWorkLogFrom);
+        }
+
+        public static Texture2D CreateTexture2D(
+            int width,
+            int height,
+            TextureFormat textureFormat = TextureFormat.RGBA32,
+            bool mipChain = false,
+            bool linear = false,
+            Object copyWorkLogFrom = null
+        ) {
+            var obj = new Texture2D(width, height, textureFormat, mipChain, linear);
+            return Register(obj, copyWorkLogFrom);
+        }
+
+        public static T Register<T>(T obj, Object copyWorkLogFrom = null) where T : Object {
             created.Add(obj);
             obj.hideFlags = HideFlags.DontSaveInEditor;
+            if (copyWorkLogFrom != null) {
+                obj.MarkClonedFrom(copyWorkLogFrom);
+            } else {
+                obj.WorkLog("Created fresh");
+            }
             return obj;
         }
         

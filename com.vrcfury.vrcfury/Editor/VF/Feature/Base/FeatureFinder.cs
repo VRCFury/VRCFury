@@ -197,9 +197,10 @@ namespace VF.Feature.Base {
             }
 
             var builder = (FeatureBuilder)injector.CreateAndFillObject(builderType);
-            builder.GetType().GetField("model", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.SetValue(builder, model);
+            builder.GetType().VFField("model")?.SetValue(builder, model);
             return builder;
         }
     }
 
 }
+

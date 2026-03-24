@@ -12,14 +12,19 @@ namespace VF.Hooks.VrcsdkFixes {
      * every time.
      */
     internal static class SuppressBlueprintWarningHook {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            HarmonyUtils.Patch(
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(SuppressBlueprintWarningHook),
                 nameof(Prefix),
                 typeof(Debug),
                 nameof(Debug.LogError)
             );
+        }
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.Patch.apply();
         }
 
         private static bool Prefix(object __0, Object __1) {

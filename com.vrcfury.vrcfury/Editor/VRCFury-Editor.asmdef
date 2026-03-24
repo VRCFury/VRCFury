@@ -3,7 +3,7 @@
     "rootNamespace": "",
     "references": [
         "VRCFury",
-        "VrcfEditorOnly",
+        "VRCFury-Editor-Common",
         "VRC.SDKBase.Editor.BuildPipeline",
         "VRC.SDKBase.Editor",
         "VRC.SDK3A.Editor"
@@ -26,7 +26,9 @@
         "VRCCore-Editor.dll"
     ],
     "autoReferenced": false,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "VRCF_AVATARS"
+    ],
     "versionDefines": [
         {
             "name": "com.vrchat.base",
@@ -57,6 +59,11 @@
             "name": "com.vrchat.base",
             "expression": "3.7.0",
             "define": "VRCSDK_HAS_VRCCONSTRAINTS"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "",
+            "define": "VRCF_AVATARS"
         }
     ],
     "noEngineReferences": false

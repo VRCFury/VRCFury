@@ -17,14 +17,19 @@ namespace VF.Hooks.VrcsdkFixes {
      * To fix this, we patch Assembly.GetName to never throw.
      */
     internal static class FixVrcsdkNonenglishLocaleCrashHook {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            HarmonyUtils.Patch(
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(FixVrcsdkNonenglishLocaleCrashHook),
                 nameof(Prefix),
                 typeof(Assembly),
                 nameof(Assembly.GetName)
             );
+        }
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.Patch.apply();
         }
 
         private static bool Prefix(Assembly __instance, ref AssemblyName __result) {

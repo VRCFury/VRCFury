@@ -10,6 +10,14 @@ using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace VF.Hooks {
     internal static class RunPreprocessorsOnlyOncePatch {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
+                typeof(RunPreprocessorsOnlyOncePatch),
+                nameof(Prefix),
+                typeof(VRCBuildPipelineCallbacks),
+                nameof(VRCBuildPipelineCallbacks.OnPreprocessAvatar)
+            );
+        }
 
         private enum PlayModeState {
             Fresh,
@@ -25,18 +33,14 @@ namespace VF.Hooks {
 
         [InitializeOnLoadMethod]
         private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.Patch.apply();
+
             EditorApplication.playModeStateChanged += state => {
                 if (state == PlayModeStateChange.ExitingPlayMode) {
                     playModeState.Clear();
                 }
             };
-            
-            HarmonyUtils.Patch(
-                typeof(RunPreprocessorsOnlyOncePatch),
-                nameof(Prefix),
-                typeof(VRCBuildPipelineCallbacks),
-                nameof(VRCBuildPipelineCallbacks.OnPreprocessAvatar)
-            );
         }
 
         private static bool Prefix(GameObject __0, ref bool __result) {

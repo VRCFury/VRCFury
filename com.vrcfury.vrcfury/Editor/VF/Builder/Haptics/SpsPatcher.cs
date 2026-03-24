@@ -10,11 +10,18 @@ using UnityEditor;
 using UnityEditor.Rendering;
 using UnityEngine;
 using VF.Builder.Exceptions;
-using VF.Inspector;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {
     internal static class SpsPatcher {
+        [ReflectionHelperOptional]
+        private abstract class LilReflection : ReflectionHelper {
+            public static readonly Type LilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
+            public static readonly MethodInfo UnpackContainer = LilShaderContainer?.GetMethods()
+                .FirstOrDefault(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
+            public static readonly FieldInfo ShaderLibsPath = LilShaderContainer?.VFStaticField("shaderLibsPath");
+        }
+
         private const string HashBuster = "13";
         
         public static void Patch(Material mat, bool keepImports) {
@@ -45,7 +52,7 @@ namespace VF.Builder.Haptics {
             var shader = mat.shader;
             var newShader = PatchUnsafe(shader, keepImports);
             mat.shader = newShader.shader;
-            VRCFuryEditorUtils.MarkDirty(mat);
+            mat.Dirty();
         }
 
         public class PatchResult {
@@ -53,8 +60,7 @@ namespace VF.Builder.Haptics {
             public int patchedPrograms;
         }
         private static PatchResult PatchUnsafe(Shader shader, bool keepImports, string parentHash = null) {
-            var testMat = new Material(shader);
-            VrcfObjectFactory.Register(testMat);
+            var testMat = VrcfObjectFactory.CreateMaterial(shader);
             for (int i = 0; i < testMat.passCount; i++) {
                 ShaderUtil.CompilePass(testMat, i, true);
             }
@@ -745,22 +751,18 @@ namespace VF.Builder.Haptics {
                 if (sourceAsset != null) {
                     content = sourceAsset.text;
                 } else if (path.EndsWith(".lilcontainer")) {
-                    var lilShaderContainer = ReflectionUtils.GetTypeFromAnyAssembly("lilToon.lilShaderContainer");
-                    var unpackMethod = lilShaderContainer.GetMethods()
-                        .First(m => m.Name == "UnpackContainer" && m.GetParameters().Length == 2);
-                    content = (string)ReflectionUtils.CallWithOptionalParams(unpackMethod, null, path);
-                    var shaderLibsPath = (string)lilShaderContainer.GetField("shaderLibsPath",
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+                    if (!ReflectionHelper.IsReady<LilReflection>()) {
+                        throw new Exception("Failed to access lilToon shader container internals");
+                    }
+                    content = (string)ReflectionUtils.CallWithOptionalParams(LilReflection.UnpackContainer, null, path);
+                    var shaderLibsPath = (string)LilReflection.ShaderLibsPath.GetValue(null);
                     content = content.Replace("\"Includes", "\"" + shaderLibsPath);
                 } else {
                     throw new Exception("Failed to find source for post-processed shader: " + path);
                 }
             } else {
-                StreamReader sr = new StreamReader(path);
-                try {
+                using (var sr = new StreamReader(path)) {
                     content = sr.ReadToEnd();
-                } finally {
-                    sr.Close();
                 }
             }
 
@@ -770,11 +772,8 @@ namespace VF.Builder.Haptics {
         }
         
         private static void WriteFile(string path, string content) {
-            StreamWriter sw = new StreamWriter(path);
-            try {
+            using (var sw = new StreamWriter(path)) {
                 sw.Write(content);
-            } finally {
-                sw.Close();
             }
         }
     }

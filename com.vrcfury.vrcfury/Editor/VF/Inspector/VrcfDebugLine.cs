@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,9 +14,16 @@ using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
     internal static class VrcfDebugLine {
+        [ReflectionHelperOptional]
+        private abstract class NdmfReflection : ReflectionHelper {
+            public static readonly Type AvatarProcessor = ReflectionUtils.GetTypeFromAnyAssembly("nadena.dev.ndmf.AvatarProcessor");
+        }
+        private static readonly bool ndmfPresent = NdmfReflection.AvatarProcessor != null;
 
-        private static readonly bool ndmfPresent =
-            ReflectionUtils.GetTypeFromAnyAssembly("nadena.dev.ndmf.AvatarProcessor") != null;
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            DialogUtils.debugLineGetter = () => GetOutputString();
+        }
 
         public static string GetDebugChars([CanBeNull] VFGameObject avatarObject = null, bool? isStillBroken = null) {
             var output = "";

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+#if VRCF_AVATARS
 using VRC.SDK3.Avatars.Components;
+#endif
 
 namespace VF.Model.Feature {
     [Serializable]
@@ -11,6 +13,7 @@ namespace VF.Model.Feature {
         public float holdTime = -1;
         [NonSerialized] public bool needsRemover = false;
 
+#if VRCF_AVATARS
         public override bool Upgrade(int fromVersion) {
             if (fromVersion < 1) {
                 needsRemover = true;
@@ -45,5 +48,6 @@ namespace VF.Model.Feature {
             }
             return output;
         }
+#endif
     }
 }

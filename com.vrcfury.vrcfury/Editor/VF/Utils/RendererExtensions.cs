@@ -5,12 +5,12 @@ using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using VF.Builder;
-using VF.Inspector;
 
 namespace VF.Utils {
     internal static class RendererExtensions {
-        public static ShaderUtil.ShaderPropertyType? GetPropertyType(this Renderer renderer, string propertyName) {
+        public static ShaderPropertyType? GetPropertyType(this Renderer renderer, string propertyName) {
             return renderer.sharedMaterials
                 .NotNull()
                 .Select(m => m.GetPropertyType(propertyName))
@@ -72,7 +72,7 @@ namespace VF.Utils {
         public static void SetMesh(this Renderer renderer, Mesh mesh) {
             if (renderer is SkinnedMeshRenderer skin) {
                 skin.sharedMesh = mesh;
-                VRCFuryEditorUtils.MarkDirty(skin);
+                skin.Dirty();
                 return;
             }
 
@@ -85,7 +85,7 @@ namespace VF.Utils {
                         owner.GetPath()
                     );
                 filter.sharedMesh = mesh;
-                VRCFuryEditorUtils.MarkDirty(filter);
+                filter.Dirty();
                 return;
             }
 

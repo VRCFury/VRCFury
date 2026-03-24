@@ -76,6 +76,13 @@ namespace VF.Utils {
 #endif
             return component is PositionConstraint;
         }
+        
+        public bool IsWorld() {
+#if VRCSDK_HAS_VRCCONSTRAINTS
+            if (component is VRCConstraintBase vc) return vc.FreezeToWorld;
+#endif
+            return false;
+        }
 
         public VFGameObject[] GetSources() {
 #if VRCSDK_HAS_VRCCONSTRAINTS

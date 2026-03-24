@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 using VF.Builder;
@@ -11,7 +10,6 @@ using VF.Feature;
 using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
-using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Utils;
@@ -292,7 +290,7 @@ namespace VF.Service {
                     skin.bones = skin.bones
                         .Select(b => b == fromBone ? (Transform)toBone : b)
                         .ToArray();
-                    VRCFuryEditorUtils.MarkDirty(skin);
+                    skin.Dirty();
                 }
 
                 // We never rewrite rootBone because of two reasons:
@@ -349,23 +347,19 @@ namespace VF.Service {
                 }
 
                 if (scanInternals) {
-                    var so = new SerializedObject(component);
-                    var prop = so.GetIterator();
-                    do {
-                        if (prop.propertyPath.StartsWith("ignoreTransforms.Array")) {
+                    MutableManager.ForEachChildObjectReference(component, (path,value,set) => {
+                        if (path.StartsWith("ignoreTransforms.Array")) {
                             // TODO: If we remove objects that are in these physbone ignoreTransforms arrays, we should
                             // probably also remove them from the array instead of just leaving it null
-                            continue;
+                            return;
                         }
-                        if (prop.propertyType == SerializedPropertyType.ObjectReference) {
-                            VFGameObject target = null;
-                            if (prop.objectReferenceValue is Transform t) target = t;
-                            else if (prop.objectReferenceValue is GameObject g) target = g;
-                            if (target != null && target.IsChildOf(avatarObject)) {
-                                reasons.Put(target, prop.propertyPath + " in " + component.GetType().Name + " on " + component.owner().GetPath(avatarObject, true));
-                            }
+                        VFGameObject target = null;
+                        if (value is Transform t) target = t;
+                        else if (value is GameObject g) target = g;
+                        if (target != null && target.IsChildOf(avatarObject)) {
+                            reasons.Put(target, path + " in " + component.GetType().Name + " on " + component.owner().GetPath(avatarObject, true));
                         }
-                    } while (prop.Next(true));
+                    });
                 }
             }
 
@@ -432,7 +426,7 @@ namespace VF.Service {
             if (propBone == null) return null;
 
             foreach (var b in VRCFArmatureUtils.GetAllBones(avatarObject).Values) {
-                if (b.IsChildOf(propBone)) {
+                if (b != null && b.IsChildOf(propBone)) {
                     throw new VRCFBuilderException(
                         "Link From is part of the avatar's armature." +
                         " The object dragged into Armature Link should not be a bone from the avatar's armature." +
@@ -458,10 +452,11 @@ namespace VF.Service {
                     }
 
                     if (!string.IsNullOrWhiteSpace(to.offset)) {
-                        var path = obj.GetPath(avatarObject);
-                        var finalPath = ClipRewritersService.Join(path, to.offset);
-                        obj = avatarObject.Find(finalPath);
-                        if (obj == null) throw new Exception($"Failed to find object at path '{finalPath}'");
+                        var offsetObj = VRCFObjectPathCache.Find(obj, to.offset);
+                        if (offsetObj == null) {
+                            throw new Exception($"Failed to find object at path '{ClipRewritersService.Join(obj.GetPath(avatarObject), to.offset)}'");
+                        }
+                        obj = offsetObj;
                     }
                     
                     // This is just here to ensure that the target is inside the avatar
@@ -508,7 +503,7 @@ namespace VF.Service {
                         if (!string.IsNullOrWhiteSpace(removeBoneSuffix)) {
                             searchName = searchName.Replace(removeBoneSuffix, "");
                         }
-                        var childAvatarBone = checkAvatarBone.Find(searchName);
+                        var childAvatarBone = VRCFObjectPathCache.Find(checkAvatarBone, searchName);
 
                         // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
                         var recurseButDoNotLink = false;
@@ -520,24 +515,19 @@ namespace VF.Service {
                                     recurseButDoNotLink = true;
                                     break;
                                 }
-                                childAvatarBone = checkAvatarBone.Find(b + "/" + searchName);
+                                childAvatarBone = VRCFObjectPathCache.Find(checkAvatarBone, b + "/" + searchName);
                                 if (childAvatarBone != null) {
                                     links.hacksUsed.Add("Avatar has extra mid-bone: " + b);
                                     break;
                                 }
                                 if (checkAvatarBone.name == b) {
-                                    childAvatarBone = checkAvatarBone.parent.Find(searchName);
+                                    childAvatarBone = VRCFObjectPathCache.Find(checkAvatarBone, "../" + searchName);
                                     if (childAvatarBone != null) {
                                         links.hacksUsed.Add("Avatar has fake mid-bone: " + b);
                                         break;
                                     }
                                 }
                             }
-                        }
-
-                        if (childAvatarBone != null) {
-                            var marshmallowChild = GetMarshmallowChild(childAvatarBone);
-                            if (marshmallowChild != null) childAvatarBone = marshmallowChild;
                         }
 
                         if (childAvatarBone != null) {
@@ -556,24 +546,6 @@ namespace VF.Service {
             links.avatarMain = avatarBone;
 
             return links;
-        }
-
-        /**
-         * Marshmallow PB unity package inserts fake bones in the armature, breaking our link.
-         * Detect if this happens, and return the proper child bone instead.
-         */
-        private static VFGameObject GetMarshmallowChild(VFGameObject orig) {
-            var scaleConstraint = orig.GetConstraints().FirstOrDefault(c => c.IsScale());
-            if (scaleConstraint == null) return null;
-            var sources = scaleConstraint.GetSources();
-            if (sources.Length != 1) return null;
-            var source = sources[0];
-            if (source == null) return null;
-            var scaleTargetInMarshmallow = source
-                .GetSelfAndAllParents()
-                .Any(t => t.name.ToLower().Contains("marshmallow"));
-            if (!scaleTargetInMarshmallow) return null;
-            return orig.Find(orig.name);
         }
     }
 }

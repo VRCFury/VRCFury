@@ -32,7 +32,7 @@ namespace VF.Inspector {
             var output = new VisualElement();
 
             var objField = new ObjectField();
-            var type = fieldInfo.FieldType.GetField("typeDetector").FieldType;
+            var type = fieldInfo.FieldType.VFField("typeDetector").FieldType;
             objField.objectType = type;
             objField.bindingPath = objRefProp.propertyPath;
             output.Add(objField);

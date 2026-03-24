@@ -4,41 +4,66 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
-using VF.Inspector;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Builder {
     internal static class MutableManager {
 
-        private static void Iterate(SerializedObject obj, Action<SerializedProperty> act) {
-            var prop = obj.GetIterator();
-            do {
-                act(prop);
-            } while (prop.Next(true));
+        public static void ForEachChildObjectReference(Object obj, Action<string,Object,Action<Object>> each) {
+            if (obj is Texture || obj is Mesh) {
+                // These can't have any object children anyways, so we can just skip them for performance
+                return;
+            }
+
+            var changed = false;
+            var serialized = new SerializedObject(obj);
+            var prop = serialized.GetIterator();
+            while (true) {
+                if (prop.propertyType == SerializedPropertyType.ObjectReference) {
+                    var value = GetObjectReferenceValueSafe(prop);
+                    if (value != null) {
+                        void Set(Object v) {
+                            if (value != v) {
+                                value = v;
+                                changed = true;
+                                prop.objectReferenceValue = v;
+                            }
+                        }
+                        each(prop.propertyPath, value, Set);
+                    }
+                }
+
+                var enter = prop.propertyType == SerializedPropertyType.Generic
+                            || prop.propertyType == SerializedPropertyType.ManagedReference;
+
+                // Optimization so we don't have to iterate over the giant float arrays in dance AnimationClips
+                if (obj is AnimationClip
+                    && prop.propertyPath.EndsWith(".Array")
+                    && !prop.propertyPath.ToLower().Contains("pptr")) {
+                    enter = false;
+                }
+
+                if (!prop.Next(enter)) break;
+            }
+
+            if (changed) {
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                obj.Dirty();
+            }
         }
-        
+
+        public static void RewriteInternals(Object obj, Dictionary<Object, Object> rewrites) {
+            ForEachChildObjectReference(obj, (path, oldValue, set) => {
+                var newValue = RewriteObject(oldValue, rewrites);
+                if (oldValue != newValue) set(newValue);
+            });
+        }
+
         private static T RewriteObject<T>(T obj, Dictionary<Object, Object> rewrites) where T : Object {
             if (obj == null) return null;
             if (rewrites.TryGetValue(obj, out var newValue)) return newValue as T;
             return obj;
-        }
-
-        public static void RewriteInternals(Object obj, Dictionary<Object, Object> rewrites) {
-            var serialized = new SerializedObject(obj);
-            var changed = false;
-            Iterate(serialized, prop => {
-                if (prop.propertyType != SerializedPropertyType.ObjectReference) return;
-                var oldValue = GetObjectReferenceValueSafe(prop);
-                var newValue = RewriteObject(oldValue, rewrites);
-                if (oldValue == newValue) return;
-                prop.objectReferenceValue = newValue;
-                changed = true;
-            });
-            if (changed) {
-                serialized.ApplyModifiedPropertiesWithoutUndo();
-                VRCFuryEditorUtils.MarkDirty(obj);
-            }
         }
 
         /** For some reason, unity occasionally breaks and return non-Objects from objectReferenceValue somehow. */
@@ -49,7 +74,7 @@ namespace VF.Builder {
             return unityObj;
         }
 
-        public static T CopyRecursive<T>(T obj, Type[] typesToMakeMutable, string addPrefix = "") where T : Object {
+        public static T CopyRecursive<T>(T obj, string reason, Type[] typesToMakeMutable, string addPrefix = "") where T : Object {
             var originalToMutable = new Dictionary<Object, Object>();
             var mutableToOriginal = new Dictionary<Object, Object>();
 
@@ -62,7 +87,7 @@ namespace VF.Builder {
                     if (!IsType(original, typesToMakeMutable)) return false;
                 } 
 
-                var copy = VrcfObjectCloner.Clone(original);
+                var copy = original.Clone(reason: reason, recursive: false);
                 if (obj == original) rootCopy = copy as T;
 
                 if (copy is AnimatorState || copy is AnimatorStateMachine) {
@@ -94,17 +119,12 @@ namespace VF.Builder {
                             .ToArray();
                         mutableSm.SetStateMachineTransitions(sm, rewrittenTransitions);
                     }
-                    VRCFuryEditorUtils.MarkDirty(mutable);
+                    mutable.Dirty();
                 }
             }
 
             return rootCopy;
         }
-
-        // It's like Object.Instantiate, except it actually works with
-        // AnimatorControllers, AnimatorStateMachines, AnimatorStates,
-        // and other things that unity usually logs errors from when using
-        // Object.Instantiate
 
         public static void ForEachChild(Object obj, Func<Object,bool> visit) {
             if (obj == null) return;
@@ -117,27 +137,10 @@ namespace VF.Builder {
                 visited.Add(o);
                 var enter = visit(o);
                 if (!enter) continue;
-                
-                // AnimationClips are really big, so we can just iterate the possible object children
-                if (o is AnimationClip clip) {
-                    foreach (var b in AnimationUtility.GetObjectReferenceCurveBindings(clip)) {
-                        var curve = AnimationUtility.GetObjectReferenceCurve(clip, b);
-                        if (curve != null) {
-                            foreach (var frame in curve) {
-                                if (frame.value != null) stack.Push(frame.value);
-                            }
-                        }
-                    }
-                } else {
-                    Iterate(new SerializedObject(o), prop => {
-                        if (prop.propertyType == SerializedPropertyType.ObjectReference) {
-                            var objectReferenceValue = GetObjectReferenceValueSafe(prop);
-                            if (objectReferenceValue != null) {
-                                stack.Push(objectReferenceValue);
-                            }
-                        }
-                    });
-                }
+
+                ForEachChildObjectReference(o, (path, child,set) => {
+                    stack.Push(child);
+                });
             }
         }
 

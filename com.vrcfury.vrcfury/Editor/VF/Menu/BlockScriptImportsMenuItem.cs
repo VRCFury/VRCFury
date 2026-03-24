@@ -19,7 +19,7 @@ namespace VF.Menu {
 
         [MenuItem(MenuItems.blockScriptImports, priority = MenuItems.blockScriptImportsPriority)]
         private static void Click() {
-            if (Get()) {
+            if (!Get()) {
                 var ok = DialogUtils.DisplayDialog(
                     "Warning",
                     "This will block unitypackage imports from bringing in new scripts until unity is restarted.\n\n" +

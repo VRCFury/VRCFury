@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
@@ -12,10 +13,17 @@ namespace VF.Hooks.AudioLinkFixes {
      * this by forcing a reload after any avatars are built.
      */
     internal class AudioLinkPlayModeRefreshHook : VrcfAvatarPreprocessor {
+        [ReflectionHelperOptional]
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Type AlComponentType = ReflectionUtils.GetTypeFromAnyAssembly("VRCAudioLink.AudioLink")
+                ?? ReflectionUtils.GetTypeFromAnyAssembly("AudioLink.AudioLink");
+        }
+
         protected override int order => int.MaxValue;
         private static bool triggerReload = false;
 
         protected override void Process(VFGameObject _) {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
             triggerReload = true;
             EditorApplication.delayCall += () => EditorApplication.delayCall += DelayCall;
         }
@@ -30,10 +38,7 @@ namespace VF.Hooks.AudioLinkFixes {
         private static void RestartAudiolink() {
             if (!PlayModeMenuItem.Get()) return;
 
-            var alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("VRCAudioLink.AudioLink");
-            if (alComponentType == null) alComponentType = ReflectionUtils.GetTypeFromAnyAssembly("AudioLink.AudioLink");
-            if (alComponentType == null) return;
-            foreach (var audioLink in ObjectExtensions.FindObjectsByType(alComponentType).OfType<UnityEngine.Component>()) {
+            foreach (var audioLink in ObjectExtensions.FindObjectsByType(Reflection.AlComponentType).OfType<UnityEngine.Component>()) {
                 var obj = audioLink.owner();
                 if (obj.active) {
                     Debug.Log($"VRCFury is restarting AudioLink object {obj.name} ...");

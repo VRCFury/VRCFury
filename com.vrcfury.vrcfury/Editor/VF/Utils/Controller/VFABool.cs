@@ -10,10 +10,13 @@ namespace VF.Utils.Controller {
         }
 
         public VFCondition IsTrue() {
-            return new VFCondition(new AnimatorCondition { mode = AnimatorConditionMode.If, parameter = this, threshold = 0 });
+            return Is(true);
         }
         public VFCondition IsFalse() {
-            return new VFCondition(new AnimatorCondition { mode = AnimatorConditionMode.IfNot, parameter = this, threshold = 0 });
+            return Is(false);
+        }
+        public VFCondition Is(bool state) {
+            return new VFCondition(new AnimatorCondition { mode = state ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot, parameter = this, threshold = 0 });
         }
 
         public VFAFloat AsFloat() {

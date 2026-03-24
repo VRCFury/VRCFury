@@ -278,6 +278,15 @@ namespace VF.Utils {
             VRCExpressionsMenu from,
             Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> seen = null
         ) {
+            if (seen == null) {
+                var target = string.Join("/", prefix);
+                var controlCount = from.controls.Count;
+                rootMenu.WorkLog(
+                    string.IsNullOrEmpty(target)
+                        ? $"Merged menu {from.GetPathAndName()} with {controlCount} root controls"
+                        : $"Merged menu {from.GetPathAndName()} with {controlCount} root controls into {target}"
+                );
+            }
             var to = GetSubmenu(prefix);
             if (seen == null) {
                 seen = new Dictionary<VRCExpressionsMenu, VRCExpressionsMenu>();

@@ -19,6 +19,12 @@ namespace VF.Inspector {
                 worldRadius,
                 Color.blue
             );
+            VRCFuryGizmoUtils.DrawText(
+                transform.position,
+                "Global Collider",
+                Color.blue,
+                true
+            );
         }
 
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryGlobalCollider target) {

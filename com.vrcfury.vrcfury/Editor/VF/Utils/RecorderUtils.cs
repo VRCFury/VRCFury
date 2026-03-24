@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -14,18 +14,18 @@ using Object = UnityEngine.Object;
 namespace VF.Utils {
     internal static class RecorderUtils {
         private static Action restore = null;
-        
+
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type animStateType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
-            public static readonly PropertyInfo selectionField = animStateType?.GetProperty("selection");
-            public static readonly PropertyInfo gameObjectField = selectionField?.PropertyType.GetProperty("gameObject");
-            public static readonly PropertyInfo animationClipField = animStateType?.GetProperty("activeAnimationClip");
+            public static readonly PropertyInfo selectionField = animStateType?.VFProperty("selection");
+            public static readonly PropertyInfo gameObjectField = selectionField?.PropertyType.VFProperty("gameObject");
+            public static readonly PropertyInfo animationClipField = animStateType?.VFProperty("activeAnimationClip");
 #if ! UNITY_6000_0_OR_NEWER
-            public static readonly MethodInfo startRecording = animStateType?.GetMethod("StartRecording");
+            public static readonly MethodInfo startRecording = animStateType?.VFMethod("StartRecording");
 #endif
-            public static readonly PropertyInfo isRecordingProperty = animStateType?.GetProperty("recording", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly PropertyInfo isRecordingProperty = animStateType?.VFProperty("recording");
             public static readonly Type AnimationWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationWindow");
-            public static readonly PropertyInfo AnimationWindowState = AnimationWindow?.GetProperty("state", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly PropertyInfo AnimationWindowState = AnimationWindow?.VFProperty("state");
         }
 
         [InitializeOnLoadMethod]
@@ -65,7 +65,7 @@ namespace VF.Utils {
                     "Ok");
                 return;
             }
-            
+
             // Open / focus the animation tab
             var animationWindow = EditorWindowFinder.GetWindows(Reflection.AnimationWindow).FirstOrDefault();
             if (animationWindow == null) {
@@ -76,7 +76,7 @@ namespace VF.Utils {
 
             animationWindow.Focus();
             var animState = Reflection.AnimationWindowState.GetValue(animationWindow);
-            
+
             var avatarObject = baseObj.GetComponentInSelfOrParent<VRCAvatarDescriptor>().NullSafe()?.owner();
             if (avatarObject == null) {
                 avatarObject = baseObj.GetComponentInSelfOrParent<Animator>().NullSafe()?.owner();
@@ -104,7 +104,7 @@ namespace VF.Utils {
                     if (expandedInClone != null) CollapseUtils.SetExpanded(expandedInClone, true);
                 }
             }
-            
+
             var prefix = baseObj.GetPath(avatarObject);
             var baseObjInClone = clone.Find(prefix);
             Selection.activeGameObject = baseObjInClone;

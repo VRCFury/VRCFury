@@ -116,11 +116,11 @@ Vector4Field.VrcFuryEditorProp > .unity-vector4-field__input {
     border-bottom-color: black;
 }
 .vfVersionLabel {
-    -unity-text-align: lower-right;
+    -unity-text-align: middle-right;
     color: rgba(255,255,255,0.3);
-    font-size: 10px;
+    font-size: 8px;
     height: 8px;
-    margin-top: 3px;
-    margin-bottom: -5px;
-    margin-right: -3px;
+    margin-top: -2px;
+    margin-bottom: -3px;
+    margin-right: 2px;
 }

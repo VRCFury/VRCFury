@@ -13,7 +13,7 @@ namespace VF.Builder {
             var mesh = renderer.GetMesh();
 
             if (renderer is SkinnedMeshRenderer skin) {
-                var temporaryMesh = new Mesh();
+                var temporaryMesh = VrcfObjectFactory.Create<Mesh>();
                 skin.BakeMesh(temporaryMesh);
 
                 // If the skinned mesh doesn't have any bones attached, it's treated like a regular mesh and BakeMesh applies no transforms

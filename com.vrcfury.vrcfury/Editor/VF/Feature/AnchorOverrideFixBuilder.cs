@@ -1,5 +1,7 @@
 using System;
-using UnityEditor;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -7,6 +9,9 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
+using VF.Service;
+using VF.Utils;
+using VRC.Dynamics;
 
 namespace VF.Feature {
     [FeatureTitle("Anchor Override Fix")]
@@ -14,6 +19,7 @@ namespace VF.Feature {
     [FeatureRootOnly]
     internal class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
         [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly ControllersService controllers;
 
         [FeatureBuilderAction(FeatureOrder.AnchorOverrideFix)]
         public void Apply() {
@@ -23,9 +29,30 @@ namespace VF.Feature {
             } catch (Exception) {
                 root = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Hips);
             }
+
+            var worldAnimatedObjs = controllers.GetAllUsedControllers()
+                .SelectMany(c => c.GetClips())
+                .SelectMany(clip => clip.GetAllBindings())
+                .Where(b => b.propertyName == "FreezeToWorld")
+                .Select(b => b.path)
+                .Select(path => avatarObject.Find(path))
+                .ToImmutableHashSet();
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
+                if (skin.owner().GetComponentInSelfOrParent<Rigidbody>() != null) {
+                    continue;
+                }
+                if (skin.owner().GetConstraints(includeParents: true).Any(c => IsWorldConstraint(c, worldAnimatedObjs))) {
+                    continue;
+                }
                 skin.probeAnchor = root;
             }
+        }
+
+        private static bool IsWorldConstraint(VFConstraint c, ISet<VFGameObject> worldAnimatedObjs) {
+            if (c.IsWorld()) return true;
+            if (worldAnimatedObjs.Contains(c.GetComponent().owner())) return true;
+            if (c.GetSources().Any(o => o != null && o.IsAssetTransform())) return true;
+            return false;
         }
         
         [FeatureEditor]

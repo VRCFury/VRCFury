@@ -72,7 +72,7 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.PositionDefaultsLayer)]
         public void PositionDefaultsLayer() {
-            if (_defaultLayer != null) {
+            if (_defaultLayer != null && _defaultLayer.Exists()) {
                 _defaultLayer.Move(0);
             }
         }

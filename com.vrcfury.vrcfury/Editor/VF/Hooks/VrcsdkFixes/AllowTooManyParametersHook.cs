@@ -11,9 +11,8 @@ using Object = UnityEngine.Object;
 
 namespace VF.Hooks.VrcsdkFixes {
     internal static class AllowTooManyParametersHook {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            HarmonyUtils.Patch(
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(AllowTooManyParametersHook),
                 nameof(Prefix),
                 "VRCSdkControlPanel",
@@ -21,15 +20,18 @@ namespace VF.Hooks.VrcsdkFixes {
             );
         }
 
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.Patch.apply();
+        }
+
         private static bool Prefix(Object __0, string __1) {
             try {
                 if (
                     __1.Contains("VRCExpressionParameters has too many parameters")
                     && __0 is VRCAvatarDescriptor avatar
-                    && avatar.owner()
-                        .GetComponentsInSelfAndChildren<VRCFury>()
-                        .SelectMany(v => v.GetAllFeatures())
-                        .Any(f => f is UnlimitedParameters)
+                    && VRCFuryBuilder.ShouldRun(avatar.owner())
                 ) {
                     return false;
                 }

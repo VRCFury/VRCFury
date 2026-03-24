@@ -15,7 +15,7 @@ namespace VF.Feature {
         public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Error(
-                "This feature is deprecated and now does nothing." +
+                "This component is deprecated and now does nothing." +
                 " Bounding Box Fix is now automatically enabled by default for all avatars using VRCFury."));
             return content;
         }

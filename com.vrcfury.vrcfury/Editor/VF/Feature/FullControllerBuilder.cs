@@ -63,6 +63,9 @@ namespace VF.Feature {
                     }
                     paramz.AddSyncedParam(param);
                 }
+                paramz.GetRaw().WorkLog(
+                    $"Merged in {copy.parameters.Length} expression parameters from {prms.GetPathAndName()}"
+                );
             }
 
             var fromControllers = new List<VFControllerWithVrcType>();
@@ -358,7 +361,7 @@ namespace VF.Feature {
                         throw new VRCFBuilderException(
                             $"Your avatar contains multiple locomotion implementations ({VRCFEnumUtils.GetName(type)}).\n\n" +
                             "You can only use one of these:\n" +
-                            $"{globals.currentFeatureNameProvider()}\n" +
+                            $"{globals.currentFeatureName}\n" +
                             layerSourceService.GetSource(layer)
                         );
                     }
@@ -414,7 +417,7 @@ namespace VF.Feature {
                         return smoothed;
                     }
                     return name;
-                }, false, myLayers);
+                }, includeWrites: false, includeCopyDriverReads: false, limitToLayers: myLayers);
             }
         }
 
@@ -686,18 +689,13 @@ namespace VF.Feature {
             "Earmuffs",
             "IsOnFriendsList",
             "AvatarVersion",
-
-            "Supine",
-            "GroundProximity",
+            "IsAnimatorEnabled",
 
             "ScaleModified",
             "ScaleFactor",
             "ScaleFactorInverse",
             "EyeHeightAsMeters",
             "EyeHeightAsPercent",
-            
-            "IsAnimatorEnabled",
-            
         };
     }
 

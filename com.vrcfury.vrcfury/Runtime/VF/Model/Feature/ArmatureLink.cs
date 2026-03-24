@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+#if VRCF_AVATARS
 using VRC.SDK3.Avatars.Components;
+#endif
 
 namespace VF.Model.Feature {
     [Serializable]
@@ -59,7 +61,8 @@ namespace VF.Model.Feature {
         [Obsolete] public List<HumanBodyBones> fallbackBones = new List<HumanBodyBones>();
         [Obsolete] public KeepBoneOffsets keepBoneOffsets2 = KeepBoneOffsets.Auto;
         [Obsolete] public ArmatureLinkMode linkMode = ArmatureLinkMode.Auto;
-        
+
+#if VRCF_AVATARS
         public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612
             if (fromVersion < 1) {
@@ -139,5 +142,6 @@ namespace VF.Model.Feature {
             }
             return false;
         }
+#endif
     }
 }

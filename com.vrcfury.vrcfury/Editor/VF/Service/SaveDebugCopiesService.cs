@@ -24,15 +24,18 @@ namespace VF.Service {
         
         private void Backup(string folderName) {
             if (!DebugCopyMenuItem.Get()) return;
+            var outputDir = $"{tmpDirService.GetTempDir()}/{folderName}";
+            var session = new SaveAssetsSession();
             foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
                 if (c.controller == null) continue;
-                SaveAssetsService.SaveAssetAndChildren(
+                session.SaveAssetAndChildren(
                     c.controller.Clone(),
                     VRCFEnumUtils.GetName(c.type),
-                    $"{tmpDirService.GetTempDir()}/{folderName}",
+                    outputDir,
                     false
                 );
             }
+            session.FlushWorkLogManifest(outputDir);
         }
     }
 }

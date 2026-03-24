@@ -1,6 +1,6 @@
 using VF.Feature.Base;
 using VF.Injector;
-using VF.Inspector;
+using VF.Utils;
 
 namespace VF.Service {
     [VFService]
@@ -13,10 +13,10 @@ namespace VF.Service {
         public void Apply() {
             // Just for safety. These don't need to be here if we make sure everywhere else appropriately marks
             foreach (var c in controllers.GetAllUsedControllers()) {
-                VRCFuryEditorUtils.MarkDirty(c.GetRaw());
+                c.GetRaw().Dirty();
             }
-            VRCFuryEditorUtils.MarkDirty(menuService.GetMenu().GetRaw());
-            VRCFuryEditorUtils.MarkDirty(paramsService.GetParams().GetRaw());
+            menuService.GetMenu().GetRaw().Dirty();
+            paramsService.GetParams().GetRaw().Dirty();
         }
     }
 }

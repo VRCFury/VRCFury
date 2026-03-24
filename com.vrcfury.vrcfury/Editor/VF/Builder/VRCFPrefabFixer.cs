@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using VF.Inspector;
 using VF.Model;
 using VF.Utils;
 using Object = UnityEngine.Object;
@@ -79,7 +78,7 @@ namespace VF.Builder {
                     if (mods.Count > 0) {
                         Debug.Log($"Reverting overrides on {vrcf}: {mods.Select(m => m.propertyPath).Join(", ")}");
                         PrefabUtility.RevertObjectOverride(vrcf, InteractionMode.AutomatedAction);
-                        VRCFuryEditorUtils.MarkDirty(vrcf);
+                        vrcf.Dirty();
                         Debug.Log($"Done");
                     }
                 }

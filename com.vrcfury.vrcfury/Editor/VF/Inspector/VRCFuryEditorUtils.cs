@@ -1,16 +1,12 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEditor.UIElements;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using VF.Builder;
-using VF.Model;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
@@ -320,6 +316,10 @@ namespace VF.Inspector {
                             onChange?.Invoke();
                         });
                         field = toggle;
+                        break;
+                    }
+                    case SerializedPropertyType.Color: {
+                        field = new ColorField { bindingPath = prop.propertyPath, hdr = true };
                         break;
                     }
                     case SerializedPropertyType.Generic: {
@@ -691,29 +691,6 @@ namespace VF.Inspector {
             el.RegisterCallback<MouseOutEvent>(e => {
                 el.style.backgroundColor = oldBg;
             });
-        }
-
-        [InitializeOnLoadMethod]
-        private static void MakeMarkDirtyAvailableToRuntime() {
-            VRCFury.markDirty = MarkDirty;
-        }
-        public static void MarkDirty(Object obj) {
-            EditorUtility.SetDirty(obj);
-            
-            // This shouldn't be needed in unity 2020+
-            if (obj is GameObject go) {
-                MarkSceneDirty(go.scene);
-            } else if (obj is UnityEngine.Component c) {
-                MarkSceneDirty(c.owner().scene);
-            }
-        }
-
-        private static void MarkSceneDirty(Scene scene) {
-            if (Application.isPlaying) return;
-            if (scene == null) return;
-            if (!scene.isLoaded) return;
-            if (!scene.IsValid()) return;
-            EditorSceneManager.MarkSceneDirty(scene);
         }
 
         public static string Rev(string s) {

@@ -43,9 +43,9 @@ namespace VF.Utils {
                 } else {
                     copy = Object.Instantiate(original);
                 }
-                VrcfObjectFactory.Register(copy);
+                VrcfObjectFactory.Register(copy, copyWorkLogFrom: original);
             } else {
-                copy = (T)VrcfObjectFactory.Create(original.GetType());
+                copy = (T)VrcfObjectFactory.Create(original.GetType(), copyWorkLogFrom: original);
                 if (original is AnimationClip originalClip && copy is AnimationClip copyClip) {
                     AnimationClipExtensions.CopyData(originalClip, copyClip);
                 } else {

@@ -11,6 +11,7 @@ using VF.Menu;
 using VF.Model;
 using VF.Service;
 using VF.Utils;
+using VF.VrcfEditorOnly;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using Object = UnityEngine.Object;
@@ -37,7 +38,7 @@ namespace VF {
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
             if (state == PlayModeStateChange.ExitingEditMode) {
                 addedTriggerObjectThisPlayMode = false;
-                TmpFilePackage.Cleanup();
+                TmpDirService.Cleanup();
             }
         }
 
@@ -113,8 +114,9 @@ namespace VF {
                             var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService);
                             if (bakeResult != null) {
                                 var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", bakeResult.name);
+                                var saver = new SaveAssetsSession();
                                 foreach (var renderer in bakeResult.renderers) {
-                                    SaveAssetsService.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
+                                    saver.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
                                 }
                                 HideAnnoyingGizmosService.Hide(bakeResult.bakeRoot);
                             }
@@ -137,7 +139,7 @@ namespace VF {
         }
 
         [DefaultExecutionOrder(-10000)]
-        public class RescanOnStartComponent : MonoBehaviour {
+        public class RescanOnStartComponent : VRCFuryPlayComponent {
             private void Start() {
                 Rescan();
                 var obj = gameObject;

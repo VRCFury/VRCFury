@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor.Callbacks;
@@ -14,15 +14,19 @@ namespace VF.Hooks.VrcsdkFixes {
      * There's really no reason to remove them earlier.
      */
     internal static class KeepEditorOnlyComponentsLongerHook {
+
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Type VRCBuildPipelineCallbacks =
+                ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Editor.BuildPipeline.VRCBuildPipelineCallbacks");
+            public static readonly FieldInfo preprocessAvatarCallbacks = VRCBuildPipelineCallbacks?
+                .VFStaticField("_preprocessAvatarCallbacks");
+        }
+
         [DidReloadScripts]
         public static void Init() {
-            var callbacksClass =
-                ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Editor.BuildPipeline.VRCBuildPipelineCallbacks");
-            if (callbacksClass == null) return;
-            var callbacksField = callbacksClass.GetField("_preprocessAvatarCallbacks", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            if (callbacksField == null) return;
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
 
-            var _callbacks = callbacksField.GetValue(null);
+            var _callbacks = Reflection.preprocessAvatarCallbacks.GetValue(null);
             if (!(_callbacks is List<IVRCSDKPreprocessAvatarCallback> callbacks)) return;
 
             foreach (var callback in callbacks.ToArray()) {
@@ -32,7 +36,7 @@ namespace VF.Hooks.VrcsdkFixes {
                 }
             }
 
-            callbacksField.SetValue(null, callbacks);
+            Reflection.preprocessAvatarCallbacks.SetValue(null, callbacks);
         }
 
         public class VrcfRemoveEditorOnlyObjects : VrcfAvatarPreprocessor {

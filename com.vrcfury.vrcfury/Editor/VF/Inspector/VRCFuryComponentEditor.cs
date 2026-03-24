@@ -33,8 +33,8 @@ namespace VF.Inspector {
             
             var contentWithVersion = new VisualElement();
             contentWithVersion.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
-            contentWithVersion.Add(content);
             contentWithVersion.Add(versionLabel);
+            contentWithVersion.Add(content);
             return contentWithVersion;
         }
 

@@ -12,8 +12,8 @@ namespace VF.Utils {
 #if UNITY_2022_1_OR_NEWER
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type SceneHierarchyWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.SceneHierarchyWindow");
-            public static readonly MethodInfo SetExpanded = SceneHierarchyWindow?.GetMethod("SetExpanded", false);
-            public static readonly MethodInfo GetExpandedIDs = SceneHierarchyWindow?.GetMethod("GetExpandedIDs", false);
+            public static readonly MethodInfo SetExpanded = SceneHierarchyWindow?.VFMethod("SetExpanded");
+            public static readonly MethodInfo GetExpandedIDs = SceneHierarchyWindow?.VFMethod("GetExpandedIDs");
         }
 
         [InitializeOnLoadMethod]

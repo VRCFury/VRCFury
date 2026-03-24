@@ -83,7 +83,12 @@ namespace VF.Service {
             foreach (var controller in set) {
                 foreach (var layer in controller.GetLayers()) {
                     layer.RewriteBehaviours<VRCAnimatorLayerControl>(control => {
-                        var targetController = set.FirstOrDefault(other => VRCFEnumUtils.GetName(other.vrcType) == VRCFEnumUtils.GetName(control.playable));
+                        T targetController;
+                        if (VRCFEnumUtils.GetName(controller.vrcType) == VRCFEnumUtils.GetName(control.playable)) {
+                            targetController = controller;
+                        } else {
+                            targetController = set.FirstOrDefault(other => VRCFEnumUtils.GetName(other.vrcType) == VRCFEnumUtils.GetName(control.playable));
+                        }
                         if (targetController == null) return null;
                         if (control.layer < 0 || control.layer >= targetController.layers.Count) return null;
                         var targetSm = targetController.layers[control.layer];

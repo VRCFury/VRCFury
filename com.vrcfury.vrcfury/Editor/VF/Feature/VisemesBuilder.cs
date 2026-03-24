@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -17,6 +18,13 @@ namespace VF.Feature {
 
     [FeatureTitle("Advanced Visemes")]
     internal class VisemesBuilder : FeatureBuilder<Visemes> {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly FieldInfo[] StateFields = Enumerable.Range(0, visemeNames.Length)
+                .Select(i => "state_" + (i == 0 ? "aa" : visemeNames[i]))
+                .Select(name => typeof(Visemes).VFField(name))
+                .ToArray();
+        }
+
         [VFAutowired] private readonly TrackingConflictResolverService trackingConflictResolverService;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly SmoothingService smooth;
@@ -83,8 +91,7 @@ namespace VF.Feature {
 
             for (var i = 0; i < visemeNames.Length; i++) {
                 var name = visemeNames[i];
-                var fieldName = "state_" + ((i == 0) ? "aa" : name);
-                addViseme(i, name, (State)model.GetType().GetField(fieldName).GetValue(model));
+                addViseme(i, name, (State)Reflection.StateFields[i].GetValue(model));
             }
 
             trackingConflictResolverService.WhenCollected(() => {

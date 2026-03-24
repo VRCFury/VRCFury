@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -30,8 +30,8 @@ namespace VF.Hooks.UnityFixes {
             public static readonly Type ConsoleWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ConsoleWindow");
             public delegate void SetConsoleErrorPause_(bool enabled);
             public static readonly SetConsoleErrorPause_ SetConsoleErrorPause = ConsoleWindow?.GetMatchingDelegate<SetConsoleErrorPause_>("SetConsoleErrorPause");
-            public static readonly MethodInfo SetFlag = ConsoleWindow?.GetMethod("SetFlag", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            public static readonly Type ConsoleFlags = ConsoleWindow?.GetNestedType("ConsoleFlags", BindingFlags.Public | BindingFlags.NonPublic);
+            public static readonly Type ConsoleFlags = ConsoleWindow?.VFNestedType("ConsoleFlags");
+            public static readonly MethodInfo SetFlag = ConsoleWindow?.VFStaticMethod("SetFlag");
             public static readonly object LogLevelError = ConsoleFlags != null ? Enum.Parse(ConsoleFlags, "LogLevelError") : null;
         }
 
@@ -66,3 +66,4 @@ namespace VF.Hooks.UnityFixes {
         }
     }
 }
+

@@ -6,26 +6,24 @@ using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using VF.Builder;
 
 namespace VF.Utils {
     internal class PoiyomiUtils {
+        [ReflectionHelperOptional]
+        private abstract class PoiReflection : ReflectionHelper {
+            [CanBeNull]
+            public static readonly Type ShaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ThryEditor.ShaderOptimizer")
+                ?? ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
+            public static readonly MethodInfo IsShaderUsingThryOptimizer = ShaderOptimizer?.VFStaticMethod("IsShaderUsingThryOptimizer");
+            public static readonly MethodInfo SetLockedForAllMaterials = ShaderOptimizer?.VFStaticMethod("SetLockedForAllMaterials");
+            public static readonly MethodInfo GetRenamedPropertySuffix = ShaderOptimizer?.VFStaticMethod("GetRenamedPropertySuffix");
+        }
+
         [CanBeNull]
-        public static readonly Type ShaderOptimizer = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ThryEditor.ShaderOptimizer")
-            ?? ReflectionUtils.GetTypeFromAnyAssembly("Thry.ShaderOptimizer");
-        private static readonly MethodInfo IsShaderUsingThryOptimizer = ShaderOptimizer?.GetMethod(
-            "IsShaderUsingThryOptimizer",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-        );
-        private static readonly MethodInfo SetLockedForAllMaterials = ShaderOptimizer?.GetMethod(
-            "SetLockedForAllMaterials",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-        );
-        private static readonly MethodInfo GetRenamedPropertySuffix = ShaderOptimizer?.GetMethod(
-            "GetRenamedPropertySuffix",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-        );
-        
+        public static Type ShaderOptimizer => PoiReflection.ShaderOptimizer;
+
         private static readonly Dictionary<Material, Dictionary<string, PoiProp>> lockedPropsCache
             = new Dictionary<Material, Dictionary<string, PoiProp>>();
 
@@ -39,8 +37,8 @@ namespace VF.Utils {
         private static bool IsPoiUnlocked(Material mat) {
             if (mat == null || mat.shader == null) return false;
             if (mat.shader.name.StartsWith("Hidden/Locked/")) return false;
-            if (IsShaderUsingThryOptimizer == null) return false;
-            return (bool)ReflectionUtils.CallWithOptionalParams(IsShaderUsingThryOptimizer, null, mat.shader);
+            if (PoiReflection.IsShaderUsingThryOptimizer == null) return false;
+            return (bool)ReflectionUtils.CallWithOptionalParams(PoiReflection.IsShaderUsingThryOptimizer, null, mat.shader);
         }
         
         private static bool IsPoiLocked(Material mat) {
@@ -67,16 +65,16 @@ namespace VF.Utils {
 
             var matRenameSuffix = GetRenameSuffix(mat);
 
-            var count = ShaderUtil.GetPropertyCount(shader);
+            var count = shader.GetPropertyCount();
             for (var i = 0; i < count; i++) {
-                var propertyName = ShaderUtil.GetPropertyName(shader, i);
+                var propertyName = shader.GetPropertyName(i);
 
                 var ogName = propertyName;
                 if (matRenameSuffix != null && ogName.EndsWith("_" + matRenameSuffix)) {
                     ogName = ogName.Substring(0, ogName.Length - matRenameSuffix.Length - 1);
                 }
                 
-                var propType = ShaderUtil.GetPropertyType(shader, i);
+                var propType = shader.GetPropertyType(i);
                 var animatedTag = mat.GetTag(ogName + "Animated", false, "");
 
                 var isAnimated = animatedTag != "";
@@ -87,7 +85,7 @@ namespace VF.Utils {
                     };
                 }
 
-                if (propType == ShaderUtil.ShaderPropertyType.TexEnv) {
+                if (propType == ShaderPropertyType.Texture) {
                     Add("_ST.x");
                     Add("_ST.y");
                     Add("_ST.z");
@@ -96,12 +94,12 @@ namespace VF.Utils {
                     Add("_TexelSize.y");
                     Add("_TexelSize.z");
                     Add("_TexelSize.w");
-                } else if (propType == ShaderUtil.ShaderPropertyType.Vector) {
+                } else if (propType == ShaderPropertyType.Vector) {
                     Add(".x");
                     Add(".y");
                     Add(".z");
                     Add(".w");
-                } else if (propType == ShaderUtil.ShaderPropertyType.Color) {
+                } else if (propType == ShaderPropertyType.Color) {
                     Add(".r");
                     Add(".g");
                     Add(".b");
@@ -115,19 +113,19 @@ namespace VF.Utils {
 
         [CanBeNull]
         public static string GetRenameSuffix(Material mat) {
-            if (GetRenamedPropertySuffix == null) return null;
-            return (string)GetRenamedPropertySuffix.Invoke(null, new object[] { mat });
+            if (PoiReflection.GetRenamedPropertySuffix == null) return null;
+            return (string)PoiReflection.GetRenamedPropertySuffix.Invoke(null, new object[] { mat });
         }
 
         public static void LockPoiyomi(Material mat) {
             if (!IsPoiUnlocked(mat)) return;
 
-            if (SetLockedForAllMaterials == null) {
+            if (PoiReflection.SetLockedForAllMaterials == null) {
                 throw new Exception("Failed to find Poiyomi's lockdown method. Try updating poiyomi or locking the material manually.");
             }
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
                 var result =
-                    (bool)ReflectionUtils.CallWithOptionalParams(SetLockedForAllMaterials, null, new Material[] { mat }, 1);
+                    (bool)ReflectionUtils.CallWithOptionalParams(PoiReflection.SetLockedForAllMaterials, null, new Material[] { mat }, 1);
                 if (!result) {
                     throw new Exception("Poiyomi's lockdown method returned false without an exception. Check the console for the reason.");
                 }
@@ -139,3 +137,4 @@ namespace VF.Utils {
         }
     }
 }
+

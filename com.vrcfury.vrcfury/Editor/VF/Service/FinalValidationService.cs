@@ -27,18 +27,6 @@ namespace VF.Service {
         }
 
         private void CheckParams() {
-            var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
-            if (maxBits > 9999) {
-                // Some modified versions of the VRChat SDK have a broken value for this
-                maxBits = 256;
-            }
-            if (paramz.GetRaw().CalcTotalCost() > maxBits) {
-                excService.ThrowIfActuallyUploading(new SneakyException(
-                    "Your avatar is out of space for parameters! Used "
-                    + paramz.GetRaw().CalcTotalCost() + "/" + maxBits
-                    + " bits. Ask your avatar creator, or the creator of the last prop you've added, if there are any parameters you can remove to make space."));
-            }
-
             if (paramz.GetRaw().parameters.Length > 8192) {
                 excService.ThrowIfActuallyUploading(new SneakyException(
                     $"Your avatar is using too many synced and unsynced expression parameters ({paramz.GetRaw().parameters.Length})!"

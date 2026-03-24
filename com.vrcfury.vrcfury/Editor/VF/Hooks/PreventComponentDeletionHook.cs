@@ -1,5 +1,6 @@
 ﻿using UnityEditor;
 using UnityEngine;
+using VF.Component;
 using VF.Menu;
 using VF.Model;
 using VF.Utils;
@@ -10,36 +11,41 @@ namespace VF.Hooks {
      * Prevents components from being deleted during preprocessors when they need to be kept for debug reasons.
      */
     internal static class PreventComponentDeletionHook {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            HarmonyUtils.Patch(
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj DestroyImmediatePatch = HarmonyUtils.Patch(
                 typeof(PreventComponentDeletionHook),
                 nameof(DestroyImmediatePrefix),
                 typeof(Object),
                 nameof(Object.DestroyImmediate)
             );
-            
-            HarmonyUtils.Patch(
+            public static readonly HarmonyUtils.PatchObj PreprocessorPatch = HarmonyUtils.Patch(
                 typeof(PreventComponentDeletionHook),
                 nameof(PreprocessorPrefix),
                 typeof(VRCBuildPipelineCallbacks),
                 nameof(VRCBuildPipelineCallbacks.OnPreprocessAvatar)
             );
-            
-            HarmonyUtils.Patch(
+            public static readonly HarmonyUtils.PatchObj PreprocessorFinalizerPatch = HarmonyUtils.Patch(
                 typeof(PreventComponentDeletionHook),
-                nameof(PreprocessorPostfix),
+                nameof(PreprocessorFinalizer),
                 typeof(VRCBuildPipelineCallbacks),
                 nameof(VRCBuildPipelineCallbacks.OnPreprocessAvatar),
-                postfix: true
+                patchMode: HarmonyUtils.PatchMode.Finalizer
             );
+        }
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.DestroyImmediatePatch.apply();
+            Reflection.PreprocessorPatch.apply();
+            Reflection.PreprocessorFinalizerPatch.apply();
         }
 
         private static bool inPreprocessor;
 
         private static bool DestroyImmediatePrefix(Object __0) {
             if (!IsActuallyUploadingHook.Get() && inPreprocessor) {
-                if (__0 is VRCFuryTest || __0 is VRCFuryDebugInfo) {
+                if (__0 is VRCFuryTest || __0 is VRCFuryDebugInfo || __0 is VRCFuryPlayComponent) {
                     // Keep it! Prevent the deletion!
                     return false;
                 }
@@ -51,7 +57,7 @@ namespace VF.Hooks {
             inPreprocessor = true;
         }
 
-        private static void PreprocessorPostfix() {
+        private static void PreprocessorFinalizer() {
             inPreprocessor = false;
         }
     }

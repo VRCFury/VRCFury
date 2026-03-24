@@ -1,19 +1,19 @@
 using System.Linq;
-using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace VF.Utils {
     internal static class MaterialExtensions {
-        public const ShaderUtil.ShaderPropertyType StPropertyType = (ShaderUtil.ShaderPropertyType)995;
+        public const ShaderPropertyType StPropertyType = (ShaderPropertyType)995;
         
-        public static ShaderUtil.ShaderPropertyType? GetPropertyType(this Material mat, string propertyName) {
+        public static ShaderPropertyType? GetPropertyType(this Material mat, string propertyName) {
             if (mat.shader == null) return null;
-            foreach (var i in Enumerable.Range(0, ShaderUtil.GetPropertyCount(mat.shader))) {
-                var name = ShaderUtil.GetPropertyName(mat.shader, i);
-                var type = ShaderUtil.GetPropertyType(mat.shader, i);
+            foreach (var i in Enumerable.Range(0, mat.shader.GetPropertyCount())) {
+                var name = mat.shader.GetPropertyName(i);
+                var type = mat.shader.GetPropertyType(i);
                 if (name == propertyName) return type;
-                if (propertyName.EndsWith("_ST") && name == propertyName.Substring(0, propertyName.Length - 3) && type == ShaderUtil.ShaderPropertyType.TexEnv) {
+                if (propertyName.EndsWith("_ST") && name == propertyName.Substring(0, propertyName.Length - 3) && type == ShaderPropertyType.Texture) {
                     return StPropertyType;
                 }
             }

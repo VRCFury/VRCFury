@@ -45,10 +45,7 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.ResetAnimatorBefore)]
         public void ApplyBefore() {
-            VRCFArmatureUtils.ClearCache();
-            VRCFArmatureUtils.WarmupCache(avatarObject);
-            ClosestBoneUtils.ClearCache();
-
+            
             foreach (var animator in avatarObject.GetComponentsInSelfAndChildren<Animator>()) {
                 var owner = animator.owner();
 

@@ -22,16 +22,29 @@ namespace VF.Hooks.UnityFixes {
      * Note: You CANNOT use Harmony Prefix on a unity extern!
      */
     internal static class FixAnimatorPreviewBreakingInPlayModeHook {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            foreach (var prefix in typeof(ShimPrefix).GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Static)) {
-                HarmonyUtils.Patch(
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly MethodInfo[] ShimPrefixMethods = typeof(ShimPrefix)
+                .GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Static);
+            public static readonly HarmonyUtils.PatchObj[] ShimPrefixPatches = ShimPrefixMethods
+                .Select(prefix => HarmonyUtils.Patch(
                     typeof(ShimPrefix),
                     prefix.Name,
                     typeof(Animator),
                     prefix.Name,
                     internalReplacementClass: typeof(ShimReplacments)
-                );
+                ))
+                .ToArray();
+            public delegate RuntimeAnimatorController GetAnimatorControllerInternal_(ref PlayableHandle handle);
+            public static readonly GetAnimatorControllerInternal_ GetAnimatorControllerInternal = typeof(AnimatorControllerPlayable)
+                .GetMatchingDelegate<GetAnimatorControllerInternal_>("GetAnimatorControllerInternal");
+        }
+
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<Reflection>()) return;
+
+            foreach (var patch in Reflection.ShimPrefixPatches) {
+                patch.apply();
             }
             Scheduler.Schedule(() => {
                 previewedPlayableCache.Clear();
@@ -158,13 +171,10 @@ namespace VF.Hooks.UnityFixes {
             return null;
         }
 
-        private static readonly MethodInfo GetAnimatorControllerInternal = typeof(AnimatorControllerPlayable)
-            .GetMethod("GetAnimatorControllerInternal", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         [CanBeNull]
         private static RuntimeAnimatorController GetControllerForPlayable(AnimatorControllerPlayable playable) {
-            if (GetAnimatorControllerInternal == null) return null;
             var handle = playable.GetHandle();
-            var c = GetAnimatorControllerInternal.Invoke(null, new object[] { handle }) as RuntimeAnimatorController;
+            var c = Reflection.GetAnimatorControllerInternal(ref handle);
             while (c is AnimatorOverrideController oc) {
                 c = oc.runtimeAnimatorController;
             }

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
@@ -286,7 +285,9 @@ namespace VF.Feature {
 
             if (!loadedRestingClip) {
                 loadedRestingClip = true;
-                if (restingClip.IsStatic()) {
+                var restingMotionLoops = new AnimatorIterator.Clips().From(restingClip)
+                    .Any(clip => clip.IsLooping() && !clip.IsStatic());
+                if (!restingMotionLoops) {
                     savedRestingClip = restingClip.EvaluateMotion(1);
                     allClipsService.AddAdditionalManagedClip(savedRestingClip);
                 }

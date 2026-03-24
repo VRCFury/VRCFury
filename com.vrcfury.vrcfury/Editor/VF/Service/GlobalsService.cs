@@ -13,10 +13,10 @@ namespace VF.Service {
         public Action<FeatureModel> addOtherFeature;
         public List<FeatureModel> allFeaturesInRun;
         public List<FeatureBuilder> allBuildersInRun;
-        public Func<int> currentFeatureNumProvider;
-        public Func<string> currentFeatureNameProvider;
-        public Func<string> currentFeatureClipPrefixProvider;
-        public Func<int> currentMenuSortPosition;
-        public Func<string> currentFeatureObjectPath;
+        public int currentFeatureNum = 0;
+        public string currentFeatureName = "";
+        public string currentFeatureClipPrefix = "";
+        public int currentMenuSortPosition = 0;
+        public string currentFeatureObjectPath = "";
     }
 }

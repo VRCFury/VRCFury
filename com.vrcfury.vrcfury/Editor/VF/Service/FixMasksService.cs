@@ -51,10 +51,16 @@ namespace VF.Service {
                 if (propTypes.Contains(EditorCurveBindingType.Muscle) || propTypes.Contains(EditorCurveBindingType.Aap)) {
                     // We're keeping both layers
                     // Remove behaviours from the fx copy
+                    fx.GetRaw().WorkLog(
+                        $"Copied gesture layer {layerForGesture.name} into FX because it contains FX/AAP bindings that must remain in FX, while its muscle/AAP behavior must also stay in Gesture"
+                    );
                     layerForFx.RewriteBehaviours(b => null);
                 } else {
                     // We're only keeping it in FX
                     // Delete it from Gesture
+                    fx.GetRaw().WorkLog(
+                        $"Moved gesture layer {layerForGesture.name} into FX because it only contains FX bindings and does not need to remain in Gesture"
+                    );
                     layerForGesture.Remove();
                 }
 

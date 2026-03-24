@@ -6,9 +6,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder.Exceptions;
-using VF.Inspector;
 using VF.Utils;
-using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -45,7 +43,7 @@ namespace VF.Builder {
                     foundController.controller = c;
                     foundController.isDefault = false;
                     layers[layerNum] = layer;
-                    VRCFuryEditorUtils.MarkDirty(avatar);
+                    avatar.Dirty();
                 };
                 foundController.setToDefault = () => {
                     avatar.customizeAnimationLayers = true;
@@ -54,7 +52,7 @@ namespace VF.Builder {
                     foundController.controller = null;
                     foundController.isDefault = true;
                     layers[layerNum] = layer;
-                    VRCFuryEditorUtils.MarkDirty(avatar);
+                    avatar.Dirty();
                 };
                 output.Add(foundController);
             }
@@ -133,6 +131,7 @@ namespace VF.Builder {
             }
         }
 
+        [CanBeNull]
         public static VRCExpressionsMenu GetAvatarMenu(VRCAvatarDescriptor avatar) {
             return avatar.customExpressions ? avatar.expressionsMenu : null;
         }
@@ -140,9 +139,10 @@ namespace VF.Builder {
         public static void SetAvatarMenu(VRCAvatarDescriptor avatar, VRCExpressionsMenu menu) {
             avatar.customExpressions = true;
             avatar.expressionsMenu = menu;
-            VRCFuryEditorUtils.MarkDirty(avatar);
+            avatar.Dirty();
         }
 
+        [CanBeNull]
         public static VRCExpressionParameters GetAvatarParams(VRCAvatarDescriptor avatar) {
             return avatar.customExpressions ? avatar.expressionParameters : null;
         }
@@ -150,7 +150,7 @@ namespace VF.Builder {
         public static void SetAvatarParams(VRCAvatarDescriptor avatar, VRCExpressionParameters prms) {
             avatar.customExpressions = true;
             avatar.expressionParameters = prms;
-            VRCFuryEditorUtils.MarkDirty(avatar);
+            avatar.Dirty();
         }
 
         [CanBeNull]

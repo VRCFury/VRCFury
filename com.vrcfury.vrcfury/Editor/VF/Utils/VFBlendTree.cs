@@ -93,7 +93,7 @@ namespace VF.Utils {
             return new VFBlendTree1D(tree);
         }
 
-        public static VFBlendTree1D CreateWithData(string name, VFAFloat param, params (float, Motion)[] children) {
+        public static VFBlendTree1D CreateWithData(string name, string param, params (float, Motion)[] children) {
             var tree = Create(name, param);
             foreach (var (threshold, motion) in children) {
                 tree.Add(threshold, (motion != null) ? motion : VrcfObjectFactory.Create<AnimationClip>());

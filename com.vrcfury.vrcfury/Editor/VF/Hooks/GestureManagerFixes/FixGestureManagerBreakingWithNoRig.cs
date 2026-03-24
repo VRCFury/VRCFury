@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -9,20 +9,24 @@ namespace VF.Hooks.GestureManagerFixes {
      * https://github.com/BlackStartx/VRC-Gesture-Manager/issues/66
      */
     internal static class FixGestureManagerBreakingWithNoRig {
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            HarmonyUtils.Patch(
+        [ReflectionHelperOptional]
+        private abstract class GmReflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(FixGestureManagerBreakingWithNoRig),
                 nameof(Prefix),
                 "BlackStartX.GestureManager.Editor.Modules.Vrc3.AvatarDynamics.AvatarDynamicReset",
-                "ReinstallAvatarColliders",
-                warnIfMissing: false
+                "ReinstallAvatarColliders"
             );
         }
 
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (!ReflectionHelper.IsReady<GmReflection>()) return;
+            GmReflection.Patch.apply();
+        }
+
         private static bool Prefix(object __0) {
-            var animatorField = __0.GetType().GetField("AvatarAnimator",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var animatorField = __0.GetType().VFField("AvatarAnimator");
             if (animatorField == null) return true;
             var animator = animatorField.GetValue(__0) as Animator;
             if (animator == null || animator.avatar == null) {

@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+#if VRCF_AVATARS
 using VRC.SDK3.Avatars.Components;
+#endif
 
 namespace VF.Model.Feature {
     [Serializable]
@@ -33,7 +35,11 @@ namespace VF.Model.Feature {
         [Serializable]
         public class ControllerEntry {
             public GuidController controller;
+#if VRCF_AVATARS
             public VRCAvatarDescriptor.AnimLayerType type = VRCAvatarDescriptor.AnimLayerType.FX;
+#else
+            public int type = 0;
+#endif
         }
 
         [Serializable]
