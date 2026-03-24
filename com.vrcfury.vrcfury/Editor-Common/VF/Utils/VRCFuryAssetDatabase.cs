@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -101,19 +99,6 @@ namespace VF.Builder {
             } else {
                 ext = "asset";
             }
-            
-#if ! UNITY_2022_1_OR_NEWER
-            // this works around a crash when unity 2019 tries to create a thumbnail for the asset
-            // within Awake() in play mode
-            if (EditorApplication.isPlaying && (obj is Material || obj is Mesh || obj is Texture)) {
-                var wrapperPath = GetUniquePath(dir, filename, "asset");
-                var wrapper = VrcfObjectFactory.Create<BinaryContainer>();
-                AssetDatabase.CreateAsset(wrapper, wrapperPath);
-                AssetDatabase.RemoveObjectFromAsset(obj);
-                AssetDatabase.AddObjectToAsset(obj, wrapper);
-                return;
-            }
-#endif
 
             var fullPath = GetUniquePath(dir, filename, ext);
             SaveAsset(obj, fullPath);
