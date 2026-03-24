@@ -26,6 +26,7 @@
     ],
     "autoReferenced": false,
     "defineConstraints": [
+        "UDON",
         "VRCF_WORLDS"
     ],
     "versionDefines": [

@@ -5,10 +5,8 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
-using VF.Builder.Exceptions;
 using VF.Utils;
 using VRC.SDK3.Editor;
-using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace VF.Hooks {
     /**
