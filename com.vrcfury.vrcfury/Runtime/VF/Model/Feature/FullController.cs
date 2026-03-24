@@ -23,6 +23,7 @@ namespace VF.Model.Feature {
         public bool allowMissingAssets = false;
         public string injectSpsDepthParam;
         public string injectSpsVelocityParam;
+        public int layerPriority = 0;
 
         [Obsolete] public GuidController controller;
         [Obsolete] public GuidMenu menu;

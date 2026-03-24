@@ -40,13 +40,15 @@ namespace VF.Model.Feature {
         public float localTransitionTimeIn = 0;
         public float localTransitionTimeOut = 0;
         public bool simpleOutTransition = true;
-        [Range(0,1)]
+        [Range(0, 1)]
         public float defaultSliderValue = 0;
         public bool useGlobalParam;
         public string globalParam = "";
         public bool holdButton;
         public bool invertRestLogic;
         public bool expandIntoTransition = true;
+        public bool enableLayerPriority = false;
+        public int layerPriority = 0;
 
         public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612

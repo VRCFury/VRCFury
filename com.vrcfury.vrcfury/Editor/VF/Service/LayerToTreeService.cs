@@ -29,6 +29,7 @@ namespace VF.Service {
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
+        [VFAutowired] private readonly LayerPriorityService layerPriorityService;
 
         [FeatureBuilderAction(FeatureOrder.LayerToTree)]
         public void Apply() {
@@ -46,10 +47,19 @@ namespace VF.Service {
                 .ToDictionary(layer => layer, GetBindingsAnimatedInLayer);
 
             var directTree = new Lazy<VFBlendTreeDirect>(() => directTreeService.Create());
-            
+
             var debugLog = new List<string>();
+
+            var optimizedLayerPriorities = new List<(string name, int priority)>();
+
             foreach (var layer in applyToLayers) {
                 try {
+                    // Track priority before optimization
+                    if (layerPriorityService.HasPriority(layer)) {
+                        var priority = layerPriorityService.GetPriority(layer);
+                        optimizedLayerPriorities.Add((layer.name, priority));
+                    }
+
                     OptimizeLayer(layer, bindingsByLayer, directTree);
                     debugLog.Add($"{layer.name} - OPTIMIZED");
                     layer.Remove();
@@ -57,7 +67,24 @@ namespace VF.Service {
                     debugLog.Add($"{layer.name} - Not Optimizing ({e.Message})");
                 }
             }
-            
+
+            // Handle priorities for the merged DBT layer
+            if (directTree.IsValueCreated && optimizedLayerPriorities.Count > 0) {
+                var dbtLayer = fx.GetLayers().FirstOrDefault(l => l.name == GetType().Name); // the DBT layer is named after this service class
+                if (dbtLayer != null) {
+                    var distinctPriorities = optimizedLayerPriorities.Select(p => p.priority).Distinct().ToList();
+                    var highestPriority = optimizedLayerPriorities.Max(p => p.priority);
+                    // Apply highest priority to the DBT layer
+                    layerPriorityService.SetPriority(dbtLayer, highestPriority);
+                    // Warn if there were conflicting priorities
+                    if (distinctPriorities.Count > 1) {
+                        var conflictingLayers = string.Join(", ", optimizedLayerPriorities.Select(p => $"{p.name} (priority {p.priority})"));
+                        Debug.LogWarning($"[VRCFury] Layer Priority Conflict: Multiple toggles with different priorities were merged into a single optimized blend tree layer. " +
+                            $"Using highest priority ({highestPriority}). Affected toggles: {conflictingLayers}");
+                    }
+                }
+            }
+
             Debug.Log("Optimization report:\n\n" + debugLog.Join('\n'));
         }
 
@@ -79,7 +106,7 @@ namespace VF.Service {
             if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) {
                 throw new DoNotOptimizeException($"Layer is additive");
             }
-            
+
             if (layerControlService.IsLayerTargeted(layer)) {
                 throw new DoNotOptimizeException($"Layer is targeted by an Animator Layer Control");
             }
@@ -98,7 +125,7 @@ namespace VF.Service {
             if (hasExitTime) {
                 throw new DoNotOptimizeException($"Contains a transition using exit time");
             }
-            
+
             var hasNonZeroTransitonTime = layer.allTransitions
                 .Any(b => b is AnimatorStateTransition t && t.duration != 0);
             if (hasNonZeroTransitonTime) {
@@ -125,7 +152,7 @@ namespace VF.Service {
             if (hasEulerRotation) {
                 throw new DoNotOptimizeException($"Animates transform rotations, which work differently within blend trees");
             }
-            
+
             var usedBindings = bindingsByLayer[layer];
             var otherLayersAnimateTheSameThing = bindingsByLayer
                 .Where(pair => pair.Key != layer) // It's not the current layer
@@ -153,7 +180,7 @@ namespace VF.Service {
             if (states.Length != 2) {
                 throw new DoNotOptimizeException($"Contains {states.Length} states");
             }
-            
+
             var state0 = states[0];
             var state1 = states[1];
 
@@ -165,7 +192,7 @@ namespace VF.Service {
             if (state0Condition.Value.parameter != state1Condition.Value.parameter) {
                 throw new DoNotOptimizeException($"State conditions do not use same parameter");
             }
-            
+
             var param = new VFAFloat(state0Condition.Value.parameter, 0);
             var paramType = fx.GetRaw().parameters
                 .Where(p => p.name == param)
@@ -175,24 +202,24 @@ namespace VF.Service {
             if (FullControllerBuilder.VRChatGlobalParams.Contains(param) && paramType == AnimatorControllerParameterType.Int) {
                 throw new DoNotOptimizeException($"Uses an int VRC built-in, which means >1 is likely");
             }
-            
+
             // TODO: Might want to verify that state1Condition is the opposite of state0Condition
             // But we already verify that they use the same parameter, so it's /extremely/ unlikely for this to not be the case
-            
+
             var state0Clip = Make0LengthClipForState(layer, state0);
             var state1Clip = Make0LengthClipForState(layer, state1);
 
             Optimize(state0Condition.Value, state0Clip, state1Clip, directTree);
         }
-        
+
         private static bool IsEntryOnlyState(VFLayer layer, AnimatorState state) {
             return layer.defaultState == state && GetTransitionsTo(layer, state).Count == 0;
         }
-        
+
         private static bool IsUnreachableState(VFLayer layer, AnimatorState state) {
             return layer.defaultState != state && GetTransitionsTo(layer, state).Count == 0;
         }
-        
+
         private static ICollection<AnimatorTransitionBase> GetTransitionsTo(VFLayer layer, AnimatorState state) {
             var output = new List<AnimatorTransitionBase>();
             var ignoreTransitions = new HashSet<AnimatorTransitionBase>();
@@ -216,7 +243,7 @@ namespace VF.Service {
         private void Optimize(AnimatorCondition condition, Motion on, Motion off, Lazy<VFBlendTreeDirect> directTree) {
             if (on == null) on = clipFactory.GetEmptyClip();
             if (off == null) off = clipFactory.GetEmptyClip();
-            
+
             if (condition.mode == AnimatorConditionMode.IfNot) {
                 condition.mode = AnimatorConditionMode.If;
                 (on, off) = (off, on);

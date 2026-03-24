@@ -29,6 +29,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly LayerPriorityService layerPriorityService;
 
         private VFCondition isOn;
         private Action<VFState, bool> drive;
@@ -142,6 +143,9 @@ namespace VF.Feature {
             if (string.IsNullOrEmpty(layerName)) layerName = "Toggle";
 
             var layer = fx.NewLayer(layerName);
+            if (model.enableLayerPriority) {
+                layerPriorityService.SetPriority(layer, model.layerPriority);
+            }
             var off = layer.NewState("Off");
 
             if (model.separateLocal) {
@@ -405,6 +409,8 @@ namespace VF.Feature {
             var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
             var globalParamProp = prop.FindPropertyRelative("globalParam");
             var holdButtonProp = prop.FindPropertyRelative("holdButton");
+            var enableLayerPriorityProp = prop.FindPropertyRelative("enableLayerPriority");
+            var layerPriorityProp = prop.FindPropertyRelative("layerPriority");
 
             var flex = new VisualElement().Row();
             content.Add(flex);
@@ -503,6 +509,11 @@ namespace VF.Feature {
                         prop.serializedObject.ApplyModifiedProperties();
                     });
 
+                    advMenu.AddItem(new GUIContent("Enable Layer Priority"), enableLayerPriorityProp.boolValue, () => {
+                        enableLayerPriorityProp.boolValue = !enableLayerPriorityProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
                     advMenu.ShowAsContext();
                 });
             flex.Add(button);
@@ -544,6 +555,22 @@ namespace VF.Feature {
                 }
                 return c;
             }, enableDriveGlobalParamProp));
+
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (enableLayerPriorityProp.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(
+                        layerPriorityProp,
+                        "Layer Priority",
+                        tooltip:
+                            "Controls the position of merged layers in the final controller.\n" +
+                            "Higher numbers place the layer further down in the animator (layers lower in the stack override layers above them). Default is 0.\n\n" +
+                            "Note: VRCFury optimizes compatible toggles into a single blend tree layer. " +
+                            "If multiple toggles with different priorities are merged, the highest priority will be used for the combined layer."
+                    ));
+                }
+                return c;
+            }, enableLayerPriorityProp));
 
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
 
@@ -629,6 +656,8 @@ namespace VF.Feature {
                         tags.Add((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled");
                     if (exclusiveOffStateProp.boolValue)
                         tags.Add("This is the Exclusive Off State");
+                    if (enableLayerPriorityProp.boolValue)
+                        tags.Add($"Layer Priority: {layerPriorityProp.intValue}");
 
                     var row = new VisualElement().Row().FlexWrap();
                     foreach (var tag in tags) {
@@ -649,7 +678,9 @@ namespace VF.Feature {
                 exclusiveOffStateProp,
                 holdButtonProp,
                 hasExitTimeProp,
-                sliderProp
+                sliderProp,
+                enableLayerPriorityProp,
+                layerPriorityProp
             ));
 
             content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
@@ -697,5 +728,3 @@ namespace VF.Feature {
     }
 
 }
-
-
