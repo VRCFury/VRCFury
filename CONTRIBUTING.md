@@ -62,7 +62,7 @@ For more information, please refer to <https://unlicense.org>
 * dummics
   * Fixed handling input controllers with corrupt (null) transitions
 * Fuvii
-  * Added layer priority option to Full Controller and Toggle components
+  * Added priority option to Full Controller and Toggle components
 * GameGeek720
   * Added Toggle enhancements for transitions and the local player
   * Fixed Toggle sliders always adding a menu option, even if the menu path was empty
