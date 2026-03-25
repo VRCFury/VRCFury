@@ -47,8 +47,8 @@ namespace VF.Model.Feature {
         public bool holdButton;
         public bool invertRestLogic;
         public bool expandIntoTransition = true;
-        public bool enableLayerPriority = false;
-        public int layerPriority = 0;
+        public bool enablePriority = false;
+        public int priority = 0;
 
         public override bool Upgrade(int fromVersion) {
 #pragma warning disable 0612

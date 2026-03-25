@@ -9,23 +9,29 @@ using VF.Utils.Controller;
 
 namespace VF.Service {
     [VFService]
-    internal class LayerPriorityService {
+    internal class PriorityService {
         [VFAutowired] private readonly ControllersService controllers;
 
         private readonly Dictionary<VFLayer, int> layerPriorities = new Dictionary<VFLayer, int>();
 
-        public void SetPriority(VFLayer layer, int priority) {
+        public void SetLayerPriority(VFLayer layer, int priority) {
             if (priority != 0) {
                 layerPriorities[layer] = priority;
             }
         }
 
-        public int GetPriority(VFLayer layer) {
+        public int GetLayerPriority(VFLayer layer) {
             return layerPriorities.TryGetValue(layer, out var priority) ? priority : 0;
         }
 
-        public bool HasPriority(VFLayer layer) {
+        public bool HasLayerPriority(VFLayer layer) {
             return layerPriorities.ContainsKey(layer);
+        }
+
+        public int GetMenuSortPosition(int priority) {
+            // We have to add a safe margin (split the int range in half) to avoid colliding with the "uniqueModelNum" sort positions used by the menu manager
+            if (priority < 0) return (int.MinValue / 2) + priority;
+            return (int.MaxValue / 2) + priority;
         }
 
         [FeatureBuilderAction(FeatureOrder.ReorderLayersByPriority)]
@@ -49,17 +55,12 @@ namespace VF.Service {
             var hasAnyPriority = layers.Any(l => layerPriorities.ContainsKey(l));
             if (!hasAnyPriority) return;
 
-            // Create list with layer index and priority
-            var layersWithInfo = layers.Select((layer, index) => new {
-                Layer = layer,
-                OriginalIndex = index,
-                Priority = GetPriority(layer)
-            }).ToList();
-            // Sort by priority (preserving original order for same priority)
-            var sortedLayers = layersWithInfo
-                .OrderBy(l => l.Priority)
-                .ThenBy(l => l.OriginalIndex)
-                .Select(l => l.Layer)
+            // Create list with layer index and sort by priority (preserving original order for same priority)
+            var sortedLayers = layers
+                .Select((layer, index) => (layer, index, priority: GetLayerPriority(layer)))
+                .OrderBy(l => l.priority)
+                .ThenBy(l => l.index)
+                .Select(l => l.layer)
                 .ToList();
 
             // If layers are already in desired order return early
@@ -72,7 +73,7 @@ namespace VF.Service {
                 var currentIndex = controller.GetLayers().ToList().IndexOf(sortedLayer);
 
                 if (currentIndex != targetIndex) {
-                    Debug.Log($"  [{targetIndex}] {sortedLayer.name} (was {currentIndex}, priority {GetPriority(sortedLayer)})");
+                    Debug.Log($"  [{targetIndex}] {sortedLayer.name} (was {currentIndex}, priority {GetLayerPriority(sortedLayer)})");
                     sortedLayer.Move(targetIndex);
                 }
             }

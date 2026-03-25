@@ -29,7 +29,7 @@ namespace VF.Service {
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
-        [VFAutowired] private readonly LayerPriorityService layerPriorityService;
+        [VFAutowired] private readonly PriorityService priorityService;
 
         [FeatureBuilderAction(FeatureOrder.LayerToTree)]
         public void Apply() {
@@ -54,14 +54,16 @@ namespace VF.Service {
 
             foreach (var layer in applyToLayers) {
                 try {
-                    // Track priority before optimization
-                    if (layerPriorityService.HasPriority(layer)) {
-                        var priority = layerPriorityService.GetPriority(layer);
-                        optimizedLayerPriorities.Add((layer.name, priority));
-                    }
+                    // Track priority before optimization (but only record after success)
+                    var hasPriority = priorityService.HasLayerPriority(layer);
+                    var priority = priorityService.GetLayerPriority(layer);
 
                     OptimizeLayer(layer, bindingsByLayer, directTree);
+
                     debugLog.Add($"{layer.name} - OPTIMIZED");
+                    if (hasPriority) {
+                        optimizedLayerPriorities.Add((layer.name, priority));
+                    }
                     layer.Remove();
                 } catch (DoNotOptimizeException e) {
                     debugLog.Add($"{layer.name} - Not Optimizing ({e.Message})");
@@ -70,12 +72,12 @@ namespace VF.Service {
 
             // Handle priorities for the merged DBT layer
             if (directTree.IsValueCreated && optimizedLayerPriorities.Count > 0) {
-                var dbtLayer = fx.GetLayers().FirstOrDefault(l => l.name == GetType().Name); // the DBT layer is named after this service class
+                var dbtLayer = fx.GetLayers().FirstOrDefault(l => l.name.EndsWith(nameof(LayerToTreeService))); // the DBT layer is named after service class name
                 if (dbtLayer != null) {
                     var distinctPriorities = optimizedLayerPriorities.Select(p => p.priority).Distinct().ToList();
                     var highestPriority = optimizedLayerPriorities.Max(p => p.priority);
                     // Apply highest priority to the DBT layer
-                    layerPriorityService.SetPriority(dbtLayer, highestPriority);
+                    priorityService.SetLayerPriority(dbtLayer, highestPriority);
                     // Warn if there were conflicting priorities
                     if (distinctPriorities.Count > 1) {
                         var conflictingLayers = string.Join(", ", optimizedLayerPriorities.Select(p => $"{p.name} (priority {p.priority})"));

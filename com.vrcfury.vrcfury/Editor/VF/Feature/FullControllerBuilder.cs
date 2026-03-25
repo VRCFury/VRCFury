@@ -32,7 +32,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
-        [VFAutowired] private readonly LayerPriorityService layerPriorityService;
+        [VFAutowired] private readonly PriorityService priorityService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ParamsService paramsService;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
@@ -118,7 +118,13 @@ namespace VF.Feature {
                 var copy = menu.Clone();
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
-                avatarMenu.MergeMenu(prefix, copy);
+                if (model.priority != 0) {
+                    avatarMenu.OverrideSortPosition(priorityService.GetMenuSortPosition(model.priority), () => {
+                        avatarMenu.MergeMenu(prefix, copy);
+                    });
+                } else {
+                    avatarMenu.MergeMenu(prefix, copy);
+                }
             }
 
             foreach (var receiver in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
@@ -372,7 +378,7 @@ namespace VF.Feature {
             // Merge Layers
             foreach (var layer in from.GetLayers()) {
                 layerSourceService.SetSourceToCurrent(layer);
-                layerPriorityService.SetPriority(layer, model.layerPriority);
+                priorityService.SetLayerPriority(layer, model.priority);
             }
             to.TakeOwnershipOf(from);
 
@@ -620,11 +626,12 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsDepthParam"), "Inject nearest SPS depth (in plug lengths) as a parameter"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsVelocityParam"), "Inject nearest SPS velocity (in plug lengths / sec) as a parameter"));
             adv.Add(VRCFuryEditorUtils.Prop(
-              prop.FindPropertyRelative("layerPriority"),
-              "Layer Priority",
+              prop.FindPropertyRelative("priority"),
+              "Priority",
               tooltip:
-                "Controls the position of merged layers in the final controller.\n" +
-                "Higher numbers place the layer further down in the animator (layers lower in the stack override layers above them). Default is 0."
+                "Override position of merged controller layers and menu items.\n\n" +
+                "Controller: Higher numbers place the layer further down in the controller (layers lower in the stack override layers above them).\n" +
+                "Menu: Higher numbers place the menu item further down in the menu (negative numbers = before descriptor items, positive numbers = after)."
             ));
 
             content.Add(adv);
