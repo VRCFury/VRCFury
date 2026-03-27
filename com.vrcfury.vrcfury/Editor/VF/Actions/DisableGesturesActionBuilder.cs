@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
+using VF.Inspector;
 using VF.Injector;
 using VF.Model.StateAction;
 using VF.Service;
@@ -22,7 +23,12 @@ namespace VF.Actions {
 
         [FeatureEditor]
         public static VisualElement Editor() {
-            return new VisualElement();
+            var output = new VisualElement();
+            output.Add(VRCFuryEditorUtils.Info(
+                "This will disable all gesture parameter usage in animator transitions. " +
+                "Note, that this will interfere with any assets using gesture parameters, not only face animations."
+            ));
+            return output;
         }
     }
 }
