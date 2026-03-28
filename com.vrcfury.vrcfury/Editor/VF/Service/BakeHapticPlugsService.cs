@@ -28,7 +28,6 @@ namespace VF.Service {
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly DbtLayerService directTreeService;
-        [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
         [VFAutowired] private readonly AllClipsService allClipsService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly AvatarBindingStateService avatarBindingStateService;
@@ -74,6 +73,7 @@ namespace VF.Service {
         public void Apply() {
             AnimationClip tipLightOnClip = null;
             AnimationClip enableSpsPlugClip = null;
+            var usedNames = new HashSet<string>();
 
             var plugs = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>();
 
@@ -94,14 +94,14 @@ namespace VF.Service {
             foreach (var plug in plugs) {
                 try {
                     if (!bakeResults.TryGetValue(plug, out var bakeInfo)) continue;
-                    ApplyPlug(plug, bakeInfo, ref enableSpsPlugClip, tipLightOnClip);
+                    ApplyPlug(plug, bakeInfo, ref enableSpsPlugClip, tipLightOnClip, usedNames);
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
             }
         }
         
-        private void ApplyPlug(VRCFuryHapticPlug plug, VRCFuryHapticPlugEditor.BakeResult bakeInfo, ref AnimationClip enableSpsPlugClip, AnimationClip tipLightOnClip) {
+        private void ApplyPlug(VRCFuryHapticPlug plug, VRCFuryHapticPlugEditor.BakeResult bakeInfo, ref AnimationClip enableSpsPlugClip, AnimationClip tipLightOnClip, ISet<string> usedNames) {
             var bakeRoot = bakeInfo.bakeRoot;
             var worldSpace = bakeInfo.worldSpace;
             var renderers = bakeInfo.renderers;
@@ -117,7 +117,7 @@ namespace VF.Service {
                 onlyIfChildOfHead = true
             });
 
-            var name = uniqueHapticNamesService.GetUniqueName(bakeInfo.name);
+            var name = HapticUtils.MakeUniqueId(usedNames, bakeInfo.oscId);
             Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
             
             // Haptics

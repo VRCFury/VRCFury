@@ -29,7 +29,6 @@ namespace VF.Service {
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly DbtLayerService directTreeService;
-        [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ScaleFactorService scaleFactorService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
@@ -86,21 +85,29 @@ namespace VF.Service {
 
             var autoSockets = new List<Tuple<string, VFABool, VFAFloat>>();
             var exclusiveTriggers = new List<(string,VFABool)>();
+            var usedMenuNames = new HashSet<string>();
+            var usedOscIds = new HashSet<string>();
             foreach (var socket in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
                 try {
                     VFGameObject obj = socket.owner();
                     PhysboneUtils.RemoveFromPhysbones(socket.owner());
 
-                    var name = VRCFuryHapticSocketEditor.GetName(socket);
-                    name = uniqueHapticNamesService.GetUniqueName(name);
-                    Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + name);
+                    var menuName = HapticUtils.MakeUniqueId(
+                        usedMenuNames,
+                        HapticUtils.GetPreferredId(socket, s => s.name, s => HapticUtils.GetFallbackId(s.owner()))
+                    );
+                    var oscId = HapticUtils.MakeUniqueId(
+                        usedOscIds,
+                        HapticUtils.GetPreferredId(socket, s => s.oscId, _ => menuName)
+                    );
+                    Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + oscId);
                     
                     VFABool toggleParam = null;
                     if (socket.addMenuItem) {
-                        toggleParam = fx.NewBool(name, synced: true, saved: saved);
+                        toggleParam = fx.NewBool(oscId, synced: true, saved: saved);
                         var icon = socket.menuIcon?.Get();
-                        menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/{name}", toggleParam, icon: icon);
-                        exclusiveTriggers.Add((name, toggleParam));
+                        menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/{menuName}", toggleParam, icon: icon);
+                        exclusiveTriggers.Add((oscId, toggleParam));
                     }
 
                     if (!BuildTargetUtils.IsDesktop()) {
@@ -123,7 +130,7 @@ namespace VF.Service {
                         // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
                         var capsuleRotation = Quaternion.Euler(90,0,0);
                         
-                        var paramPrefix = "OGB/Orf/" + name.Replace('/','_');
+                        var paramPrefix = "OGB/Orf/" + oscId.Replace('/','_');
                     
                         // Receivers
                         var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket, avatar);
@@ -227,17 +234,17 @@ namespace VF.Service {
                         animObjects.Add(animRoot);
                         animObjects.Add(scaleFactorContact1);
                         animObjects.Add(scaleFactorContact2);
-                        var directTree = directTreeService.Create($"{name} - Depth Calculations");
+                        var directTree = directTreeService.Create($"{oscId} - Depth Calculations");
                         var math = directTreeService.GetMath(directTree);
-                        return new SpsDepthContacts(animRoot, name, hapticContacts, directTree, math, fx, frameTimeService, socket.useHipAvoidance, scaleFactor);
+                        return new SpsDepthContacts(animRoot, oscId, hapticContacts, directTree, math, fx, frameTimeService, socket.useHipAvoidance, scaleFactor);
                     });
 
                     if (socket.depthActions2.Count > 0) {
                         _hapticAnimContactsService.CreateAnims(
-                            $"{name} - Depth Animations",
+                            $"{oscId} - Depth Animations",
                             socket.depthActions2,
                             socket.owner(),
-                            name,
+                            oscId,
                             Contacts.Value
                         );
                     }
@@ -280,25 +287,25 @@ namespace VF.Service {
                             child.active = false;
                         }
 
-                        var onLocalClip = clipFactory.NewClip($"{name} (Local)");
+                        var onLocalClip = clipFactory.NewClip($"{oscId} (Local)");
                         foreach (var child in new []{bakeResult.bakeRoot, bakeResult.senders, haptics, bakeResult.lights}.Concat(animObjects).NotNull()) {
                             onLocalClip.SetEnabled(child, true);
                         }
 
-                        var onRemoteClip = clipFactory.NewClip($"{name} (Remote)");
+                        var onRemoteClip = clipFactory.NewClip($"{oscId} (Remote)");
                         foreach (var child in new []{bakeResult.bakeRoot, bakeResult.senders, bakeResult.lights}.Concat(animObjects).NotNull()) {
                             onRemoteClip.SetEnabled(child, true);
                         }
                         
-                        var onStealthClip = clipFactory.NewClip($"{name} (Stealth)");
+                        var onStealthClip = clipFactory.NewClip($"{oscId} (Stealth)");
                         foreach (var child in new []{bakeResult.bakeRoot, haptics}.NotNull()) {
                             onStealthClip.SetEnabled(child, true);
                         }
 
-                        var activeClip = actionClipService.LoadState($"SPS - Active Animation for {name}", socket.activeActions);
+                        var activeClip = actionClipService.LoadState($"SPS - Active Animation for {oscId}", socket.activeActions);
                         if (new AnimatorIterator.Clips().From(activeClip).SelectMany(clip => clip.GetAllBindings()).Any()) {
-                            var activeAnimParam = fx.NewFloat($"SPS - Active Animation for {name}");
-                            var activeAnimLayer = fx.NewLayer($"SPS - Active Animation for {name}");
+                            var activeAnimParam = fx.NewFloat($"SPS - Active Animation for {oscId}");
+                            var activeAnimLayer = fx.NewLayer($"SPS - Active Animation for {oscId}");
                             var off = activeAnimLayer.NewState("Off");
                             var on = activeAnimLayer.NewState("On").WithAnimation(activeClip);
 
@@ -320,16 +327,16 @@ namespace VF.Service {
                             .create(onStealthClip, onLocalClip);
                         var remoteTree = BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0, name: "When Remote")
                             .create(null, onRemoteClip);
-                        var onTree = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0, name: $"SPS: When {name} On")
+                        var onTree = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0, name: $"SPS: When {oscId} On")
                             .create(localTree, remoteTree);
-                        var directTree = directTreeService.Create($"{name} - Toggle");
+                        var directTree = directTreeService.Create($"{oscId} - Toggle");
                         directTree.Add(toggleParam.AsFloat(), onTree);
 
                         if (socket.enableAuto && autoOnClip != null) {
                             var autoReceiverObj = GameObjects.Create("AutoDistance", bakeResult.worldSpace);
                             var distParam = hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
                                 obj = autoReceiverObj,
-                                paramName = name + "/AutoDistance",
+                                paramName = oscId + "/AutoDistance",
                                 objName = "Receiver",
                                 radius = 0.3f,
                                 tags = new[] { HapticUtils.CONTACT_PEN_MAIN },
@@ -340,7 +347,7 @@ namespace VF.Service {
                             foreach (var child in new []{bakeResult.bakeRoot, autoReceiverObj}.NotNull()) {
                                 autoOnClip.SetEnabled(child, true);
                             }
-                            autoSockets.Add(Tuple.Create(name, toggleParam, distParam));
+                            autoSockets.Add(Tuple.Create(oscId, toggleParam, distParam));
                         }
                     }
                 } catch (Exception e) {

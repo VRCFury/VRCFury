@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -7,13 +8,13 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Builder.Haptics;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
 
     internal static class VRCFuryEditorUtils {
-
         public static VisualElement List(
             SerializedProperty list,
             Action onPlus = null,
@@ -242,11 +243,29 @@ namespace VF.Inspector {
             SerializedProperty prop,
             string label = null,
             string tooltip = null,
-            VisualElement fieldOverride = null
+            VisualElement fieldOverride = null,
+            string placeholder = null
         ) {
-            var el = Prop(prop, label, tooltip: tooltip, fieldOverride: fieldOverride);
+            var el = Prop(prop, label, tooltip: tooltip, fieldOverride: fieldOverride, placeholder: placeholder);
             el.PaddingBottom(5);
             return el;
+        }
+
+        public static VisualElement AutoIdProp(SerializedProperty prop, string label, Func<string> getAutomaticId) {
+            var textField = new TextFieldWithPlaceholder();
+
+            void RefreshAutoId() {
+                textField.Placeholder = "Automatic (" + getAutomaticId() + ")";
+            }
+
+            var output = Prop(
+                prop,
+                label,
+                fieldOverride: textField,
+                onChange: RefreshAutoId
+            ).PaddingBottom(5);
+            RefreshAutoId();
+            return output;
         }
 
         public static (VisualElement, VisualElement) CreateTooltip(string label, string content) {
@@ -286,13 +305,17 @@ namespace VF.Inspector {
             string tooltip = null,
             VisualElement fieldOverride = null,
             bool forceLabelOnOwnLine = false,
-            Action onChange = null
+            Action onChange = null,
+            string placeholder = null
         ) {
             VisualElement field = null;
             var isCheckbox = false;
             if (fieldOverride != null) {
                 field = fieldOverride;
                 isCheckbox = field is Toggle;
+                if (placeholder != null && field is TextFieldWithPlaceholder textFieldOverride) {
+                    textFieldOverride.Placeholder = placeholder;
+                }
             } else if (prop == null) {
                 field = WrappedLabel("Prop is null");
             } else {
@@ -320,6 +343,19 @@ namespace VF.Inspector {
                     }
                     case SerializedPropertyType.Color: {
                         field = new ColorField { bindingPath = prop.propertyPath, hdr = true };
+                        break;
+                    }
+                    case SerializedPropertyType.String: {
+                        if (placeholder != null) {
+                            var textField = new TextFieldWithPlaceholder {
+                                bindingPath = prop.propertyPath,
+                                Placeholder = placeholder
+                            };
+                            textField.RegisterValueChangedCallback(e => {
+                                onChange?.Invoke();
+                            });
+                            field = textField;
+                        }
                         break;
                     }
                     case SerializedPropertyType.Generic: {

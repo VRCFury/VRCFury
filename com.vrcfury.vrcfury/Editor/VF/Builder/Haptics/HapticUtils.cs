@@ -1,21 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text.RegularExpressions;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.Animations;
-using VF.Component;
-using VF.Feature;
 using VF.Inspector;
-using VF.Menu;
-using VF.Model;
-using VF.Model.Feature;
-using VF.Service;
-using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
-using VRC.SDK3.Dynamics.Contact.Components;
 using Random = System.Random;
 
 namespace VF.Builder.Haptics {
@@ -114,8 +103,20 @@ namespace VF.Builder.Haptics {
             }
             return r.owner();
         }
+
+        private static string GetActualId<T>(IEnumerable<T> items, T target, Func<T, string> getPreferredId) {
+            var usedNames = new HashSet<string>();
+            foreach (var item in items) {
+                var name = MakeUniqueId(usedNames, getPreferredId(item));
+                if (Equals(item, target)) {
+                    return name;
+                }
+            }
+
+            return getPreferredId(target);
+        }
         
-        public static string GetName(VFGameObject obj) {
+        public static string GetFallbackId(VFGameObject obj) {
             var current = obj;
             while (current != null) {
                 if (current.GetComponent<VRCAvatarDescriptor>() != null) {
@@ -128,6 +129,42 @@ namespace VF.Builder.Haptics {
                 current = current.parent;
             }
             return "Unknown";
+        }
+
+        public static string GetActualId<T>(
+            T target,
+            VFGameObject owner,
+            Func<VFGameObject, IEnumerable<T>> getItems,
+            Func<T, string> getPreferredId
+        ) {
+            string PreferredId(T item) => getPreferredId(item);
+
+            var avatar = VRCAvatarUtils.GuessAvatarObject(owner);
+            if (avatar == null) {
+                return PreferredId(target);
+            }
+            return GetActualId(getItems(avatar), target, PreferredId);
+        }
+
+        public static string MakeUniqueId(ISet<string> usedIds, string prefix) {
+            for (var i = 0; ; i++) {
+                var next = prefix + (i == 0 ? "" : i + "");
+                if (usedIds.Contains(next)) continue;
+                usedIds.Add(next);
+                return next;
+            }
+        }
+
+        public static string GetPreferredId<T>(
+            T component,
+            Func<T, string> getExplicitId,
+            Func<T, string> getFallbackId
+        ) {
+            var id = getExplicitId(component);
+            if (string.IsNullOrWhiteSpace(id)) {
+                id = getFallbackId(component);
+            }
+            return id;
         }
 
         private static string NormalizeName(string name) {

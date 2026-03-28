@@ -18,12 +18,35 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
     internal class VRCFuryHapticSocketEditor : VRCFuryComponentEditor<VRCFuryHapticSocket> {
+        private static string GetMenuName(VRCFuryHapticSocket socket) {
+            return HapticUtils.GetPreferredId(
+                socket,
+                s => s.name,
+                s => HapticUtils.GetFallbackId(s.owner())
+            );
+        }
+
+        private static string GetOscId(VRCFuryHapticSocket socket) {
+            return HapticUtils.GetPreferredId(
+                socket,
+                s => s.oscId,
+                _ => GetMenuName(socket)
+            );
+        }
+
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
             var container = new VisualElement();
             
             container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target, true));
             
-            container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in menu / connected apps"));
+            container.Add(SpsEditorUtils.AutoHapticIdProp(
+                serializedObject.FindProperty("name"),
+                "Name in menu",
+                target,
+                target.owner(),
+                avatar => avatar.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>(),
+                GetMenuName
+            ));
             
             var addLightProp = serializedObject.FindProperty("addLight");
             var spsEnabledCheckbox = new Toggle();
@@ -84,6 +107,14 @@ namespace VF.Inspector {
             var haptics = VRCFuryHapticPlugEditor.GetHapticsSection();
             container.Add(haptics);
 
+            haptics.Add(SpsEditorUtils.AutoHapticIdProp(
+                serializedObject.FindProperty("oscId"),
+                "ID sent to OGB",
+                target,
+                target.owner(),
+                avatar => avatar.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>(),
+                GetOscId
+            ));
             haptics.Add(VRCFuryEditorUtils.BetterProp(
                 serializedObject.FindProperty("enableHandTouchZone2"),
                 "Enable hand touch zone? (Auto will add only if child of Hips)"
@@ -250,7 +281,7 @@ namespace VF.Inspector {
                 );
             }
 
-            DrawGizmo(transform.TransformPoint(localPosition), transform.worldRotation * localRotation, lightType, GetName(socket), Selection.activeGameObject == socket.owner());
+            DrawGizmo(transform.TransformPoint(localPosition), transform.worldRotation * localRotation, lightType, GetMenuName(socket), Selection.activeGameObject == socket.owner());
         }
 
         [CanBeNull]
@@ -463,9 +494,9 @@ namespace VF.Inspector {
         public static bool ShouldProbablyHaveTouchZone(VRCFuryHapticSocket socket) {
             if (ClosestBoneUtils.GetClosestHumanoidBone(socket.owner()) != HumanBodyBones.Hips) return false;
 
-            var name = GetName(socket).ToLower();
+            var name = GetMenuName(socket).ToLower();
             if (name.Contains("rubbing") || name.Contains("job")) return false;
-            
+
             return true;
         }
 
@@ -475,12 +506,6 @@ namespace VF.Inspector {
             return ShouldProbablyHaveTouchZone(socket);
         }
 
-        public static string GetName(VRCFuryHapticSocket socket) {
-            var name = socket.name;
-            if (!string.IsNullOrWhiteSpace(name)) return name;
-            return HapticUtils.GetName(socket.owner());
-        }
-        
         public class BakeResult {
             public VFGameObject bakeRoot;
             public VFGameObject worldSpace;

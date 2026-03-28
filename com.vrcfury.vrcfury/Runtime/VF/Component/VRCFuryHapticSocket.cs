@@ -22,6 +22,7 @@ namespace VF.Component {
 
         public AddLight addLight = AddLight.Auto;
         public new string name;
+        public string oscId;
         public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
         public float length;
         public bool unitsInMeters = true;

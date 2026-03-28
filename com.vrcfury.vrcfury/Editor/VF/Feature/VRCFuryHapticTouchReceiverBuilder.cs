@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -9,22 +10,19 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Service;
+using VF.Utils;
 
 namespace VF.Feature {
     [VFService]
     internal class VRCFuryHapticTouchReceiverBuilder {
         [VFAutowired] private readonly HapticContactsService hapticContacts;
-        [VFAutowired] private readonly UniqueHapticNamesService uniqueHapticNamesService;
         [VFAutowired] private readonly VFGameObject avatarObject;
 
         [FeatureBuilderAction]
         public void Apply() {
+            var usedNames = new HashSet<string>();
             foreach (var receiver in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticTouchReceiver>()) {
-                var name = receiver.name;
-                if (string.IsNullOrWhiteSpace(name)) {
-                    name = HapticUtils.GetName(receiver.owner());
-                }
-                name = uniqueHapticNamesService.GetUniqueName(name);
+                var name = HapticUtils.MakeUniqueId(usedNames, HapticUtils.GetPreferredId(receiver, r => r.name, r => HapticUtils.GetFallbackId(r.owner())));
                 var paramPrefix = "VFH/Zone/Touch/" + name.Replace('/','_');
                 
                 hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
@@ -51,7 +49,7 @@ namespace VF.Feature {
                 });
             }
         }
-        
+
         [CustomEditor(typeof(VRCFuryHapticTouchReceiver), true)]
         public class VRCFuryHapticTouchReceiverEditor : VRCFuryComponentEditor<VRCFuryHapticTouchReceiver> {
             protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticTouchReceiver target) {
@@ -63,9 +61,19 @@ namespace VF.Feature {
                     "This touch zone can be activated by Hands, Fingers, Feet, SPS Plugs, VRCFury Touch Senders, and Heads (other players only)."));
 
                 container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target));
-            
-                container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("name"), "Name in connected apps"));
                 container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("radius"), "Radius"));
+                container.Add(SpsEditorUtils.AutoHapticIdProp(
+                    serializedObject.FindProperty("name"),
+                    "ID sent to OGB",
+                    target,
+                    target.owner(),
+                    avatar => avatar.GetComponentsInSelfAndChildren<VRCFuryHapticTouchReceiver>(),
+                    receiver => HapticUtils.GetPreferredId(
+                        receiver,
+                        r => r.name,
+                        r => HapticUtils.GetFallbackId(r.owner())
+                    )
+                ));
 
                 return container;
             }
@@ -75,7 +83,7 @@ namespace VF.Feature {
                 var worldPos = c.owner().worldPosition;
                 var worldScale = c.owner().worldScale.x;
                 VRCFuryGizmoUtils.DrawSphere(worldPos, worldScale * c.radius, Color.red);
-                VRCFuryGizmoUtils.DrawText(worldPos, "Touch Receiver", Color.white, true);
+                VRCFuryGizmoUtils.DrawText(worldPos, "SPS Touch Zone", Color.white, true);
             }
         }
     }

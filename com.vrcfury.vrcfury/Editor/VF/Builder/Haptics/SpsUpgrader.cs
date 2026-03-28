@@ -153,7 +153,7 @@ namespace VF.Builder.Haptics {
                         if (t == null) continue;
                         var sourcePositionOffset = constraint.GetPositionOffset(i);
                         var sourceRotationOffset = Quaternion.Euler(constraint.GetRotationOffset(i));
-                        var name = HapticUtils.GetName(t);
+                        var name = HapticUtils.GetFallbackId(t);
 
                         var socket = AddSocket(t);
                         addedSocketNames[t] = name;
