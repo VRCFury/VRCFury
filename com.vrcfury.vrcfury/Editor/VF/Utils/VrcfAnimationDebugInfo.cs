@@ -173,11 +173,11 @@ namespace VF.Utils {
             var thisName = isController ? "the controller" : "this clip";
 
             if (missingBindings.Any()) {
-                var msg = $"These paths are animated in {thisName}, but not found in your avatar! Thus, they won't do anything!";
+                var msg = $"Paths are animated in {thisName}, but not found in your avatar, thus, they won't do anything! If you are not the creator of this asset, this may be on purpose.";
                 if (addPathRewrite != null) msg += " You may need to use 'Path Rewrite Rules' in the Advanced Settings to fix them if your avatar's objects are in a different location.";
                 msg += "\n";
                 msg += missingBindings.OrderBy(path => path).Join('\n');
-                warnings.Add(VRCFuryEditorUtils.Error(msg));
+                warnings.Add(VRCFuryEditorUtils.Warn(msg));
             }
             if (nonRewriteSafeBindings.Any()) {
                 var el = new VisualElement();

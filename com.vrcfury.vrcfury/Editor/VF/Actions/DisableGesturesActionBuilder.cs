@@ -3,12 +3,13 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
 
 namespace VF.Actions {
-    [FeatureTitle("Disable Gestures")]
+    [FeatureTitle("Disable Hand Controls")]
     internal class DisableGesturesActionBuilder : ActionBuilder<DisableGesturesAction> {
         [VFAutowired] [CanBeNull] private readonly HandGestureDisablingService handGestureDisablingService;
 
@@ -22,7 +23,9 @@ namespace VF.Actions {
 
         [FeatureEditor]
         public static VisualElement Editor() {
-            return new VisualElement();
+            return VRCFuryEditorUtils.Warn(
+                "While this action is active, ALL hand controls will be disabled. This may include face emotes," +
+                " assets that use your hand pose to do certain things, and even the visible hand poses themselves.");
         }
     }
 }
