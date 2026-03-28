@@ -34,7 +34,8 @@ namespace VF.Feature {
                 
                 container.Add(VRCFuryEditorUtils.Info(
                     "This will add an extra contact which can be used to trigger SPS/VRCFury Haptics. " +
-                    "Note: This is NOT NEEDED if this area contains a VRCFury Global Collider (which can already do the same)."
+                    "Note: This is NOT NEEDED if this area contains a VRCFury Global Collider (which can already do the same). " +
+                    "This is essentially the same as adding a VRChat contact sender with the 'Finger' tag."
                 ));
 
                 container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target));

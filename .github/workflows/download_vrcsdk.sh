@@ -20,6 +20,7 @@ download_manifest_package() {
   mkdir -p "$PROJECT_PATH/Packages/$package_name"
   unzip -o "$zip_path" -d "$PROJECT_PATH/Packages/$package_name"
   rm "$zip_path"
+  rm -rf "$PROJECT_PATH/Packages/$package_name/Samples" "$PROJECT_PATH/Packages/$package_name/Samples.meta"
 }
 
 patch_udonsharp_locator() {

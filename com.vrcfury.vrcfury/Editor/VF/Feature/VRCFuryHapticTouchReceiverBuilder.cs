@@ -58,9 +58,9 @@ namespace VF.Feature {
                 var container = new VisualElement();
                 
                 container.Add(VRCFuryEditorUtils.Info(
-                    "This will add an extra VRCFury Haptic Touch Zone (for purposes unrelated to Plugs / Sockets), which will activate OGB haptics when touched. " +
+                    "This will add an extra SPS Touch Zone (for purposes unrelated to Plugs / Sockets), which will activate OGB haptics when touched. " +
                     "Haptic level will increase to 100% at the center of the sphere. " +
-                    "This touch zone can be activated by Hands, Fingers, Feet, SPS Plugs, VRCF Haptic Touch Senders, and Heads (other players only)."));
+                    "This touch zone can be activated by Hands, Fingers, Feet, SPS Plugs, VRCFury Touch Senders, and Heads (other players only)."));
 
                 container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target));
             
