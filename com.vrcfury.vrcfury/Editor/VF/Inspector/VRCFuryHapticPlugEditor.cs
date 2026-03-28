@@ -194,16 +194,16 @@ namespace VF.Inspector {
                 })
             ));
 
-            var haptics = GetHapticsSection();
-            container.Add(haptics);
-            haptics.Add(SpsEditorUtils.AutoHapticIdProp(
-                serializedObject.FindProperty("name"),
-                "ID sent to OGB",
-                target,
-                target.owner(),
-                avatar => avatar.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>(),
-                GetOscId
-            ));
+            container.Add(GetOgbHapticsSection(haptics => {
+                haptics.Add(SpsEditorUtils.AutoHapticIdProp(
+                    serializedObject.FindProperty("name"),
+                    "ID sent to OGB",
+                    target,
+                    target.owner(),
+                    avatar => avatar.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>(),
+                    GetOscId
+                ));
+            }));
 
             var adv = new Foldout {
                 text = "Advanced Plug Options",
@@ -220,13 +220,27 @@ namespace VF.Inspector {
             return container;
         }
 
-        public static VisualElement GetHapticsSection() {
-            if (HapticsToggleMenuItem.Get()) {
-                return VRCFuryEditorUtils.Section("Haptics", "OGB haptic support is enabled by default");
+        public static VisualElement GetOgbHapticsSection(Action<VisualElement> buildBody) {
+            var container = new VisualElement();
+            var hapticsEnabled = HapticsToggleMenuItem.Get();
+            var hapticsEnabledToggle = new Toggle();
+            hapticsEnabledToggle.SetValueWithoutNotify(hapticsEnabled);
+            hapticsEnabledToggle.SetEnabled(false);
+            container.Add(VRCFuryEditorUtils.BetterProp(
+                null,
+                "Enable OGB Haptics",
+                fieldOverride: hapticsEnabledToggle
+            ));
+
+            if (hapticsEnabled) {
+                var haptics = VRCFuryEditorUtils.Section("OGB Haptics");
+                buildBody(haptics);
+                container.Add(haptics);
+            } else {
+                container.Add(VRCFuryEditorUtils.Error("Haptics have been disabled in the VRCFury unity settings"));
             }
-            var el = VRCFuryEditorUtils.Section("Haptics");
-            el.Add(VRCFuryEditorUtils.Error("Haptics have been disabled in the VRCFury unity settings"));
-            return el;
+
+            return container;
         }
 
         public static VisualElement ConstraintWarning(UnityEngine.Component c, bool isSocket = false) {

@@ -570,13 +570,14 @@ namespace VF.Inspector {
                 }
             }.Padding(5).BorderRadius(5);
 
+            var header = new VisualElement().PaddingBottom(5);
             if (title != null) {
-                section.Add(WrappedLabel(title).Bold().TextAlign(TextAnchor.MiddleCenter));
+                header.Add(WrappedLabel(title).Bold().TextAlign(TextAnchor.MiddleCenter));
             }
-
             if (subtitle != null) {
-                section.Add(WrappedLabel(subtitle).TextAlign(TextAnchor.MiddleCenter).PaddingBottom(5));
+                header.Add(WrappedLabel(subtitle).TextAlign(TextAnchor.MiddleCenter));
             }
+            section.Add(header);
 
             return section;
         }

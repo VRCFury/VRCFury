@@ -103,25 +103,24 @@ namespace VF.Inspector {
                 VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("activeActions"))
             ));
 
-            var haptics = VRCFuryHapticPlugEditor.GetHapticsSection();
-            container.Add(haptics);
-
-            haptics.Add(SpsEditorUtils.AutoHapticIdProp(
-                serializedObject.FindProperty("oscId"),
-                "ID sent to OGB",
-                target,
-                target.owner(),
-                avatar => avatar.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>(),
-                GetOscId
-            ));
-            haptics.Add(VRCFuryEditorUtils.BetterProp(
-                serializedObject.FindProperty("enableHandTouchZone2"),
-                "Enable hand touch zone? (Auto will add only if child of Hips)"
-            ));
-            haptics.Add(VRCFuryEditorUtils.BetterProp(
-                serializedObject.FindProperty("length"),
-                "Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not plug interaction."
-            ));
+            container.Add(VRCFuryHapticPlugEditor.GetOgbHapticsSection(haptics => {
+                haptics.Add(SpsEditorUtils.AutoHapticIdProp(
+                    serializedObject.FindProperty("oscId"),
+                    "ID sent to OGB",
+                    target,
+                    target.owner(),
+                    avatar => avatar.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>(),
+                    GetOscId
+                ));
+                haptics.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("enableHandTouchZone2"),
+                    "Enable hand touch zone? (Auto will add only if child of Hips)"
+                ));
+                haptics.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("length"),
+                    "Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not plug interaction."
+                ));
+            }));
             
             var adv = new Foldout {
                 text = "Advanced",
