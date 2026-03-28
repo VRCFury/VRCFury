@@ -345,6 +345,12 @@ namespace VF.Inspector {
                         field = new ColorField { bindingPath = prop.propertyPath, hdr = true };
                         break;
                     }
+                    case SerializedPropertyType.ObjectReference: {
+                        var objectField = new ObjectField { bindingPath = prop.propertyPath };
+                        objectField.objectType = GetPropertyType(prop);
+                        field = objectField;
+                        break;
+                    }
                     case SerializedPropertyType.String: {
                         if (placeholder != null) {
                             var textField = new TextFieldWithPlaceholder {
@@ -752,8 +758,13 @@ namespace VF.Inspector {
             public static readonly GetFieldInfoFromProperty_ GetFieldInfoFromProperty = ScriptAttributeUtility?.GetMatchingDelegate<GetFieldInfoFromProperty_>("GetFieldInfoFromProperty");
         }
         public static Type GetPropertyType(SerializedProperty prop) {
-            if (PropsReflection.GetFieldInfoFromProperty == null) return null;
+            if (PropsReflection.GetFieldInfoFromProperty == null) {
+                throw new Exception("Failed to determine property type because ScriptAttributeUtility.GetFieldInfoFromProperty is unavailable");
+            }
             PropsReflection.GetFieldInfoFromProperty(prop, out var type);
+            if (type == null) {
+                throw new Exception("Failed to determine property type for property: " + prop.propertyPath);
+            }
             return type;
         }
 
