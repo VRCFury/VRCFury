@@ -339,8 +339,9 @@ namespace VF.Service {
                 var pathToRenderer = rewrite.skin.owner().GetPath(avatarObject);
 
                 void RewriteClip(AnimationClip clip) {
-                    foreach (var (_binding,curve) in clip.GetAllCurves()) {
-                        var binding = _binding;
+                    foreach (var pair in clip.GetAllCurves()) {
+                        var binding = pair.Item1;
+                        var curve = pair.Item2;
 
                         if (curve.IsFloat) {
                             if (binding.path == pathToRenderer) {

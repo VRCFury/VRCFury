@@ -25,7 +25,9 @@ namespace VF.Service {
             var copy = clip.Clone();
             copy.FinalizeAsset();
             copy.SampleAnimation(avatarObject, 0);
-            foreach (var (binding,curve) in clip.GetAllCurves()) {
+            foreach (var pair in clip.GetAllCurves()) {
+                var binding = pair.Item1;
+                var curve = pair.Item2;
                 var value = curve.GetLast();
                 HandleMaterialSwaps(binding, value);
                 HandleMaterialProperties(binding, value, reason);
