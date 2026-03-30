@@ -10,7 +10,6 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Service;
 using VF.Utils;
-using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
@@ -257,7 +256,7 @@ namespace VF.Inspector {
             var transform = socket.owner();
 
             var autoInfo = GetInfoFromLightsOrComponent(socket);
-            var handTouchZoneSize = GetHandTouchZoneSize(socket, VRCAvatarUtils.GuessAvatarObject(socket)?.GetComponent<VRCAvatarDescriptor>());
+            var handTouchZoneSize = GetHandTouchZoneSize(socket);
 
             var (lightType, localPosition, localRotation) = autoInfo;
             var localForward = localRotation * Vector3.forward;
@@ -280,7 +279,7 @@ namespace VF.Inspector {
         }
 
         [CanBeNull]
-        public static BakeResult Bake(VRCFuryHapticSocket socket, HapticContactsService hapticContactsService) {
+        public static BakeResult Bake(VRCFuryHapticSocket socket) {
             var transform = socket.owner();
             if (!HapticUtils.AssertValidScale(transform, "socket", shouldThrow: !socket.sendersOnly)) {
                 return null;
@@ -316,14 +315,14 @@ namespace VF.Inspector {
                             break;
                     }
                 }
-                hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                     obj = senders,
                     objName = "Root",
                     radius = 0.001f,
                     tags = rootTags.ToArray(),
                     useHipAvoidance = socket.useHipAvoidance
                 });
-                hapticContactsService.AddSender(new HapticContactsService.SenderRequest() {
+                HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                     obj = senders,
                     pos = Vector3.forward * 0.01f,
                     objName = "Front",
@@ -336,7 +335,7 @@ namespace VF.Inspector {
             VFGameObject lights = null;
             if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.sendersOnly) {
                 ForEachPossibleLight(transform, false, light => {
-                    AvatarCleaner.RemoveComponent(light);
+                    light.Destroy();
                 });
 
                 if (BuildTargetUtils.IsDesktop()) {
@@ -378,7 +377,8 @@ namespace VF.Inspector {
             };
         }
 
-        public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket, [CanBeNull] VRCAvatarDescriptor avatar) {
+        public static Func<VFGameObject, Vector3> getAvatarViewPos;
+        public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
             var enableHandTouchZone = false;
             if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On) {
                 enableHandTouchZone = true;
@@ -390,8 +390,10 @@ namespace VF.Inspector {
             }
             var length = socket.length * (socket.unitsInMeters ? 1f : socket.owner().worldScale.z);
             if (length <= 0) {
-                if (avatar == null) return null;
-                length = avatar.ViewPosition.y * 0.05f;
+                if (getAvatarViewPos == null) return null;
+                var viewPos = getAvatarViewPos(socket.owner());
+                if (viewPos.y <= 0) return null;
+                length = viewPos.y * 0.05f;
             }
             var radius = length / 2.5f;
             return Tuple.Create(length, radius);
@@ -486,8 +488,12 @@ namespace VF.Inspector {
             return Tuple.Create(isRing ? VRCFuryHapticSocket.AddLight.Ring : VRCFuryHapticSocket.AddLight.Hole, position, rotation);
         }
 
+        public static Func<VFGameObject, HumanBodyBones?> getClosestBone;
+
         public static bool ShouldProbablyHaveTouchZone(VRCFuryHapticSocket socket) {
-            if (ClosestBoneUtils.GetClosestHumanoidBone(socket.owner()) != HumanBodyBones.Hips) return false;
+            if (getClosestBone == null) return false;
+            var closestBone = getClosestBone(socket.owner());
+            if (closestBone != HumanBodyBones.Hips) return false;
 
             var name = GetMenuName(socket).ToLower();
             if (name.Contains("rubbing") || name.Contains("job")) return false;
@@ -496,7 +502,8 @@ namespace VF.Inspector {
         }
 
         public static bool ShouldProbablyBeHole(VRCFuryHapticSocket socket) {
-            var closestBone = ClosestBoneUtils.GetClosestHumanoidBone(socket.owner());
+            if (getClosestBone == null) return true;
+            var closestBone = getClosestBone(socket.owner());
             if (closestBone == HumanBodyBones.Head || closestBone == HumanBodyBones.Jaw) return true;
             return ShouldProbablyHaveTouchZone(socket);
         }

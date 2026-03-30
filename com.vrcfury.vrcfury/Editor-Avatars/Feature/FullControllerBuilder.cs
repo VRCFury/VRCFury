@@ -636,7 +636,6 @@ namespace VF.Feature {
                 var rewrites = prop.FindPropertyRelative("rewriteBindings");
                 var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
                     controllers,
-                    avatarObject,
                     baseObject,
                     path => RewritePath(model, path),
                     addPathRewrite: path => {

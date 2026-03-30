@@ -1,5 +1,5 @@
 ﻿using UnityEngine.SceneManagement;
-using VF.Builder.Exceptions;
+using VF.Exceptions;
 using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace VF.Hooks {

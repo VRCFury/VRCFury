@@ -34,14 +34,13 @@ namespace VF.Hooks.VrcsdkFixes {
             if (sourceTransform == null || destTransform == null)
                 return;
 
-            var avatar = VRCAvatarUtils.GuessAvatarObject(sourceTransform);
-            if (avatar == null) return;
+            var avatarRoot = sourceTransform.GetAvatarRoot();
 
             var position = sourceProp.FindPropertyRelative("position").vector3Value;
             position = sourceTransform.TransformPoint(position);
-            position.x -= avatar.worldPosition.x;
+            position.x -= avatarRoot.worldPosition.x;
             position = new Vector3(-position.x, position.y, position.z);
-            position.x += avatar.worldPosition.x;
+            position.x += avatarRoot.worldPosition.x;
             position = destTransform.InverseTransformPoint(position);
             destProp.FindPropertyRelative("position").vector3Value = position;
         }

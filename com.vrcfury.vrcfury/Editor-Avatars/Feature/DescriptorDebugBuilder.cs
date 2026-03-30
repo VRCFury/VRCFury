@@ -30,7 +30,7 @@ namespace VF.Feature {
                     .Select(c => c.controller as AnimatorController)
                     .NotNull()
                     .ToList();
-                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(controllers, avatarObject, avatarObject);
+                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(controllers, avatarObject);
                 
                 foreach (var w in warnings) {
                     debugInfo.Add(w);

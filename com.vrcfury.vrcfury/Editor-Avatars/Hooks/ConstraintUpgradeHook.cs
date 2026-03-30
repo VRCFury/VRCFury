@@ -32,7 +32,7 @@ namespace VF.Hooks {
                 var roots = objs
                     .NotNull()
                     .Select(obj => obj.asVf())
-                    .Select(obj => VRCAvatarUtils.GuessAvatarObject(obj) ?? obj.root)
+                    .Select(obj => obj.GetAvatarRoot())
                     .Distinct();
 
                 var controllers = new HashSet<AnimatorController>();

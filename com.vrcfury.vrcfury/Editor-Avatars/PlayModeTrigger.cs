@@ -90,8 +90,7 @@ namespace VF {
                     socket.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
                         try {
-                            var hapticContactsService = new HapticContactsService();
-                            var bakeResult = VRCFuryHapticSocketEditor.Bake(socket, hapticContactsService);
+                            var bakeResult = VRCFuryHapticSocketEditor.Bake(socket);
                             HideAnnoyingGizmosService.Hide(bakeResult.bakeRoot);
                         } catch (Exception e) {
                             throw new ExceptionWithCause($"Failed to bake detached SPS Socket: {socket.owner().GetPath()}", e);
@@ -108,8 +107,7 @@ namespace VF {
                     plug.Upgrade();
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
                         try {
-                            var hapticContactsService = new HapticContactsService();
-                            var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, hapticContactsService);
+                            var bakeResult = VRCFuryHapticPlugEditor.Bake(plug);
                             if (bakeResult != null) {
                                 var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", bakeResult.oscId);
                                 var saver = new SaveAssetsSession();

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using VF.Component;
-using VF.Hooks;
 using VF.Menu;
 using VF.Utils;
 
@@ -15,6 +14,7 @@ namespace VF.Builder.Haptics {
         private const string SpsBakedLength = "_SPS_BakedLength";
         private const string SpsBake = "_SPS_Bake";
 
+        public static Func<bool> getIsActuallyUploading;
         public static void ConfigureSpsMaterial(
             SkinnedMeshRenderer skin,
             Material m,
@@ -31,7 +31,10 @@ namespace VF.Builder.Haptics {
                     $" on the mesh instead.");
             }
 
-            SpsPatcher.Patch(m, SpsDevModeMenuItem.Get() && !IsActuallyUploadingHook.Get());
+            if (getIsActuallyUploading == null) {
+                throw new Exception("getIsActuallyUploading is undefined");
+            }
+            SpsPatcher.Patch(m, SpsDevModeMenuItem.Get() && !getIsActuallyUploading());
             {
                 // Prevent poi from stripping our parameters
                 var count = m.shader.GetPropertyCount();

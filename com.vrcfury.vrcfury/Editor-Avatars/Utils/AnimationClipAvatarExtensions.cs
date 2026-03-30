@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using VF.Builder;
+using VF.Hooks;
 
 namespace VF.Utils {
     internal static class AnimationClipAvatarExtensions {
@@ -12,7 +13,7 @@ namespace VF.Utils {
             } else {
                 return;
             }
-            var avatarObject = VRCAvatarUtils.GuessAvatarObject(owner);
+            var avatarObject = owner.GetAvatarRoot();
             var path = owner.GetPath(avatarObject);
             clip.SetCurve(path, componentOrObject.GetType(), propertyName, curve);
         }

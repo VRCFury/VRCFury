@@ -152,17 +152,5 @@ namespace VF.Builder {
             avatar.expressionParameters = prms;
             avatar.Dirty();
         }
-
-        [CanBeNull]
-        public static VFGameObject GuessAvatarObject(VFGameObject obj) {
-            if (obj == null) return null;
-            return obj.GetComponentsInSelfAndParents<VRCAvatarDescriptor>().LastOrDefault()?.owner();
-        }
-        
-        [CanBeNull]
-        public static VFGameObject GuessAvatarObject(UnityEngine.Component c) {
-            if (c == null) return null;
-            return GuessAvatarObject(c.owner());
-        }
     }
 }

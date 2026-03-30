@@ -59,13 +59,13 @@ namespace VF.Utils {
 
                     if (removeObject) {
                         removeItems.Add("Object: " + obj.GetPath(avatarObj));
-                        if (perform) RemoveObject(obj);
+                        if (perform) obj.Destroy();
                     } else {
                         if (ShouldRemoveComponent != null) {
                             foreach (var component in obj.GetComponents<UnityEngine.Component>()) {
                                 if (component != null && !(component is Transform) && ShouldRemoveComponent(component)) {
                                     removeItems.Add(component.GetType().Name + " on " + obj.GetPath(avatarObj));
-                                    if (perform) RemoveComponent(component);
+                                    if (perform) component.Destroy();
                                 }
                             }
                         }
@@ -206,25 +206,6 @@ namespace VF.Utils {
             }
 
             return removeItems;
-        }
-        
-        public static void RemoveComponent(UnityEngine.Component c) {
-            if (c.owner().GetComponents<UnityEngine.Component>().Length == 2 && c.owner().childCount == 0)
-                RemoveObject(c.owner());
-            else
-                Object.DestroyImmediate(c);
-        }
-        public static void RemoveObject(VFGameObject obj) {
-            if (!PrefabUtility.IsPartOfPrefabInstance(obj) || PrefabUtility.IsOutermostPrefabInstanceRoot(obj)) {
-                obj.Destroy();
-            } else {
-                foreach (var component in obj.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                    if (!(component is Transform)) {
-                        Object.DestroyImmediate(component);
-                    }
-                }
-                obj.name = "_deleted_" + obj.name;
-            }
         }
 
         private static bool IsParamUsed(VFLayer layer, string param) {

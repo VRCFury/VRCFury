@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using VF.Builder;
+using VF.Hooks;
 using VF.Injector;
 using VF.Utils;
 

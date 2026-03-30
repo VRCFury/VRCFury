@@ -54,7 +54,6 @@ namespace VF.Service {
                     if (!BuildTargetUtils.IsDesktop()) continue;
                     var bakeInfo = VRCFuryHapticPlugEditor.Bake(
                         plug,
-                        hapticContacts,
                         usedRenderers,
                         deferMaterialConfig: true
                     );

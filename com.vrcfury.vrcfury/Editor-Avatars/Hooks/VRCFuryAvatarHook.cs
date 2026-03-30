@@ -2,73 +2,95 @@
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
-using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Actions;
-using VF.Builder;
+using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
+using VF.Menu;
 using VF.Service;
 using VF.Utils;
-using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
-using Object = UnityEngine.Object;
 
 namespace VF.Hooks {
     /**
      * Wires up VRCFury-common for avatar work
      */
     internal static class VRCFuryAvatarHook {
-        private static bool AllowRootFeatures(VFGameObject gameObject, [CanBeNull] VFGameObject avatarObject) {
-            if (gameObject == avatarObject) {
+        public static VFGameObject GetAvatarRoot(this VFGameObject obj) {
+            if (obj == null) return null;
+            var avatars = obj.GetComponentsInSelfAndParents<VRCAvatarDescriptor>();
+            if (avatars.Length > 0) return avatars.Last().owner();
+            var animators = obj.GetComponentsInSelfAndParents<Animator>();
+            if (animators.Length > 0) return animators.Last().owner();
+            return obj.root;
+        }
+
+        public static VFGameObject GetAvatarRoot(this UnityEngine.Component c) {
+            return c.owner().GetAvatarRoot();
+        }
+
+        public static string GetAnimatedPath(this VFGameObject obj) {
+            var avatarObject = obj.GetAvatarRoot();
+            return obj.GetPath(avatarObject);
+        }
+
+        private static bool AllowRootFeatures(VFGameObject gameObject) {
+            var avatarRoot = gameObject.GetAvatarRoot();
+            if (gameObject == avatarRoot) {
                 return true;
             }
 
-            VFGameObject checkRoot;
-            if (avatarObject == null) {
-                checkRoot = gameObject.root;
-            } else {
-                checkRoot = gameObject.GetSelfAndAllParents()
-                    .First(o => o.parent == avatarObject);
-            }
-
-            if (checkRoot == null) {
-                return false;
-            }
-
-            return checkRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()
+            return gameObject.GetSelfAndAllParents()
+                .First(o => o.parent == avatarRoot)
+                .GetComponentsInSelfAndChildren<UnityEngine.Component>()
                 .All(c => c is VRCFuryComponent || c is Transform);
         }
 
         [InitializeOnLoadMethod]
         private static void Init() {
+            SpsConfigurer.getIsActuallyUploading = IsActuallyUploadingHook.Get;
+
+            VRCFuryHapticPlugEditor.getHapticsEnabled = HapticsToggleMenuItem.Get;
+
+            VRCFuryHapticSocketEditor.getAvatarViewPos = obj => {
+                var avatar = obj.GetAvatarRoot().GetComponent<VRCAvatarDescriptor>();
+                if (avatar == null) return Vector3.zero;
+                return avatar.ViewPosition;
+            };
+
+            VRCFuryHapticSocketEditor.getClosestBone = ClosestBoneUtils.GetClosestHumanoidBone;
+
+            VFGameObject.getUploadRoots = obj => {
+                return new[] { obj.GetAvatarRoot() };
+            };
+
             DialogUtils.debugLineGetter = () => VrcfDebugLine.GetOutputString();
 
             VRCFuryComponentEditor.getDebugLine = component => {
-                var avatarObject = VRCAvatarUtils.GuessAvatarObject(component);
+                var avatarObject = component.GetAvatarRoot();
                 return VrcfDebugLine.GetOutputString(avatarObject);
             };
 
             FeatureFinder.onInjectEditor = (gameObject, builderType, injector) => {
-                var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject) ?? gameObject.root;
-                var allowRootFeatures = AllowRootFeatures(gameObject, avatarObject);
+                var allowRootFeatures = AllowRootFeatures(gameObject);
                 if (builderType.GetCustomAttribute<FeatureRootOnlyAttribute>() != null && !allowRootFeatures) {
                     throw new RenderFeatureEditorException(
                         "To avoid abuse by prefab creators, this component can only be placed on the root object" +
                         " containing the avatar descriptor, OR a child object containing ONLY vrcfury components."
                     );
                 }
-                injector.Set("avatarObject", avatarObject);
+                injector.Set("avatarObject", gameObject.GetAvatarRoot());
             };
 
             FeatureFinder.onGetBuilder = (gameObject, builderType, title) => {
-                var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject) ?? gameObject.root;
-                var allowRootFeatures = AllowRootFeatures(gameObject, avatarObject);
+                var avatarObject = gameObject.GetAvatarRoot();
+                var allowRootFeatures = AllowRootFeatures(gameObject);
                 if (builderType.GetCustomAttribute<FeatureRootOnlyAttribute>() != null && !allowRootFeatures) {
                     throw new Exception($"This VRCFury component ({title}) is only allowed on the root object of the avatar, but was found in {gameObject.GetPath(avatarObject)}.");
                 }
@@ -77,8 +99,7 @@ namespace VF.Hooks {
             VRCFuryActionSetDrawer.renderDebugInfo = (gameObject, actionSet) => {
                 var debugInfo = new VisualElement();
 
-                var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject);
-                if (avatarObject == null) return debugInfo;
+                var avatarObject = gameObject.GetAvatarRoot();
 
                 var injector = new VRCFuryInjector();
                 injector.ImportOne(typeof(ActionClipService));
@@ -92,7 +113,7 @@ namespace VF.Hooks {
                     .SelectMany(clip => clip.GetAllBindings())
                     .ToImmutableHashSet();
                 var warnings =
-                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject, avatarObject);
+                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject);
 
                 foreach (var warning in warnings) {
                     debugInfo.Add(warning);
@@ -123,25 +144,6 @@ namespace VF.Hooks {
                     warnings.Add(VRCFuryEditorUtils.Error(
                         "There are multiple avatar descriptors in this hierarchy. Each avatar should only have one avatar descriptor on the avatar root." +
                         " This may cause issues in this inspector or during your avatar build.\n\n" + descriptors.Select(d => d.owner().GetPath()).Join('\n')));
-                }
-            };
-
-            VFGameObject.onPreDestroy = obj => {
-                var b = VRCAvatarUtils.GuessAvatarObject(obj) ?? obj.root;
-                foreach (var c in b.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
-                    if (c.GetRootTransform().IsChildOf(obj))
-                        Object.DestroyImmediate(c);
-                }
-                foreach (var c in b.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>()) {
-                    if (c.GetRootTransform().IsChildOf(obj))
-                        Object.DestroyImmediate(c);
-                }
-                foreach (var c in b.GetComponentsInSelfAndChildren<ContactBase>()) {
-                    if (c.GetRootTransform().IsChildOf(obj))
-                        Object.DestroyImmediate(c);
-                }
-                foreach (var c in obj.GetConstraints(includeChildren: true)) {
-                    c.Destroy();
                 }
             };
 

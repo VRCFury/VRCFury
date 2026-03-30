@@ -18,7 +18,7 @@ namespace VF.Builder.Haptics {
         
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();
-            if (avatarObject == null) avatarObject = Selection.activeGameObject.asVf().root;
+            if (avatarObject == null) return;
 
             var messages = Apply(avatarObject, true, Mode.Manual);
             if (string.IsNullOrWhiteSpace(messages)) {

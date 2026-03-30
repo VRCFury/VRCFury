@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using VF.Inspector;
 using VF.Utils;
-using VRC.SDK3.Avatars.Components;
 using Random = System.Random;
 
 namespace VF.Builder.Haptics {
@@ -120,9 +120,6 @@ namespace VF.Builder.Haptics {
         public static string GetFallbackId(VFGameObject obj) {
             var current = obj;
             while (current != null) {
-                if (current.GetComponent<VRCAvatarDescriptor>() != null) {
-                    break;
-                }
                 var name = NormalizeName(current.name);
                 if (!string.IsNullOrWhiteSpace(name)) {
                     return name;
@@ -139,12 +136,7 @@ namespace VF.Builder.Haptics {
             Func<T, string> getPreferredId
         ) {
             string PreferredId(T item) => getPreferredId(item);
-
-            var avatar = VRCAvatarUtils.GuessAvatarObject(owner);
-            if (avatar == null) {
-                return PreferredId(target);
-            }
-            return GetActualId(getItems(avatar), target, PreferredId);
+            return GetActualId(owner.uploadRoots.SelectMany(getItems), target, PreferredId);
         }
 
         public static string MakeUniqueId(ISet<string> usedIds, string prefix) {

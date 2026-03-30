@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Hooks;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
@@ -47,9 +48,8 @@ namespace VF.Utils {
         }
 
         private static HumanBodyBones? GetClosestHumanoidBoneUncached(VFGameObject obj) {
-            var avatarObject = VRCAvatarUtils.GuessAvatarObject(obj);
+            var avatarObject = obj.GetAvatarRoot();
 
-            if (avatarObject == null) return null;
             var followConstraints = true;
             var followArmatureLink = true;
 

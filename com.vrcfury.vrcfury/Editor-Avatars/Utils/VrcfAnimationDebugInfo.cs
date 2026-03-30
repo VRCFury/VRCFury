@@ -8,6 +8,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Hooks;
 using VF.Inspector;
 using VF.Service;
 using VF.Utils.Controller;
@@ -18,7 +19,6 @@ namespace VF.Utils {
     internal static class VrcfAnimationDebugInfo {
         public static List<VisualElement> BuildDebugInfo(
             IEnumerable<AnimatorController> controllers,
-            [CanBeNull] VFGameObject avatarObject,
             VFGameObject componentObject,
             Func<string, string> rewritePath = null,
             Action<string> addPathRewrite = null
@@ -42,18 +42,17 @@ namespace VF.Utils {
 #endif
             }
 
-            return BuildDebugInfo(bindings, avatarObject, componentObject, rewritePath, true, addPathRewrite);
+            return BuildDebugInfo(bindings, componentObject, rewritePath, true, addPathRewrite);
         }
         
         public static List<VisualElement> BuildDebugInfo(
             IEnumerable<EditorCurveBinding> bindings,
-            [CanBeNull] VFGameObject avatarObject,
             VFGameObject componentObject,
             Func<string,string> rewritePath = null,
             bool isController = false,
             Action<string> addPathRewrite = null
         ) {
-            if (avatarObject == null) avatarObject = componentObject.root;
+            var avatarObject = componentObject.GetAvatarRoot();
             var nonRewriteSafeBindings = new HashSet<string>();
             var outsidePrefabBindings = new HashSet<string>();
             var missingBindings = new HashSet<string>();

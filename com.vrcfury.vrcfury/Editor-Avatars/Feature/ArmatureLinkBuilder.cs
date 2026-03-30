@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Hooks;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
@@ -301,15 +302,13 @@ namespace VF.Feature {
         public static VFGameObject GuessLinkFrom(VFGameObject componentObject) {
             // Try finding the hips following the same path they are on the avatar
             {
-                var avatarObject = VRCAvatarUtils.GuessAvatarObject(componentObject);
+                var avatarObject = componentObject.GetAvatarRoot();
                 if (componentObject == avatarObject) return null;
-                if (avatarObject != null) {
-                    var avatarHips = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Hips);
-                    if (avatarHips != null) {
-                        var pathToAvatarHips = avatarHips.GetPath(avatarObject);
-                        var foundHips = componentObject.Find(pathToAvatarHips);
-                        if (foundHips != null) return foundHips;
-                    }
+                var avatarHips = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Hips);
+                if (avatarHips != null) {
+                    var pathToAvatarHips = avatarHips.GetPath(avatarObject);
+                    var foundHips = componentObject.Find(pathToAvatarHips);
+                    if (foundHips != null) return foundHips;
                 }
             }
 

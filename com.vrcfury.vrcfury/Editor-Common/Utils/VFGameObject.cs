@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Utils;
+using VRC.Dynamics;
 using Object = UnityEngine.Object;
 
 namespace VF.Utils {
@@ -12,7 +13,6 @@ namespace VF.Utils {
      * everywhere, and providing helper methods that are commonly used.
      */
     internal class VFGameObject {
-        public static Action<VFGameObject> onPreDestroy;
 
         private readonly GameObject _gameObject;
         private VFGameObject(GameObject gameObject) {
@@ -269,8 +269,52 @@ namespace VF.Utils {
         }
 
         public void Destroy() {
-            onPreDestroy?.Invoke(this);
+            var roots = uploadRoots;
+            foreach (var c in roots.SelectMany(root => root.GetComponentsInSelfAndChildren<VRCPhysBoneBase>())) {
+                if (c.GetRootTransform().IsChildOf(this))
+                    Object.DestroyImmediate(c);
+            }
+            foreach (var c in roots.SelectMany(root => root.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>())) {
+                if (c.GetRootTransform().IsChildOf(this))
+                    Object.DestroyImmediate(c);
+            }
+            foreach (var c in roots.SelectMany(root => root.GetComponentsInSelfAndChildren<ContactBase>())) {
+                if (c.GetRootTransform().IsChildOf(this))
+                    Object.DestroyImmediate(c);
+            }
+            foreach (var c in GetConstraints(includeChildren: true)) {
+                c.Destroy();
+            }
             Object.DestroyImmediate(this);
+        }
+
+        public VFConstraint[] GetConstraints(bool includeParents = false, bool includeChildren = false) {
+            return uploadRoots
+                .SelectMany(root => root.GetComponentsInSelfAndChildren<UnityEngine.Component>())
+                .Select(c => c.AsConstraint())
+                .NotNull()
+                .Where(c => {
+                    var affectedObject = c.GetAffectedObject();
+                    if (affectedObject == null) return false;
+                    if (includeParents) return IsChildOf(affectedObject);
+                    if (includeChildren) return affectedObject.IsChildOf(this);
+                    return affectedObject == this;
+                })
+                .ToArray();
+        }
+
+        public static Func<VFGameObject,VFGameObject[]> getUploadRoots;
+        public VFGameObject[] uploadRoots {
+            get {
+                if (getUploadRoots == null) {
+                    throw new Exception("getUploadRoots not implemented in this project type");
+                }
+                return getUploadRoots(this);
+            }
+        }
+
+        public T[] GetComponentsInUploadRoot<T>() {
+            return uploadRoots.SelectMany(r => r.GetComponentsInSelfAndChildren<T>()).ToArray();
         }
     }
 }

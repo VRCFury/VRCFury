@@ -32,7 +32,7 @@ namespace VF.Service {
             foreach (var sender in globals.avatarObject.GetComponentsInSelfAndChildren<VRCContactSender>()) {
                 if (IsTPSSender(sender)) {
                     Debug.Log("Deleting TPS sender on " + sender.owner().GetPath());
-                    AvatarCleaner.RemoveComponent(sender);
+                    sender.Destroy();
                 }
             }
         }

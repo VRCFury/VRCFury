@@ -1,18 +1,15 @@
+using JetBrains.Annotations;
 using UnityEditor;
-using VF.Builder;
+using VF.Hooks;
 using VF.Utils;
-using VRC.SDK3.Avatars.Components;
 
 namespace VF.Menu {
     internal static class MenuUtils {
+        [CanBeNull]
         public static VFGameObject GetSelectedAvatar() {
             var obj = Selection.activeGameObject.asVf();
-            while (obj != null) {
-                var avatar = obj.GetComponent<VRCAvatarDescriptor>();
-                if (avatar != null) return obj;
-                obj = obj.parent;
-            }
-            return null;
+            if (obj == null) return null;
+            return obj.GetAvatarRoot();
         }
     }
 }

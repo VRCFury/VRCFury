@@ -18,7 +18,7 @@ namespace VF.Feature {
         [FeatureBuilderAction]
         public void Apply() {
             foreach (var sender in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticTouchSender>()) {
-                hapticContacts.AddSender(new HapticContactsService.SenderRequest() {
+                HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                     obj = sender.owner(),
                     objName = "Sender",
                     radius = sender.radius,

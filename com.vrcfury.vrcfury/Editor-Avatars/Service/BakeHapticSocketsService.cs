@@ -114,7 +114,7 @@ namespace VF.Service {
                         continue;
                     }
 
-                    var bakeResult = VRCFuryHapticSocketEditor.Bake(socket, hapticContacts);
+                    var bakeResult = VRCFuryHapticSocketEditor.Bake(socket);
                     if (bakeResult == null) continue;
                     
                     globals.addOtherFeature(new ShowInFirstPerson {
@@ -133,7 +133,7 @@ namespace VF.Service {
                         var paramPrefix = "OGB/Orf/" + oscId.Replace('/','_');
                     
                         // Receivers
-                        var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket, avatar);
+                        var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket);
                         haptics = GameObjects.Create("Haptics", bakeResult.worldSpace);
 
                         var baseReq = new HapticContactsService.ReceiverRequest() {

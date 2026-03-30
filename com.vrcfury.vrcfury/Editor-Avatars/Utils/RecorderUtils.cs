@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Component;
+using VF.Hooks;
 using VF.Service;
 using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
@@ -77,13 +78,7 @@ namespace VF.Utils {
             animationWindow.Focus();
             var animState = Reflection.AnimationWindowState.GetValue(animationWindow);
 
-            var avatarObject = baseObj.GetComponentInSelfOrParent<VRCAvatarDescriptor>().NullSafe()?.owner();
-            if (avatarObject == null) {
-                avatarObject = baseObj.GetComponentInSelfOrParent<Animator>().NullSafe()?.owner();
-            }
-            if (avatarObject == null) {
-                avatarObject = baseObj.root;
-            }
+            var avatarObject = baseObj.GetAvatarRoot();
 
             var wasActive = avatarObject.active;
             avatarObject.active = false;
