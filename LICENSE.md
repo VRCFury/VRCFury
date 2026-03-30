@@ -1,6 +1,6 @@
 # License Options
 
-VRCFury (c) 2024 Senky
+VRCFury (c) 2026 Senky
 
 For the purposes of this document, a "commercial purpose" is one primarily intended for commercial advantage or monetary compensation (including, but not limited to, one-time payments, subscription payments, and donations). A "personal purpose" is any purpose aside from those defined as a "commercial purpose."
 
@@ -20,10 +20,11 @@ VRCFury may be used for personal or commercial purposes if all of the following 
 * VRCFury must not be redistributed with your product
 * The package may be downloaded by an interactive guided process and extracted from a compressed archive, but the source files must be left unmodified.
 
-### VRCA License
+### VRCA / VRCW License
 
 VRCFury may distributed for personal or commercial purposes if all of the following restrictions are met:
-* The distribution is made as part of an "uploaded avatar asset bundle," hosted on VRChat asset servers.
+* The distribution is made as part of an "uploaded VRChat avatar asset bundle," or an "uploaded VRChat world asset bundle" hosted on VRChat asset servers.
+* This license is only here to permit the use of the SPS shader, which is linked and packaged into avatars / worlds uploaded using SPS. This means SPS CANNOT be used at runtime, even in packaged / "built" form, outside of VRChat avatars / worlds.
 
 # FAQ
 (These FAQ are for reference only and are not a part of the license above)
