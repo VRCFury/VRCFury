@@ -180,6 +180,7 @@ namespace VF.Builder.Haptics {
             name = Regex.Replace(name, @"plug", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"ring", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"hole", "", RegexOptions.IgnoreCase);
+            name = Regex.Replace(name, @"mesh", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, @"\(\d+\)", "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, VRCFuryEditorUtils.Rev("ecifiro"), "", RegexOptions.IgnoreCase);
             name = Regex.Replace(name, VRCFuryEditorUtils.Rev("ecafiro"), "", RegexOptions.IgnoreCase);

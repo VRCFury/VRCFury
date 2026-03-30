@@ -252,11 +252,17 @@ namespace VF.Inspector {
         }
 
         public static VisualElement AutoIdProp(SerializedProperty prop, string label, Func<string> getAutomaticId) {
-            var textField = new TextFieldWithPlaceholder();
+            var textField = new TextFieldWithPlaceholder {
+                bindingPath = prop.propertyPath
+            };
 
             void RefreshAutoId() {
                 textField.Placeholder = "Automatic (" + getAutomaticId() + ")";
             }
+
+            textField.RegisterValueChangedCallback(_ => {
+                RefreshAutoId();
+            });
 
             var output = Prop(
                 prop,
