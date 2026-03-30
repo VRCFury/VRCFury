@@ -24,7 +24,7 @@ VRCFury may be used for personal or commercial purposes if all of the following 
 
 VRCFury may distributed for personal or commercial purposes if all of the following restrictions are met:
 * The distribution is made as part of an "uploaded VRChat avatar asset bundle," or an "uploaded VRChat world asset bundle" hosted on VRChat asset servers.
-* This license is only here to permit the use of the SPS shader, which is linked and packaged into avatars / worlds uploaded using SPS. This means SPS CANNOT be used at runtime, even in packaged / "built" form, outside of VRChat avatars / worlds.
+* This license is only here to permit the use of the SPS shader, which is linked and packaged into avatars / worlds uploaded using SPS. This means the SPS shader CANNOT be used for commercial purposes at runtime outside of VRChat avatar / world packages.
 
 # FAQ
 (These FAQ are for reference only and are not a part of the license above)
