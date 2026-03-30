@@ -431,7 +431,7 @@ namespace VF.Inspector {
             bool deferMaterialConfig = false
         ) {
             var transform = plug.owner();
-            if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.sendersOnly)) {
+            if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.fromSpsForAll)) {
                 return null;
             }
 

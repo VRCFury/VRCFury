@@ -25,7 +25,7 @@ namespace VF.Menu {
         public const int createSocketPriority = spsPriority;
         public const string createPlug = sps + "Create Plug";
         public const int createPlugPriority = spsPriority + 1;
-        public const string upgradeLegacyHaptics = sps + "Upgrade legacy haptics";
+        public const string upgradeLegacyHaptics = sps + "Upgrade DPS to SPS";
         public const int upgradeLegacyHapticsPriority = spsPriority + 2;
 
         public const string utilities = prefix + "Utilities/";

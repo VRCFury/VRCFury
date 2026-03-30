@@ -124,7 +124,7 @@ namespace VF.Service {
                     });
 
                     VFGameObject haptics = null;
-                    if (HapticsToggleMenuItem.Get() && !socket.sendersOnly) {
+                    if (HapticsToggleMenuItem.Get() && !socket.fromSpsForAll) {
                         // Haptic receivers
 
                         // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length

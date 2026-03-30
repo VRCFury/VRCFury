@@ -1,10 +1,23 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using VF.Exceptions;
 using VF.Utils;
 
 namespace VF.Menu {
     internal static class ZawooDeleter {
+        [MenuItem(MenuItems.nukeZawoo, priority = MenuItems.nukeZawooPriority)]
+        private static void NukeZawooParts() {
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                Run(MenuUtils.GetSelectedAvatar());
+            });
+        }
+
+        [MenuItem(MenuItems.nukeZawoo, true)]
+        private static bool CheckNukeZawooParts() {
+            return MenuUtils.GetSelectedAvatar() != null;
+        }
+
         public static void Run(VFGameObject avatarObj) {
             var effects = CleanupAllZawooComponents(avatarObj, false);
             if (effects.Count == 0) {

@@ -21,6 +21,7 @@ namespace VF.Hooks {
             VRCSdkControlPanel.OnSdkPanelEnable += (_, _2) => {
                 if (VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder)) {
                     builder.OnSdkBuildStart += (_3, _4) => actuallyUploading = true;
+                    builder.OnSdkBuildError += (_3, _4) => actuallyUploading = false;
                     builder.OnSdkBuildFinish += (_3, _4) => actuallyUploading = false;
                 }
             };

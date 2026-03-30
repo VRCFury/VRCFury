@@ -281,7 +281,7 @@ namespace VF.Inspector {
         [CanBeNull]
         public static BakeResult Bake(VRCFuryHapticSocket socket) {
             var transform = socket.owner();
-            if (!HapticUtils.AssertValidScale(transform, "socket", shouldThrow: !socket.sendersOnly)) {
+            if (!HapticUtils.AssertValidScale(transform, "socket", shouldThrow: !socket.fromSpsForAll)) {
                 return null;
             }
 
@@ -301,7 +301,7 @@ namespace VF.Inspector {
                 var rootTags = new List<string>();
                 rootTags.Add(HapticUtils.TagTpsOrfRoot);
                 rootTags.Add(HapticUtils.TagSpsSocketRoot);
-                if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.sendersOnly) {
+                if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
                     switch (lightType) {
                         case VRCFuryHapticSocket.AddLight.Ring:
                             rootTags.Add(HapticUtils.TagSpsSocketIsRing);
@@ -333,7 +333,7 @@ namespace VF.Inspector {
             }
 
             VFGameObject lights = null;
-            if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.sendersOnly) {
+            if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
                 ForEachPossibleLight(transform, false, light => {
                     light.Destroy();
                 });
@@ -362,7 +362,7 @@ namespace VF.Inspector {
                 }
             }
             
-            if (EditorApplication.isPlaying && !socket.sendersOnly) {
+            if (EditorApplication.isPlaying && !socket.fromSpsForAll) {
                 var gizmo = socket.owner().AddComponent<VRCFurySocketGizmo>();
                 gizmo.pos = localPosition;
                 gizmo.rot = localRotation;

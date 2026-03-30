@@ -1,4 +1,5 @@
 ﻿using UnityEditor;
+using VF.Builder.Haptics;
 using VF.Utils;
 
 namespace Hooks {
@@ -6,6 +7,7 @@ namespace Hooks {
         [InitializeOnLoadMethod]
         private static void Init() {
             VFGameObject.getUploadRoots = obj => VFGameObject.GetRoots(obj.scene);
+            SpsConfigurer.getIsActuallyUploading = IsActuallyUploadingWorldHook.Get;
         }
     }
 }

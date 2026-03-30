@@ -25,6 +25,7 @@ namespace VF.Hooks {
             if (state == PlayModeStateChange.ExitingEditMode) {
                 triggerAddedThisPlaymode = false;
                 appliedThisPlayMode = false;
+                TmpFilePackage.Cleanup();
             }
         }
 

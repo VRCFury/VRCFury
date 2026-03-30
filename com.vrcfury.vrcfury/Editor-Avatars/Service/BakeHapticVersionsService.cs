@@ -18,8 +18,8 @@ namespace VF.Service {
 
         [FeatureBuilderAction]
         public void Apply() {
-            var hasOgbReceivers = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>().Any(c => !c.sendersOnly)
-                                  || avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any(c => !c.sendersOnly);
+            var hasOgbReceivers = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>().Any(c => !c.fromSpsForAll)
+                                  || avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any(c => !c.fromSpsForAll);
             hasOgbReceivers &= HapticsToggleMenuItem.Get();
 
             if (hasOgbReceivers) {

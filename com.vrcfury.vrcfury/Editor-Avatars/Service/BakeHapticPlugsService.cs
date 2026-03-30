@@ -120,7 +120,7 @@ namespace VF.Service {
             Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
             
             // Haptics
-            if (HapticsToggleMenuItem.Get() && !plug.sendersOnly) {
+            if (HapticsToggleMenuItem.Get() && !plug.fromSpsForAll) {
                 // Haptic Receivers
                 var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
                 var haptics = GameObjects.Create("Haptics", bakeRoot);

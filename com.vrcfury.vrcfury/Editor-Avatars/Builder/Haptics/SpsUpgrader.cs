@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Component;
+using VF.Exceptions;
 using VF.Inspector;
 using VF.Menu;
 using VF.Model;
@@ -14,7 +15,18 @@ using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Builder.Haptics {
     internal static class SpsUpgrader {
-        private const string dialogTitle = "VRCFury Legacy Haptics Upgrader";
+        [MenuItem(MenuItems.upgradeLegacyHaptics, priority = MenuItems.upgradeLegacyHapticsPriority)]
+        private static void MenuRun() {
+            VRCFExceptionUtils.ErrorDialogBoundary(Run);
+        }
+
+        [MenuItem(MenuItems.upgradeLegacyHaptics, true)]
+        private static bool MenuCheck() {
+            if (Selection.activeGameObject == null) return false;
+            return true;
+        }
+
+        private const string dialogTitle = "SPS Upgrade";
         
         public static void Run() {
             var avatarObject = MenuUtils.GetSelectedAvatar();
@@ -47,11 +59,6 @@ namespace VF.Builder.Haptics {
 
             var sv = EditorWindowFinder.GetWindows<SceneView>().FirstOrDefault();
             if (sv != null) sv.drawGizmos = true;
-        }
-
-        public static bool Check() {
-            if (Selection.activeGameObject == null) return false;
-            return true;
         }
 
         private static bool IsHapticContact(UnityEngine.Component c, List<string> collisionTags) {
@@ -95,7 +102,7 @@ namespace VF.Builder.Haptics {
                 if (dryRun) return null;
                 var plug = obj.AddComponent<VRCFuryHapticPlug>();
                 plug.enableSps = false;
-                plug.sendersOnly = mode == Mode.AutomatedForEveryone;
+                plug.fromSpsForAll = mode == Mode.AutomatedForEveryone;
                 return plug;
             }
             VRCFuryHapticSocket AddSocket(VFGameObject obj) {
@@ -105,7 +112,7 @@ namespace VF.Builder.Haptics {
                 var socket = obj.AddComponent<VRCFuryHapticSocket>();
                 socket.addLight = VRCFuryHapticSocket.AddLight.None;
                 socket.addMenuItem = false;
-                socket.sendersOnly = mode == Mode.AutomatedForEveryone;
+                socket.fromSpsForAll = mode == Mode.AutomatedForEveryone;
                 return socket;
             }
 

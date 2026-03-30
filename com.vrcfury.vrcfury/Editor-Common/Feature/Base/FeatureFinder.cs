@@ -86,9 +86,7 @@ namespace VF.Feature.Base {
 
                 builderType = GetBuilderType(modelType);
                 if (builderType == null) {
-                    throw new RenderFeatureEditorException(
-                        "This feature has been removed in your version of VRCFury. It may have been replaced with a new VRCFury component."
-                    );
+                    throw new RenderFeatureEditorException("This component is not available in your project type, and will be ignored.");
                 }
 
                 var titleAttribute = builderType.GetCustomAttribute<FeatureTitleAttribute>();

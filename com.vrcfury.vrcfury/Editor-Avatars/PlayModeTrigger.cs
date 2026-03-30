@@ -91,7 +91,7 @@ namespace VF {
                     VRCFExceptionUtils.ErrorDialogBoundary(() => {
                         try {
                             var bakeResult = VRCFuryHapticSocketEditor.Bake(socket);
-                            HideAnnoyingGizmosService.Hide(bakeResult.bakeRoot);
+                            VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
                         } catch (Exception e) {
                             throw new ExceptionWithCause($"Failed to bake detached SPS Socket: {socket.owner().GetPath()}", e);
                         }
@@ -114,7 +114,7 @@ namespace VF {
                                 foreach (var renderer in bakeResult.renderers) {
                                     saver.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
                                 }
-                                HideAnnoyingGizmosService.Hide(bakeResult.bakeRoot);
+                                VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
                             }
                         } catch (Exception e) {
                             throw new ExceptionWithCause($"Failed to bake detached SPS Plug: {plug.owner().GetPath()}", e);
