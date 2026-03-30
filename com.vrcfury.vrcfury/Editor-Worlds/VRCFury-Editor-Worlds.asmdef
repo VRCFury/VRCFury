@@ -31,36 +31,6 @@
     ],
     "versionDefines": [
         {
-            "name": "com.vrchat.base",
-            "expression": "3.1.12",
-            "define": "VRC_NEW_HOOK_API"
-        },
-        {
-            "name": "com.vrchat.base",
-            "expression": "3.3.0",
-            "define": "VRC_NEW_PUBLIC_SDK"
-        },
-        {
-            "name": "com.vrchat.base",
-            "expression": "3.0.8",
-            "define": "VRCSDK_HAS_DRIVER_COPY"
-        },
-        {
-            "name": "com.vrchat.base",
-            "expression": "3.5.2",
-            "define": "VRCSDK_HAS_ANIMATOR_PLAY_AUDIO"
-        },
-        {
-            "name": "com.vrchat.base",
-            "expression": "3.5.2",
-            "define": "VRCSDK_HAS_HEAD_CHOP"
-        },
-        {
-            "name": "com.vrchat.base",
-            "expression": "3.7.0",
-            "define": "VRCSDK_HAS_VRCCONSTRAINTS"
-        },
-        {
             "name": "com.vrchat.worlds",
             "expression": "",
             "define": "VRCF_WORLDS"

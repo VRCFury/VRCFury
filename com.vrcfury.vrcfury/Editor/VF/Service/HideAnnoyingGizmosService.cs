@@ -4,6 +4,7 @@ using VF.Builder;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 

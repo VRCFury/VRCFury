@@ -4,9 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
-using UnityEngine.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Exceptions;
@@ -15,8 +13,6 @@ using VF.Component;
 using VF.Menu;
 using VF.Service;
 using VF.Utils;
-using VRC.Dynamics;
-using VRC.SDKBase.Validation.Performance;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]

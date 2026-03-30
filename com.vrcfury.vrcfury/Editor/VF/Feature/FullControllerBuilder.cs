@@ -75,7 +75,7 @@ namespace VF.Feature {
                     missingAssets.Add(c.controller);
                     continue;
                 }
-                var copy = VFController.CopyAndLoadController(source, c.type);
+                var copy = VFControllerWithVrcType.CopyAndLoadController(source, c.type);
                 if (copy != null) {
                     fromControllers.Add(copy);
                 }
@@ -412,12 +412,14 @@ namespace VF.Feature {
                     smoothedDict[rewritten] = smoothed;
                 }
 
-                to.RewriteParameters(name => {
-                    if (smoothedDict.TryGetValue(name, out var smoothed)) {
-                        return smoothed;
-                    }
-                    return name;
-                }, includeWrites: false, includeCopyDriverReads: false, limitToLayers: myLayers);
+                VFControllerAvatarExtensions.doNotRewriteCopyDriverSources(() => {
+                    to.RewriteParameters(name => {
+                        if (smoothedDict.TryGetValue(name, out var smoothed)) {
+                            return smoothed;
+                        }
+                        return name;
+                    }, includeWrites: false, limitToLayers: myLayers);
+                });
             }
         }
 

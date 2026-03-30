@@ -156,7 +156,7 @@ namespace VF.Builder {
         [CanBeNull]
         public static VFGameObject GuessAvatarObject(VFGameObject obj) {
             if (obj == null) return null;
-            return obj.GetComponentInSelfOrParent<VRCAvatarDescriptor>()?.owner();
+            return obj.GetComponentsInSelfAndParents<VRCAvatarDescriptor>().LastOrDefault()?.owner();
         }
         
         [CanBeNull]

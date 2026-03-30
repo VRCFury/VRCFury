@@ -28,7 +28,7 @@ namespace VF.Feature {
         
         [FeatureBuilderAction(FeatureOrder.TpsScaleFix)]
         public void Apply() {
-            if (!IsFirst()) {
+            if (!globals.IsFirst(this)) {
                 return;
             }
 

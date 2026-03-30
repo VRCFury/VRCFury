@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -8,7 +7,6 @@ using VF.Feature.Base;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Utils;
-using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
 

@@ -4,8 +4,7 @@
   "references": [
     "VRCFury",
     "VRC.SDKBase.Editor.BuildPipeline",
-    "VRC.SDKBase.Editor",
-    "VRC.SDK3A.Editor"
+    "VRC.SDKBase.Editor"
   ],
   "includePlatforms": [
     "Editor"
@@ -16,7 +15,6 @@
   "precompiledReferences": [
     "System.Collections.Immutable.dll",
     "VRCSDKBase.dll",
-    "VRCSDK3A.dll",
     "VRC.Dynamics.dll",
     "VRC.SDK3.Dynamics.PhysBone.dll",
     "VRC.SDK3.Dynamics.Contact.dll",
@@ -39,33 +37,8 @@
     },
     {
       "name": "com.vrchat.base",
-      "expression": "3.0.8",
-      "define": "VRCSDK_HAS_DRIVER_COPY"
-    },
-    {
-      "name": "com.vrchat.base",
-      "expression": "3.5.2",
-      "define": "VRCSDK_HAS_ANIMATOR_PLAY_AUDIO"
-    },
-    {
-      "name": "com.vrchat.base",
-      "expression": "3.5.2",
-      "define": "VRCSDK_HAS_HEAD_CHOP"
-    },
-    {
-      "name": "com.vrchat.base",
       "expression": "3.7.0",
       "define": "VRCSDK_HAS_VRCCONSTRAINTS"
-    },
-    {
-      "name": "com.vrchat.worlds",
-      "expression": "",
-      "define": "VRCF_WORLDS"
-    },
-    {
-      "name": "com.vrchat.avatars",
-      "expression": "",
-      "define": "VRCF_AVATARS"
     }
   ],
   "noEngineReferences": false

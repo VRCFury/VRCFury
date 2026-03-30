@@ -6,12 +6,14 @@ using UnityEngine.SceneManagement;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
-namespace VF.Builder {
+namespace VF.Utils {
     /**
      * VFGameObject is a wrapper around Transform and GameObject, combining the two into one object we can use
      * everywhere, and providing helper methods that are commonly used.
      */
     internal class VFGameObject {
+        public static Action<VFGameObject> onPreDestroy;
+
         private readonly GameObject _gameObject;
         private VFGameObject(GameObject gameObject) {
             _gameObject = gameObject;
@@ -264,6 +266,11 @@ namespace VF.Builder {
 
         public bool IsAssetTransform() {
             return !transform.gameObject.scene.IsValid();
+        }
+
+        public void Destroy() {
+            onPreDestroy?.Invoke(this);
+            Object.DestroyImmediate(this);
         }
     }
 }

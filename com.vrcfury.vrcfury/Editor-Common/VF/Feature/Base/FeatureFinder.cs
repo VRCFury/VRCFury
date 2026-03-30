@@ -6,11 +6,8 @@ using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
-using VF.Builder;
-using VF.Component;
 using VF.Injector;
 using VF.Inspector;
-using VF.Model;
 using VF.Model.Feature;
 using VF.Utils;
 
@@ -27,28 +24,7 @@ namespace VF.Feature.Base {
             }
             //Debug.Log("VRCFury loaded " + output.Count + " builder types");
             return output;
-        }); 
-
-        private static bool AllowRootFeatures(VFGameObject gameObject, [CanBeNull] VFGameObject avatarObject) {
-            if (gameObject == avatarObject) {
-                return true;
-            }
-
-            VFGameObject checkRoot;
-            if (avatarObject == null) {
-                checkRoot = gameObject.root;
-            } else {
-                checkRoot = gameObject.GetSelfAndAllParents()
-                    .First(o => o.parent == avatarObject);
-            }
-
-            if (checkRoot == null) {
-                return false;
-            }
-
-            return checkRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()
-                .All(c => c is VRCFuryComponent || c is Transform);
-        }
+        });
 
         public class FoundMenuItem {
             public string title;
@@ -89,55 +65,35 @@ namespace VF.Feature.Base {
                 .ToArray();
         }
 
+        public static Action<VFGameObject,Type,VRCFuryInjector> onInjectEditor;
         public delegate VisualElement RenderTitleAndBody(string title, VisualElement bodyContent, [CanBeNull] Type builderType);
         public static VisualElement RenderFeatureEditor(SerializedProperty prop, RenderTitleAndBody RenderFeatureEditor) {
             var title = "???";
-            
+            Type builderType = null;
+
             try {
                 var gameObject = prop.serializedObject.GetGameObject();
                 if (gameObject == null) {
-                    return RenderFeatureEditor(
-                        title,
-                        VRCFuryEditorUtils.Error("Failed to find game object"),
-                        null
-                    );
+                    throw new RenderFeatureEditorException("Failed to find game object");
                 }
-                var avatarObject = VRCAvatarUtils.GuessAvatarObject(gameObject) ?? gameObject.root;
 
                 var modelType = VRCFuryEditorUtils.GetManagedReferenceType(prop);
                 if (modelType == null) {
-                    return RenderFeatureEditor(
-                        title,
-                        VRCFuryEditorUtils.Error("VRCFury doesn't have code for this feature. Is your VRCFury up to date?"),
-                        null
-                    );
+                    throw new RenderFeatureEditorException("VRCFury doesn't have code for this feature. Is your VRCFury up to date?");
                 }
+
                 title = modelType.Name;
 
-                var builderType = GetBuilderType(modelType);
+                builderType = GetBuilderType(modelType);
                 if (builderType == null) {
-                    return RenderFeatureEditor(
-                        title,
-                        VRCFuryEditorUtils.Error(
-                            "This feature has been removed in your " +
-                            "version of VRCFury. It may have been replaced with a new feature, check the + menu."
-                        ),
-                        null
+                    throw new RenderFeatureEditorException(
+                        "This feature has been removed in your version of VRCFury. It may have been replaced with a new VRCFury component."
                     );
                 }
 
                 var titleAttribute = builderType.GetCustomAttribute<FeatureTitleAttribute>();
                 if (titleAttribute != null) {
                     title = titleAttribute.Title;
-                }
-
-                var allowRootFeatures = AllowRootFeatures(gameObject, avatarObject);
-                if (builderType.GetCustomAttribute<FeatureRootOnlyAttribute>() != null && !allowRootFeatures) {
-                    return RenderFeatureEditor(title, VRCFuryEditorUtils.Error( 
-                        "To avoid abuse by prefab creators, this component can only be placed on the root object" +
-                        " containing the avatar descriptor, OR a child object containing ONLY vrcfury components."),
-                        builderType
-                    );
                 }
 
                 var staticEditorMethod = builderType.GetMethods(BindingFlags.Static | BindingFlags.Public)
@@ -151,14 +107,16 @@ namespace VF.Feature.Base {
                         builderType
                     );
                 }
-                
+
                 var injector = new VRCFuryInjector();
                 injector.Set(prop.GetObject());
                 injector.Set(prop);
-                injector.Set("avatarObject", avatarObject);
+                onInjectEditor?.Invoke(gameObject, builderType, injector);
                 injector.Set("componentObject", gameObject);
                 var body = (VisualElement)injector.FillMethod(staticEditorMethod);
                 return RenderFeatureEditor(title, body, builderType);
+            } catch(RenderFeatureEditorException e) {
+                return RenderFeatureEditor(title, VRCFuryEditorUtils.Error(e.Message), builderType);
             } catch(Exception e) {
                 Debug.LogException(e);
                 return RenderFeatureEditor(
@@ -174,7 +132,8 @@ namespace VF.Feature.Base {
             return modelToBuilder.Value.TryGetValue(modelType, out var builderType) ? builderType : null;
         }
 
-        public static FeatureBuilder GetBuilder(FeatureModel model, VFGameObject gameObject, VRCFuryInjector injector, VFGameObject avatarObject) {
+        public static Action<VFGameObject,Type,string> onGetBuilder;
+        public static FeatureBuilder GetBuilder(FeatureModel model, VFGameObject gameObject, VRCFuryInjector injector) {
             if (model == null) {
                 throw new Exception(
                     "VRCFury was requested to use a feature that it didn't have code for. Is your VRCFury up to date? If you are still receiving this after updating, you may need to re-import the prop package which caused this issue.");
@@ -190,11 +149,8 @@ namespace VF.Feature.Base {
             if (titleAttribute != null) {
                 title = titleAttribute.Title;
             }
-            
-            var allowRootFeatures = AllowRootFeatures(gameObject, avatarObject);
-            if (builderType.GetCustomAttribute<FeatureRootOnlyAttribute>() != null && !allowRootFeatures) {
-                throw new Exception($"This VRCFury component ({title}) is only allowed on the root object of the avatar, but was found in {gameObject.GetPath(avatarObject)}.");
-            }
+
+            onGetBuilder?.Invoke(gameObject, builderType, title);
 
             var builder = (FeatureBuilder)injector.CreateAndFillObject(builderType);
             builder.GetType().VFField("model")?.SetValue(builder, model);
@@ -203,4 +159,3 @@ namespace VF.Feature.Base {
     }
 
 }
-

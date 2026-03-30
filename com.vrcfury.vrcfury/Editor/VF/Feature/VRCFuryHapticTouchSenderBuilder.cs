@@ -7,6 +7,7 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Service;
+using VF.Utils;
 
 namespace VF.Feature {
     [VFService]

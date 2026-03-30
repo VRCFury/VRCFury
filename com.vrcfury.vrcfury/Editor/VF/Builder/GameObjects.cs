@@ -1,4 +1,5 @@
 using UnityEngine;
+using VF.Utils;
 
 namespace VF.Builder {
     internal static class GameObjects {

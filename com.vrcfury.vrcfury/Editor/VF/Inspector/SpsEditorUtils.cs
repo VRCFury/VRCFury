@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Haptics;
+using VF.Utils;
 
 namespace VF.Inspector {
     internal static class SpsEditorUtils {

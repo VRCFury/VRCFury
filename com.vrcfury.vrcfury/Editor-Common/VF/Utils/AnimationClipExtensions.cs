@@ -6,8 +6,6 @@ using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
-using VF.Builder;
-using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     internal static class AnimationClipExtensions {
@@ -298,20 +296,6 @@ namespace VF.Utils {
             clip.SetCurve(binding, curve);
         }
 
-        public static void SetCurve(this AnimationClip clip, Object componentOrObject, string propertyName, FloatOrObjectCurve curve) {
-            VFGameObject owner;
-            if (componentOrObject is UnityEngine.Component c) {
-                owner = c.owner();
-            } else if (componentOrObject is GameObject o) {
-                owner = o;
-            } else {
-                return;
-            }
-            var avatarObject = VRCAvatarUtils.GuessAvatarObject(owner);
-            var path = owner.GetPath(avatarObject);
-            clip.SetCurve(path, componentOrObject.GetType(), propertyName, curve);
-        }
-
         public static void SetLengthHolder(this AnimationClip clip, float length) {
             clip.SetCurve(
                 "__vrcf_length",
@@ -319,21 +303,6 @@ namespace VF.Utils {
                 "m_IsActive",
                 length == 0 ? null : FloatOrObjectCurve.DummyFloatCurve(length)
             );
-        }
-        
-        public static void SetEnabled(this AnimationClip clip, Object componentOrObject, FloatOrObjectCurve enabledCurve) {
-            string propertyName = (componentOrObject is GameObject) ? "m_IsActive" : "m_Enabled";
-            clip.SetCurve(componentOrObject, propertyName, enabledCurve);
-        }
-        
-        public static void SetEnabled(this AnimationClip clip, Object componentOrObject, bool enabled) {
-            clip.SetEnabled(componentOrObject, enabled ? 1 : 0);
-        }
-
-        public static void SetScale(this AnimationClip clip, VFGameObject obj, Vector3 scale) {
-            clip.SetCurve((Transform)obj, "m_LocalScale.x", scale.x);
-            clip.SetCurve((Transform)obj, "m_LocalScale.y", scale.y);
-            clip.SetCurve((Transform)obj, "m_LocalScale.z", scale.z);
         }
 
         public static int GetLengthInFrames(this AnimationClip clip) {

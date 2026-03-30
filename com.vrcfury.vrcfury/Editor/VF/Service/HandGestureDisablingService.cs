@@ -48,12 +48,14 @@ namespace VF.Service {
                 });
             }
 
-            fx.RewriteParameters(param => {
-                if (RemoveHandGesturesBuilder.GestureParams.Contains(param)) {
-                    return GetBuffered(param);
-                }
-                return param;
-            }, includeWrites: false, includeCopyDriverReads: false);
+            VFControllerAvatarExtensions.doNotRewriteCopyDriverSources(() => {
+                fx.RewriteParameters(param => {
+                    if (RemoveHandGesturesBuilder.GestureParams.Contains(param)) {
+                        return GetBuffered(param);
+                    }
+                    return param;
+                }, includeWrites: false);
+            });
 
             doAtEnd();
         }

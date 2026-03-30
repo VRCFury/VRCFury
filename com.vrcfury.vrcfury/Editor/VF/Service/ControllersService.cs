@@ -33,7 +33,7 @@ namespace VF.Service {
                 // It is unsafe to mess with animation clips after the first preprocessor hook!!
                 ctrl = new VFController(eac);
             } else {
-                if (existingController != null) ctrl = VFController.CopyAndLoadController(existingController, type);
+                if (existingController != null) ctrl = VFControllerWithVrcType.CopyAndLoadController(existingController, type);
                 if (ctrl == null) ctrl = new VFController(VrcfObjectFactory.Create<AnimatorController>());
                 foreach (var layer in ctrl.GetLayers()) {
                     layerSourceService.SetSource(layer,

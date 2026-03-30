@@ -3,6 +3,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Utils;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Service {

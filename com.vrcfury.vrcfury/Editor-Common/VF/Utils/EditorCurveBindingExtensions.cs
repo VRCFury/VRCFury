@@ -3,10 +3,6 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
-using VF.Builder;
-using VF.Service;
-using VRC.SDK3.Avatars.Components;
-using VRC.SDKBase.Validation.Performance;
 
 namespace VF.Utils {
     internal static class EditorCurveBindingExtensions {

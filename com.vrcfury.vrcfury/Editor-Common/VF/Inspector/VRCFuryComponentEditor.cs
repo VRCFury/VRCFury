@@ -1,9 +1,9 @@
 using System;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -12,9 +12,18 @@ using VF.Component;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Utils;
-using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {
+    [CustomEditor(typeof(VRCFuryComponent), true)]
+    internal class VRCFuryComponentEditor : VRCFuryComponentEditor<VRCFuryComponent> {
+        public static Func<UnityEngine.Component,string> getDebugLine;
+        public static Action<VFGameObject, VisualElement> renderWarnings;
+
+        protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryComponent target) {
+            return VRCFuryEditorUtils.Error("This VRCFury component is not available in this type of project");
+        }
+    }
+
     internal class VRCFuryComponentEditor<T> : UnityEditor.Editor where T : VRCFuryComponent {
         private GameObject dummyObject;
 
@@ -26,14 +35,14 @@ namespace VF.Inspector {
                 Debug.LogException(new Exception("Failed to render editor", e));
                 content = VRCFuryEditorUtils.Error("Failed to render editor (see unity console)");
             }
-
-            var avatarObject = VRCAvatarUtils.GuessAvatarObject(target as UnityEngine.Component);
-            var versionLabel = new Label(VrcfDebugLine.GetOutputString(avatarObject));
-            versionLabel.AddToClassList("vfVersionLabel");
             
             var contentWithVersion = new VisualElement();
             contentWithVersion.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
-            contentWithVersion.Add(versionLabel);
+            if (VRCFuryComponentEditor.getDebugLine != null) {
+                var versionLabel = new Label(VRCFuryComponentEditor.getDebugLine.Invoke(target as UnityEngine.Component));
+                versionLabel.AddToClassList("vfVersionLabel");
+                contentWithVersion.Add(versionLabel);
+            }
             contentWithVersion.Add(content);
             return contentWithVersion;
         }
@@ -101,32 +110,13 @@ namespace VF.Inspector {
             
             container.Add(body);
 
-            var editingPrefab = UnityCompatUtils.IsEditingPrefab();
-
             container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
                 var warning = new VisualElement();
 
                 if (c == null) return warning;
 
-                var descriptors = c.owner().GetComponentsInSelfAndParents<VRCAvatarDescriptor>();
-                if (!editingPrefab && !descriptors.Any()) {
-                    var animators = c.owner().GetComponentsInSelfAndParents<Animator>();
-                    if (animators.Any()) {
-                        warning.Add(VRCFuryEditorUtils.Error(
-                            "Your avatar does not have a VRC Avatar Descriptor, and thus this component will not do anything! " +
-                            "Make sure that your avatar can actually be uploaded using the VRCSDK before attempting to add VRCFury things to it."));
-                    } else {
-                        warning.Add(VRCFuryEditorUtils.Error(
-                            "This VRCFury component is not placed on an avatar, and thus will not do anything! " +
-                            "If you intended to include this in your avatar, make sure you've placed it within your avatar's " +
-                            "object, and not just alongside it in the scene."));
-                    }
-                }
-
-                if (descriptors.Length > 1) {
-                    warning.Add(VRCFuryEditorUtils.Error(
-                        "There are multiple avatar descriptors in this hierarchy. Each avatar should only have one avatar descriptor on the avatar root." +
-                        " This may cause issues in this inspector or during your avatar build.\n\n" + descriptors.Select(d => d.owner().GetPath()).Join('\n')));
+                if (VRCFuryComponentEditor.renderWarnings != null) {
+                    VRCFuryComponentEditor.renderWarnings(c.owner(), warning);
                 }
 
                 var hasDelete = v is VRCFury z && z.GetAllFeatures().OfType<DeleteDuringUpload>().Any();
@@ -147,7 +137,8 @@ namespace VF.Inspector {
             dummyObject = new GameObject();
             dummyObject.SetActive(false);
             dummyObject.hideFlags |= HideFlags.HideAndDontSave;
-            var copy = dummyObject.AddComponent<C>();
+            // Don't use AddComponent<C>, since C might not be the concrete type
+            var copy = (C)dummyObject.AddComponent(original.GetType());
             UnitySerializationUtils.CloneSerializable(original, copy);
             return copy;
         }

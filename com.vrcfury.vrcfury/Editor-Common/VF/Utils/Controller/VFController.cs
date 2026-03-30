@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
-using VF.Service;
-using VRC.SDK3.Avatars.Components;
-using VRC.SDKBase;
 
 namespace VF.Utils.Controller {
     internal class VFController {
@@ -149,7 +147,7 @@ namespace VF.Utils.Controller {
         }
 
         [CanBeNull]
-        public static VFControllerWithVrcType CopyAndLoadController(RuntimeAnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType type) {
+        public static VFController CopyAndLoadController(RuntimeAnimatorController ctrl) {
             if (ctrl == null) {
                 return null;
             }
@@ -169,7 +167,7 @@ namespace VF.Utils.Controller {
                 return null;
             }
             
-            var output = new VFControllerWithVrcType(ac, type);
+            var output = new VFController(ac);
             output.RemoveInvalidParameters();
             output.FixNullStateMachines();
             output.FixBadTransitions();
@@ -196,8 +194,7 @@ namespace VF.Utils.Controller {
             }
             
             output.FixLayer0Weight();
-            output.ApplyBaseMask(type);
-            NoBadControllerParamsService.RemoveWrongParamTypes(output);
+            output.RemoveWrongParamTypes();
             return output;
         }
 
@@ -226,57 +223,6 @@ namespace VF.Utils.Controller {
             var layer0 = GetLayer(0);
             if (layer0 == null) return;
             layer0.weight = 1;
-        }
-
-        /**
-         * VRCF's handles masks by "applying" the base mask to every mask in the controller. This makes things like
-         * merging controllers and features much easier. Later on, we recalculate a new base mask in FixMasksBuilder. 
-         */
-        private void ApplyBaseMask(VRCAvatarDescriptor.AnimLayerType type) {
-            var layer0 = GetLayer(0);
-            if (layer0 == null) return;
-
-            var baseMask = layer0.mask;
-            if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
-                if (baseMask == null) {
-                    baseMask = AvatarMaskExtensions.DefaultFxMask();
-                } else {
-                    baseMask = baseMask.Clone();
-                }
-            } else if (type == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                if (baseMask == null) {
-                    // Technically, we should throw here. The VRCSDK will complain and prevent the user from uploading
-                    // until they fix this. But we fix it here for them temporarily so they can use play mode for now.
-                    // Gesture controllers merged using Full Controller with no base mask will slip through and be allowed
-                    // by this.
-                    baseMask = AvatarMaskExtensions.Empty();
-                    baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
-                    baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
-                } else {
-                    baseMask = baseMask.Clone();
-                    // If the base mask is just one hand, assume that they put in controller with just a left and right hand layer,
-                    // and meant to have both in the base mask.
-                    if (baseMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers))
-                        baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
-                    if (baseMask.GetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers))
-                        baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
-                }
-            } else {
-                // VRChat does not use the base mask on any other controller types
-                return;
-            }
-
-            // Because of some unity bug, ONLY the muscle part of the base mask is actually applied to the child layers
-            // The transform part of the base mask DOES NOT impact lower layers!!
-            baseMask.AllowAllTransforms();
-
-            foreach (var layer in GetLayers()) {
-                if (layer.mask == null) {
-                    layer.mask = baseMask.Clone();
-                } else {
-                    layer.mask.IntersectWith(baseMask);
-                }
-            }
         }
 
         private void RemoveBadBehaviours() {
@@ -370,7 +316,8 @@ namespace VF.Utils.Controller {
             ctrl.parameters = ctrl.parameters.Where(p => VRCFEnumUtils.IsValid(p.type)).ToArray();
         }
 
-        public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, bool includeCopyDriverReads = true, ICollection<VFLayer> limitToLayers = null) {
+        public static Action<VFLayer[],bool,Func<string,string>> onRewriteParameters;
+        public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<VFLayer> limitToLayers = null) {
             string RewriteParamName(string str) {
                 if (string.IsNullOrEmpty(str)) return str;
                 return rewriteParamNameNullUnsafe(str);
@@ -406,30 +353,8 @@ namespace VF.Utils.Controller {
                 }
                 state.Dirty();
             }
-            
-            foreach (var b in affectsLayers.SelectMany(layer => layer.allBehaviours)) {
-                // VRCAvatarParameterDriver
-                if (b is VRCAvatarParameterDriver oldB) {
-                    foreach (var p in oldB.parameters) {
-                        if (includeWrites) {
-                            p.name = RewriteParamName(p.name);
-                        }
-#if VRCSDK_HAS_DRIVER_COPY
-                        if (p.type == VRC_AvatarParameterDriver.ChangeType.Copy && includeCopyDriverReads) {
-                            p.source = RewriteParamName(p.source);
-                        }
-#endif
-                    }
-                    b.Dirty();
-                }
 
-                // VRCAnimatorPlayAudio
-#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-                if (b is VRCAnimatorPlayAudio audio) {
-                    audio.ParameterName = RewriteParamName(audio.ParameterName);
-                }
-#endif
-            }
+            onRewriteParameters?.Invoke(affectsLayers, includeWrites, RewriteParamName);
 
             // Parameter Animations
             if (includeWrites) {
@@ -478,6 +403,245 @@ namespace VF.Utils.Controller {
             foreach (var state in layers.SelectMany(l => l.allStates)) {
                 state.motion = RewriteMotion(state.motion);
             }
+        }
+
+        public void RemoveWrongParamTypes() {
+            var badBool = new Lazy<string>(() => _NewBool("InvalidParam"));
+            var badFloat = new Lazy<string>(() => _NewFloat("InvalidParamFloat"));
+            var badThreshold = new Lazy<string>(() => _NewBool("BadIntThreshold", def: true));
+            AnimatorCondition InvalidCondition() => new AnimatorCondition {
+                mode = AnimatorConditionMode.If,
+                parameter = badBool.Value,
+            };
+            AnimatorCondition BadThresholdCondition() => new AnimatorCondition {
+                mode = AnimatorConditionMode.If,
+                parameter = badThreshold.Value,
+            };
+
+            var paramTypes = parameters
+                .ToImmutableDictionary(p => p.name, p => p.type);
+            foreach (var layer in GetLayers()) {
+                layer.RewriteConditions(condition => {
+                    var mode = condition.mode;
+
+                    if (!paramTypes.TryGetValue(condition.parameter, out var type)) {
+                        return InvalidCondition();
+                    }
+
+                    if (type == AnimatorControllerParameterType.Bool || type == AnimatorControllerParameterType.Trigger) {
+                        // When you use a bool with an incorrect mode, the editor just always says "True",
+                        // so let's just actually make it do that instead of converting it to InvalidParamType
+                        if (mode != AnimatorConditionMode.If && mode != AnimatorConditionMode.IfNot) {
+                            condition.mode = AnimatorConditionMode.If;
+                            return condition;
+                        }
+                    } else if (type == AnimatorControllerParameterType.Int) {
+                        if (mode != AnimatorConditionMode.Equals
+                            && mode != AnimatorConditionMode.NotEqual
+                            && mode != AnimatorConditionMode.Greater
+                            && mode != AnimatorConditionMode.Less) {
+                            return InvalidCondition();
+                        }
+
+                        // When you use an int with a float threshold, the editor shows the floor value,
+                        // but evaluates the condition using the original value. Let's fix that so the editor
+                        // value is actually the one that is used.
+                        var floored = (int)Math.Floor(condition.threshold);
+                        if (condition.threshold != floored) {
+                            condition.threshold = floored;
+                            return AnimatorTransitionBaseExtensions.Rewritten.And(
+                                condition,
+                                BadThresholdCondition()
+                            );
+                        }
+                    } else if (type == AnimatorControllerParameterType.Float) {
+                        if (mode != AnimatorConditionMode.Greater && mode != AnimatorConditionMode.Less) {
+                            return InvalidCondition();
+                        }
+                    }
+
+                    return condition;
+                });
+            }
+
+            bool Exists(string p) =>
+                p != null && paramTypes.ContainsKey(p);
+            bool IsFloat(string p) =>
+                p != null && paramTypes.TryGetValue(p, out var type) && type == AnimatorControllerParameterType.Float;
+
+            // Bad tree weights are weird.
+            // * If the parameter doesn't exist, the value is always 0
+            // * Otherwise, if the parameter is not a float, it uses the first float in the controller
+            //   If there is no other float, the value is always 0
+            foreach (var tree in new AnimatorIterator.Trees().From(this)) {
+                tree.RewriteParameters(p => {
+                    if (paramTypes.TryGetValue(p, out var type)) {
+                        if (type == AnimatorControllerParameterType.Float) {
+                            // It's valid
+                            return p;
+                        } else {
+                            // It exists but isn't a float, use the first float in the controller
+                            var firstFloat = parameters
+                                .FirstOrDefault(pr => pr.type == AnimatorControllerParameterType.Float);
+                            if (firstFloat != null) {
+                                return firstFloat.name;
+                            } else {
+                                return badFloat.Value;
+                            }
+                        }
+                    } else {
+                        // It doesn't exist
+                        return badFloat.Value;
+                    }
+                });
+            }
+
+            // Fix bad state fields
+            // Unity treats bad state fields very strangely.
+            // * If the parameter doesn't exist, it's as if the checkbox isn't even checked
+            // * Otherwise, if the parameter is the wrong type, its value gets used anyways
+            foreach (var state in new AnimatorIterator.States().From(this)) {
+                if (state.mirrorParameterActive && !Exists(state.mirrorParameter)) {
+                    state.mirrorParameterActive = false;
+                }
+                if (state.speedParameterActive && !Exists(state.speedParameter)) {
+                    state.speedParameterActive = false;
+                }
+                if (state.timeParameterActive && !Exists(state.timeParameter)) {
+                    state.timeParameterActive = false;
+                }
+                if (state.cycleOffsetParameterActive && !Exists(state.cycleOffsetParameter)) {
+                    state.cycleOffsetParameterActive = false;
+                }
+            }
+
+            Rewrite(AnimationRewriter.RewriteBinding(binding => {
+                if (binding.GetPropType() == EditorCurveBindingType.Aap && !IsFloat(binding.propertyName)) {
+                    return null;
+                }
+                return binding;
+            }));
+        }
+
+        /**
+         * "Upgrades" all parameters to the highest "type" needed for all usages, then makes all usages
+         * work properly.
+         *
+         * For instance, if a parameter is used in both If and as a direct blendtree parameter,
+         * it will be set to type Float, and the If will be converted to Greater than 0.
+         */
+        public void UpgradeWrongParamTypes() {
+            // Figure out what types each param needs to be (at least)
+            var paramTypes = new Dictionary<string, AnimatorControllerParameterType>();
+            void UpgradeType(string name, AnimatorControllerParameterType newType) {
+                if (!paramTypes.TryGetValue(name, out var type)) type = newType;
+                else if (newType == AnimatorControllerParameterType.Float) type = newType;
+                else if (newType == AnimatorControllerParameterType.Int && (type == AnimatorControllerParameterType.Bool || type == AnimatorControllerParameterType.Trigger)) type = newType;
+                else if (newType == AnimatorControllerParameterType.Bool && type == AnimatorControllerParameterType.Trigger) type = newType;
+                paramTypes[name] = type;
+            }
+            foreach (var p in parameters) {
+                UpgradeType(p.name, p.type);
+            }
+            foreach (var condition in layers.SelectMany(layer => layer.allTransitions).SelectMany(transition => transition.conditions)) {
+                var mode = condition.mode;
+                if (mode == AnimatorConditionMode.Equals || mode == AnimatorConditionMode.NotEqual) {
+                    UpgradeType(condition.parameter, AnimatorControllerParameterType.Int);
+                }
+                if (mode == AnimatorConditionMode.Greater || mode == AnimatorConditionMode.Less) {
+                    if (condition.threshold % 1 == 0) {
+                        UpgradeType(condition.parameter, AnimatorControllerParameterType.Int);
+                    } else {
+                        UpgradeType(condition.parameter, AnimatorControllerParameterType.Float);
+                    }
+                }
+            }
+            foreach (var tree in new AnimatorIterator.Trees().From(this)) {
+                tree.RewriteParameters(p => {
+                    UpgradeType(p, AnimatorControllerParameterType.Float);
+                    return p;
+                });
+            }
+            foreach (var state in new AnimatorIterator.States().From(this)) {
+                if (state.speedParameterActive)
+                    UpgradeType(state.speedParameter, AnimatorControllerParameterType.Float);
+                if (state.timeParameterActive)
+                    UpgradeType(state.timeParameter, AnimatorControllerParameterType.Float);
+                if (state.cycleOffsetParameterActive)
+                    UpgradeType(state.cycleOffsetParameter, AnimatorControllerParameterType.Float);
+            }
+            foreach (var clip in new AnimatorIterator.Clips().From(this)) {
+                foreach (var binding in clip.GetFloatBindings()) {
+                    if (binding.GetPropType() == EditorCurveBindingType.Aap) {
+                        UpgradeType(binding.propertyName, AnimatorControllerParameterType.Float);
+                    }
+                }
+            }
+
+            // Change the param types
+            parameters = parameters.Select(p => {
+                if (paramTypes.TryGetValue(p.name, out var type)) {
+                    var oldDefault = p.GetDefaultValueAsFloat();
+                    p.type = type;
+                    p.defaultBool = oldDefault > 0;
+                    p.defaultInt = (int)Math.Round(oldDefault);
+                    p.defaultFloat = oldDefault;
+                }
+                return p;
+            }).ToArray();
+
+            // Fix all of the usages
+            foreach (var layer in GetLayers()) {
+                layer.RewriteConditions(c => {
+                    if (!paramTypes.TryGetValue(c.parameter, out var type)) {
+                        return c;
+                    }
+                    if (type == AnimatorControllerParameterType.Int || type == AnimatorControllerParameterType.Float) {
+                        if (c.mode == AnimatorConditionMode.If) {
+                            c.mode = AnimatorConditionMode.NotEqual;
+                            c.threshold = 0;
+                        }
+                        if (c.mode == AnimatorConditionMode.IfNot) {
+                            c.mode = AnimatorConditionMode.Equals;
+                            c.threshold = 0;
+                        }
+                    }
+                    if (type == AnimatorControllerParameterType.Float) {
+                        if (c.mode == AnimatorConditionMode.Equals) {
+                            return AnimatorTransitionBaseExtensions.Rewritten.And(
+                                new AnimatorCondition { parameter = c.parameter, mode = AnimatorConditionMode.Greater, threshold = c.threshold - 0.001f },
+                                new AnimatorCondition { parameter = c.parameter, mode = AnimatorConditionMode.Less, threshold = c.threshold + 0.001f }
+                            );
+                        }
+                        if (c.mode == AnimatorConditionMode.NotEqual) {
+                            return AnimatorTransitionBaseExtensions.Rewritten.Or(
+                                new AnimatorCondition { parameter = c.parameter, mode = AnimatorConditionMode.Less, threshold = c.threshold - 0.001f },
+                                new AnimatorCondition { parameter = c.parameter, mode = AnimatorConditionMode.Greater, threshold = c.threshold + 0.001f }
+                            );
+                        }
+                    }
+                    return c;
+                });
+            }
+        }
+
+        public static Action<VFController,AnimationRewriter> onRewriteClips;
+        public void Rewrite(AnimationRewriter rewriter) {
+            // Rewrite clips
+            foreach (var clip in new AnimatorIterator.Clips().From(this)) {
+                clip.Rewrite(rewriter);
+            }
+
+            // Rewrite masks
+            foreach (var layer in layers) {
+                var mask = layer.mask;
+                if (mask == null || mask.transformCount == 0) continue;
+                mask.SetTransforms(mask.GetTransforms()
+                    .Select(rewriter.RewritePath)
+                    .Where(path => path != null));
+            }
+
+            onRewriteClips?.Invoke(this,rewriter);
         }
     }
 }

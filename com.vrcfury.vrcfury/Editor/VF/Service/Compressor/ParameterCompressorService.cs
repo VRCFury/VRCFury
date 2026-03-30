@@ -71,7 +71,7 @@ namespace VF.Service.Compressor {
                 $"Compressed {decision.compress.Count} expression parameters to fit VRChat limits ({originalCost} bits to {newCost} bits)"
             );
 
-            NoBadControllerParamsService.UpgradeWrongParamTypes(fx);
+            fx.UpgradeWrongParamTypes();
             // Hopefully temporary until we can work out a better "re-save and/or re-dirty everything in a build hook at the end of the build" system
             fx.GetRaw().Dirty();
             paramz.Dirty();

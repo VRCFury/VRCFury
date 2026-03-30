@@ -27,6 +27,7 @@ namespace VF.Service {
                 prms.WorkLog($"Loaded expression parameters for mutation from {origParams.GetPathAndName()} ({origParams.parameters.Length} entries)");
             } else {
                 prms = VrcfObjectFactory.Create<VRCExpressionParameters>();
+                prms.parameters = new VRCExpressionParameters.Parameter[] { };
                 prms.WorkLog("Created new expression parameters asset");
             }
             VRCAvatarUtils.SetAvatarParams(avatar, prms);
@@ -42,6 +43,7 @@ namespace VF.Service {
             var p = VRCAvatarUtils.GetAvatarParams(avatar);
             if (p == null) {
                 p = VrcfObjectFactory.Create<VRCExpressionParameters>();
+                p.parameters = new VRCExpressionParameters.Parameter[] { };
             }
             return p;
         }

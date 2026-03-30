@@ -3,16 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
-using VF.Menu;
 using VF.Service;
 using VF.Utils;
-using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Inspector {

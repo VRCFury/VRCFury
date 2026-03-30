@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using VF.Builder;
+using VF.Utils;
 
 namespace VF.Feature.Base {
     internal class FeatureBuilderAction : IComparable<FeatureBuilderAction> {

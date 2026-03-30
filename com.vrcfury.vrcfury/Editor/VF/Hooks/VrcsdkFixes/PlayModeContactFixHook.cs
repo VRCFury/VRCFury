@@ -1,6 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDKBase.Editor.BuildPipeline;
 

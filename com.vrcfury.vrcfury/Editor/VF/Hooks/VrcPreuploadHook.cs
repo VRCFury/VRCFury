@@ -1,6 +1,7 @@
 using UnityEngine;
 using VF.Builder;
 using VF.Menu;
+using VF.Utils;
 
 namespace VF.Hooks {
     internal class VrcPreuploadHook : VrcfAvatarPreprocessor {

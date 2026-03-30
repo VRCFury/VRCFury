@@ -5,6 +5,7 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 
 namespace VF.Feature {
     [FeatureTitle("Remove Built-in Hand Gestures")]
@@ -23,12 +24,14 @@ namespace VF.Feature {
         [FeatureBuilderAction]
         public void Apply() {
             foreach (var controller in controllers.GetAllUsedControllers()) {
-                controller.RewriteParameters(p => {
-                    if (GestureParams.Contains(p)) {
-                        return controller.Zero();
-                    }
-                    return p;
-                }, includeWrites: false, includeCopyDriverReads: false, limitToLayers: controller.GetUnmanagedLayers());
+                VFControllerAvatarExtensions.doNotRewriteCopyDriverSources(() => {
+                    controller.RewriteParameters(p => {
+                        if (GestureParams.Contains(p)) {
+                            return controller.Zero();
+                        }
+                        return p;
+                    }, includeWrites: false, limitToLayers: controller.GetUnmanagedLayers());
+                });
             }
         }
 

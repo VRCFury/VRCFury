@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
-using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Utils {
@@ -27,14 +24,19 @@ namespace VF.Utils {
             return original;
         }
 
+        public static Func<Object, Type[]> getExtraRecursiveTypes;
+
         public static T Clone<T>(this T original, string reason = null, string addPrefix = "", bool recursive = true) where T : Object {
 
             if (recursive) {
+                if (getExtraRecursiveTypes != null) {
+                    var types = getExtraRecursiveTypes(original);
+                    if (types != null) {
+                        return MutableManager.CopyRecursive(original, reason, types);
+                    }
+                }
                 if (original is Motion) {
                     return MutableManager.CopyRecursive(original, reason, new[] { typeof(Motion) });
-                }
-                if (original is VRCExpressionsMenu) {
-                    return MutableManager.CopyRecursive(original, reason, new[] { typeof(VRCExpressionsMenu) });
                 }
                 if (original is RuntimeAnimatorController || original is AnimatorStateMachine) {
                     return MutableManager.CopyRecursive(original, reason, new[] {

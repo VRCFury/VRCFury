@@ -8,7 +8,6 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
-using VF.Builder.Haptics;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
@@ -576,14 +575,16 @@ namespace VF.Inspector {
                 }
             }.Padding(5).BorderRadius(5);
 
-            var header = new VisualElement().PaddingBottom(5);
-            if (title != null) {
-                header.Add(WrappedLabel(title).Bold().TextAlign(TextAnchor.MiddleCenter));
+            if (title != null || subtitle != null) {
+                var header = new VisualElement().PaddingBottom(5);
+                if (title != null) {
+                    header.Add(WrappedLabel(title).Bold().TextAlign(TextAnchor.MiddleCenter));
+                }
+                if (subtitle != null) {
+                    header.Add(WrappedLabel(subtitle).TextAlign(TextAnchor.MiddleCenter));
+                }
+                section.Add(header);
             }
-            if (subtitle != null) {
-                header.Add(WrappedLabel(subtitle).TextAlign(TextAnchor.MiddleCenter));
-            }
-            section.Add(header);
 
             return section;
         }

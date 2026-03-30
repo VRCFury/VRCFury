@@ -296,7 +296,7 @@ namespace VF.Feature {
 
         [FeatureBuilderAction(FeatureOrder.CollectToggleExclusiveTags)]
         public void ApplyExclusiveTags() {
-            if (!IsFirst()) return;
+            if (!globals.IsFirst(this)) return;
 
             var allToggles = globals.allBuildersInRun
                 .OfType<ToggleBuilder>()

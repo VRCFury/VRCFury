@@ -124,7 +124,7 @@ namespace VF.Builder {
 
                 FeatureBuilder builder;
                 try {
-                    builder = FeatureFinder.GetBuilder(component, configObject, injector, avatarObject);
+                    builder = FeatureFinder.GetBuilder(component, configObject, injector);
                 } catch (Exception e) {
                     throw new ExceptionWithCause(
                         $"Failed to load VRCFury component on object {configObject.GetPath(avatarObject)}",

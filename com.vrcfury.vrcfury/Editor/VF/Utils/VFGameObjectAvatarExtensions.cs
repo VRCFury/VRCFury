@@ -26,25 +26,5 @@ namespace VF.Utils {
             if (avatarObject == null) return "_avatarMissing/" + obj.GetPath();
             return obj.GetPath(avatarObject);
         }
-
-        public static void Destroy(this VFGameObject obj) {
-            var b = VRCAvatarUtils.GuessAvatarObject(obj) ?? obj.root;
-            foreach (var c in b.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
-                if (c.GetRootTransform().IsChildOf(obj))
-                    Object.DestroyImmediate(c);
-            }
-            foreach (var c in b.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>()) {
-                if (c.GetRootTransform().IsChildOf(obj))
-                    Object.DestroyImmediate(c);
-            }
-            foreach (var c in b.GetComponentsInSelfAndChildren<ContactBase>()) {
-                if (c.GetRootTransform().IsChildOf(obj))
-                    Object.DestroyImmediate(c);
-            }
-            foreach (var c in obj.GetConstraints(includeChildren: true)) {
-                c.Destroy();
-            }
-            Object.DestroyImmediate(obj);
-        }
     }
 }

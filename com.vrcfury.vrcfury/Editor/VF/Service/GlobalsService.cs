@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Model.Feature;
+using VF.Utils;
 
 namespace VF.Service {
     /**
@@ -18,5 +20,10 @@ namespace VF.Service {
         public string currentFeatureClipPrefix = "";
         public int currentMenuSortPosition = 0;
         public string currentFeatureObjectPath = "";
+
+        public bool IsFirst(FeatureBuilder builder) {
+            var first = allBuildersInRun.FirstOrDefault(b => b.GetType() == builder.GetType());
+            return first != null && first == builder;
+        }
     }
 }

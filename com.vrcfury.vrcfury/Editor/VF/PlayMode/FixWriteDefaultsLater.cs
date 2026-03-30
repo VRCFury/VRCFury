@@ -6,6 +6,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.PlayMode {

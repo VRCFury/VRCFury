@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder.Exceptions;
 using VF.Hooks;
+using VF.Utils;
 
 namespace VF.Builder {
     internal static class VRCFArmatureUtils {

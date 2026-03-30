@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using VF.Inspector;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using Random = System.Random;
 

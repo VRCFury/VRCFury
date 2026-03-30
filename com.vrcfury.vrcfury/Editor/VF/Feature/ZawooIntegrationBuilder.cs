@@ -12,6 +12,7 @@ using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 

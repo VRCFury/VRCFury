@@ -5,6 +5,7 @@ using UnityEngine;
 using VF.Builder;
 using VF.Builder.Exceptions;
 using VF.Menu;
+using VF.Utils;
 #if VRC_NEW_PUBLIC_SDK
 using VRC.SDK3A.Editor;
 #endif
