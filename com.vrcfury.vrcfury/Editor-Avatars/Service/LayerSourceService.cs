@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
-using UnityEditor.Animations;
-using UnityEngine;
 using VF.Injector;
 using VF.Utils.Controller;
 

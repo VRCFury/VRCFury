@@ -5,12 +5,10 @@ using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
-using VF.Builder;
 using VF.Menu;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Utils;
-using Object = UnityEngine.Object;
 
 namespace VF.Inspector {
     internal static class VrcfDebugLine {

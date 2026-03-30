@@ -1,8 +1,5 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
-using VF.Builder;
+﻿using VF.Builder;
 using VF.Utils;
-using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace VF.Hooks {
     /**

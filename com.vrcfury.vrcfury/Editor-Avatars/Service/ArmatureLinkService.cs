@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Animations;
 using VF.Builder;
-using VF.Builder.Exceptions;
+using VF.Exceptions;
 using VF.Feature;
 using VF.Feature.Base;
 using VF.Hooks;

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using VF.Builder;
 using VF.Feature.Base;
 using VF.Model.Feature;
 using VF.Utils;

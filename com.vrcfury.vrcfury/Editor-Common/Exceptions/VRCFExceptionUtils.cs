@@ -1,16 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEditor;
 using VF.Utils;
 using Debug = UnityEngine.Debug;
 
-namespace VF.Builder.Exceptions {
+namespace VF.Exceptions {
     internal static class VRCFExceptionUtils {
         public static Exception GetGoodCause(Exception e) {
             while (e is TargetInvocationException && e.InnerException != null) {

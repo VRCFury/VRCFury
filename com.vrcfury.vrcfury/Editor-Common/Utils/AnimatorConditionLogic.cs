@@ -4,9 +4,8 @@ using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor.Animations;
 using VF.Inspector;
-using VF.Utils;
 
-namespace VF.Builder {
+namespace VF.Utils {
     /**
      * This class can take any arbitrary set of animator transform conditions,
      * and AND, OR, or NOT them cleanly with other conditions.

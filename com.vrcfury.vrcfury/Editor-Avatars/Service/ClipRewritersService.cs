@@ -1,8 +1,7 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using VF.Builder;
-using VF.Builder.Exceptions;
+using VF.Exceptions;
 using VF.Injector;
 using VF.Utils;
 

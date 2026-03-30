@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using UnityEditor;
-using UnityEngine;
-using VF.Builder;
-using VF.Builder.Exceptions;
-using VF.Model;
+﻿using UnityEngine;
+using VF.Exceptions;
 using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
 

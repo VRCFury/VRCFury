@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
-using VF.Builder;
 
 namespace VF.Utils {
     internal static class CollapseUtils {

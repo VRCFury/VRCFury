@@ -1,13 +1,12 @@
 using System.Linq;
 using UnityEngine;
 using VF.Builder;
-using VF.Builder.Exceptions;
 using VF.Component;
+using VF.Exceptions;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
 using VRC.Dynamics;
-using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Service {
     /**

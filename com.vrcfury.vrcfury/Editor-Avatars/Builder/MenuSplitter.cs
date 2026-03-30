@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
-using VF.Inspector;
 using VF.Model.Feature;
 using VF.Utils;
 using VRC.SDK3.Avatars.ScriptableObjects;

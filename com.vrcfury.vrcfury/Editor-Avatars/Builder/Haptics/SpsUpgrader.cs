@@ -4,7 +4,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Animations;
 using VF.Component;
 using VF.Inspector;
 using VF.Menu;

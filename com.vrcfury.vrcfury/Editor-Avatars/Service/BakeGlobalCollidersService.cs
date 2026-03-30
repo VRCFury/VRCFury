@@ -1,11 +1,7 @@
-using System.Collections.Generic;
-using UnityEngine;
-using VF.Builder;
 using VF.Component;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
-using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Service {
     [VFService]

@@ -1,4 +1,3 @@
-using System;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Utils {

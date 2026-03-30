@@ -1,8 +1,9 @@
 ﻿using UnityEditor.Animations;
 using UnityEngine;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
-namespace VF.Utils.Controller {
+namespace VF.Utils {
     internal class VFControllerWithVrcType : VFController {
         public readonly VRCAvatarDescriptor.AnimLayerType vrcType;
         

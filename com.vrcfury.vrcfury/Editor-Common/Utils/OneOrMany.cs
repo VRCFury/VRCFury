@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 
-namespace VF.Builder {
+namespace VF.Utils {
     internal class OneOrMany<T> {
         public readonly IList<T> _raw;
 

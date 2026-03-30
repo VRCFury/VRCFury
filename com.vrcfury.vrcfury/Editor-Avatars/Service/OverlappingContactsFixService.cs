@@ -1,12 +1,6 @@
-﻿using UnityEditor;
-using UnityEngine;
-using UnityEngine.Animations;
-using VF.Builder;
-using VF.Feature.Base;
+﻿using VF.Feature.Base;
 using VF.Injector;
-using VF.Inspector;
 using VF.Utils;
-using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Service {

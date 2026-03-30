@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using VF.Builder;
-using VF.Builder.Exceptions;
+using VF.Exceptions;
 using VF.Utils;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;

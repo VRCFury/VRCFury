@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-using VF.Builder.Exceptions;
+using VF.Exceptions;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {

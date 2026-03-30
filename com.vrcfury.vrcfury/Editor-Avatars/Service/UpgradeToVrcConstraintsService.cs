@@ -1,16 +1,11 @@
 ﻿using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.Animations;
-using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Menu;
 using VF.Utils;
-using VF.Utils.Controller;
-using VRC.Dynamics;
 using VRC.SDK3.Avatars;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Validation.Performance;

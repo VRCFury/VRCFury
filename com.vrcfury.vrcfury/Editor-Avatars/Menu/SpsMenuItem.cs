@@ -1,6 +1,6 @@
 ﻿using UnityEditor;
-using VF.Builder.Exceptions;
 using VF.Builder.Haptics;
+using VF.Exceptions;
 
 namespace VF.Menu {
     internal static class SpsMenuItem {

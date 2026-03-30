@@ -5,8 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
-using VF.Builder.Exceptions;
-using VF.Hooks;
+using VF.Exceptions;
 using VF.Utils;
 
 namespace VF.Builder {

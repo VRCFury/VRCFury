@@ -11,7 +11,6 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
-using VRC.Dynamics;
 
 namespace VF.Feature {
     [FeatureTitle("Anchor Override Fix")]

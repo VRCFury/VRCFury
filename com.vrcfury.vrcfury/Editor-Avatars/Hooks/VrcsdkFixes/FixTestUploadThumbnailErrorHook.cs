@@ -1,5 +1,4 @@
-﻿using System.Reflection;
-using UnityEditor;
+﻿using UnityEditor;
 using VF.Utils;
 
 namespace VF.Hooks.VrcsdkFixes {

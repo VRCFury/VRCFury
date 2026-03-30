@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -12,7 +11,6 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Utils;
-using Object = UnityEngine.Object;
 
 namespace VF.Actions {
     [FeatureTitle("Material Property")]

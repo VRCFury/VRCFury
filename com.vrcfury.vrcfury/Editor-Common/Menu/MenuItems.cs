@@ -4,8 +4,8 @@ using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
 using VF.Builder;
-using VF.Builder.Exceptions;
 using VF.Component;
+using VF.Exceptions;
 using VF.Model;
 using VF.Utils;
 

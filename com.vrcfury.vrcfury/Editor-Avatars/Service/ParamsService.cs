@@ -1,5 +1,4 @@
-﻿using JetBrains.Annotations;
-using VF.Builder;
+﻿using VF.Builder;
 using VF.Injector;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;

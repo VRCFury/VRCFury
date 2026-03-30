@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor.Callbacks;
-using UnityEngine;
-using VF.Builder;
 using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
 

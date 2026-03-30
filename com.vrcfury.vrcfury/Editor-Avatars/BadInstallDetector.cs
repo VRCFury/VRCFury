@@ -1,7 +1,6 @@
 using System.IO;
 using System.Linq;
 using UnityEditor;
-using VF.Updater;
 using VF.Utils;
 
 namespace VF {

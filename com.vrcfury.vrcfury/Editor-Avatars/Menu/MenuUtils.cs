@@ -1,5 +1,4 @@
 using UnityEditor;
-using UnityEngine;
 using VF.Builder;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;

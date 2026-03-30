@@ -2,7 +2,6 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine.SceneManagement;
 using VF.Builder;
-using VF.Model;
 using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
 

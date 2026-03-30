@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace VF.Builder {
+namespace VF.Utils {
     internal static class VRCFEnumUtils {
         public static string GetName(Enum enumval) {
             try {

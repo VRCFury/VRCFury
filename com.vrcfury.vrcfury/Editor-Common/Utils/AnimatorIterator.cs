@@ -5,11 +5,10 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
-using VF.Utils;
 using VF.Utils.Controller;
 using Object = UnityEngine.Object;
 
-namespace VF.Builder {
+namespace VF.Utils {
     /**
      * Collects the resting value for every animated property in an animator, and puts them all into a clip.
      */

@@ -3,12 +3,10 @@ using System.Reflection;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
-using VF.Builder;
 using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
-using VRC.SDKBase.Editor.BuildPipeline;
 using Debug = UnityEngine.Debug;
 using Object = UnityEngine.Object;
 

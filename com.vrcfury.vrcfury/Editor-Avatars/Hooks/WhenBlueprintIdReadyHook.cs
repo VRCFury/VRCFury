@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEditor;
-using UnityEngine;
-using VF.Builder;
-using VF.Builder.Exceptions;
-using VF.Menu;
+using VF.Exceptions;
 using VF.Utils;
 #if VRC_NEW_PUBLIC_SDK
 using VRC.SDK3A.Editor;
 #endif
-using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace VF.Hooks {
     internal static class WhenBlueprintIdReadyHook {

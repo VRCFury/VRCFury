@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using VF.Feature;
+﻿using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;

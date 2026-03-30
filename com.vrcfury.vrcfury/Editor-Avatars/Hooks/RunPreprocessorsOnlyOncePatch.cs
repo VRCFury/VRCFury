@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+﻿using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using VF.Builder;
 using VF.Model;
 using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;

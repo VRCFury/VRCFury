@@ -4,7 +4,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
-using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Service;

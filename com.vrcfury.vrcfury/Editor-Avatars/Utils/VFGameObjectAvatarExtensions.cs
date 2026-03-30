@@ -1,7 +1,5 @@
 ﻿using System.Linq;
-using UnityEngine;
 using VF.Builder;
-using VRC.Dynamics;
 
 namespace VF.Utils {
     internal static class VFGameObjectAvatarExtensions {

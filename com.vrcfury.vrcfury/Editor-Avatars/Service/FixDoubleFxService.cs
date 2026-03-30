@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using VF.Builder.Exceptions;
+using VF.Exceptions;
 using VF.Feature.Base;
 using VF.Injector;
 using VRC.SDK3.Avatars.Components;

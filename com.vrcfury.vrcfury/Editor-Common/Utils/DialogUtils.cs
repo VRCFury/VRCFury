@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
-using VF.Builder.Exceptions;
+using VF.Exceptions;
 
 namespace VF.Utils {
     internal static class DialogUtils {

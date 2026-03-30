@@ -4,10 +4,9 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
-using VF.Utils;
 using Object = UnityEngine.Object;
 
-namespace VF.Builder {
+namespace VF.Utils {
     internal static class MutableManager {
 
         public static void ForEachChildObjectReference(Object obj, Action<string,Object,Action<Object>> each) {

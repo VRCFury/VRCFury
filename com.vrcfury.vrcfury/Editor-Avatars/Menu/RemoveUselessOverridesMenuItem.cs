@@ -2,8 +2,7 @@
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using VF.Builder;
-using VF.Builder.Exceptions;
+using VF.Exceptions;
 using VF.Utils;
 
 namespace VF.Menu {

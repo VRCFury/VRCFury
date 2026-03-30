@@ -2,9 +2,8 @@ using System;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using VF.Utils;
 
-namespace VF.Builder {
+namespace VF.Utils {
     internal static class MainWindowUtils {
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type ContainerWindowType =

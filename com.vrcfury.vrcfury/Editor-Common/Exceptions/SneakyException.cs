@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace VF.Builder.Exceptions {
+namespace VF.Exceptions {
     /**
      * This is an exception where we will hide the fact that it's coming from VRCFury.
      * Mostly used for errors that are really unrelated to us, and we don't want users

@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Rendering;
 using UnityEngine;
-using VF.Builder.Exceptions;
+using VF.Exceptions;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {

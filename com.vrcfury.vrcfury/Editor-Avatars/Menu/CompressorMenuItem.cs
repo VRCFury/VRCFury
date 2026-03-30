@@ -1,5 +1,4 @@
 ﻿using UnityEditor;
-using VF.Utils;
 
 namespace VF.Menu {
     internal static class CompressorMenuItem {
