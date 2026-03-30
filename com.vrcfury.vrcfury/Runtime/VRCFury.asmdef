@@ -1,9 +1,7 @@
 {
     "name": "VRCFury",
-    "rootNamespace": "",
-    "references": [
-        "VrcfEditorOnly"
-    ],
+    "rootNamespace": "VF",
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

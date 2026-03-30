@@ -1,6 +1,6 @@
 {
-    "name": "VRCFury-Editor",
-    "rootNamespace": "",
+    "name": "VRCFury-Editor-Avatars",
+    "rootNamespace": "VF",
     "references": [
         "VRCFury",
         "VRCFury-Editor-Common",

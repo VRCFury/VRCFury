@@ -14,8 +14,8 @@ namespace VF.Utils {
 
         public static Assembly[] GetVrcfEditorAssemblies() {
             return  AppDomain.CurrentDomain.GetAssemblies()
-                .Where(assembly => assembly.GetName().Name == "VRCFury-Editor"
-                    || assembly.GetName().Name == "VRCFury-Editor-Common"
+                .Where(assembly => assembly.GetName().Name == "VRCFury-Editor-Common"
+                    || assembly.GetName().Name == "VRCFury-Editor-Avatars"
                     || assembly.GetName().Name == "VRCFury-Editor-Worlds")
                 .ToArray();
         }

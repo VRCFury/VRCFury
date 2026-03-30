@@ -1,6 +1,6 @@
 ﻿{
   "name": "VRCFury-Editor-Common",
-  "rootNamespace": "",
+  "rootNamespace": "VF",
   "references": [
     "VRCFury",
     "VRC.SDKBase.Editor.BuildPipeline",

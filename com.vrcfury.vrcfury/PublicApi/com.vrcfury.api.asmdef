@@ -3,7 +3,7 @@
   "rootNamespace": "com.vrcfury.api",
   "references": [
     "VRCFury-Editor-Common",
-    "VRCFury-Editor",
+    "VRCFury-Editor-Avatars",
     "VRCFury"
   ],
   "includePlatforms": [

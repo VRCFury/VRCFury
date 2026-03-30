@@ -1,6 +1,6 @@
 {
     "name": "VRCFury-Editor-Worlds",
-    "rootNamespace": "",
+    "rootNamespace": "VF",
     "references": [
         "VRCFury",
         "VRCFury-Editor-Common",
