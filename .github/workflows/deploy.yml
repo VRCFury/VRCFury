@@ -102,6 +102,7 @@ jobs:
           ssh-key: ${{ secrets.VERSION_DEPLOY_KEY }}
       - uses: pnpm/action-setup@v5
         with:
+          package_json_file: repo/.github/workflows/package.json
           standalone: true
       - name: Bundle
         working-directory: repo
