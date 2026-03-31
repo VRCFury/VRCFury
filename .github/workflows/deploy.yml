@@ -100,16 +100,16 @@ jobs:
           path: versions
           repository: VRCFury/vrcfury-updater-manifest
           ssh-key: ${{ secrets.VERSION_DEPLOY_KEY }}
-      - uses: actions/setup-node@v6
+      - uses: pnpm/action-setup@v5
         with:
-          node-version: 24
+          standalone: true
       - name: Bundle
         working-directory: repo
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          (cd .github/workflows && npm install)
-          node .github/workflows/bundle.js
+          (cd .github/workflows && pnpm install --frozen-lockfile)
+          pnpm node .github/workflows/bundle.js
       - name: Push version manifest
         working-directory: versions
         run: |
