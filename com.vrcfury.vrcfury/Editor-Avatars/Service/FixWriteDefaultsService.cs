@@ -183,7 +183,12 @@ namespace VF.Service {
                 }
                 // Save the choice
                 if (ask == 0 || ask == 2) {
-                    FixWriteDefaultsLater.Save(originalAvatar.GetOriginal() ?? avatarObject, ask == 0);
+                    var auto = ask == 0;
+                    if (Application.isPlaying) {
+                        FixWriteDefaultsLater.SaveLater(originalAvatar.GetOriginalName() ?? avatarObject.name, auto);
+                    } else {
+                        FixWriteDefaultsLater.SaveNow(originalAvatar.GetOriginal() ?? avatarObject, auto);
+                    }
                 }
             }
 
