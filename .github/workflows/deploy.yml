@@ -8,8 +8,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      PROJECT_PATH: .github/workflows/test_project
     strategy:
       fail-fast: false
       matrix:
@@ -47,7 +45,7 @@ jobs:
 
       - name: Download VRCSDK
         run: |
-          bash .github/workflows/download_vrcsdk.sh "${{ matrix.vrcsdkUnityVersion[0] }}" "${{ matrix.sdkKind }}"
+          bash .github/scripts/download_vrcsdk.sh "${{ matrix.vrcsdkUnityVersion[0] }}" "${{ matrix.sdkKind }}"
 
       - name: Resolve Test Image
         id: image
@@ -68,7 +66,7 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          projectPath: .github/workflows/test_project
+          projectPath: .github/test_project
           unityVersion: ${{ matrix.vrcsdkUnityVersion[1] }}
           testMode: EditMode
           customImage: ${{ steps.image.outputs.image }}
@@ -102,15 +100,15 @@ jobs:
           ssh-key: ${{ secrets.VERSION_DEPLOY_KEY }}
       - uses: pnpm/action-setup@v5
         with:
-          package_json_file: repo/.github/workflows/package.json
+          package_json_file: repo/.github/scripts/package.json
           standalone: true
       - name: Bundle
         working-directory: repo
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          (cd .github/workflows && pnpm install --frozen-lockfile)
-          pnpm node .github/workflows/bundle.js
+          (cd .github/scripts && pnpm install --frozen-lockfile)
+          pnpm node .github/scripts/bundle.js
       - name: Push version manifest
         working-directory: versions
         run: |
