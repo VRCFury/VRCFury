@@ -45,7 +45,7 @@ jobs:
 
       - name: Download VRCSDK
         run: |
-          bash .github/scripts/download_vrcsdk.sh "${{ matrix.vrcsdkUnityVersion[0] }}" "${{ matrix.sdkKind }}"
+          PROJECT_PATH=.github/test_project .github/scripts/download_vrcsdk.sh "${{ matrix.vrcsdkUnityVersion[0] }}" "${{ matrix.sdkKind }}"
 
       - name: Resolve Test Image
         id: image
