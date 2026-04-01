@@ -103,12 +103,12 @@ jobs:
           package_json_file: repo/.github/scripts/package.json
           standalone: true
       - name: Bundle
-        working-directory: repo
+        working-directory: repo/.github/scripts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          (cd .github/scripts && pnpm install --frozen-lockfile)
-          pnpm node .github/scripts/bundle.js
+          pnpm install --frozen-lockfile
+          pnpm node bundle.js "$GITHUB_WORKSPACE/repo" "$GITHUB_WORKSPACE/versions"
       - name: Push version manifest
         working-directory: versions
         run: |
