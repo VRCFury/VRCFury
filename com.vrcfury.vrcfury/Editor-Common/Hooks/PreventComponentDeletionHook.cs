@@ -1,9 +1,10 @@
-﻿using UnityEditor;
-using UnityEngine;
+﻿using System;
+using UnityEditor;
 using VF.Component;
 using VF.Model;
 using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
+using Object = UnityEngine.Object;
 
 namespace VF.Hooks {
     /**
@@ -30,6 +31,19 @@ namespace VF.Hooks {
                 nameof(VRCBuildPipelineCallbacks.OnPreprocessAvatar),
                 patchMode: HarmonyUtils.PatchMode.Finalizer
             );
+            public static readonly HarmonyUtils.PatchObj WorldPreprocessorPatch = HarmonyUtils.Patch(
+                typeof(PreventComponentDeletionHook),
+                nameof(PreprocessorPrefix),
+                typeof(VRCBuildPipelineCallbacks),
+                nameof(VRCBuildPipelineCallbacks.OnVRCSDKBuildRequested)
+            );
+            public static readonly HarmonyUtils.PatchObj WorldPreprocessorFinalizerPatch = HarmonyUtils.Patch(
+                typeof(PreventComponentDeletionHook),
+                nameof(PreprocessorFinalizer),
+                typeof(VRCBuildPipelineCallbacks),
+                nameof(VRCBuildPipelineCallbacks.OnVRCSDKBuildRequested),
+                patchMode: HarmonyUtils.PatchMode.Finalizer
+            );
         }
 
         [InitializeOnLoadMethod]
@@ -38,12 +52,15 @@ namespace VF.Hooks {
             Reflection.DestroyImmediatePatch.apply();
             Reflection.PreprocessorPatch.apply();
             Reflection.PreprocessorFinalizerPatch.apply();
+            Reflection.WorldPreprocessorPatch.apply();
+            Reflection.WorldPreprocessorFinalizerPatch.apply();
         }
 
         private static bool inPreprocessor;
+        public static Func<bool> getIsActuallyUploading;
 
         private static bool DestroyImmediatePrefix(Object __0) {
-            if (!IsActuallyUploadingHook.Get() && inPreprocessor) {
+            if (getIsActuallyUploading != null && !getIsActuallyUploading() && inPreprocessor) {
                 if (__0 is VRCFuryTest || __0 is VRCFuryDebugInfo || __0 is VRCFuryPlayComponent) {
                     // Keep it! Prevent the deletion!
                     return false;

@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using VF.Builder;
 using VF.Component;
 using VF.Exceptions;
 using VF.Inspector;
+using VF.Menu;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
@@ -14,6 +13,9 @@ namespace VF.Hooks {
         protected override int order => -10000;
 
         protected override void Process(Scene scene) {
+            if (Application.isPlaying && !PlayModeMenuItem.Get()) return;
+            if (IsActuallyUploadingWorldHook.Get() && !UseInUploadMenuItem.Get()) return;
+
             var obj = new GameObject("VRCFury ran!");
             SceneManager.MoveGameObjectToScene(obj, scene);
 

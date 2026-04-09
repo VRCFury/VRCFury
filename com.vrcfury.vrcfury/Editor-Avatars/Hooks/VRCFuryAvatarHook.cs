@@ -55,6 +55,7 @@ namespace VF.Hooks {
         [InitializeOnLoadMethod]
         private static void Init() {
             SpsConfigurer.getIsActuallyUploading = IsActuallyUploadingHook.Get;
+            PreventComponentDeletionHook.getIsActuallyUploading = IsActuallyUploadingHook.Get;
 
             VRCFuryHapticPlugEditor.getHapticsEnabled = HapticsToggleMenuItem.Get;
 

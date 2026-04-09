@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
 using VRC.SDK3.Editor;
 
-namespace Hooks {
+namespace VF.Hooks {
     internal static class IsActuallyUploadingWorldHook {
         private static bool actuallyUploading = false;
         public static bool Get() {

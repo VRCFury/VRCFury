@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Component;
+using VF.Menu;
 using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace VF.Hooks {
@@ -14,7 +15,7 @@ namespace VF.Hooks {
         private static void Init() {
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
             VRCFuryComponent._OnValidate = () => {
-                if (Application.isPlaying && !appliedThisPlayMode && !triggerAddedThisPlaymode) {
+                if (Application.isPlaying && !appliedThisPlayMode && !triggerAddedThisPlaymode && PlayModeMenuItem.Get()) {
                     triggerAddedThisPlaymode = true;
                     RescanOnStartComponent.Create();
                 }
