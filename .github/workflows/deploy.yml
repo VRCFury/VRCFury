@@ -8,8 +8,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      PROJECT_PATH: .github/workflows/test_project
     strategy:
       fail-fast: false
       matrix:
@@ -47,7 +45,7 @@ jobs:
 
       - name: Download VRCSDK
         run: |
-          bash .github/workflows/download_vrcsdk.sh "${{ matrix.vrcsdkUnityVersion[0] }}" "${{ matrix.sdkKind }}"
+          PROJECT_PATH=.github/test_project .github/scripts/download_vrcsdk.sh "${{ matrix.vrcsdkUnityVersion[0] }}" "${{ matrix.sdkKind }}"
 
       - name: Resolve Test Image
         id: image
@@ -68,7 +66,7 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          projectPath: .github/workflows/test_project
+          projectPath: .github/test_project
           unityVersion: ${{ matrix.vrcsdkUnityVersion[1] }}
           testMode: EditMode
           customImage: ${{ steps.image.outputs.image }}
@@ -100,16 +98,17 @@ jobs:
           path: versions
           repository: VRCFury/vrcfury-updater-manifest
           ssh-key: ${{ secrets.VERSION_DEPLOY_KEY }}
-      - uses: actions/setup-node@v6
+      - uses: pnpm/action-setup@v5
         with:
-          node-version: 24
+          package_json_file: repo/.github/scripts/package.json
+          standalone: true
       - name: Bundle
-        working-directory: repo
+        working-directory: repo/.github/scripts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          (cd .github/workflows && npm install)
-          node .github/workflows/bundle.js
+          pnpm install --frozen-lockfile
+          pnpm node bundle.js "$GITHUB_WORKSPACE/repo" "$GITHUB_WORKSPACE/versions"
       - name: Push version manifest
         working-directory: versions
         run: |
