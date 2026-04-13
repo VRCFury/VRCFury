@@ -98,7 +98,7 @@ jobs:
           path: versions
           repository: VRCFury/vrcfury-updater-manifest
           ssh-key: ${{ secrets.VERSION_DEPLOY_KEY }}
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: repo/.github/scripts/package.json
           standalone: true
