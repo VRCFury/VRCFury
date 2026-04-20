@@ -8,6 +8,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;
+using VF.VrcfEditorOnly;
 
 namespace VF.Hooks.VrcsdkFixes {
     internal static class WhitelistPatch {
