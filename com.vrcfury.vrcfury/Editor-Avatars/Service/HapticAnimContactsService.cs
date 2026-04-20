@@ -4,6 +4,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -23,7 +24,8 @@ namespace VF.Service {
             ICollection<VRCFuryHapticSocket.DepthActionNew> actions,
             VFGameObject spsComponentOwner,
             string name,
-            SpsDepthContacts contacts
+            SpsDepthContacts contacts,
+            VFAFloat enabled = null
         ) {
             var actionNum = 0;
             foreach (var depthAction in actions) {
@@ -70,9 +72,12 @@ namespace VF.Service {
                 }
 
                 if (depthAction.reverseClip) {
-                    off.TransitionsTo(on).When(fx.Always());
+                    var onWhen = enabled != null ? enabled.IsGreaterThan(0) : fx.Always();
+                    off.TransitionsTo(on).When(onWhen);
+                    on.TransitionsTo(off).When(onWhen.Not());
                 } else {
                     var onWhen = smoothed.IsGreaterThan(0.01f);
+                    if (enabled != null) onWhen = onWhen.And(enabled.IsGreaterThan(0));
                     off.TransitionsTo(on).When(onWhen);
                     on.TransitionsTo(off).When(onWhen.Not());
                 }

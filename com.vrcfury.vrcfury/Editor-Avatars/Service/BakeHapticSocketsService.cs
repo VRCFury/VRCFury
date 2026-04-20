@@ -16,6 +16,9 @@ using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
+#if VRCSDK_HAS_VRCCONSTRAINTS
+using VRC.SDK3.Dynamics.Constraint.Components;
+#endif
 
 namespace VF.Service {
     [VFService]
@@ -34,15 +37,19 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
+        [VFAutowired] private readonly IsObjectEnabledService isObjectEnabledService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
 
         [FeatureBuilderAction]
         public void Apply() {
+            var sockets = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().ToArray();
+            if (sockets.Length == 0) return;
+
             var saved = spsOptions.GetOptions().saveSockets;
 
-            var enableAuto = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
+            var enableAuto = sockets
                 .Where(o => o.addMenuItem && o.enableAuto)
                 .ToArray()
                 .Length >= 2;
@@ -59,7 +66,7 @@ namespace VF.Service {
                 ).create(autoOnClip, null));
             }
             
-            var enableStealth = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
+            var enableStealth = sockets
                 .Where(o => o.addMenuItem)
                 .ToArray()
                 .Length >= 1;
@@ -69,7 +76,7 @@ namespace VF.Service {
                 menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
             }
             
-            var enableMulti = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
+            var enableMulti = sockets
                 .Where(o => o.addMenuItem)
                 .ToArray()
                 .Length >= 2;
@@ -87,60 +94,54 @@ namespace VF.Service {
             var exclusiveTriggers = new List<(string,VFABool)>();
             var usedMenuNames = new HashSet<string>();
             var usedOscIds = new HashSet<string>();
-            foreach (var socket in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
-                try {
-                    VFGameObject obj = socket.owner();
-                    PhysboneUtils.RemoveFromPhysbones(socket.owner());
+            var anchorEnabledParams = new List<VFAFloat>();
+            VRCFuryHapticSocketEditor.BakeResult sharedBakeResult = null;
+            VFGameObject sharedHaptics = null;
+            var sharedAnimObjects = new List<VFGameObject>();
+            Lazy<SpsDepthContacts> sharedContacts = null;
+            VFBlendTreeDirect socketAnchorTree = null;
+#if VRCSDK_HAS_VRCCONSTRAINTS
+            VRCParentConstraint socketAnchorConstraint = null;
+#endif
 
-                    var menuName = HapticUtils.MakeUniqueId(
-                        usedMenuNames,
-                        HapticUtils.GetPreferredId(socket, s => s.name, s => HapticUtils.GetFallbackId(s.owner()))
-                    );
-                    var oscId = HapticUtils.MakeUniqueId(
-                        usedOscIds,
-                        HapticUtils.GetPreferredId(socket, s => s.oscId, _ => menuName)
-                    );
-                    Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + oscId);
-                    
-                    VFABool toggleParam = null;
-                    if (socket.addMenuItem) {
-                        toggleParam = fx.NewBool(oscId, synced: true, saved: saved);
-                        var icon = socket.menuIcon?.Get();
-                        menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/{menuName}", toggleParam, icon: icon);
-                        exclusiveTriggers.Add((oscId, toggleParam));
-                    }
+            VFBlendTreeDirect GetSocketAnchorTree() {
+                return socketAnchorTree ?? (socketAnchorTree = directTreeService.Create("SPS Socket Anchor"));
+            }
 
-                    if (!BuildTargetUtils.IsDesktop()) {
-                        continue;
-                    }
+            void EnableWhenSocketIsEnabled(VFAFloat enabled, VFGameObject obj) {
+                if (obj == null) return;
+                var clip = clipFactory.NewClip($"Enable {obj.name}");
+                clip.SetEnabled(obj, true);
+                GetSocketAnchorTree().Add(enabled, clip);
+            }
 
-                    var bakeResult = VRCFuryHapticSocketEditor.Bake(socket);
-                    if (bakeResult == null) continue;
-                    
-                    globals.addOtherFeature(new ShowInFirstPerson {
-                        useObjOverride = true,
-                        objOverride = bakeResult.bakeRoot,
-                        onlyIfChildOfHead = true
-                    });
+            if (BuildTargetUtils.IsDesktop()) {
+                var sharedSocketObj = GameObjects.Create("Shared SPS Socket", avatarObject);
+                var sharedSocket = sharedSocketObj.AddComponent<VRCFuryHapticSocket>();
+                sharedSocket.addLight = VRCFuryHapticSocket.AddLight.None;
+                sharedSocket.enableHandTouchZone2 = VRCFuryHapticSocket.EnableTouchZone.Off;
+                sharedSocket.addMenuItem = false;
+                sharedSocket.enableAuto = false;
+                sharedSocket.fromSpsForAll = true;
+                sharedSocket.useHipAvoidance = false;
 
-                    VFGameObject haptics = null;
-                    if (HapticsToggleMenuItem.Get() && !socket.fromSpsForAll) {
-                        // Haptic receivers
+                sharedBakeResult = VRCFuryHapticSocketEditor.Bake(sharedSocket);
+                if (sharedBakeResult != null) {
+                    sharedBakeResult.bakeRoot.SetParent(avatarObject, true);
+                    sharedBakeResult.bakeRoot.active = false;
 
-                        // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+                    var sharedOscId = "Shared";
+                    if (HapticsToggleMenuItem.Get()) {
                         var capsuleRotation = Quaternion.Euler(90,0,0);
-                        
-                        var paramPrefix = "OGB/Orf/" + oscId.Replace('/','_');
-                    
-                        // Receivers
-                        var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket);
-                        haptics = GameObjects.Create("Haptics", bakeResult.worldSpace);
+                        var paramPrefix = "OGB/Orf/" + sharedOscId.Replace('/','_');
+                        var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(sharedSocket);
+                        sharedHaptics = GameObjects.Create("Haptics", sharedBakeResult.worldSpace);
 
                         var baseReq = new HapticContactsService.ReceiverRequest() {
-                            obj = haptics,
+                            obj = sharedHaptics,
                             usePrefix = false,
                             localOnly = true,
-                            useHipAvoidance = socket.useHipAvoidance
+                            useHipAvoidance = false
                         };
 
                         if (handTouchZoneSize != null) {
@@ -223,21 +224,88 @@ namespace VF.Service {
                         req.objName = "PenOthersNewTip";
                         req.party = HapticUtils.ReceiverParty.Others;
                         hapticContacts.AddReceiver(req);
+
+                        sharedHaptics.active = false;
                     }
 
-                    var animObjects = new List<VFGameObject>();
-                    var Contacts = new Lazy<SpsDepthContacts>(() => {
-                        var scale = scaleFactorService.GetAdv(bakeResult.bakeRoot, bakeResult.worldSpace);
+                    sharedContacts = new Lazy<SpsDepthContacts>(() => {
+                        var scale = scaleFactorService.GetAdv(sharedBakeResult.bakeRoot, sharedBakeResult.worldSpace);
                         if (scale == null) throw new Exception("Scale cannot be null at this point. Is this a mobile build somehow?");
                         var (scaleFactor, scaleFactorContact1, scaleFactorContact2) = scale.Value;
-                        var animRoot = GameObjects.Create("Animations", bakeResult.worldSpace);
-                        animObjects.Add(animRoot);
-                        animObjects.Add(scaleFactorContact1);
-                        animObjects.Add(scaleFactorContact2);
-                        var directTree = directTreeService.Create($"{oscId} - Depth Calculations");
+                        var animRoot = GameObjects.Create("Animations", sharedBakeResult.worldSpace);
+                        sharedAnimObjects.Add(animRoot);
+                        sharedAnimObjects.Add(scaleFactorContact1);
+                        sharedAnimObjects.Add(scaleFactorContact2);
+                        var directTree = directTreeService.Create($"{sharedOscId} - Depth Calculations");
                         var math = directTreeService.GetMath(directTree);
-                        return new SpsDepthContacts(animRoot, oscId, hapticContacts, directTree, math, fx, frameTimeService, socket.useHipAvoidance, scaleFactor);
+                        return new SpsDepthContacts(animRoot, sharedOscId, hapticContacts, directTree, math, fx, frameTimeService, false, scaleFactor);
                     });
+                }
+                sharedSocketObj.Destroy();
+            }
+
+            foreach (var socket in sockets) {
+                try {
+                    VFGameObject obj = socket.owner();
+                    PhysboneUtils.RemoveFromPhysbones(socket.owner());
+
+                    var menuName = HapticUtils.MakeUniqueId(
+                        usedMenuNames,
+                        HapticUtils.GetPreferredId(socket, s => s.name, s => HapticUtils.GetFallbackId(s.owner()))
+                    );
+                    var oscId = HapticUtils.MakeUniqueId(
+                        usedOscIds,
+                        HapticUtils.GetPreferredId(socket, s => s.oscId, _ => menuName)
+                    );
+                    Debug.Log("Baking haptic component in " + socket.owner().GetPath() + " as " + oscId);
+                    
+                    VFABool toggleParam = null;
+                    if (socket.addMenuItem) {
+                        toggleParam = fx.NewBool(oscId, synced: true, saved: saved);
+                        var icon = socket.menuIcon?.Get();
+                        menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/{menuName}", toggleParam, icon: icon);
+                        exclusiveTriggers.Add((oscId, toggleParam));
+                    }
+
+                    if (!BuildTargetUtils.IsDesktop()) {
+                        continue;
+                    }
+
+                    var objectEnabled = isObjectEnabledService.Get(obj);
+                    if (sharedBakeResult == null) continue;
+                    var (lightType, localPosition, localRotation) = VRCFuryHapticSocketEditor.GetInfoFromLightsOrComponent(socket);
+                    if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
+                        VRCFuryHapticSocketEditor.ForEachPossibleLight(socket.owner(), false, light => {
+                            light.Destroy();
+                        });
+                    }
+                    var bakeResult = sharedBakeResult;
+
+                    anchorEnabledParams.Add(objectEnabled);
+                    var anchor = GameObjects.Create("SPS Socket Anchor", obj);
+                    anchor.localPosition = localPosition;
+                    anchor.localRotation = localRotation;
+                    globals.addOtherFeature(new ShowInFirstPerson {
+                        useObjOverride = true,
+                        objOverride = anchor,
+                        onlyIfChildOfHead = true
+                    });
+#if VRCSDK_HAS_VRCCONSTRAINTS
+                    if (socketAnchorConstraint == null) {
+                        socketAnchorConstraint = sharedBakeResult.bakeRoot.AddComponent<VRCParentConstraint>();
+                        socketAnchorConstraint.IsActive = true;
+                        socketAnchorConstraint.Locked = true;
+                    }
+
+                    var sourceId = socketAnchorConstraint.Sources.Count;
+                    socketAnchorConstraint.Sources.Add(new VRCConstraintSource(anchor, 0, Vector3.zero, Vector3.zero));
+
+                    var moveSocketClip = clipFactory.NewClip($"Move SPS Socket {sourceId}");
+                    moveSocketClip.SetCurve(socketAnchorConstraint, $"Sources.source{sourceId}.Weight", 1);
+                    GetSocketAnchorTree().Add(objectEnabled, moveSocketClip);
+#endif
+
+                    var Contacts = sharedContacts;
 
                     if (socket.depthActions2.Count > 0) {
                         _hapticAnimContactsService.CreateAnims(
@@ -245,7 +313,8 @@ namespace VF.Service {
                             socket.depthActions2,
                             socket.owner(),
                             oscId,
-                            Contacts.Value
+                            Contacts.Value,
+                            objectEnabled
                         );
                     }
                     
@@ -283,22 +352,22 @@ namespace VF.Service {
                         obj.active = true;
                         _forceStateInAnimatorService.ForceEnable(obj);
 
-                        foreach (var child in new []{bakeResult.bakeRoot, bakeResult.senders, haptics, bakeResult.lights}.Concat(animObjects).NotNull()) {
+                        foreach (var child in new []{sharedHaptics}.Concat(sharedAnimObjects).NotNull()) {
                             child.active = false;
                         }
 
                         var onLocalClip = clipFactory.NewClip($"{oscId} (Local)");
-                        foreach (var child in new []{bakeResult.bakeRoot, bakeResult.senders, haptics, bakeResult.lights}.Concat(animObjects).NotNull()) {
+                        foreach (var child in new []{sharedHaptics}.Concat(sharedAnimObjects).NotNull()) {
                             onLocalClip.SetEnabled(child, true);
                         }
 
                         var onRemoteClip = clipFactory.NewClip($"{oscId} (Remote)");
-                        foreach (var child in new []{bakeResult.bakeRoot, bakeResult.senders, bakeResult.lights}.Concat(animObjects).NotNull()) {
+                        foreach (var child in sharedAnimObjects.NotNull()) {
                             onRemoteClip.SetEnabled(child, true);
                         }
                         
                         var onStealthClip = clipFactory.NewClip($"{oscId} (Stealth)");
-                        foreach (var child in new []{bakeResult.bakeRoot, haptics}.NotNull()) {
+                        foreach (var child in new []{sharedHaptics}.NotNull()) {
                             onStealthClip.SetEnabled(child, true);
                         }
 
@@ -314,6 +383,9 @@ namespace VF.Service {
 
                             onLocalClip.SetAap(activeAnimParam, 1);
                             onRemoteClip.SetAap(activeAnimParam, 1);
+                            var activeAnimWhenSocketEnabled = clipFactory.NewClip($"Set {activeAnimParam.Name()}");
+                            activeAnimWhenSocketEnabled.SetAap(activeAnimParam.Name(), 1);
+                            GetSocketAnchorTree().Add(objectEnabled, activeAnimWhenSocketEnabled);
                         }
 
                         var gizmo = obj.GetComponent<VRCFurySocketGizmo>();
@@ -323,10 +395,14 @@ namespace VF.Service {
                             onRemoteClip.SetCurve(gizmo, "show", 1);
                         }
 
-                        var localTree = BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0, name: "When Local")
-                            .create(onStealthClip, onLocalClip);
-                        var remoteTree = BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0, name: "When Remote")
-                            .create(null, onRemoteClip);
+                        var localTree = stealthOn == null
+                            ? onLocalClip
+                            : BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0, name: "When Local")
+                                .create(onStealthClip, onLocalClip);
+                        var remoteTree = stealthOn == null
+                            ? onRemoteClip
+                            : BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0, name: "When Remote")
+                                .create(null, onRemoteClip);
                         var onTree = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0, name: $"SPS: When {oscId} On")
                             .create(localTree, remoteTree);
                         var directTree = directTreeService.Create($"{oscId} - Toggle");
@@ -344,7 +420,7 @@ namespace VF.Service {
                                 useHipAvoidance = socket.useHipAvoidance
                             });
                             autoReceiverObj.active = false;
-                            foreach (var child in new []{bakeResult.bakeRoot, autoReceiverObj}.NotNull()) {
+                            foreach (var child in new []{autoReceiverObj}.NotNull()) {
                                 autoOnClip.SetEnabled(child, true);
                             }
                             autoSockets.Add(Tuple.Create(oscId, toggleParam, distParam));
@@ -352,6 +428,31 @@ namespace VF.Service {
                     }
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath(avatarObject)}", e);
+                }
+            }
+            if (sharedBakeResult != null) {
+                var anySocketEnabled = anchorEnabledParams[0];
+                if (anchorEnabledParams.Count > 1) {
+                    var anySocketEnabledOutput = fx.MakeAap(
+                        "SPS Socket Anchor/Any Enabled",
+                        anchorEnabledParams.Any(param => param.GetDefault() > 0) ? 1 : 0
+                    );
+                    var anySocketEnabledCondition = anchorEnabledParams
+                        .Select(param => BlendtreeMath.GreaterThan(param, 0))
+                        .Aggregate(BlendtreeMath.False(), (a, b) => a.Or(b));
+                    directTreeService.GetMath(GetSocketAnchorTree()).SetValueWithConditions(
+                        (anySocketEnabledOutput.MakeSetter(1), anySocketEnabledCondition),
+                        (anySocketEnabledOutput.MakeSetter(0), null)
+                    );
+                    anySocketEnabled = anySocketEnabledOutput.AsFloat();
+                }
+                EnableWhenSocketIsEnabled(anySocketEnabled, sharedBakeResult.bakeRoot);
+                EnableWhenSocketIsEnabled(anySocketEnabled, sharedBakeResult.senders);
+                EnableWhenSocketIsEnabled(anySocketEnabled, sharedBakeResult.lights);
+                EnableWhenSocketIsEnabled(anySocketEnabled, sharedHaptics);
+                foreach (var child in sharedAnimObjects.NotNull()) {
+                    child.active = false;
+                    EnableWhenSocketIsEnabled(anySocketEnabled, child);
                 }
             }
 
@@ -447,5 +548,6 @@ namespace VF.Service {
                 start.TransitionsTo(states[Tuple.Create(0, 1)]).When(fx.Always());
             }
         }
+
     }
 }

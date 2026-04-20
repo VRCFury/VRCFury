@@ -66,6 +66,9 @@ namespace VF.Feature.Base {
         BoundingBoxFix,
         AnchorOverrideFix,
 
+        // Needs to happen after object moves, once final object hierarchy is known
+        IsObjectEnabled,
+
         // Needs to happen after toggles
         HapticsAnimationRewrites,
         
