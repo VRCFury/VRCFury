@@ -9,7 +9,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Utils;
 
-namespace VF.VrcfEditorOnly {
+namespace VF.Hooks.VrcsdkFixes {
     internal static class WhitelistPatch {
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type AvatarValidationSdkBase =
