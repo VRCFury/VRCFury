@@ -127,7 +127,9 @@ namespace VF.Feature {
             }
 #if VRCSDK_HAS_VRCRAYCAST
             foreach (var raycast in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCRaycast>()) {
-                if (rewrittenParams.ContainsKey(raycast.Parameter)) {
+                if (rewrittenParams.ContainsKey(raycast.Parameter + "_Hit") 
+                    || rewrittenParams.ContainsKey(raycast.Parameter + "_Ratio")
+                    || rewrittenParams.ContainsKey(raycast.Parameter + "_Distance")) {
                     raycast.Parameter = RewriteParamName(raycast.Parameter);
                 }
             }
