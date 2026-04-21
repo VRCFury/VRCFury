@@ -107,7 +107,9 @@ namespace VF.Service.Compressor {
             }
 #if VRCSDK_HAS_VRCRAYCAST
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCRaycast>()) {
-                contactParams.Add(c.Parameter);
+                contactParams.Add(c.Parameter + "_Hit");
+                contactParams.Add(c.Parameter + "_Ratio");
+                contactParams.Add(c.Parameter + "_Distance");
             }
 #endif
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()) {
