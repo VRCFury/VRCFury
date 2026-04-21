@@ -52,6 +52,9 @@ namespace VF.Hooks.VrcsdkFixes {
             if (msg == "AssemblyReload") return false;
             if (msg.StartsWith("[VideoTXL] Found") && msg.Contains("ScreenManagers in scene")) return false;
 
+            // VideoTXL prints this every time the scene loads
+            if (msg == "SceneLoaded") return false;
+
             // ClientSim prints this every time any udon script calls FindComponentInPlayerObjects
             if (msg.Contains("possible matches for") && msg.Contains("in player objects for")) return false;
 
