@@ -35,8 +35,6 @@ namespace VF.Menu {
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
 
-            EditorApplication.delayCall += UpdateMenu;
-
             Reflection.DoAllGOsHaveConstrainProportionsEnabledPatch.apply();
             Reflection.SetConstrainProportionsPatch.apply();
             Selection.selectionChanged += () => unlocked.Clear();
@@ -78,9 +76,6 @@ namespace VF.Menu {
         public static bool Get() {
             return EditorPrefs.GetBool(EditorPref, true);
         }
-        private static void UpdateMenu() {
-            UnityEditor.Menu.SetChecked(MenuItems.constrainedProportions, Get());
-        }
 
         [MenuItem(MenuItems.constrainedProportions, priority = MenuItems.constrainedProportionsPriority)]
         private static void Click() {
@@ -96,7 +91,12 @@ namespace VF.Menu {
                 if (!ok) return;
             }
             EditorPrefs.SetBool(EditorPref, !Get());
-            UpdateMenu();
+        }
+
+        [MenuItem(MenuItems.constrainedProportions, true)]
+        private static bool Validate() {
+            UnityEditor.Menu.SetChecked(MenuItems.constrainedProportions, Get());
+            return true;
         }
     }
 }

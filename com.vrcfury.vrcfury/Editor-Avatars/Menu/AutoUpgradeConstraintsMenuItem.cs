@@ -5,16 +5,8 @@ namespace VF.Menu {
     internal static class AutoUpgradeConstraintsMenuItem {
         private const string EditorPref = "com.vrcfury.autoUpgradeConstraints";
 
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            EditorApplication.delayCall += UpdateMenu;
-        }
-
         public static bool Get() {
             return EditorPrefs.GetBool(EditorPref, true);
-        }
-        private static void UpdateMenu() {
-            UnityEditor.Menu.SetChecked(MenuItems.autoUpgradeConstraints, Get());
         }
 
         [MenuItem(MenuItems.autoUpgradeConstraints, priority = MenuItems.autoUpgradeConstraintsPriority)]
@@ -31,7 +23,12 @@ namespace VF.Menu {
                 if (!ok) return;
             }
             EditorPrefs.SetBool(EditorPref, !Get());
-            UpdateMenu();
+        }
+
+        [MenuItem(MenuItems.autoUpgradeConstraints, true)]
+        private static bool Validate() {
+            UnityEditor.Menu.SetChecked(MenuItems.autoUpgradeConstraints, Get());
+            return true;
         }
     }
 }

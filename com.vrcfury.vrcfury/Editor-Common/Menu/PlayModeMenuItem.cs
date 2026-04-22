@@ -5,16 +5,8 @@ namespace VF.Menu {
     internal static class PlayModeMenuItem {
         private const string EditorPref = "com.vrcfury.playMode";
 
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            EditorApplication.delayCall += UpdateMenu;
-        }
-
         public static bool Get() {
             return EditorPrefs.GetBool(EditorPref, true);
-        }
-        private static void UpdateMenu() {
-            UnityEditor.Menu.SetChecked(MenuItems.playMode, Get());
         }
 
         [MenuItem(MenuItems.playMode, priority = MenuItems.playModePriority)]
@@ -29,7 +21,12 @@ namespace VF.Menu {
                 if (!ok) return;
             }
             EditorPrefs.SetBool(EditorPref, !Get());
-            UpdateMenu();
+        }
+
+        [MenuItem(MenuItems.playMode, true)]
+        private static bool Validate() {
+            UnityEditor.Menu.SetChecked(MenuItems.playMode, Get());
+            return true;
         }
     }
 }

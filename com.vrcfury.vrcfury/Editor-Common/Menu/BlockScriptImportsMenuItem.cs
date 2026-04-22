@@ -5,16 +5,8 @@ namespace VF.Menu {
     internal static class BlockScriptImportsMenuItem {
         private const string Key = "com.vrcfury.blockScriptImports";
 
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            EditorApplication.delayCall += UpdateMenu;
-        }
-
         public static bool Get() {
             return SessionState.GetBool(Key, false);
-        }
-        private static void UpdateMenu() {
-            UnityEditor.Menu.SetChecked(MenuItems.blockScriptImports, Get());
         }
 
         [MenuItem(MenuItems.blockScriptImports, priority = MenuItems.blockScriptImportsPriority)]
@@ -30,7 +22,12 @@ namespace VF.Menu {
                 if (!ok) return;
             }
             SessionState.SetBool(Key, !Get());
-            UpdateMenu();
+        }
+
+        [MenuItem(MenuItems.blockScriptImports, true)]
+        private static bool Validate() {
+            UnityEditor.Menu.SetChecked(MenuItems.blockScriptImports, Get());
+            return true;
         }
     }
 }

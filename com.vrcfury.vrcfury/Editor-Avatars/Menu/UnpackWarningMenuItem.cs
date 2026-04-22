@@ -5,16 +5,8 @@ namespace VF.Menu {
     internal static class UnpackWarningMenuItem {
         private const string EditorPref = "com.vrcfury.unpackWarning";
 
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            EditorApplication.delayCall += UpdateMenu;
-        }
-
         public static bool Get() {
             return EditorPrefs.GetBool(EditorPref, true);
-        }
-        private static void UpdateMenu() {
-            UnityEditor.Menu.SetChecked(MenuItems.unpackWarning, Get());
         }
 
         [MenuItem(MenuItems.unpackWarning, priority = MenuItems.unpackWarningPriority)]
@@ -31,7 +23,12 @@ namespace VF.Menu {
                 if (!ok) return;
             }
             EditorPrefs.SetBool(EditorPref, !Get());
-            UpdateMenu();
+        }
+
+        [MenuItem(MenuItems.unpackWarning, true)]
+        private static bool Validate() {
+            UnityEditor.Menu.SetChecked(MenuItems.unpackWarning, Get());
+            return true;
         }
     }
 }

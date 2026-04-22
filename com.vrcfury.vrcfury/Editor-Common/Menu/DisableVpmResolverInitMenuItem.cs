@@ -6,17 +6,8 @@ namespace VF.Menu {
     internal static class DisableVpmResolverInitMenuItem {
         private const string EditorPref = "com.vrcfury.disableVpmResolver";
 
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            EditorApplication.delayCall += UpdateMenu;
-        }
-
         public static bool Get() {
             return EditorPrefs.GetBool(EditorPref, false);
-        }
-
-        private static void UpdateMenu() {
-            UnityEditor.Menu.SetChecked(MenuItems.disableVpmResolverInit, Get());
         }
 
         [MenuItem(MenuItems.disableVpmResolverInit, priority = MenuItems.disableVpmResolverInitPriority)]
@@ -35,7 +26,12 @@ namespace VF.Menu {
             }
 
             EditorPrefs.SetBool(EditorPref, !Get());
-            UpdateMenu();
+        }
+
+        [MenuItem(MenuItems.disableVpmResolverInit, true)]
+        private static bool Validate() {
+            UnityEditor.Menu.SetChecked(MenuItems.disableVpmResolverInit, Get());
+            return true;
         }
     }
 }

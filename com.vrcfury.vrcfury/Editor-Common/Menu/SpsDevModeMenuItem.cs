@@ -5,16 +5,8 @@ namespace VF.Menu {
     internal static class SpsDevModeMenuItem {
         private const string Key = "com.vrcfury.spsDevMode";
 
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            EditorApplication.delayCall += UpdateMenu;
-        }
-
         public static bool Get() {
             return SessionState.GetBool(Key, false);
-        }
-        private static void UpdateMenu() {
-            UnityEditor.Menu.SetChecked(MenuItems.spsDevMode, Get());
         }
 
         [MenuItem(MenuItems.spsDevMode, priority = MenuItems.spsDevModePriority)]
@@ -30,7 +22,12 @@ namespace VF.Menu {
                 if (!ok) return;
             }
             SessionState.SetBool(Key, !Get());
-            UpdateMenu();
+        }
+
+        [MenuItem(MenuItems.spsDevMode, true)]
+        private static bool Validate() {
+            UnityEditor.Menu.SetChecked(MenuItems.spsDevMode, Get());
+            return true;
         }
     }
 }
