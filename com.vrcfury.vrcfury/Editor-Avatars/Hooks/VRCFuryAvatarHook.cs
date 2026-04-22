@@ -9,6 +9,7 @@ using VF.Actions;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
+using VF.Hooks.VrcsdkFixes;
 using VF.Injector;
 using VF.Inspector;
 using VF.Menu;
@@ -56,6 +57,7 @@ namespace VF.Hooks {
         private static void Init() {
             SpsConfigurer.getIsActuallyUploading = IsActuallyUploadingHook.Get;
             PreventComponentDeletionHook.getIsActuallyUploading = IsActuallyUploadingHook.Get;
+            DisablePluginsWhenNotUploadingHook.getIsActuallyUploading = IsActuallyUploadingHook.Get;
 
             VRCFuryHapticPlugEditor.getHapticsEnabled = HapticsToggleMenuItem.Get;
 

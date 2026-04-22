@@ -3,10 +3,14 @@
     "rootNamespace": "VF",
     "references": [
         "VRCFury",
+        "com.vrcfury.udon",
         "VRCFury-Editor-Common",
         "VRC.SDKBase.Editor.BuildPipeline",
         "VRC.SDKBase.Editor",
-        "VRC.SDK3.Editor"
+        "VRC.SDK3.Editor",
+        "VRC.Udon",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor"
     ],
     "includePlatforms": [
         "Editor"
@@ -18,6 +22,7 @@
         "System.Collections.Immutable.dll",
         "VRCSDKBase.dll",
         "VRC.Dynamics.dll",
+        "VRCSDK3.dll",
         "VRC.SDK3.Dynamics.PhysBone.dll",
         "VRC.SDK3.Dynamics.Contact.dll",
         "VRC.SDK3.Dynamics.Constraint.dll",

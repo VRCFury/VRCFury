@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using VF.Builder.Haptics;
 using VF.Utils;
 
@@ -9,6 +9,7 @@ namespace VF.Hooks {
             VFGameObject.getUploadRoots = obj => VFGameObject.GetRoots(obj.scene);
             SpsConfigurer.getIsActuallyUploading = IsActuallyUploadingWorldHook.Get;
             PreventComponentDeletionHook.getIsActuallyUploading = IsActuallyUploadingWorldHook.Get;
+            DisablePluginsWhenNotUploadingHook.getIsActuallyUploading = IsActuallyUploadingWorldHook.Get;
         }
     }
 }

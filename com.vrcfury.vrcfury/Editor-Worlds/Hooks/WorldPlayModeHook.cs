@@ -8,50 +8,47 @@ using VRC.SDKBase.Editor.BuildPipeline;
 namespace VF.Hooks {
     internal static class WorldPlayModeHook {
         private const string TriggerObjectName = "__vrcf_play_mode_trigger";
-        private static bool triggerAddedThisPlaymode = false;
-        private static bool appliedThisPlayMode = false;
+        private static bool ranPreprocessors = false;
 
         [InitializeOnLoadMethod]
         private static void Init() {
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-            VRCFuryComponent._OnValidate = () => {
-                if (Application.isPlaying && !appliedThisPlayMode && !triggerAddedThisPlaymode && PlayModeMenuItem.Get()) {
-                    triggerAddedThisPlaymode = true;
-                    RescanOnStartComponent.Create();
-                }
-            };
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
             if (state == PlayModeStateChange.ExitingEditMode) {
-                triggerAddedThisPlaymode = false;
-                appliedThisPlayMode = false;
+                ranPreprocessors = false;
                 TmpFilePackage.Cleanup();
+                RescanOnStartComponent.Create();
             }
         }
 
         public class BuildCallback : VrcfWorldPreprocessor {
             protected override int order => int.MinValue;
             protected override void Process(Scene scene) {
-                appliedThisPlayMode = true;
+                ranPreprocessors = true;
             }
         }
 
         [DefaultExecutionOrder(-10000)]
+        [ExecuteAlways]
         public class RescanOnStartComponent : VRCFuryPlayComponent {
             private void Start() {
-                try {
-                    if (!appliedThisPlayMode) {
-                        appliedThisPlayMode = true;
-                        VRCBuildPipelineCallbacks.OnVRCSDKBuildRequested(VRCSDKRequestedBuildType.Scene);
-                    }
-                } finally {
+                if (Application.isPlaying && !ranPreprocessors) {
+                    ranPreprocessors = true;
+                    VRCBuildPipelineCallbacks.OnVRCSDKBuildRequested(VRCSDKRequestedBuildType.Scene);
+                }
+            }
+
+            private void Awake() {
+                // This conditional prevents it from getting nuked in edit mode right after we add it
+                // as play mode is starting
+                if (!EditorApplication.isPlayingOrWillChangePlaymode) {
                     DestroyImmediate(gameObject);
                 }
             }
 
             public static void Create() {
-                if (!Application.isPlaying) return;
                 var obj = new GameObject(TriggerObjectName);
                 obj.AddComponent<RescanOnStartComponent>();
             }
