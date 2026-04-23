@@ -13,9 +13,10 @@ using VRC.Udon.Editor.ProgramSources;
 
 namespace VF.Hooks.UdonCleaner {
     /**
-     * Some udon changes sneak through our patches. If this happens, we can clean them up just before saving out the assets.
+     * Some udon changes sneak through CleanUdonJunkOnChangeHook.
+     * If this happens, we can clean them up just before saving out the assets.
      */
-    internal sealed class UdonAssetSaveCleanerHook : AssetModificationProcessor {
+    internal sealed class CleanUdonJunkOnSaveHook : AssetModificationProcessor {
 
         private abstract class Reflection : ReflectionHelper {
             public static readonly System.Reflection.FieldInfo UdonProgramAssetSerializedUdonProgramAssetField = typeof(UdonProgramAsset).VFField("serializedUdonProgramAsset");
@@ -93,19 +94,15 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         private static void ClearGeneratedPrefabInstanceModifications(GameObject root) {
-            var processedRoots = new HashSet<GameObject>();
             foreach (var transform in root.GetComponentsInChildren<Transform>(true)) {
                 if (transform == null) continue;
                 var gameObject = transform.gameObject;
-                if (!PrefabUtility.IsPartOfPrefabInstance(gameObject)) continue;
-
-                var prefabInstanceRoot = PrefabUtility.GetNearestPrefabInstanceRoot(gameObject);
-                if (prefabInstanceRoot == null || !processedRoots.Add(prefabInstanceRoot)) continue;
-                ClearGeneratedPrefabInstanceModificationsOnRoot(prefabInstanceRoot);
+                if (!PrefabUtility.IsAnyPrefabInstanceRoot(gameObject)) continue;
+                CleanUnnecessaryPrefabModifications(gameObject);
             }
         }
 
-        private static void ClearGeneratedPrefabInstanceModificationsOnRoot(GameObject prefabInstanceRoot) {
+        public static void CleanUnnecessaryPrefabModifications(GameObject prefabInstanceRoot) {
             var modifications = PrefabUtility.GetPropertyModifications(prefabInstanceRoot);
             if (modifications == null || modifications.Length == 0) return;
 
@@ -122,6 +119,14 @@ namespace VF.Hooks.UdonCleaner {
 
             if (!changed) return;
             PrefabUtility.SetPropertyModifications(prefabInstanceRoot, keptModifications.ToArray());
+
+            // Calling SetPropertyModifications wipes out all hideFlags for the prefab, because unity is cool
+            // Recalculate them as needed
+            foreach (var behaviour in prefabInstanceRoot.GetComponentsInChildren<UdonBehaviour>(true)) {
+                if (behaviour != null && UdonSharpEditorUtility.IsUdonSharpBehaviour(behaviour)) {
+                    behaviour.hideFlags |= HideFlags.HideInInspector;
+                }
+            }
         }
 
         private static bool ShouldRemoveGeneratedProgramModification(PropertyModification modification) {
@@ -136,8 +141,12 @@ namespace VF.Hooks.UdonCleaner {
                 isUdonSharpBacker = UdonSharpEditorUtility.IsUdonSharpBehaviour(ub);
             }
 
+            if (isUdonSharpBacker) {
+                return true;
+            }
+
             if (modification.propertyPath == "_syncMethod") {
-                return isUnresolved || isUdonSharpBacker;
+                return isUnresolved;
             }
 
             if (modification.propertyPath == "serializedProgramAsset") {
@@ -149,7 +158,7 @@ namespace VF.Hooks.UdonCleaner {
             }
 
             if (modification.propertyPath == "serializationData.Prefab") {
-                return isUnresolved || isUdonSharpBacker || isUdonSharpBehaviour;
+                return isUnresolved || isUdonSharpBehaviour;
             }
 
             return false;
@@ -176,5 +185,6 @@ namespace VF.Hooks.UdonCleaner {
             EditorUtility.SetDirty(target);
             return true;
         }
+
     }
 }

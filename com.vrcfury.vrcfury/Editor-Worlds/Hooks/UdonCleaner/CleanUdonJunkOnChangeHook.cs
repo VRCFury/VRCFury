@@ -1,5 +1,6 @@
 using System;
 using UdonSharp;
+using UdonSharpEditor;
 using UnityEditor;
 using UnityEngine;
 using VF.Menu;
@@ -13,7 +14,7 @@ namespace VF.Hooks.UdonCleaner {
      * They're already updated in the scene clone during play mode / during upload, so we can just block them
      * at any other time.
      */
-    internal static class DisableSerializedProgramAssetUpdatesHook {
+    internal static class CleanUdonJunkOnChangeHook {
         private sealed class DummySerializedProgramAssetHolder : ScriptableObject {
             public UnityEngine.Object serializedProgramAsset;
         }
@@ -25,25 +26,25 @@ namespace VF.Hooks.UdonCleaner {
             public static readonly System.Reflection.FieldInfo serializedProgramAsset = typeof(UdonBehaviour).VFField("serializedProgramAsset");
 
             public static readonly HarmonyUtils.PatchObj PatchPopulateSerializedProgramAssetReference = HarmonyUtils.Patch(
-                typeof(DisableSerializedProgramAssetUpdatesHook),
+                typeof(CleanUdonJunkOnChangeHook),
                 nameof(Prefix),
                 "VRC.Udon.Editor.UdonEditorManager",
                 "PopulateSerializedProgramAssetReference"
             );
             public static readonly HarmonyUtils.PatchObj PatchUpdateSerializedProgramAssets = HarmonyUtils.Patch(
-                typeof(DisableSerializedProgramAssetUpdatesHook),
+                typeof(CleanUdonJunkOnChangeHook),
                 nameof(Prefix),
                 "UdonSharpEditor.UdonSharpEditorManager",
                 "UpdateSerializedProgramAssets"
             );
             public static readonly HarmonyUtils.PatchObj PatchInspectorGui = HarmonyUtils.Patch(
-                typeof(DisableSerializedProgramAssetUpdatesHook),
+                typeof(CleanUdonJunkOnChangeHook),
                 nameof(OnInspectorPrefix),
                 UdonBehaviourEditor,
                 "OnInspectorGUI"
             );
             public static readonly HarmonyUtils.PatchObj PatchRunBehaviourSetup = HarmonyUtils.Patch(
-                typeof(DisableSerializedProgramAssetUpdatesHook),
+                typeof(CleanUdonJunkOnChangeHook),
                 nameof(OnRunBehaviourSetupPostfix),
                 "UdonSharpEditor.UdonSharpEditorUtility",
                 "RunBehaviourSetup",
@@ -97,24 +98,20 @@ namespace VF.Hooks.UdonCleaner {
             if (__0 == null) return;
 
             if (!(Reflection._udonSharpBackingUdonBehaviour.GetValue(__0) is UdonBehaviour backing) || backing == null) return;
-            var current = Reflection.serializedProgramAsset.GetValue(backing) as UnityEngine.Object;
-            if (current == null) return;
 
             if (PrefabUtility.IsPartOfPrefabInstance(backing)) {
-                var serializedObject = new SerializedObject(backing);
-                var property = serializedObject.FindProperty("serializedProgramAsset");
-                if (property == null || !property.prefabOverride) return;
-                var originalHideFlags = backing.hideFlags;
-                PrefabUtility.RevertPropertyOverride(property, InteractionMode.AutomatedAction);
-                if (backing != null && backing.hideFlags != originalHideFlags) {
-                    backing.hideFlags = originalHideFlags;
-                    EditorUtility.SetDirty(backing);
+                var prefabInstanceRoot = PrefabUtility.GetNearestPrefabInstanceRoot(backing);
+                if (prefabInstanceRoot != null) {
+                    CleanUdonJunkOnSaveHook.CleanUnnecessaryPrefabModifications(prefabInstanceRoot);
                 }
                 return;
             }
 
-            Reflection.serializedProgramAsset.SetValue(backing, null);
-            EditorUtility.SetDirty(backing);
+            var current = Reflection.serializedProgramAsset.GetValue(backing) as UnityEngine.Object;
+            if (current != null) {
+                Reflection.serializedProgramAsset.SetValue(backing, null);
+                EditorUtility.SetDirty(backing);
+            }
         }
     }
 }
