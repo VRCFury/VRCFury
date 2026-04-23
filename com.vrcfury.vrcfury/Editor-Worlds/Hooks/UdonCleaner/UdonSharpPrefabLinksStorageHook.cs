@@ -93,9 +93,6 @@ namespace VF.Hooks.UdonCleaner {
 
         private static void TryApplyCachedPrefab(UdonSharpBehaviour instance) {
             if (instance == null) return;
-            if (!TryGetPrefab(instance, out var existingPrefab)) return;
-            if (existingPrefab != null) return;
-
             lock (mapLock) {
                 if (!prefabByInstance.TryGetValue(instance, out var cachedPrefab)) return;
                 TrySetPrefab(instance, cachedPrefab);
