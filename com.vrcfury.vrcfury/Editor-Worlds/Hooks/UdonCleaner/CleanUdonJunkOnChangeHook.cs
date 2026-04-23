@@ -43,7 +43,13 @@ namespace VF.Hooks.UdonCleaner {
                 UdonBehaviourEditor,
                 "OnInspectorGUI"
             );
-            public static readonly HarmonyUtils.PatchObj PatchRunBehaviourSetup = HarmonyUtils.Patch(
+            public static readonly HarmonyUtils.PatchObj PatchRunBehaviourSetupPrefix = HarmonyUtils.Patch(
+                typeof(CleanUdonJunkOnChangeHook),
+                nameof(OnRunBehaviourSetupPrefix),
+                "UdonSharpEditor.UdonSharpEditorUtility",
+                "RunBehaviourSetup"
+            );
+            public static readonly HarmonyUtils.PatchObj PatchRunBehaviourSetupPostfix = HarmonyUtils.Patch(
                 typeof(CleanUdonJunkOnChangeHook),
                 nameof(OnRunBehaviourSetupPostfix),
                 "UdonSharpEditor.UdonSharpEditorUtility",
@@ -60,7 +66,8 @@ namespace VF.Hooks.UdonCleaner {
             Reflection.PatchPopulateSerializedProgramAssetReference.apply();
             Reflection.PatchUpdateSerializedProgramAssets.apply();
             Reflection.PatchInspectorGui.apply();
-            Reflection.PatchRunBehaviourSetup.apply();
+            Reflection.PatchRunBehaviourSetupPrefix.apply();
+            Reflection.PatchRunBehaviourSetupPostfix.apply();
         }
 
         private static bool Prefix() {
@@ -92,20 +99,23 @@ namespace VF.Hooks.UdonCleaner {
             Reflection._serializedProgramAssetProperty.SetValue(__instance, GetSharedDummyProperty());
         }
 
-        // U#'s RunBehaviourSetup always sets the serializedProgramAsset on the backing behaviour, so we have to un-set it.
+        private static bool OnRunBehaviourSetupPrefix(UdonSharpBehaviour __0, bool __1) {
+            if (ShouldAllow()) return true;
+            var udonSharpBehaviour = __0;
+            if (udonSharpBehaviour == null) return true;
+            if (PrefabUtility.GetCorrespondingObjectFromSource(udonSharpBehaviour) != null) {
+                // It's part of a prefab, so just cleanup and don't run it
+                var prefabInstanceRoot = PrefabUtility.GetNearestPrefabInstanceRoot(udonSharpBehaviour);
+                CleanUdonJunkOnSaveHook.CleanUnnecessaryPrefabModifications(prefabInstanceRoot);
+                return false;
+            }
+            return true;
+        }
+
         private static void OnRunBehaviourSetupPostfix(UdonSharpBehaviour __0, bool __1) {
             if (ShouldAllow()) return;
             if (__0 == null) return;
-
-            if (!(Reflection._udonSharpBackingUdonBehaviour.GetValue(__0) is UdonBehaviour backing) || backing == null) return;
-
-            if (PrefabUtility.IsPartOfPrefabInstance(backing)) {
-                var prefabInstanceRoot = PrefabUtility.GetNearestPrefabInstanceRoot(backing);
-                if (prefabInstanceRoot != null) {
-                    CleanUdonJunkOnSaveHook.CleanUnnecessaryPrefabModifications(prefabInstanceRoot);
-                }
-                return;
-            }
+            if (!(Reflection._udonSharpBackingUdonBehaviour.GetValue(__0) is UdonBehaviour backing)) return;
 
             var current = Reflection.serializedProgramAsset.GetValue(backing) as UnityEngine.Object;
             if (current != null) {
@@ -115,3 +125,4 @@ namespace VF.Hooks.UdonCleaner {
         }
     }
 }
+
