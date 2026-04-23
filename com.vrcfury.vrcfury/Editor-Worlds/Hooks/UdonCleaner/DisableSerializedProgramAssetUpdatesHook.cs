@@ -100,6 +100,19 @@ namespace VF.Hooks.UdonCleaner {
             var current = Reflection.serializedProgramAsset.GetValue(backing) as UnityEngine.Object;
             if (current == null) return;
 
+            if (PrefabUtility.IsPartOfPrefabInstance(backing)) {
+                var serializedObject = new SerializedObject(backing);
+                var property = serializedObject.FindProperty("serializedProgramAsset");
+                if (property == null || !property.prefabOverride) return;
+                var originalHideFlags = backing.hideFlags;
+                PrefabUtility.RevertPropertyOverride(property, InteractionMode.AutomatedAction);
+                if (backing != null && backing.hideFlags != originalHideFlags) {
+                    backing.hideFlags = originalHideFlags;
+                    EditorUtility.SetDirty(backing);
+                }
+                return;
+            }
+
             Reflection.serializedProgramAsset.SetValue(backing, null);
             EditorUtility.SetDirty(backing);
         }

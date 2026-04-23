@@ -84,12 +84,10 @@ namespace VF.Hooks.UdonCleaner {
             ClearGeneratedPrefabInstanceModifications(root);
 
             foreach (var behaviour in root.GetComponentsInChildren<UdonSharpBehaviour>(true)) {
-                if (PrefabUtility.IsPartOfPrefabInstance(behaviour)) continue;
                 yield return behaviour;
             }
 
             foreach (var behaviour in root.GetComponentsInChildren<UdonBehaviour>(true)) {
-                if (PrefabUtility.IsPartOfPrefabInstance(behaviour)) continue;
                 yield return behaviour;
             }
         }
@@ -169,7 +167,10 @@ namespace VF.Hooks.UdonCleaner {
 
         private static bool ClearObjectReferenceProperty(UnityEngine.Object target, System.Reflection.FieldInfo field) {
             if (target == null) return false;
-            if (PrefabUtility.IsPartOfPrefabInstance(target)) return false;
+            if (PrefabUtility.IsPartOfPrefabInstance(target)) {
+                // This will be handled in the prefab modifications pass later
+                return false;
+            }
 
             field.SetValue(target, null);
             EditorUtility.SetDirty(target);
