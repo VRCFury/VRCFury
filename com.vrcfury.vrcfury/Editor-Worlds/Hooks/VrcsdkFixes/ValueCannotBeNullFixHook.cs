@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+﻿using UdonSharp;
+using UnityEditor;
 using UnityEngine;
 using VF.Utils;
 
@@ -13,13 +14,13 @@ namespace VF.Hooks.VrcsdkFixes {
             public static readonly HarmonyUtils.PatchObj PatchSerialize = HarmonyUtils.Patch(
                 typeof(ValueCannotBeNullFixHook),
                 nameof(Prefix),
-                "UdonSharp.UdonSharpBehaviour",
+                typeof(UdonSharpBehaviour),
                 "UnityEngine.ISerializationCallbackReceiver.OnBeforeSerialize"
             );
             public static readonly HarmonyUtils.PatchObj PatchDeserialize = HarmonyUtils.Patch(
                 typeof(ValueCannotBeNullFixHook),
                 nameof(Prefix),
-                "UdonSharp.UdonSharpBehaviour",
+                typeof(UdonSharpBehaviour),
                 "UnityEngine.ISerializationCallbackReceiver.OnAfterDeserialize"
             );
         }

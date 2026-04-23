@@ -136,9 +136,12 @@ namespace VF.Utils {
                     } else if (param.Name == "__result") {
                         if (!(method is MethodInfo info)) return false;
                         var returnType = info.ReturnType;
-                        return paramType == returnType || paramType.IsAssignableFrom(returnType);
+                        return paramType.IsAssignableFrom(returnType);
                     } else if (param.Name.StartsWith("__") && int.TryParse(param.Name.Substring(2), out var i)) {
-                        return methodParams.Length > i && paramType.IsAssignableFrom(methodParams[i].ParameterType);
+                        if (methodParams.Length <= i) return false;
+                        var methodParamType = methodParams[i].ParameterType;
+                        if (methodParamType.IsByRef) methodParamType = methodParamType.GetElementType();
+                        return paramType.IsAssignableFrom(methodParamType);
                     }
                     return true;
                 });
