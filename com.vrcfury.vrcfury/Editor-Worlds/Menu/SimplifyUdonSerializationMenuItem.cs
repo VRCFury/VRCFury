@@ -36,8 +36,8 @@ namespace VF.Menu {
             if (next) {
                 var ok = DialogUtils.DisplayDialog(
                     "Warning",
-                    "!! THIS VRCFURY FEATURE IS EXPERIMENTAL PRE-ALPHA !!\n\n" +
-                    "When enabled, VRCFury will patch the Udon/U# Editor to be more backup/diff/scm/override compatible. " +
+                    "!! THIS VRCFURY FEATURE IS EXPERIMENTAL !!\n\n" +
+                    "When enabled, VRCFury will patch Udon/U# to save out less temporary junk to disk. " +
                     "Fewer udon properties will randomly change when you save your project, and prefab overrides won't list " +
                     "all udon components for no reason.\n\n" +
                     "Note: SerialiedUdonAssets should be added to your .gitignore if you use this feature.\n\n" +

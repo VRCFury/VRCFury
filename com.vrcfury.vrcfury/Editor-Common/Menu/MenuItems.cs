@@ -76,7 +76,7 @@ namespace VF.Menu {
         public const int alignMobilePriority = settingsPriority + 106;
         public const string disableVpmResolverInit = settings + "Disable Buggy VRCSDK VPM Resolver";
         public const int disableVpmResolverInitPriority = settingsPriority + 107;
-        public const string simplifyUdonSerialization = settings + "Simplify Udon+U# Serialization (Alpha)";
+        public const string simplifyUdonSerialization = settings + "Udon Disk Cleaner (Alpha)";
         public const int simplifyUdonSerializationPriority = settingsPriority + 108;
         
         public const string compressHeader = settings + "When avatar is over parameter limit:";
