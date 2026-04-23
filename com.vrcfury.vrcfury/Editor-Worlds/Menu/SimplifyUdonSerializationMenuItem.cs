@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading;
 using UnityEditor;
 using UnityEngine;
 using VF.Hooks.UdonCleaner;
@@ -6,11 +7,17 @@ using VF.Utils;
 
 namespace VF.Menu {
     internal static class SimplifyUdonSerializationMenuItem {
+        private static readonly object initLock = new object();
+        private static int loaded;
         private static bool enabled;
 
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            enabled = File.Exists(GetFlagPath());
+        private static void EnsureLoaded() {
+            if (Volatile.Read(ref loaded) == 1) return;
+            lock (initLock) {
+                if (loaded == 1) return;
+                enabled = File.Exists(GetFlagPath());
+                Volatile.Write(ref loaded, 1);
+            }
         }
 
         private static string GetFlagPath() {
@@ -19,6 +26,7 @@ namespace VF.Menu {
         }
 
         public static bool Get() {
+            EnsureLoaded();
             return enabled;
         }
 
@@ -40,7 +48,10 @@ namespace VF.Menu {
                 if (!ok) return;
                 var flagPath = GetFlagPath();
                 File.WriteAllText(flagPath, "enabled");
-                enabled = true;
+                lock (initLock) {
+                    enabled = true;
+                    Volatile.Write(ref loaded, 1);
+                }
             } else {
                 var ok = DialogUtils.DisplayDialog(
                     "Warning",
@@ -54,7 +65,10 @@ namespace VF.Menu {
                 if (File.Exists(flagPath)) {
                     File.Delete(flagPath);
                 }
-                enabled = false;
+                lock (initLock) {
+                    enabled = false;
+                    Volatile.Write(ref loaded, 1);
+                }
                 UdonSharpPrefabLinksStorageHook.ClearCache();
             }
         }
