@@ -1,12 +1,16 @@
 {
     "name": "com.vrcfury.udon",
     "rootNamespace": "com.vrcfury.udon",
-    "references": [],
+    "references": [
+        "VRCFury"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": true,
-    "precompiledReferences": [],
+    "precompiledReferences": [
+        "VRCSDKBase.dll"
+    ],
     "autoReferenced": true,
     "defineConstraints": [
         "UDON",

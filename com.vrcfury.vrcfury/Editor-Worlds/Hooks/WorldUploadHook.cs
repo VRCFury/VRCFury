@@ -14,6 +14,7 @@ namespace VF.Hooks {
             BuildInjectUnityActions.Process(scene);
             BuildSps.Process(scene);
             BuildMarker.Process(scene);
+            ComponentInjects.Wire(scene);
         }
     }
 }
