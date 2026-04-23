@@ -1,6 +1,11 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using UnityEditor.Build;
 using UnityEngine;
 using VF.Utils;
+using VRC.SDKBase.Editor.BuildPipeline;
 
 /*
  * VRCFury sometimes makes upload callbacks run when an upload isn't actually happening,
@@ -12,53 +17,40 @@ namespace VF.Hooks {
     internal static class DisablePluginsWhenNotUploadingHook {
         public static Func<bool> getIsActuallyUploading;
 
-        [ReflectionHelperOptional]
-        private abstract class Reflection : ReflectionHelper {
-            private static readonly Type LockMaterialsOnUpload =
-                PoiyomiUtils.ShaderOptimizer?.VFNestedType("LockMaterialsOnUpload");
-            private static readonly Type LockMaterialsOnWorldUpload =
-                PoiyomiUtils.ShaderOptimizer?.VFNestedType("LockMaterialsOnWorldUpload");
-
-            public static readonly HarmonyUtils.PatchObj PoiPatchPreprocessAvatar = HarmonyUtils.Patch(
-                typeof(DisablePluginsWhenNotUploadingHook),
-                nameof(Prefix),
-                LockMaterialsOnUpload,
-                "OnPreprocessAvatar"
-            );
-            public static readonly HarmonyUtils.PatchObj PoiPatchBuildRequested = HarmonyUtils.Patch(
-                typeof(DisablePluginsWhenNotUploadingHook),
-                nameof(Prefix),
-                LockMaterialsOnWorldUpload,
-                "VRC.SDKBase.Editor.BuildPipeline.IVRCSDKBuildRequestedCallback.OnBuildRequested"
-            );
-
-            public static readonly HarmonyUtils.PatchObj LilPatchPreprocessAvatar = HarmonyUtils.Patch(
-                typeof(DisablePluginsWhenNotUploadingHook),
-                nameof(Prefix),
-                "lilToon.External.VRChatModule",
-                "OnPreprocessAvatar"
-            );
-            public static readonly HarmonyUtils.PatchObj LilPatchBuildRequested = HarmonyUtils.Patch(
-                typeof(DisablePluginsWhenNotUploadingHook),
-                nameof(Prefix),
-                "lilToon.External.VRChatModule",
-                "OnBuildRequested"
-            );
-            public static readonly HarmonyUtils.PatchObj UdonSharpBuildCompilePatch = HarmonyUtils.Patch(
-                typeof(DisablePluginsWhenNotUploadingHook),
-                nameof(Prefix),
-                "UdonSharpEditor.UdonSharpBuildCompile",
-                "OnBuildRequested"
-            );
-        }
+        private static readonly ISet<string> blockTypes = new HashSet<string> {
+            "LockMaterialsOnUpload", // Poiyomi lockdown for avatars
+            "LockMaterialsOnWorldUpload", // Poiyomi lockdown for worlds
+            "VRChatModule", // Liltoon lockdown for avatars and worlds
+            "UdonSharpBuildCompile", // UdonSharp full recompile before uploads start
+            "AssignProductIDs", // Method the vrcsdk only runs before real uploads
+            "AssignSceneNetworkIDs", // Method the vrcsdk only runs before real uploads
+        };
+        private static readonly ISet<string> blockMethods = new HashSet<string> {
+            "OnPreprocessAvatar",
+            "OnBuildRequested",
+            "OnProcessScene"
+        };
 
         [UnityEditor.InitializeOnLoadMethod]
         private static void Init() {
-            ApplyIfReady(Reflection.PoiPatchPreprocessAvatar);
-            ApplyIfReady(Reflection.PoiPatchBuildRequested);
-            ApplyIfReady(Reflection.LilPatchPreprocessAvatar);
-            ApplyIfReady(Reflection.LilPatchBuildRequested);
-            ApplyIfReady(Reflection.UdonSharpBuildCompilePatch);
+            foreach (var method in GetMethodsToBlock()) {
+                HarmonyUtils.Patch(
+                    typeof(DisablePluginsWhenNotUploadingHook),
+                    nameof(Prefix),
+                    method.DeclaringType,
+                    method.Name
+                ).apply();
+            }
+        }
+
+        private static IList<MethodInfo> GetMethodsToBlock() {
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(assembly => assembly.GetTypes())
+                .Where(type => !type.IsAbstract)
+                .Where(type => blockTypes.Contains(type.Name))
+                .SelectMany(type => type.GetRuntimeMethods())
+                .Where(method => blockMethods.Contains(method.Name.Split('.').Last()))
+                .ToArray();
         }
 
         private static bool Prefix(ref bool __result, object __instance) {
@@ -68,11 +60,6 @@ namespace VF.Hooks {
                 return false;
             }
             return true;
-        }
-
-        private static void ApplyIfReady(HarmonyUtils.PatchObj patch) {
-            if (patch == null || patch.error != null) return;
-            patch.apply();
         }
     }
 }

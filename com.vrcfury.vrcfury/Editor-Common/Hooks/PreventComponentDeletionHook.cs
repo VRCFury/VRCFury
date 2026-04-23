@@ -31,19 +31,6 @@ namespace VF.Hooks {
                 nameof(VRCBuildPipelineCallbacks.OnPreprocessAvatar),
                 patchMode: HarmonyUtils.PatchMode.Finalizer
             );
-            public static readonly HarmonyUtils.PatchObj WorldPreprocessorPatch = HarmonyUtils.Patch(
-                typeof(PreventComponentDeletionHook),
-                nameof(PreprocessorPrefix),
-                typeof(VRCBuildPipelineCallbacks),
-                nameof(VRCBuildPipelineCallbacks.OnVRCSDKBuildRequested)
-            );
-            public static readonly HarmonyUtils.PatchObj WorldPreprocessorFinalizerPatch = HarmonyUtils.Patch(
-                typeof(PreventComponentDeletionHook),
-                nameof(PreprocessorFinalizer),
-                typeof(VRCBuildPipelineCallbacks),
-                nameof(VRCBuildPipelineCallbacks.OnVRCSDKBuildRequested),
-                patchMode: HarmonyUtils.PatchMode.Finalizer
-            );
         }
 
         [InitializeOnLoadMethod]
@@ -52,8 +39,6 @@ namespace VF.Hooks {
             Reflection.DestroyImmediatePatch.apply();
             Reflection.PreprocessorPatch.apply();
             Reflection.PreprocessorFinalizerPatch.apply();
-            Reflection.WorldPreprocessorPatch.apply();
-            Reflection.WorldPreprocessorFinalizerPatch.apply();
         }
 
         private static bool inPreprocessor;
