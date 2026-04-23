@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UdonSharp;
 using UdonSharpEditor;
@@ -30,7 +29,6 @@ namespace VF.Hooks.VrcsdkFixes {
         }
 
         private static readonly Dictionary<int, HideFlags> hideFlagsByBackingId = new Dictionary<int, HideFlags>();
-        private static bool rebuildQueued;
 
         [InitializeOnLoadMethod]
         private static void Init() {
@@ -53,30 +51,24 @@ namespace VF.Hooks.VrcsdkFixes {
         private static void OnEnablePostfix(Editor __instance) {
             if (__instance == null) return;
             if (hideFlagsByBackingId.Count == 0) return;
-            if (rebuildQueued) return;
 
-            var changed = false;
             foreach (var target in __instance.targets) {
                 if (!(target is UdonSharpBehaviour proxy) || proxy == null) continue;
                 var backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(proxy);
                 if (backing == null) continue;
                 if (!hideFlagsByBackingId.TryGetValue(backing.GetInstanceID(), out var beforeHideFlags)) continue;
-                if (backing.hideFlags != beforeHideFlags) {
-                    changed = true;
-                    break;
+                var afterHideFlags = backing.hideFlags;
+                if (beforeHideFlags != afterHideFlags) {
+                    backing.hideFlags = beforeHideFlags;
+                    EditorUtility.SetDirty(backing);
+                    EditorApplication.delayCall += () => {
+                        backing.hideFlags = afterHideFlags;
+                        EditorUtility.SetDirty(backing);
+                    };
                 }
             }
 
             hideFlagsByBackingId.Clear();
-
-            if (!changed) return;
-            rebuildQueued = true;
-            var prev = Selection.objects;
-            Selection.objects = Array.Empty<UnityEngine.Object>();
-            EditorApplication.delayCall += () => {
-                rebuildQueued = false;
-                Selection.objects = prev;
-            };
         }
     }
 }
