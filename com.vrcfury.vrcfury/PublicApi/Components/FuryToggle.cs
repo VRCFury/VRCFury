@@ -20,6 +20,11 @@ namespace com.vrcfury.api.Components {
             c.name = path;
         }
 
+        public void SetMenuIcon(Texture2D icon) {
+            c.enableIcon = true;
+            c.icon = icon;
+        }
+
         public void SetSlider(bool slider = true) {
             c.slider = slider;
         }
