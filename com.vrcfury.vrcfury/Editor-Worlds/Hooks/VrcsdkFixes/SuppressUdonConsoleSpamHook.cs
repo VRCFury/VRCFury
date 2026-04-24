@@ -9,6 +9,12 @@ namespace VF.Hooks.VrcsdkFixes {
      */
     internal static class SuppressUdonConsoleSpamHook {
         private abstract class Reflection : ReflectionHelper {
+            public static readonly HarmonyUtils.PatchObj PatchLogError = HarmonyUtils.Patch(
+                typeof(SuppressUdonConsoleSpamHook),
+                nameof(Prefix),
+                typeof(Debug),
+                nameof(Debug.LogError)
+            );
             public static readonly HarmonyUtils.PatchObj PatchLogWarning = HarmonyUtils.Patch(
                 typeof(SuppressUdonConsoleSpamHook),
                 nameof(Prefix),
@@ -32,6 +38,7 @@ namespace VF.Hooks.VrcsdkFixes {
         [InitializeOnLoadMethod]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
+            Reflection.PatchLogError.apply();
             Reflection.PatchLogWarning.apply();
             Reflection.PatchLogWarningFormat.apply();
             Reflection.PatchLog.apply();
@@ -57,6 +64,12 @@ namespace VF.Hooks.VrcsdkFixes {
 
             // ClientSim prints this every time any udon script calls FindComponentInPlayerObjects
             if (msg.Contains("possible matches for") && msg.Contains("in player objects for")) return false;
+
+            // If your scene contains more than one PlayerObject, ClientSim is basically guaranteed to print
+            // this every time you call Networking.FindComponentInPlayerObjects because it iterates over
+            // all the PlayerObjects, and prints this message for all the ones that didn't match the one you were
+            // looking for (???)
+            if (msg.Contains("Network ID") && msg.Contains("does not match desired ID")) return false;
 
             return true;
         }
