@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Menu;
 using VF.Utils;
+using VRC.SDKBase;
 using VRC.Udon;
 using VRC.Udon.Editor.ProgramSources;
 
@@ -91,6 +92,10 @@ namespace VF.Hooks.UdonCleaner {
             foreach (var behaviour in root.GetComponentsInChildren<UdonBehaviour>(true)) {
                 yield return behaviour;
             }
+
+            foreach (var descriptor in root.GetComponentsInChildren<VRC_SceneDescriptor>(true)) {
+                yield return descriptor;
+            }
         }
 
         private static void ClearGeneratedPrefabInstanceModifications(GameObject root) {
@@ -161,6 +166,12 @@ namespace VF.Hooks.UdonCleaner {
                 return isUnresolved || isUdonSharpBehaviour;
             }
 
+            var propertyPath = modification.propertyPath;
+            if (propertyPath == "DynamicMaterials" || propertyPath.StartsWith("DynamicMaterials.") ||
+                propertyPath == "DynamicPrefabs" || propertyPath.StartsWith("DynamicPrefabs.")) {
+                return isUnresolved || modification.target is VRC_SceneDescriptor;
+            }
+
             return false;
         }
 
@@ -171,6 +182,21 @@ namespace VF.Hooks.UdonCleaner {
 
             if (target is UdonBehaviour) {
                 ClearObjectReferenceProperty(target, Reflection.UdonBehaviourSerializedProgramAssetField);
+            }
+
+            if (target is VRC_SceneDescriptor descriptor) {
+                var changed = false;
+                if (descriptor.DynamicMaterials != null && descriptor.DynamicMaterials.Count > 0) {
+                    descriptor.DynamicMaterials.Clear();
+                    changed = true;
+                }
+                if (descriptor.DynamicPrefabs != null && descriptor.DynamicPrefabs.Count > 0) {
+                    descriptor.DynamicPrefabs.Clear();
+                    changed = true;
+                }
+                if (changed) {
+                    EditorUtility.SetDirty(descriptor);
+                }
             }
         }
 

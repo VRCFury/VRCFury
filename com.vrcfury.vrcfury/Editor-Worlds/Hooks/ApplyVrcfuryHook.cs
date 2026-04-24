@@ -39,7 +39,7 @@ namespace VF.Hooks {
                 if (Application.isPlaying) {
                     EditorApplication.isPlaying = false;
                 } else {
-                    throw new Exception("VRCFury build callback failed");
+                    throw new BuildFailedException("VRCFury build callback failed");
                 }
             }
         }
