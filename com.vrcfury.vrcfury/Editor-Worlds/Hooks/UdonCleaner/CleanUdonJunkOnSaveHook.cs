@@ -122,8 +122,9 @@ namespace VF.Hooks.UdonCleaner {
                 keptModifications.Add(modification);
             }
 
-            if (!changed) return;
-            PrefabUtility.SetPropertyModifications(prefabInstanceRoot, keptModifications.ToArray());
+            if (changed) {
+                PrefabUtility.SetPropertyModifications(prefabInstanceRoot, keptModifications.ToArray());
+            }
 
             // Calling SetPropertyModifications wipes out all hideFlags for the prefab, because unity is cool
             // Recalculate them as needed
