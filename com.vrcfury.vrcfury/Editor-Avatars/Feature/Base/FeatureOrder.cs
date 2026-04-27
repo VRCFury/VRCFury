@@ -100,6 +100,7 @@ namespace VF.Feature.Base {
         LayerToTree, // Needs to run after animations are done, including everything that makes its own DBT, including TrackingConflictResolver
         AvoidMmdLayers, // Needs to be after CleanupEmptyLayers (which removes empty layers) and FixMasks and RecordAllDefaults (which may insert layers at the top)
         AnimatorLayerControlFix,
+        ReorderLayersByPriority,
         RemoveNonQuestMaterials,
         FixTreeLength,
         TreeFlattening,

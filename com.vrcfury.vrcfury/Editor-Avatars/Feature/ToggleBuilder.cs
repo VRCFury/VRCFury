@@ -29,6 +29,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly PriorityService priorityService;
 
         private VFCondition isOn;
         private Action<VFState, bool> drive;
@@ -78,6 +79,14 @@ namespace VF.Feature {
             var hasIcon = model.enableIcon && model.icon?.Get() != null;
             var addMenuItem = model.addMenuItem && (hasTitle || hasIcon);
 
+            System.Action<System.Action> addToMenu = action => {
+                if (model.enablePriority && model.priority != 0) {
+                    menu.OverrideSortPosition(priorityService.GetMenuSortPosition(model.priority), action);
+                } else {
+                    action();
+                }
+            };
+
             var synced = true;
             if (model.useGlobalParam && FullControllerBuilder.VRChatGlobalParams.Contains(model.globalParam)) {
                 synced = false;
@@ -102,11 +111,11 @@ namespace VF.Feature {
                 defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
                 weight = param;
                 if (addMenuItem) {
-                    menu.NewMenuSlider(
+                    addToMenu(() => menu.NewMenuSlider(
                         model.name,
                         param,
                         icon: model.enableIcon ? model.icon?.Get() : null
-                    );
+                    ));
                 }
             } else if (model.useInt) {
                 var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
@@ -119,19 +128,21 @@ namespace VF.Feature {
                 drive = (state,on) => state.Drives(param, on ? 1 : 0);
                 defaultOn = model.defaultOn;
                 if (addMenuItem) {
-                    if (model.holdButton) {
-                        menu.NewMenuButton(
-                            model.name,
-                            param,
-                            icon: model.enableIcon ? model.icon?.Get() : null
-                        );
-                    } else {
-                        menu.NewMenuToggle(
-                            model.name,
-                            param,
-                            icon: model.enableIcon ? model.icon?.Get() : null
-                        );
-                    }
+                    addToMenu(() => {
+                        if (model.holdButton) {
+                            menu.NewMenuButton(
+                                model.name,
+                                param,
+                                icon: model.enableIcon ? model.icon?.Get() : null
+                            );
+                        } else {
+                            menu.NewMenuToggle(
+                                model.name,
+                                param,
+                                icon: model.enableIcon ? model.icon?.Get() : null
+                            );
+                        }
+                    });
                 }
             }
             
@@ -142,6 +153,9 @@ namespace VF.Feature {
             if (string.IsNullOrEmpty(layerName)) layerName = "Toggle";
 
             var layer = fx.NewLayer(layerName);
+            if (model.enablePriority) {
+                priorityService.SetLayerPriority(layer, model.priority);
+            }
             var off = layer.NewState("Off");
 
             if (model.separateLocal) {
@@ -405,6 +419,8 @@ namespace VF.Feature {
             var useGlobalParamProp = prop.FindPropertyRelative("useGlobalParam");
             var globalParamProp = prop.FindPropertyRelative("globalParam");
             var holdButtonProp = prop.FindPropertyRelative("holdButton");
+            var enablePriorityProp = prop.FindPropertyRelative("enablePriority");
+            var priorityProp = prop.FindPropertyRelative("priority");
 
             var flex = new VisualElement().Row();
             content.Add(flex);
@@ -503,6 +519,11 @@ namespace VF.Feature {
                         prop.serializedObject.ApplyModifiedProperties();
                     });
 
+                    advMenu.AddItem(new GUIContent("Enable Priority"), enablePriorityProp.boolValue, () => {
+                        enablePriorityProp.boolValue = !enablePriorityProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
                     advMenu.ShowAsContext();
                 });
             flex.Add(button);
@@ -544,6 +565,23 @@ namespace VF.Feature {
                 }
                 return c;
             }, enableDriveGlobalParamProp));
+
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (enablePriorityProp.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(
+                        priorityProp,
+                        "Priority",
+                        tooltip:
+                            "Override position of merged controller layers and menu items.\n\n" +
+                            "Controller: Higher numbers place the layer further down in the controller (layers lower in the stack override layers above them).\n" +
+                            "Menu: Higher numbers place the menu item further down in the menu (negative numbers = before descriptor items, positive numbers = after).\n\n" +
+                            "Note: VRCFury optimizes compatible toggles into a single blend tree layer. " +
+                            "If multiple toggles with different priorities are merged, the highest priority will be used for the combined layer."
+                    ));
+                }
+                return c;
+            }, enablePriorityProp));
 
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
 
@@ -629,6 +667,8 @@ namespace VF.Feature {
                         tags.Add((defaultOnProp.boolValue || sliderProp.boolValue) ? "Hide when animator disabled" : "Show when animator disabled");
                     if (exclusiveOffStateProp.boolValue)
                         tags.Add("This is the Exclusive Off State");
+                    if (enablePriorityProp.boolValue)
+                        tags.Add($"Priority: {priorityProp.intValue}");
 
                     var row = new VisualElement().Row().FlexWrap();
                     foreach (var tag in tags) {
@@ -649,7 +689,9 @@ namespace VF.Feature {
                 exclusiveOffStateProp,
                 holdButtonProp,
                 hasExitTimeProp,
-                sliderProp
+                sliderProp,
+                enablePriorityProp,
+                priorityProp
             ));
 
             content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
@@ -697,5 +739,3 @@ namespace VF.Feature {
     }
 
 }
-
-
