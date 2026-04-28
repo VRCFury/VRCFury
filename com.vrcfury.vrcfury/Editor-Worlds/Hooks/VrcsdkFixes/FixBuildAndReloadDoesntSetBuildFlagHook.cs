@@ -7,6 +7,7 @@ namespace VF.Hooks.VrcsdkFixes {
     /**
      * When you build and reload a world, the VRCSDK leaves VRC_SdkBuilder.ActiveBuildType set to None,
      * which breaks all uploading detections.
+     * https://feedback.vrchat.com/sdk-bug-reports/p/vrc-sdkbuilderactivebuildtype-remains-unset-during-build-and-reload-for-worlds
      */
     internal class FixBuildAndReloadDoesntSetBuildFlagHook {
         public abstract class Reflection : ReflectionHelper {
