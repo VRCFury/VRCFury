@@ -26,7 +26,7 @@ namespace VF.Hooks {
 
         public static void Process(Scene scene) {
             if (Application.isPlaying && !PlayModeMenuItem.Get()) return;
-            if (IsActuallyUploadingWorldHook.Get() && !UseInUploadMenuItem.Get()) return;
+            if (IsActuallyUploadingHook.Get() && !UseInUploadMenuItem.Get()) return;
 
             var success = VRCFExceptionUtils.ErrorDialogBoundary(() => {
                 TmpFilePackage.Cleanup();

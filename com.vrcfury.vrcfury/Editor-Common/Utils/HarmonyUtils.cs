@@ -27,7 +27,7 @@ namespace VF.Utils {
             public static readonly MethodInfo GetOriginalInstructions = ReflectionUtils
                 .GetTypeFromAnyAssembly("HarmonyLib.PatchProcessor")
                 ?.VFStaticMethod("GetOriginalInstructions", new[] { typeof(MethodBase), typeof(ILGenerator) });
-            public static readonly MethodInfo TranspileMethod = typeof(HarmonyUtils).VFStaticMethod(nameof(Transpile));
+            public static readonly MethodInfo TranspileMethod = typeof(HarmonyUtils).VFStaticMethod(nameof(TranspileReplacer));
         }
 
         private static readonly Lazy<object> harmony = new Lazy<object>(() => {
@@ -112,6 +112,20 @@ namespace VF.Utils {
                 return new PatchObj { error = $"VRCFury tried to patch a method, but it was internal, and a replacement wasn't available: {originalClass.name}.{originalMethod.Name}" };
             }
             return new PatchObj { apply = () => Patch_Simple(originalMethod, patchMethod, patchMode: patchMode) };
+        }
+
+        public static void Transpile(
+            Type transpilerClass,
+            string transpilerMethodName,
+            MethodInfo original
+        ) {
+            var harmonyInst = GetHarmony(); // We make a fresh harmony, because we can't unpatch these
+            if (harmonyInst == null) return;
+            var transpilerMethod = transpilerClass.VFStaticMethod(transpilerMethodName);
+            if (transpilerMethod == null) {
+                Debug.LogError($"VRCFury Failed to find transpile method: {transpilerClass.Name}.{transpilerMethodName}");
+            }
+            Patch_Simple(original, transpilerMethod, PatchMode.Transpiler);
         }
 
         [CanBeNull] 
@@ -202,7 +216,7 @@ namespace VF.Utils {
         }
 
         private static MethodBase replacementMethod;
-        static object Transpile(IEnumerable<object> orig, ILGenerator ilGenerator) {
+        static object TranspileReplacer(IEnumerable<object> orig, ILGenerator ilGenerator) {
             return Reflection.GetOriginalInstructions.Invoke(null, new object[] { replacementMethod, ilGenerator });
         }
     }

@@ -15,8 +15,6 @@ using VRC.SDKBase.Editor.BuildPipeline;
  */
 namespace VF.Hooks {
     internal static class DisablePluginsWhenNotUploadingHook {
-        public static Func<bool> getIsActuallyUploading;
-
         private static readonly ISet<string> blockTypes = new HashSet<string> {
             "LockMaterialsOnUpload", // Poiyomi lockdown for avatars
             "LockMaterialsOnWorldUpload", // Poiyomi lockdown for worlds
@@ -54,7 +52,7 @@ namespace VF.Hooks {
         }
 
         private static bool Prefix(ref bool __result, object __instance) {
-            if (getIsActuallyUploading != null && !getIsActuallyUploading()) {
+            if (!IsActuallyUploadingHook.Get()) {
                 Debug.Log($"VRCFury inhibited {__instance.GetType().FullName} from running because an upload isn't actually happening");
                 __result = true;
                 return false;

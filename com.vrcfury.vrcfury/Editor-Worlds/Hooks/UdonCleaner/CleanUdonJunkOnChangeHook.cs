@@ -76,7 +76,7 @@ namespace VF.Hooks.UdonCleaner {
 
         private static bool ShouldAllow() {
             if (!SimplifyUdonSerializationMenuItem.Get()) return true;
-            return Application.isPlaying || IsActuallyUploadingWorldHook.Get();
+            return Application.isPlaying || IsActuallyUploadingHook.Get();
         }
 
         private static SerializedProperty GetSharedDummyProperty() {

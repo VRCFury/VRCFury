@@ -7,9 +7,6 @@ namespace VF.Hooks {
         [InitializeOnLoadMethod]
         private static void Init() {
             VFGameObject.getUploadRoots = obj => VFGameObject.GetRoots(obj.scene);
-            SpsConfigurer.getIsActuallyUploading = IsActuallyUploadingWorldHook.Get;
-            PreventComponentDeletionHook.getIsActuallyUploading = IsActuallyUploadingWorldHook.Get;
-            DisablePluginsWhenNotUploadingHook.getIsActuallyUploading = IsActuallyUploadingWorldHook.Get;
         }
     }
 }
