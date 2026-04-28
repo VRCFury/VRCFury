@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace VF.Utils {
     internal static class HarmonyUtils {
-        private static readonly Harmony harmony = new Harmony("com.vrcfury.harmony");
+        public static readonly Harmony harmony = new Harmony("com.vrcfury.harmony");
 
         private abstract class Reflection : ReflectionHelper {
             public static readonly MethodInfo TranspileMethod = typeof(HarmonyUtils).VFStaticMethod(nameof(TranspileReplacer));
@@ -42,6 +42,27 @@ namespace VF.Utils {
             public string name => _name;
         }
 
+        internal class MethodOrLookup {
+            private MethodInfo _method;
+            private NameOrType _type;
+            private string _name;
+            public static implicit operator MethodOrLookup((NameOrType type,string name) tuple) => new MethodOrLookup { _type = tuple.type, _name = tuple.name, };
+            public static implicit operator MethodOrLookup(MethodInfo method) => new MethodOrLookup { _method = method };
+            public MethodBase FindAsOriginal(MethodInfo patch) {
+                if (_method != null) return _method;
+                if (_type.type == null) return null;
+                return FindOriginal(patch, _type.type, _name);
+            }
+            public MethodInfo FindAsPatch() {
+                if (_method != null) return _method;
+                return _type.type?.VFStaticMethod(_name);
+            }
+            public string Id() {
+                if (_method != null) return _method.DeclaringType + " " + _method.Name;
+                return _type?.name + " " + _name;
+            }
+        }
+
         public static string CONSTRUCTOR = "CONSTRUCTOR";
 
         public enum PatchMode {
@@ -64,27 +85,38 @@ namespace VF.Utils {
             PatchMode patchMode = PatchMode.Prefix,
             Type internalReplacementClass = null
         ) {
-            var patchMethod = patchClass.VFStaticMethod(patchMethodName);
+            return Patch(
+                (originalClass, originalMethodName),
+                (patchClass, patchMethodName),
+                patchMode,
+                internalReplacementClass
+            );
+        }
+
+        public static PatchObj Patch(
+            MethodOrLookup original,
+            MethodOrLookup patch,
+            PatchMode patchMode = PatchMode.Prefix,
+            Type internalReplacementClass = null
+        ) {
+            var patchMethod = patch.FindAsPatch();
             if (patchMethod == null) {
-                return new PatchObj { error = $"VRCFury Failed to find patch method: {patchClass.Name}.{patchMethodName}" };
+                return new PatchObj { error = $"VRCFury Failed to find patch method: {patch.Id()}" };
             }
-            if (originalClass.type == null) {
-                return new PatchObj { error = $"VRCFury Failed to find original class to patch: {originalClass.name}" };
-            }
-            var originalMethod = FindOriginal(patchMethod, originalClass.type, originalMethodName);
+            var originalMethod = original.FindAsOriginal(patchMethod);
             if (originalMethod == null) {
-                return new PatchObj { error = $"VRCFury Failed to find original method to patch: {originalClass.name}.{originalMethodName}" };
+                return new PatchObj { error = $"VRCFury Failed to find original method to patch: {original.Id()}" };
             }
             if (IsInternal(originalMethod)) {
                 if (internalReplacementClass != null) {
                     var replacement = originalMethod.IsStatic
-                        ? internalReplacementClass.VFStaticMethod(patchMethodName)
-                        : internalReplacementClass.VFMethod(patchMethodName);
+                        ? internalReplacementClass.VFStaticMethod(patchMethod.Name)
+                        : internalReplacementClass.VFMethod(patchMethod.Name);
                     if (replacement != null) {
                         return new PatchObj { apply = () => Patch_Replace(originalMethod, replacement) };
                     }
                 }
-                return new PatchObj { error = $"VRCFury tried to patch a method, but it was internal, and a replacement wasn't available: {originalClass.name}.{originalMethod.Name}" };
+                return new PatchObj { error = $"VRCFury tried to patch a method, but it was internal, and a replacement wasn't available: {original.Id()}" };
             }
             return new PatchObj { apply = () => Patch_Simple(originalMethod, patchMethod, patchMode: patchMode) };
         }
