@@ -21,7 +21,7 @@
     "VRC.SDK3.Dynamics.Constraint.dll",
     "VRCSDKBase-Editor.dll",
     "VRCCore-Editor.dll",
-    "VrcfHarmony.dll"
+    "0Harmony.dll"
   ],
   "autoReferenced": false,
   "defineConstraints": [],
