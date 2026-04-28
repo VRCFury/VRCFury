@@ -37,10 +37,15 @@ namespace VF.Menu {
                 var ok = DialogUtils.DisplayDialog(
                     "Warning",
                     "!! THIS VRCFURY FEATURE IS EXPERIMENTAL !!\n\n" +
-                    "When enabled, VRCFury will patch Udon/U# to save out less temporary junk to disk. " +
-                    "Fewer udon properties will randomly change when you save your project, and prefab overrides won't list " +
-                    "all udon components for no reason.\n\n" +
-                    "Note: SerialiedUdonAssets should be added to your .gitignore if you use this feature.\n\n" +
+                    "TAKE A PROJECT BACKUP FIRST\n\n" +
+                    "When enabled:" +
+                    "* Udon and U# will save less temporary junk to disk\n" +
+                    "* Udon properties will not randomly change in your scene and prefabs when you save them\n" +
+                    "* Prefab overrides won't list all udon components for no reason.\n" +
+                    "* U# 'None' synced behaviours can be mixed with synced behaviours on the same object\n" +
+                    "* U# scripts will no longer have or need stupid .asset files alongside them\n" +
+                    "\n" +
+                    "This is reversible, but to do so, you MUST disable this option in VRCFury, do not just remove the plugin\n\n" +
                     "Are you sure you want to enable it?",
                     "Yes, Enable It",
                     "Cancel"
@@ -70,6 +75,7 @@ namespace VF.Menu {
                     enabled = false;
                     Volatile.Write(ref loaded, 1);
                 }
+                StoreUdonSharpProgramsInTempFolderHook.Revert();
                 UdonSharpPrefabLinksStorageHook.ClearCache();
                 EditorUtility.RequestScriptReload();
             }

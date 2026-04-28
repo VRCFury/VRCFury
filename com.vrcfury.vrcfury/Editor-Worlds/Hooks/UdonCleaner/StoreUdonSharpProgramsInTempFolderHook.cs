@@ -15,6 +15,7 @@ using VF.Menu;
 using VF.Utils;
 using VRC.Udon;
 using VRC.Udon.Editor.ProgramSources;
+using VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI;
 using VRC.Udon.ProgramSources;
 using HarmonyTranspiler = VF.Utils.HarmonyTranspiler;
 
@@ -267,6 +268,32 @@ namespace VF.Hooks.UdonCleaner {
             }
 
             return outputs;
+        }
+
+        public static void Revert() {
+            VRCFuryAssetDatabase.WithAssetEditing(() => {
+                foreach (var program in FindAll<UdonSharpProgramAsset>()) {
+                    if (AssetDatabase.IsMainAsset(program))
+                        AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(program));
+                    UnityEngine.Object.DestroyImmediate(program, true);
+                }
+                foreach (var program in FindAll<SerializedUdonProgramAsset>()) {
+                    if (AssetDatabase.IsMainAsset(program))
+                        AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(program));
+                    UnityEngine.Object.DestroyImmediate(program, true);
+                }
+                foreach (var script in FindUdonSharpBehaviourMonoScripts()) {
+                    if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(script, out var scriptGuid, out long _)) continue;
+                    var scriptPath = AssetDatabase.GetAssetPath(script);
+                    if (string.IsNullOrEmpty(scriptPath)) continue;
+                    var programPath = scriptPath.ReplaceLast(".cs", ".asset");
+                    var program = ScriptableObject.CreateInstance<UdonSharpProgramAsset>();
+                    program.name = scriptGuid;
+                    program.sourceCsScript = script;
+                    program.ScriptVersion = UdonSharpProgramVersion.CurrentVersion;
+                    VRCFuryAssetDatabase.SaveAsset(program, programPath);
+                }
+            });
         }
 
     }
