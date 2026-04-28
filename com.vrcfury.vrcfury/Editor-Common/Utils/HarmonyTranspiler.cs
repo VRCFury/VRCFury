@@ -30,7 +30,7 @@ namespace VF.Utils {
                 .Where(MethodUsesTargetFields)
                 .ToArray();
             var elapsed = Time.realtimeSinceStartupAsDouble - start;
-            Debug.Log($"Searched for methods to patch in {elapsed} seconds");
+            //Debug.Log($"Searched for methods to patch in {elapsed} seconds");
 
             start = Time.realtimeSinceStartupAsDouble;
             foreach (var method in methodsToPatch) {
@@ -38,14 +38,14 @@ namespace VF.Utils {
                     madeChange = false;
                     HarmonyUtils.Transpile(typeof(HarmonyTranspiler), nameof(RunVarAccessTranspile), method);
                     if (madeChange) {
-                        Debug.Log($"Patched: {method.DeclaringType?.FullName} {method.Name}");
+                        //Debug.Log($"Patched: {method.DeclaringType?.FullName} {method.Name}");
                     }
                 } catch (Exception) {
                     Debug.LogWarning($"Failed to patch {method.DeclaringType?.FullName} {method.Name}");
                 }
             }
             elapsed = Time.realtimeSinceStartupAsDouble - start;
-            Debug.Log($"Transpiled in {elapsed} seconds");
+            //Debug.Log($"Transpiled in {elapsed} seconds");
         }
 
         private static bool madeChange = false;
