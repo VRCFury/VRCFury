@@ -6,7 +6,7 @@ using VF.Hooks.UdonCleaner;
 using VF.Utils;
 
 namespace VF.Menu {
-    internal static class SimplifyUdonSerializationMenuItem {
+    internal static class UdonCleanerMenuItem {
         private static readonly object initLock = new object();
         private static int loaded;
         private static bool enabled;
@@ -52,6 +52,7 @@ namespace VF.Menu {
                     enabled = true;
                     Volatile.Write(ref loaded, 1);
                 }
+                EditorUtility.RequestScriptReload();
             } else {
                 var ok = DialogUtils.DisplayDialog(
                     "Warning",
@@ -70,6 +71,7 @@ namespace VF.Menu {
                     Volatile.Write(ref loaded, 1);
                 }
                 UdonSharpPrefabLinksStorageHook.ClearCache();
+                EditorUtility.RequestScriptReload();
             }
         }
 

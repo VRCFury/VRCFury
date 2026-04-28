@@ -1,10 +1,13 @@
 using System;
+using System.Linq;
+using System.Reflection;
 using UdonSharp;
 using UdonSharpEditor;
 using UnityEditor;
 using UnityEngine;
 using VF.Menu;
 using VF.Utils;
+using VRC.SDKBase;
 using VRC.Udon;
 
 namespace VF.Hooks.UdonCleaner {
@@ -21,19 +24,41 @@ namespace VF.Hooks.UdonCleaner {
 
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type UdonBehaviourEditor = ReflectionUtils.GetTypeFromAnyAssembly("VRC.Udon.Editor.UdonBehaviourEditor");
-            public static readonly System.Reflection.FieldInfo _serializedProgramAssetProperty = UdonBehaviourEditor?.VFField("_serializedProgramAssetProperty");
-            public static readonly System.Reflection.FieldInfo _udonSharpBackingUdonBehaviour = typeof(UdonSharpBehaviour).VFField("_udonSharpBackingUdonBehaviour");
-            public static readonly System.Reflection.FieldInfo serializedProgramAsset = typeof(UdonBehaviour).VFField("serializedProgramAsset");
+            public static readonly FieldInfo _serializedProgramAssetProperty = UdonBehaviourEditor?.VFField("_serializedProgramAssetProperty");
 
-            public static readonly HarmonyUtils.PatchObj PatchPopulateSerializedProgramAssetReference = HarmonyUtils.Patch(
+            public static readonly FieldInfo _serializedProgramAssetField =
+                typeof(UdonSharpEditorUtility).VFStaticField("_serializedProgramAssetField");
+            public static readonly FieldInfo _serializedProgramAssetFieldReplacement =
+                typeof(CleanUdonJunkOnChangeHook).VFStaticField(nameof(doNotTouch));
+
+            // These methods are all worthless now. They just attempt to fill in programs
+            // and serialized programs (which we intercept and throw out anyways). We handle filling those in ourselves
+            // during FillProgramsDuringBuildHook.
+            public static readonly HarmonyUtils.PatchObj PatchOnProcessScene = HarmonyUtils.Patch(
+                (ReflectionUtils.GetTypeFromAnyAssembly("VRC.Udon.Editor.UdonEditorManager")?.VFNestedType("UdonBuildPreprocessor"), "OnProcessScene"),
+                (typeof(CleanUdonJunkOnChangeHook), nameof(DontRunPrefix))
+            );
+            public static readonly HarmonyUtils.PatchObj PatchOnPlayModeStateChanged = HarmonyUtils.Patch(
                 typeof(CleanUdonJunkOnChangeHook),
-                nameof(Prefix),
+                nameof(DontRunPrefix),
                 "VRC.Udon.Editor.UdonEditorManager",
-                "PopulateSerializedProgramAssetReference"
+                "OnPlayModeStateChanged"
+            );
+            public static readonly HarmonyUtils.PatchObj PatchOnSceneSaving = HarmonyUtils.Patch(
+                typeof(CleanUdonJunkOnChangeHook),
+                nameof(DontRunPrefix),
+                "VRC.Udon.Editor.UdonEditorManager",
+                "OnSceneSaving"
+            );
+            public static readonly HarmonyUtils.PatchObj PatchOnSceneOpened = HarmonyUtils.Patch(
+                typeof(CleanUdonJunkOnChangeHook),
+                nameof(DontRunPrefix),
+                "VRC.Udon.Editor.UdonEditorManager",
+                "OnSceneOpened"
             );
             public static readonly HarmonyUtils.PatchObj PatchUpdateSerializedProgramAssets = HarmonyUtils.Patch(
                 typeof(CleanUdonJunkOnChangeHook),
-                nameof(Prefix),
+                nameof(DontRunPrefix),
                 "UdonSharpEditor.UdonSharpEditorManager",
                 "UpdateSerializedProgramAssets"
             );
@@ -49,58 +74,51 @@ namespace VF.Hooks.UdonCleaner {
                 "UdonSharpEditor.UdonSharpEditorUtility",
                 "RunBehaviourSetup"
             );
-            public static readonly HarmonyUtils.PatchObj PatchRunBehaviourSetupPostfix = HarmonyUtils.Patch(
-                typeof(CleanUdonJunkOnChangeHook),
-                nameof(OnRunBehaviourSetupPostfix),
-                "UdonSharpEditor.UdonSharpEditorUtility",
-                "RunBehaviourSetup",
-                HarmonyUtils.PatchMode.Postfix
-            );
         }
-
-        private static SerializedProperty sharedDummyProperty;
 
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (!ReflectionHelper.IsReady<Reflection>()) return;
-            Reflection.PatchPopulateSerializedProgramAssetReference.apply();
-            Reflection.PatchUpdateSerializedProgramAssets.apply();
-            Reflection.PatchInspectorGui.apply();
-            Reflection.PatchRunBehaviourSetupPrefix.apply();
-            Reflection.PatchRunBehaviourSetupPostfix.apply();
+            if (!UdonCleanerMenuItem.Get()) return;
+            Reflection.PatchOnProcessScene.apply?.Invoke();
+            Reflection.PatchOnPlayModeStateChanged.apply?.Invoke();
+            Reflection.PatchOnSceneSaving.apply?.Invoke();
+            Reflection.PatchOnSceneOpened.apply?.Invoke();
+            Reflection.PatchUpdateSerializedProgramAssets.apply?.Invoke();
+            Reflection.PatchInspectorGui.apply?.Invoke();
+            Reflection.PatchRunBehaviourSetupPrefix.apply?.Invoke();
+
+            // Trick RunBehaviourSetup into not actually touching serializedProgramAsset
+            Reflection._serializedProgramAssetField?.SetValue(null, Reflection._serializedProgramAssetFieldReplacement);
         }
 
-        private static bool Prefix() {
-            return ShouldAllow();
+        private static string doNotTouch = "VRCFury says don't mess with this field";
+
+        private static bool DontRunPrefix() {
+            return false;
         }
 
-        private static bool ShouldAllow() {
-            if (!SimplifyUdonSerializationMenuItem.Get()) return true;
-            return Application.isPlaying || IsActuallyUploadingHook.Get();
-        }
+        private static readonly Lazy<SerializedProperty> dummyProperty = new Lazy<SerializedProperty>(() => {
+            var holder = ScriptableObject.CreateInstance<DummySerializedProgramAssetHolder>();
+            holder.hideFlags = HideFlags.HideAndDontSave;
+            var so = new SerializedObject(holder);
+            return so.FindProperty(nameof(DummySerializedProgramAssetHolder.serializedProgramAsset));
+        });
 
-        private static SerializedProperty GetSharedDummyProperty() {
-            if (sharedDummyProperty == null) {
-                var holder = ScriptableObject.CreateInstance<DummySerializedProgramAssetHolder>();
-                holder.hideFlags = HideFlags.HideAndDontSave;
-                var so = new SerializedObject(holder);
-                sharedDummyProperty = so.FindProperty(nameof(DummySerializedProgramAssetHolder.serializedProgramAsset));
-            }
-
-            return sharedDummyProperty;
-        }
-
-        // The U# inspector tries to make a new one any time it isn't set,
-        // so we just give it a fake serializedProperty instead, and it can set the
-        // value of that property all that it wants.
+        /**
+         * U#'s inspector tries to make a new one any time it isn't set,
+         * so we just give it a fake serializedProperty instead, and it can set the
+         * value of that property all that it wants.
+         */
         private static void OnInspectorPrefix(object __instance) {
-            if (ShouldAllow()) return;
             if (__instance == null) return;
-            Reflection._serializedProgramAssetProperty.SetValue(__instance, GetSharedDummyProperty());
+            Reflection._serializedProgramAssetProperty?.SetValue(__instance, dummyProperty.Value);
         }
 
+        /**
+         * Prevent u#'s RunBehaviourSetup from ever running on prefab instances.
+         * It just adds a bunch of overrides that we then go and revert anyways.
+         */
         private static bool OnRunBehaviourSetupPrefix(UdonSharpBehaviour __0, bool __1) {
-            if (ShouldAllow()) return true;
             var udonSharpBehaviour = __0;
             if (udonSharpBehaviour == null) return true;
             if (PrefabUtility.GetCorrespondingObjectFromSource(udonSharpBehaviour) != null) {
@@ -111,18 +129,5 @@ namespace VF.Hooks.UdonCleaner {
             }
             return true;
         }
-
-        private static void OnRunBehaviourSetupPostfix(UdonSharpBehaviour __0, bool __1) {
-            if (ShouldAllow()) return;
-            if (__0 == null) return;
-            if (!(Reflection._udonSharpBackingUdonBehaviour.GetValue(__0) is UdonBehaviour backing)) return;
-
-            var current = Reflection.serializedProgramAsset.GetValue(backing) as UnityEngine.Object;
-            if (current != null) {
-                Reflection.serializedProgramAsset.SetValue(backing, null);
-                EditorUtility.SetDirty(backing);
-            }
-        }
     }
 }
-

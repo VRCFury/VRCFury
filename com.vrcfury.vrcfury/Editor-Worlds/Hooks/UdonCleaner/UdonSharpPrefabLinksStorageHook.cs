@@ -19,7 +19,7 @@ namespace VF.Hooks.UdonCleaner {
     internal static class UdonSharpPrefabLinksStorageHook {
         private sealed class SaveCacheOnWillSaveAssets : AssetModificationProcessor {
             private static string[] OnWillSaveAssets(string[] paths) {
-                if (!SimplifyUdonSerializationMenuItem.Get()) return paths;
+                if (!UdonCleanerMenuItem.Get()) return paths;
                 SaveCacheToDisk();
                 return paths;
             }
@@ -72,22 +72,22 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         private static void BeforePrefix(UdonSharpBehaviour __instance) {
-            if (!SimplifyUdonSerializationMenuItem.Get()) return;
+            if (!UdonCleanerMenuItem.Get()) return;
             TryApplyCachedPrefab(__instance);
         }
 
         private static void BeforePostfix(UdonSharpBehaviour __instance) {
-            if (!SimplifyUdonSerializationMenuItem.Get()) return;
+            if (!UdonCleanerMenuItem.Get()) return;
             TryCaptureAndClearPrefab(__instance);
         }
 
         private static void AfterPrefix(UdonSharpBehaviour __instance) {
-            if (!SimplifyUdonSerializationMenuItem.Get()) return;
+            if (!UdonCleanerMenuItem.Get()) return;
             TryApplyCachedPrefab(__instance);
         }
 
         private static void AfterPostfix(UdonSharpBehaviour __instance) {
-            if (!SimplifyUdonSerializationMenuItem.Get()) return;
+            if (!UdonCleanerMenuItem.Get()) return;
             TryCaptureAndClearPrefab(__instance);
         }
 
@@ -145,7 +145,7 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         private static void SaveCacheToDisk() {
-            if (!SimplifyUdonSerializationMenuItem.Get()) return;
+            if (!UdonCleanerMenuItem.Get()) return;
             try {
                 var lines = new List<string>();
 
@@ -190,7 +190,7 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         private static void LoadCacheFromDisk() {
-            if (!SimplifyUdonSerializationMenuItem.Get()) return;
+            if (!UdonCleanerMenuItem.Get()) return;
             try {
                 if (string.IsNullOrEmpty(cachePath) || !File.Exists(cachePath)) return;
                 var lines = File.ReadAllLines(cachePath, System.Text.Encoding.UTF8);

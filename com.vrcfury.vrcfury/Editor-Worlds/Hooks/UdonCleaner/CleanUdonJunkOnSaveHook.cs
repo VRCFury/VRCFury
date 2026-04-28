@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UdonSharp;
+using UdonSharp.Updater;
 using UdonSharpEditor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -8,6 +10,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Menu;
 using VF.Utils;
+using VRC.SDK3.Editor;
 using VRC.SDKBase;
 using VRC.Udon;
 using VRC.Udon.Editor.ProgramSources;
@@ -18,23 +21,26 @@ namespace VF.Hooks.UdonCleaner {
      * If this happens, we can clean them up just before saving out the assets.
      */
     internal sealed class CleanUdonJunkOnSaveHook : AssetModificationProcessor {
-
         private abstract class Reflection : ReflectionHelper {
             public static readonly System.Reflection.FieldInfo UdonProgramAssetSerializedUdonProgramAssetField = typeof(UdonProgramAsset).VFField("serializedUdonProgramAsset");
             public static readonly System.Reflection.FieldInfo UdonBehaviourSerializedProgramAssetField = typeof(UdonBehaviour).VFField("serializedProgramAsset");
+            public static readonly System.Reflection.FieldInfo programSource = typeof(UdonBehaviour).VFField(nameof(UdonBehaviour.programSource));
         }
 
         private static string[] OnWillSaveAssets(string[] paths) {
-            if (!SimplifyUdonSerializationMenuItem.Get()) return paths;
+            if (!UdonCleanerMenuItem.Get()) return paths;
             if (!ReflectionHelper.IsReady<Reflection>()) return paths;
+            CleanPaths(paths);
+            return paths;
+        }
+
+        private static void CleanPaths(string[] paths) {
             foreach (var path in paths) {
                 if (string.IsNullOrEmpty(path)) continue;
                 foreach (var obj in EnumerateSavedObjects(path)) {
                     ClearGeneratedProgramReferences(obj);
                 }
             }
-
-            return paths;
         }
 
         private static IEnumerable<UnityEngine.Object> EnumerateSavedObjects(string path) {
@@ -142,9 +148,11 @@ namespace VF.Hooks.UdonCleaner {
             var isUdonBehaviour = false;
             var isUdonSharpBacker = false;
             var isUdonSharpBehaviour = modification.target is UdonSharpBehaviour;
+            var usharpForcedSyncMethod = BehaviourSyncMode.Any;
             if (modification.target is UdonBehaviour ub) {
                 isUdonBehaviour = true;
-                isUdonSharpBacker = UdonSharpEditorUtility.IsUdonSharpBehaviour(ub);
+                isUdonSharpBacker = IsUSharpBacker(ub);
+                usharpForcedSyncMethod = GetForcedSyncMethodFromUSharp(ub);
             }
 
             if (isUdonSharpBacker) {
@@ -152,15 +160,19 @@ namespace VF.Hooks.UdonCleaner {
             }
 
             if (modification.propertyPath == "_syncMethod") {
+                return isUnresolved || usharpForcedSyncMethod != BehaviourSyncMode.Any;
+            }
+
+            if (modification.propertyPath == "_udonSharpBackingUdonBehaviour") {
+                return isUnresolved;
+            }
+
+            if (modification.propertyPath == "programSource") {
                 return isUnresolved;
             }
 
             if (modification.propertyPath == "serializedProgramAsset") {
                 return isUnresolved || isUdonBehaviour;
-            }
-
-            if (modification.propertyPath == "_udonSharpBackingUdonBehaviour") {
-                return isUnresolved;
             }
 
             if (modification.propertyPath == "serializationData.Prefab") {
@@ -180,9 +192,11 @@ namespace VF.Hooks.UdonCleaner {
             if (target is UdonProgramAsset) {
                 ClearObjectReferenceProperty(target, Reflection.UdonProgramAssetSerializedUdonProgramAssetField);
             }
-
-            if (target is UdonBehaviour) {
+            if (target is UdonBehaviour ub) {
                 ClearObjectReferenceProperty(target, Reflection.UdonBehaviourSerializedProgramAssetField);
+                if (IsUSharpBacker(ub)) {
+                    ClearObjectReferenceProperty(target, Reflection.programSource);
+                }
             }
 
             if (target is VRC_SceneDescriptor descriptor) {
@@ -211,6 +225,19 @@ namespace VF.Hooks.UdonCleaner {
             field.SetValue(target, null);
             EditorUtility.SetDirty(target);
             return true;
+        }
+
+        public static bool IsUSharpBacker(UdonBehaviour ub) {
+            return ub.GetComponents<UdonSharpBehaviour>()
+                .Any(usb => UdonSharpEditorUtility.GetBackingUdonBehaviour(usb) == ub);
+        }
+
+        public static BehaviourSyncMode GetForcedSyncMethodFromUSharp(UdonBehaviour ub) {
+            var program = StoreUdonSharpProgramsInTempFolderHook.programSource_get(ub);
+            if (program is UdonSharpProgramAsset usp) {
+                return usp.behaviourSyncMode;
+            }
+            return BehaviourSyncMode.Any;
         }
 
     }

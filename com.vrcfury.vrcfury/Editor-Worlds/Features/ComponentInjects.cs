@@ -69,7 +69,6 @@ public class ComponentInjects {
                 }
                 so.ApplyModifiedPropertiesWithoutUndo();
                 count++;
-                UdonSharpEditorUtility.CopyProxyToUdon(component);
             }
 
             if (!foundOneField) {
