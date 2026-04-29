@@ -19,7 +19,17 @@ namespace VF.Utils {
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type animStateType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
             public static readonly PropertyInfo selectionField = animStateType?.VFProperty("selection");
-            public static readonly PropertyInfo gameObjectField = selectionField?.PropertyType.VFProperty("gameObject");
+
+#if UNITY_6000_0_OR_NEWER
+            public static readonly Type AnimationWindowSelectionItem =
+                ReflectionUtils.GetTypeFromAnyAssembly(
+                    "UnityEditor.AnimationWindowBuiltin.AnimationWindowSelectionItem");
+#else
+            public static readonly Type AnimationWindowSelectionItem =
+                ReflectionUtils.GetTypeFromAnyAssembly(
+                    "UnityEditorInternal.AnimationWindowSelectionItem");
+#endif
+            public static readonly PropertyInfo gameObjectField = AnimationWindowSelectionItem?.VFProperty("gameObject");
             public static readonly PropertyInfo animationClipField = animStateType?.VFProperty("activeAnimationClip");
 #if ! UNITY_6000_0_OR_NEWER
             public static readonly MethodInfo startRecording = animStateType?.VFMethod("StartRecording");
@@ -90,11 +100,11 @@ namespace VF.Utils {
                 SceneManager.MoveGameObjectToScene(clone, avatarObject.scene);
             }
 
-            var expandedIds = CollapseUtils.GetExpandedIds();
-            var wasExpanded = expandedIds.Contains(avatarObject.GetInstanceID());
+            var expanded = CollapseUtils.GetExpanded();
+            var wasExpanded = expanded.Contains(avatarObject);
             CollapseUtils.SetExpanded(avatarObject, false);
             foreach (var child in avatarObject.GetSelfAndAllChildren()) {
-                if (expandedIds.Contains(child.GetInstanceID())) {
+                if (expanded.Contains(child)) {
                     var expandedInClone = clone.Find(child.GetPath(avatarObject));
                     if (expandedInClone != null) CollapseUtils.SetExpanded(expandedInClone, true);
                 }

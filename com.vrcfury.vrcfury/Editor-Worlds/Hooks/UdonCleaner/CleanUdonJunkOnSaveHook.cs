@@ -20,7 +20,7 @@ namespace VF.Hooks.UdonCleaner {
      * Some udon changes sneak through CleanUdonJunkOnChangeHook.
      * If this happens, we can clean them up just before saving out the assets.
      */
-    internal sealed class CleanUdonJunkOnSaveHook : AssetModificationProcessor {
+    internal sealed class CleanUdonJunkOnSaveHook : UnityEditor.AssetModificationProcessor {
         private abstract class Reflection : ReflectionHelper {
             public static readonly System.Reflection.FieldInfo UdonProgramAssetSerializedUdonProgramAssetField = typeof(UdonProgramAsset).VFField("serializedUdonProgramAsset");
             public static readonly System.Reflection.FieldInfo UdonBehaviourSerializedProgramAssetField = typeof(UdonBehaviour).VFField("serializedProgramAsset");
@@ -60,14 +60,12 @@ namespace VF.Hooks.UdonCleaner {
             }
 
             if (path.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase)) {
-                var prefabStage = PrefabStageUtility.GetCurrentPrefabStage();
-                if (prefabStage != null &&
-                    string.Equals(prefabStage.assetPath, path, StringComparison.OrdinalIgnoreCase) &&
-                    prefabStage.prefabContentsRoot != null) {
-                    foreach (var obj in EnumerateGameObjectTree(prefabStage.prefabContentsRoot)) {
+                var prefabStageRoot = UnityCompatUtils.GetStageRoot();
+                var prefabStagePath = UnityCompatUtils.GetStagePath();
+                if (prefabStageRoot != null && string.Equals(prefabStagePath, path)) {
+                    foreach (var obj in EnumerateGameObjectTree(prefabStageRoot)) {
                         yield return obj;
                     }
-
                     yield break;
                 }
 

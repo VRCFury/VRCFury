@@ -249,10 +249,6 @@ namespace VF.Utils {
             this.name = name;
         }
 
-        public int GetInstanceID() {
-            return _gameObject.GetInstanceID();
-        }
-
         public bool HasTag(string tag) {
             return gameObject.CompareTag(tag);
         }
@@ -308,6 +304,14 @@ namespace VF.Utils {
 
         public T[] GetComponentsInUploadRoot<T>() {
             return uploadRoots.SelectMany(r => r.GetComponentsInSelfAndChildren<T>()).ToArray();
+        }
+
+        public static T[] GetComponentsInAllOpenScenes<T>() {
+            return GetRoots().SelectMany(r => r.GetComponentsInSelfAndChildren<T>()).ToArray();
+        }
+
+        public static UnityEngine.Component[] GetComponentsInAllOpenScenes(Type type) {
+            return GetRoots().SelectMany(r => r.GetComponentsInSelfAndChildren(type)).ToArray();
         }
     }
 }

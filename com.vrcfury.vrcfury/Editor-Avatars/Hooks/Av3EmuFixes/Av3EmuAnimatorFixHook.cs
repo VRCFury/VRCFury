@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using UnityEditor;
@@ -55,7 +56,7 @@ namespace VF.Hooks.Av3EmuFixes {
         }
         
         private static void DestroyAllOfType(Type type) {
-            foreach (var runtime in ObjectExtensions.FindObjectsByType(type)) {
+            foreach (var runtime in VFGameObject.GetComponentsInAllOpenScenes(type)) {
                 Object.DestroyImmediate(runtime);
             }
         }
@@ -77,7 +78,7 @@ namespace VF.Hooks.Av3EmuFixes {
                 DestroyAllOfType(Av3EmuReflection.LyumaAv3Menu);
                 DestroyAllOfType(Av3EmuReflection.GestureManagerAv3Menu);
 
-                var emulators = ObjectExtensions.FindObjectsByType(Av3EmuReflection.Av3EmulatorType);
+                var emulators = VFGameObject.GetComponentsInAllOpenScenes(Av3EmuReflection.Av3EmulatorType);
                 foreach (var emulator in emulators) {
                     ClearField(emulator, Av3EmuReflection.Runtimes);
                     ClearField(emulator, Av3EmuReflection.ForceActiveRuntimes);
@@ -88,7 +89,7 @@ namespace VF.Hooks.Av3EmuFixes {
                 }
 
                 if (emulators.Length >= 1) {
-                    var avatars = ObjectExtensions.FindObjectsByType<VRCAvatarDescriptor>();
+                    var avatars = VFGameObject.GetComponentsInAllOpenScenes<VRCAvatarDescriptor>();
                     foreach (var avatar in avatars) {
                         foreach (var component in avatar.GetComponentsInChildren<IParameterSetup>(true)) {
                             foreach (var fieldInfo in component.GetType().GetFields()) {

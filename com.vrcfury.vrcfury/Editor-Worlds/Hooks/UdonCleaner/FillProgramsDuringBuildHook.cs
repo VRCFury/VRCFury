@@ -63,8 +63,8 @@ namespace VF.Hooks.UdonCleaner {
             while (stack.TryPop(out var obj)) {
                 foreach (var ub in obj.GetComponentsInChildren<UdonBehaviour>(true)) {
                     var so = new SerializedObject(ub);
-                    so.FindProperty("programSource").objectReferenceValue = StoreUdonSharpProgramsInTempFolderHook.programSource_get(ub);
-                    so.FindProperty("serializedProgramAsset").objectReferenceValue = StoreUdonSharpProgramsInTempFolderHook.serializedProgramAsset_get(ub);
+                    so.FindProperty("programSource").objectReferenceValue = UdonAssetManagerHook.programSource_get(ub);
+                    so.FindProperty("serializedProgramAsset").objectReferenceValue = UdonAssetManagerHook.serializedProgramAsset_get(ub);
                     if (SyncMethodManagerHook.IsActive()) so.FindProperty("_syncMethod").enumValueIndex = (int)ub.SyncMethod;
                     ReplacePrefabsWithInst(so);
                     so.ApplyModifiedPropertiesWithoutUndo();

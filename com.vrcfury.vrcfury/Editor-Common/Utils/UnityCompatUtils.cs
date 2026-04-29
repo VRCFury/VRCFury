@@ -1,28 +1,21 @@
 using System;
 using System.Reflection;
 using UnityEngine;
-using VF.Builder;
+
+#if UNITY_2022_1_OR_NEWER
+using PrefabStage = UnityEditor.SceneManagement.PrefabStage;
+using PrefabStageUtility = UnityEditor.SceneManagement.PrefabStageUtility;
+#else
+using PrefabStage = UnityEditor.Experimental.SceneManagement.PrefabStage;
+using PrefabStageUtility = UnityEditor.Experimental.SceneManagement.PrefabStageUtility;
+#endif
 
 namespace VF.Utils {
     internal static class UnityCompatUtils {
         private abstract class Reflection : ReflectionHelper {
-            private static readonly Type PrefabStageUtility =
-#if UNITY_2022_1_OR_NEWER
-                ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.SceneManagement.PrefabStageUtility");
-#else
-                ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Experimental.SceneManagement.PrefabStageUtility");
-#endif
-            private static readonly Type PrefabStage =
-#if UNITY_2022_1_OR_NEWER
-                ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.SceneManagement.PrefabStage");
-#else
-                ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Experimental.SceneManagement.PrefabStage");
-#endif
-            public delegate object GetCurrentPrefabStage_();
-            public static readonly GetCurrentPrefabStage_ GetCurrentPrefabStage = PrefabStageUtility?.GetMatchingDelegate<GetCurrentPrefabStage_>("GetCurrentPrefabStage");
             public delegate object OpenPrefab_(string prefabAssetPath, GameObject openedFromInstance);
-            public static readonly OpenPrefab_ OpenPrefab = PrefabStageUtility?.GetMatchingDelegate<OpenPrefab_>("OpenPrefab");
-            public static readonly PropertyInfo autoSave = PrefabStage?.VFProperty("autoSave");
+            public static readonly OpenPrefab_ OpenPrefab = typeof(PrefabStageUtility).GetMatchingDelegate<OpenPrefab_>("OpenPrefab");
+            public static readonly PropertyInfo autoSave = typeof(PrefabStage).VFProperty("autoSave");
         }
         
         public static void OpenPrefab(string path, VFGameObject focus) {
@@ -30,11 +23,27 @@ namespace VF.Utils {
         }
 
         public static bool IsEditingPrefab() {
-            return Reflection.GetCurrentPrefabStage?.Invoke() != null;
+            return PrefabStageUtility.GetCurrentPrefabStage() != null;
+        }
+
+        public static VFGameObject GetStageRoot() {
+            var stage = PrefabStageUtility.GetCurrentPrefabStage();
+            if (stage == null) return null;
+            return stage.prefabContentsRoot;
+        }
+
+        public static string GetStagePath() {
+            var stage = PrefabStageUtility.GetCurrentPrefabStage();
+            if (stage == null) return null;
+#if UNITY_2022_1_OR_NEWER
+            return stage.assetPath;
+#else
+            return stage.prefabAssetPath;
+#endif
         }
         
         public static bool DisablePrefabAutosave() {
-            var prefabStage = Reflection.GetCurrentPrefabStage?.Invoke();
+            var prefabStage = PrefabStageUtility.GetCurrentPrefabStage();
             if (prefabStage == null) return false;
             if (Reflection.autoSave == null) return false;
             var isOn = (bool)Reflection.autoSave.GetValue(prefabStage);
@@ -42,6 +51,6 @@ namespace VF.Utils {
             Reflection.autoSave?.SetValue(prefabStage, false);
             return true;
         }
+
     }
 }
-

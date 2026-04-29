@@ -20,9 +20,10 @@ namespace VF.Menu {
             }
         }
 
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            if (File.Exists(GetUninstallFlagPath())) {
+        public class PostProcessor : AssetPostprocessor {
+            private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths, bool didDomainReload) {
+                if (!didDomainReload) return;
+                if (!File.Exists(GetUninstallFlagPath())) return;
                 File.Delete(GetUninstallFlagPath());
                 UdonCleanerUninstall.Uninstall();
                 EditorUtility.RequestScriptReload();

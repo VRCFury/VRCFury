@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿#if VRCSDK_HAS_ACTIVE_BUILD_TYPE
+using System.Threading.Tasks;
 using UnityEditor;
 using VF.Utils;
 using VRC.SDKBase.Editor;
@@ -53,3 +54,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

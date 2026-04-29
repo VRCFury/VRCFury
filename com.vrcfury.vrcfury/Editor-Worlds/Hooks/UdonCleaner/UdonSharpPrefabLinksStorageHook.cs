@@ -17,7 +17,7 @@ namespace VF.Hooks.UdonCleaner {
      * This means, aside from exactly when odin needs it, the field will always appear empty and not overridden.
      */
     internal static class UdonSharpPrefabLinksStorageHook {
-        private sealed class SaveCacheOnWillSaveAssets : AssetModificationProcessor {
+        private sealed class SaveCacheOnWillSaveAssets : UnityEditor.AssetModificationProcessor {
             private static string[] OnWillSaveAssets(string[] paths) {
                 if (!UdonCleanerMenuItem.Get()) return paths;
                 SaveCacheToDisk();

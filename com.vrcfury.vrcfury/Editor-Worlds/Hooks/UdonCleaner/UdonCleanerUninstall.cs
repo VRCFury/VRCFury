@@ -15,7 +15,7 @@ namespace VF.Hooks.UdonCleaner {
         public static void Uninstall() {
 
             Debug.Log("Reorganizing program assets ...");
-            StoreUdonSharpProgramsInTempFolderHook.Reorganize(true);
+            UdonAssetManagerHook.Reorganize(UdonAssetManagerHook.Layout.VANILLA);
             UdonCleanerReflection.ClearProgramAssetCache();
             AssetDatabase.SaveAssets();
 
@@ -120,9 +120,9 @@ namespace VF.Hooks.UdonCleaner {
             var script = MonoScript.FromMonoBehaviour(usb);
             programSource.objectReferenceValue = null;
             serializedProgramAsset.objectReferenceValue = null;
-            if (StoreUdonSharpProgramsInTempFolderHook._udonSharpMonoScriptToProgram.TryGetValue(script, out var program)) {
+            if (UdonAssetManagerHook._udonSharpMonoScriptToProgram.TryGetValue(script, out var program)) {
                 programSource.objectReferenceValue = program;
-                if (StoreUdonSharpProgramsInTempFolderHook._serializedCache.TryGetValue(program, out var serialized)) {
+                if (UdonAssetManagerHook._serializedCache.TryGetValue(program, out var serialized)) {
                     serializedProgramAsset.objectReferenceValue = serialized;
                 }
             }

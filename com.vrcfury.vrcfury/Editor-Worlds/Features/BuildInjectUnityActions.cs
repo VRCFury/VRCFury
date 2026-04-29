@@ -107,7 +107,9 @@ namespace VF.Features {
             for (var i = 0; i < unityEvent.GetPersistentEventCount(); i++) {
                 if (unityEvent.GetPersistentTarget(i) != behaviour) continue;
                 if (!string.Equals(unityEvent.GetPersistentMethodName(i), "SendCustomEvent", StringComparison.Ordinal)) continue;
+#if UNITY_2022_1_OR_NEWER
                 if (unityEvent.GetPersistentListenerState(i) == UnityEventCallState.Off) continue;
+#endif
                 return true;
             }
 

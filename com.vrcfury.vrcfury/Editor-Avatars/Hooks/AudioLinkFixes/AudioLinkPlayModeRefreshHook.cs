@@ -37,7 +37,7 @@ namespace VF.Hooks.AudioLinkFixes {
         private static void RestartAudiolink() {
             if (!PlayModeMenuItem.Get()) return;
 
-            foreach (var audioLink in ObjectExtensions.FindObjectsByType(Reflection.AlComponentType).OfType<UnityEngine.Component>()) {
+            foreach (var audioLink in VFGameObject.GetComponentsInAllOpenScenes(Reflection.AlComponentType)) {
                 var obj = audioLink.owner();
                 if (obj.active) {
                     Debug.Log($"VRCFury is restarting AudioLink object {obj.name} ...");
