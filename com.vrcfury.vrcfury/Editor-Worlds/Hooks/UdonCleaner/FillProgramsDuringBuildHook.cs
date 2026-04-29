@@ -7,6 +7,7 @@ using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Menu;
 using VF.Utils;
 using VRC.Udon;
 using Object = UnityEngine.Object;
@@ -24,6 +25,8 @@ namespace VF.Hooks.UdonCleaner {
         public int callbackOrder => -1;
 
         public void OnProcessScene(Scene scene, BuildReport report) {
+            if (!UdonCleanerMenuItem.Get()) return;
+
             var stack = new Stack<GameObject>();
             var prefabInstances = new Dictionary<GameObject, GameObject>();
 
@@ -34,7 +37,7 @@ namespace VF.Hooks.UdonCleaner {
                 return h;
             });
 
-            foreach (var obj in scene.GetRootGameObjects()) {
+            foreach (var obj in scene.Roots()) {
                 stack.Push(obj);
             }
 

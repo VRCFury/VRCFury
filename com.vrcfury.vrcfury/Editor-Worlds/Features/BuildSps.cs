@@ -9,7 +9,7 @@ using Object = UnityEngine.Object;
 namespace VF.Features {
     internal static class BuildSps {
         public static void Process(Scene scene) {
-            foreach (var root in VFGameObject.GetRoots(scene)) {
+            foreach (var root in scene.Roots()) {
                 foreach (var socket in root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
                     socket.Upgrade();
                     try {

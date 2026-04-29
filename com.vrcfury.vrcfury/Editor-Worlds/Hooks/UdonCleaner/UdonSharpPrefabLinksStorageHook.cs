@@ -60,6 +60,7 @@ namespace VF.Hooks.UdonCleaner {
 
         [InitializeOnLoadMethod]
         private static void Init() {
+            if (!UdonCleanerMenuItem.Get()) return;
             cachePath = Path.Combine(Directory.GetParent(UnityEngine.Application.dataPath)?.FullName ?? "", "Library", "VRCFury", "SerializationDataPrefabCache.txt");
             LoadCacheFromDisk();
             if (!ReflectionHelper.IsReady<Reflection>()) return;
@@ -72,22 +73,18 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         private static void BeforePrefix(UdonSharpBehaviour __instance) {
-            if (!UdonCleanerMenuItem.Get()) return;
             TryApplyCachedPrefab(__instance);
         }
 
         private static void BeforePostfix(UdonSharpBehaviour __instance) {
-            if (!UdonCleanerMenuItem.Get()) return;
             TryCaptureAndClearPrefab(__instance);
         }
 
         private static void AfterPrefix(UdonSharpBehaviour __instance) {
-            if (!UdonCleanerMenuItem.Get()) return;
             TryApplyCachedPrefab(__instance);
         }
 
         private static void AfterPostfix(UdonSharpBehaviour __instance) {
-            if (!UdonCleanerMenuItem.Get()) return;
             TryCaptureAndClearPrefab(__instance);
         }
 
@@ -190,7 +187,6 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         private static void LoadCacheFromDisk() {
-            if (!UdonCleanerMenuItem.Get()) return;
             try {
                 if (string.IsNullOrEmpty(cachePath) || !File.Exists(cachePath)) return;
                 var lines = File.ReadAllLines(cachePath, System.Text.Encoding.UTF8);

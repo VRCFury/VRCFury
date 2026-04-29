@@ -13,7 +13,7 @@ using VF.Utils;
 namespace VF.Features {
     internal static class BuildInjectUnityActions {
         public static void Process(Scene scene) {
-            foreach (var root in VFGameObject.GetRoots(scene)) {
+            foreach (var root in scene.Roots()) {
                 foreach (var behaviour in root.GetComponentsInSelfAndChildren<UdonSharpBehaviour>()) {
                     ProcessBehaviour(behaviour);
                 }

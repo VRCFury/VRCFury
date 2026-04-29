@@ -203,18 +203,11 @@ namespace VF.Utils {
             return Object.Instantiate(gameObject);
         }
 
-        public static VFGameObject[] GetRoots(Scene scene) {
-            return scene
-                .GetRootGameObjects()
-                .Select(Cast)
-                .ToArray();
-        }
-
         public static VFGameObject[] GetRoots() {
             return Enumerable.Range(0, SceneManager.sceneCount)
                 .Select(SceneManager.GetSceneAt)
                 .Where(scene => scene.isLoaded)
-                .SelectMany(GetRoots)
+                .SelectMany(scene => scene.Roots())
                 .ToArray();
         }
 

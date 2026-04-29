@@ -49,7 +49,7 @@ namespace VF.Hooks.UdonCleaner {
                     var scene = SceneManager.GetSceneAt(i);
                     if (!scene.IsValid() || scene.path != path) continue;
 
-                    foreach (var root in scene.GetRootGameObjects()) {
+                    foreach (var root in scene.Roots()) {
                         foreach (var obj in EnumerateGameObjectTree(root)) {
                             yield return obj;
                         }
@@ -71,13 +71,15 @@ namespace VF.Hooks.UdonCleaner {
                     yield break;
                 }
 
-                var prefabAsset = AssetDatabase.LoadMainAssetAtPath(path);
-                if (prefabAsset is GameObject prefabRoot) {
+                var prefabRoot = PrefabUtility.LoadPrefabContents(path);
+                try {
                     foreach (var obj in EnumerateGameObjectTree(prefabRoot)) {
                         yield return obj;
                     }
+                    PrefabUtility.SaveAsPrefabAsset(prefabRoot, path);
+                } finally {
+                    PrefabUtility.UnloadPrefabContents(prefabRoot);
                 }
-
                 yield break;
             }
 

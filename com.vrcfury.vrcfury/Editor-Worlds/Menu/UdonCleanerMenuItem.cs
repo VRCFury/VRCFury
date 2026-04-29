@@ -20,9 +20,23 @@ namespace VF.Menu {
             }
         }
 
+        [InitializeOnLoadMethod]
+        private static void Init() {
+            if (File.Exists(GetUninstallFlagPath())) {
+                File.Delete(GetUninstallFlagPath());
+                UdonCleanerUninstall.Uninstall();
+                EditorUtility.RequestScriptReload();
+            }
+        }
+
         private static string GetFlagPath() {
             var projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? "";
             return Path.Combine(projectRoot, "ProjectSettings", "VRCFury.SimplifyUdonSerialization.flag");
+        }
+
+        private static string GetUninstallFlagPath() {
+            var projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? "";
+            return Path.Combine(projectRoot, "ProjectSettings", "VRCFury.UninstallUdonCleaner.flag");
         }
 
         public static bool Get() {
@@ -30,7 +44,7 @@ namespace VF.Menu {
             return enabled;
         }
 
-        [MenuItem(MenuItems.simplifyUdonSerialization, priority = MenuItems.simplifyUdonSerializationPriority)]
+        [MenuItem(MenuItems.udonCleaner, priority = MenuItems.udonCleanerPriority)]
         private static void Click() {
             var next = !Get();
             if (next) {
@@ -38,10 +52,9 @@ namespace VF.Menu {
                     "Warning",
                     "!! THIS VRCFURY FEATURE IS EXPERIMENTAL !!\n\n" +
                     "TAKE A PROJECT BACKUP FIRST\n\n" +
-                    "When enabled:" +
-                    "* Udon and U# will save less temporary junk to disk\n" +
-                    "* Udon properties will not randomly change in your scene and prefabs when you save them\n" +
-                    "* Prefab overrides won't list all udon components for no reason.\n" +
+                    "When enabled:\n\n" +
+                    "* Udon properties will not randomly change in your scene and prefabs\n" +
+                    "* Prefab overrides won't list all udon components for no reason\n" +
                     "* U# 'None' synced behaviours can be mixed with synced behaviours on the same object\n" +
                     "* U# scripts will no longer have or need stupid .asset files alongside them\n" +
                     "\n" +
@@ -61,9 +74,10 @@ namespace VF.Menu {
             } else {
                 var ok = DialogUtils.DisplayDialog(
                     "Warning",
-                    "Disabling this will cause udon junk to start filling your asset files again.\n\n" +
+                    "To uninstall Udon Cleaner, VRCFury must repopulate all the vanilla udon junk in every scene and prefab." +
+                    " This can take a couple minutes.\n\n" +
                     "Continue?",
-                    "Yes, Disable it",
+                    "Yes, Remove Udon Cleaner",
                     "Cancel"
                 );
                 if (!ok) return;
@@ -75,15 +89,37 @@ namespace VF.Menu {
                     enabled = false;
                     Volatile.Write(ref loaded, 1);
                 }
-                StoreUdonSharpProgramsInTempFolderHook.Revert();
-                UdonSharpPrefabLinksStorageHook.ClearCache();
+                File.WriteAllText(GetUninstallFlagPath(), "flag");
                 EditorUtility.RequestScriptReload();
             }
         }
 
-        [MenuItem(MenuItems.simplifyUdonSerialization, true)]
+        [MenuItem(MenuItems.udonCleanerUninstallAgain, priority = MenuItems.udonCleanerUninstallAgainPriority)]
+        private static void ClickUninstallAgain() {
+            if (Get()) {
+                DialogUtils.DisplayDialog(
+                    "Warning",
+                    "You can't run this if Udon Cleaner is already enabled",
+                    "Ok"
+                );
+                return;
+            }
+            var ok = DialogUtils.DisplayDialog(
+                "Warning",
+                "Only run this if you were asked on the vrcfury discord. " +
+                "Running this at the wrong time can blow up your project.\n\n" +
+                "Continue?",
+                "Yes, I'm sure, things may break forever",
+                "Cancel"
+            );
+            if (!ok) return;
+            UdonCleanerUninstall.Uninstall();
+            EditorUtility.RequestScriptReload();
+        }
+
+        [MenuItem(MenuItems.udonCleaner, true)]
         private static bool Validate() {
-            UnityEditor.Menu.SetChecked(MenuItems.simplifyUdonSerialization, Get());
+            UnityEditor.Menu.SetChecked(MenuItems.udonCleaner, Get());
             return true;
         }
     }
