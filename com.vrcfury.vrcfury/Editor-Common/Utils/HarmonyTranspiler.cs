@@ -19,7 +19,7 @@ namespace VF.Utils {
                 transpilerClass.VFStaticMethod(inject.Item3)
             )).ToArray();
 
-            var start = Time.realtimeSinceStartupAsDouble;
+            var start = Time.realtimeSinceStartup;
             var methodsToPatch = assemblies
                 .SelectMany(GetAllTypesAndNested)
                 .SelectMany(type => type.GetMethods(
@@ -29,10 +29,10 @@ namespace VF.Utils {
                 ))
                 .Where(MethodUsesTargetFields)
                 .ToArray();
-            var elapsed = Time.realtimeSinceStartupAsDouble - start;
+            var elapsed = Time.realtimeSinceStartup - start;
             //Debug.Log($"Searched for methods to patch in {elapsed} seconds");
 
-            start = Time.realtimeSinceStartupAsDouble;
+            start = Time.realtimeSinceStartup;
             foreach (var method in methodsToPatch) {
                 try {
                     madeChange = false;
@@ -44,7 +44,7 @@ namespace VF.Utils {
                     Debug.LogWarning($"Failed to patch {method.DeclaringType?.FullName} {method.Name}");
                 }
             }
-            elapsed = Time.realtimeSinceStartupAsDouble - start;
+            elapsed = Time.realtimeSinceStartup - start;
             //Debug.Log($"Transpiled in {elapsed} seconds");
         }
 

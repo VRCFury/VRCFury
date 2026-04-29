@@ -18,7 +18,7 @@ namespace VF {
                 var brokenComponents = new HashSet<VRCFuryComponent>();
                 
                 void ScanScene(Scene scene) {
-                    brokenComponents.UnionWith(VFGameObject.GetRoots(scene)
+                    brokenComponents.UnionWith(scene.Roots()
                         .SelectMany(obj => obj.GetComponentsInSelfAndChildren<VRCFuryComponent>())
                         .Where(vrcf => vrcf.IsBroken()));
                 }

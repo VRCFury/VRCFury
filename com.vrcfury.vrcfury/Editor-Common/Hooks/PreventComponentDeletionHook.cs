@@ -44,8 +44,8 @@ namespace VF.Hooks {
         private static bool inPreprocessor;
 
         private static bool DestroyImmediatePrefix(Object __0) {
-            if (!IsActuallyUploadingHook.Get() && inPreprocessor) {
-                if (__0 is VRCFuryTest || __0 is VRCFuryDebugInfo || __0 is VRCFuryPlayComponent) {
+            if (__0 is VRCFuryTest || __0 is VRCFuryDebugInfo || __0 is VRCFuryPlayComponent) {
+                if (!IsActuallyUploadingHook.Get() && inPreprocessor) {
                     // Keep it! Prevent the deletion!
                     return false;
                 }

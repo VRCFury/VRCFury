@@ -17,7 +17,7 @@ namespace VF.Menu {
             VRCFPrefabFixer.Fix(new[] {originalObject});
 
             var cloneName = "VRCF Test Copy for " + originalObject.name;
-            var exists = VFGameObject.GetRoots(originalObject.scene)
+            var exists = originalObject.scene.Roots()
                 .FirstOrDefault(o => o.name == cloneName);
             if (exists != null) {
                 exists.Destroy();
