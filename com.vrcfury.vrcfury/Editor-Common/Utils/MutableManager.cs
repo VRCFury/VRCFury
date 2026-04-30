@@ -17,10 +17,9 @@ namespace VF.Utils {
 
             var changed = false;
             var serialized = new SerializedObject(obj);
-            var prop = serialized.GetIterator();
-            while (true) {
+            foreach (var prop in serialized.IterateFast()) {
                 if (prop.propertyType == SerializedPropertyType.ObjectReference) {
-                    var value = GetObjectReferenceValueSafe(prop);
+                    var value = prop.GetObjectReferenceValueSafe();
                     if (value != null) {
                         void Set(Object v) {
                             if (value != v) {
@@ -32,18 +31,6 @@ namespace VF.Utils {
                         each(prop.propertyPath, value, Set);
                     }
                 }
-
-                var enter = prop.propertyType == SerializedPropertyType.Generic
-                            || prop.propertyType == SerializedPropertyType.ManagedReference;
-
-                // Optimization so we don't have to iterate over the giant float arrays in dance AnimationClips
-                if (obj is AnimationClip
-                    && prop.propertyPath.EndsWith(".Array")
-                    && !prop.propertyPath.ToLower().Contains("pptr")) {
-                    enter = false;
-                }
-
-                if (!prop.Next(enter)) break;
             }
 
             if (changed) {
@@ -63,14 +50,6 @@ namespace VF.Utils {
             if (obj == null) return null;
             if (rewrites.TryGetValue(obj, out var newValue)) return newValue as T;
             return obj;
-        }
-
-        /** For some reason, unity occasionally breaks and return non-Objects from objectReferenceValue somehow. */
-        private static Object GetObjectReferenceValueSafe(SerializedProperty prop) {
-            if (prop.objectReferenceValue == null) return null;
-            if (!(prop.objectReferenceValue is object systemObj)) return null;
-            if (!(systemObj is Object unityObj)) return null;
-            return unityObj;
         }
 
         public static T CopyRecursive<T>(T obj, string reason, Type[] typesToMakeMutable, string addPrefix = "") where T : Object {

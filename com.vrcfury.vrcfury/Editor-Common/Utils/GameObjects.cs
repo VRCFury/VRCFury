@@ -10,7 +10,7 @@ namespace VF.Builder {
             bool removeFromPhysbones = true
         ) {
             var obj = new GameObject(name).asVf();
-            if (useTransformFrom) {
+            if (useTransformFrom != null) {
                 obj.SetParent(useTransformFrom, false);
                 if (parent != null) {
                     obj.SetParent(parent, true);

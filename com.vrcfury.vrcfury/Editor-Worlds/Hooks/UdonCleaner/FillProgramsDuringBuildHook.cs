@@ -7,6 +7,7 @@ using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Builder;
 using VF.Menu;
 using VF.Utils;
 using VRC.Udon;
@@ -27,12 +28,12 @@ namespace VF.Hooks.UdonCleaner {
         public void OnProcessScene(Scene scene, BuildReport report) {
             if (!UdonCleanerMenuItem.Get()) return;
 
-            var stack = new Stack<GameObject>();
-            var prefabInstances = new Dictionary<GameObject, GameObject>();
+            var stack = new Stack<VFGameObject>();
+            var prefabInstances = new Dictionary<VFGameObject, VFGameObject>();
 
-            var prefabHolder = new Lazy<GameObject>(() => {
-                var h = new GameObject("__PrefabHolder");
-                h.SetActive(false);
+            var prefabHolder = new Lazy<VFGameObject>(() => {
+                var h = GameObjects.Create("__PrefabHolder");
+                h.active = false;
                 SceneManager.MoveGameObjectToScene(h, scene);
                 return h;
             });
@@ -42,14 +43,13 @@ namespace VF.Hooks.UdonCleaner {
             }
 
             bool ReplacePrefabsWithInst(SerializedObject so) {
-                var prop = so.GetIterator();
                 var changed = false;
-                while (prop.Next(true)) {
+                foreach (var prop in so.IterateFast()) {
                     if (prop.propertyType != SerializedPropertyType.ObjectReference) continue;
                     if (!(prop.objectReferenceValue is GameObject go)) continue;
                     if (go.scene == scene) continue;
                     if (!prefabInstances.TryGetValue(go, out var inst)) {
-                        inst = Object.Instantiate(go, prefabHolder.Value.transform, false);
+                        inst = Object.Instantiate(go, prefabHolder.Value, false);
                         inst.name = go.name;
                         prefabInstances[go] = inst;
                         stack.Push(inst);
@@ -61,7 +61,7 @@ namespace VF.Hooks.UdonCleaner {
             }
 
             while (stack.TryPop(out var obj)) {
-                foreach (var ub in obj.GetComponentsInChildren<UdonBehaviour>(true)) {
+                foreach (var ub in obj.GetComponentsInSelfAndChildren<UdonBehaviour>()) {
                     var so = new SerializedObject(ub);
                     so.FindProperty("programSource").objectReferenceValue = UdonAssetManagerHook.programSource_get(ub);
                     so.FindProperty("serializedProgramAsset").objectReferenceValue = UdonAssetManagerHook.serializedProgramAsset_get(ub);
@@ -69,7 +69,7 @@ namespace VF.Hooks.UdonCleaner {
                     ReplacePrefabsWithInst(so);
                     so.ApplyModifiedPropertiesWithoutUndo();
                 }
-                foreach (var ub in obj.GetComponentsInChildren<UdonSharpBehaviour>(true)) {
+                foreach (var ub in obj.GetComponentsInSelfAndChildren<UdonSharpBehaviour>()) {
                     var so = new SerializedObject(ub);
                     if (ReplacePrefabsWithInst(so)) {
                         so.ApplyModifiedPropertiesWithoutUndo();
