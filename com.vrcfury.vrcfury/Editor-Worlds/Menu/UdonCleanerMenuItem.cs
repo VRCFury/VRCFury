@@ -51,9 +51,14 @@ namespace VF.Menu {
             if (next) {
                 var ok = DialogUtils.DisplayDialog(
                     "Warning",
-                    "!! THIS VRCFURY FEATURE IS EXPERIMENTAL !!\n\n" +
-                    "TAKE A PROJECT BACKUP FIRST\n\n" +
-                    "When enabled:\n\n" +
+                    "WARNING:\n" +
+                    "* THIS VRCFURY FEATURE IS EXPERIMENTAL\n" +
+                    "* TAKE A PROJECT BACKUP FIRST\n" +
+                    "* Packages exported with the Udon Cleaner enabled will only be usable in projects using the Udon Cleaner." +
+                    " If you are going to distribute packages, consider using a dedicated project with the cleaner disabled!\n" +
+                    "* To undo this feature, you must disable this menu item, don't just uninstall VRCFury!\n" +
+                    "\n" +
+                    "Features:\n" +
                     "* Udon properties will not randomly change in your scene and prefabs\n" +
                     "* Prefab overrides won't list all udon components for no reason\n" +
                     "* U# 'None' synced behaviours can be mixed with synced behaviours on the same object\n" +
