@@ -1,30 +1,35 @@
+using System.IO;
 using UnityEditor;
+using UnityEngine;
 using VF.Menu;
-using VF.Utils;
 
 namespace VF.Hooks.VrcsdkFixes {
     internal static class DisableVpmResolverAutoInitHook {
-        [ReflectionHelperOptional]
-        private abstract class Reflection : ReflectionHelper {
-            public static readonly HarmonyUtils.PatchObj PatchResolveIsNeeded = HarmonyUtils.Patch(
-                typeof(DisableVpmResolverAutoInitHook),
-                nameof(ResolveIsNeededPrefix),
-                "VRC.PackageManagement.Core.Types.Packages.VPMProjectManifest",
-                "ResolveIsNeeded"
-            );
-        }
+        private const string ResolverPath = "Packages/com.vrchat.core.vpm-resolver/Editor/Resolver/Resolver.cs";
+        private const string EnabledLine = "    [InitializeOnLoad]";
+        private const string DisabledLine = "    // [InitializeOnLoad]";
 
         [InitializeOnLoadMethod]
         private static void Init() {
-            if (!ReflectionHelper.IsReady<Reflection>()) return;
-            Reflection.PatchResolveIsNeeded.apply();
+            Apply();
         }
 
-        private static bool ResolveIsNeededPrefix(ref bool __result) {
-            if (!DisableVpmResolverInitMenuItem.Get()) return true;
-            __result = false;
-            return false;
+        public static void Apply() {
+            var projectRoot = Directory.GetParent(Application.dataPath)?.FullName;
+            if (string.IsNullOrEmpty(projectRoot)) return;
+
+            var fullPath = Path.Combine(projectRoot, ResolverPath);
+            if (!File.Exists(fullPath)) return;
+
+            var text = File.ReadAllText(fullPath);
+            var disable = DisableVpmResolverInitMenuItem.Get();
+            var next = disable
+                ? text.Replace(EnabledLine, DisabledLine)
+                : text.Replace(DisabledLine, EnabledLine);
+
+            if (next == text) return;
+
+            File.WriteAllText(fullPath, next);
         }
     }
 }
-

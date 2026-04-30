@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using VF.Hooks.VrcsdkFixes;
 using VF.Utils;
 
 namespace VF.Menu {
@@ -26,6 +27,7 @@ namespace VF.Menu {
             }
 
             EditorPrefs.SetBool(EditorPref, !Get());
+            DisableVpmResolverAutoInitHook.Apply();
         }
 
         [MenuItem(MenuItems.disableVpmResolverInit, true)]
