@@ -147,7 +147,7 @@ namespace VF.Utils {
         }
 
         public static void Delete(string path) {
-            Debug.Log("Deleting " + path);
+            //Debug.Log("Deleting " + path);
             AssetDatabase.DeleteAsset(path);
         }
 
