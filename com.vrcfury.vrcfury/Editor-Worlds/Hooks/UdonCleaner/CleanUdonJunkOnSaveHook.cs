@@ -27,9 +27,12 @@ namespace VF.Hooks.UdonCleaner {
             public static readonly System.Reflection.FieldInfo programSource = typeof(UdonBehaviour).VFField(nameof(UdonBehaviour.programSource));
         }
 
+        private static bool internalSave = false;
+
         private static string[] OnWillSaveAssets(string[] paths) {
             if (!UdonCleanerMenuItem.Get()) return paths;
             if (!ReflectionHelper.IsReady<Reflection>()) return paths;
+            if (internalSave) return paths;
             CleanPaths(paths);
             return paths;
         }
@@ -74,7 +77,12 @@ namespace VF.Hooks.UdonCleaner {
                     foreach (var obj in EnumerateGameObjectTree(prefabRoot)) {
                         yield return obj;
                     }
-                    PrefabUtility.SaveAsPrefabAsset(prefabRoot, path);
+                    internalSave = true;
+                    try {
+                        PrefabUtility.SaveAsPrefabAsset(prefabRoot, path);
+                    } finally {
+                        internalSave = false;
+                    }
                 } finally {
                     PrefabUtility.UnloadPrefabContents(prefabRoot);
                 }
