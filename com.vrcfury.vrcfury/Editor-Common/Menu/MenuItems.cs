@@ -60,6 +60,8 @@ namespace VF.Menu {
         public const int applySuperSampledUiMaterialOverridesPriority = utilitiesPriority + 13;
         public const string sceneDirtyLogger = utilities + "Log why Scene is dirtied";
         public const int sceneDirtyLoggerPriority = utilitiesPriority + 14;
+        public const string logExternalSceneReferences = utilities + "Log External Scene References";
+        public const int logExternalSceneReferencesPriority = utilitiesPriority + 15;
 
         public const string settings = prefix + "Settings/";
         public const int settingsPriority = 1312;

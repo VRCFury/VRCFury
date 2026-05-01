@@ -40,6 +40,8 @@ namespace VF.Utils {
         public static System.Collections.Generic.IEnumerable<SerializedProperty> IterateFast(this SerializedObject serialized) {
             var prop = serialized.GetIterator();
             while (prop.NextFast()) {
+                if (prop.propertyPath == "m_CorrespondingSourceObject") continue;
+                if (prop.propertyPath == "m_PrefabInstance") continue;
                 yield return prop;
             }
         }
