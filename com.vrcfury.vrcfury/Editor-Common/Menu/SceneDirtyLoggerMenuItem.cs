@@ -44,7 +44,7 @@ namespace VF.Menu {
             Debug.LogWarning(
                 $"[VRCFury Scene Dirty Logger] {msg}"
                 + "\n\nRecent changes:\n" + string.Join("\n", RecentChanges)
-                + "\n\nStack:\n" + Environment.StackTrace
+                + "\n"
             );
         }
 
