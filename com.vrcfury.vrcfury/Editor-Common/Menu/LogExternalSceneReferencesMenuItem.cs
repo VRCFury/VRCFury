@@ -62,11 +62,13 @@ namespace VF.Menu {
         }
 
         private static VFGameObject GetSceneTarget(Object target) {
-            return target switch {
-                GameObject go => go,
-                UnityEngine.Component c => c.owner(),
-                _ => null
+            switch(target) {
+                case GameObject go:
+                    return go;
+                case UnityEngine.Component c:
+                    return c.owner();
             };
+            return null;
         }
     }
 }

@@ -20,6 +20,7 @@ namespace VF.Menu {
             }
         }
 
+#if UNITY_2022_1_OR_NEWER
         public class PostProcessor : AssetPostprocessor {
             private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths, bool didDomainReload) {
                 if (!didDomainReload) return;
@@ -29,6 +30,7 @@ namespace VF.Menu {
                 EditorUtility.RequestScriptReload();
             }
         }
+#endif
 
         private static string GetFlagPath() {
             var projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? "";

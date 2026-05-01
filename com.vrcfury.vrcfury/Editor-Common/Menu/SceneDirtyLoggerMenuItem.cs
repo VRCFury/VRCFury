@@ -66,13 +66,15 @@ namespace VF.Menu {
                 return mods;
             };
 
+#if UNITY_2022_1_OR_NEWER
             ObjectChangeEvents.changesPublished += (ref ObjectChangeEventStream stream) => {
                 if (!Get()) return;
                 Remember($"ObjectChangeEvents: {stream.length} changes");
             };
+#endif
         }
 
-        public class Processor : AssetModificationProcessor {
+        public class Processor : UnityEditor.AssetModificationProcessor {
             private static string[] OnWillSaveAssets(string[] paths) {
                 if (!Get()) return paths;
                 Log("Assets saving:\n" + string.Join("\n", paths));

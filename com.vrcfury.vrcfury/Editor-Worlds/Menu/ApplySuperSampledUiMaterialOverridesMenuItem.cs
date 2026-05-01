@@ -31,7 +31,14 @@ namespace VF.Menu {
             });
         }
 
-        public static (int prefabPropertiesSet, int nestedPrefabOverridesReverted, int sceneOverridesReverted, int prefabsSaved) ApplyInLoadedScenes() {
+        public class Result {
+            public int prefabPropertiesSet;
+            public int nestedPrefabOverridesReverted;
+            public int sceneOverridesReverted;
+            public int prefabsSaved;
+        }
+
+        public static Result ApplyInLoadedScenes() {
             var idCache = new Dictionary<Object, string>();
             var prefabPropertiesSet = 0;
             var nestedPrefabOverridesReverted = 0;
@@ -115,9 +122,6 @@ namespace VF.Menu {
                 }
             });
 
-            return (prefabPropertiesSet, nestedPrefabOverridesReverted, sceneOverridesReverted, prefabsSaved);
-
-            [CanBeNull]
             string Id(UnityEngine.Component obj) {
                 if (idCache.TryGetValue(obj, out var id)) return id;
                 var allComponents = obj.transform.root.asVf().GetComponentsInSelfAndChildren().Cast<Object>().ToArray();
@@ -128,6 +132,13 @@ namespace VF.Menu {
                 }
                 return idCache.GetValueOrDefault(obj);
             }
+
+            return new Result {
+                prefabPropertiesSet = prefabPropertiesSet,
+                nestedPrefabOverridesReverted = nestedPrefabOverridesReverted,
+                sceneOverridesReverted = sceneOverridesReverted,
+                prefabsSaved = prefabsSaved
+            };
         }
     }
 }
