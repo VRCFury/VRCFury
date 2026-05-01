@@ -279,8 +279,8 @@ namespace VF.Service {
                     if (mesh != null) {
                         mesh.bindposes = skin.bones.Zip(mesh.bindposes)
                             .Select(boneAndBindPose => {
-                                var bone = boneAndBindPose.a.asVf();
-                                var bindPose = boneAndBindPose.b;
+                                var bone = boneAndBindPose.Item1.asVf();
+                                var bindPose = boneAndBindPose.Item2;
                                 if (bone != fromBone) return bindPose;
                                 return toBone.worldToLocalMatrix * bone.localToWorldMatrix * bindPose;
                             }) 

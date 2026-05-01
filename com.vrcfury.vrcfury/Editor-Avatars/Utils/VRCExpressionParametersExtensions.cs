@@ -54,7 +54,7 @@ namespace VF.Utils {
         public static bool IsSameAs(this VRCExpressionParameters paramz, VRCExpressionParameters other) {
             return paramz.parameters.Length == other.parameters.Length
                    && paramz.parameters.Zip(other.parameters)
-                       .All(pair => pair.a.IsSameAs(pair.b));
+                       .All(pair => pair.Item1.IsSameAs(pair.Item2));
         }
     }
 }
