@@ -9,7 +9,7 @@ namespace VF.Utils {
         }
 
         public static void Destroy(this UnityEngine.Component c) {
-            if (c.owner().GetComponents<UnityEngine.Component>().Length == 2 && c.owner().childCount == 0)
+            if (c.owner().GetComponents().Length == 2 && c.owner().childCount == 0)
                 c.owner().Destroy();
             else
                 Object.DestroyImmediate(c);

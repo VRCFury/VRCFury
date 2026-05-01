@@ -109,7 +109,7 @@ namespace VF.Menu {
                 var obj = Selection.activeGameObject.asVf();
                 if (obj == null) return;
                 var list = new List<string>();
-                foreach (var c in obj.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
+                foreach (var c in obj.GetComponentsInSelfAndChildren()) {
                     if (c == null || c is Transform) continue;
                     var type = c.GetType().Name;
                     if (c is VRCFury vf) {

@@ -74,16 +74,7 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         private static void RepairPrefab(string path) {
-            var prefabRoot = PrefabUtility.LoadPrefabContents(path);
-            try {
-                var changed = RepairRoot(prefabRoot);
-                if (changed) {
-                    //Debug.Log($"Saving {path} ...");
-                    PrefabUtility.SaveAsPrefabAsset(prefabRoot, path);
-                }
-            } finally {
-                PrefabUtility.UnloadPrefabContents(prefabRoot);
-            }
+            PrefabUtils.WithWritablePrefab(path, RepairRoot);
         }
         private static bool RepairRoot(VFGameObject root) {
             var changed = false;

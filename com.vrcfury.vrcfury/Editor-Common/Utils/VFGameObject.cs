@@ -139,7 +139,9 @@ namespace VF.Utils {
         public T GetComponent<T>() {
             return GetComponents<T>().FirstOrDefault();
         }
-
+        public UnityEngine.Component[] GetComponents() {
+            return GetComponents<UnityEngine.Component>();
+        }
         public UnityEngine.Component[] GetComponents(Type t) {
             // Components can sometimes be null for some reason. Perhaps when they're corrupt?
             // The OfType is required because unity can be tricked into blindly returning things that are NOT components
@@ -149,19 +151,20 @@ namespace VF.Utils {
         public T[] GetComponents<T>() {
             return gameObject.GetComponents<T>().NotNull().OfType<T>().ToArray();
         }
-        
-        public T GetComponentInSelfOrParent<T>() {
-            return GetComponentsInSelfAndParents<T>().FirstOrDefault();
+
+        public UnityEngine.Component[] GetComponentsInSelfAndChildren() {
+            return GetComponentsInSelfAndChildren<UnityEngine.Component>();
         }
-        
         public UnityEngine.Component[] GetComponentsInSelfAndChildren(Type type) {
             return gameObject.GetComponentsInChildren(type, true).NotNull().OfType<UnityEngine.Component>().ToArray();
         }
-
         public T[] GetComponentsInSelfAndChildren<T>() {
             return gameObject.GetComponentsInChildren<T>(true).NotNull().OfType<T>().ToArray();
         }
-        
+
+        public T GetComponentInSelfOrParent<T>() {
+            return GetComponentsInSelfAndParents<T>().FirstOrDefault();
+        }
         public T[] GetComponentsInSelfAndParents<T>() {
             return gameObject.GetComponentsInParent<T>(true).NotNull().OfType<T>().ToArray();
         }

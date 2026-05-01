@@ -47,7 +47,7 @@ namespace VF.Hooks {
             public void OnProcessScene(Scene scene, BuildReport report) {
                 allowEditModeCalls = true;
                 try {
-                    foreach (var component in scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren<UnityEngine.Component>())) {
+                    foreach (var component in scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren())) {
                         if (onEnableMethods.TryGetValue(component.GetType(), out var enable))
                             enable.Invoke(component, null);
                         if (updateMethods.TryGetValue(component.GetType(), out var update))

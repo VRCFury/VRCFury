@@ -30,7 +30,7 @@ namespace VF.Service {
                 animatorLayerControlManager.Alias(to.GetCloneSource(), to);
             }
 
-            foreach (var (layerForGesture, layerForFx) in gesture.layers.Zip(copyForFx.layers, (a,b) => (a,b))) {
+            foreach (var (layerForGesture, layerForFx) in gesture.layers.Zip(copyForFx.layers)) {
                 
                 var propTypes = new AnimatorIterator.Clips().From(layerForGesture)
                     .SelectMany(clip => {

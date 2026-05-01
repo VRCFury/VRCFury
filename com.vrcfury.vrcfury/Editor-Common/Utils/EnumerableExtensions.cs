@@ -50,5 +50,9 @@ namespace VF.Utils {
             return source.Take(count).Join('\n')
                    + (count > max ? ("\n ... and " + (count - max) + " more") : "");
         }
+
+        public static IEnumerable<(A, B)> Zip<A, B>(this IEnumerable<A> a, IEnumerable<B> b) {
+            return a.Zip(b, (a1, b1) => (a1, b1));
+        }
     }
 }

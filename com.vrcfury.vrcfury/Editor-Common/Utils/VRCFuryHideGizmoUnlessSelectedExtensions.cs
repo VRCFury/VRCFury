@@ -8,7 +8,7 @@ namespace VF.Utils {
     internal static class VRCFuryHideGizmoUnlessSelectedExtensions {
         public static void Hide(VFGameObject root, ISet<UnityEngine.Component> ignore = null) {
             if (!Application.isPlaying) return;
-            foreach (var c in root.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
+            foreach (var c in root.GetComponentsInSelfAndChildren()) {
                 if (ignore != null && ignore.Contains(c)) continue;
                 if (c.owner().GetComponent<VRCFuryHideGizmoUnlessSelected>() != null) continue;
                 if (c is ContactBase || c is Light || c is VRCPhysBone || c is VRCPhysBoneCollider) {

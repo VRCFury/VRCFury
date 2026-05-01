@@ -1,9 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using VF.Exceptions;
 using VF.Utils;
+using Object = UnityEngine.Object;
 
 namespace VF.Menu {
     internal static class ApplySuperSampledUiMaterialOverridesMenuItem {
@@ -14,100 +18,116 @@ namespace VF.Menu {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
                 if (!DialogUtils.DisplayDialog(
                         "Apply VRCSuperSampledUIMaterial Overrides",
-                        "This utility finds prefab overrides in loaded scenes where an object reference changed from null to VRCSuperSampledUIMaterial, then applies each override down to the deepest prefab base.\n\nContinue?",
+                        "This utility finds prefab overrides in loaded scenes where an object reference changed from null to VRCSuperSampledUIMaterial, applies them to the deepest prefab base, then removes redundant supersampled overrides.\n\nContinue?",
                         "Yes",
                         "Cancel"
                     )) return;
-
-                var applyCount = 0;
-                var propertyCount = 0;
-                for (var sceneIndex = 0; sceneIndex < SceneManager.sceneCount; sceneIndex++) {
-                    var scene = SceneManager.GetSceneAt(sceneIndex);
-                    if (!scene.IsValid() || !scene.isLoaded) continue;
-
-                    foreach (var root in scene.GetRootGameObjects()) {
-                        foreach (var component in root.GetComponentsInChildren<UnityEngine.Component>(true)) {
-                            if (component == null) continue;
-                            propertyCount += ApplyMatchingOverrides(component, ref applyCount);
-                        }
-                    }
-                }
-
+                var counts = ApplyInLoadedScenes();
                 DialogUtils.DisplayDialog(
                     "Apply VRCSuperSampledUIMaterial Overrides",
-                    $"Applied {propertyCount} override{(propertyCount == 1 ? "" : "s")} across {applyCount} prefab layer step{(applyCount == 1 ? "" : "s")}.",
+                    $"Set {counts.prefabPropertiesSet} prefab propert{(counts.prefabPropertiesSet == 1 ? "y" : "ies")}, reverted {counts.nestedPrefabOverridesReverted} nested prefab override{(counts.nestedPrefabOverridesReverted == 1 ? "" : "s")}, reverted {counts.sceneOverridesReverted} scene override{(counts.sceneOverridesReverted == 1 ? "" : "s")}, saved {counts.prefabsSaved} prefab{(counts.prefabsSaved == 1 ? "" : "s")}.",
                     "Ok"
                 );
             });
         }
 
-        [MenuItem(MenuItems.applySuperSampledUiMaterialOverrides, true)]
-        private static bool Validate() {
-            return Enumerable.Range(0, SceneManager.sceneCount)
-                .Select(SceneManager.GetSceneAt)
-                .Any(scene => scene.IsValid() && scene.isLoaded);
-        }
+        public static (int prefabPropertiesSet, int nestedPrefabOverridesReverted, int sceneOverridesReverted, int prefabsSaved) ApplyInLoadedScenes() {
+            var idCache = new Dictionary<Object, string>();
+            var prefabPropertiesSet = 0;
+            var nestedPrefabOverridesReverted = 0;
+            var sceneOverridesReverted = 0;
+            var prefabsSaved = 0;
 
-        private static int ApplyMatchingOverrides(UnityEngine.Component component, ref int applyCount) {
-            if (!PrefabUtility.IsPartOfPrefabInstance(component)) return 0;
-            var applyPaths = new System.Collections.Generic.List<string>();
+            VRCFuryAssetDatabase.WithAssetEditing(() => {
+                var ssMaterial = AssetDatabase.FindAssets($"{MaterialName} t:Material")
+                    .Select(AssetDatabase.GUIDToAssetPath)
+                    .Select(AssetDatabase.LoadAssetAtPath<Material>)
+                    .FirstOrDefault(m => m != null && m.name == MaterialName);
+                if (ssMaterial == null) {
+                    Debug.LogWarning($"{MaterialName} not found");
+                    return;
+                }
 
-            foreach (var prop in new SerializedObject(component).IterateFast()) {
-                if (!IsMatchingOverride(prop, component)) continue;
-                applyPaths.Add(prop.propertyPath);
+                var actionsToTake = new Dictionary<(string path, string objectid, string propertyName), string>();
+                void AddTask(UnityEngine.Component c, string propertyName, string task) {
+                    var assetPath = AssetDatabase.GetAssetPath(c);
+                    if (assetPath == null) return;
+                    var id = Id(c);
+                    if (id == null) return;
+                    actionsToTake[(assetPath, id, propertyName)] = task;
+                }
+
+                foreach (var sceneComponent in VFGameObject.GetRoots().SelectMany(root => root.GetComponentsInSelfAndChildren())) {
+                    if (!PrefabUtility.IsPartOfPrefabInstance(sceneComponent)) continue;
+                    foreach (var sceneProp in new SerializedObject(sceneComponent).IterateFast()) {
+                        if (sceneProp.propertyType != SerializedPropertyType.ObjectReference) continue;
+                        if (sceneProp.objectReferenceValue != ssMaterial) continue;
+
+                        UnityEngine.Component sourceToHoldSsMaterial = null;
+                        var c = sceneComponent;
+                        while (true) {
+                            var source = PrefabUtility.GetCorrespondingObjectFromSource(c);
+                            if (source == null) {
+                                if (c != sceneComponent) sourceToHoldSsMaterial = c;
+                                break;
+                            } else {
+                                var sourceProp = new SerializedObject(source).FindProperty(sceneProp.propertyPath);
+                                if (sourceProp == null || sourceProp.propertyType != SerializedPropertyType.ObjectReference) break;
+                                if (sourceProp.objectReferenceValue != ssMaterial && sourceProp.objectReferenceValue != null) break;
+                                c = source;
+                            }
+                        }
+
+                        if (sourceToHoldSsMaterial != null) {
+                            AddTask(sourceToHoldSsMaterial, sceneProp.propertyPath, "set");
+                            PrefabUtility.RevertPropertyOverride(sceneProp, InteractionMode.AutomatedAction);
+                            sceneOverridesReverted++;
+                        }
+                    }
+                }
+
+                foreach (var singlePrefabActions in actionsToTake.GroupBy(pair => pair.Key.path)) {
+                    var assetPath = singlePrefabActions.Key;
+                    PrefabUtils.WithWritablePrefab(assetPath, root => {
+                        var idsToComponents = root.GetComponentsInSelfAndChildren()
+                            .Where(c => PrefabUtility.GetCorrespondingObjectFromSource(c) == null)
+                            .Select(c => (Id(c), c))
+                            .Where(pair => pair.Item1 != null)
+                            .ToImmutableDictionary(pair => pair.Item1, pair => pair.Item2);
+                        foreach (var action in singlePrefabActions) {
+                            if (!idsToComponents.TryGetValue(action.Key.objectid, out var component)) continue;
+                            var so = new SerializedObject(component);
+                            var prop = so.FindProperty(action.Key.propertyName);
+                            if (prop == null) continue;
+                            var task = action.Value;
+                            if (task == "revert") {
+                                PrefabUtility.RevertPropertyOverride(prop, InteractionMode.AutomatedAction);
+                                nestedPrefabOverridesReverted++;
+                            } else if (task == "set") {
+                                prop.objectReferenceValue = ssMaterial;
+                                so.ApplyModifiedPropertiesWithoutUndo();
+                                prefabPropertiesSet++;
+                            }
+                        }
+                        prefabsSaved++;
+                        return true;
+                    });
+                }
+            });
+
+            return (prefabPropertiesSet, nestedPrefabOverridesReverted, sceneOverridesReverted, prefabsSaved);
+
+            [CanBeNull]
+            string Id(UnityEngine.Component obj) {
+                if (idCache.TryGetValue(obj, out var id)) return id;
+                var allComponents = obj.transform.root.asVf().GetComponentsInSelfAndChildren().Cast<Object>().ToArray();
+                var ids = new GlobalObjectId[allComponents.Length];
+                GlobalObjectId.GetGlobalObjectIdsSlow(allComponents, ids);
+                foreach (var pair in allComponents.Zip(ids)) {
+                    idCache[pair.Item1] = pair.Item2.assetGUID + "-" + pair.Item2.targetObjectId;
+                }
+                return idCache.GetValueOrDefault(obj);
             }
-
-            var propertyCount = 0;
-            foreach (var path in applyPaths) {
-                var steps = ApplyToDeepestBase(component, path);
-                if (steps <= 0) continue;
-                applyCount += steps;
-                propertyCount++;
-            }
-
-            return propertyCount;
-        }
-
-        private static int ApplyToDeepestBase(UnityEngine.Component component, string propertyPath) {
-            var steps = 0;
-            var current = component;
-
-            while (current != null && PrefabUtility.IsPartOfPrefabInstance(current)) {
-                var sourceComponent = PrefabUtility.GetCorrespondingObjectFromSource(current);
-                if (sourceComponent == null) break;
-
-                var currentSo = new SerializedObject(current);
-                var currentProp = currentSo.FindProperty(propertyPath);
-                if (!IsMatchingOverride(currentProp, current)) break;
-
-                var assetPath = AssetDatabase.GetAssetPath(sourceComponent);
-                if (string.IsNullOrEmpty(assetPath)) break;
-
-                PrefabUtility.ApplyPropertyOverride(currentProp, assetPath, InteractionMode.AutomatedAction);
-                steps++;
-                current = sourceComponent;
-            }
-
-            return steps;
-        }
-
-        private static bool IsMatchingOverride(SerializedProperty prop, UnityEngine.Component component) {
-            if (prop == null) return false;
-            if (!prop.prefabOverride) return false;
-            if (prop.isDefaultOverride) return false;
-            if (prop.propertyType != SerializedPropertyType.ObjectReference) return false;
-            if (!(prop.GetObjectReferenceValueSafe() is Material mat)) return false;
-            if (mat.name != MaterialName) return false;
-
-            var sourceComponent = PrefabUtility.GetCorrespondingObjectFromSource(component);
-            if (sourceComponent == null) return false;
-
-            var sourceProp = new SerializedObject(sourceComponent).FindProperty(prop.propertyPath);
-            if (sourceProp == null) return false;
-            if (sourceProp.propertyType != SerializedPropertyType.ObjectReference) return false;
-            if (sourceProp.GetObjectReferenceValueSafe() != null) return false;
-
-            return true;
         }
     }
 }

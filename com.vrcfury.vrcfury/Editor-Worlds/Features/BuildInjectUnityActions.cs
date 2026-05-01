@@ -54,7 +54,7 @@ namespace VF.Features {
             if (sendCustomEventAction == null) return false;
             var foundMatch = false;
 
-            foreach (var component in behaviour.owner().GetComponents<UnityEngine.Component>()) {
+            foreach (var component in behaviour.owner().GetComponents()) {
                 if (component == behaviour) continue;
 
                 foreach (var unityEvent in FindEventsByName(component, actionName)) {

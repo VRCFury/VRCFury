@@ -277,7 +277,7 @@ namespace VF.Service {
                 if (skin.bones.Contains((Transform)fromBone)) {
                     var mesh = skin.GetMutableMesh("Needed to change bone bind-poses for Armature Link to re-use bones on base armature");
                     if (mesh != null) {
-                        mesh.bindposes = skin.bones.Zip(mesh.bindposes, (a,b) => (a,b))
+                        mesh.bindposes = skin.bones.Zip(mesh.bindposes)
                             .Select(boneAndBindPose => {
                                 var bone = boneAndBindPose.a.asVf();
                                 var bindPose = boneAndBindPose.b;

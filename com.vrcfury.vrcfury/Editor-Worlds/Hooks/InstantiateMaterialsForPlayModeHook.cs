@@ -83,8 +83,7 @@ namespace VF.Hooks {
                     }
                 }
 
-                foreach (var c in scene.Roots()
-                             .SelectMany(root => root.GetComponentsInSelfAndChildren<UnityEngine.Component>())) {
+                foreach (var c in scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren())) {
                     if (c.GetType().Name == "ftLightmapsStorage") continue;
                     var so = new SerializedObject(c);
                     if (ReplaceMaterials(so, false)) {

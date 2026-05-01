@@ -17,7 +17,7 @@ namespace VF.Features {
             var registry = new List<(string, UnityEngine.Component)>();
 
             foreach (var register in scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren<UdonDiRegister>())) {
-                foreach (var component in register.GetComponents<UnityEngine.Component>()) {
+                foreach (var component in register.owner().GetComponents()) {
                     if (component is IEditorOnly) continue;
                     //Debug.Log($"Found {component.GetType().Name} on " + SenkyUtils.GetPath(register.transform));
                     registry.Add((register.registeredName, component));
@@ -27,7 +27,7 @@ namespace VF.Features {
             var count = 0;
             foreach (var resolve in scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren<UdonDiInjectField>())) {
                 var foundOneField = false;
-                foreach (var component in resolve.GetComponents<UnityEngine.Component>().OfType<UdonSharpBehaviour>()) {
+                foreach (var component in resolve.owner().GetComponents<UdonSharpBehaviour>()) {
                     var field = component.GetType().GetField(resolve.targetField);
                     if (field == null) continue;
                     var fieldType = field.FieldType;
