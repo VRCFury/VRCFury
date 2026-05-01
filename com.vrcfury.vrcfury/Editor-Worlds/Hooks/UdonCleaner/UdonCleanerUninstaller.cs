@@ -10,12 +10,12 @@ using VF.Utils;
 using VRC.Udon;
 
 namespace VF.Hooks.UdonCleaner {
-    internal static class UdonCleanerUninstall {
+    internal static class UdonCleanerUninstaller {
 
         public static void Uninstall() {
 
             Debug.Log("Reorganizing program assets ...");
-            UdonAssetManagerHook.Reorganize(UdonAssetManagerHook.Layout.VANILLA);
+            UdonCleanerAssetManager.Reorganize(UdonCleanerAssetManager.Layout.VANILLA);
             UdonCleanerReflection.ClearProgramAssetCache();
             AssetDatabase.SaveAssets();
 
@@ -120,9 +120,9 @@ namespace VF.Hooks.UdonCleaner {
             var script = MonoScript.FromMonoBehaviour(usb);
             programSource.objectReferenceValue = null;
             serializedProgramAsset.objectReferenceValue = null;
-            if (UdonAssetManagerHook._udonSharpMonoScriptToProgram.TryGetValue(script, out var program)) {
+            if (UdonCleanerAssetManager._udonSharpMonoScriptToProgram.TryGetValue(script, out var program)) {
                 programSource.objectReferenceValue = program;
-                if (UdonAssetManagerHook._serializedCache.TryGetValue(program, out var serialized)) {
+                if (UdonCleanerAssetManager._serializedCache.TryGetValue(program, out var serialized)) {
                     serializedProgramAsset.objectReferenceValue = serialized;
                 }
             }

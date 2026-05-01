@@ -37,7 +37,7 @@ namespace VF.Hooks {
             }
 
             if (updated > 0) {
-                Debug.Log($"[VRCFury] FixTxlPlayerLimitHook updated {updated} texelsaur scripts to VRCPlayerApi[200].");
+                Debug.Log($"[VRCFury] FixTxlPlayerLimitHook updated {updated} TXL scripts to VRCPlayerApi[200].");
             }
         }
     }

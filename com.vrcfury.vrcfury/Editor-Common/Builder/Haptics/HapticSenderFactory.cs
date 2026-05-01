@@ -7,7 +7,7 @@ using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
-namespace VF.Service {
+namespace VF.Builder.Haptics {
     internal static class HapticSenderFactory {
         public class SenderRequest {
             public VFGameObject obj;

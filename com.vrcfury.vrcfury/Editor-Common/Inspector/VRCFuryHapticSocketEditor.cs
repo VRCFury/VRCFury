@@ -9,7 +9,6 @@ using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
-using VF.Service;
 using VF.Utils;
 
 namespace VF.Inspector {

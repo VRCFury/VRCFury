@@ -9,7 +9,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Utils;
 
-namespace VF.Hooks.VrcsdkFixes {
+namespace VF.Hooks {
     /**
      * LightVolumes dirties the scene all the time for no reason. This hook inhibits those changes
      * and only applies them to the temp scene during upload.
@@ -30,13 +30,13 @@ namespace VF.Hooks.VrcsdkFixes {
                 if (updateMethod != null) {
                     updateMethods[type] = updateMethod;
                     HarmonyUtils.Patch(updateMethod, (typeof(PreventLightVolumeDirtyHook), nameof(GuardPrefix))).apply();
-                    Debug.Log($"Patched {type.FullName}.Update");
+                    //Debug.Log($"Patched {type.FullName}.Update");
                 }
                 var onEnableMethod = type.VFMethod("OnEnable");
                 if (onEnableMethod != null) {
                     onEnableMethods[type] = onEnableMethod;
                     HarmonyUtils.Patch(onEnableMethod, (typeof(PreventLightVolumeDirtyHook), nameof(GuardPrefix))).apply();
-                    Debug.Log($"Patched {type.FullName}.OnEnable");
+                    //Debug.Log($"Patched {type.FullName}.OnEnable");
                 }
             }
         }

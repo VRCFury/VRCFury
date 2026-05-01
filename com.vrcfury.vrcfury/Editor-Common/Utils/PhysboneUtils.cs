@@ -3,7 +3,7 @@ using UnityEngine;
 using VF.Utils;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 
-namespace VF.Builder {
+namespace VF.Utils {
     internal static class PhysboneUtils {
         public static void RemoveFromPhysbones(VFGameObject obj, bool force = false) {
             if (!force && ContainsBonesUsedExternally(obj)) {

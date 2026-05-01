@@ -20,7 +20,7 @@ namespace VF.Hooks.UdonCleaner {
      * Some udon changes sneak through CleanUdonJunkOnChangeHook.
      * If this happens, we can clean them up just before saving out the assets.
      */
-    internal sealed class CleanUdonJunkOnSaveHook : UnityEditor.AssetModificationProcessor {
+    internal sealed class UdonCleanerOnSaveHooks : UnityEditor.AssetModificationProcessor {
         private abstract class Reflection : ReflectionHelper {
             public static readonly System.Reflection.FieldInfo UdonProgramAssetSerializedUdonProgramAssetField = typeof(UdonProgramAsset).VFField("serializedUdonProgramAsset");
             public static readonly System.Reflection.FieldInfo UdonBehaviourSerializedProgramAssetField = typeof(UdonBehaviour).VFField("serializedProgramAsset");
@@ -241,7 +241,7 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         public static BehaviourSyncMode GetForcedSyncMethodFromUSharp(UdonBehaviour ub) {
-            var program = UdonAssetManagerHook.programSource_get(ub);
+            var program = UdonCleanerAssetManager.programSource_get(ub);
             if (program is UdonSharpProgramAsset usp) {
                 return usp.behaviourSyncMode;
             }

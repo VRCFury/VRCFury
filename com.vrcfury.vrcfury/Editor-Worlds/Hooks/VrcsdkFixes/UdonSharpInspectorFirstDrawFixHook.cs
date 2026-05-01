@@ -60,10 +60,8 @@ namespace VF.Hooks.VrcsdkFixes {
                 var afterHideFlags = backing.hideFlags;
                 if (beforeHideFlags != afterHideFlags) {
                     backing.hideFlags = beforeHideFlags;
-                    EditorUtility.SetDirty(backing);
                     EditorApplication.delayCall += () => {
                         backing.hideFlags = afterHideFlags;
-                        EditorUtility.SetDirty(backing);
                     };
                 }
             }

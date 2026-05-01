@@ -11,7 +11,6 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Exceptions;
 using VF.Menu;
-using VF.Service;
 using VF.Utils;
 
 namespace VF.Inspector {

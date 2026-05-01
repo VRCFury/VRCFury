@@ -16,7 +16,7 @@ namespace VF.Hooks.UdonCleaner {
      * We restore the field odin expects just before it needs it, then immediately afterward, we pull it back out to our text file and clear the field again.
      * This means, aside from exactly when odin needs it, the field will always appear empty and not overridden.
      */
-    internal static class UdonSharpPrefabLinksStorageHook {
+    internal static class UdonCleanerOdinPrefabManager {
         private sealed class SaveCacheOnWillSaveAssets : UnityEditor.AssetModificationProcessor {
             private static string[] OnWillSaveAssets(string[] paths) {
                 if (!UdonCleanerMenuItem.Get()) return paths;
@@ -27,26 +27,26 @@ namespace VF.Hooks.UdonCleaner {
 
         private abstract class Reflection : ReflectionHelper {
             public static readonly HarmonyUtils.PatchObj PatchBeforePrefix = HarmonyUtils.Patch(
-                typeof(UdonSharpPrefabLinksStorageHook),
+                typeof(UdonCleanerOdinPrefabManager),
                 nameof(BeforePrefix),
                 typeof(UdonSharpBehaviour),
                 "UnityEngine.ISerializationCallbackReceiver.OnBeforeSerialize"
             );
             public static readonly HarmonyUtils.PatchObj PatchBeforePostfix = HarmonyUtils.Patch(
-                typeof(UdonSharpPrefabLinksStorageHook),
+                typeof(UdonCleanerOdinPrefabManager),
                 nameof(BeforePostfix),
                 typeof(UdonSharpBehaviour),
                 "UnityEngine.ISerializationCallbackReceiver.OnBeforeSerialize",
                 HarmonyUtils.PatchMode.Finalizer
             );
             public static readonly HarmonyUtils.PatchObj PatchAfterPrefix = HarmonyUtils.Patch(
-                typeof(UdonSharpPrefabLinksStorageHook),
+                typeof(UdonCleanerOdinPrefabManager),
                 nameof(AfterPrefix),
                 typeof(UdonSharpBehaviour),
                 "UnityEngine.ISerializationCallbackReceiver.OnAfterDeserialize"
             );
             public static readonly HarmonyUtils.PatchObj PatchAfterPostfix = HarmonyUtils.Patch(
-                typeof(UdonSharpPrefabLinksStorageHook),
+                typeof(UdonCleanerOdinPrefabManager),
                 nameof(AfterPostfix),
                 typeof(UdonSharpBehaviour),
                 "UnityEngine.ISerializationCallbackReceiver.OnAfterDeserialize",

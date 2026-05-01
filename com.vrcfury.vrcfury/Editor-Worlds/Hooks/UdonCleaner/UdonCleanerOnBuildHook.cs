@@ -22,7 +22,7 @@ namespace VF.Hooks.UdonCleaner {
      * we can just instantiate them into the temp scene, mess with them there, and unity will automatically
      * clean everything up after the build.
      */
-    internal class FillProgramsDuringBuildHook : IProcessSceneWithReport {
+    internal class UdonCleanerOnBuildHook : IProcessSceneWithReport {
         public int callbackOrder => -1;
 
         public void OnProcessScene(Scene scene, BuildReport report) {
@@ -63,9 +63,9 @@ namespace VF.Hooks.UdonCleaner {
             while (stack.TryPop(out var obj)) {
                 foreach (var ub in obj.GetComponentsInSelfAndChildren<UdonBehaviour>()) {
                     var so = new SerializedObject(ub);
-                    so.FindProperty("programSource").objectReferenceValue = UdonAssetManagerHook.programSource_get(ub);
-                    so.FindProperty("serializedProgramAsset").objectReferenceValue = UdonAssetManagerHook.serializedProgramAsset_get(ub);
-                    if (SyncMethodManagerHook.IsActive()) so.FindProperty("_syncMethod").enumValueIndex = (int)ub.SyncMethod;
+                    so.FindProperty("programSource").objectReferenceValue = UdonCleanerAssetManager.programSource_get(ub);
+                    so.FindProperty("serializedProgramAsset").objectReferenceValue = UdonCleanerAssetManager.serializedProgramAsset_get(ub);
+                    if (UdonCleanerSyncMethodManager.IsActive()) so.FindProperty("_syncMethod").enumValueIndex = (int)ub.SyncMethod;
                     ReplacePrefabsWithInst(so);
                     so.ApplyModifiedPropertiesWithoutUndo();
                 }

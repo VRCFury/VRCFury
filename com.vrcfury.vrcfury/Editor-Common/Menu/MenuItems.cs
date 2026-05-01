@@ -54,6 +54,12 @@ namespace VF.Menu {
         public const int spsDevModePriority = utilitiesPriority + 10;
         public const string udonCleanerUninstallAgain = utilities + "Re-run Udon Cleaner Uninstall";
         public const int udonCleanerUninstallAgainPriority = utilitiesPriority + 11;
+        public const string cleanupRedundantObjectReferenceOverrides = utilities + "Cleanup Redundant Object Reference Overrides";
+        public const int cleanupRedundantObjectReferenceOverridesPriority = utilitiesPriority + 12;
+        public const string applySuperSampledUiMaterialOverrides = utilities + "Apply VRCSuperSampledUIMaterial Overrides";
+        public const int applySuperSampledUiMaterialOverridesPriority = utilitiesPriority + 13;
+        public const string sceneDirtyLogger = utilities + "Log why Scene is dirtied";
+        public const int sceneDirtyLoggerPriority = utilitiesPriority + 14;
 
         public const string settings = prefix + "Settings/";
         public const int settingsPriority = 1312;

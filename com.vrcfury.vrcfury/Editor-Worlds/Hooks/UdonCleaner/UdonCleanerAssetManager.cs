@@ -18,10 +18,11 @@ using HarmonyTranspiler = VF.Utils.HarmonyTranspiler;
 
 namespace VF.Hooks.UdonCleaner {
     /**
-     * Moves udon temp assets outside of Assets, and patches the vrcsdk to respect our list, to stop saving them to
-     * Assets, and to stop looking for them using field connections in the components (which change all the time).
+     * Handles ownership of Udon's temporary assets that shouldn't live in Assets.
+     * > Moves them out of Assets
+     * > Patches the VRCSDK to use our authoritative list rather than maintaining its own connections
      */
-    internal static class UdonAssetManagerHook {
+    internal static class UdonCleanerAssetManager {
 
         public static Dictionary<MonoScript, UdonSharpProgramAsset> _udonSharpMonoScriptToProgram =
             new Dictionary<MonoScript, UdonSharpProgramAsset>();
@@ -34,11 +35,11 @@ namespace VF.Hooks.UdonCleaner {
         public abstract class Reflection : ReflectionHelper {
             public static readonly HarmonyUtils.PatchObj PatchGetAllUdonSharpPrograms = HarmonyUtils.Patch(
                 (typeof(UdonSharpProgramAsset), nameof(UdonSharpProgramAsset.GetAllUdonSharpPrograms)),
-                (typeof(UdonAssetManagerHook), nameof(OnGetAllUdonSharpPrograms))
+                (typeof(UdonCleanerAssetManager), nameof(OnGetAllUdonSharpPrograms))
             );
             public static readonly HarmonyUtils.PatchObj PatchGetSerializedProgramAssetWithoutRefresh = HarmonyUtils.Patch(
                 (typeof(UdonSharpProgramAsset), "GetSerializedProgramAssetWithoutRefresh"),
-                (typeof(UdonAssetManagerHook), nameof(OnGetSerializedProgramAssetWithoutRefresh))
+                (typeof(UdonCleanerAssetManager), nameof(OnGetSerializedProgramAssetWithoutRefresh))
             );
         }
 
@@ -101,7 +102,7 @@ namespace VF.Hooks.UdonCleaner {
                            || name == "VRC.Udon.Editor"
                            || name == "VRC.Udon";
                 }),
-                typeof(UdonAssetManagerHook),
+                typeof(UdonCleanerAssetManager),
                 (UdonCleanerReflection.programSource, nameof(programSource_get), nameof(programSource_set)),
                 (UdonCleanerReflection.serializedProgramAsset, nameof(serializedProgramAsset_get), nameof(serializedProgramAsset_set)),
                 (UdonCleanerReflection.serializedUdonProgramAsset, nameof(serializedUdonProgramAsset_get), nameof(serializedUdonProgramAsset_set))

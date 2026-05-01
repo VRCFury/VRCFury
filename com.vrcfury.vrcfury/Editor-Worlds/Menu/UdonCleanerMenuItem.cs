@@ -25,7 +25,7 @@ namespace VF.Menu {
                 if (!didDomainReload) return;
                 if (!File.Exists(GetUninstallFlagPath())) return;
                 File.Delete(GetUninstallFlagPath());
-                UdonCleanerUninstall.Uninstall();
+                UdonCleanerUninstaller.Uninstall();
                 EditorUtility.RequestScriptReload();
             }
         }
@@ -119,7 +119,7 @@ namespace VF.Menu {
                 "Cancel"
             );
             if (!ok) return;
-            UdonCleanerUninstall.Uninstall();
+            UdonCleanerUninstaller.Uninstall();
             EditorUtility.RequestScriptReload();
         }
 

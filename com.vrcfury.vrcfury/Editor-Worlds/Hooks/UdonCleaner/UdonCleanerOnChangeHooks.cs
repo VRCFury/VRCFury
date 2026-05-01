@@ -12,12 +12,14 @@ using VRC.Udon;
 
 namespace VF.Hooks.UdonCleaner {
     /**
-     * Both Udon Graph and U# constantly update their "serializedProgramAsset" reference,
-     * especially if the serialized program assets are .gitignored and thrown out frequently.
-     * They're already updated in the scene clone during play mode / during upload, so we can just block them
-     * at any other time.
+     * Because of udon cleaner improvements, there are lots of behaviours performed by the VRCSDK that no longer
+     * need to happen. These methods perform various recalculations, dirtying the scene and ultimately just making
+     * changes that we would rip out of the scene anyways.
+     *
+     * Best effort, we can just rip out these calls. Worst case, if one of the patches doesn't work, that's fine,
+     * since the OnSave hook will rip the changes back out again.
      */
-    internal static class CleanUdonJunkOnChangeHook {
+    internal static class UdonCleanerOnChangeHooks {
         private sealed class DummySerializedProgramAssetHolder : ScriptableObject {
             public UnityEngine.Object serializedProgramAsset;
         }
@@ -29,47 +31,47 @@ namespace VF.Hooks.UdonCleaner {
             public static readonly FieldInfo _serializedProgramAssetField =
                 typeof(UdonSharpEditorUtility).VFStaticField("_serializedProgramAssetField");
             public static readonly FieldInfo _serializedProgramAssetFieldReplacement =
-                typeof(CleanUdonJunkOnChangeHook).VFStaticField(nameof(doNotTouch));
+                typeof(UdonCleanerOnChangeHooks).VFStaticField(nameof(doNotTouch));
 
             // These methods are all worthless now. They just attempt to fill in programs
             // and serialized programs (which we intercept and throw out anyways). We handle filling those in ourselves
             // during FillProgramsDuringBuildHook.
             public static readonly HarmonyUtils.PatchObj PatchOnProcessScene = HarmonyUtils.Patch(
                 (ReflectionUtils.GetTypeFromAnyAssembly("VRC.Udon.Editor.UdonEditorManager")?.VFNestedType("UdonBuildPreprocessor"), "OnProcessScene"),
-                (typeof(CleanUdonJunkOnChangeHook), nameof(DontRunPrefix))
+                (typeof(UdonCleanerOnChangeHooks), nameof(DontRunPrefix))
             );
             public static readonly HarmonyUtils.PatchObj PatchOnPlayModeStateChanged = HarmonyUtils.Patch(
-                typeof(CleanUdonJunkOnChangeHook),
+                typeof(UdonCleanerOnChangeHooks),
                 nameof(DontRunPrefix),
                 "VRC.Udon.Editor.UdonEditorManager",
                 "OnPlayModeStateChanged"
             );
             public static readonly HarmonyUtils.PatchObj PatchOnSceneSaving = HarmonyUtils.Patch(
-                typeof(CleanUdonJunkOnChangeHook),
+                typeof(UdonCleanerOnChangeHooks),
                 nameof(DontRunPrefix),
                 "VRC.Udon.Editor.UdonEditorManager",
                 "OnSceneSaving"
             );
             public static readonly HarmonyUtils.PatchObj PatchOnSceneOpened = HarmonyUtils.Patch(
-                typeof(CleanUdonJunkOnChangeHook),
+                typeof(UdonCleanerOnChangeHooks),
                 nameof(DontRunPrefix),
                 "VRC.Udon.Editor.UdonEditorManager",
                 "OnSceneOpened"
             );
             public static readonly HarmonyUtils.PatchObj PatchUpdateSerializedProgramAssets = HarmonyUtils.Patch(
-                typeof(CleanUdonJunkOnChangeHook),
+                typeof(UdonCleanerOnChangeHooks),
                 nameof(DontRunPrefix),
                 "UdonSharpEditor.UdonSharpEditorManager",
                 "UpdateSerializedProgramAssets"
             );
             public static readonly HarmonyUtils.PatchObj PatchInspectorGui = HarmonyUtils.Patch(
-                typeof(CleanUdonJunkOnChangeHook),
+                typeof(UdonCleanerOnChangeHooks),
                 nameof(OnInspectorPrefix),
                 UdonBehaviourEditor,
                 "OnInspectorGUI"
             );
             public static readonly HarmonyUtils.PatchObj PatchRunBehaviourSetupPrefix = HarmonyUtils.Patch(
-                typeof(CleanUdonJunkOnChangeHook),
+                typeof(UdonCleanerOnChangeHooks),
                 nameof(OnRunBehaviourSetupPrefix),
                 "UdonSharpEditor.UdonSharpEditorUtility",
                 "RunBehaviourSetup"
@@ -124,7 +126,7 @@ namespace VF.Hooks.UdonCleaner {
             if (PrefabUtility.GetCorrespondingObjectFromSource(udonSharpBehaviour) != null) {
                 // It's part of a prefab, so just cleanup and don't run it
                 var prefabInstanceRoot = PrefabUtility.GetNearestPrefabInstanceRoot(udonSharpBehaviour);
-                CleanUdonJunkOnSaveHook.CleanUnnecessaryPrefabModifications(prefabInstanceRoot);
+                UdonCleanerOnSaveHooks.CleanUnnecessaryPrefabModifications(prefabInstanceRoot);
                 return false;
             }
             return true;

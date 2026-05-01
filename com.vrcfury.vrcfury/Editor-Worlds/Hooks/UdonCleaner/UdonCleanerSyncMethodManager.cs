@@ -14,19 +14,19 @@ namespace VF.Hooks.UdonCleaner {
      * * Allows None to coexist with synced types.
      * * Sets the physical field non-destructively instead of changing the scene all the time
      */
-    internal static class SyncMethodManagerHook {
+    internal static class UdonCleanerSyncMethodManager {
         private abstract class Reflection : ReflectionHelper {
             public static readonly HarmonyUtils.PatchObj PatchSyncMethodGet = HarmonyUtils.Patch(
                 typeof(UdonBehaviour).GetProperty(nameof(UdonBehaviour.SyncMethod))?.GetGetMethod(),
-                (typeof(SyncMethodManagerHook), nameof(OnSyncMethodGet))
+                (typeof(UdonCleanerSyncMethodManager), nameof(OnSyncMethodGet))
             );
             public static readonly HarmonyUtils.PatchObj PatchSyncMethodSet = HarmonyUtils.Patch(
                 typeof(UdonBehaviour).GetProperty(nameof(UdonBehaviour.SyncMethod))?.GetGetMethod(),
-                (typeof(SyncMethodManagerHook), nameof(OnSyncMethodSet))
+                (typeof(UdonCleanerSyncMethodManager), nameof(OnSyncMethodSet))
             );
             public static readonly HarmonyUtils.PatchObj PatchUpdateSyncModes = HarmonyUtils.Patch(
                 ("UdonSharpEditor.UdonSharpEditorManager", "UpdateSyncModes"),
-                (typeof(SyncMethodManagerHook), nameof(OnUpdateSyncModes))
+                (typeof(UdonCleanerSyncMethodManager), nameof(OnUpdateSyncModes))
             );
             public static readonly FieldInfo _syncMethod = typeof(UdonBehaviour).VFField("_syncMethod");
         }
@@ -70,7 +70,7 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         private static bool OnSyncMethodSet(UdonBehaviour __instance) {
-            if (CleanUdonJunkOnSaveHook.GetForcedSyncMethodFromUSharp(__instance) != BehaviourSyncMode.Any) {
+            if (UdonCleanerOnSaveHooks.GetForcedSyncMethodFromUSharp(__instance) != BehaviourSyncMode.Any) {
                 return false;
             }
             return true;
@@ -78,7 +78,7 @@ namespace VF.Hooks.UdonCleaner {
 
         private static Networking.SyncType GetPreferredSyncMethod(UdonBehaviour ub) {
             var preferred = (Networking.SyncType)Reflection._syncMethod.GetValue(ub);
-            var forced = CleanUdonJunkOnSaveHook.GetForcedSyncMethodFromUSharp(ub);
+            var forced = UdonCleanerOnSaveHooks.GetForcedSyncMethodFromUSharp(ub);
             if (forced == BehaviourSyncMode.Continuous) preferred = Networking.SyncType.Continuous;
             if (forced == BehaviourSyncMode.Manual) preferred = Networking.SyncType.Manual;
             if (forced == BehaviourSyncMode.NoVariableSync) preferred = Networking.SyncType.Manual;
