@@ -29,7 +29,7 @@ namespace VF.Hooks.UnityFixes {
             );
         }
         
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             if (Reflection.LayerControllerView_m_LayerScroll.FieldType != typeof(Vector2)) return;

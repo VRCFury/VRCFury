@@ -1,4 +1,4 @@
-﻿#if VRCSDK_HAS_ACTIVE_BUILD_TYPE
+#if VRCSDK_HAS_ACTIVE_BUILD_TYPE
 using System.Threading.Tasks;
 using UnityEditor;
 using VF.Utils;
@@ -23,7 +23,7 @@ namespace VF.Hooks.VrcsdkFixes {
             );
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Reflection.PatchBuild.apply();

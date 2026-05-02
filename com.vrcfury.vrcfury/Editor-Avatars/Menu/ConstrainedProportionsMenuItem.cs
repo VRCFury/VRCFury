@@ -31,7 +31,7 @@ namespace VF.Menu {
             );
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
 

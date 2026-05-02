@@ -11,7 +11,7 @@ namespace VF.Utils {
         private static readonly VFMultimapList<Object, string> workLog
             = new VFMultimapList<Object, string>();
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             EditorApplication.update += () => {
                 workLog.Clear();

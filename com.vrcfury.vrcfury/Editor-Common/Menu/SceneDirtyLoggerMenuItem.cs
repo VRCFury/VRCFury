@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -48,7 +48,7 @@ namespace VF.Menu {
             );
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             EditorSceneManager.sceneDirtied += scene => {
                 if (!Get()) return;

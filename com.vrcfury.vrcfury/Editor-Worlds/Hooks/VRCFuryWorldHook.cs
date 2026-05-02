@@ -3,7 +3,7 @@ using VF.Utils;
 
 namespace VF.Hooks {
     internal static class VRCFuryWorldHook {
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             VFGameObject.getUploadRoots = obj => obj.scene.Roots();
         }

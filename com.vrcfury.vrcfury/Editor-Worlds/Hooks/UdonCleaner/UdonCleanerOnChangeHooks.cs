@@ -78,7 +78,7 @@ namespace VF.Hooks.UdonCleaner {
             );
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!UdonCleanerMenuItem.Get()) return;
             Reflection.PatchOnProcessScene.apply?.Invoke();

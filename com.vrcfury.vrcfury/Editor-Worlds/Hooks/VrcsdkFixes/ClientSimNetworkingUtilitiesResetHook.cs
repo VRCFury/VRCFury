@@ -17,7 +17,7 @@ namespace VF.Hooks.VrcsdkFixes {
                 ClientSimNetworkingUtilities?.VFStaticField("_playerObjectList");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;

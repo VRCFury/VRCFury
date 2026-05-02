@@ -35,7 +35,7 @@ namespace VF.Hooks.VrcsdkFixes {
 
         private static int startClientSimDepth;
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Reflection.PatchStartPrefix.apply();

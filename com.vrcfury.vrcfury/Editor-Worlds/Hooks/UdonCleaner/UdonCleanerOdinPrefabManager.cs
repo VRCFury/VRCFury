@@ -58,7 +58,7 @@ namespace VF.Hooks.UdonCleaner {
         private static readonly object mapLock = new object();
         private static string cachePath;
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!UdonCleanerMenuItem.Get()) return;
             cachePath = Path.Combine(Directory.GetParent(UnityEngine.Application.dataPath)?.FullName ?? "", "Library", "VRCFury", "SerializationDataPrefabCache.txt");

@@ -1,11 +1,11 @@
-﻿using System.Linq;
+using System.Linq;
 using UnityEditor;
 using VF.Builder;
 using VF.Utils;
 
 namespace VF.Hooks.VrcsdkFixes {
     internal static class HideXrSettingsHook {
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             // Delay by one frame to make sure the temp package is ready
             EditorApplication.delayCall += () => {

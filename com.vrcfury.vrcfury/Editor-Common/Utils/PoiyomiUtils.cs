@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -27,7 +27,7 @@ namespace VF.Utils {
         private static readonly Dictionary<Material, Dictionary<string, PoiProp>> lockedPropsCache
             = new Dictionary<Material, Dictionary<string, PoiProp>>();
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             Scheduler.Schedule(() => {
                 lockedPropsCache.Clear();

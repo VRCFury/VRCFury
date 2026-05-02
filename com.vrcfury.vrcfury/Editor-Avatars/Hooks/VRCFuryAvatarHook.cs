@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
@@ -53,7 +53,7 @@ namespace VF.Hooks {
                 .All(c => c is VRCFuryComponent || c is Transform);
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             VRCFuryHapticPlugEditor.getHapticsEnabled = HapticsToggleMenuItem.Get;
 

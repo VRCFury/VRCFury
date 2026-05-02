@@ -25,7 +25,7 @@ namespace VF.Hooks.UnityFixes {
             public static readonly FieldInfo AssetPath = ImportPackageItem?.VFField("exportedAssetPath");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Scheduler.Schedule(Check, 0);

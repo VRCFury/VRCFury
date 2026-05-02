@@ -19,7 +19,7 @@ namespace VF {
         private const string TriggerObjectName = "__vrcf_play_mode_trigger";
         private static bool scannedThisFrame = false;
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
             VRCFuryComponent._OnValidate = () => {

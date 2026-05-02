@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEditor;
 using VF.Component;
 using VF.Model;
@@ -33,7 +33,7 @@ namespace VF.Hooks {
             );
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Reflection.DestroyImmediatePatch.apply();

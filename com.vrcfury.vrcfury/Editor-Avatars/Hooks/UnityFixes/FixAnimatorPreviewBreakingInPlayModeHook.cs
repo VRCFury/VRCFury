@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -39,7 +39,7 @@ namespace VF.Hooks.UnityFixes {
                 .GetMatchingDelegate<GetAnimatorControllerInternal_>("GetAnimatorControllerInternal");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
 

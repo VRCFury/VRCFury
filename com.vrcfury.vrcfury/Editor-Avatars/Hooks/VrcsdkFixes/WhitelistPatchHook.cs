@@ -28,7 +28,7 @@ namespace VF.Hooks.VrcsdkFixes {
             public static readonly FieldInfo WhitelistCache = ValidationUtils?.VFStaticField("_whitelistCache");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             PerformPatch();
         }

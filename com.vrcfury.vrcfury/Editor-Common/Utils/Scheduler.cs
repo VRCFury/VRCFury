@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -13,7 +13,7 @@ namespace VF.Utils {
             public double nextTrigger;
         }
         
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             EditorApplication.update += () => {
                 var now = EditorApplication.timeSinceStartup;

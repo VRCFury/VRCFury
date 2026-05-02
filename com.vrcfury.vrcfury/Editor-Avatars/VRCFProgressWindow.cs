@@ -15,7 +15,7 @@ namespace VF {
                 typeof(VRCFProgressWindow).VFMethod("RepaintImmediately");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             EditorApplication.delayCall += () => {
                 foreach (var w in Resources.FindObjectsOfTypeAll<VRCFProgressWindow>()) {

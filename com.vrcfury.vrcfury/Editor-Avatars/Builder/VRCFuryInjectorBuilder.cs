@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEditor;
 using VF.Actions;
 using VF.Injector;
@@ -16,7 +16,7 @@ namespace VF.Builder {
         private static Dictionary<VRCAvatarDescriptor, VRCFuryInjector> cached
             = new Dictionary<VRCAvatarDescriptor, VRCFuryInjector>();
         
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             Scheduler.Schedule(() => {
                 cached.Clear();

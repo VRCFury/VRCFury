@@ -26,7 +26,7 @@ namespace VF.Utils {
                 .GetMatchingDelegate<UpdatePatchInfo_>("UpdatePatchInfo");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             AssemblyReloadEvents.beforeAssemblyReload += () => {
                 harmony.UnpatchAll();

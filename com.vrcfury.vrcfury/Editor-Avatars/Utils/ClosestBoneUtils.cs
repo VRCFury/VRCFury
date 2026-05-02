@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -24,7 +24,7 @@ namespace VF.Utils {
             armatureLinkCache.Clear();
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             Scheduler.Schedule(ClearCache, 1000);
         }

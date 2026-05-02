@@ -39,7 +39,7 @@ namespace VF.Utils {
             public static readonly PropertyInfo AnimationWindowState = AnimationWindow?.VFProperty("state");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
 

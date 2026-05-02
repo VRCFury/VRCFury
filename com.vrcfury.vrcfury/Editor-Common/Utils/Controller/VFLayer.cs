@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
+using VF.Utils;
 
 namespace VF.Utils.Controller {
     internal class VFLayer : VFPrettyNamed {
@@ -94,7 +95,7 @@ namespace VF.Utils.Controller {
 
         private static readonly HashSet<AnimatorState> createdStates = new HashSet<AnimatorState>();
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void ClearCreatedStates() {
             EditorApplication.update += () => createdStates.Clear();
         }

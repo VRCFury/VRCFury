@@ -2,6 +2,7 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 using VF.Menu;
+using VF.Utils;
 
 namespace VF.Hooks.VrcsdkFixes {
     internal static class DisableVpmResolverAutoInitHook {
@@ -9,7 +10,7 @@ namespace VF.Hooks.VrcsdkFixes {
         private const string EnabledLine = "    [InitializeOnLoad]";
         private const string DisabledLine = "    // [InitializeOnLoad]";
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             Apply();
         }

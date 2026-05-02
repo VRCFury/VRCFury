@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -11,7 +11,7 @@ using VRC.SDK3.Avatars.Components;
 
 namespace VF.Injector {
     internal static class VRCFuryInjectorTest {
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             try {
                 TestUnsafe();

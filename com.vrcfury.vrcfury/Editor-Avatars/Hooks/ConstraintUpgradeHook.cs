@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -13,7 +13,7 @@ using VRC.SDK3.Avatars;
 namespace VF.Hooks {
     internal static class ConstraintUpgradeHook {
 #if VRCSDK_HAS_VRCCONSTRAINTS
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (BuildTargetUtils.IsDesktop()) {
                 AvatarDynamicsSetup.IsUnityConstraintAutoConverted += constraint => true;

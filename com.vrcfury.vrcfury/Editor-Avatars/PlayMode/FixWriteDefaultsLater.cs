@@ -13,7 +13,7 @@ namespace VF.PlayMode {
     internal static class FixWriteDefaultsLater {
         private const string Key = "vrcfFixWd";
         
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             EditorApplication.playModeStateChanged += state => {
                 if (state == PlayModeStateChange.ExitingEditMode) {

@@ -48,7 +48,7 @@ namespace VF.Hooks.VrcsdkFixes {
 
         private static bool isWriting;
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Reflection.PatchLateUpdate.apply();

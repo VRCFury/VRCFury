@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Reflection;
 using UdonSharp;
 using UnityEditor;
@@ -31,7 +31,7 @@ namespace VF.Hooks.UdonCleaner {
             public static readonly FieldInfo _syncMethod = typeof(UdonBehaviour).VFField("_syncMethod");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!IsActive()) return;
             Reflection.PatchSyncMethodGet.apply();

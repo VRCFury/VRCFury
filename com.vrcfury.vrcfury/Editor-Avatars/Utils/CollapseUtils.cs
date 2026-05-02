@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -18,7 +18,7 @@ namespace VF.Utils {
             public static readonly MethodInfo GetExpandedIDs = SceneHierarchyWindow?.VFMethod("GetExpandedIDs");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) {
                 return;

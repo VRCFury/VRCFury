@@ -67,7 +67,7 @@ namespace VF {
             Reflection.Resolve?.Invoke();
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             Scheduler.Schedule(InitIfMissing, 5000);
         }

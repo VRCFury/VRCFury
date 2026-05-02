@@ -16,7 +16,7 @@ namespace VF.Hooks.VrcsdkFixes {
                 .VFStaticField("_latestCompletedFrameNumber");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         public static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             EditorApplication.playModeStateChanged += state => {

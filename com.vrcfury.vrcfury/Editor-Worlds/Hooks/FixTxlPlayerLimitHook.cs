@@ -1,6 +1,7 @@
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using VF.Utils;
 
 namespace VF.Hooks {
     /**
@@ -19,7 +20,7 @@ namespace VF.Hooks {
             "Packages/com.texelsaur.access/Runtime/Scripts/DebugUserList.cs"
         };
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             var projectRoot = Directory.GetParent(Application.dataPath)?.FullName;
             if (string.IsNullOrEmpty(projectRoot)) return;

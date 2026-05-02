@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using UnityEditor;
@@ -9,7 +9,7 @@ namespace VF.Utils {
         private static readonly Dictionary<Object, Object> cloneOriginals
             = new Dictionary<Object, Object>();
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             EditorApplication.update += () => cloneOriginals.Clear();
         }

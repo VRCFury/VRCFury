@@ -29,7 +29,7 @@ namespace VF.Hooks {
             "OnProcessScene"
         };
 
-        [UnityEditor.InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             foreach (var method in GetMethodsToBlock()) {
                 HarmonyUtils.Patch(

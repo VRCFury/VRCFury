@@ -14,7 +14,7 @@ namespace VF.Inspector {
                 " Any changes made to this copy will be lost.");
         }
 
-        // [InitializeOnLoadMethod]
+        // [VFInit]
         // private static void Init() {
         //     VRCFuryTest.onDestroy = c => {
         //         var wasPlaying = Application.isPlaying;

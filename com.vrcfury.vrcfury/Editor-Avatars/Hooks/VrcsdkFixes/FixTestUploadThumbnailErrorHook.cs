@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using VF.Utils;
 
 namespace VF.Hooks.VrcsdkFixes {
@@ -15,7 +15,7 @@ namespace VF.Hooks.VrcsdkFixes {
             );
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Reflection.Patch.apply();

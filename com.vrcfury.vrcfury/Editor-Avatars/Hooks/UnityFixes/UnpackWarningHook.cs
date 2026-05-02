@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using VF.Menu;
 using VF.Utils;
 
@@ -27,7 +27,7 @@ namespace VF.Hooks.UnityFixes {
             );
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Reflection.UnpackPrefabPatch.apply();

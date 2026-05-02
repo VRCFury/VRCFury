@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Component;
@@ -10,7 +10,7 @@ namespace VF.Hooks.UnityFixes {
      * Automatically disable it for any prefabs containing vrcfury components.
      */
     internal static class DisableAutoSaveHook {
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             Scheduler.Schedule(() => {
                 if (UnityCompatUtils.IsEditingPrefab()) {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -9,7 +9,7 @@ namespace VF.Utils {
         private static readonly HashSet<Object> created = new HashSet<Object>();
         private static readonly HashSet<Object> doNotReuse = new HashSet<Object>();
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void OnLoad() {
             Scheduler.Schedule(Prune, 0);
         }

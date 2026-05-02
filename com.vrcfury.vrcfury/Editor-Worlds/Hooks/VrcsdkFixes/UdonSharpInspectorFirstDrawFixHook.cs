@@ -30,7 +30,7 @@ namespace VF.Hooks.VrcsdkFixes {
 
         private static readonly Dictionary<int, HideFlags> hideFlagsByBackingId = new Dictionary<int, HideFlags>();
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Reflection.PatchOnEnablePrefix.apply();

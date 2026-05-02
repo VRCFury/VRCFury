@@ -21,7 +21,7 @@ namespace VF.Utils {
 
         private static readonly Dictionary<Mesh, Mesh> readWriteCache = new Dictionary<Mesh, Mesh>();
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             Scheduler.Schedule(() => readWriteCache.Clear(), 0);
         }

@@ -1,9 +1,10 @@
-﻿using UnityEditor;
+using UnityEditor;
 using UnityEngine;
+using VF.Utils;
 
 namespace VF.Component {
     internal static class VRCFuryPlayComponentEditor {
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             VRCFuryPlayComponent.onValidate = c => {
                 c.hideFlags |= HideFlags.DontSaveInBuild | HideFlags.DontSaveInEditor | HideFlags.NotEditable;

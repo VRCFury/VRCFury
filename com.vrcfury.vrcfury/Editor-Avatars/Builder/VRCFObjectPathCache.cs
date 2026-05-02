@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using UnityEditor;
 using VF.Service;
@@ -22,7 +22,7 @@ namespace VF.Builder {
             }
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             Scheduler.Schedule(ClearCache, 0);
         }

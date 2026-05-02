@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using UnityEditor;
 using VF.Utils;
 
@@ -8,7 +8,7 @@ namespace VF.Hooks.UnityFixes {
      * This only happens once, so if the user changes it back afterward, we don't touch it.
      */
     internal static class SetPlayModeSettingsHook {
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             Scheduler.Schedule(() => {
                 var tmpFolder = TmpFilePackage.GetPathNullable();

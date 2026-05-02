@@ -17,7 +17,7 @@ namespace VF.Hooks.GestureManagerFixes {
             );
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<GmReflection>()) return;
             GmReflection.Patch.apply();

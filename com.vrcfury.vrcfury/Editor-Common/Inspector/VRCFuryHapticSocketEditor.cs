@@ -170,7 +170,7 @@ namespace VF.Inspector {
 
         [CustomEditor(typeof(VRCFurySocketGizmo), true)]
         public class VRCFuryHapticPlaySocketEditor : UnityEditor.Editor {
-            [InitializeOnLoadMethod]
+            [VFInit]
             private static void Init() {
                 VRCFurySocketGizmo.EnableSceneLighting = () => {
                     var sv = EditorWindowFinder.GetWindows<SceneView>().FirstOrDefault();

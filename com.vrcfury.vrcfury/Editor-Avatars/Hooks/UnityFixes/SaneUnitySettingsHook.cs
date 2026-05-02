@@ -9,7 +9,7 @@ namespace VF.Hooks.UnityFixes {
      * Prevents the user from accidentally doing dumb things in their unity settings, then breaking their project.
      */
     internal static class SaneUnitySettingsHook {
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Apply() {
             DoSafe(DisableErrorPause);
             DoSafe(TurnOffPause);

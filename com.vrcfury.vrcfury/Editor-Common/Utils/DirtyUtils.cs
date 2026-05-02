@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -7,7 +7,7 @@ using VF.Model;
 
 namespace VF.Utils {
     internal static class DirtyUtils {
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void MakeMarkDirtyAvailableToRuntime() {
             VRCFury.markDirty = Dirty;
         }

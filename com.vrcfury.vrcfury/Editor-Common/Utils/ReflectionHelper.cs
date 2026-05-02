@@ -30,7 +30,7 @@ namespace VF.Utils {
             return true;
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             var notReady = new List<string>();
 

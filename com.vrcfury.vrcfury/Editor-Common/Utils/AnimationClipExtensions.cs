@@ -33,7 +33,7 @@ namespace VF.Utils {
             }
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             Scheduler.Schedule(() => {
                 clipDb.Clear();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using UdonSharp;
 using UdonSharpEditor;
@@ -67,7 +67,7 @@ namespace VF.Hooks.UdonCleaner {
             // do nothing!
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!UdonCleanerMenuItem.Get()) return;
             if (!ReflectionHelper.IsReady<UdonCleanerReflection>()) return;

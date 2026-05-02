@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+using UnityEditor;
+using VF.Utils;
 #if VRC_NEW_PUBLIC_SDK
 using VRC.SDK3A.Editor;
 #endif
@@ -12,7 +13,7 @@ namespace VF.Hooks.VrcsdkFixes {
      * a build begins.
      */
     internal static class FixVrcsdkValidatorWrongPlatform {
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             SyncBuildTargetGroup();
 #if VRC_NEW_PUBLIC_SDK

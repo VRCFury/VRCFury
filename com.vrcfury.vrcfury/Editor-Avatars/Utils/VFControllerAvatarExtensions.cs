@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using UnityEditor;
 using VF.Utils.Controller;
@@ -21,7 +21,7 @@ namespace VF.Utils {
             }
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
 		private static void Init() {
             VFController.onRewriteParameters = (affectsLayers, includeWrites, rewriteParam) => {
                 foreach (var b in affectsLayers.SelectMany(layer => layer.allBehaviours)) {
