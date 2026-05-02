@@ -21,7 +21,7 @@ namespace VF.Hooks {
         private static readonly Dictionary<Type, MethodInfo> onEnableMethods
             = new Dictionary<Type, MethodInfo>();
 
-        [VFInit]
+        //[VFInit]
         private static void Init() {
             var rootType = ReflectionUtils.GetTypeFromAnyAssembly("VRCLightVolumes.LightVolume");
             if (rootType == null) return;
