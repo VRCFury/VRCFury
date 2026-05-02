@@ -32,7 +32,7 @@ namespace VF.Hooks.UdonCleaner {
 
         private const Layout DefaultEnabledLayout = Layout.STORAGE_ASSET;
 
-        public abstract class Reflection : ReflectionHelper {
+        private abstract class Reflection : ReflectionHelper {
             public static readonly HarmonyUtils.PatchObj PatchGetAllUdonSharpPrograms = HarmonyUtils.Patch(
                 (typeof(UdonSharpProgramAsset), nameof(UdonSharpProgramAsset.GetAllUdonSharpPrograms)),
                 (typeof(UdonCleanerAssetManager), nameof(OnGetAllUdonSharpPrograms))
@@ -100,7 +100,8 @@ namespace VF.Hooks.UdonCleaner {
                     return name == "UdonSharp.Editor"
                            || name == "VRC.ClientSim.Editor"
                            || name == "VRC.Udon.Editor"
-                           || name == "VRC.Udon";
+                           || name == "VRC.Udon"
+                           || name.StartsWith("ArchiTech");
                 }),
                 typeof(UdonCleanerAssetManager),
                 (UdonCleanerReflection.programSource, nameof(programSource_get), nameof(programSource_set)),

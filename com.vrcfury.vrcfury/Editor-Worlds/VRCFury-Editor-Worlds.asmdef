@@ -42,6 +42,11 @@
             "name": "com.vrchat.worlds",
             "expression": "",
             "define": "VRCF_WORLDS"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.7.5",
+            "define": "VRCSDK_HAS_ACTIVE_BUILD_TYPE"
         }
     ],
     "noEngineReferences": false
