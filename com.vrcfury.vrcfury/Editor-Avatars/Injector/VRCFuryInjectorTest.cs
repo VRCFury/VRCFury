@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -92,7 +93,15 @@ namespace VF.Injector {
                 }
             }
 
-            foreach (var type in ReflectionUtils.GetTypes(typeof(object))) {
+            var typesToScan =
+                TypeCache.GetMethodsWithAttribute<FeatureBuilderActionAttribute>().Select(m => m.DeclaringType)
+                    .Concat(TypeCache.GetTypesWithAttribute<VFServiceAttribute>())
+                    .Concat(TypeCache.GetTypesDerivedFrom<FeatureBuilder>())
+                    .Concat(TypeCache.GetTypesWithAttribute<VFPrototypeScopeAttribute>())
+                    .Concat(TypeCache.GetTypesDerivedFrom<IVRCFuryBuilder>())
+                    .Concat(TypeCache.GetFieldsWithAttribute<VFAutowiredAttribute>().Select(f => f.DeclaringType))
+                    .ToImmutableHashSet();
+            foreach (var type in typesToScan) {
                 var hasBuilderAction = type.GetMethods()
                     .Any(m => m.GetCustomAttribute<FeatureBuilderActionAttribute>() != null);
                 var isService = type.GetCustomAttribute<VFServiceAttribute>() != null;
