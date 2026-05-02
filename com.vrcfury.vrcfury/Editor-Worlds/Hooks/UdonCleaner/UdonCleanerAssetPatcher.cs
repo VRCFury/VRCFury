@@ -78,7 +78,7 @@ namespace VF.Hooks.UdonCleaner {
 
             HarmonyTranspiler.TranspileVarAccess(
                 ReflectionUtils.GetUserAssemblies().Where(a => a != typeof(UdonCleanerAssetPatcher).Assembly),
-                typeof(UdonCleanerAssetManager),
+                typeof(UdonCleanerAssetPatcher),
                 (UdonCleanerReflection.programSource, nameof(programSource_get), nameof(programSource_set)),
                 (UdonCleanerReflection.serializedProgramAsset, nameof(serializedProgramAsset_get), nameof(serializedProgramAsset_set)),
                 (UdonCleanerReflection.serializedUdonProgramAsset, nameof(serializedUdonProgramAsset_get), nameof(serializedUdonProgramAsset_set))
