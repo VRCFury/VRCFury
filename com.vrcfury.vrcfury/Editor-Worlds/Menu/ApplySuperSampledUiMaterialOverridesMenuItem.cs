@@ -58,7 +58,7 @@ namespace VF.Menu {
                 var actionsToTake = new Dictionary<(string path, string objectid, string propertyName), string>();
                 void AddTask(UnityEngine.Component c, string propertyName, string task) {
                     var assetPath = AssetDatabase.GetAssetPath(c);
-                    if (assetPath == null) return;
+                    if (string.IsNullOrEmpty(assetPath)) return;
                     var id = Id(c);
                     if (id == null) return;
                     actionsToTake[(assetPath, id, propertyName)] = task;

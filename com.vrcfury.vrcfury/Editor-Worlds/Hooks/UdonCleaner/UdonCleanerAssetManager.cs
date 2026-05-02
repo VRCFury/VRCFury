@@ -1,26 +1,21 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using JetBrains.Annotations;
 using UdonSharp;
-using UdonSharpEditor;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Menu;
 using VF.Utils;
 using VRC.Udon;
-using VRC.Udon.Editor.ProgramSources;
 using VRC.Udon.Editor.ProgramSources.UdonGraphProgram.UI;
 using VRC.Udon.ProgramSources;
-using HarmonyTranspiler = VF.Utils.HarmonyTranspiler;
+using Object = UnityEngine.Object;
 
 namespace VF.Hooks.UdonCleaner {
     /**
      * Handles ownership of Udon's temporary assets that shouldn't live in Assets.
-     * > Moves them out of Assets
-     * > Patches the VRCSDK to use our authoritative list rather than maintaining its own connections
      */
     internal static class UdonCleanerAssetManager {
 
@@ -32,82 +27,14 @@ namespace VF.Hooks.UdonCleaner {
 
         private const Layout DefaultEnabledLayout = Layout.STORAGE_ASSET;
 
-        private abstract class Reflection : ReflectionHelper {
-            public static readonly HarmonyUtils.PatchObj PatchGetAllUdonSharpPrograms = HarmonyUtils.Patch(
-                (typeof(UdonSharpProgramAsset), nameof(UdonSharpProgramAsset.GetAllUdonSharpPrograms)),
-                (typeof(UdonCleanerAssetManager), nameof(OnGetAllUdonSharpPrograms))
-            );
-            public static readonly HarmonyUtils.PatchObj PatchGetSerializedProgramAssetWithoutRefresh = HarmonyUtils.Patch(
-                (typeof(UdonSharpProgramAsset), "GetSerializedProgramAssetWithoutRefresh"),
-                (typeof(UdonCleanerAssetManager), nameof(OnGetSerializedProgramAssetWithoutRefresh))
-            );
+        public static UdonSharpProgramAsset GetProgramForUSharpScript(MonoScript script) {
+            return _udonSharpMonoScriptToProgram.GetValueOrDefault(script);
         }
-
-        private static bool OnGetAllUdonSharpPrograms(ref UdonSharpProgramAsset[] __result) {
-            __result = _udonSharpMonoScriptToProgram.Values.ToArray();
-            return false;
+        public static UdonSharpProgramAsset[] GetAllUSharpPrograms() {
+            return _udonSharpMonoScriptToProgram.Values.ToArray();
         }
-
-        private static bool OnGetSerializedProgramAssetWithoutRefresh(UdonSharpProgramAsset __instance, ref AbstractSerializedUdonProgramAsset __result) {
-            __result = _serializedCache.GetValueOrDefault(__instance);
-            return false;
-        }
-
-        public static AbstractUdonProgramSource programSource_get(UdonBehaviour ub) {
-            foreach (var usb in ub.GetComponents<UdonSharpBehaviour>()) {
-                if (UdonSharpEditorUtility.GetBackingUdonBehaviour(usb) == ub) {
-                    var script = MonoScript.FromMonoBehaviour(usb);
-                    return _udonSharpMonoScriptToProgram?.GetValueOrDefault(script);
-                }
-            }
-            return ub.programSource;
-        }
-
-        private static void programSource_set(UdonBehaviour ub, AbstractUdonProgramSource program) {
-            // do nothing!
-        }
-
-        public static AbstractSerializedUdonProgramAsset serializedProgramAsset_get(UdonBehaviour ub) {
-            var program = programSource_get(ub);
-            if (program == null) return null;
-            return _serializedCache?.GetValueOrDefault(program);
-        }
-
-        private static void serializedProgramAsset_set(UdonBehaviour ub, AbstractSerializedUdonProgramAsset program) {
-            // do nothing!
-        }
-
-        private static AbstractSerializedUdonProgramAsset serializedUdonProgramAsset_get(UdonProgramAsset program) {
-            return _serializedCache?.GetValueOrDefault(program);
-        }
-
-        private static void serializedUdonProgramAsset_set(UdonProgramAsset ub, AbstractSerializedUdonProgramAsset program) {
-            // do nothing!
-        }
-
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            if (!UdonCleanerMenuItem.Get()) return;
-            if (!ReflectionHelper.IsReady<UdonCleanerReflection>()) return;
-            if (!ReflectionHelper.IsReady<Reflection>()) return;
-
-            Reflection.PatchGetAllUdonSharpPrograms.apply();
-            Reflection.PatchGetSerializedProgramAssetWithoutRefresh.apply();
-
-            HarmonyTranspiler.TranspileVarAccess(
-                AppDomain.CurrentDomain.GetAssemblies().Where(a => {
-                    var name = a.GetName().Name;
-                    return name == "UdonSharp.Editor"
-                           || name == "VRC.ClientSim.Editor"
-                           || name == "VRC.Udon.Editor"
-                           || name == "VRC.Udon"
-                           || name.StartsWith("ArchiTech");
-                }),
-                typeof(UdonCleanerAssetManager),
-                (UdonCleanerReflection.programSource, nameof(programSource_get), nameof(programSource_set)),
-                (UdonCleanerReflection.serializedProgramAsset, nameof(serializedProgramAsset_get), nameof(serializedProgramAsset_set)),
-                (UdonCleanerReflection.serializedUdonProgramAsset, nameof(serializedUdonProgramAsset_get), nameof(serializedUdonProgramAsset_set))
-            );
+        public static SerializedUdonProgramAsset GetSerializedForProgram(AbstractUdonProgramSource program) {
+            return _serializedCache.GetValueOrDefault(program);
         }
 
         [CanBeNull]
@@ -117,7 +44,7 @@ namespace VF.Hooks.UdonCleaner {
             return $"{tmpPackagePath}/Udon";
         }
 
-        private static string GetGuid(UnityEngine.Object obj) {
+        private static string GetGuid(Object obj) {
             AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out var scriptGuid, out long _);
             return scriptGuid;
         }
@@ -141,6 +68,9 @@ namespace VF.Hooks.UdonCleaner {
             STORAGE_DIRS
         }
 
+        private static bool isAssetEditing = false;
+        private static ISet<Object> dirtyObjects = new HashSet<Object>();
+
         public static void Reorganize(Layout layout) {
             var storagePath = GetStoragePath();
             if (storagePath == null) return;
@@ -150,17 +80,17 @@ namespace VF.Hooks.UdonCleaner {
             List<AbstractUdonProgramSource> programsWithNewSerialized = null;
             try {
                 var existingScripts = FindUdonSharpBehaviourMonoScripts();
-                var existingPrograms = FindAll<AbstractUdonProgramSource>();
+                var existingPrograms = FindAll<AbstractUdonProgramSource>(true);
                 var nonUsPrograms = existingPrograms
                     .Where(p => !(p is UdonSharpProgramAsset));
-                var existingSerialized = FindAll<SerializedUdonProgramAsset>();
+                var existingSerialized = FindAll<SerializedUdonProgramAsset>(true);
 
-                VRCFuryAssetDatabase.WithAssetEditing(() => {
-                    var storageAsset = new Lazy<UnityEngine.Object>(() => {
+                try {
+                    var storageAsset = new Lazy<Object>(() => {
                         var a = AssetDatabase.LoadMainAssetAtPath(storageAssetPath);
                         if (a == null) {
                             a = new AnimatorController();
-                            VRCFuryAssetDatabase.SaveAsset(a, storageAssetPath);
+                            Move(a, storageAssetPath);
                         }
                         return a;
                     });
@@ -183,11 +113,11 @@ namespace VF.Hooks.UdonCleaner {
                             var scriptGuid = GetGuid(script);
                             if (program.sourceCsScript != script) {
                                 program.sourceCsScript = script;
-                                EditorUtility.SetDirty(program);
+                                Dirty(program);
                             }
                             if (program.ScriptVersion != UdonSharpProgramVersion.CurrentVersion) {
                                 program.ScriptVersion = UdonSharpProgramVersion.CurrentVersion;
-                                EditorUtility.SetDirty(program);
+                                Dirty(program);
                             }
                             if (isNew) newPrograms.Add(program);
                             usharpProgramsByMonoscriptId[scriptGuid] = program;
@@ -197,7 +127,10 @@ namespace VF.Hooks.UdonCleaner {
                                 if (string.IsNullOrEmpty(scriptPath)) return null;
                                 return scriptPath.ReplaceLast(".cs", ".asset");
                             } else if (layout == Layout.STORAGE_ASSET) {
-                                program.name = scriptGuid;
+                                if (program.name != scriptGuid) {
+                                    program.name = scriptGuid;
+                                    Dirty(program);
+                                }
                                 return storageAsset.Value;
                             } else {
                                 return $"{storagePath}/UdonSharpPrograms/{scriptGuid}.asset";
@@ -208,7 +141,6 @@ namespace VF.Hooks.UdonCleaner {
                     var programs = new HashSet<AbstractUdonProgramSource>();
                     programs.UnionWith(nonUsPrograms);
                     programs.UnionWith(_udonSharpMonoScriptToProgram.Values);
-                    var newSerializedPrograms = new List<SerializedUdonProgramAsset>();
                     programsWithNewSerialized = new List<AbstractUdonProgramSource>();
                     _serializedCache = Reorganize(
                         programs.NotNull(),
@@ -225,16 +157,17 @@ namespace VF.Hooks.UdonCleaner {
                         (program, serialized, isNew) => {
                             if (isNew) {
                                 programsWithNewSerialized.Add(program);
-                                newSerializedPrograms.Add(serialized);
                             }
                             var programGuid = GetGuid(program);
                             if (layout == Layout.VANILLA) {
                                 return $"Assets/SerializedUdonPrograms/{programGuid}.asset";
                             } else if (layout == Layout.STORAGE_ASSET) {
-                                if (program is UdonSharpProgramAsset up) {
-                                    serialized.name = GetGuid(up.sourceCsScript);
-                                } else {
-                                    serialized.name = GetGuid(program);
+                                var name = (program is UdonSharpProgramAsset up)
+                                    ? GetGuid(up.sourceCsScript)
+                                    :GetGuid(program);
+                                if (serialized.name != name) {
+                                    serialized.name = name;
+                                    Dirty(serialized);
                                 }
                                 return storageAsset.Value;
                             } else {
@@ -244,17 +177,16 @@ namespace VF.Hooks.UdonCleaner {
                     );
 
 #if UNITY_2022_1_OR_NEWER
-                    foreach (var s in _udonSharpMonoScriptToProgram.Values) {
-                        AssetDatabase.SaveAssetIfDirty(s);
-                    }
-                    foreach (var s in _udonSharpMonoScriptToProgram.Values) {
-                        AssetDatabase.SaveAssetIfDirty(s);
-                    }
-                    if (storageAsset.IsValueCreated) {
-                        AssetDatabase.SaveAssetIfDirty(storageAsset.Value);
+                    foreach (var obj in dirtyObjects) {
+                        AssetDatabase.SaveAssetIfDirty(obj);
                     }
 #endif
-                });
+                } finally {
+                    if (isAssetEditing) {
+                        isAssetEditing = false;
+                        AssetDatabase.StopAssetEditing();
+                    }
+                }
 
                 // RefreshProgram performs importer work and must run outside StartAssetEditing.
                 if (programsWithNewSerialized != null) {
@@ -275,6 +207,14 @@ namespace VF.Hooks.UdonCleaner {
             } finally {
                 isReorganizing = false;
             }
+        }
+
+        private static void Dirty(Object obj) {
+            EditorUtility.SetDirty(obj);
+            dirtyObjects.Add(obj);
+            if (isAssetEditing) return;
+            isAssetEditing = true;
+            AssetDatabase.StartAssetEditing();
         }
 
         public class PostProcessor : AssetPostprocessor {
@@ -299,7 +239,7 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         public static IEnumerable<MonoScript> FindUdonSharpBehaviourMonoScripts() {
-            foreach (var script in FindAll<MonoScript>()) {
+            foreach (var script in FindAll<MonoScript>(false)) {
                 var scriptClass = script.GetClass();
                 if (scriptClass == null) continue;
                 if (scriptClass.IsAbstract) continue;
@@ -308,21 +248,23 @@ namespace VF.Hooks.UdonCleaner {
             }
         }
 
-        public static T[] FindAll<T>() where T : UnityEngine.Object {
+        public static T[] FindAll<T>(bool includeSubassets) where T : Object {
             return AssetDatabase.FindAssets($"t:{typeof(T).Name}")
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .Where(path => !string.IsNullOrEmpty(path))
-                .SelectMany(AssetDatabase.LoadAllAssetsAtPath)
-                .OfType<T>()
+                .SelectMany(path => includeSubassets
+                    ? AssetDatabase.LoadAllAssetsAtPath(path).OfType<T>()
+                    : new [] { AssetDatabase.LoadAssetAtPath<T>(path) }
+                )
                 .NotNull()
                 .ToArray();
         }
 
         internal class AssetOrPath {
-            public UnityEngine.Object asset;
+            public Object asset;
             public string path;
             public static implicit operator AssetOrPath(string _path) => new AssetOrPath { path = _path };
-            public static implicit operator AssetOrPath(UnityEngine.Object _asset) => new AssetOrPath { asset = _asset };
+            public static implicit operator AssetOrPath(Object _asset) => new AssetOrPath { asset = _asset };
         }
 
         private static Dictionary<SourceType,OutputType> Reorganize<SourceType,OutputType>(
@@ -331,7 +273,7 @@ namespace VF.Hooks.UdonCleaner {
             Func<OutputType,SourceType> reverseLookup,
             Func<SourceType,OutputType,bool,AssetOrPath> onFound
         )
-            where SourceType : UnityEngine.Object
+            where SourceType : Object
             where OutputType : ScriptableObject
         {
             var outputs = new Dictionary<SourceType, OutputType>();
@@ -360,7 +302,7 @@ namespace VF.Hooks.UdonCleaner {
             return outputs;
         }
 
-        private static void Destroy(UnityEngine.Object obj) {
+        private static void Destroy(Object obj) {
             if (obj == null) return;
             var outputPath = AssetDatabase.GetAssetPath(obj);
             Debug.Log($"Removing {obj.GetType().Name} {outputPath} {obj.name}");
@@ -370,7 +312,7 @@ namespace VF.Hooks.UdonCleaner {
             }
         }
 
-        private static void Move(UnityEngine.Object obj, AssetOrPath dest) {
+        private static void Move(Object obj, AssetOrPath dest) {
             if (dest == null) return;
 
             var oldPath = AssetDatabase.GetAssetPath(obj);
@@ -378,6 +320,7 @@ namespace VF.Hooks.UdonCleaner {
             if (dest.asset != null) {
                 var storageAsset = dest.asset;
                 if (AssetDatabase.GetAssetPath(storageAsset) == oldPath) return;
+                Dirty(obj);
                 var wasMainAsset = AssetDatabase.IsMainAsset(obj);
                 VRCFuryAssetDatabase.AttachAsset(obj, storageAsset);
                 if (wasMainAsset) {
@@ -388,6 +331,7 @@ namespace VF.Hooks.UdonCleaner {
             if (dest.path != null) {
                 var desiredPath = dest.path;
                 if (oldPath == desiredPath) return;
+                Dirty(obj);
                 AssetDatabase.DeleteAsset(desiredPath);
                 if (AssetDatabase.IsMainAsset(obj)) {
                     VRCFuryAssetDatabase.MoveAsset(oldPath, desiredPath);

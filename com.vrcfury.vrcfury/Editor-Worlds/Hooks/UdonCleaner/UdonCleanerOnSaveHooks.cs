@@ -241,7 +241,7 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         public static BehaviourSyncMode GetForcedSyncMethodFromUSharp(UdonBehaviour ub) {
-            var program = UdonCleanerAssetManager.programSource_get(ub);
+            var program = UdonCleanerAssetPatcher.programSource_get(ub);
             if (program is UdonSharpProgramAsset usp) {
                 return usp.behaviourSyncMode;
             }
