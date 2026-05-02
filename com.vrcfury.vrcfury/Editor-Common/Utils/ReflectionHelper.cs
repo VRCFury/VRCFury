@@ -34,11 +34,7 @@ namespace VF.Utils {
         private static void Init() {
             var notReady = new List<string>();
 
-            var helpers = ReflectionUtils.GetVrcfEditorAssemblies()
-                .SelectMany(assembly => assembly.GetTypes())
-                .Where(cls => typeof(ReflectionHelper).IsAssignableFrom(cls))
-                .ToArray();
-
+            var helpers = TypeCache.GetTypesDerivedFrom<ReflectionHelper>();
             foreach (var helper in helpers) {
                 if (helper.GetCustomAttribute<ReflectionHelperOptionalAttribute>() != null) continue;
                 foreach (var field in helper.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)) {

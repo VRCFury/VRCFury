@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
+using UnityEditor;
 
 namespace VF.Utils {
     internal static class ReflectionUtils {
@@ -12,25 +13,14 @@ namespace VF.Utils {
                 .FirstOrDefault(t => t != null);
         }
 
-        public static Assembly[] GetVrcfEditorAssemblies() {
-            return  AppDomain.CurrentDomain.GetAssemblies()
-                .Where(assembly => assembly.GetName().Name == "VRCFury-Editor-Common"
-                    || assembly.GetName().Name == "VRCFury-Editor-Avatars"
-                    || assembly.GetName().Name == "VRCFury-Editor-Worlds")
-                .ToArray();
-        }
-
-        public static Type[] GetTypes(Type id) {
-            var candidates = GetVrcfEditorAssemblies()
-                .SelectMany(assembly => assembly.GetTypes())
-                .Where(t => !t.IsAbstract);
+        public static IList<Type> GetTypes(Type id) {
             if (typeof(Attribute).IsAssignableFrom(id)) {
-                return candidates.Where(t => t.GetCustomAttribute(id) != null).ToArray();
+                return TypeCache.GetTypesWithAttribute(id).Where(t => !t.IsAbstract).ToArray();
             } else {
-                return candidates.Where(id.IsAssignableFrom).ToArray();
+                return TypeCache.GetTypesDerivedFrom(id).Where(t => !t.IsAbstract).ToArray();
             }
         }
-        
+
         public static object CallWithOptionalParams(MethodInfo method, object obj, params object[] prms) {
             var list = new List<object>(prms);
             var paramCount = method.GetParameters().Length;
