@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using UnityEditor;
 using UnityEditor.Build;
+using UnityEditor.Compilation;
 using UnityEngine;
 using VF.Utils;
 using VRC.SDKBase.Editor.BuildPipeline;
@@ -42,8 +44,9 @@ namespace VF.Hooks {
         }
 
         private static IList<MethodInfo> GetMethodsToBlock() {
-            return AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(assembly => assembly.GetTypes())
+            return TypeCache.GetTypesDerivedFrom<IVRCSDKPreprocessAvatarCallback>()
+                .Concat(TypeCache.GetTypesDerivedFrom<IVRCSDKBuildRequestedCallback>())
+                .Concat(TypeCache.GetTypesDerivedFrom<IProcessSceneWithReport>())
                 .Where(type => !type.IsAbstract)
                 .Where(type => blockTypes.Contains(type.Name))
                 .SelectMany(type => type.GetRuntimeMethods())

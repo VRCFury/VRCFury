@@ -4,13 +4,31 @@ using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using UnityEditor;
+using Assembly = System.Reflection.Assembly;
 
 namespace VF.Utils {
     internal static class ReflectionUtils {
+        private static IList<Assembly> userAssemblies;
+
         public static Type GetTypeFromAnyAssembly(string type) {
             return AppDomain.CurrentDomain.GetAssemblies()
                 .Select(assembly => assembly.GetType(type))
                 .FirstOrDefault(t => t != null);
+        }
+
+        public static IList<Assembly> GetUserAssemblies() {
+            return userAssemblies ??= AppDomain.CurrentDomain.GetAssemblies()
+                .Where(assembly => {
+                    if (assembly.IsDynamic) return false;
+                    var name = assembly.GetName().Name;
+                    if (name.StartsWith("Unity")) return false;
+                    if (name.StartsWith("UniTask")) return false;
+                    if (name.StartsWith("Bakery")) return false;
+                    var location = assembly.Location?.Replace('\\', '/');
+                    return !string.IsNullOrEmpty(location)
+                           && location.Contains("/Library/ScriptAssemblies/");
+                })
+                .ToArray();
         }
 
         public static IList<Type> GetTypes(Type id) {

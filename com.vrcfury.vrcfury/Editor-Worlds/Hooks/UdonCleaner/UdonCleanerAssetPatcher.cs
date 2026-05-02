@@ -77,14 +77,7 @@ namespace VF.Hooks.UdonCleaner {
             Reflection.PatchGetSerializedProgramAssetWithoutRefresh.apply();
 
             HarmonyTranspiler.TranspileVarAccess(
-                AppDomain.CurrentDomain.GetAssemblies().Where(a => {
-                    var name = a.GetName().Name;
-                    return name == "UdonSharp.Editor"
-                           || name == "VRC.ClientSim.Editor"
-                           || name == "VRC.Udon.Editor"
-                           || name == "VRC.Udon"
-                           || name.StartsWith("ArchiTech");
-                }),
+                ReflectionUtils.GetUserAssemblies().Where(a => a != typeof(UdonCleanerAssetPatcher).Assembly),
                 typeof(UdonCleanerAssetManager),
                 (UdonCleanerReflection.programSource, nameof(programSource_get), nameof(programSource_set)),
                 (UdonCleanerReflection.serializedProgramAsset, nameof(serializedProgramAsset_get), nameof(serializedProgramAsset_set)),
