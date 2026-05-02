@@ -4,9 +4,12 @@ using System.Linq;
 using com.vrcfury.udon.Components;
 using UdonSharp;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 using VF.Utils;
 using VRC.SDKBase;
+using VRC.Udon;
+using Object = UnityEngine.Object;
 
 namespace VF.Features {
     internal static class ComponentInjects {
@@ -24,49 +27,94 @@ namespace VF.Features {
                 }
             }
 
-            var count = 0;
-            foreach (var resolve in scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren<UdonDiInjectField>())) {
+            foreach (var inject in scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren<UdonDiInjectField>())) {
                 var foundOneField = false;
-                foreach (var component in resolve.owner().GetComponents<UdonSharpBehaviour>()) {
-                    var field = component.GetType().GetField(resolve.targetField);
-                    if (field == null) continue;
-                    var fieldType = field.FieldType;
-                    var isArray = fieldType.IsArray;
-                    var serviceType = isArray ? fieldType.GetElementType() : fieldType;
-                    foundOneField = true;
-                    var matches = registry.Where(r =>
-                            r.Item1 == resolve.registeredName && serviceType.IsInstanceOfType(r.Item2))
-                        .ToList();
-                    if (matches.Count == 0) {
-                        throw new Exception("SenkyAutowire failed to find " + serviceType.Name + " service to autowire for " + resolve.owner().GetPath());
+                var foundUsharp = false;
+                foreach (var component in inject.owner().GetComponents<UdonSharpBehaviour>()) {
+                    foundUsharp = true;
+                    if (AttemptInject(component, inject, registry)) {
+                        foundOneField = true;
                     }
-                    if (!isArray && matches.Count > 1) {
-                        throw new Exception("SenkyAutowire found multiple ambiguous " + serviceType.Name +
-                                            " services to autowire for " + resolve.owner().GetPath() +
-                                            " (" + string.Join(", ", matches.Select(i => i.Item2.owner().GetPath())));
-                    }
-
-                    var so = new SerializedObject(component);
-                    var prop = so.FindProperty(resolve.targetField);
-                    if (isArray) {
-                        prop.ClearArray();
-                        prop.arraySize = matches.Count;
-                        for (var i = 0; i < matches.Count; i++) {
-                            prop.GetArrayElementAtIndex(i).objectReferenceValue = matches[i].Item2;
+                }
+                if (!foundUsharp) {
+                    foreach (var component in inject.owner().GetComponents<UdonBehaviour>()) {
+                        if (AttemptInject(component, inject, registry)) {
+                            foundOneField = true;
                         }
-                    } else {
-                        prop.objectReferenceValue = matches[0].Item2;
                     }
-                    so.ApplyModifiedPropertiesWithoutUndo();
-                    count++;
                 }
 
                 if (!foundOneField) {
-                    throw new Exception("SenkyAutowire failed to find target field on " + resolve.owner().GetPath());
+                    throw new Exception("SenkyAutowire failed to find target field on " + inject.owner().GetPath());
                 }
             }
 
             //Debug.LogWarning($"SenkyAutowire wired {count} fields using {registry.Count} services");
+        }
+
+        private static bool AttemptInject(UnityEngine.Component component, UdonDiInjectField inject, List<(string, UnityEngine.Component)> registry) {
+            if (component is UdonBehaviour ub) {
+                if (!ub.publicVariables.TryGetVariableType(inject.targetField, out var type)) return false;
+                var value = GetValue(type, inject, registry);
+                ub.publicVariables.TrySetVariableValue(inject.targetField, value);
+                return true;
+            } else {
+                var field = component.GetType().VFField(inject.targetField);
+                if (field == null) return false;
+                var fieldType = field.FieldType;
+
+                var value = GetValue(fieldType, inject, registry);
+
+                var so = new SerializedObject(component);
+                var prop = so.FindProperty(inject.targetField);
+                if (prop.isArray && value is Object[] arr) {
+                    prop.ClearArray();
+                    prop.arraySize = arr.Length;
+                    for (var i = 0; i < arr.Length; i++) {
+                        prop.GetArrayElementAtIndex(i).objectReferenceValue = arr[i];
+                    }
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    return true;
+                } else if (value is Object obj) {
+                    prop.objectReferenceValue = obj;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
+        private static object GetValue(Type fieldType, UdonDiInjectField inject, List<(string, UnityEngine.Component)> registry) {
+            var isArray = fieldType.IsArray;
+            var serviceType = isArray ? fieldType.GetElementType() : fieldType;
+
+            var isGameObject = false;
+            if (serviceType == typeof(GameObject)) {
+                serviceType = typeof(Transform);
+                isGameObject = true;
+            }
+
+            var matches = registry.Where(r =>
+                    r.Item1 == inject.registeredName && serviceType.IsInstanceOfType(r.Item2))
+                .Select(r => r.Item2)
+                .ToList();
+            if (matches.Count == 0) {
+                throw new Exception("SenkyAutowire failed to find " + serviceType.Name + " service to autowire for " + inject.owner().GetPath());
+            }
+            if (!isArray && matches.Count > 1) {
+                throw new Exception("SenkyAutowire found multiple ambiguous " + serviceType.Name +
+                                    " services to autowire for " + inject.owner().GetPath() +
+                                    " (" + string.Join(", ", matches.Select(i => i.owner().GetPath())));
+            }
+
+            if (isArray) {
+                if (isGameObject) return matches.Select(c => c.gameObject).ToArray();
+                return matches.ToArray();
+            } else {
+                if (isGameObject) return matches.First().gameObject;
+                return matches.First();
+            }
         }
 
     }
