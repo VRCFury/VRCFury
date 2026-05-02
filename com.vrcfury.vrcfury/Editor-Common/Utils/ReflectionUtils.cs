@@ -17,7 +17,8 @@ namespace VF.Utils {
         }
 
         public static IList<Assembly> GetUserAssemblies() {
-            return userAssemblies ??= AppDomain.CurrentDomain.GetAssemblies()
+            if (userAssemblies != null) return userAssemblies;
+            return userAssemblies = AppDomain.CurrentDomain.GetAssemblies()
                 .Where(assembly => {
                     if (assembly.IsDynamic) return false;
                     var name = assembly.GetName().Name;
