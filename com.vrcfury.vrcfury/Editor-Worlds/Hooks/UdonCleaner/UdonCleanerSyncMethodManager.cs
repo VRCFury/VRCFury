@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using System.Reflection;
 using UdonSharp;
 using UnityEditor;
@@ -16,6 +16,7 @@ namespace VF.Hooks.UdonCleaner {
      */
     internal static class UdonCleanerSyncMethodManager {
         private abstract class Reflection : ReflectionHelper {
+            private const string MixedSyncMethodsWarning = "You are mixing sync methods between UdonBehaviours on the same game object, this will cause all behaviours to use the sync method of the last component on the game object.";
             public static readonly HarmonyUtils.PatchObj PatchSyncMethodGet = HarmonyUtils.Patch(
                 typeof(UdonBehaviour).GetProperty(nameof(UdonBehaviour.SyncMethod))?.GetGetMethod(),
                 (typeof(UdonCleanerSyncMethodManager), nameof(OnSyncMethodGet))
@@ -28,6 +29,10 @@ namespace VF.Hooks.UdonCleaner {
                 ("UdonSharpEditor.UdonSharpEditorManager", "UpdateSyncModes"),
                 (typeof(UdonCleanerSyncMethodManager), nameof(OnUpdateSyncModes))
             );
+            public static readonly HarmonyUtils.PatchObj PatchHelpBox = HarmonyUtils.Patch(
+                typeof(EditorGUILayout).GetMethod(nameof(EditorGUILayout.HelpBox), new[] { typeof(string), typeof(MessageType) }),
+                (typeof(UdonCleanerSyncMethodManager), nameof(OnHelpBox))
+            );
             public static readonly FieldInfo _syncMethod = typeof(UdonBehaviour).VFField("_syncMethod");
         }
 
@@ -37,6 +42,7 @@ namespace VF.Hooks.UdonCleaner {
             Reflection.PatchSyncMethodGet.apply();
             Reflection.PatchSyncMethodSet.apply();
             Reflection.PatchUpdateSyncModes.apply();
+            Reflection.PatchHelpBox.apply();
         }
 
         public static bool IsActive() {
@@ -45,6 +51,14 @@ namespace VF.Hooks.UdonCleaner {
 
         private static bool OnUpdateSyncModes() {
             return false;
+        }
+
+        private static bool OnHelpBox(string __0) {
+            // U# incorrectly shows this warning when you mix None and non-None sync types.
+            if (IsActive() && __0 != null && __0.Contains(Reflection.MixedSyncMethodsWarning)) {
+                return false;
+            }
+            return true;
         }
 
         private static bool OnSyncMethodGet(UdonBehaviour __instance, ref Networking.SyncType __result) {

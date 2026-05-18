@@ -13,13 +13,17 @@ namespace VF.Utils {
         }
         public static void Dirty(this Object obj) {
             EditorUtility.SetDirty(obj);
+            if (PrefabUtility.IsPartOfPrefabInstance(obj))
+                PrefabUtility.RecordPrefabInstancePropertyModifications(obj);
 
             // This shouldn't be needed in unity 2020+
+#if ! UNITY_2022_1_OR_NEWER
             if (obj is GameObject go) {
                 MarkSceneDirty(go.scene);
             } else if (obj is UnityEngine.Component c) {
                 MarkSceneDirty(c.owner().scene);
             }
+#endif
         }
 
         private static void MarkSceneDirty(Scene scene) {
