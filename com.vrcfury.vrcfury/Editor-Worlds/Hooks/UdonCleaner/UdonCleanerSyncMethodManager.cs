@@ -16,7 +16,6 @@ namespace VF.Hooks.UdonCleaner {
      */
     internal static class UdonCleanerSyncMethodManager {
         private abstract class Reflection : ReflectionHelper {
-            private const string MixedSyncMethodsWarning = "You are mixing sync methods between UdonBehaviours on the same game object, this will cause all behaviours to use the sync method of the last component on the game object.";
             public static readonly HarmonyUtils.PatchObj PatchSyncMethodGet = HarmonyUtils.Patch(
                 typeof(UdonBehaviour).GetProperty(nameof(UdonBehaviour.SyncMethod))?.GetGetMethod(),
                 (typeof(UdonCleanerSyncMethodManager), nameof(OnSyncMethodGet))
@@ -55,7 +54,7 @@ namespace VF.Hooks.UdonCleaner {
 
         private static bool OnHelpBox(string __0) {
             // U# incorrectly shows this warning when you mix None and non-None sync types.
-            if (IsActive() && __0 != null && __0.Contains(Reflection.MixedSyncMethodsWarning)) {
+            if (IsActive() && __0 != null && __0.Contains("You are mixing sync methods")) {
                 return false;
             }
             return true;
