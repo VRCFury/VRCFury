@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using JetBrains.Annotations;
 using UdonSharp;
@@ -18,6 +19,12 @@ namespace VF.Hooks.UdonCleaner {
      * Handles ownership of Udon's temporary assets that shouldn't live in Assets.
      */
     internal static class UdonCleanerAssetManager {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Type CompilationContext =
+                ReflectionUtils.GetTypeFromAnyAssembly("UdonSharp.Compiler.CompilationContext");
+            public static readonly Func<bool, IEnumerable<MonoScript>> GetAllFilteredScripts =
+                CompilationContext?.GetMatchingDelegate<Func<bool, IEnumerable<MonoScript>>>("GetAllFilteredScripts");
+        }
 
         public static Dictionary<MonoScript, UdonSharpProgramAsset> _udonSharpMonoScriptToProgram =
             new Dictionary<MonoScript, UdonSharpProgramAsset>();
@@ -239,11 +246,17 @@ namespace VF.Hooks.UdonCleaner {
         }
 
         public static IEnumerable<MonoScript> FindUdonSharpBehaviourMonoScripts() {
-            foreach (var script in FindAll<MonoScript>(false)) {
+            var scripts = Reflection.GetAllFilteredScripts != null
+                ? Reflection.GetAllFilteredScripts(true)
+                : FindAll<MonoScript>(false);
+
+            foreach (var script in scripts) {
                 var scriptClass = script.GetClass();
                 if (scriptClass == null) continue;
                 if (scriptClass.IsAbstract) continue;
                 if (!typeof(UdonSharpBehaviour).IsAssignableFrom(scriptClass)) continue;
+                // This script is editor-visible but conditionally omitted from the UdonSharp compile world.
+                if (scriptClass.Name == "MockLocalPlayerChangeEventListener") continue;
                 yield return script;
             }
         }
@@ -277,10 +290,12 @@ namespace VF.Hooks.UdonCleaner {
             where OutputType : ScriptableObject
         {
             var outputs = new Dictionary<SourceType, OutputType>();
+            var sourcesSet = sources.ToImmutableHashSet();
 
             foreach (var output in existingOutputs) {
                 var source = reverseLookup(output);
-                if (source == null || outputs.ContainsKey(source)) {
+                if (source == null || !sourcesSet.Contains(source) || outputs.ContainsKey(source)) {
+                    Debug.Log($"Removing {output.GetType().Name} {output.GetPathAndName()} (previously linked to {source.GetPathAndName()})");
                     Destroy(output);
                     continue;
                 }
@@ -290,7 +305,7 @@ namespace VF.Hooks.UdonCleaner {
                 outputs[source] = output;
             }
 
-            foreach (var source in sources) {
+            foreach (var source in sourcesSet) {
                 if (outputs.ContainsKey(source)) continue;
                 Debug.Log($"Creating missing {typeof(OutputType).Name} for source {source.name}");
                 var output = ScriptableObject.CreateInstance<OutputType>();
@@ -305,7 +320,6 @@ namespace VF.Hooks.UdonCleaner {
         private static void Destroy(Object obj) {
             if (obj == null) return;
             var outputPath = AssetDatabase.GetAssetPath(obj);
-            Debug.Log($"Removing {obj.GetType().Name} {outputPath} {obj.name}");
             if (!string.IsNullOrEmpty(outputPath)) {
                 if (AssetDatabase.IsMainAsset(obj)) AssetDatabase.DeleteAsset(outputPath);
                 else AssetDatabase.RemoveObjectFromAsset(obj);
