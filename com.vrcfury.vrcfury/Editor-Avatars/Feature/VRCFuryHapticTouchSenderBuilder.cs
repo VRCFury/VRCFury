@@ -23,7 +23,7 @@ namespace VF.Feature {
                     obj = sender.owner(),
                     objName = "Sender",
                     radius = sender.radius,
-                    tags = new string[] { "Finger" },
+                    tags = new string[] { "Finger", "Finger Index", "Finger Index R" },
                     worldScale = false
                 });
             }
