@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Build;
+using UnityEditor.Build.Reporting;
 using UnityEngine;
 using VF.Builder;
 using VF.Component;
@@ -12,144 +14,141 @@ using VF.Service;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
+using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
 namespace VF {
     internal class PlayModeTrigger {
-        private const string TriggerObjectName = "__vrcf_play_mode_trigger";
-        private static bool scannedThisFrame = false;
-
         [VFInit]
         private static void Init() {
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-            VRCFuryComponent._OnValidate = () => {
-                if (Application.isPlaying && !addedTriggerObjectThisPlayMode && PlayModeMenuItem.Get()) {
-                    addedTriggerObjectThisPlayMode = true;
-                    var obj = new GameObject(TriggerObjectName);
-                    RescanOnStartComponent.AddToObject(obj, true);
-                }
-            };
-            Scheduler.Schedule(() => scannedThisFrame = false, 0);
         }
 
-        private static bool addedTriggerObjectThisPlayMode = false;
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
             if (state == PlayModeStateChange.ExitingEditMode) {
-                addedTriggerObjectThisPlayMode = false;
                 TmpDirService.Cleanup();
             }
         }
 
-        // This should absolutely always be false in play mode, but we check just in case
-        private static bool ContainsAnyPrefabs(VFGameObject obj) {
-            foreach (var t in obj.GetSelfAndAllChildren()) {
-                // Don't use IsPartOfAnyPrefab because for some reason it randomly returns
-                // true in play mode on 2019, even if every other "IsPartOf..." returns false.
-                if (PrefabUtility.IsPartOfPrefabInstance(t)) {
-                    Debug.LogWarning(
-                        "VRCF is not running on " +
-                        obj.GetPath() +
-                        " while in play mode because it somehow contains a prefab instance");
-                    return true;
-                }
+        internal class SceneProcessor : IProcessSceneWithReport {
+            public int callbackOrder => int.MinValue + 100;
+
+            public void OnProcessScene(Scene scene, BuildReport report) {
+                if (!Application.isPlaying) return;
+                if (!PlayModeMenuItem.Get()) return;
+                ProcessScene(scene);
             }
-            return false;
         }
 
-        private static void Rescan() {
-            if (!Application.isPlaying) return;
-            if (!PlayModeMenuItem.Get()) return;
-            if (scannedThisFrame) return;
-            scannedThisFrame = true;
-
-            foreach (var root in VFGameObject.GetRoots()) {
-                foreach (var avatar in root.GetComponentsInSelfAndChildren<VRCAvatarDescriptor>()) {
-                    if (avatar == null) continue; // it was deleted
-                    RescanOnStartComponent.AddToObject(avatar.owner());
-                    var obj = avatar.owner();
-                    if (!obj.activeInHierarchy) continue;
-                    if (ContainsAnyPrefabs(obj)) continue;
-                    if (IsWithinAv3EmulatorClone(obj)) continue;
-                    if (!RunPreprocessorsOnlyOncePatch.ShouldStartPreprocessors(obj)) continue;
-                    if (!VRCFuryBuilder.ShouldRun(obj)) continue;
-
-                    var orig = obj.Clone();
-                    orig.name = obj.name;
-                    obj.name += "(Clone)";
-                    VRCBuildPipelineCallbacks.OnPreprocessAvatar(obj);
-                    obj.name = orig.name;
-                    orig.Destroy();
-                }
-                if (root == null) continue; // it was deleted
-                foreach (var socket in root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
-                    RescanOnStartComponent.AddToObject(socket.owner());
-                    var obj = socket.owner();
-                    if (!obj.activeInHierarchy) continue;
-                    if (ContainsAnyPrefabs(obj)) continue;
-                    if (IsWithinAv3EmulatorClone(obj)) continue;
-                    socket.Upgrade();
-                    VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        try {
-                            var bakeResult = VRCFuryHapticSocketEditor.Bake(socket);
-                            VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
-                        } catch (Exception e) {
-                            throw new ExceptionWithCause($"Failed to bake detached SPS Socket: {socket.owner().GetPath()}", e);
-                        }
-                    });
-                    Object.DestroyImmediate(socket);
-                }
-                foreach (var plug in root.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
-                    RescanOnStartComponent.AddToObject(plug.owner());
-                    var obj = plug.owner();
-                    if (!obj.activeInHierarchy) continue;
-                    if (ContainsAnyPrefabs(obj)) continue;
-                    if (IsWithinAv3EmulatorClone(obj)) continue;
-                    plug.Upgrade();
-                    VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                        try {
-                            var bakeResult = VRCFuryHapticPlugEditor.Bake(plug);
-                            if (bakeResult != null) {
-                                var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", bakeResult.oscId);
-                                var saver = new SaveAssetsSession();
-                                foreach (var renderer in bakeResult.renderers) {
-                                    saver.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
-                                }
-                                VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
-                            }
-                        } catch (Exception e) {
-                            throw new ExceptionWithCause($"Failed to bake detached SPS Plug: {plug.owner().GetPath()}", e);
-                        }
-                    });
-                    Object.DestroyImmediate(plug);
-                }
+        private static void ProcessScene(Scene scene) {
+            foreach (var rootObj in scene.GetRootGameObjects()) {
+                ProcessTree(rootObj);
             }
+        }
+
+        private static void ProcessTree(VFGameObject obj) {
+            if (obj == null) return;
+            if (IsAv3EmulatorClone(obj)) return;
+
+            var avatar = obj.GetComponent<VRCAvatarDescriptor>();
+            if (avatar != null) {
+                ProcessOnStartComponent.Process(obj, () => ProcessAvatar(obj));
+                return;
+            }
+
+            var socket = obj.GetComponent<VRCFuryHapticSocket>();
+            if (socket != null) {
+                ProcessOnStartComponent.Process(obj, () => {
+                    if (socket != null) ProcessSocket(socket);
+                });
+                return;
+            }
+
+            var plug = obj.GetComponent<VRCFuryHapticPlug>();
+            if (plug != null) {
+                ProcessOnStartComponent.Process(obj, () => {
+                    if (plug != null) ProcessPlug(plug);
+                });
+                return;
+            }
+
+            foreach (var child in obj.Children()) {
+                ProcessTree(child);
+            }
+        }
+
+        private static void ProcessAvatar(VFGameObject obj) {
+            if (!RunPreprocessorsOnlyOncePatch.ShouldStartPreprocessors(obj)) return;
+            if (!VRCFuryBuilder.ShouldRun(obj)) return;
+
+            var orig = obj.Clone();
+            orig.name = obj.name;
+            obj.name += "(Clone)";
+            VRCBuildPipelineCallbacks.OnPreprocessAvatar(obj);
+            obj.name = orig.name;
+            orig.Destroy();
+        }
+
+        private static void ProcessSocket(VRCFuryHapticSocket socket) {
+            socket.Upgrade();
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                try {
+                    var bakeResult = VRCFuryHapticSocketEditor.Bake(socket);
+                    VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
+                } catch (Exception e) {
+                    throw new ExceptionWithCause($"Failed to bake detached SPS Socket: {socket.owner().GetPath()}", e);
+                }
+            });
+            Object.DestroyImmediate(socket);
+        }
+
+        private static void ProcessPlug(VRCFuryHapticPlug plug) {
+            plug.Upgrade();
+            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                try {
+                    var bakeResult = VRCFuryHapticPlugEditor.Bake(plug);
+                    if (bakeResult != null) {
+                        var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", bakeResult.oscId);
+                        var saver = new SaveAssetsSession();
+                        foreach (var renderer in bakeResult.renderers) {
+                            saver.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
+                        }
+                        VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
+                    }
+                } catch (Exception e) {
+                    throw new ExceptionWithCause($"Failed to bake detached SPS Plug: {plug.owner().GetPath()}", e);
+                }
+            });
+            Object.DestroyImmediate(plug);
         }
 
         public static bool IsAv3EmulatorClone(VFGameObject obj) {
             return obj.name.Contains("(ShadowClone)")
                    || obj.name.Contains("(MirrorReflection)");
         }
-        
-        private static bool IsWithinAv3EmulatorClone(VFGameObject obj) {
-            return obj.GetSelfAndAllParents().Any(IsAv3EmulatorClone);
-        }
 
         [DefaultExecutionOrder(-10000)]
-        public class RescanOnStartComponent : VRCFuryPlayComponent {
+        public class ProcessOnStartComponent : VRCFuryPlayComponent {
+            public Action action;
+
             private void Start() {
-                Rescan();
-                var obj = gameObject;
-                DestroyImmediate(this);
-                if (obj.name == TriggerObjectName) {
-                    DestroyImmediate(obj);
+                if (!Application.isPlaying || !PlayModeMenuItem.Get()) return;
+                try {
+                    action?.Invoke();
+                } finally {
+                    DestroyImmediate(this);
                 }
             }
 
-            public static void AddToObject(VFGameObject obj, bool evenIfAlreadyEnabled = false) {
+            public static void Process(VFGameObject obj, Action action) {
                 if (!Application.isPlaying) return;
-                if (obj.GetComponent<RescanOnStartComponent>() != null) return;
-                if (!evenIfAlreadyEnabled && obj.activeInHierarchy) return;
-                obj.AddComponent<RescanOnStartComponent>();
+                if (obj == null) return;
+                if (obj.activeInHierarchy) {
+                    action?.Invoke();
+                    return;
+                }
+                var component = obj.AddComponent<ProcessOnStartComponent>();
+                component.action = action;
             }
         }
     }
