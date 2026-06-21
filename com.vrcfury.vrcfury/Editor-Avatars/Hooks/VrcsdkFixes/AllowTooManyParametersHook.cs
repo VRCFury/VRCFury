@@ -12,7 +12,7 @@ namespace VF.Hooks.VrcsdkFixes {
                 typeof(AllowTooManyParametersHook),
                 nameof(Prefix),
                 "VRCSdkControlPanel",
-                "OnGUIError"
+                "AddToReport"
             );
         }
 
@@ -22,11 +22,31 @@ namespace VF.Hooks.VrcsdkFixes {
             Reflection.Patch.apply();
         }
 
-        private static bool Prefix(Object __0, string __1) {
+        private static bool Prefix(Object __1, string __2) {
             try {
                 if (
-                    __1.Contains("VRCExpressionParameters has too many parameters")
-                    && __0 is VRCAvatarDescriptor avatar
+                    __2.Contains("VRCExpressionParameters has too many parameters")
+                    && __1 is VRCAvatarDescriptor avatar
+                    && VRCFuryBuilder.ShouldRun(avatar.owner())
+                ) {
+                    return false;
+                }
+            } catch (Exception) { /**/
+            }
+            try {
+                if (
+                    __2.Contains("avatar contains one or more animator states with Write Defaults disabled")
+                    && __1 is VRCAvatarDescriptor avatar
+                    && VRCFuryBuilder.ShouldRun(avatar.owner())
+                ) {
+                    return false;
+                }
+            } catch (Exception) { /**/
+            }
+            try {
+                if (
+                    __2.Contains("uses a mixture of Write Defaults")
+                    && __1 is VRCAvatarDescriptor avatar
                     && VRCFuryBuilder.ShouldRun(avatar.owner())
                 ) {
                     return false;
