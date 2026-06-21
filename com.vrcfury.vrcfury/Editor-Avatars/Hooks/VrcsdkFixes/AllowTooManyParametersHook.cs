@@ -54,11 +54,7 @@ namespace VF.Hooks.VrcsdkFixes {
             } catch (Exception) { /**/
             }
             try {
-                if (
-                    __2.Contains("Write Defaults Guidelines")
-                    && __1 is VRCAvatarDescriptor avatar
-                    && VRCFuryBuilder.ShouldRun(avatar.owner())
-                ) {
+                if (__2.Contains("Write Defaults Guidelines")) {
                     return false;
                 }
             } catch (Exception) { /**/
