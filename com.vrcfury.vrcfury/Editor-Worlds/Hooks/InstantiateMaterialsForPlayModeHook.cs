@@ -24,7 +24,37 @@ namespace VF.Hooks {
             //if (Application.isPlaying) return;
 
             var materialInstances = new Dictionary<Material, Material>();
+            var customRenderTextureInstances = new Dictionary<CustomRenderTexture, CustomRenderTexture>();
             var loggedLargeProperties = new HashSet<string>();
+
+            Material GetMaterialInstance(Material mat, bool allowClone) {
+                if (!materialInstances.TryGetValue(mat, out var inst)) {
+                    if (!allowClone) return null;
+                    inst = mat.Clone("Original was used by udon");
+                    VRCFuryAssetDatabase.SaveAsset(inst, TmpFilePackage.GetPath()+"/Builds", inst.name + " (Play Mode)");
+                    materialInstances[mat] = inst;
+                }
+                return inst;
+            }
+
+            CustomRenderTexture GetCustomRenderTextureInstance(CustomRenderTexture rt, bool allowClone) {
+                if (!customRenderTextureInstances.TryGetValue(rt, out var inst)) {
+                    if (!allowClone) return null;
+                    inst = UnityEngine.Object.Instantiate(rt);
+                    inst.name = rt.name;
+                    VrcfObjectFactory.Register(inst, copyWorkLogFrom: rt);
+                    inst.WorkLog("Original was used by udon");
+                    if (rt.material != null) {
+                        inst.material = GetMaterialInstance(rt.material, true);
+                    }
+                    if (rt.initializationMaterial != null) {
+                        inst.initializationMaterial = GetMaterialInstance(rt.initializationMaterial, true);
+                    }
+                    VRCFuryAssetDatabase.SaveAsset(inst, TmpFilePackage.GetPath()+"/Builds", inst.name + " (Play Mode)");
+                    customRenderTextureInstances[rt] = inst;
+                }
+                return inst;
+            }
 
             bool ReplaceMaterials(SerializedObject so, bool allowClone) {
                 var changed = false;
@@ -53,16 +83,17 @@ namespace VF.Hooks {
                     // END TEMP LARGE PROPERTY WALK DIAGNOSTICS
 
                     if (prop.propertyType != SerializedPropertyType.ObjectReference) continue;
-                    if (!(prop.objectReferenceValue is Material mat)) continue;
-                    if (!materialInstances.TryGetValue(mat, out var inst)) {
-                        if (!allowClone) continue;
-                        inst = mat.Clone("Original was used by udon");
-                        VRCFuryAssetDatabase.SaveAsset(inst, TmpFilePackage.GetPath()+"/Builds", inst.name + " (Play Mode)");
-                        materialInstances[mat] = inst;
+                    if (prop.objectReferenceValue is Material mat) {
+                        var inst = GetMaterialInstance(mat, allowClone);
+                        if (inst == null) continue;
+                        changed = true;
+                        prop.objectReferenceValue = inst;
+                    } else if (prop.objectReferenceValue is CustomRenderTexture rt) {
+                        var inst = GetCustomRenderTextureInstance(rt, allowClone);
+                        if (inst == null) continue;
+                        changed = true;
+                        prop.objectReferenceValue = inst;
                     }
-
-                    changed = true;
-                    prop.objectReferenceValue = inst;
                 }
 
                 return changed;
@@ -71,8 +102,9 @@ namespace VF.Hooks {
             VRCFuryAssetDatabase.WithAssetEditing(() => {
                 foreach (var ub in scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren<UdonBehaviour>())) {
                     var so = new SerializedObject(ub);
-                    ReplaceMaterials(so, true);
-                    so.ApplyModifiedPropertiesWithoutUndo();
+                    if (ReplaceMaterials(so, true)) {
+                        so.ApplyModifiedPropertiesWithoutUndo();
+                    }
                 }
 
                 foreach (var ub in scene.Roots()
