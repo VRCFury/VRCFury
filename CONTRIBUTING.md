@@ -115,3 +115,5 @@ For more information, please refer to <https://unlicense.org>
   * Added public api for SPS Socket creation
 * Ximmer-VR
   * Made Toggle sliders work with global parameters
+* ZornTaov
+  * Made the 2Axis Puppet feature
