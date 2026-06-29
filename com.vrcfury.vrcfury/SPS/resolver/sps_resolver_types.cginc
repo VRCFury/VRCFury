@@ -46,14 +46,14 @@ UNITY_INSTANCING_BUFFER_END(SpsResolverProps)
 #endif
 
 struct Candidate {
-    int slotIndex;
+    int cellIndex;
     float distanceSq;
     uint id;
     uint playerId;
 };
 
 struct CellData {
-    int slotIndex;
+    int cellIndex;
     float distanceSq;
     float3 world;
     float3 normal;
@@ -69,7 +69,7 @@ struct SocketData {
 };
 
 struct ChainEntry {
-    int slotIndex;
+    int cellIndex;
     bool flipped;
     float applyLerp;
     float3 world;

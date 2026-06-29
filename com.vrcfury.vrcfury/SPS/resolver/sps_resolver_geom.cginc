@@ -67,9 +67,10 @@ void sps_emit_resolver(
     v2f output;
     UNITY_TRANSFER_INSTANCE_ID(input, output);
     UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+    [unroll]
     for (int segmentIndex = 0; segmentIndex < SPS_CHAIN_MAX_SOCKETS; segmentIndex++) {
         if (found && segmentIndex < chainCount) {
-            output.chainSlotIndex[segmentIndex] = chain[segmentIndex].slotIndex;
+            output.chainSlotIndex[segmentIndex] = chain[segmentIndex].cellIndex;
             output.chainFlipped[segmentIndex] = chain[segmentIndex].flipped;
             output.chainApplyLerp[segmentIndex] = chain[segmentIndex].applyLerp;
         } else {

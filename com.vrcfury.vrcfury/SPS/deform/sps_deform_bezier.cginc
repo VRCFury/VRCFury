@@ -26,6 +26,10 @@ float3 sps_bezierDerivative(float3 p0, float3 p1, float3 p2, float3 p3, float t)
 inline void sps_bezierSolve(float3 p0, float3 p1, float3 p2, float3 p3, float lookingForLength, float3 initialUp, out float remainingLength, out float3 position, out float3 forward, out float3 up)
 {
 	#define SPS_BEZIER_SAMPLES 50
+	remainingLength = 0;
+	position = p0;
+	forward = 0;
+	up = initialUp;
 	if (lookingForLength <= 0) {
 		remainingLength = 0;
 		position = p0;

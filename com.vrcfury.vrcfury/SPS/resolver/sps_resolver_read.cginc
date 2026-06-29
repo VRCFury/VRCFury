@@ -7,21 +7,21 @@
 #include "sps_resolver_globals.cginc"
 #include "sps_resolver_types.cginc"
 
-uint sps_read_legacy_socket_flags(int rootIndex) {
-    float range = 5.0 * rsqrt(unity_4LightAtten0[rootIndex]);
+uint sps_read_legacy_socket_flags(int lightIndex) {
+    float range = 5.0 * rsqrt(unity_4LightAtten0[lightIndex]);
     int secondDecimal = round(fmod(range, 0.1) * 100.0);
     if (secondDecimal == 1) return SPS_SOCKET_FLAG_HOLE;
     if (secondDecimal == 2) return SPS_SOCKET_FLAG_DOUBLE_SIDED;
     return 0u;
 }
 
-CellData sps_read_legacy_cell(int slotIndex) {
-    int pairIndex = -1 - slotIndex;
-    int rootIndex = pairIndex / 4;
-    int frontIndex = pairIndex - rootIndex * 4;
+CellData sps_read_legacy_cell(int cellIndex) {
+    uint pairIndex = (uint)(-1 - cellIndex);
+    uint rootIndex = pairIndex >> 2;
+    uint frontIndex = pairIndex & 3u;
 
     CellData cellData;
-    cellData.slotIndex = slotIndex;
+    cellData.cellIndex = cellIndex;
     cellData.distanceSq = 0;
     cellData.world = float3(
         unity_4LightPosX0[rootIndex],
@@ -41,9 +41,9 @@ CellData sps_read_legacy_cell(int slotIndex) {
     return cellData;
 }
 
-CellData sps_read_positive_cell(SpsCell cell, int slotIndex) {
+CellData sps_read_positive_cell(SpsCell cell, int cellIndex) {
     CellData data;
-    data.slotIndex = slotIndex;
+    data.cellIndex = cellIndex;
     data.distanceSq = 0;
     data.world = sps_cell_header_world(cell);
     data.normal = sps_normalize(sps_cell_header_forward(cell));
@@ -55,7 +55,7 @@ CellData sps_read_positive_cell(SpsCell cell, int slotIndex) {
 
 CellData sps_make_empty_cell() {
     CellData data;
-    data.slotIndex = -1;
+    data.cellIndex = -1;
     data.distanceSq = 0;
     data.world = 0;
     data.normal = 0;
@@ -87,21 +87,25 @@ inline SocketData sps_make_empty_socket() {
     return data;
 }
 
-SocketData sps_read_legacy_socket(int slotIndex) {
+SocketData sps_read_legacy_socket(int cellIndex) {
     SocketData data = sps_make_empty_socket();
-    data.flags = sps_read_legacy_socket_flags((-1 - slotIndex) / 4);
+    data.flags = sps_read_legacy_socket_flags((int)(((uint)(-1 - cellIndex)) >> 2));
     data.tags[0] = 1337u;
     return data;
 }
 
-CellData sps_read_cell(SpsTexture tex, int slotIndex) {
-    if (slotIndex < 0) return sps_read_legacy_cell(slotIndex);
-    return sps_read_positive_cell(sps_get_cell(tex, (uint)slotIndex), slotIndex);
+CellData sps_read_cell(SpsTexture tex, int cellIndex) {
+    CellData data;
+    if (cellIndex < 0) data = sps_read_legacy_cell(cellIndex);
+    else data = sps_read_positive_cell(sps_get_cell(tex, (uint)cellIndex), cellIndex);
+    return data;
 }
 
-SocketData sps_read_socket(SpsTexture tex, int slotIndex) {
-    if (slotIndex < 0) return sps_read_legacy_socket(slotIndex);
-    return sps_read_positive_socket(sps_get_cell(tex, (uint)slotIndex));
+SocketData sps_read_socket(SpsTexture tex, int cellIndex) {
+    SocketData data;
+    if (cellIndex < 0) data = sps_read_legacy_socket(cellIndex);
+    else data = sps_read_positive_socket(sps_get_cell(tex, (uint)cellIndex));
+    return data;
 }
 
 float3 sps_resolver_socket_target_world(CellData candidate, uint flags) {

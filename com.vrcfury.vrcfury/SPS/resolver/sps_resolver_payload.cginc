@@ -32,13 +32,17 @@ float sps_read_resolver_chain_float(SpsCell cell, uint baseIndex, int sampleInde
 }
 
 float3 sps_read_resolver_chain_world(SpsCell cell, int sampleIndex) {
-    if (sampleIndex <= 0) return sps_cell_header_world(cell);
-    return sps_read_resolver_chain_float3(cell, SPS_RESOLVER_CHAIN_WORLD_INDEX(0), sampleIndex);
+    float3 value;
+    if (sampleIndex <= 0) value = sps_cell_header_world(cell);
+    else value = sps_read_resolver_chain_float3(cell, SPS_RESOLVER_CHAIN_WORLD_INDEX(0), sampleIndex);
+    return value;
 }
 
 float3 sps_read_resolver_chain_forward(SpsCell cell, int sampleIndex) {
-    if (sampleIndex <= 0) return sps_cell_header_forward(cell);
-    return sps_read_resolver_chain_float3(cell, SPS_RESOLVER_CHAIN_FORWARD_INDEX(0), sampleIndex);
+    float3 value;
+    if (sampleIndex <= 0) value = sps_cell_header_forward(cell);
+    else value = sps_read_resolver_chain_float3(cell, SPS_RESOLVER_CHAIN_FORWARD_INDEX(0), sampleIndex);
+    return value;
 }
 
 float3 sps_read_resolver_chain_up(SpsCell cell, int sampleIndex) {
@@ -68,8 +72,8 @@ bool sps_try_find_resolver_data(
 
     uint slotSeed = sps_id_hash();
     for (uint replica = 0; replica < SPS_CELL_REPLICA_COUNT; replica++) {
-        uint slotIndex = sps_hashed_screen_slot_index_from_id(slotSeed, replica);
-        SpsCell cell = sps_get_cell(tex, slotIndex);
+        uint cellIndex = sps_hashed_screen_slot_index_from_id(slotSeed, replica);
+        SpsCell cell = sps_get_cell(tex, cellIndex);
         if (!sps_cell_check_magic(cell)
             || cell.read_uint(SPS_HEADER_VENDOR_INDEX) != SPS_VENDOR_SPS
             || cell.read_uint(SPS_HEADER_PRODUCT_INDEX) != SPS_PRODUCT_PLUG) {
@@ -79,7 +83,7 @@ bool sps_try_find_resolver_data(
         if (sps_cell_header_unique_id(cell) != id) continue;
         if (sps_cell_header_player_id(cell) != playerId) continue;
         outApplyLerp = saturate(cell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_PAYLOAD_APPLY_LERP_INDEX)));
-        outSlotIndex = (int)slotIndex;
+        outSlotIndex = (int)cellIndex;
         return true;
     }
     return false;

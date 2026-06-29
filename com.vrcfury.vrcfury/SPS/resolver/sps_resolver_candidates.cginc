@@ -92,7 +92,7 @@ void sps_read_candidates(
     for (int candidateIndex = 0; candidateIndex < SPS_CANDIDATE_COUNT; candidateIndex++) {
         if (candidateIndex >= candidateCount) break;
         Candidate candidate = candidates[candidateIndex];
-        CellData cellData = sps_read_cell(tex, candidate.slotIndex);
+        CellData cellData = sps_read_cell(tex, candidate.cellIndex);
         cellData.distanceSq = candidate.distanceSq;
 
         cells[candidateIndex] = cellData;
@@ -115,7 +115,7 @@ void sps_filter_cells(
         if (candidateIndex >= candidateCount) break;
         CellData candidate = cells[candidateIndex];
         uint candidatePlayerId = candidate.playerId;
-        SocketData socketData = sps_read_socket(tex, candidate.slotIndex);
+        SocketData socketData = sps_read_socket(tex, candidate.cellIndex);
 
         bool matchedInclude = false;
         [loop]
@@ -202,7 +202,7 @@ void sps_collect_legacy_candidates(
         if (!frontFound) frontIndex = rootIndex;
 
         Candidate candidate;
-        candidate.slotIndex = -1 - (rootIndex * 4 + frontIndex);
+        candidate.cellIndex = -1 - (rootIndex * 4 + frontIndex);
         candidate.distanceSq = sps_length_sq(lightWorld[rootIndex] - plugWorld);
         candidate.id = sps_hash_world(lightWorld[rootIndex], 1);
         candidate.playerId = 0u;
@@ -216,7 +216,7 @@ inline void sps_collect_cell(
     inout Candidate candidates[SPS_CANDIDATE_COUNT],
     inout uint debugFlags,
     SpsCell cell,
-    uint slotIndex
+    uint cellIndex
 ) {
     SPS_DEBUG_SET(debugFlags, SPS_DEBUG_FLAG_HEADER_ENTRY);
 
@@ -226,14 +226,15 @@ inline void sps_collect_cell(
     if (candidateCount >= SPS_CANDIDATE_COUNT
         && distanceSq >= candidates[candidateCount - 1].distanceSq) return;
 
-    CellData cellData = sps_read_positive_cell(cell, (int)slotIndex);
+    CellData cellData = sps_read_positive_cell(cell, (int)cellIndex);
+    [unroll]
     for (int candidateIndex = 0; candidateIndex < candidateCount; candidateIndex++) {
         if (candidates[candidateIndex].id == cellData.id
             && candidates[candidateIndex].playerId == cellData.playerId) return;
     }
 
     Candidate candidate;
-    candidate.slotIndex = (int)slotIndex;
+    candidate.cellIndex = (int)cellIndex;
     candidate.distanceSq = distanceSq;
     candidate.id = cellData.id;
     candidate.playerId = cellData.playerId;
@@ -268,9 +269,9 @@ void sps_collect_candidates(
         uint startIndex = group * SPS_CELL_DICTIONARY_GROUP_SIZE;
         [loop]
         for (uint groupMember = 0u; groupMember < SPS_CELL_DICTIONARY_GROUP_SIZE; groupMember++) {
-            uint slotIndex = startIndex + groupMember;
-            if (slotIndex >= slotCount) continue;
-            uint physicalIndex = slotIndex + 1u;
+            uint cellIndex = startIndex + groupMember;
+            if (cellIndex >= slotCount) continue;
+            uint physicalIndex = cellIndex + 1u;
             uint2 physicalCell = uint2(physicalIndex % columns, physicalIndex / columns);
             uint2 cellOffset = physicalCell * uint2(SPS_CELL_WIDTH, SPS_CELL_HEIGHT);
             if (!sps_cell_check_magic(tex, cellOffset)) continue;
@@ -278,7 +279,7 @@ void sps_collect_candidates(
             cell.size = uint2(SPS_CELL_WIDTH, SPS_CELL_HEIGHT);
             if (cell.read_uint(SPS_HEADER_VENDOR_INDEX) != SPS_VENDOR_SPS) continue;
             if (productFilter > 0u && cell.read_uint(SPS_HEADER_PRODUCT_INDEX) != productFilter) continue;
-            sps_collect_cell(plugWorld, candidateCount, rawCandidates, debugFlags, cell, slotIndex);
+            sps_collect_cell(plugWorld, candidateCount, rawCandidates, debugFlags, cell, cellIndex);
         }
     }
 

@@ -14,8 +14,8 @@
 #define SPS_CELL_GEOM(value, stream) \
     uint resolverSlotSeed = sps_id_hash(); \
     for (int replica = 0; replica < SPS_CELL_REPLICA_COUNT; replica++) { \
-        uint slotIndex = sps_hashed_screen_slot_index_from_id(resolverSlotSeed, (uint)replica); \
-        value.cellIndex = (int)slotIndex; \
+        uint cellIndex = sps_hashed_screen_slot_index_from_id(resolverSlotSeed, (uint)replica); \
+        value.cellIndex = (int)cellIndex; \
         SPS_CELL_VERTEX_STREAM(value, stream) \
     } \
     value.cellIndex = SPS_DICTIONARY_INDEX; \

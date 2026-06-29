@@ -10,6 +10,8 @@ inline bool sps_cell_frag(
     out uint pixelIndex,
     out float4 rgba
 ) {
+    pixelIndex = 0u;
+    rgba = 0;
     if (sps_should_abort()) {
         clip(-1);
         return true;
@@ -26,7 +28,6 @@ inline bool sps_cell_frag(
         return true;
     }
 
-    rgba = 0;
     return false;
 }
 

@@ -19,7 +19,8 @@ bool sps_try_get_socket_payload_rgba(
         rgba = sps_encode_uint(nextId);
         return true;
     }
-    uint payloadIndex = (uint)sps_cell_payload_index_from_pixel_index(index);
+    uint payloadIndex;
+    if (!sps_cell_payload_index_from_pixel_index(index, payloadIndex)) return false;
     if (payloadIndex >= SPS_SOCKET_PAYLOAD_TAG_START
         && payloadIndex < SPS_SOCKET_PAYLOAD_TAG_START + SPS_SOCKET_PAYLOAD_TAG_COUNT) {
         rgba = sps_encode_uint(tags[payloadIndex - SPS_SOCKET_PAYLOAD_TAG_START]);

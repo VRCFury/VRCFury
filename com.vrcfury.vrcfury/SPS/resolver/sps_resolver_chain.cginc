@@ -8,7 +8,7 @@
 #include "sps_resolver_types.cginc"
 
 inline ChainEntry sps_make_chain_entry(
-    int slotIndex,
+    int cellIndex,
     bool flipped,
     float applyLerp,
     float3 world,
@@ -18,8 +18,8 @@ inline ChainEntry sps_make_chain_entry(
     uint nextId,
     uint playerId
 ) {
-    ChainEntry entry;
-    entry.slotIndex = slotIndex;
+    ChainEntry entry = (ChainEntry)0;
+    entry.cellIndex = cellIndex;
     entry.flipped = flipped;
     entry.applyLerp = applyLerp;
     entry.world = world;
@@ -37,7 +37,9 @@ bool sps_chain_contains_id(
     uint targetId,
     uint targetPlayerId
 ) {
-    for (int priorIndex = 0; priorIndex < chainCount; priorIndex++) {
+    [unroll]
+    for (int priorIndex = 0; priorIndex < SPS_CHAIN_MAX_SOCKETS; priorIndex++) {
+        if (priorIndex >= chainCount) break;
         if (chain[priorIndex].id == targetId
             && chain[priorIndex].playerId == targetPlayerId) {
             return true;
@@ -133,7 +135,7 @@ int sps_build_chain(
             }
 
             chain[chainIndex] = sps_make_chain_entry(
-                linkedCellData.slotIndex,
+                linkedCellData.cellIndex,
                 dot(traversalNormal, sps_normalize(linkedCellData.normal)) < 0,
                 candidateLerp,
                 sps_resolver_socket_target_world(linkedCellData, linkedSocketData.flags),
@@ -157,7 +159,7 @@ int sps_build_chain(
             if (candidateIndex >= candidateCount) break;
             if (used[candidateIndex]) continue;
             CellData candidate = candidates[candidateIndex];
-            SocketData candidateSocketData = sps_read_socket(socketTex, candidate.slotIndex);
+            SocketData candidateSocketData = sps_read_socket(socketTex, candidate.cellIndex);
             if (sps_chain_contains_id(chain, chainIndex, candidate.id, candidate.playerId)) {
                 SPS_DEBUG_SET(debugFlags, SPS_DEBUG_FLAG_DUPLICATE_REJECT);
                 continue;
@@ -195,7 +197,7 @@ int sps_build_chain(
         CellData best = candidates[bestCandidateIndex];
         float3 bestWorld = sps_resolver_socket_target_world(best, bestSocketData.flags);
         chain[chainCount] = sps_make_chain_entry(
-            best.slotIndex,
+            best.cellIndex,
             dot(bestTraversalNormal, sps_normalize(best.normal)) < 0,
             bestCandidateLerp,
             bestWorld,

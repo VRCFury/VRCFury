@@ -16,8 +16,8 @@ inline bool sps_dictionary_group_used(uint group) {
     uint slotSeed = sps_id_hash();
     [unroll]
     for (uint replica = 0u; replica < SPS_CELL_REPLICA_COUNT; replica++) {
-        uint slotIndex = sps_hashed_screen_slot_index_from_id(slotSeed, replica);
-        if (group == slotIndex / SPS_CELL_DICTIONARY_GROUP_SIZE) {
+        uint cellIndex = sps_hashed_screen_slot_index_from_id(slotSeed, replica);
+        if (group == cellIndex / SPS_CELL_DICTIONARY_GROUP_SIZE) {
             return true;
         }
     }

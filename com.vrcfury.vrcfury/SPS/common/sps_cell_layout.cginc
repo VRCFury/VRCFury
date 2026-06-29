@@ -184,7 +184,7 @@ bool sps_try_get_slot_header_rgba(
     if (index == SPS_CELL_MAGIC_INDEX_1) { rgba = SPS_CELL_MAGIC_1; return true; }
     if (index == SPS_CELL_MAGIC_INDEX_2) { rgba = SPS_CELL_MAGIC_2; return true; }
     if (index == SPS_CELL_MAGIC_INDEX_3) { rgba = SPS_CELL_MAGIC_3; return true; }
-    float value;
+    float value = 0;
     switch (index) {
         case SPS_HEADER_VENDOR_INDEX:
             rgba = sps_encode_uint(SPS_VENDOR_SPS);
@@ -281,8 +281,11 @@ uint sps_cell_pixel_index_from_payload_index(uint payloadIndex) {
     return payloadIndex + SPS_CELL_PAYLOAD_START;
 }
 
-inline int sps_cell_payload_index_from_pixel_index(uint index) {
-    return index - SPS_CELL_PAYLOAD_START;
+inline bool sps_cell_payload_index_from_pixel_index(uint index, out uint payloadIndex) {
+    payloadIndex = 0u;
+    if (index < SPS_CELL_PAYLOAD_START) return false;
+    payloadIndex = index - SPS_CELL_PAYLOAD_START;
+    return true;
 }
 
 #endif
