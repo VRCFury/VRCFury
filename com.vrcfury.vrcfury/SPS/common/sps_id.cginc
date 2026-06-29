@@ -1,6 +1,7 @@
 #ifndef SPS_INC_ID
 #define SPS_INC_ID
 
+#include "UnityCG.cginc"
 #include "sps_cell_hash.cginc"
 #include "sps_utils.cginc"
 

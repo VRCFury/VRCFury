@@ -111,18 +111,17 @@ int sps_build_chain(
 
         if (previous.nextId > 0) {
             int linkedCellIndex;
-            SpsCell linkedCell;
             if (!sps_try_find_cell(
                 socketTex,
                 sps_hash_id(previous.nextId, previous.playerId),
                 previous.nextId,
                 previous.playerId,
                 SPS_PRODUCT_SOCKET,
-                linkedCellIndex,
-                linkedCell
+                linkedCellIndex
             )) {
                 break;
             }
+            SpsCell linkedCell = sps_get_cell(socketTex, linkedCellIndex);
             CellData linkedCellData = sps_read_positive_cell(linkedCell, linkedCellIndex);
             SocketData linkedSocketData = sps_read_positive_socket(linkedCell);
 

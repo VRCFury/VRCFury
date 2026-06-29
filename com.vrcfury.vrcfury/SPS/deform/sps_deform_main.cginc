@@ -31,17 +31,16 @@ void sps_apply_real(
 
 	int resolverSlotIndex;
 	SpsTexture resolverTex = SPS_GET_TEX(_VFGridFinal);
-	SpsCell resolvedCell;
 	bool hasResolvedPath = sps_try_find_cell(
 		resolverTex,
 		sps_hash_id(resolverId, resolverPlayerId),
 		resolverId,
 		resolverPlayerId,
 		SPS_PRODUCT_PLUG,
-		resolverSlotIndex,
-		resolvedCell
+		resolverSlotIndex
 	);
 	if (!hasResolvedPath) return;
+	SpsCell resolvedCell = sps_get_cell(resolverTex, resolverSlotIndex);
 	float resolvedApplyLerp = saturate(resolvedCell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_PAYLOAD_APPLY_LERP_INDEX)));
 	float bakeScale = sps_cell_header_scale(resolvedCell);
 	float currentLength = _SPS_BakedLength * bakeScale;

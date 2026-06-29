@@ -620,11 +620,6 @@ namespace VF.Inspector {
                             renderer = SpsAutoRigger.AutoRig(renderer, localSpace, worldLength, worldRadius, activeFromMask);
                         }
 
-                        if (plug.enableSps) {
-                            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                            renderer.receiveShadows = false;
-                        }
-
                         var spsBaked = plug.enableSps ? SpsBaker.Bake(renderer, localSpace, activeFromMask, false, spsBlendshapes) : null;
 
                         var finishedCopies = new HashSet<Material>();

@@ -1,8 +1,6 @@
 #ifndef SPS_INC_CELL_HASH
 #define SPS_INC_CELL_HASH
 
-#include "sps_cell_layout.cginc"
-
 inline uint sps_hash_mix(uint x) {
     x ^= x >> 16;
     x *= 0x7feb352du;
@@ -23,10 +21,6 @@ inline uint sps_hash_world(float3 worldPos, uint salt) {
 
 inline uint sps_hashed_index_from_uint(uint seed, uint replica, uint slotCount) {
     return sps_hash_mix(seed ^ sps_hash_mix(replica)) % max(slotCount, 1);
-}
-
-inline uint sps_hashed_screen_slot_index_from_id(uint id, uint replica) {
-    return sps_hashed_index_from_uint(id, replica, sps_socket_slot_count());
 }
 
 #endif

@@ -118,6 +118,10 @@ inline uint sps_socket_slot_count() {
     return (uint)max(1, min(cols * rows - 1, SPS_SOCKET_MAX_SLOTS));
 }
 
+inline uint sps_hashed_screen_slot_index_from_id(uint id, uint replica) {
+    return sps_hashed_index_from_uint(id, replica, sps_socket_slot_count());
+}
+
 inline int2 sps_cell_grid_size_for_slot_count(uint slotCount) {
     int cols = sps_cell_grid_columns();
     uint safeCols = (uint)max(cols, 1);
@@ -295,11 +299,9 @@ bool sps_try_find_cell(
     uint id,
     uint playerId,
     uint product,
-    out int outCellIndex,
-    out SpsCell outCell
+    out int outCellIndex
 ) {
     outCellIndex = -1;
-    outCell = sps_get_cell_raw(tex, uint2(0, 0));
     [unroll]
     for (uint replica = 0u; replica < SPS_CELL_REPLICA_COUNT; replica++) {
         uint cellIndex = sps_hashed_screen_slot_index_from_id(slotSeed, replica);
@@ -312,7 +314,6 @@ bool sps_try_find_cell(
         if (sps_cell_header_unique_id(cell) != id) continue;
         if (sps_cell_header_player_id(cell) != playerId) continue;
         outCellIndex = (int)cellIndex;
-        outCell = cell;
         return true;
     }
     return false;
