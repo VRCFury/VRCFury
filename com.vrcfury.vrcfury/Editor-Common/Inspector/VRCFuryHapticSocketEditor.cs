@@ -6,7 +6,6 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
-using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Utils;
@@ -14,6 +13,9 @@ using VF.Utils;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
     internal class VRCFuryHapticSocketEditor : VRCFuryComponentEditor<VRCFuryHapticSocket> {
+        private const int SpsTagCount = 2;
+        private const int GuidedPathCount = 3;
+
         private static string GetMenuName(VRCFuryHapticSocket socket) {
             return HapticUtils.GetPreferredId(
                 socket,
@@ -28,6 +30,74 @@ namespace VF.Inspector {
                 s => s.oscId,
                 _ => GetMenuName(socket)
             );
+        }
+
+        private static SerializedProperty AddSpsTag(SerializedProperty listProp) {
+            if (listProp.arraySize >= SpsTagCount) return null;
+            var index = listProp.arraySize;
+            listProp.InsertArrayElementAtIndex(index);
+            var item = listProp.GetArrayElementAtIndex(index);
+            item.stringValue = "";
+            listProp.serializedObject.ApplyModifiedProperties();
+            return item;
+        }
+
+        private static VisualElement SpsTagList(SerializedProperty listProp) {
+            return VRCFuryEditorUtils.RefreshOnChange(() => {
+                var container = new VisualElement();
+                for (var i = 0; i < Math.Min(listProp.arraySize, SpsTagCount); i++) {
+                    var index = i;
+                    var row = new VisualElement();
+                    row.Add(VRCFuryHapticPlugEditor.SpsTagProp(listProp.GetArrayElementAtIndex(index), $"Tag {index + 1}"));
+                    row.Add(new Button(() => {
+                        listProp.DeleteArrayElementAtIndex(index);
+                        listProp.serializedObject.ApplyModifiedProperties();
+                    }) {
+                        text = "Remove"
+                    });
+                    container.Add(row);
+                }
+                if (listProp.arraySize < SpsTagCount) {
+                    container.Add(new Button(() => AddSpsTag(listProp)) {
+                        text = "Add Tag"
+                    });
+                }
+                return container;
+            }, listProp);
+        }
+
+        private static SerializedProperty AddGuidedPath(SerializedProperty listProp) {
+            if (listProp.arraySize >= GuidedPathCount) return null;
+            var index = listProp.arraySize;
+            listProp.InsertArrayElementAtIndex(index);
+            var item = listProp.GetArrayElementAtIndex(index);
+            item.objectReferenceValue = null;
+            listProp.serializedObject.ApplyModifiedProperties();
+            return item;
+        }
+
+        private static VisualElement GuidedPathList(SerializedProperty listProp) {
+            return VRCFuryEditorUtils.RefreshOnChange(() => {
+                var container = new VisualElement();
+                for (var i = 0; i < Math.Min(listProp.arraySize, GuidedPathCount); i++) {
+                    var index = i;
+                    var row = new VisualElement();
+                    row.Add(new PropertyField(listProp.GetArrayElementAtIndex(index), $"Stop {index + 1}"));
+                    row.Add(new Button(() => {
+                        listProp.DeleteArrayElementAtIndex(index);
+                        listProp.serializedObject.ApplyModifiedProperties();
+                    }) {
+                        text = "Remove"
+                    });
+                    container.Add(row);
+                }
+                if (listProp.arraySize < GuidedPathCount) {
+                    container.Add(new Button(() => AddGuidedPath(listProp)) {
+                        text = "Add Path Transform"
+                    });
+                }
+                return container;
+            }, listProp);
         }
 
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
@@ -61,6 +131,17 @@ namespace VF.Inspector {
                     tooltip: "'Auto' will set to Hole if attached to hips or head bone.\n" +
                              "'Rings' can be entered from either side using SPS, but TPS/DPS will only enter one side.\n" +
                              "'One-Way Rings' can only be entered from one side."));
+                section.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("useRadiusOffset"),
+                    "Radius Offset",
+                    tooltip: "Offsets SPS targeting in the socket up direction by the resolver radius. Legacy lights are also moved upward slightly for TPS/DPS compatibility."
+                ));
+                section.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("guidedPath"),
+                    "Guided Path",
+                    fieldOverride: GuidedPathList(serializedObject.FindProperty("guidedPath")),
+                    tooltip: "If provided, the plug will be guided through these transforms after passing through the socket. If the socket is a hole, the collapse will occur at the last transform in the path."
+                ));
                 return section;
             }, addLightProp));
 
@@ -117,6 +198,19 @@ namespace VF.Inspector {
                     "Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not plug interaction."
                 ));
             }));
+
+            var tags = VRCFuryEditorUtils.Section("Tags", "Filter which plugs can target this socket");
+            tags.Add(SpsTagList(serializedObject.FindProperty("tags")));
+            var useSharedTag = serializedObject.FindProperty("useSharedTag");
+            tags.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Default Tag",
+                tooltip: "Adds the default SPS tag so most plugs can target this socket."));
+            tags.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                if (useSharedTag.boolValue) return new VisualElement();
+                return VRCFuryEditorUtils.Warn("This socket does not have the default SPS tag, so most plugs will not target it.");
+            }, useSharedTag));
+            tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Hip Avoidance",
+                tooltip: "If this socket is on your hips, it will not be targeted by plugs on your hips."));
+            container.Add(tags);
             
             var adv = new Foldout {
                 text = "Advanced",
@@ -132,9 +226,6 @@ namespace VF.Inspector {
             plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugLengthParameterName")));
             plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Radius (meters)"));
             plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugWidthParameterName")));
-            
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Use hip avoidance",
-                tooltip: "If this socket is placed on the hip bone, this option will prevent triggering or receiving haptics or depth animations from other plugs on the hip bone."));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"), "Units are in world-space"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
@@ -183,11 +274,34 @@ namespace VF.Inspector {
             [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
             static void DrawGizmo2(VRCFurySocketGizmo gizmo, GizmoType gizmoType) {
                 if (!gizmo.show) return;
-                DrawGizmo(gizmo.owner().TransformPoint(gizmo.pos), gizmo.owner().worldRotation * gizmo.rot, gizmo.type, "", Selection.activeGameObject == gizmo.owner());
+                DrawGizmo(
+                    gizmo.owner().TransformPoint(gizmo.pos),
+                    gizmo.owner().worldRotation * gizmo.rot,
+                    gizmo.type,
+                    "",
+                    Selection.activeGameObject == gizmo.owner(),
+                    false
+                );
             }
         }
 
-        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, string name, bool selected) {
+        static void DrawRadiusOffsetPlane(Vector3 worldPos, Quaternion worldRot) {
+            var worldUp = worldRot * Vector3.up;
+            var worldRight = worldRot * Vector3.right * 0.02f;
+            var worldForward = worldRot * Vector3.forward * 0.02f;
+            var a = worldPos - worldRight - worldForward;
+            var b = worldPos + worldRight - worldForward;
+            var c = worldPos + worldRight + worldForward;
+            var d = worldPos - worldRight + worldForward;
+            var color = new Color(1f, 0.8f, 0.2f);
+            VRCFuryGizmoUtils.DrawLine(a, b, color);
+            VRCFuryGizmoUtils.DrawLine(b, c, color);
+            VRCFuryGizmoUtils.DrawLine(c, d, color);
+            VRCFuryGizmoUtils.DrawLine(d, a, color);
+            VRCFuryGizmoUtils.DrawArrow(worldPos, worldPos + worldUp * 0.02f, color);
+        }
+
+        static void DrawSocketGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, string name, bool selected) {
             var orange = new Color(1f, 0.5f, 0);
 
             var discColor = orange;
@@ -251,18 +365,31 @@ namespace VF.Inspector {
             Gizmos.DrawSphere(worldPos, 0.04f);
         }
 
+        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, string name, bool selected, bool radiusOffset) {
+            if (!radiusOffset) {
+                DrawSocketGizmo(worldPos, worldRot, type, name, selected);
+                return;
+            }
+
+            var offsetPos = worldPos + worldRot * (Vector3.up * 0.04f);
+            DrawRadiusOffsetPlane(worldPos, worldRot);
+            DrawSocketGizmo(offsetPos, worldRot, type, name, selected);
+        }
+
         [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         static void DrawGizmo(VRCFuryHapticSocket socket, GizmoType gizmoType) {
             var transform = socket.owner();
-
             var autoInfo = GetInfoFromLightsOrComponent(socket);
             var handTouchZoneSize = GetHandTouchZoneSize(socket);
-
             var (lightType, localPosition, localRotation) = autoInfo;
             var localForward = localRotation * Vector3.forward;
+            var worldStart = transform.TransformPoint(localPosition);
+            var worldRotation = transform.worldRotation * localRotation;
+            var guidedPath = socket.guidedPath
+                .Where(path => path != null)
+                .ToList();
 
             if (handTouchZoneSize != null) {
-                var worldStart = transform.TransformPoint(localPosition);
                 var worldForward = transform.TransformDirection(localForward);
                 var worldLength = handTouchZoneSize.Item1;
                 var worldEnd = worldStart - worldForward * worldLength;
@@ -275,11 +402,26 @@ namespace VF.Inspector {
                 );
             }
 
-            DrawGizmo(transform.TransformPoint(localPosition), transform.worldRotation * localRotation, lightType, GetMenuName(socket), Selection.activeGameObject == socket.owner());
+            if (guidedPath.Count > 0 && lightType != VRCFuryHapticSocket.AddLight.None) {
+                DrawGizmo(worldStart, worldRotation, VRCFuryHapticSocket.AddLight.RingOneWay, GetMenuName(socket), Selection.activeGameObject == socket.owner(), socket.useRadiusOffset);
+                var previousPos = worldStart + (socket.useRadiusOffset ? worldRotation * (Vector3.up * 0.04f) : Vector3.zero);
+                foreach (var stop in guidedPath) {
+                    var stopTransform = stop.asVf();
+                    var stopPos = stopTransform.worldPosition;
+                    var stopRot = stopTransform.worldRotation;
+                    var offsetStopPos = stopPos + (socket.useRadiusOffset ? stopRot * (Vector3.up * 0.04f) : Vector3.zero);
+                    VRCFuryGizmoUtils.DrawArrow(previousPos, offsetStopPos, new Color(1f, 0.5f, 0));
+                    DrawGizmo(stopPos, stopRot, VRCFuryHapticSocket.AddLight.RingOneWay, "", false, socket.useRadiusOffset);
+                    previousPos = offsetStopPos;
+                }
+                return;
+            }
+
+            DrawGizmo(worldStart, worldRotation, lightType, GetMenuName(socket), Selection.activeGameObject == socket.owner(), socket.useRadiusOffset);
         }
 
         [CanBeNull]
-        public static BakeResult Bake(VRCFuryHapticSocket socket) {
+        public static BakeResult Bake(VRCFuryHapticSocket socket, SpsMarkersService spsMarkers) {
             var transform = socket.owner();
             if (!HapticUtils.AssertValidScale(transform, "socket", shouldThrow: !socket.fromSpsForAll)) {
                 return null;
@@ -333,32 +475,91 @@ namespace VF.Inspector {
             }
 
             VFGameObject lights = null;
+            var screenMarkers = new List<VFGameObject>();
+            var screenMarkerResults = new List<ScreenMarkerResult>();
             if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
                 ForEachPossibleLight(transform, false, light => {
                     light.Destroy();
                 });
 
                 if (BuildTargetUtils.IsDesktop()) {
-                    lights = GameObjects.Create("Lights", worldSpace);
-                    var main = GameObjects.Create("Root", lights);
-                    var mainLight = main.AddComponent<Light>();
-                    mainLight.type = LightType.Point;
-                    mainLight.color = Color.black;
-                    mainLight.range =
-                        (lightType == VRCFuryHapticSocket.AddLight.Ring || lightType == VRCFuryHapticSocket.AddLight.RingOneWay)
-                            ? 0.4202f
-                            : 0.4102f;
-                    mainLight.shadows = LightShadows.None;
-                    mainLight.renderMode = LightRenderMode.ForceVertex;
+                    var useLights = socket.useSharedTag;
+                    var guidedPath = socket.guidedPath
+                        .Where(path => path != null)
+                        .Select(path => path.asVf())
+                        .ToList();
+                    var hasGuidedPath = guidedPath.Count > 0;
+                    var legacyLightType = hasGuidedPath ? VRCFuryHapticSocket.AddLight.RingOneWay : lightType;
 
-                    var front = GameObjects.Create("Front", lights);
-                    front.localPosition = Vector3.forward * 0.01f / lights.worldScale.x;
-                    var frontLight = front.AddComponent<Light>();
-                    frontLight.type = LightType.Point;
-                    frontLight.color = Color.black;
-                    frontLight.range = 0.4502f;
-                    frontLight.shadows = LightShadows.None;
-                    frontLight.renderMode = LightRenderMode.ForceVertex;
+                    void AddScreenMarker(ScreenMarkerResult result) {
+                        if (result == null) return;
+                        screenMarkerResults.Add(result);
+                        screenMarkers.Add(result.obj);
+                    }
+
+                    if (useLights) {
+                        lights = GameObjects.Create("Lights", worldSpace);
+                        var legacyRadiusOffset = socket.useRadiusOffset ? 0.03f / lights.worldScale.x : 0;
+                        var main = GameObjects.Create("Root", lights);
+                        main.localPosition = Vector3.up * legacyRadiusOffset;
+                        var mainLight = main.AddComponent<Light>();
+                        mainLight.type = LightType.Point;
+                        mainLight.color = Color.black;
+                        mainLight.range =
+                            (legacyLightType == VRCFuryHapticSocket.AddLight.Ring || legacyLightType == VRCFuryHapticSocket.AddLight.RingOneWay)
+                                ? 0.4206f
+                                : 0.4106f;
+                        mainLight.shadows = LightShadows.None;
+                        mainLight.renderMode = LightRenderMode.ForceVertex;
+
+                        var front = GameObjects.Create("Front", lights);
+                        front.localPosition = Vector3.up * legacyRadiusOffset + Vector3.forward * 0.01f / lights.worldScale.x;
+                        var frontLight = front.AddComponent<Light>();
+                        frontLight.type = LightType.Point;
+                        frontLight.color = Color.black;
+                        frontLight.range = 0.4506f;
+                        frontLight.shadows = LightShadows.None;
+                        frontLight.renderMode = LightRenderMode.ForceVertex;
+                    }
+
+                    if (hasGuidedPath) {
+                        var pathIds = guidedPath
+                            .Select(_ => (int)spsMarkers.NewMarkerId())
+                            .ToList();
+                        AddScreenMarker(CreateScreenMarker(
+                            worldSpace,
+                            socket,
+                            VRCFuryHapticSocket.AddLight.RingOneWay,
+                            (int)spsMarkers.NewMarkerId(),
+                            spsMarkers,
+                            pathIds[0]
+                        ));
+                        for (var i = 0; i < guidedPath.Count; i++) {
+                            var isLast = i == guidedPath.Count - 1;
+                            var pathType = isLast
+                                ? GetGuidedPathTerminalType(lightType)
+                                : VRCFuryHapticSocket.AddLight.RingOneWay;
+                            var nextSocketId = isLast ? 0 : pathIds[i + 1];
+                            AddScreenMarker(CreateScreenMarker(
+                                guidedPath[i],
+                                socket,
+                                pathType,
+                                pathIds[i],
+                                spsMarkers,
+                                nextSocketId,
+                                includeTags: false,
+                                objectName: "SPS Socket Path"
+                            ));
+                        }
+                    } else {
+                        AddScreenMarker(CreateScreenMarker(
+                            worldSpace,
+                            socket,
+                            lightType,
+                            (int)spsMarkers.NewMarkerId(),
+                            spsMarkers
+                        ));
+                    }
                 }
             }
             
@@ -372,6 +573,8 @@ namespace VF.Inspector {
             return new BakeResult {
                 bakeRoot = bakeRoot,
                 worldSpace = worldSpace,
+                screenMarkers = screenMarkers,
+                screenMarkerResults = screenMarkerResults,
                 lights = lights,
                 senders = senders
             };
@@ -433,6 +636,44 @@ namespace VF.Inspector {
             }
 
             return Tuple.Create(VRCFuryHapticSocket.AddLight.None, Vector3.zero, Quaternion.identity);
+        }
+
+        private static VRCFuryHapticSocket.AddLight GetGuidedPathTerminalType(VRCFuryHapticSocket.AddLight lightType) {
+            return lightType == VRCFuryHapticSocket.AddLight.Hole
+                ? VRCFuryHapticSocket.AddLight.Hole
+                : VRCFuryHapticSocket.AddLight.Ring;
+        }
+
+        public static ScreenMarkerResult CreateScreenMarker(
+            VFGameObject parent,
+            VRCFuryHapticSocket socket,
+            VRCFuryHapticSocket.AddLight lightType,
+            float socketId,
+            SpsMarkersService spsMarkers,
+            int nextSocketId = 0,
+            bool includeTags = true,
+            string objectName = "SpsScreenMarker"
+        ) {
+            if (!BuildTargetUtils.IsDesktop()) return null;
+            if (lightType == VRCFuryHapticSocket.AddLight.None) return null;
+
+            var screenMarker = GameObjects.Create(objectName, parent);
+            screenMarker.AddComponent<MeshFilter>();
+            var meshRenderer = screenMarker.AddComponent<MeshRenderer>();
+            spsMarkers.ConfigureSocketRenderer(meshRenderer);
+            screenMarker.AddComponent<VRCFuryHideGizmoUnlessSelected>();
+            return new ScreenMarkerResult {
+                obj = screenMarker,
+                renderer = meshRenderer,
+                materialProperties = SpsConfigurer.GetSocketProperties(
+                    meshRenderer,
+                    socket,
+                    lightType,
+                    socketId,
+                    nextSocketId,
+                    includeTags
+                )
+            };
         }
 
         /**
@@ -511,8 +752,16 @@ namespace VF.Inspector {
         public class BakeResult {
             public VFGameObject bakeRoot;
             public VFGameObject worldSpace;
+            public List<VFGameObject> screenMarkers;
+            public List<ScreenMarkerResult> screenMarkerResults;
             public VFGameObject lights;
             public VFGameObject senders;
+        }
+
+        public class ScreenMarkerResult {
+            public VFGameObject obj;
+            public MeshRenderer renderer;
+            public List<SpsConfigurer.MaterialProperty> materialProperties;
         }
     }
 }

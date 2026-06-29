@@ -20,84 +20,9 @@ namespace VF.Builder.Haptics {
         private static readonly string TpsIsSkinnedMeshKeyword = "TPS_IsSkinnedMesh";
         private static readonly int TpsBakedMesh = Shader.PropertyToID("_TPS_BakedMesh");
 
-        // Converts MeshRenderers or 0-bone SkinnedMeshRenderers to real weighted SkinnedMeshRenderers
-        public static SkinnedMeshRenderer NormalizeRenderer(
-            Renderer renderer,
-            VFGameObject bakeRoot,
-            float worldLength
-        ) {
-            // Convert MeshRenderer to SkinnedMeshRenderer
-            if (renderer is MeshRenderer) {
-                var obj = renderer.owner();
-                var staticMesh = renderer.GetMesh();
-                var meshFilter = obj.GetComponent<MeshFilter>();
-                var mats = renderer.sharedMaterials;
-                var shadowCastingMode = renderer.shadowCastingMode;
-                var receiveShadows = renderer.receiveShadows;
-                var lightProbeUsage = renderer.lightProbeUsage;
-                var reflectionProbeUsage = renderer.reflectionProbeUsage;
-                var probeAnchor = renderer.probeAnchor;
-
-                Object.DestroyImmediate(renderer);
-                Object.DestroyImmediate(meshFilter);
-
-                var newSkin = obj.AddComponent<SkinnedMeshRenderer>();
-                newSkin.SetMesh(staticMesh);
-                newSkin.sharedMaterials = mats;
-                newSkin.shadowCastingMode = shadowCastingMode;
-                newSkin.receiveShadows = receiveShadows;
-                newSkin.lightProbeUsage = lightProbeUsage;
-                newSkin.reflectionProbeUsage = reflectionProbeUsage;
-                newSkin.probeAnchor = probeAnchor;
-                renderer = newSkin;
-            }
-
-            var skin = renderer as SkinnedMeshRenderer;
-            if (skin == null) throw new VRCFBuilderException("Unknown renderer type");
-            var mesh = skin.GetMesh();
-            if (mesh == null) throw new Exception("Missing mesh");
-
-            // Convert unweighted (static) meshes, to true skinned, rigged meshes
-            if (mesh.boneWeights.Length == 0) {
-                // This is put on this skin instead of in the bake root so that it doesn't get shown by headchop
-                var mainBone = GameObjects.Create("SpsMainBone", skin.owner());
-                var meshCopy = mesh.Clone("Needed to add a rig to make SPS compatible");
-                meshCopy.boneWeights = meshCopy.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
-                meshCopy.bindposes = new[] {
-                    Matrix4x4.identity, 
-                };
-                meshCopy.Dirty();
-                skin.bones = new Transform[] { mainBone };
-                skin.SetMesh(meshCopy);
-                mesh = meshCopy;
-                skin.Dirty();
-            }
-
-            skin.rootBone = bakeRoot;
-            
-            var bake = MeshBaker.BakeMesh(skin, skin.rootBone);
-            var bounds = new Bounds();
-            foreach (var vertex in bake.vertices) {
-                bounds.Encapsulate(vertex);
-            }
-
-            var localLength = worldLength / bakeRoot.worldScale.z;
-            bounds.Encapsulate(new Vector3(localLength * 2f,localLength * 2f,localLength * 2.5f));
-            bounds.Encapsulate(new Vector3(localLength * -2f,localLength * -2f,localLength * 2.5f));
-            bounds.Encapsulate(new Vector3(localLength * 2f,localLength * 2f,localLength * -0.5f));
-            bounds.Encapsulate(new Vector3(localLength * -2f,localLength * -2f,localLength * -0.5f));
-            skin.localBounds = bounds;
-            skin.updateWhenOffscreen = false;
-
-            if (EditorApplication.isPlaying) {
-                skin.owner().AddComponent<VRCFuryNoUpdateWhenOffscreen>();
-            }
-
-            return skin;
-        }
-
         public static void ConfigureTpsMaterial(
-            SkinnedMeshRenderer skin,
+            Renderer skin,
+            Transform origin,
             Material mat,
             float worldLength,
             float[] activeFromMask
@@ -112,7 +37,7 @@ namespace VF.Builder.Haptics {
                     "VRCFury SPS Plug has 'auto-configure TPS' checked, but material has both TPS and Raliv DPS enabled in the Poiyomi settings. Disable DPS to continue.");
             }
 
-            var localScale = skin.rootBone.lossyScale;
+            var localScale = origin.lossyScale;
 
             mat.EnableKeyword(TpsPenetratorKeyword);
             mat.SetFloat(TpsPenetratorEnabled, 1);
@@ -123,7 +48,7 @@ namespace VF.Builder.Haptics {
             mat.SetVector(TpsPenetratorForward, ThreeToFour(shaderRotation * Vector3.forward));
             mat.SetFloat(TpsIsSkinnedMeshRenderer, 1);
             mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
-            mat.SetTexture(TpsBakedMesh, SpsBaker.Bake(skin, activeFromMask, true));
+            mat.SetTexture(TpsBakedMesh, SpsBaker.Bake(skin, origin, activeFromMask, true));
             mat.Dirty();
         }
         

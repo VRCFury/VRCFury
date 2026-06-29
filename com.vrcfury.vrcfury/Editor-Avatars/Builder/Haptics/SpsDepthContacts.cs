@@ -25,12 +25,12 @@ namespace VF.Builder.Haptics {
             ControllerManager controller,
             FrameTimeService frameTimeService,
             bool useHipAvoidance,
-            VFAFloat scaleFactor,
+            VFAFloat worldScale,
             float inputPlugLength = -1
         ) {
             this.directTree = directTree;
-            self = new TipRootPair(parent, paramPrefix + "/Self", "Self", hapticContactsService, directTree, math, controller, useHipAvoidance, HapticUtils.ReceiverParty.Self, scaleFactor, inputPlugLength);
-            others = new TipRootPair(parent, paramPrefix + "/Others", "Others", hapticContactsService, directTree, math, controller, useHipAvoidance, HapticUtils.ReceiverParty.Others, scaleFactor, inputPlugLength);
+            self = new TipRootPair(parent, paramPrefix + "/Self", "Self", hapticContactsService, directTree, math, controller, useHipAvoidance, HapticUtils.ReceiverParty.Self, worldScale, inputPlugLength);
+            others = new TipRootPair(parent, paramPrefix + "/Others", "Others", hapticContactsService, directTree, math, controller, useHipAvoidance, HapticUtils.ReceiverParty.Others, worldScale, inputPlugLength);
             var whoIsClosest = new Lazy<(VFAFloat isSelf,VFAFloat isOthers)>(() => {
                 var isSelf = controller.MakeAap(paramPrefix + "/Closest/IsSelf", def: 1);
                 var isOthers = controller.MakeAap(paramPrefix + "/Closest/IsOthers");

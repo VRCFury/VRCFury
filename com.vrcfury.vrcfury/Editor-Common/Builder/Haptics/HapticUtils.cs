@@ -98,13 +98,6 @@ namespace VF.Builder.Haptics {
             return true;
         }
 
-        public static VFGameObject GetMeshRoot(Renderer r) {
-            if (r is SkinnedMeshRenderer skin && skin.rootBone != null) {
-                return skin.rootBone;
-            }
-            return r.owner();
-        }
-
         private static string GetActualId<T>(IEnumerable<T> items, T target, Func<T, string> getPreferredId) {
             var usedNames = new HashSet<string>();
             foreach (var item in items) {

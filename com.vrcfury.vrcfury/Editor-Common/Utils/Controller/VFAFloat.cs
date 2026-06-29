@@ -25,5 +25,9 @@ namespace VF.Utils.Controller {
         public float GetDefault() {
             return def;
         }
+
+        public void SetDefault(float def) {
+            this.def = def;
+        }
     }
 }

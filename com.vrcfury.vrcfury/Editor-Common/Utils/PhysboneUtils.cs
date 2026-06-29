@@ -30,7 +30,7 @@ namespace VF.Utils {
                 }
 
                 var rootBone = s.rootBone.asVf();
-                if (rootBone && rootBone.IsChildOf(obj)) return true;
+                if (rootBone != null && rootBone.IsChildOf(obj)) return true;
             }
 
             var usedAsConstraintSource = obj.uploadRoots

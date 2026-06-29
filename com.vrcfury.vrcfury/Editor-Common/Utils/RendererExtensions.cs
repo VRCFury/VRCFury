@@ -122,5 +122,20 @@ namespace VF.Utils {
             if (mesh == null) return 0;
             return mesh.vertexCount;
         }
+
+        public static float GetBlendshapeWeight(this Renderer renderer, string name) {
+            return (renderer is SkinnedMeshRenderer skin) ? skin.GetBlendShapeWeight(name) : 0;
+        }
+
+        public static void SetBlendshapeWeight(this Renderer renderer, string name, float weight) {
+            if (renderer is SkinnedMeshRenderer skin) skin.SetBlendShapeWeight(name, weight);
+        }
+
+        public static VFGameObject GetRootBone(this Renderer r) {
+            if (r is SkinnedMeshRenderer skin && skin.rootBone != null) {
+                return skin.rootBone;
+            }
+            return r.owner();
+        }
     }
 }

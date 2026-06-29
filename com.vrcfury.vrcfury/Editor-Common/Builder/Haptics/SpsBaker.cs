@@ -6,12 +6,13 @@ using VF.Utils;
 namespace VF.Builder.Haptics {
     internal static class SpsBaker {
         public static Texture2D Bake(
-            SkinnedMeshRenderer skin,
+            Renderer renderer,
+            Transform origin,
             float[] activeFromMask,
             bool tpsCompatibility,
             ICollection<string> spsBlendshapes = null
         ) {
-            var bakedMesh = MeshBaker.BakeMesh(skin, skin.rootBone, !tpsCompatibility);
+            var bakedMesh = MeshBaker.BakeMesh(renderer, origin, !tpsCompatibility);
             if (bakedMesh == null)
                 throw new VRCFBuilderException("Failed to bake mesh for SPS configuration");
 
@@ -44,12 +45,12 @@ namespace VF.Builder.Haptics {
 
             if (!tpsCompatibility && spsBlendshapes != null) {
                 foreach (var bs in spsBlendshapes) {
-                    var weight = skin.GetBlendShapeWeight(bs);
-                    skin.SetBlendShapeWeight(bs, 0);
-                    var bsBakedMeshOff = MeshBaker.BakeMesh(skin, skin.rootBone, true);
-                    skin.SetBlendShapeWeight(bs, 100);
-                    var bsBakedMeshOn = MeshBaker.BakeMesh(skin, skin.rootBone, true);
-                    skin.SetBlendShapeWeight(bs, weight);
+                    var weight = renderer.GetBlendshapeWeight(bs);
+                    renderer.SetBlendshapeWeight(bs, 0);
+                    var bsBakedMeshOff = MeshBaker.BakeMesh(renderer, origin, true);
+                    renderer.SetBlendshapeWeight(bs, 100);
+                    var bsBakedMeshOn = MeshBaker.BakeMesh(renderer, origin, true);
+                    renderer.SetBlendshapeWeight(bs, weight);
                     baked.WriteFloat(weight);
                     for (var v = 0; v < bsBakedMeshOn.vertices.Length; v++) {
                         baked.WriteVector3(bsBakedMeshOn.vertices[v] - bsBakedMeshOff.vertices[v]);

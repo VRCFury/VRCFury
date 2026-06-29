@@ -48,6 +48,10 @@ namespace VF.Builder.Haptics {
             return new Regex(pattern, RegexOptions.Compiled);
         }
 
+        private static bool IsShadowCasterPass(string pass) {
+            return GetRegex("\"LightMode\"\\s*=\\s*\"ShadowCaster\"").IsMatch(pass);
+        }
+
         private static void PatchUnsafe(Material mat, bool keepImports) {
             var shader = mat.shader;
             var newShader = PatchUnsafe(shader, keepImports);
@@ -88,7 +92,7 @@ namespace VF.Builder.Haptics {
             }
 
             if (parentHash == null) {
-                var propertiesContent = ReadAndFlattenPath($"{pathToSps}/sps_props.cginc");
+                var propertiesContent = ReadAndFlattenPath($"{pathToSps}/deform/sps_deform_props.cginc");
                 Replace(
                     @"((?:^|\n)\s*Properties\s*{)",
                     $"$1\n{propertiesContent}\n",
@@ -99,9 +103,9 @@ namespace VF.Builder.Haptics {
 
             string spsMain;
             if (keepImports) {
-                spsMain = $"#include \"{pathToSps}/sps_main.cginc\"";
+                spsMain = $"#include \"{pathToSps}/deform/sps_deform_main.cginc\"";
             } else {
-                spsMain = ReadAndFlattenPath($"{pathToSps}/sps_main.cginc");
+                spsMain = ReadAndFlattenPath($"{pathToSps}/deform/sps_deform_main.cginc");
             }
             
             var md5 = MD5.Create();
@@ -148,6 +152,7 @@ namespace VF.Builder.Haptics {
             var passNum = 0;
             contents = WithEachPass(contents,
                 pass => {
+                    if (IsShadowCasterPass(pass)) return null;
                     passNum++;
                     try {
                         var (newPass, num) = PatchPass(pass, spsMain, cgIncludes, false);
@@ -171,6 +176,9 @@ namespace VF.Builder.Haptics {
             contents = GetRegex(@"\n[ \t]*UsePass[ \t]+""([^""]+)/([^""/]+)""").Replace(contents, match => {
                 var shaderName = match.Groups[1].ToString();
                 var passName = match.Groups[2].ToString();
+                if (passName == "ShadowCaster") {
+                    return "\n";
+                }
                 var includedShader = Shader.Find(shaderName);
                 if (!includedShader) {
                     throw new Exception("Failed to find included shader: " + shaderName);
@@ -573,12 +581,15 @@ namespace VF.Builder.Haptics {
                 var nextPassStart = GetRegex(@"\n\s*Pass[\s{]*\s*\n").Match(content, lastPassEnd);
                 if (nextPassStart.Success) {
                     var start = nextPassStart.Index + nextPassStart.Length;
-                    output += content.Substring(lastPassEnd, start - lastPassEnd);
+                    var passHeader = content.Substring(lastPassEnd, start - lastPassEnd);
                     var end = IndexOfEndOfNextContext(content, nextPassStart.Index);
                     var oldPass = content.Substring(start, end - start);
                     var newPass = withPass(oldPass);
-                    output += $"\n__PASS_{processedPasses.Count}__\n";
-                    processedPasses.Add(newPass);
+                    if (newPass != null) {
+                        output += passHeader;
+                        output += $"\n__PASS_{processedPasses.Count}__\n";
+                        processedPasses.Add(newPass);
+                    }
                     lastPassEnd = end;
                 } else {
                     output += content.Substring(lastPassEnd);
@@ -589,6 +600,34 @@ namespace VF.Builder.Haptics {
             output = withRest(output);
             for (var i = 0; i < processedPasses.Count; i++) {
                 output = output.Replace($"__PASS_{i}__", processedPasses[i]);
+            }
+
+            return output;
+        }
+
+        private static string WithEachSubShader(string content, Func<string, string> withSubShader) {
+            var output = "";
+            var lastSubShaderEnd = 0;
+            var processedSubShaders = new List<string>();
+            while (true) {
+                var nextSubShaderStart = GetRegex(@"\n\s*SubShader[\s{]*\s*\n").Match(content, lastSubShaderEnd);
+                if (nextSubShaderStart.Success) {
+                    var start = nextSubShaderStart.Index + nextSubShaderStart.Length;
+                    output += content.Substring(lastSubShaderEnd, start - lastSubShaderEnd);
+                    var end = IndexOfEndOfNextContext(content, nextSubShaderStart.Index);
+                    var oldSubShader = content.Substring(start, end - start);
+                    var newSubShader = withSubShader(oldSubShader);
+                    output += $"\n__SUBSHADER_{processedSubShaders.Count}__\n";
+                    processedSubShaders.Add(newSubShader);
+                    lastSubShaderEnd = end;
+                } else {
+                    output += content.Substring(lastSubShaderEnd);
+                    break;
+                }
+            }
+
+            for (var i = 0; i < processedSubShaders.Count; i++) {
+                output = output.Replace($"__SUBSHADER_{i}__", processedSubShaders[i]);
             }
 
             return output;

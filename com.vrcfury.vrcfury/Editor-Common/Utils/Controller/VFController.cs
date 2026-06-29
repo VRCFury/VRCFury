@@ -99,6 +99,12 @@ namespace VF.Utils.Controller {
                 .ToArray();
         }
 
+        public void RemoveParameter(string name) {
+            ctrl.parameters = ctrl.parameters
+                .Where(p => p.name != name)
+                .ToArray();
+        }
+
         public VFABool _NewBool(string name, bool def = false) {
             var p = _NewParam(name, AnimatorControllerParameterType.Bool, param => param.defaultBool = def);
             return new VFABool(p.name, p.defaultBool);
@@ -106,6 +112,12 @@ namespace VF.Utils.Controller {
         public VFAFloat _NewFloat(string name, float def = 0) {
             var p = _NewParam(name, AnimatorControllerParameterType.Float, param => param.defaultFloat = def);
             return new VFAFloat(p.name, p.defaultFloat);
+        }
+
+        public void SetDefault(VFAFloat param, float def) {
+            param.SetDefault(def);
+            var raw = GetParam(param.Name());
+            if (raw != null) raw.defaultFloat = def;
         }
         public VFAInteger _NewInt(string name, int def = 0) {
             var p = _NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def);

@@ -15,9 +15,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public void AddScaledProp(VFGameObject scaleReference, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
-            var worldSpace = GameObjects.Create("WorldSpace", scaleReference);
-            ConstraintUtils.MakeWorldSpace(worldSpace);
-            var scaleFactor = scaleFactorService.Get(scaleReference, worldSpace);
+            var scaleFactor = scaleFactorService.GetWorldScale(scaleReference);
             if (scaleFactor == null) return;
             AddScaledProp(scaleFactor, properties);
         }

@@ -1,28 +1,43 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using UnityEditor.Animations;
 using UnityEngine;
 using VF.Component;
 using VF.Hooks;
+using VF.Inspector;
 using VF.Menu;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Builder.Haptics {
     internal static class SpsConfigurer {
-        private const string SpsEnabled = "_SPS_Enabled";
-        public const string SpsLength = "_SPS_Length";
-        public const string SpsPlusEnabled = "_SPS_Plus_Enabled";
-        private const string SpsOverrun = "_SPS_Overrun";
-        private const string SpsBakedLength = "_SPS_BakedLength";
+        public const uint SharedTag = 1337;
+        public const string SpsEnabled = "_SPS_Enabled";
+        public const string SpsBakedLength = "_SPS_BakedLength";
+        public const string SpsBakedRadius = "_SPS_BakedRadius";
+        public const string SpsOverrun = "_SPS_Overrun";
+        public const string SpsLegacy = "_SPS_Legacy";
         private const string SpsBake = "_SPS_Bake";
+        private const uint TagMask = 0x00ffffff;
+        private const uint IncludeSelf = 1;
+        private const uint IncludeOthers = 2;
+
+        public class MaterialProperty {
+            public Renderer renderer;
+            public string propertyName;
+            public float value;
+        }
 
         public static void ConfigureSpsMaterial(
-            SkinnedMeshRenderer skin,
+            Renderer skin,
             Material m,
             float worldLength,
             Texture2D spsBaked,
             VRCFuryHapticPlug plug,
             VFGameObject bakeRoot,
-            IList<string> spsBlendshapes
+            IList<string> spsBlendshapes,
+            float resolverHash
         ) {
             if (DpsConfigurer.IsDps(m) || TpsConfigurer.IsTps(m)) {
                 throw new Exception(
@@ -42,24 +57,278 @@ namespace VF.Builder.Haptics {
                     }
                 }
             }
-            m.SetFloat(SpsEnabled, plug.spsAnimatedEnabled);
             if (plug.spsAnimatedEnabled == 0) bakeRoot.active = false;
-            m.SetFloat(SpsLength, worldLength);
             m.SetFloat(SpsBakedLength, worldLength);
-            m.SetFloat(SpsOverrun, plug.spsOverrun ? 1 : 0);
             m.SetTexture(SpsBake, spsBaked);
+            m.SetFloat(SpsMarkersService.Configured, 1);
+            m.SetFloat(SpsMarkersService.Id, resolverHash);
+            m.SetFloat(SpsMarkersService.PlayerId, 0);
             m.SetFloat("_SPS_BlendshapeCount", spsBlendshapes.Count);
             m.SetFloat("_SPS_BlendshapeVertCount", skin.GetVertexCount());
             for (var i = 0; i < spsBlendshapes.Count; i++) {
                 var name = spsBlendshapes[i];
                 if (skin.HasBlendshape(name)) {
-                    m.SetFloat("_SPS_Blendshape" + i, skin.GetBlendShapeWeight(name));
+                    m.SetFloat("_SPS_Blendshape" + i, skin.GetBlendshapeWeight(name));
                 }
             }
         }
 
-        public static bool IsSps(Material mat) {
-            return mat != null && mat.HasProperty(SpsBake);
+        public static void ConfigureResolverProperties(Action<string, float> set, float worldLength, float worldRadius, VRCFuryHapticPlug plug) {
+            set(SpsBakedLength, worldLength);
+            set(SpsBakedRadius, worldRadius);
+            set(SpsEnabled, plug.spsAnimatedEnabled);
+            set(SpsOverrun, plug.spsOverrun ? 1 : 0);
+            set(SpsLegacy, 1);
+            ConfigureResolverTagRules(set, plug);
+        }
+
+        public static List<MaterialProperty> GetResolverProperties(
+            Renderer renderer,
+            float worldLength,
+            float worldRadius,
+            float resolverHash,
+            VRCFuryHapticPlug plug
+        ) {
+            var properties = new List<MaterialProperty>();
+            void Add(string propertyName, float value) {
+                properties.Add(new MaterialProperty {
+                    renderer = renderer,
+                    propertyName = propertyName,
+                    value = value
+                });
+            }
+            ConfigureResolverProperties(Add, worldLength, worldRadius, plug);
+            Add(SpsMarkersService.Configured, 1);
+            Add(SpsMarkersService.Id, resolverHash);
+            return properties;
+        }
+
+        public static bool PropagateToResolver(string propertyName) {
+            return propertyName == $"material.{SpsEnabled}"
+                || propertyName == $"material.{SpsBakedLength}"
+                || propertyName == $"material.{SpsBakedRadius}"
+                || propertyName == $"material.{SpsMarkersService.PlayerId}"
+                || propertyName == $"material.{SpsOverrun}"
+                || propertyName == $"material.{SpsLegacy}";
+        }
+
+        public static void ConfigureSocketProperties(
+            Action<string, float> set,
+            VRCFuryHapticSocket socket,
+            VRCFuryHapticSocket.AddLight lightType,
+            int nextSocketId = 0,
+            bool includeTags = true
+        ) {
+            set(SpsMarkersService.SocketHole, lightType == VRCFuryHapticSocket.AddLight.Hole ? 1 : 0);
+            set(SpsMarkersService.SocketDoubleSided, lightType == VRCFuryHapticSocket.AddLight.Ring ? 1 : 0);
+            set(SpsMarkersService.SocketRadiusOffset, socket.useRadiusOffset ? 1 : 0);
+            set(SpsMarkersService.SocketNextId, nextSocketId);
+            ConfigureSocketTags(set, socket, includeTags);
+        }
+
+        public static List<MaterialProperty> GetSocketProperties(
+            Renderer renderer,
+            VRCFuryHapticSocket socket,
+            VRCFuryHapticSocket.AddLight lightType,
+            float socketId,
+            int nextSocketId = 0,
+            bool includeTags = true
+        ) {
+            var properties = new List<MaterialProperty>();
+            void Add(string propertyName, float value) {
+                properties.Add(new MaterialProperty {
+                    renderer = renderer,
+                    propertyName = propertyName,
+                    value = value
+                });
+            }
+            ConfigureSocketProperties(Add, socket, lightType, nextSocketId, includeTags);
+            Add(SpsMarkersService.Configured, 1);
+            Add(SpsMarkersService.Id, socketId);
+            return properties;
+        }
+
+        public static void AddMaterialPropertyAnimator(IEnumerable<MaterialProperty> properties) {
+            var propertyList = (properties ?? new List<MaterialProperty>())
+                .Where(property => property?.renderer != null)
+                .ToList();
+            if (propertyList.Count == 0) return;
+
+            foreach (var group in propertyList.GroupBy(property => property.renderer)) {
+                AddMaterialPropertyAnimator(group.Key, group);
+            }
+        }
+
+        private static void AddMaterialPropertyAnimator(Renderer renderer, IEnumerable<MaterialProperty> properties) {
+            var clip = VrcfObjectFactory.Create<AnimationClip>();
+            clip.name = "SpsMaterialProperties";
+
+            var controller = VrcfObjectFactory.Create<AnimatorController>();
+            controller.name = "SpsMaterialProperties";
+            new VFController(controller)
+                .NewLayer("SPS Material Properties")
+                .NewState("Properties")
+                .WithAnimation(clip);
+
+            var owner = renderer.owner();
+            AddMaterialPropertyCurves(clip, owner, properties);
+
+            var animator = owner.GetComponent<Animator>() ?? owner.AddComponent<Animator>();
+            animator.runtimeAnimatorController = controller;
+        }
+
+        public static void AddMaterialPropertyCurves(
+            AnimationClip clip,
+            VFGameObject animatorObject,
+            IEnumerable<MaterialProperty> properties
+        ) {
+            var scaledRenderers = new HashSet<Renderer>();
+            foreach (var property in properties ?? new List<MaterialProperty>()) {
+                if (property?.renderer == null) continue;
+                var renderer = property.renderer;
+                var owner = renderer.owner();
+                var path = owner.GetPath(animatorObject);
+                if (renderer is MeshRenderer && scaledRenderers.Add(renderer)) {
+                    renderer.owner().worldScale = new Vector3(1, 1, 1);
+                    var localScale = renderer.owner().localScale;
+                    renderer.owner().worldScale = new Vector3(0.001f, 0.001f, 0.001f);
+                    clip.SetCurve(path, typeof(Transform), "m_LocalScale.x", localScale.x);
+                    clip.SetCurve(path, typeof(Transform), "m_LocalScale.y", localScale.y);
+                    clip.SetCurve(path, typeof(Transform), "m_LocalScale.z", localScale.z);
+                }
+                clip.SetCurve(path, renderer.GetType(), $"material.{property.propertyName}", property.value);
+            }
+        }
+
+        private static void ConfigureSocketTags(Action<string, float> set, VRCFuryHapticSocket socket, bool includeTags = true) {
+            if (!includeTags) {
+                for (var i = 0; i < 8; i++) {
+                    set($"_SPS_SocketTag{i + 1}", 0);
+                }
+                return;
+            }
+
+            var closestBone = GetClosestBone(socket.owner());
+            var tags = new uint[8];
+            var count = 0;
+            foreach (var tag in socket.tags) {
+                AddTag(tags, ref count, HashTag(tag));
+            }
+            if (socket.useHipAvoidance && closestBone == HumanBodyBones.Hips) {
+                AddTag(tags, ref count, HashTag("hips"));
+            }
+            AddTag(tags, ref count, GetAutoSocketTag(closestBone));
+            if (socket.useSharedTag) {
+                AddTag(tags, ref count, SharedTag);
+            }
+            for (var i = 0; i < tags.Length; i++) {
+                set($"_SPS_SocketTag{i + 1}", tags[i]);
+            }
+        }
+
+        public static uint HashTag(string tag) {
+            if (string.IsNullOrWhiteSpace(tag)) return 0;
+
+            var normalized = tag.Trim().ToLowerInvariant();
+            uint hash = 2166136261;
+            foreach (var c in normalized) {
+                hash ^= c;
+                hash *= 16777619;
+            }
+
+            hash &= TagMask;
+            return hash == 0 ? 1u : hash;
+        }
+
+        private static void ConfigureResolverTagRules(Action<string, float> set, VRCFuryHapticPlug plug) {
+            var onHips = IsOnHips(plug.owner());
+            var includeTags = new uint[4];
+            var includeFlags = new uint[4];
+            var excludeTags = new uint[4];
+            var excludeFlags = new uint[4];
+            var includeCount = 0;
+            var excludeCount = 0;
+
+            foreach (var rule in plug.includeTags) {
+                AddTag(includeTags, ref includeCount, rule, includeFlags);
+            }
+            if (plug.useSharedTag) {
+                AddTag(includeTags, ref includeCount, SharedTag, IncludeSelf | IncludeOthers, includeFlags);
+            }
+
+            foreach (var rule in plug.excludeTags) {
+                AddTag(excludeTags, ref excludeCount, rule, excludeFlags);
+            }
+            if (plug.useHipAvoidance && onHips) {
+                AddTag(excludeTags, ref excludeCount, HashTag("hips"), IncludeSelf, excludeFlags);
+            }
+
+            for (var i = 0; i < 4; i++) {
+                var slot = i + 1;
+                set($"_SPS_TagInclude{slot}", includeTags[i]);
+                set($"_SPS_TagInclude{slot}Self", (includeFlags[i] & IncludeSelf) != 0 ? 1 : 0);
+                set($"_SPS_TagInclude{slot}Others", (includeFlags[i] & IncludeOthers) != 0 ? 1 : 0);
+                set($"_SPS_TagExclude{slot}", excludeTags[i]);
+                set($"_SPS_TagExclude{slot}Self", (excludeFlags[i] & IncludeSelf) != 0 ? 1 : 0);
+                set($"_SPS_TagExclude{slot}Others", (excludeFlags[i] & IncludeOthers) != 0 ? 1 : 0);
+            }
+        }
+
+        private static void AddTag(uint[] tags, ref int count, uint tag, uint ruleFlags = 0, uint[] flags = null) {
+            if (tag == 0 || count >= tags.Length) return;
+            tags[count] = tag;
+            if (flags != null) {
+                flags[count] = ruleFlags;
+            }
+            count++;
+        }
+
+        private static void AddTag(uint[] tags, ref int count, VRCFuryHapticPlug.TagRule rule, uint[] flags = null) {
+            if (rule == null) return;
+            var ruleFlags = 0u;
+            if (rule.allowSelf) ruleFlags |= IncludeSelf;
+            if (rule.allowOthers) ruleFlags |= IncludeOthers;
+            AddTag(tags, ref count, HashTag(rule.tag), ruleFlags, flags);
+        }
+
+        private static HumanBodyBones? GetClosestBone(VFGameObject obj) {
+            return VRCFuryHapticSocketEditor.getClosestBone?.Invoke(obj);
+        }
+
+        private static bool IsOnHips(VFGameObject obj) {
+            return GetClosestBone(obj) == HumanBodyBones.Hips;
+        }
+
+        public static void MarkSpsPropertiesAnimated(Material material) {
+            var count = material.shader.GetPropertyCount();
+            for (var i = 0; i < count; i++) {
+                var propertyName = material.shader.GetPropertyName(i);
+                if (propertyName.StartsWith("_SPS_")) {
+                    material.SetOverrideTag(propertyName + "Animated", "1");
+                }
+            }
+        }
+
+        private static uint GetAutoSocketTag(HumanBodyBones? bone) {
+            switch (bone) {
+                case HumanBodyBones.Head:
+                case HumanBodyBones.Jaw:
+                    return HashTag("head");
+                case HumanBodyBones.LeftHand:
+                case HumanBodyBones.RightHand:
+                case HumanBodyBones.LeftLowerArm:
+                case HumanBodyBones.RightLowerArm:
+                    return HashTag("hand");
+                case HumanBodyBones.LeftFoot:
+                case HumanBodyBones.RightFoot:
+                case HumanBodyBones.LeftToes:
+                case HumanBodyBones.RightToes:
+                case HumanBodyBones.LeftLowerLeg:
+                case HumanBodyBones.RightLowerLeg:
+                    return HashTag("foot");
+                default:
+                    return 0;
+            }
         }
     }
 }

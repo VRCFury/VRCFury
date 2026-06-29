@@ -36,6 +36,10 @@ namespace VF.Component {
         public List<DepthActionNew> depthActions2 = new List<DepthActionNew>();
         public State activeActions = new State();
         public bool useHipAvoidance = true;
+        public bool useSharedTag = true;
+        public bool useRadiusOffset = false;
+        public List<string> tags = new List<string>();
+        public List<Transform> guidedPath = new List<Transform>();
 
         public bool enablePlugLengthParameter;
         public string plugLengthParameterName;

@@ -76,11 +76,11 @@ namespace VF.Builder.Haptics {
 
         public static Quaternion GetAutoWorldRotation(Renderer renderer) {
             var localRotation = GetMaterialDpsRotation(renderer) ?? Quaternion.identity;
-            return HapticUtils.GetMeshRoot(renderer).worldRotation * localRotation;
+            return renderer.GetRootBone().worldRotation * localRotation;
         }
         
         public static Vector3 GetAutoWorldPosition(Renderer renderer) {
-            return HapticUtils.GetMeshRoot(renderer).worldPosition;
+            return renderer.GetRootBone().worldPosition;
         }
 
         public static Tuple<float, float, VFMultimapSet<VFGameObject,int>> GetAutoWorldSize(Renderer renderer) {
