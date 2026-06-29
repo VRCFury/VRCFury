@@ -60,33 +60,4 @@ float sps_read_resolver_chain_pullout_lerp(SpsCell cell, int sampleIndex) {
     return sps_read_resolver_chain_float(cell, SPS_RESOLVER_CHAIN_PULLOUT_LERP_INDEX(0), sampleIndex);
 }
 
-bool sps_try_find_resolver_data(
-    SpsTexture tex,
-    uint id,
-    uint playerId,
-    out int outSlotIndex,
-    out float outApplyLerp
-) {
-    outSlotIndex = -1;
-    outApplyLerp = 0;
-
-    uint slotSeed = sps_id_hash();
-    for (uint replica = 0; replica < SPS_CELL_REPLICA_COUNT; replica++) {
-        uint cellIndex = sps_hashed_screen_slot_index_from_id(slotSeed, replica);
-        SpsCell cell = sps_get_cell(tex, cellIndex);
-        if (!sps_cell_check_magic(cell)
-            || cell.read_uint(SPS_HEADER_VENDOR_INDEX) != SPS_VENDOR_SPS
-            || cell.read_uint(SPS_HEADER_PRODUCT_INDEX) != SPS_PRODUCT_PLUG) {
-            continue;
-        }
-
-        if (sps_cell_header_unique_id(cell) != id) continue;
-        if (sps_cell_header_player_id(cell) != playerId) continue;
-        outApplyLerp = saturate(cell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_PAYLOAD_APPLY_LERP_INDEX)));
-        outSlotIndex = (int)cellIndex;
-        return true;
-    }
-    return false;
-}
-
 #endif

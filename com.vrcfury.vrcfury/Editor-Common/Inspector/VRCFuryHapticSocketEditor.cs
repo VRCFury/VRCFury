@@ -202,12 +202,14 @@ namespace VF.Inspector {
             var tags = VRCFuryEditorUtils.Section("Tags", "Filter which plugs can target this socket");
             tags.Add(SpsTagList(serializedObject.FindProperty("tags")));
             var useSharedTag = serializedObject.FindProperty("useSharedTag");
-            tags.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Default Tag",
-                tooltip: "Adds the default SPS tag so most plugs can target this socket."));
+            tags.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "'Global' SPS2 Tag",
+                tooltip: "Allows all SPS2 plugs (which are configured using the defaults) to target this socket."));
             tags.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (useSharedTag.boolValue) return new VisualElement();
-                return VRCFuryEditorUtils.Warn("This socket does not have the default SPS tag, so most plugs will not target it.");
+                return VRCFuryEditorUtils.Warn("This socket does not have the global SPS2 tag, so most plugs will not target it.");
             }, useSharedTag));
+            tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLights"), "'Global' SPS1/DPS/TPS Tag",
+                tooltip: "Allows all SPS1/DPS/TPS plugs to target this socket. NOTE: Enabling this adds LIGHTS!"));
             tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Hip Avoidance",
                 tooltip: "If this socket is on your hips, it will not be targeted by plugs on your hips."));
             container.Add(tags);
@@ -483,7 +485,6 @@ namespace VF.Inspector {
                 });
 
                 if (BuildTargetUtils.IsDesktop()) {
-                    var useLights = socket.useSharedTag;
                     var guidedPath = socket.guidedPath
                         .Where(path => path != null)
                         .Select(path => path.asVf())
@@ -497,7 +498,7 @@ namespace VF.Inspector {
                         screenMarkers.Add(result.obj);
                     }
 
-                    if (useLights) {
+                    if (socket.useLights) {
                         lights = GameObjects.Create("Lights", worldSpace);
                         var legacyRadiusOffset = socket.useRadiusOffset ? 0.03f / lights.worldScale.x : 0;
                         var main = GameObjects.Create("Root", lights);

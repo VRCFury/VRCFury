@@ -34,6 +34,7 @@ namespace VF.Component {
         public List<VRCFuryHapticSocket.DepthActionNew> depthActions2 = new List<VRCFuryHapticSocket.DepthActionNew>();
         public bool useHipAvoidance = true;
         public bool useSharedTag = true;
+        public bool useLights = true;
         public List<TagRule> includeTags = new List<TagRule>();
         public List<TagRule> excludeTags = new List<TagRule>();
 

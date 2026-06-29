@@ -78,7 +78,7 @@ namespace VF.Builder.Haptics {
             set(SpsBakedRadius, worldRadius);
             set(SpsEnabled, plug.spsAnimatedEnabled);
             set(SpsOverrun, plug.spsOverrun ? 1 : 0);
-            set(SpsLegacy, 1);
+            set(SpsLegacy, plug.useLights ? 1 : 0);
             ConfigureResolverTagRules(set, plug);
         }
 

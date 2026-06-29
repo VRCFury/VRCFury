@@ -1,3 +1,7 @@
+#ifdef SHADER_TARGET_SURFACE_ANALYSIS
+void sps_apply(inout SpsInputs o){}
+#else
+
 #include "sps_deform_globals.cginc"
 #include "../resolver/sps_resolver_payload.cginc"
 #include "../common/sps_utils.cginc"
@@ -25,18 +29,20 @@ void sps_apply_real(
 	uint resolverId = sps_id();
 	uint resolverPlayerId = sps_player_id();
 
-	float resolvedApplyLerp = 0;
 	int resolverSlotIndex;
 	SpsTexture resolverTex = SPS_GET_TEX(_VFGridFinal);
-	bool hasResolvedPath = sps_try_find_resolver_data(
+	SpsCell resolvedCell;
+	bool hasResolvedPath = sps_try_find_cell(
 		resolverTex,
+		sps_hash_id(resolverId, resolverPlayerId),
 		resolverId,
 		resolverPlayerId,
+		SPS_PRODUCT_PLUG,
 		resolverSlotIndex,
-		resolvedApplyLerp
+		resolvedCell
 	);
 	if (!hasResolvedPath) return;
-	SpsCell resolvedCell = sps_get_cell(resolverTex, resolverSlotIndex);
+	float resolvedApplyLerp = saturate(resolvedCell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_PAYLOAD_APPLY_LERP_INDEX)));
 	float bakeScale = sps_cell_header_scale(resolvedCell);
 	float currentLength = _SPS_BakedLength * bakeScale;
 
@@ -116,3 +122,5 @@ void sps_apply(inout SpsInputs o) {
 	//#endif
 
 }
+
+#endif

@@ -115,32 +115,4 @@ float3 sps_resolver_socket_target_world(CellData candidate, uint flags) {
     return candidate.world;
 }
 
-bool sps_try_find_socket_data(
-    SpsTexture tex,
-    uint id,
-    uint playerId,
-    out CellData cellData,
-    out SocketData socketData
-) {
-    cellData = sps_make_empty_cell();
-    socketData = sps_make_empty_socket();
-
-    uint slotSeed = sps_id_hash();
-    for (uint replica = 0u; replica < SPS_CELL_REPLICA_COUNT; replica++) {
-        uint candidateSlotIndex = sps_hashed_screen_slot_index_from_id(slotSeed, replica);
-        SpsCell cell = sps_get_cell(tex, candidateSlotIndex);
-        if (!sps_cell_check_magic(cell)
-            || cell.read_uint(SPS_HEADER_VENDOR_INDEX) != SPS_VENDOR_SPS
-            || cell.read_uint(SPS_HEADER_PRODUCT_INDEX) != SPS_PRODUCT_SOCKET) {
-            continue;
-        }
-        if (sps_cell_header_unique_id(cell) != id) continue;
-        if (sps_cell_header_player_id(cell) != playerId) continue;
-        cellData = sps_read_positive_cell(cell, (int)candidateSlotIndex);
-        socketData = sps_read_positive_socket(cell);
-        return true;
-    }
-    return false;
-}
-
 #endif

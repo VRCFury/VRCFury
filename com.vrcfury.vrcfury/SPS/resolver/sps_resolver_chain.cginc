@@ -110,11 +110,21 @@ int sps_build_chain(
         float3 sourceForward = sps_normalize(-previous.traversalNormal);
 
         if (previous.nextId > 0) {
-            CellData linkedCellData;
-            SocketData linkedSocketData;
-            if (!sps_try_find_socket_data(socketTex, previous.nextId, previous.playerId, linkedCellData, linkedSocketData)) {
+            int linkedCellIndex;
+            SpsCell linkedCell;
+            if (!sps_try_find_cell(
+                socketTex,
+                sps_hash_id(previous.nextId, previous.playerId),
+                previous.nextId,
+                previous.playerId,
+                SPS_PRODUCT_SOCKET,
+                linkedCellIndex,
+                linkedCell
+            )) {
                 break;
             }
+            CellData linkedCellData = sps_read_positive_cell(linkedCell, linkedCellIndex);
+            SocketData linkedSocketData = sps_read_positive_socket(linkedCell);
 
             float unusedDistanceSq;
             float3 traversalNormal;

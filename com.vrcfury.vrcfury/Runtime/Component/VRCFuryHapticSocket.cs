@@ -37,6 +37,7 @@ namespace VF.Component {
         public State activeActions = new State();
         public bool useHipAvoidance = true;
         public bool useSharedTag = true;
+        public bool useLights = true;
         public bool useRadiusOffset = false;
         public List<string> tags = new List<string>();
         public List<Transform> guidedPath = new List<Transform>();
