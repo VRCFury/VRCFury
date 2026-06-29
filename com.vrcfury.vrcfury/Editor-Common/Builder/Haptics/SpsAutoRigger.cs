@@ -11,6 +11,8 @@ using Object = UnityEngine.Object;
 namespace VF.Builder.Haptics {
     internal static class SpsAutoRigger {
         public static Renderer AutoRig(Renderer renderer, VFGameObject bakeRoot, float worldLength, float worldRadius, float[] activeFromMask) {
+            if (renderer is SkinnedMeshRenderer existingSkin && existingSkin.bones.Length > 1) return renderer;
+
             SkinnedMeshRenderer skin;
             if (renderer is MeshRenderer mr) {
                 var obj = mr.owner();
@@ -40,8 +42,6 @@ namespace VF.Builder.Haptics {
                 return renderer;
             }
 
-            if (skin.bones.Length > 1) return skin;
-
             var mesh = skin.GetMutableMesh("SPS Autorig");
             if (mesh == null) throw new Exception("Missing mesh");
 
@@ -51,15 +51,13 @@ namespace VF.Builder.Haptics {
                 mesh.bindposes = new[] { Matrix4x4.identity };
                 mesh.Dirty();
                 skin.bones = new Transform[] { mainBone };
-                skin.SetMesh(mesh);
-                skin.Dirty();
             }
 
             float GetActive(int i) {
                 return activeFromMask == null ? 1 : activeFromMask[i];
             }
 
-            var bake = MeshBaker.BakeMesh(skin, skin.GetRootBone());
+            var bake = MeshBaker.BakeMesh(skin, bakeRoot);
             const int boneCount = 10;
 
             // This is left outside of the bake root so that it isn't shown by head chop
@@ -68,8 +66,8 @@ namespace VF.Builder.Haptics {
             var lastParent = autoRigRoot;
             var bones = new List<Transform>();
             var bindPoses = new List<Matrix4x4>();
-            var localLength = worldLength / skin.GetRootBone().worldScale.z;
-            var localRadius = worldRadius / skin.GetRootBone().worldScale.z;
+            var localLength = worldLength / bakeRoot.worldScale.z;
+            var localRadius = worldRadius / bakeRoot.worldScale.z;
             for (var i = 0; i < boneCount; i++) {
                 var bone = GameObjects.Create("Bone" + i, lastParent);
                 var pos = bone.localPosition;
@@ -98,6 +96,7 @@ namespace VF.Builder.Haptics {
                 weights[i] = CalculateWeight(closestBoneId, otherBoneId, distanceToOther, GetActive(i));
             }
             mesh.boneWeights = weights;
+            mesh.RecalculateBounds();
 
             var physbone = autoRigRoot.AddComponent<VRCPhysBone>();
             physbone.integrationType = VRCPhysBoneBase.IntegrationType.Advanced;
