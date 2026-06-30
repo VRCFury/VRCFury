@@ -113,6 +113,14 @@ void sps_filter_cells(
     [loop]
     for (int candidateIndex = 0; candidateIndex < SPS_CANDIDATE_COUNT; candidateIndex++) {
         if (candidateIndex >= candidateCount) break;
+
+        if (cells[candidateIndex].cellIndex < 0) {
+            // Lights are always accepted
+            cells[writeIndex] = cells[candidateIndex];
+            writeIndex++;
+            continue;
+        }
+
         CellData candidate = cells[candidateIndex];
         uint candidatePlayerId = candidate.playerId;
         SocketData socketData = sps_read_socket(tex, candidate.cellIndex);
@@ -157,11 +165,11 @@ void sps_collect_legacy_candidates(
 ) {
     if (!sps_to_bool(_SPS_Legacy)) return;
 
-    uint lightFlags[4];
-    bool lightValid[4];
+    uint lightType[4];
     float3 lightWorld[4];
-    for (int i = 0; i < 4; i++) {
-        lightValid[i] = sps_light_parse(i, lightWorld[i], lightFlags[i]);
+    for (uint i = 0; i < 4; i++) {
+        lightType[i] = sps_light_type(i);
+        lightWorld[i] = sps_light_world(i);
     }
 
     bool rootUsed[4];
@@ -173,7 +181,7 @@ void sps_collect_legacy_candidates(
         int rootIndex = -1;
         for (int i = 0; i < 4; i++) {
             if (rootUsed[i]) continue;
-            if (!lightValid[i] || lightFlags[i] == SPS_LEGACY_LIGHT_FRONT) continue;
+            if (lightType[i] != SPS_LEGACY_LIGHT_HOLE && lightType[i] != SPS_LEGACY_LIGHT_RING) continue;
             float3 offset = lightWorld[i] - plugWorld;
             float distanceSq = sps_length_sq(offset);
             if (rootIndex < 0 || distanceSq < bestDistanceSq) {
@@ -188,10 +196,10 @@ void sps_collect_legacy_candidates(
         bool frontFound = false;
         float bestFrontDistanceSq = 0.01;
         for (int li = 0; li < 4; li++) {
-            if (!lightValid[li]) continue;
+            if (lightType[li] != SPS_LEGACY_LIGHT_FRONT) continue;
             float3 frontOffset = lightWorld[li] - lightWorld[rootIndex];
             float distanceSq = sps_length_sq(frontOffset);
-            if (lightFlags[li] == SPS_LEGACY_LIGHT_FRONT && distanceSq < bestFrontDistanceSq) {
+            if (distanceSq < bestFrontDistanceSq) {
                 frontFound = true;
                 frontIndex = li;
                 bestFrontDistanceSq = distanceSq;

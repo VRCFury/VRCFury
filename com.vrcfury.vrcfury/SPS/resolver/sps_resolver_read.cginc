@@ -6,14 +6,7 @@
 #include "../common/sps_utils.cginc"
 #include "sps_resolver_globals.cginc"
 #include "sps_resolver_types.cginc"
-
-uint sps_read_legacy_socket_flags(int lightIndex) {
-    float range = 5.0 * rsqrt(unity_4LightAtten0[lightIndex]);
-    int secondDecimal = round(fmod(range, 0.1) * 100.0);
-    if (secondDecimal == 1) return SPS_SOCKET_FLAG_HOLE;
-    if (secondDecimal == 2) return SPS_SOCKET_FLAG_DOUBLE_SIDED;
-    return 0u;
-}
+#include "sps_resolver_light.cginc"
 
 CellData sps_read_legacy_cell(int cellIndex) {
     uint pairIndex = (uint)(-1 - cellIndex);
@@ -89,8 +82,9 @@ inline SocketData sps_make_empty_socket() {
 
 SocketData sps_read_legacy_socket(int cellIndex) {
     SocketData data = sps_make_empty_socket();
-    data.flags = sps_read_legacy_socket_flags((int)(((uint)(-1 - cellIndex)) >> 2));
-    data.tags[0] = 1337u;
+    uint type = sps_light_type((int)(((uint)(-1 - cellIndex)) >> 2));
+    if (type == SPS_LEGACY_LIGHT_HOLE) data.flags = SPS_SOCKET_FLAG_HOLE;
+    else if (type == SPS_LEGACY_LIGHT_RING) data.flags = SPS_SOCKET_FLAG_DOUBLE_SIDED;
     return data;
 }
 
@@ -111,8 +105,9 @@ SocketData sps_read_socket(SpsTexture tex, int cellIndex) {
 float3 sps_resolver_socket_target_world(CellData candidate, uint flags) {
     if (sps_has_flag(flags, SPS_SOCKET_FLAG_RADIUS_OFFSET)) {
         return candidate.world + candidate.up * sps_resolver_radius();
+    } else {
+        return candidate.world;
     }
-    return candidate.world;
 }
 
 #endif

@@ -40,7 +40,11 @@ namespace VF.Component {
         public bool useLights = true;
         public bool useRadiusOffset = false;
         public List<string> tags = new List<string>();
-        public List<Transform> guidedPath = new List<Transform>();
+        [Serializable]
+        public class GuidedPathStop {
+            public Transform transform;
+        }
+        public List<GuidedPathStop> guidedPathStops = new List<GuidedPathStop>();
 
         public bool enablePlugLengthParameter;
         public string plugLengthParameterName;
