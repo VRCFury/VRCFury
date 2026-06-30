@@ -379,7 +379,7 @@ namespace VF.Service {
             }
 
             if (autoOn != null && autoSockets.Count > 0) {
-                var autoActiveNum = fx.NewInt("AutoSocketNum");
+                var autoActiveNum = fx.NewInt("AutoSocketNum", def: -1);
                 var autoActiveDist = fx.NewFloat("AutoActiveDist");
                 var autoCurrentDist = fx.NewFloat("AutoCurrentDist");
                 var dbt = directTreeService.Create("SPS - Auto Mode");
@@ -403,11 +403,21 @@ namespace VF.Service {
 
                 var layer = fx.NewLayer("SPS - Auto Socket Comparison");
                 var remoteTrap = layer.NewState("Remote trap");
-                var stopped = layer.NewState("Stopped");
-                remoteTrap.TransitionsTo(stopped).When(fx.IsLocal().IsTrue());
+                var idle = layer.NewState("Idle");
+                remoteTrap.TransitionsTo(idle).When(fx.IsLocal().IsTrue());
 
-                var lastState = stopped;
-                Action<VFState> addNext = (next) => stopped.TransitionsTo(next).When(autoOn.IsTrue());
+                var active = layer.NewState("Active");
+                idle.TransitionsTo(active).When(autoOn.IsTrue());
+
+                var turnOffState = layer.NewState("Turn Off");
+                active.TransitionsTo(turnOffState).When(autoOn.IsFalse());
+                turnOffState.Drives(autoActiveNum, -1);
+                turnOffState.Drives(autoActiveDist, 0);
+                foreach (var o in autoSockets) turnOffState.Drives(o.Item2, false);
+                turnOffState.TransitionsTo(active).When(autoOn.IsTrue());
+
+                var lastState = idle;
+                Action<VFState> addNext = (next) => active.TransitionsTo(next).When(fx.Always());
 
                 var settleTime = 0.05f;
 
@@ -430,6 +440,9 @@ namespace VF.Service {
                     var settleState3 = layer.NewState($"Settle3 {name}").WithAnimation(evalClip);
                     settleState2.TransitionsTo(settleState3).When(fx.Always());
 
+                    // Active socket went out of range
+                    settleState3.TransitionsTo(turnOffState).When(autoActiveNum.IsEqualTo(i).And(autoCurrentDist.IsLessThanOrEquals(0)));
+
                     var updateState = layer.NewState($"Update {name}").WithAnimation(evalClip);
                     updateState.DrivesCopy(autoCurrentDist, autoActiveDist);
                     settleState3.TransitionsTo(updateState).When(autoActiveNum.IsEqualTo(i));
@@ -450,7 +463,7 @@ namespace VF.Service {
                     };
                 }
 
-                if (addNext != null) addNext(stopped);
+                if (addNext != null) addNext(active);
             }
         }
     }
