@@ -380,6 +380,7 @@ namespace VF.Service {
                 }
             }
 
+#if VRCSDK_HAS_VRCCONSTRAINTS
             if (autoOn != null && autoSockets.Count > 0) {
                 var autoActiveNum = fx.NewInt("AutoSocketNum");
                 var autoActiveDist = fx.NewFloat("AutoActiveDist");
@@ -456,6 +457,7 @@ namespace VF.Service {
 
                 if (addNext != null) addNext(stopped);
             }
+#endif
         }
     }
 }
