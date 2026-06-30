@@ -551,6 +551,7 @@ namespace VF.Inspector {
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
             var localSpace = GameObjects.Create("BakedSpsPlug", transform);
+            localSpace.worldScale = Vector3.one;
             localSpace.localPosition = localPosition;
             localSpace.localRotation = localRotation;
 
@@ -657,21 +658,7 @@ namespace VF.Inspector {
                         return new RendererResult {
                             renderer = renderer,
                             configureMaterial = ConfigureMaterial,
-                            spsBlendshapes = spsBlendshapes,
-                            materialProperties = plug.enableSps
-                                ? new List<SpsConfigurer.MaterialProperty> {
-                                    new SpsConfigurer.MaterialProperty {
-                                        renderer = renderer,
-                                        propertyName = SpsMarkersService.Configured,
-                                        value = 1
-                                    },
-                                    new SpsConfigurer.MaterialProperty {
-                                        renderer = renderer,
-                                        propertyName = SpsMarkersService.Id,
-                                        value = resolverHash
-                                    }
-                                }
-                                : null
+                            spsBlendshapes = spsBlendshapes
                         };
                     } catch (Exception e) {
                         throw new ExceptionWithCause($"Failed to configure renderer: {owner.GetPath()}", e);
@@ -735,7 +722,6 @@ namespace VF.Inspector {
             public Renderer renderer;
             public Func<int, Material, Material> configureMaterial;
             public IList<string> spsBlendshapes;
-            public List<SpsConfigurer.MaterialProperty> materialProperties;
         }
     }
 }

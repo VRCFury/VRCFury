@@ -433,6 +433,7 @@ namespace VF.Inspector {
             var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket);
 
             var bakeRoot = GameObjects.Create("BakedSpsSocket", transform);
+            bakeRoot.worldScale = Vector3.one;
             bakeRoot.localPosition = localPosition;
             bakeRoot.localRotation = localRotation;
 

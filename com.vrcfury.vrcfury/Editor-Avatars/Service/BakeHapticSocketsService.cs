@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Exceptions;
@@ -16,7 +15,6 @@ using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
-using VRC.SDK3.Dynamics.Constraint.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Service {
@@ -380,7 +378,6 @@ namespace VF.Service {
                 }
             }
 
-#if VRCSDK_HAS_VRCCONSTRAINTS
             if (autoOn != null && autoSockets.Count > 0) {
                 var autoActiveNum = fx.NewInt("AutoSocketNum");
                 var autoActiveDist = fx.NewFloat("AutoActiveDist");
@@ -402,9 +399,7 @@ namespace VF.Service {
                 receiver.localOnly = true;
                 receiver.shapeType = ContactBase.ShapeType.Sphere;
 
-                var constraint = autoReceiverObj.AddComponent<VRCParentConstraint>();
-                constraint.IsActive = true;
-                constraint.Locked = true;
+                var constraint = VFConstraint.CreateParent(autoReceiverObj);
 
                 var layer = fx.NewLayer("SPS - Auto Socket Comparison");
                 var remoteTrap = layer.NewState("Remote trap");
@@ -418,11 +413,11 @@ namespace VF.Service {
 
                 for (var i = 0; i < autoSockets.Count && i < 16; i++) {
                     var (name, enabled, obj) = autoSockets[i];
-                    constraint.Sources.Add(new VRCConstraintSource(obj, 0, Vector3.zero, Vector3.zero));
+                    constraint.AddSource(obj);
 
                     // We need to settle for a frame for the constraint to move
                     var evalClip = clipFactory.NewClip($"Settle1 {name}");
-                    evalClip.SetCurve(constraint, $"Sources.source{i}.Weight", 1);
+                    evalClip.SetCurve(constraint.GetComponent(), constraint.GetWeightProperty(i), 1);
                     var settleState = layer.NewState($"Settle {name}").WithAnimation(evalClip).Move(lastState, 1, 0);
                     lastState = settleState;
                     if (addNext != null) addNext(settleState);
@@ -457,7 +452,6 @@ namespace VF.Service {
 
                 if (addNext != null) addNext(stopped);
             }
-#endif
         }
     }
 }

@@ -241,7 +241,6 @@ namespace VF.Service {
                         spsBlendshapes = r.spsBlendshapes
                     });
                     spsPlayerIdService.Register(r.renderer);
-                    RegisterMaterialProperties(r.materialProperties);
                 }
 
                 if (bakeInfo.resolverRenderer != null) {

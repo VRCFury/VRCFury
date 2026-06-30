@@ -24,7 +24,7 @@ namespace VF.Builder.Haptics {
         private const uint IncludeOthers = 2;
 
         public class MaterialProperty {
-            public Renderer renderer;
+            public UnityEngine.Component component;
             public string propertyName;
             public float value;
         }
@@ -73,15 +73,6 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        public static void ConfigureResolverProperties(Action<string, float> set, float worldLength, float worldRadius, VRCFuryHapticPlug plug) {
-            set(SpsBakedLength, worldLength);
-            set(SpsBakedRadius, worldRadius);
-            set(SpsEnabled, plug.spsAnimatedEnabled);
-            set(SpsOverrun, plug.spsOverrun ? 1 : 0);
-            set(SpsLegacy, plug.useLights ? 1 : 0);
-            ConfigureResolverTagRules(set, plug);
-        }
-
         public static List<MaterialProperty> GetResolverProperties(
             Renderer renderer,
             float worldLength,
@@ -89,17 +80,60 @@ namespace VF.Builder.Haptics {
             float resolverHash,
             VRCFuryHapticPlug plug
         ) {
+            Transform transform = renderer.owner();
+            renderer.owner().localScale = Vector3.one * 0.001f;
+
             var properties = new List<MaterialProperty>();
+            properties.Add(new MaterialProperty { component = transform, propertyName = "m_LocalScale.x", value = 1 });
+            properties.Add(new MaterialProperty { component = transform, propertyName = "m_LocalScale.y", value = 1 });
+            properties.Add(new MaterialProperty { component = transform, propertyName = "m_LocalScale.z", value = 1 });
             void Add(string propertyName, float value) {
                 properties.Add(new MaterialProperty {
-                    renderer = renderer,
-                    propertyName = propertyName,
+                    component = renderer,
+                    propertyName = $"material.{propertyName}",
                     value = value
                 });
             }
-            ConfigureResolverProperties(Add, worldLength, worldRadius, plug);
+            Add(SpsBakedLength, worldLength);
+            Add(SpsBakedRadius, worldRadius);
+            Add(SpsEnabled, plug.spsAnimatedEnabled);
+            Add(SpsOverrun, plug.spsOverrun ? 1 : 0);
+            Add(SpsLegacy, plug.useLights ? 1 : 0);
+            ConfigureResolverTagRules(Add, plug);
             Add(SpsMarkersService.Configured, 1);
             Add(SpsMarkersService.Id, resolverHash);
+            return properties;
+        }
+
+        public static List<MaterialProperty> GetSocketProperties(
+            Renderer renderer,
+            VRCFuryHapticSocket socket,
+            VRCFuryHapticSocket.AddLight lightType,
+            float socketId,
+            int nextSocketId = 0,
+            bool includeTags = true
+        ) {
+            Transform transform = renderer.owner();
+            renderer.owner().localScale = Vector3.one * 0.001f;
+
+            var properties = new List<MaterialProperty>();
+            properties.Add(new MaterialProperty { component = transform, propertyName = "m_LocalScale.x", value = 1 });
+            properties.Add(new MaterialProperty { component = transform, propertyName = "m_LocalScale.y", value = 1 });
+            properties.Add(new MaterialProperty { component = transform, propertyName = "m_LocalScale.z", value = 1 });
+            void Add(string propertyName, float value) {
+                properties.Add(new MaterialProperty {
+                    component = renderer,
+                    propertyName = $"material.{propertyName}",
+                    value = value
+                });
+            }
+            Add(SpsMarkersService.Configured, 1);
+            Add(SpsMarkersService.Id, socketId);
+            Add(SpsMarkersService.SocketHole, lightType == VRCFuryHapticSocket.AddLight.Hole ? 1 : 0);
+            Add(SpsMarkersService.SocketDoubleSided, lightType == VRCFuryHapticSocket.AddLight.Ring ? 1 : 0);
+            Add(SpsMarkersService.SocketRadiusOffset, socket.useRadiusOffset ? 1 : 0);
+            Add(SpsMarkersService.SocketNextId, nextSocketId);
+            ConfigureSocketTags(Add, socket, includeTags);
             return properties;
         }
 
@@ -112,54 +146,18 @@ namespace VF.Builder.Haptics {
                 || propertyName == $"material.{SpsLegacy}";
         }
 
-        public static void ConfigureSocketProperties(
-            Action<string, float> set,
-            VRCFuryHapticSocket socket,
-            VRCFuryHapticSocket.AddLight lightType,
-            int nextSocketId = 0,
-            bool includeTags = true
-        ) {
-            set(SpsMarkersService.SocketHole, lightType == VRCFuryHapticSocket.AddLight.Hole ? 1 : 0);
-            set(SpsMarkersService.SocketDoubleSided, lightType == VRCFuryHapticSocket.AddLight.Ring ? 1 : 0);
-            set(SpsMarkersService.SocketRadiusOffset, socket.useRadiusOffset ? 1 : 0);
-            set(SpsMarkersService.SocketNextId, nextSocketId);
-            ConfigureSocketTags(set, socket, includeTags);
-        }
-
-        public static List<MaterialProperty> GetSocketProperties(
-            Renderer renderer,
-            VRCFuryHapticSocket socket,
-            VRCFuryHapticSocket.AddLight lightType,
-            float socketId,
-            int nextSocketId = 0,
-            bool includeTags = true
-        ) {
-            var properties = new List<MaterialProperty>();
-            void Add(string propertyName, float value) {
-                properties.Add(new MaterialProperty {
-                    renderer = renderer,
-                    propertyName = propertyName,
-                    value = value
-                });
-            }
-            ConfigureSocketProperties(Add, socket, lightType, nextSocketId, includeTags);
-            Add(SpsMarkersService.Configured, 1);
-            Add(SpsMarkersService.Id, socketId);
-            return properties;
-        }
-
         public static void AddMaterialPropertyAnimator(IEnumerable<MaterialProperty> properties) {
             var propertyList = (properties ?? new List<MaterialProperty>())
-                .Where(property => property?.renderer != null)
+                .Where(property => property?.component != null)
                 .ToList();
             if (propertyList.Count == 0) return;
 
-            foreach (var group in propertyList.GroupBy(property => property.renderer)) {
+            foreach (var group in propertyList.GroupBy(property => property.component.owner())) {
                 AddMaterialPropertyAnimator(group.Key, group);
             }
         }
 
-        private static void AddMaterialPropertyAnimator(Renderer renderer, IEnumerable<MaterialProperty> properties) {
+        private static void AddMaterialPropertyAnimator(VFGameObject obj, IEnumerable<MaterialProperty> properties) {
             var clip = VrcfObjectFactory.Create<AnimationClip>();
             clip.name = "SpsMaterialProperties";
 
@@ -170,10 +168,9 @@ namespace VF.Builder.Haptics {
                 .NewState("Properties")
                 .WithAnimation(clip);
 
-            var owner = renderer.owner();
-            AddMaterialPropertyCurves(clip, owner, properties);
+            AddMaterialPropertyCurves(clip, obj, properties);
 
-            var animator = owner.GetComponent<Animator>() ?? owner.AddComponent<Animator>();
+            var animator = obj.AddComponent<Animator>();
             animator.runtimeAnimatorController = controller;
         }
 
@@ -182,21 +179,12 @@ namespace VF.Builder.Haptics {
             VFGameObject animatorObject,
             IEnumerable<MaterialProperty> properties
         ) {
-            var scaledRenderers = new HashSet<Renderer>();
             foreach (var property in properties ?? new List<MaterialProperty>()) {
-                if (property?.renderer == null) continue;
-                var renderer = property.renderer;
-                var owner = renderer.owner();
+                if (property?.component == null) continue;
+                var component = property.component;
+                var owner = component.owner();
                 var path = owner.GetPath(animatorObject);
-                if (renderer is MeshRenderer && scaledRenderers.Add(renderer)) {
-                    renderer.owner().worldScale = new Vector3(1, 1, 1);
-                    var localScale = renderer.owner().localScale;
-                    renderer.owner().worldScale = new Vector3(0.001f, 0.001f, 0.001f);
-                    clip.SetCurve(path, typeof(Transform), "m_LocalScale.x", localScale.x);
-                    clip.SetCurve(path, typeof(Transform), "m_LocalScale.y", localScale.y);
-                    clip.SetCurve(path, typeof(Transform), "m_LocalScale.z", localScale.z);
-                }
-                clip.SetCurve(path, renderer.GetType(), $"material.{property.propertyName}", property.value);
+                clip.SetCurve(path, component.GetType(), property.propertyName, property.value);
             }
         }
 
