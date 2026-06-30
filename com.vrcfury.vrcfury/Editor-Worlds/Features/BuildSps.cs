@@ -42,10 +42,9 @@ namespace VF.Features {
                     try {
                         var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, spsMarkers: spsMarkers);
                         if (bakeResult != null) {
-                            SpsConfigurer.AddMaterialPropertyAnimator(
-                                bakeResult.renderers.SelectMany(r => r.materialProperties ?? Enumerable.Empty<SpsConfigurer.MaterialProperty>())
-                                    .Concat(bakeResult.resolverMaterialProperties ?? Enumerable.Empty<SpsConfigurer.MaterialProperty>())
-                            );
+                            if (bakeResult.resolverMaterialProperties != null) {
+                                SpsConfigurer.AddMaterialPropertyAnimator(bakeResult.resolverMaterialProperties);
+                            }
                             var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", bakeResult.oscId);
                             var saver = new SaveAssetsSession();
                             foreach (var c in bakeResult.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {

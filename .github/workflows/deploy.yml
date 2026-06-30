@@ -12,8 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         vrcsdkUnityVersion:
-          - [ 3.10.3, 6000.4.4f1 ]
-          - [ 3.10.3, 2022.3.22f1 ]
+          - [ 3.10.4, 6000.4.4f1 ]
+          - [ 3.10.4, 2022.3.22f1 ]
           - [ 3.7.0, 2022.3.6f1 ]
           - [ 3.6.1, 2022.3.6f1 ]
           - [ 3.5.2, 2022.3.6f1 ]
@@ -21,14 +21,16 @@ jobs:
           - [ 3.4.2, 2019.4.31f1 ]
         platform:
           - windows
-          - android
         sdkKind:
           - avatars
         include:
-          - vrcsdkUnityVersion: [ 3.10.1, 2022.3.22f1 ]
+          - vrcsdkUnityVersion: [ 3.10.4, 2022.3.22f1 ]
+            platform: android
+            sdkKind: avatars
+          - vrcsdkUnityVersion: [ 3.10.4, 2022.3.22f1 ]
             platform: windows
             sdkKind: worlds
-          - vrcsdkUnityVersion: [ 3.10.1, 2022.3.22f1 ]
+          - vrcsdkUnityVersion: [ 3.10.4, 2022.3.22f1 ]
             platform: android
             sdkKind: worlds
     steps:
