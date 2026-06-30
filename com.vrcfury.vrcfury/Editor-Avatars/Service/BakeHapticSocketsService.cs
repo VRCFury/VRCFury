@@ -418,7 +418,7 @@ namespace VF.Service {
 
                 for (var i = 0; i < autoSockets.Count && i < 16; i++) {
                     var (name, enabled, obj) = autoSockets[i];
-                    constraint.Sources.Add(new VRCConstraintSource(obj, 0));
+                    constraint.Sources.Add(new VRCConstraintSource(obj, 0, Vector3.zero, Vector3.zero));
 
                     // We need to settle for a frame for the constraint to move
                     var evalClip = clipFactory.NewClip($"Settle1 {name}");
