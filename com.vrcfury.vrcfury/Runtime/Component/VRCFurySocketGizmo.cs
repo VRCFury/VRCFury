@@ -1,12 +1,29 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace VF.Component {
     [AddComponentMenu("")]
     internal class VRCFurySocketGizmo : VRCFuryPlayComponent {
-        public VRCFuryHapticSocket.AddLight type;
-        public Vector3 pos;
-        public Quaternion rot;
+        [Serializable]
+        public class GuidedPathStopData {
+            public Transform transform;
+        }
+
+        [Serializable]
+        public class SocketGizmoData {
+            public VRCFuryHapticSocket.AddLight type;
+            public Vector3 pos;
+            public Quaternion rot;
+            public bool useRadiusOffset;
+            public string name;
+            public bool hasHandTouchZone;
+            public float handTouchZoneLength;
+            public float handTouchZoneRadius;
+            public List<GuidedPathStopData> guidedPathStops = new List<GuidedPathStopData>();
+        }
+
+        public SocketGizmoData data = new SocketGizmoData();
         public bool show = true;
 
         bool lastShow = false;
