@@ -7,13 +7,27 @@
 #define SPS_RESOLVER_PAYLOAD_APPLY_LERP_INDEX 0u
 #define SPS_RESOLVER_CHAIN_BASE 1u
 #define SPS_RESOLVER_CHAIN_STRIDE 11u
+#define SPS_RESOLVER_CHAIN_VALUES (SPS_CHAIN_MAX_SOCKETS * SPS_RESOLVER_CHAIN_STRIDE)
+#define SPS_RESOLVER_CHAIN_END (SPS_RESOLVER_CHAIN_BASE + SPS_RESOLVER_CHAIN_VALUES)
+#define SPS_RESOLVER_METADATA_BASE 176u
+#define SPS_RESOLVER_METADATA_COLOR_X_INDEX (SPS_RESOLVER_METADATA_BASE + 0u)
+#define SPS_RESOLVER_METADATA_COLOR_Y_INDEX (SPS_RESOLVER_METADATA_BASE + 1u)
+#define SPS_RESOLVER_METADATA_COLOR_Z_INDEX (SPS_RESOLVER_METADATA_BASE + 2u)
+#define SPS_RESOLVER_METADATA_LENGTH_INDEX (SPS_RESOLVER_METADATA_BASE + 3u)
+#define SPS_RESOLVER_METADATA_RADIUS_INDEX (SPS_RESOLVER_METADATA_BASE + 4u)
+#define SPS_RESOLVER_METADATA_SOCKET_PLAYER_ID_INDEX (SPS_RESOLVER_METADATA_BASE + 5u)
+#define SPS_RESOLVER_METADATA_SOCKET_UNIQUE_ID_INDEX (SPS_RESOLVER_METADATA_BASE + 6u)
+#define SPS_RESOLVER_METADATA_SOCKET_FRACTION_INDEX (SPS_RESOLVER_METADATA_BASE + 7u)
+#define SPS_RESOLVER_METADATA_VALUES 8u
+#define SPS_RESOLVER_RADIUS_SAMPLE_COUNT 32u
+#define SPS_RESOLVER_RADIUS_SAMPLE_BASE 192u
 // Extends through +8: world xyz, forward xyz, up xyz.
 #define SPS_RESOLVER_CHAIN_WORLD_INDEX(segmentIndex) (SPS_RESOLVER_CHAIN_BASE + (uint)(segmentIndex) * SPS_RESOLVER_CHAIN_STRIDE + 0u)
 #define SPS_RESOLVER_CHAIN_FORWARD_INDEX(segmentIndex) (SPS_RESOLVER_CHAIN_BASE + (uint)(segmentIndex) * SPS_RESOLVER_CHAIN_STRIDE + 3u)
 #define SPS_RESOLVER_CHAIN_UP_INDEX(segmentIndex) (SPS_RESOLVER_CHAIN_BASE + (uint)(segmentIndex) * SPS_RESOLVER_CHAIN_STRIDE + 6u)
 #define SPS_RESOLVER_CHAIN_FLAGS_INDEX(segmentIndex) (SPS_RESOLVER_CHAIN_BASE + (uint)(segmentIndex) * SPS_RESOLVER_CHAIN_STRIDE + 9u)
 #define SPS_RESOLVER_CHAIN_PULLOUT_LERP_INDEX(segmentIndex) (SPS_RESOLVER_CHAIN_BASE + (uint)(segmentIndex) * SPS_RESOLVER_CHAIN_STRIDE + 10u)
-#define SPS_RESOLVER_PAYLOAD_VALUES (SPS_RESOLVER_CHAIN_BASE + SPS_CHAIN_MAX_SOCKETS * SPS_RESOLVER_CHAIN_STRIDE)
+#define SPS_RESOLVER_PAYLOAD_VALUES (SPS_RESOLVER_RADIUS_SAMPLE_BASE + SPS_RESOLVER_RADIUS_SAMPLE_COUNT)
 
 uint sps_resolver_chain_payload_index(uint baseIndex, int sampleIndex) {
     return sps_cell_pixel_index_from_payload_index(baseIndex + (uint)(sampleIndex - 1) * SPS_RESOLVER_CHAIN_STRIDE);
@@ -58,6 +72,16 @@ uint sps_read_resolver_chain_flags(SpsCell cell, int sampleIndex) {
 float sps_read_resolver_chain_pullout_lerp(SpsCell cell, int sampleIndex) {
     if (sampleIndex <= 0) return 0;
     return sps_read_resolver_chain_float(cell, SPS_RESOLVER_CHAIN_PULLOUT_LERP_INDEX(0), sampleIndex);
+}
+
+uint sps_resolver_radius_payload_index(int sampleIndex) {
+    return sps_cell_pixel_index_from_payload_index(
+        SPS_RESOLVER_RADIUS_SAMPLE_BASE + (uint)clamp(sampleIndex, 0, (int)SPS_RESOLVER_RADIUS_SAMPLE_COUNT - 1)
+    );
+}
+
+float sps_read_resolver_radius_sample(SpsCell cell, int sampleIndex) {
+    return cell.read_float(sps_resolver_radius_payload_index(sampleIndex));
 }
 
 #endif

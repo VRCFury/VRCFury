@@ -26,6 +26,39 @@ float sps_resolver_chain_apply_lerp(v2f input, int segmentIndex) {
     return input.chainApplyLerp[segmentIndex] * saturate(_SPS_Enabled);
 }
 
+float sps_resolver_metadata_color_component(uint payloadIndex) {
+    if (payloadIndex == SPS_RESOLVER_METADATA_COLOR_X_INDEX) return _SPS_MetadataColor.x;
+    if (payloadIndex == SPS_RESOLVER_METADATA_COLOR_Y_INDEX) return _SPS_MetadataColor.y;
+    return _SPS_MetadataColor.z;
+}
+
+void sps_resolver_first_socket_data(
+    SpsTexture socketTex,
+    v2f input,
+    out bool found,
+    out CellData socketCell,
+    out SocketData socketData
+) {
+    found = input.chainSlotIndex[0] > SPS_CHAIN_REF_INVALID;
+    if (!found) {
+        socketCell = sps_make_empty_cell();
+        socketData = sps_make_empty_socket();
+        return;
+    }
+    socketCell = sps_read_cell(socketTex, input.chainSlotIndex[0]);
+    socketData = sps_read_socket(socketTex, socketCell.cellIndex);
+}
+
+float sps_resolver_first_socket_fraction(CellData socketCell, SocketData socketData) {
+    float resolverLength = sps_resolver_length();
+    if (resolverLength <= 0) return 0;
+
+    float3 plugWorld = sps_object_origin_world();
+    float3 targetWorld = sps_resolver_socket_target_world(socketCell, socketData.flags);
+    float distanceToTarget = length(targetWorld - plugWorld);
+    return saturate(1.0 - distanceToTarget / resolverLength);
+}
+
 bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadIndex, out float4 rgba) {
     rgba = 0;
     if (payloadIndex >= SPS_RESOLVER_PAYLOAD_VALUES) return false;
@@ -34,7 +67,42 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
         rgba = sps_encode_float(sps_resolver_chain_apply_lerp(input, 0));
         return true;
     }
+    if (payloadIndex >= SPS_RESOLVER_METADATA_BASE
+        && payloadIndex < SPS_RESOLVER_METADATA_BASE + SPS_RESOLVER_METADATA_VALUES) {
+        if (payloadIndex <= SPS_RESOLVER_METADATA_COLOR_Z_INDEX) {
+            rgba = sps_encode_float(sps_resolver_metadata_color_component(payloadIndex));
+            return true;
+        }
+        if (payloadIndex == SPS_RESOLVER_METADATA_LENGTH_INDEX) {
+            rgba = sps_encode_float(sps_resolver_length());
+            return true;
+        }
+        if (payloadIndex == SPS_RESOLVER_METADATA_RADIUS_INDEX) {
+            rgba = sps_encode_float(sps_resolver_radius());
+            return true;
+        }
+        bool foundSocket;
+        CellData firstSocketCell;
+        SocketData firstSocketData;
+        sps_resolver_first_socket_data(socketTex, input, foundSocket, firstSocketCell, firstSocketData);
+        if (payloadIndex == SPS_RESOLVER_METADATA_SOCKET_PLAYER_ID_INDEX) {
+            rgba = sps_encode_uint(foundSocket ? firstSocketCell.playerId : 0u);
+            return true;
+        }
+        if (payloadIndex == SPS_RESOLVER_METADATA_SOCKET_UNIQUE_ID_INDEX) {
+            rgba = sps_encode_uint(foundSocket ? firstSocketCell.id : 0u);
+            return true;
+        }
+        rgba = sps_encode_float(foundSocket ? sps_resolver_first_socket_fraction(firstSocketCell, firstSocketData) : 0);
+        return true;
+    }
+    if (payloadIndex >= SPS_RESOLVER_RADIUS_SAMPLE_BASE
+        && payloadIndex < SPS_RESOLVER_RADIUS_SAMPLE_BASE + SPS_RESOLVER_RADIUS_SAMPLE_COUNT) {
+        rgba = sps_encode_float(sps_resolver_radius_sample((int)(payloadIndex - SPS_RESOLVER_RADIUS_SAMPLE_BASE)));
+        return true;
+    }
     if (payloadIndex < SPS_RESOLVER_CHAIN_BASE) return true;
+    if (payloadIndex >= SPS_RESOLVER_CHAIN_END) return true;
 
     uint chainValueIndex = payloadIndex - SPS_RESOLVER_CHAIN_BASE;
     uint segmentIndex = chainValueIndex / SPS_RESOLVER_CHAIN_STRIDE;

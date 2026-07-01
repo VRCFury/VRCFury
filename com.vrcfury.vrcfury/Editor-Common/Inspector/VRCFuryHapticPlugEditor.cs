@@ -658,7 +658,8 @@ namespace VF.Inspector {
                         return new RendererResult {
                             renderer = renderer,
                             configureMaterial = ConfigureMaterial,
-                            spsBlendshapes = spsBlendshapes
+                            spsBlendshapes = spsBlendshapes,
+                            activeFromMask = activeFromMask
                         };
                     } catch (Exception e) {
                         throw new ExceptionWithCause($"Failed to configure renderer: {owner.GetPath()}", e);
@@ -667,7 +668,8 @@ namespace VF.Inspector {
             } else {
                 rendererResults = renderers.Select(r => new RendererResult {
                     renderer = r,
-                    configureMaterial = (slotNum,m) => m
+                    configureMaterial = (slotNum,m) => m,
+                    activeFromMask = null
                 }).ToArray();
             }
 
@@ -678,6 +680,15 @@ namespace VF.Inspector {
             }
 
             if (plug.enableSps) {
+                var bakedRadiusSamples = SpsBaker.GetPackedResolverRadiusSamples(
+                    rendererResults.Select(r => new SpsBaker.RendererBakeInput {
+                        renderer = r.renderer,
+                        activeFromMask = r.activeFromMask
+                    }),
+                    localSpace,
+                    worldLength
+                );
+                var metadataColor = SpsColorSampler.GetColor(rendererResults.Select(r => r.renderer));
                 var resolverObj = GameObjects.Create("SpsResolver", localSpace);
                 resolverObj.AddComponent<MeshFilter>();
                 var meshRenderer = resolverObj.AddComponent<MeshRenderer>();
@@ -686,6 +697,8 @@ namespace VF.Inspector {
                     meshRenderer,
                     worldLength,
                     worldRadius,
+                    bakedRadiusSamples,
+                    metadataColor,
                     resolverHash,
                     plug
                 );
@@ -722,6 +735,7 @@ namespace VF.Inspector {
             public Renderer renderer;
             public Func<int, Material, Material> configureMaterial;
             public IList<string> spsBlendshapes;
+            public float[] activeFromMask;
         }
     }
 }

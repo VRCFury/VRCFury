@@ -16,6 +16,8 @@ namespace VF.Builder.Haptics {
         public const string SpsEnabled = "_SPS_Enabled";
         public const string SpsBakedLength = "_SPS_BakedLength";
         public const string SpsBakedRadius = "_SPS_BakedRadius";
+        public const string SpsBakedRadiusSamples = "_SPS_BakedRadiusSamples";
+        public const string SpsMetadataColor = "_SPS_MetadataColor";
         public const string SpsOverrun = "_SPS_Overrun";
         public const string SpsLegacy = "_SPS_Legacy";
         private const string SpsBake = "_SPS_Bake";
@@ -77,6 +79,8 @@ namespace VF.Builder.Haptics {
             Renderer renderer,
             float worldLength,
             float worldRadius,
+            Vector4[] bakedRadiusSamples,
+            Color metadataColor,
             float resolverHash,
             VRCFuryHapticPlug plug
         ) {
@@ -96,6 +100,11 @@ namespace VF.Builder.Haptics {
             }
             Add(SpsBakedLength, worldLength);
             Add(SpsBakedRadius, worldRadius);
+            AddPackedVectors(Add, SpsBakedRadiusSamples, bakedRadiusSamples, 8);
+            Add(SpsMetadataColor + ".x", metadataColor.x);
+            Add(SpsMetadataColor + ".y", metadataColor.y);
+            Add(SpsMetadataColor + ".z", metadataColor.z);
+            Add(SpsMetadataColor + ".w", 1);
             Add(SpsEnabled, plug.spsAnimatedEnabled);
             Add(SpsOverrun, plug.spsOverrun ? 1 : 0);
             Add(SpsLegacy, plug.useLights ? 1 : 0);
@@ -103,6 +112,18 @@ namespace VF.Builder.Haptics {
             Add(SpsMarkersService.Configured, 1);
             Add(SpsMarkersService.Id, resolverHash);
             return properties;
+        }
+
+        private static void AddPackedVectors(Action<string, float> add, string baseName, Vector4[] values, int count) {
+            var components = new[] { ".x", ".y", ".z", ".w" };
+            for (var i = 0; i < count; i++) {
+                var value = values != null && i < values.Length ? values[i] : Vector4.zero;
+                var property = $"{baseName}{i}";
+                add(property + components[0], value.x);
+                add(property + components[1], value.y);
+                add(property + components[2], value.z);
+                add(property + components[3], value.w);
+            }
         }
 
         public static List<MaterialProperty> GetSocketProperties(

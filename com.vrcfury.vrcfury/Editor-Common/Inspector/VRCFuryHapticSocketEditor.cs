@@ -494,7 +494,7 @@ namespace VF.Inspector {
                         .Select(stop => stop.transform.asVf())
                         .ToList();
                     var hasGuidedPath = guidedPath.Count > 0;
-                    var legacyLightType = hasGuidedPath ? VRCFuryHapticSocket.AddLight.RingOneWay : lightType;
+                    var legacyLightType = hasGuidedPath ? VRCFuryHapticSocket.AddLight.Hole : lightType;
 
                     void AddScreenMarker(ScreenMarkerResult result) {
                         if (result == null) return;
