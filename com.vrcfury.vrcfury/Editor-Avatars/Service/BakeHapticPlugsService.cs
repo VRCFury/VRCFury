@@ -339,7 +339,9 @@ namespace VF.Service {
                             }
                         }
 
-                        if (binding.path == pathToRenderer && binding.type == typeof(MeshRenderer)) {
+                        if (binding.path == pathToRenderer
+                            && binding.type == typeof(MeshRenderer)
+                            && rewrite.skin is SkinnedMeshRenderer) {
                             clip.SetCurve(binding, null);
                             binding.type = typeof(SkinnedMeshRenderer);
                             clip.SetCurve(binding, curve);
