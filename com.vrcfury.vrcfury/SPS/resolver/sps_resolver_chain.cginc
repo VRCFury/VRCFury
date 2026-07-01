@@ -110,7 +110,7 @@ int sps_build_chain(
         float3 sourceForward = sps_normalize(-previous.traversalNormal);
 
         if (previous.nextId > 0) {
-            int linkedCellIndex;
+            int linkedCellIndex = -1;
             if (!sps_try_find_cell(
                 socketTex,
                 sps_hash_id(previous.nextId, previous.playerId),

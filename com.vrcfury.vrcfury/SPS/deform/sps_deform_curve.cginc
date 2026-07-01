@@ -67,18 +67,20 @@ inline void sps_deform_walk_chain(
     SpsCell resolverCell,
     float worldLength,
     float targetDistance,
-    out float walkedLength,
-    out uint terminalFlags,
+    out float outRadiusMult,
     out float3 outPosition,
     out float3 outForward,
     out float3 outUp
 ) {
     float remainingDistance = max(targetDistance, 0);
-    walkedLength = 0;
-    terminalFlags = 0u;
+    float walkedLength = 0;
+    uint terminalFlags = 0u;
+    outRadiusMult = 1;
     outPosition = sps_read_resolver_chain_world(resolverCell, 0);
     outForward = sps_read_resolver_chain_forward(resolverCell, 0);
-    outUp = sps_read_resolver_chain_up(resolverCell, 0);
+    if (length(outForward) <= 0) outForward = float3(0, 0, 1);
+    outForward = sps_normalize(outForward);
+    outUp = sps_nearest_normal(outForward, sps_read_resolver_chain_up(resolverCell, 0));
     float3 startPoint = outPosition;
     float3 startForward = outForward;
     float3 startUp = outUp;
@@ -143,7 +145,26 @@ inline void sps_deform_walk_chain(
         startUp = endUp;
 
         if (remainingDistance <= 0) return;
-        if (sps_has_flag(socketFlags, SPS_SOCKET_FLAG_HOLE)) return;
+        if (sps_has_flag(socketFlags, SPS_SOCKET_FLAG_HOLE)) break;
+    }
+
+    float overshootDistance = max(targetDistance - walkedLength, 0);
+    if (overshootDistance <= 0) return;
+
+    if (sps_has_flag(terminalFlags, SPS_SOCKET_FLAG_HOLE)) {
+        float collapseStart = worldLength * 0.05;
+        float collapseEnd = worldLength * 0.1;
+        if (overshootDistance > collapseEnd) {
+            outPosition -= outForward * (overshootDistance - collapseEnd);
+        }
+        outRadiusMult = sps_saturated_map(
+            overshootDistance,
+            collapseEnd,
+            collapseStart
+        );
+        return;
+    } else {
+        outPosition += outForward * overshootDistance;
     }
 }
 

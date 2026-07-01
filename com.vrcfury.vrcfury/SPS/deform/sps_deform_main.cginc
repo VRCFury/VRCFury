@@ -42,68 +42,39 @@ void sps_apply_real(
 	if (!hasResolvedPath) return;
 	SpsCell resolvedCell = sps_get_cell(resolverTex, resolverSlotIndex);
 	float resolvedApplyLerp = saturate(resolvedCell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_PAYLOAD_APPLY_LERP_INDEX)));
+	float currentLength = resolvedCell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_METADATA_LENGTH_INDEX));
 	float bakeScale = sps_cell_header_scale(resolvedCell);
-	float currentLength = _SPS_BakedLength * bakeScale;
 
-	bakedVertex *= (currentLength / _SPS_BakedLength);
+	bakedVertex *= bakeScale;
 
 	float applyLerp = resolvedApplyLerp;
 	float dumbLerp = sps_saturated_map(applyLerp, 0, 0.2) * active;
 
-	uint terminalFlags = 0u;
+	float radiusMult = 1;
 	float3 sampledWorldPos;
 	float3 sampledWorldForward;
 	float3 sampledWorldUp;
-	float walkedLength = 0;
 	float pathDistance = max(bakedVertex.z, 0);
 	sps_deform_walk_chain(
 		resolvedCell,
 		currentLength,
 		pathDistance,
-		walkedLength,
-		terminalFlags,
+		radiusMult,
 		sampledWorldPos,
 		sampledWorldForward,
 		sampledWorldUp
 	);
+	float3 sampledWorldRight = cross(sampledWorldUp, sampledWorldForward);
 
-	float overshootDistance = max(pathDistance - walkedLength, 0);
-	if (overshootDistance > 0) {
-		sampledWorldPos += sampledWorldForward * overshootDistance;
-	}
-
-	float3 localPos = sps_toLocal(sampledWorldPos);
-	float3 localForward = sps_toLocal(sampledWorldPos + sampledWorldForward) - localPos;
-	float3 localUp = sps_toLocal(sampledWorldPos + sampledWorldUp) - localPos;
-	if (length(localForward) <= 0) localForward = float3(0, 0, 1);
-	float3 bezierPos = localPos;
-	float3 bezierForward = sps_normalize(localForward);
-	float3 bezierUp = sps_nearest_normal(bezierForward, localUp);
-	float3 bezierRight = sps_normalize(cross(bezierUp, bezierForward));
-
-	float holeShrink = 1;
-	if (sps_has_flag(terminalFlags, SPS_SOCKET_FLAG_HOLE)) {
-		float collapseStart = currentLength * 0.05;
-		float collapseEnd = currentLength * 0.1;
-		if (overshootDistance > collapseEnd) {
-			bezierPos -= bezierForward * (overshootDistance - collapseEnd);
-		}
-		holeShrink = sps_saturated_map(
-			overshootDistance,
-			collapseEnd,
-			collapseStart
-		);
-	}
-
-	float3 deformedVertex = bezierPos + bezierRight * bakedVertex.x * holeShrink + bezierUp * bakedVertex.y * holeShrink;
-	vertex.xyz = lerp(origVertex, deformedVertex, dumbLerp);
+	float3 deformedWorldVertex = sampledWorldPos + sampledWorldRight * bakedVertex.x * radiusMult + sampledWorldUp * bakedVertex.y * radiusMult;
+	vertex.xyz = lerp(origVertex, sps_toLocal(deformedWorldVertex), dumbLerp);
 	if (length(bakedNormal) != 0) {
-		float3 deformedNormal = bezierRight * bakedNormal.x + bezierUp * bakedNormal.y + bezierForward * bakedNormal.z;
-		normal.xyz = lerp(origNormal, deformedNormal, dumbLerp);
+		float3 deformedWorldNormal = sampledWorldRight * bakedNormal.x + sampledWorldUp * bakedNormal.y + sampledWorldForward * bakedNormal.z;
+		normal.xyz = lerp(origNormal, sps_normalize(sps_direction_toLocal(deformedWorldNormal)), dumbLerp);
 	}
 	if (length(bakedTangent) != 0) {
-		float3 deformedTangent = bezierRight * bakedTangent.x + bezierUp * bakedTangent.y + bezierForward * bakedTangent.z;
-		tangent.xyz = lerp(origTangent, deformedTangent, dumbLerp);
+		float3 deformedWorldTangent = sampledWorldRight * bakedTangent.x + sampledWorldUp * bakedTangent.y + sampledWorldForward * bakedTangent.z;
+		tangent.xyz = lerp(origTangent, sps_normalize(sps_direction_toLocal(deformedWorldTangent)), dumbLerp);
 	}
 }
 

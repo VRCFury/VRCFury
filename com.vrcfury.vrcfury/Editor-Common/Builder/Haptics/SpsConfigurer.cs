@@ -60,7 +60,6 @@ namespace VF.Builder.Haptics {
                 }
             }
             if (plug.spsAnimatedEnabled == 0) bakeRoot.active = false;
-            m.SetFloat(SpsBakedLength, worldLength);
             m.SetTexture(SpsBake, spsBaked);
             m.SetFloat(SpsMarkersService.Configured, 1);
             m.SetFloat(SpsMarkersService.Id, resolverHash);

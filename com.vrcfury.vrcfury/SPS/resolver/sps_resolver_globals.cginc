@@ -87,23 +87,24 @@ float sps_resolver_radius() {
 }
 
 float4 sps_resolver_radius_block(int blockIndex) {
-    if (blockIndex == 0) return _SPS_BakedRadiusSamples0;
-    if (blockIndex == 1) return _SPS_BakedRadiusSamples1;
-    if (blockIndex == 2) return _SPS_BakedRadiusSamples2;
-    if (blockIndex == 3) return _SPS_BakedRadiusSamples3;
-    if (blockIndex == 4) return _SPS_BakedRadiusSamples4;
-    if (blockIndex == 5) return _SPS_BakedRadiusSamples5;
-    if (blockIndex == 6) return _SPS_BakedRadiusSamples6;
-    return _SPS_BakedRadiusSamples7;
+    float4 block = _SPS_BakedRadiusSamples7;
+    if (blockIndex == 0) block = _SPS_BakedRadiusSamples0;
+    else if (blockIndex == 1) block = _SPS_BakedRadiusSamples1;
+    else if (blockIndex == 2) block = _SPS_BakedRadiusSamples2;
+    else if (blockIndex == 3) block = _SPS_BakedRadiusSamples3;
+    else if (blockIndex == 4) block = _SPS_BakedRadiusSamples4;
+    else if (blockIndex == 5) block = _SPS_BakedRadiusSamples5;
+    else if (blockIndex == 6) block = _SPS_BakedRadiusSamples6;
+    return block;
 }
 
 float sps_resolver_baked_radius_sample(int sampleIndex) {
-    int clampedIndex = clamp(sampleIndex, 0, 31);
-    float4 block = sps_resolver_radius_block(clampedIndex / 4);
-    int component = clampedIndex % 4;
-    if (component == 0) return block.x;
-    if (component == 1) return block.y;
-    if (component == 2) return block.z;
+    uint clampedIndex = (uint)clamp(sampleIndex, 0, 31);
+    float4 block = sps_resolver_radius_block((int)(clampedIndex >> 2));
+    uint component = clampedIndex & 3u;
+    if (component == 0u) return block.x;
+    if (component == 1u) return block.y;
+    if (component == 2u) return block.z;
     return block.w;
 }
 

@@ -20,16 +20,32 @@ uint sps_resolver_player_id() {
     return sps_player_id();
 }
 
+#define SPS_SELECT_5(result, index, value0, value1, value2, value3, value4) \
+    { \
+        uint spsSelectIndex = (uint)(index); \
+        if (spsSelectIndex == 0u) result = (value0); \
+        else if (spsSelectIndex == 1u) result = (value1); \
+        else if (spsSelectIndex == 2u) result = (value2); \
+        else if (spsSelectIndex == 3u) result = (value3); \
+        else result = (value4); \
+    }
+
 float sps_resolver_chain_apply_lerp(v2f input, int segmentIndex) {
     if (segmentIndex < 0) return 0;
-    if (input.chainSlotIndex[segmentIndex] <= SPS_CHAIN_REF_INVALID) return 0;
-    return input.chainApplyLerp[segmentIndex] * saturate(_SPS_Enabled);
+    uint safeSegmentIndex = (uint)segmentIndex;
+    int chainSlotIndex = SPS_CHAIN_REF_INVALID;
+    float chainApplyLerp = 0;
+    SPS_SELECT_5(chainSlotIndex, safeSegmentIndex, input.chainSlotIndex[0], input.chainSlotIndex[1], input.chainSlotIndex[2], input.chainSlotIndex[3], input.chainSlotIndex[4]);
+    SPS_SELECT_5(chainApplyLerp, safeSegmentIndex, input.chainApplyLerp[0], input.chainApplyLerp[1], input.chainApplyLerp[2], input.chainApplyLerp[3], input.chainApplyLerp[4]);
+    if (chainSlotIndex <= SPS_CHAIN_REF_INVALID) return 0;
+    return chainApplyLerp * saturate(_SPS_Enabled);
 }
 
 float sps_resolver_metadata_color_component(uint payloadIndex) {
-    if (payloadIndex == SPS_RESOLVER_METADATA_COLOR_X_INDEX) return _SPS_MetadataColor.x;
-    if (payloadIndex == SPS_RESOLVER_METADATA_COLOR_Y_INDEX) return _SPS_MetadataColor.y;
-    return _SPS_MetadataColor.z;
+    float value = _SPS_MetadataColor.z;
+    if (payloadIndex == SPS_RESOLVER_METADATA_COLOR_X_INDEX) value = _SPS_MetadataColor.x;
+    else if (payloadIndex == SPS_RESOLVER_METADATA_COLOR_Y_INDEX) value = _SPS_MetadataColor.y;
+    return value;
 }
 
 void sps_resolver_first_socket_data(
@@ -39,12 +55,10 @@ void sps_resolver_first_socket_data(
     out CellData socketCell,
     out SocketData socketData
 ) {
+    socketCell = sps_make_empty_cell();
+    socketData = sps_make_empty_socket();
     found = input.chainSlotIndex[0] > SPS_CHAIN_REF_INVALID;
-    if (!found) {
-        socketCell = sps_make_empty_cell();
-        socketData = sps_make_empty_socket();
-        return;
-    }
+    if (!found) return;
     socketCell = sps_read_cell(socketTex, input.chainSlotIndex[0]);
     socketData = sps_read_socket(socketTex, socketCell.cellIndex);
 }
@@ -106,10 +120,14 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
 
     uint chainValueIndex = payloadIndex - SPS_RESOLVER_CHAIN_BASE;
     uint segmentIndex = chainValueIndex / SPS_RESOLVER_CHAIN_STRIDE;
-    if (input.chainSlotIndex[segmentIndex] <= SPS_CHAIN_REF_INVALID) return true;
+    int chainSlotIndex = SPS_CHAIN_REF_INVALID;
+    bool chainFlipped = false;
+    SPS_SELECT_5(chainSlotIndex, segmentIndex, input.chainSlotIndex[0], input.chainSlotIndex[1], input.chainSlotIndex[2], input.chainSlotIndex[3], input.chainSlotIndex[4]);
+    SPS_SELECT_5(chainFlipped, segmentIndex, input.chainFlipped[0], input.chainFlipped[1], input.chainFlipped[2], input.chainFlipped[3], input.chainFlipped[4]);
+    if (chainSlotIndex <= SPS_CHAIN_REF_INVALID) return true;
 
     uint fieldIndex = chainValueIndex - segmentIndex * SPS_RESOLVER_CHAIN_STRIDE;
-    CellData socket = sps_read_cell(socketTex, input.chainSlotIndex[segmentIndex]);
+    CellData socket = sps_read_cell(socketTex, chainSlotIndex);
     SocketData socketData = sps_read_socket(socketTex, socket.cellIndex);
     if (fieldIndex < 3) {
         float3 sampleWorld = sps_resolver_socket_target_world(socket, socketData.flags);
@@ -117,13 +135,13 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
         return true;
     }
     if (fieldIndex < 6) {
-        float3 sampleForward = -(socket.normal * (input.chainFlipped[segmentIndex] ? -1 : 1));
+        float3 sampleForward = -(socket.normal * (chainFlipped ? -1 : 1));
         rgba = sps_encode_float(sps_resolver_vector_component(sampleForward, (int)(fieldIndex - 3u)));
         return true;
     }
     if (fieldIndex < 9) {
         float3 sampleUp = sps_nearest_normal(
-            -(socket.normal * (input.chainFlipped[segmentIndex]) ? -1 : 1),
+            -(socket.normal * (chainFlipped ? -1 : 1)),
             socket.up
         );
         rgba = sps_encode_float(sps_resolver_vector_component(sampleUp, (int)(fieldIndex - 6u)));

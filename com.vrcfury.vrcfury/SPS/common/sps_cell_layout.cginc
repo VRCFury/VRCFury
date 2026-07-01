@@ -301,7 +301,7 @@ bool sps_try_find_cell(
     uint product,
     out int outCellIndex
 ) {
-    outCellIndex = -1;
+    int foundCellIndex = -1;
     [unroll]
     for (uint replica = 0u; replica < SPS_CELL_REPLICA_COUNT; replica++) {
         uint cellIndex = sps_hashed_screen_slot_index_from_id(slotSeed, replica);
@@ -313,10 +313,11 @@ bool sps_try_find_cell(
         }
         if (sps_cell_header_unique_id(cell) != id) continue;
         if (sps_cell_header_player_id(cell) != playerId) continue;
-        outCellIndex = (int)cellIndex;
-        return true;
+        foundCellIndex = (int)cellIndex;
+        break;
     }
-    return false;
+    outCellIndex = foundCellIndex;
+    return foundCellIndex >= 0;
 }
 
 #endif
