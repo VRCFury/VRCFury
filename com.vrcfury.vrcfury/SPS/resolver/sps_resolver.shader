@@ -48,6 +48,7 @@ Shader "Hidden/VRCFury/SpsResolver" {
         }
         GrabPass { "_VFGrid56" }
         Pass {
+            Tags { "LightMode" = "ForwardBase" }
             Cull Off
             ZWrite Off
             ZTest Always
