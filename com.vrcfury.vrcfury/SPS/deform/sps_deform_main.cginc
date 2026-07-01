@@ -41,15 +41,12 @@ void sps_apply_real(
 	);
 	if (!hasResolvedPath) return;
 	SpsCell resolvedCell = sps_get_cell(resolverTex, resolverSlotIndex);
-	float resolvedApplyLerp = saturate(resolvedCell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_PAYLOAD_APPLY_LERP_INDEX)));
 	float currentLength = resolvedCell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_METADATA_LENGTH_INDEX));
 	float bakeScale = sps_cell_header_scale(resolvedCell);
 
 	bakedVertex *= bakeScale;
 
-	float applyLerp = resolvedApplyLerp;
-	float dumbLerp = sps_saturated_map(applyLerp, 0, 0.2) * active;
-
+	float firstSegmentLerp;
 	float radiusMult = 1;
 	float3 sampledWorldPos;
 	float3 sampledWorldForward;
@@ -59,11 +56,13 @@ void sps_apply_real(
 		resolvedCell,
 		currentLength,
 		pathDistance,
+		firstSegmentLerp,
 		radiusMult,
 		sampledWorldPos,
 		sampledWorldForward,
 		sampledWorldUp
 	);
+	float dumbLerp = sps_saturated_map(firstSegmentLerp, 0, 0.2) * active;
 	float3 sampledWorldRight = cross(sampledWorldUp, sampledWorldForward);
 
 	float3 deformedWorldVertex = sampledWorldPos + sampledWorldRight * bakedVertex.x * radiusMult + sampledWorldUp * bakedVertex.y * radiusMult;

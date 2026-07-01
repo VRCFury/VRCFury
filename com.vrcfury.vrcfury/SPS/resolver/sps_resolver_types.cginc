@@ -71,7 +71,6 @@ struct SocketData {
 struct ChainEntry {
     int cellIndex;
     bool flipped;
-    float applyLerp;
     float3 world;
     float3 traversalNormal;
     uint flags;

@@ -4,9 +4,8 @@
 #include "../common/sps_id.cginc"
 #include "../common/sps_cell_layout.cginc"
 
-#define SPS_RESOLVER_PAYLOAD_APPLY_LERP_INDEX 0u
-#define SPS_RESOLVER_CHAIN_BASE 1u
-#define SPS_RESOLVER_CHAIN_STRIDE 11u
+#define SPS_RESOLVER_CHAIN_BASE 0u
+#define SPS_RESOLVER_CHAIN_STRIDE 10u
 #define SPS_RESOLVER_CHAIN_VALUES (SPS_CHAIN_MAX_SOCKETS * SPS_RESOLVER_CHAIN_STRIDE)
 #define SPS_RESOLVER_CHAIN_END (SPS_RESOLVER_CHAIN_BASE + SPS_RESOLVER_CHAIN_VALUES)
 #define SPS_RESOLVER_METADATA_BASE 176u
@@ -21,12 +20,11 @@
 #define SPS_RESOLVER_METADATA_VALUES 8u
 #define SPS_RESOLVER_RADIUS_SAMPLE_COUNT 32u
 #define SPS_RESOLVER_RADIUS_SAMPLE_BASE 192u
-// Extends through +8: world xyz, forward xyz, up xyz.
+// Extends through +9: world xyz, forward xyz, up xyz, flags.
 #define SPS_RESOLVER_CHAIN_WORLD_INDEX(segmentIndex) (SPS_RESOLVER_CHAIN_BASE + (uint)(segmentIndex) * SPS_RESOLVER_CHAIN_STRIDE + 0u)
 #define SPS_RESOLVER_CHAIN_FORWARD_INDEX(segmentIndex) (SPS_RESOLVER_CHAIN_BASE + (uint)(segmentIndex) * SPS_RESOLVER_CHAIN_STRIDE + 3u)
 #define SPS_RESOLVER_CHAIN_UP_INDEX(segmentIndex) (SPS_RESOLVER_CHAIN_BASE + (uint)(segmentIndex) * SPS_RESOLVER_CHAIN_STRIDE + 6u)
 #define SPS_RESOLVER_CHAIN_FLAGS_INDEX(segmentIndex) (SPS_RESOLVER_CHAIN_BASE + (uint)(segmentIndex) * SPS_RESOLVER_CHAIN_STRIDE + 9u)
-#define SPS_RESOLVER_CHAIN_PULLOUT_LERP_INDEX(segmentIndex) (SPS_RESOLVER_CHAIN_BASE + (uint)(segmentIndex) * SPS_RESOLVER_CHAIN_STRIDE + 10u)
 #define SPS_RESOLVER_PAYLOAD_VALUES (SPS_RESOLVER_RADIUS_SAMPLE_BASE + SPS_RESOLVER_RADIUS_SAMPLE_COUNT)
 
 uint sps_resolver_chain_payload_index(uint baseIndex, int sampleIndex) {
@@ -67,11 +65,6 @@ float3 sps_read_resolver_chain_up(SpsCell cell, int sampleIndex) {
 uint sps_read_resolver_chain_flags(SpsCell cell, int sampleIndex) {
     if (sampleIndex <= 0) return 0u;
     return sps_read_resolver_chain_uint(cell, SPS_RESOLVER_CHAIN_FLAGS_INDEX(0), sampleIndex);
-}
-
-float sps_read_resolver_chain_pullout_lerp(SpsCell cell, int sampleIndex) {
-    if (sampleIndex <= 0) return 0;
-    return sps_read_resolver_chain_float(cell, SPS_RESOLVER_CHAIN_PULLOUT_LERP_INDEX(0), sampleIndex);
 }
 
 uint sps_resolver_radius_payload_index(int sampleIndex) {

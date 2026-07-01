@@ -10,7 +10,6 @@
 inline ChainEntry sps_make_chain_entry(
     int cellIndex,
     bool flipped,
-    float applyLerp,
     float3 world,
     float3 traversalNormal,
     uint flags,
@@ -21,7 +20,6 @@ inline ChainEntry sps_make_chain_entry(
     ChainEntry entry = (ChainEntry)0;
     entry.cellIndex = cellIndex;
     entry.flipped = flipped;
-    entry.applyLerp = applyLerp;
     entry.world = world;
     entry.traversalNormal = sps_normalize(traversalNormal);
     entry.flags = flags;
@@ -48,7 +46,7 @@ bool sps_chain_contains_id(
     return false;
 }
 
-float sps_evaluate_chain_candidate(
+bool sps_evaluate_chain_candidate(
     CellData candidate,
     SocketData socketData,
     ChainEntry previous,
@@ -61,9 +59,6 @@ float sps_evaluate_chain_candidate(
     distanceSq = sps_length_sq(entryOffset);
     traversalNormal = sps_normalize(candidate.normal);
     rejectionFlags = 0u;
-    // if (sps_has_flag(previous.flags, SPS_SOCKET_FLAG_PORTAL)) {
-    //     return 1;
-    // }
     return sps_prepare_and_evaluate_socket(
         entryOffset,
         sourceForward,
@@ -92,7 +87,6 @@ int sps_build_chain(
     ChainEntry plugEntry = sps_make_chain_entry(
         SPS_CHAIN_REF_INVALID,
         false,
-        0,
         plugWorld,
         -plugForward,
         0u,
@@ -128,7 +122,7 @@ int sps_build_chain(
             float unusedDistanceSq;
             float3 traversalNormal;
             uint rejectionFlags;
-            float candidateLerp = sps_evaluate_chain_candidate(
+            bool candidateEligible = sps_evaluate_chain_candidate(
                 linkedCellData,
                 linkedSocketData,
                 previous,
@@ -137,7 +131,7 @@ int sps_build_chain(
                 traversalNormal,
                 rejectionFlags
             );
-            if (candidateLerp <= 0) {
+            if (!candidateEligible) {
                 SPS_DEBUG_SET(debugFlags, SPS_DEBUG_FLAG_ELIGIBILITY);
                 SPS_DEBUG_SET(debugFlags, rejectionFlags);
                 break;
@@ -146,10 +140,9 @@ int sps_build_chain(
             chain[chainIndex] = sps_make_chain_entry(
                 linkedCellData.cellIndex,
                 dot(traversalNormal, sps_normalize(linkedCellData.normal)) < 0,
-                candidateLerp,
                 sps_resolver_socket_target_world(linkedCellData, linkedSocketData.flags),
                 traversalNormal,
-                linkedSocketData.flags,
+                linkedSocketData.flags | SPS_SOCKET_FLAG_NEXT_LINK,
                 linkedCellData.id,
                 linkedSocketData.nextId,
                 linkedCellData.playerId
@@ -161,7 +154,6 @@ int sps_build_chain(
 
         float bestDistanceSq = 0;
         int bestCandidateIndex = -1;
-        float bestCandidateLerp = 0;
         float3 bestTraversalNormal = float3(0, 0, 1);
         SocketData bestSocketData = sps_make_empty_socket();
         for (int candidateIndex = 0; candidateIndex < SPS_CANDIDATE_COUNT; candidateIndex++) {
@@ -177,7 +169,7 @@ int sps_build_chain(
             float distanceSq;
             float3 traversalNormal;
             uint rejectionFlags;
-            float candidateLerp = sps_evaluate_chain_candidate(
+            bool candidateEligible = sps_evaluate_chain_candidate(
                 candidate,
                 candidateSocketData,
                 previous,
@@ -186,7 +178,7 @@ int sps_build_chain(
                 traversalNormal,
                 rejectionFlags
             );
-            if (candidateLerp <= 0) {
+            if (!candidateEligible) {
                 SPS_DEBUG_SET(debugFlags, SPS_DEBUG_FLAG_ELIGIBILITY);
                 SPS_DEBUG_SET(debugFlags, rejectionFlags);
                 continue;
@@ -194,7 +186,6 @@ int sps_build_chain(
 
             if (bestCandidateIndex < 0 || distanceSq < bestDistanceSq) {
                 bestCandidateIndex = candidateIndex;
-                bestCandidateLerp = candidateLerp;
                 bestDistanceSq = distanceSq;
                 bestTraversalNormal = traversalNormal;
                 bestSocketData = candidateSocketData;
@@ -208,7 +199,6 @@ int sps_build_chain(
         chain[chainCount] = sps_make_chain_entry(
             best.cellIndex,
             dot(bestTraversalNormal, sps_normalize(best.normal)) < 0,
-            bestCandidateLerp,
             bestWorld,
             bestTraversalNormal,
             bestSocketData.flags,

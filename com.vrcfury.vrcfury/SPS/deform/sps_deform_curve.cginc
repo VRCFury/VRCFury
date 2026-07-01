@@ -38,6 +38,20 @@ inline void sps_deform_segment_control_points(
     p2 = p3 - endForward * handleDistance;
 }
 
+inline float sps_deform_segment_pullout_lerp(
+    uint socketFlags,
+    float worldLength,
+    float remainingLength,
+    float3 startPoint,
+    float3 endPoint
+) {
+    if (sps_has_flag(socketFlags, SPS_SOCKET_FLAG_NEXT_LINK)) return 1;
+    float fadeStart = remainingLength + worldLength * 0.2;
+    float fadeEnd = remainingLength + worldLength * 0.6;
+    float distance = length(endPoint - startPoint);
+    return 1 - sps_saturated_map(distance, fadeStart, fadeEnd);
+}
+
 inline void sps_deform_apply_portal_transfer(
     float3 entryPoint,
     float3 entryForwardInput,
@@ -67,6 +81,7 @@ inline void sps_deform_walk_chain(
     SpsCell resolverCell,
     float worldLength,
     float targetDistance,
+    out float outFirstSegmentLerp,
     out float outRadiusMult,
     out float3 outPosition,
     out float3 outForward,
@@ -75,6 +90,7 @@ inline void sps_deform_walk_chain(
     float remainingDistance = max(targetDistance, 0);
     float walkedLength = 0;
     uint terminalFlags = 0u;
+    outFirstSegmentLerp = 0;
     outRadiusMult = 1;
     outPosition = sps_read_resolver_chain_world(resolverCell, 0);
     outForward = sps_read_resolver_chain_forward(resolverCell, 0);
@@ -93,9 +109,16 @@ inline void sps_deform_walk_chain(
         float3 endForward = sps_read_resolver_chain_forward(resolverCell, sampleIndex);
         if (all(endForward == 0)) break;
         float3 endUp = sps_read_resolver_chain_up(resolverCell, sampleIndex);
-        float segmentPulloutLerp = sps_read_resolver_chain_pullout_lerp(resolverCell, sampleIndex);
-
         uint socketFlags = sps_read_resolver_chain_flags(resolverCell, sampleIndex);
+        float segmentPulloutLerp = sps_deform_segment_pullout_lerp(
+            socketFlags,
+            worldLength,
+            max(worldLength - walkedLength, 0),
+            startPoint,
+            endPoint
+        );
+        if (sampleIndex == 1) outFirstSegmentLerp = segmentPulloutLerp;
+
         terminalFlags = socketFlags;
         // bool isPortal = sps_has_flag(previousFlags, SPS_SOCKET_FLAG_PORTAL);
         // if (isPortal) {

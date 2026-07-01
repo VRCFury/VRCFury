@@ -6,7 +6,7 @@
 #include "sps_resolver_globals.cginc"
 #include "sps_resolver_types.cginc"
 
-float sps_prepare_and_evaluate_socket(
+bool sps_prepare_and_evaluate_socket(
     float3 entryOffset,
     float3 sourceForward,
     float distanceSq,
@@ -22,12 +22,12 @@ float sps_prepare_and_evaluate_socket(
     }
     if (entryForwardDot < SPS_EXIT_DOT_LIMIT) {
         SPS_DEBUG_SET(rejectionFlags, SPS_DEBUG_FLAG_EXIT_REJECT);
-        return 0;
+        return false;
     }
     if (!sps_has_flag(flags, SPS_SOCKET_FLAG_DOUBLE_SIDED)
         && dot(sps_normalize(normal), rootDirection) > SPS_ENTRANCE_DOT_LIMIT) {
         SPS_DEBUG_SET(rejectionFlags, SPS_DEBUG_FLAG_ENTRANCE_REJECT);
-        return 0;
+        return false;
     }
     float worldLength = sps_resolver_length();
     float hiltDistance = worldLength * 0.5;
@@ -36,19 +36,14 @@ float sps_prepare_and_evaluate_socket(
             || distanceSq > hiltDistance * hiltDistance);
     if (behind) {
         SPS_DEBUG_SET(rejectionFlags, SPS_DEBUG_FLAG_BEHIND_REJECT);
-        return 0;
+        return false;
     }
-    float fadeStart = worldLength * 1.2;
-    float fadeEnd = worldLength * 1.6;
-    if (distanceSq >= fadeEnd * fadeEnd) {
+    float maxDistance = worldLength * 1.6;
+    if (distanceSq >= maxDistance * maxDistance) {
         SPS_DEBUG_SET(rejectionFlags, SPS_DEBUG_FLAG_TOO_FAR_REJECT);
-        return 0;
+        return false;
     }
-    if (distanceSq > fadeStart * fadeStart) {
-        float tooFar = sps_saturated_map(sqrt(distanceSq), fadeStart, fadeEnd);
-        return 1 - tooFar;
-    }
-    return 1;
+    return true;
 }
 
 #endif

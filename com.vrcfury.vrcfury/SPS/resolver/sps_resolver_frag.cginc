@@ -30,17 +30,6 @@ uint sps_resolver_player_id() {
         else result = (value4); \
     }
 
-float sps_resolver_chain_apply_lerp(v2f input, int segmentIndex) {
-    if (segmentIndex < 0) return 0;
-    uint safeSegmentIndex = (uint)segmentIndex;
-    int chainSlotIndex = SPS_CHAIN_REF_INVALID;
-    float chainApplyLerp = 0;
-    SPS_SELECT_5(chainSlotIndex, safeSegmentIndex, input.chainSlotIndex[0], input.chainSlotIndex[1], input.chainSlotIndex[2], input.chainSlotIndex[3], input.chainSlotIndex[4]);
-    SPS_SELECT_5(chainApplyLerp, safeSegmentIndex, input.chainApplyLerp[0], input.chainApplyLerp[1], input.chainApplyLerp[2], input.chainApplyLerp[3], input.chainApplyLerp[4]);
-    if (chainSlotIndex <= SPS_CHAIN_REF_INVALID) return 0;
-    return chainApplyLerp * saturate(_SPS_Enabled);
-}
-
 float sps_resolver_metadata_color_component(uint payloadIndex) {
     float value = _SPS_MetadataColor.z;
     if (payloadIndex == SPS_RESOLVER_METADATA_COLOR_X_INDEX) value = _SPS_MetadataColor.x;
@@ -77,10 +66,6 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
     rgba = 0;
     if (payloadIndex >= SPS_RESOLVER_PAYLOAD_VALUES) return false;
 
-    if (payloadIndex == SPS_RESOLVER_PAYLOAD_APPLY_LERP_INDEX) {
-        rgba = sps_encode_float(sps_resolver_chain_apply_lerp(input, 0));
-        return true;
-    }
     if (payloadIndex >= SPS_RESOLVER_METADATA_BASE
         && payloadIndex < SPS_RESOLVER_METADATA_BASE + SPS_RESOLVER_METADATA_VALUES) {
         if (payloadIndex <= SPS_RESOLVER_METADATA_COLOR_Z_INDEX) {
@@ -115,7 +100,6 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
         rgba = sps_encode_float(sps_resolver_radius_sample((int)(payloadIndex - SPS_RESOLVER_RADIUS_SAMPLE_BASE)));
         return true;
     }
-    if (payloadIndex < SPS_RESOLVER_CHAIN_BASE) return true;
     if (payloadIndex >= SPS_RESOLVER_CHAIN_END) return true;
 
     uint chainValueIndex = payloadIndex - SPS_RESOLVER_CHAIN_BASE;
@@ -151,7 +135,6 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
         rgba = sps_encode_uint(socketData.flags);
         return true;
     }
-    rgba = sps_encode_float(sps_resolver_chain_apply_lerp(input, (int)segmentIndex));
     return true;
 }
 
