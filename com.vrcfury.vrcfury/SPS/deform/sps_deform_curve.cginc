@@ -21,9 +21,11 @@ inline void sps_deform_apply_portal_transfer(
     out float3 sampleUp
 ) {
     sampleWorld = exitPoint;
-    sampleForward = length(exitForwardInput) > 0 ? sps_normalize(exitForwardInput) : sps_normalize(entryForwardInput);
+    float3 normalizedExitForward = sps_normalize(exitForwardInput);
+    float3 normalizedEntryForward = sps_normalize(entryForwardInput);
+    sampleForward = sps_is_zero(exitForwardInput) ? normalizedEntryForward : normalizedExitForward;
 
-    float3 entryForward = length(entryForwardInput) > 0 ? sps_normalize(entryForwardInput) : sampleForward;
+    float3 entryForward = sps_is_zero(entryForwardInput) ? sampleForward : normalizedEntryForward;
     float3 entryUpBase = sps_nearest_normal(entryForward, entryUpInput);
     float3 entryRightBase = sps_normalize(cross(entryUpBase, entryForward));
     float3 incomingUpProjected = sps_nearest_normal(entryForward, incomingUp);
@@ -50,7 +52,7 @@ inline void sps_deform_walk_chain(
     outRadiusMult = 1;
     outPosition = sps_read_resolver_chain_world(resolverCell, 0);
     outForward = sps_read_resolver_chain_forward(resolverCell, 0);
-    if (length(outForward) <= 0) outForward = float3(0, 0, 1);
+    if (sps_is_zero(outForward)) outForward = float3(0, 0, 1);
     outForward = sps_normalize(outForward);
     outUp = sps_nearest_normal(outForward, sps_read_resolver_chain_up(resolverCell, 0));
     float3 startPoint = outPosition;
@@ -64,7 +66,7 @@ inline void sps_deform_walk_chain(
     for (uint sampleIndex = 1; sampleIndex <= SPS_CHAIN_MAX_SOCKETS; sampleIndex++) {
         float3 endPoint = sps_read_resolver_chain_world(resolverCell, sampleIndex);
         float3 endForward = sps_read_resolver_chain_forward(resolverCell, sampleIndex);
-        if (all(endForward == 0)) break;
+        if (sps_is_zero(endForward)) break;
         float3 endUp = sps_read_resolver_chain_up(resolverCell, sampleIndex);
         uint socketFlags = sps_read_resolver_chain_flags(resolverCell, sampleIndex);
         bool isGuidedSegment = sps_read_resolver_is_guide_target(resolverCell, sampleIndex);
@@ -137,7 +139,7 @@ inline void sps_deform_walk_chain(
             return;
         }
 
-        if (any(endTangentOut != 0)) {
+        if (!sps_is_zero(endTangentOut)) {
             outForward = sps_normalize(endTangentOut);
         }
 

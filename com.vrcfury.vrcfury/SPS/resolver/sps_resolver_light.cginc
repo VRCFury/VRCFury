@@ -27,7 +27,7 @@ inline uint sps_light_type(uint lightIndex) {
 	const float range = sps_light_range(lightIndex);
 	if (range >= 0.5) return SPS_LEGACY_LIGHT_NONE;
 	const half4 color = unity_LightColor[lightIndex];
-	if (length(color.rgb) > 0 && color.a > 0) return SPS_LEGACY_LIGHT_NONE;
+	if (!sps_is_zero(color.rgb) && color.a > 0) return SPS_LEGACY_LIGHT_NONE;
 
 	const int secondDecimal = round((range % 0.1) * 100);
 	if (secondDecimal == 1 || secondDecimal == 2 || secondDecimal == 5) {

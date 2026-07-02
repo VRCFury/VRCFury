@@ -142,12 +142,12 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
         return true;
     }
     if (fieldIndex < 14) {
-        float3 tangentIn = any(socketData.tangentIn != 0) ? socketData.tangentIn + tangentOffset : 0;
+        float3 tangentIn = sps_is_zero(socketData.tangentIn) ? 0 : socketData.tangentIn + tangentOffset;
         rgba = sps_encode_float(sps_resolver_vector_component(tangentIn, (int)(fieldIndex - 11u)));
         return true;
     }
     if (fieldIndex < 17) {
-        float3 tangentOut = any(socketData.tangentOut != 0) ? socketData.tangentOut + tangentOffset : 0;
+        float3 tangentOut = sps_is_zero(socketData.tangentOut) ? 0 : socketData.tangentOut + tangentOffset;
         rgba = sps_encode_float(sps_resolver_vector_component(tangentOut, (int)(fieldIndex - 14u)));
         return true;
     }

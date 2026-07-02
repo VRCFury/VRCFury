@@ -22,30 +22,31 @@ inline void sps_deform_segment_control_points(
 ) {
     p0 = startPoint;
     p3 = endPoint;
+    float3 segmentOffset = endPoint - startPoint;
+    float segmentDistance = length(segmentOffset);
 
     float3 startForward = startForwardInput;
-    if (length(startForward) <= 0) startForward = sps_normalize(endPoint - startPoint);
-    if (length(startForward) <= 0) startForward = float3(0, 0, 1);
+    if (sps_is_zero(startForward)) startForward = sps_normalize(segmentOffset);
+    if (sps_is_zero(startForward)) startForward = float3(0, 0, 1);
 
     float3 endForward = endForwardInput;
-    if (length(endForward) <= 0) endForward = sps_normalize(endPoint - startPoint);
-    if (length(endForward) <= 0) endForward = float3(0, 0, 1);
+    if (sps_is_zero(endForward)) endForward = sps_normalize(segmentOffset);
+    if (sps_is_zero(endForward)) endForward = float3(0, 0, 1);
 
     if (isGuidedSegment) applyLerp = 1;
     else {
         float fadeStart = remainingLength + worldLength * 0.2;
         float fadeEnd = remainingLength + worldLength * 0.6;
-        float distance = length(endPoint - startPoint);
-        applyLerp = 1 - sps_saturated_map(distance, fadeStart, fadeEnd);
+        applyLerp = 1 - sps_saturated_map(segmentDistance, fadeStart, fadeEnd);
     }
 
     float bezierLerp = sps_saturated_map(applyLerp, 0, 1);
-    float handleDistance = length(endPoint - startPoint) * 0.5;
+    float handleDistance = segmentDistance * 0.5;
     float handleDistanceWithPullout = sps_map(bezierLerp, 0, 1, worldLength * 5, handleDistance);
-    p1 = any(startTangentOut != 0)
+    p1 = !sps_is_zero(startTangentOut)
         ? startTangentOut
         : p0 + startForward * handleDistanceWithPullout;
-    p2 = any(endTangentIn != 0)
+    p2 = !sps_is_zero(endTangentIn)
         ? endTangentIn
         : p3 - endForward * handleDistance;
 }

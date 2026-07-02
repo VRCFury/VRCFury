@@ -68,11 +68,11 @@ void sps_apply_real(
 
 	float3 deformedWorldVertex = sampledWorldPos + sampledWorldRight * bakedVertex.x * radiusMult + sampledWorldUp * bakedVertex.y * radiusMult;
 	vertex.xyz = lerp(origVertex, sps_toLocal(deformedWorldVertex), dumbLerp);
-	if (length(bakedNormal) != 0) {
+	if (!sps_is_zero(bakedNormal)) {
 		float3 deformedWorldNormal = sampledWorldRight * bakedNormal.x + sampledWorldUp * bakedNormal.y + sampledWorldForward * bakedNormal.z;
 		normal.xyz = lerp(origNormal, sps_normalize(sps_direction_toLocal(deformedWorldNormal)), dumbLerp);
 	}
-	if (length(bakedTangent) != 0) {
+	if (!sps_is_zero(bakedTangent)) {
 		float3 deformedWorldTangent = sampledWorldRight * bakedTangent.x + sampledWorldUp * bakedTangent.y + sampledWorldForward * bakedTangent.z;
 		tangent.xyz = lerp(origTangent, sps_normalize(sps_direction_toLocal(deformedWorldTangent)), dumbLerp);
 	}
