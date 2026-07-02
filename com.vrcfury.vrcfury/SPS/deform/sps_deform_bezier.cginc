@@ -23,8 +23,15 @@ float3 sps_bezierDerivative(float3 p0, float3 p1, float3 p2, float3 p3, float t)
 // https://gamedev.stackexchange.com/questions/5373/moving-ships-between-two-planets-along-a-bezier-missing-some-equations-for-acce/5427#5427
 // https://www.geometrictools.com/Documentation/MovingAlongCurveSpecifiedSpeed.pdf
 // https://gamedev.stackexchange.com/questions/137022/consistent-normals-at-any-angle-in-bezier-curve/
-inline void sps_bezierSolve(float3 p0, float3 p1, float3 p2, float3 p3, float lookingForLength, float3 initialUp, out float remainingLength, out float3 position, out float3 forward, out float3 up)
-{
+inline void sps_bezierSolve(
+	float3 p0, float3 p1, float3 p2, float3 p3,
+	float lookingForLength,
+	float3 initialUp,
+	out float remainingLength,
+	out float3 position,
+	out float3 forward,
+	out float3 up
+) {
 	#define SPS_BEZIER_SAMPLES 50
 	remainingLength = 0;
 	position = p0;

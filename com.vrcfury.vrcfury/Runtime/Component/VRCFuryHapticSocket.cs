@@ -52,6 +52,7 @@ namespace VF.Component {
         [Serializable]
         public class GuidedPathStop {
             public Transform transform;
+            public bool shrink = false;
             public bool customizeTangentIn = false;
             public bool customizeTangentOut = false;
             public Vector3 tangentIn = Vector3.zero;

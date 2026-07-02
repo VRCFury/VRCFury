@@ -106,10 +106,10 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
     uint segmentIndex = chainValueIndex / SPS_RESOLVER_CHAIN_STRIDE;
     int chainSlotIndex = SPS_CHAIN_REF_INVALID;
     bool chainFlipped = false;
-    bool chainNextLink = false;
+    bool isGuideTarget = false;
     SPS_SELECT_5(chainSlotIndex, segmentIndex, input.chainSlotIndex[0], input.chainSlotIndex[1], input.chainSlotIndex[2], input.chainSlotIndex[3], input.chainSlotIndex[4]);
     SPS_SELECT_5(chainFlipped, segmentIndex, input.chainFlipped[0], input.chainFlipped[1], input.chainFlipped[2], input.chainFlipped[3], input.chainFlipped[4]);
-    SPS_SELECT_5(chainNextLink, segmentIndex, input.chainNextLink[0], input.chainNextLink[1], input.chainNextLink[2], input.chainNextLink[3], input.chainNextLink[4]);
+    SPS_SELECT_5(isGuideTarget, segmentIndex, input.isGuideTarget[0], input.isGuideTarget[1], input.isGuideTarget[2], input.isGuideTarget[3], input.isGuideTarget[4]);
     if (chainSlotIndex <= SPS_CHAIN_REF_INVALID) return true;
 
     uint fieldIndex = chainValueIndex - segmentIndex * SPS_RESOLVER_CHAIN_STRIDE;
@@ -141,7 +141,7 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
         return true;
     }
     if (fieldIndex < 11) {
-        rgba = sps_encode_uint(chainNextLink ? 1u : 0u);
+        rgba = sps_encode_uint(isGuideTarget ? 1u : 0u);
         return true;
     }
     if (fieldIndex < 14) {

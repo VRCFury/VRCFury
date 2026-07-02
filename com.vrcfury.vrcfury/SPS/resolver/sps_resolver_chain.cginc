@@ -10,7 +10,7 @@
 inline ChainEntry sps_make_chain_entry(
     int cellIndex,
     bool flipped,
-    bool nextLink,
+    bool isGuideTarget,
     float3 world,
     float3 traversalNormal,
     uint flags,
@@ -21,7 +21,7 @@ inline ChainEntry sps_make_chain_entry(
     ChainEntry entry = (ChainEntry)0;
     entry.cellIndex = cellIndex;
     entry.flipped = flipped;
-    entry.nextLink = nextLink;
+    entry.isGuideTarget = isGuideTarget;
     entry.world = world;
     entry.traversalNormal = sps_normalize(traversalNormal);
     entry.flags = flags;
@@ -104,8 +104,6 @@ int sps_build_chain(
     ChainEntry previous = plugEntry;
 
     for (int chainIndex = 0; chainIndex < SPS_CHAIN_MAX_SOCKETS; chainIndex++) {
-        if (sps_has_flag(previous.flags, SPS_SOCKET_FLAG_HOLE)) break;
-
         float3 sourceForward = sps_normalize(-previous.traversalNormal);
 
         if (previous.nextId > 0) {
@@ -157,6 +155,10 @@ int sps_build_chain(
             previous = chain[chainCount];
             chainCount++;
             continue;
+        }
+
+        if (sps_has_flag(previous.flags, SPS_SOCKET_FLAG_HOLE)) {
+            break;
         }
 
         float bestDistanceSq = 0;

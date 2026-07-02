@@ -87,6 +87,11 @@ namespace VF.Inspector {
             return VRCFuryEditorUtils.RefreshOnChange(() => {
                 var container = new VisualElement();
 
+                string FormatSlot(int slot) {
+                    if (slot == -1) return "Root";
+                    return $"Stop {slot+1}";
+                }
+
                 for (var i = 0; i < Math.Min(listProp.arraySize, GuidedPathCount); i++) {
                     var index = i;
                     var row = new VisualElement();
@@ -94,16 +99,17 @@ namespace VF.Inspector {
                     var customizeTangentOut = item.FindPropertyRelative("customizeTangentOut");
                     var customizeTangentIn = item.FindPropertyRelative("customizeTangentIn");
 
-                    row.Add(VRCFuryEditorUtils.Prop(customizeTangentOut, $"Customize Tangent exiting {(index == 0 ? "Root" : $"Stop {index}")}"));
+                    row.Add(VRCFuryEditorUtils.Prop(customizeTangentOut, $"Customize Tangent exiting {FormatSlot(index-1)}"));
                     if (customizeTangentOut.boolValue) {
                         row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("tangentOut")));
                     }
-                    row.Add(VRCFuryEditorUtils.Prop(customizeTangentIn, $"Customize Tangent entering Stop {index + 1}"));
+                    row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("shrink"), $"Collapse plug between {FormatSlot(index-1)} and {FormatSlot(index)}"));
+                    row.Add(VRCFuryEditorUtils.Prop(customizeTangentIn, $"Customize Tangent entering {FormatSlot(index)}"));
                     if (customizeTangentIn.boolValue) {
                         row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("tangentIn")));
                     }
 
-                    row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("transform"), $"Stop {index + 1}"));
+                    row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("transform"), FormatSlot(index)));
 
                     row.Add(new Button(() => {
                         listProp.DeleteArrayElementAtIndex(index);
@@ -445,7 +451,7 @@ namespace VF.Inspector {
                         AddScreenMarker(CreateScreenMarker(
                             worldSpace,
                             socket,
-                            VRCFuryHapticSocket.AddLight.RingOneWay,
+                            firstStop.shrink ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay,
                             (int)spsMarkers.NewMarkerId(),
                             spsMarkers,
                             socket.useRadiusOffset,
@@ -457,12 +463,15 @@ namespace VF.Inspector {
                         ));
                         for (var i = 0; i < guidedPath.Count; i++) {
                             var isLast = i == guidedPath.Count - 1;
+                            var nextStop = isLast ? null : guidedPathStops[i + 1];
                             var pathType = isLast
                                 ? GetGuidedPathTerminalType(lightType)
-                                : VRCFuryHapticSocket.AddLight.RingOneWay;
+                                : nextStop.shrink
+                                    ? VRCFuryHapticSocket.AddLight.Hole
+                                    : VRCFuryHapticSocket.AddLight.RingOneWay;
                             var nextSocketId = isLast ? 0 : pathIds[i + 1];
                             var stop = guidedPathStops[i];
-                            var nextStop = isLast ? null : guidedPathStops[i + 1];
+
                             AddScreenMarker(CreateScreenMarker(
                                 guidedPath[i],
                                 socket,
@@ -472,8 +481,8 @@ namespace VF.Inspector {
                                 false,
                                 stop.customizeTangentIn,
                                 stop.tangentIn,
-                                nextStop != null && nextStop.customizeTangentOut,
-                                nextStop != null ? nextStop.tangentOut : Vector3.zero,
+                                nextStop?.customizeTangentOut ?? false,
+                                nextStop?.tangentOut ?? Vector3.zero,
                                 nextSocketId,
                                 includeTags: false,
                                 objectName: "SPS Socket Path"

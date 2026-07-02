@@ -67,7 +67,7 @@ inline void sps_deform_walk_chain(
         if (all(endForward == 0)) break;
         float3 endUp = sps_read_resolver_chain_up(resolverCell, sampleIndex);
         uint socketFlags = sps_read_resolver_chain_flags(resolverCell, sampleIndex);
-        bool nextLink = sps_read_resolver_chain_next_link(resolverCell, sampleIndex);
+        bool isGuidedSegment = sps_read_resolver_is_guide_target(resolverCell, sampleIndex);
         float3 endTangentIn = sps_read_resolver_chain_tangent_in(resolverCell, sampleIndex);
         float3 endTangentOut = sps_read_resolver_chain_tangent_out(resolverCell, sampleIndex);
         float segmentPulloutLerp;
@@ -100,10 +100,12 @@ inline void sps_deform_walk_chain(
             endPoint,
             endForward,
             endTangentIn,
-            nextLink,
+            isGuidedSegment,
             worldLength,
             max(worldLength - walkedLength, 0),
-            p0, p1, p2, p3, segmentPulloutLerp);
+            p0, p1, p2, p3,
+            segmentPulloutLerp
+        );
 
         if (sampleIndex == 1) outFirstSegmentLerp = segmentPulloutLerp;
 
@@ -111,41 +113,55 @@ inline void sps_deform_walk_chain(
         float3 samplePosition;
         float3 sampleForward;
         float3 sampleUp;
-        sps_bezierSolve(p0, p1, p2, p3, remainingDistance, currentUp, nextRemainingDistance, samplePosition, sampleForward, sampleUp);
-        float consumedDistance = remainingDistance - nextRemainingDistance;
+        sps_bezierSolve(
+            p0, p1, p2, p3,
+            remainingDistance,
+            currentUp,
+            nextRemainingDistance,
+            samplePosition,
+            sampleForward,
+            sampleUp
+        );
 
-        walkedLength += consumedDistance;
         outPosition = samplePosition;
         outForward = sampleForward;
         outUp = sampleUp;
-        currentUp = sampleUp;
+        float consumedDistance = remainingDistance - nextRemainingDistance;
         remainingDistance = nextRemainingDistance;
+        walkedLength += consumedDistance;
+
+        if (remainingDistance <= 0) {
+            if (sps_has_flag(previousFlags, SPS_SOCKET_FLAG_HOLE)) {
+                outRadiusMult = 0;
+            }
+            return;
+        }
+
+        if (any(endTangentOut != 0)) {
+            outForward = sps_normalize(endTangentOut);
+        }
+
+        currentUp = sampleUp;
         previousFlags = socketFlags;
         startPoint = endPoint;
         startForward = endForward;
         startUp = endUp;
         startTangentOut = endTangentOut;
-
-        if (remainingDistance <= 0) return;
-        if (sps_has_flag(socketFlags, SPS_SOCKET_FLAG_HOLE)) break;
     }
-
-    float overshootDistance = max(targetDistance - walkedLength, 0);
-    if (overshootDistance <= 0) return;
 
     if (sps_has_flag(terminalFlags, SPS_SOCKET_FLAG_HOLE)) {
         float collapseStart = worldLength * 0.05;
         float collapseEnd = worldLength * 0.1;
-        if (overshootDistance > collapseEnd) {
-            overshootDistance = collapseEnd;
+        if (remainingDistance > collapseEnd) {
+            remainingDistance = collapseEnd;
         }
         outRadiusMult = sps_saturated_map(
-            overshootDistance,
+            remainingDistance,
             collapseEnd,
             collapseStart
         );
     }
-    outPosition += outForward * overshootDistance;
+    outPosition += outForward * remainingDistance;
 }
 
 #endif

@@ -11,7 +11,7 @@ inline void sps_deform_segment_control_points(
     float3 endPoint,
     float3 endForwardInput,
     float3 endTangentIn,
-    bool nextLink,
+    bool isGuidedSegment,
     float worldLength,
     float remainingLength,
     out float3 p0,
@@ -31,7 +31,7 @@ inline void sps_deform_segment_control_points(
     if (length(endForward) <= 0) endForward = sps_normalize(endPoint - startPoint);
     if (length(endForward) <= 0) endForward = float3(0, 0, 1);
 
-    if (nextLink) applyLerp = 1;
+    if (isGuidedSegment) applyLerp = 1;
     else {
         float fadeStart = remainingLength + worldLength * 0.2;
         float fadeEnd = remainingLength + worldLength * 0.6;

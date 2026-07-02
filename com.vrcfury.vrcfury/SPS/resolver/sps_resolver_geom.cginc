@@ -72,11 +72,11 @@ void sps_emit_resolver(
         if (found && segmentIndex < chainCount) {
             output.chainSlotIndex[segmentIndex] = chain[segmentIndex].cellIndex;
             output.chainFlipped[segmentIndex] = chain[segmentIndex].flipped;
-            output.chainNextLink[segmentIndex] = chain[segmentIndex].nextLink;
+            output.isGuideTarget[segmentIndex] = chain[segmentIndex].isGuideTarget;
         } else {
             output.chainSlotIndex[segmentIndex] = SPS_CHAIN_REF_INVALID;
             output.chainFlipped[segmentIndex] = false;
-            output.chainNextLink[segmentIndex] = false;
+            output.isGuideTarget[segmentIndex] = false;
         }
     }
     #if SPS_RESOLVER_DEBUG

@@ -70,7 +70,7 @@ uint sps_read_resolver_chain_flags(SpsCell cell, int sampleIndex) {
     return sps_read_resolver_chain_uint(cell, SPS_RESOLVER_CHAIN_FLAGS_FIELD, sampleIndex);
 }
 
-bool sps_read_resolver_chain_next_link(SpsCell cell, int sampleIndex) {
+bool sps_read_resolver_is_guide_target(SpsCell cell, int sampleIndex) {
     if (sampleIndex <= 0) return false;
     return sps_read_resolver_chain_uint(cell, SPS_RESOLVER_CHAIN_NEXT_LINK_FIELD, sampleIndex) > 0u;
 }
