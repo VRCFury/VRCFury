@@ -386,6 +386,14 @@ namespace VF.Inspector {
                     var guidedPathStops = socket.guidedPathStops
                         .Where(stop => stop != null && stop.transform != null)
                         .ToList();
+                    foreach (var stop in guidedPathStops) {
+                        var stopObj = stop.transform.asVf();
+                        if (stopObj.childCount > 0 || stopObj.GetComponents().Length > 1) {
+                            throw new Exception(
+                                "SPS guided path stops must be empty transforms with no children or components. Invalid stop: "
+                                + stopObj.GetPath());
+                        }
+                    }
                     var guidedPath = guidedPathStops
                         .Select(stop => stop.transform.asVf())
                         .ToList();
