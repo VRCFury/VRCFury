@@ -334,7 +334,6 @@ namespace VF.Inspector {
             return VRCFuryEditorUtils.Debug(refreshElement: () => {
                 var output = new VisualElement();
                 var legacyRendererPaths = new List<string>();
-                var lightPaths = new List<string>();
                 var tipLightPaths = new List<string>();
                 var orificeLightPaths = new List<string>();
 
@@ -348,8 +347,6 @@ namespace VF.Inspector {
                              type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Ring ||
                              type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Front)
                         orificeLightPaths.Add(path);
-                    else
-                        lightPaths.Add(path);
                 }
                 foreach (var renderer in c.owner().GetComponentsInUploadRoot<Renderer>()) {
                     foreach (var m in renderer.sharedMaterials) {
@@ -375,13 +372,6 @@ namespace VF.Inspector {
                         " and your DPS orifices may cause issues if too many are active at the same time." +
                         " Check out https://vrcfury.com/sps for details about how to upgrade DPS orifices to SPS sockets.\n\n" +
                         orificeLightPaths.Join('\n')
-                    );
-                    output.Add(warning);
-                }
-                if (lightPaths.Any()) {
-                    var warning = VRCFuryEditorUtils.Warn(
-                        "This avatar contains point or spot lights! Beware that these lights may interfere with SPS if they are enabled at the same time.\n\n" +
-                        lightPaths.Join('\n')
                     );
                     output.Add(warning);
                 }
