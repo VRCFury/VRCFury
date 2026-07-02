@@ -238,6 +238,7 @@ namespace VF.Builder.Haptics {
             if (socket.useHipAvoidance && closestBone == HumanBodyBones.Hips) {
                 AddTag(tags, ref count, HashTag("hips"));
             }
+            AddTag(tags, ref count, GetAutoHipFrontBackTag(socket, closestBone));
             AddTag(tags, ref count, GetAutoSocketTag(closestBone));
             if (socket.useSharedTag) {
                 AddTag(tags, ref count, SharedTag);
@@ -318,6 +319,45 @@ namespace VF.Builder.Haptics {
 
         private static bool IsOnHips(VFGameObject obj) {
             return GetClosestBone(obj) == HumanBodyBones.Hips;
+        }
+
+        private static uint GetAutoHipFrontBackTag(VRCFuryHapticSocket socket, HumanBodyBones? closestBone) {
+            if (closestBone != HumanBodyBones.Hips) return 0;
+
+            var root = socket.owner().root;
+            var hipSockets = root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
+                .Where(other => other != null && GetClosestBone(other.owner()) == HumanBodyBones.Hips)
+                .OrderBy(other => other.owner().worldPosition.y)
+                .ThenBy(other => other.owner().GetPath(root))
+                .Take(2)
+                .ToList();
+
+            if (hipSockets.Count != 2) return 0;
+
+            var hips = VRCFuryHapticSocketEditor.getBoneOnArmature?.Invoke(root, HumanBodyBones.Hips);
+            var rightHand = VRCFuryHapticSocketEditor.getBoneOnArmature?.Invoke(root, HumanBodyBones.RightHand);
+            if (hips == null || rightHand == null) return 0;
+
+            var right = rightHand.worldPosition - hips.worldPosition;
+            if (right.sqrMagnitude <= 0.000001f) return 0;
+
+            var up = Vector3.up;
+
+            var forward = Vector3.Cross(right.normalized, up.normalized);
+            if (forward.sqrMagnitude <= 0.000001f) return 0;
+            forward.Normalize();
+
+            var midpoint = (hipSockets[0].owner().worldPosition + hipSockets[1].owner().worldPosition) * 0.5f;
+            hipSockets = hipSockets
+                .OrderBy(other => Vector3.Dot(other.owner().worldPosition - midpoint, forward))
+                .ThenBy(other => other.owner().GetPath(root))
+                .ToList();
+
+            return hipSockets[0] == socket
+                ? HashTag("hipsback")
+                : hipSockets[1] == socket
+                    ? HashTag("hipsfront")
+                    : 0;
         }
 
         public static void MarkSpsPropertiesAnimated(Material material) {

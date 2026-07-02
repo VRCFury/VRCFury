@@ -621,6 +621,7 @@ namespace VF.Inspector {
         }
 
         public static Func<VFGameObject, HumanBodyBones?> getClosestBone;
+        public static Func<VFGameObject, HumanBodyBones, VFGameObject> getBoneOnArmature;
 
         public static bool ShouldProbablyHaveTouchZone(VRCFuryHapticSocket socket) {
             if (getClosestBone == null) return false;
