@@ -127,7 +127,6 @@ namespace VF.Service {
                         toggleParam = fx.NewBool(oscId, synced: true, saved: saved);
                         var icon = socket.menuIcon?.Get();
                         menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/{menuName}", toggleParam, icon: icon);
-                        exclusiveTriggers.Add((oscId, toggleParam));
                     }
 
                     if (!BuildTargetUtils.IsDesktop()) {
@@ -318,6 +317,10 @@ namespace VF.Service {
                         foreach (var child in new[] { bakeResult.lights }.NotNull()) {
                             legacyOffClip.SetEnabled(child, false);
                         }
+                    }
+
+                    if (toggleParam != null && bakeResult.lights != null) {
+                        exclusiveTriggers.Add((oscId, toggleParam));
                     }
 
                     // Do the toggle last so all the objects have been generated and can be toggled on/off
