@@ -130,6 +130,11 @@ namespace VF.Builder.Haptics {
             VRCFuryHapticSocket socket,
             VRCFuryHapticSocket.AddLight lightType,
             float socketId,
+            bool useTangentIn,
+            Vector3 tangentIn,
+            bool useTangentOut,
+            Vector3 tangentOut,
+            bool useRadiusOffset,
             int nextSocketId = 0,
             bool includeTags = true
         ) {
@@ -151,8 +156,16 @@ namespace VF.Builder.Haptics {
             Add(SpsMarkersService.Id, socketId);
             Add(SpsMarkersService.SocketHole, lightType == VRCFuryHapticSocket.AddLight.Hole ? 1 : 0);
             Add(SpsMarkersService.SocketDoubleSided, lightType == VRCFuryHapticSocket.AddLight.Ring ? 1 : 0);
-            Add(SpsMarkersService.SocketRadiusOffset, socket.useRadiusOffset ? 1 : 0);
+            Add(SpsMarkersService.SocketRadiusOffset, useRadiusOffset ? 1 : 0);
             Add(SpsMarkersService.SocketNextId, nextSocketId);
+            Add(SpsMarkersService.SocketUseTangentIn, useTangentIn ? 1 : 0);
+            Add(SpsMarkersService.SocketUseTangentOut, useTangentOut ? 1 : 0);
+            Add(SpsMarkersService.SocketTangentIn + ".x", tangentIn.x);
+            Add(SpsMarkersService.SocketTangentIn + ".y", tangentIn.y);
+            Add(SpsMarkersService.SocketTangentIn + ".z", tangentIn.z);
+            Add(SpsMarkersService.SocketTangentOut + ".x", tangentOut.x);
+            Add(SpsMarkersService.SocketTangentOut + ".y", tangentOut.y);
+            Add(SpsMarkersService.SocketTangentOut + ".z", tangentOut.z);
             ConfigureSocketTags(Add, socket, includeTags);
             return properties;
         }

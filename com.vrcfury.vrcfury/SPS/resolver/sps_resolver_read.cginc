@@ -66,6 +66,8 @@ inline SocketData sps_read_positive_socket(SpsCell cell) {
     for (uint tagIndex = 0u; tagIndex < SPS_SOCKET_PAYLOAD_TAG_COUNT; tagIndex++) {
         data.tags[tagIndex] = cell.read_uint(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_TAG_START + tagIndex));
     }
+    data.tangentIn = cell.read_float3(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_TANGENT_IN_START));
+    data.tangentOut = cell.read_float3(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_TANGENT_OUT_START));
     return data;
 }
 
@@ -77,6 +79,8 @@ inline SocketData sps_make_empty_socket() {
     for (uint tagIndex = 0u; tagIndex < SPS_SOCKET_PAYLOAD_TAG_COUNT; tagIndex++) {
         data.tags[tagIndex] = 0u;
     }
+    data.tangentIn = 0;
+    data.tangentOut = 0;
     return data;
 }
 

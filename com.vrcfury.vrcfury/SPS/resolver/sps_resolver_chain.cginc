@@ -10,6 +10,7 @@
 inline ChainEntry sps_make_chain_entry(
     int cellIndex,
     bool flipped,
+    bool nextLink,
     float3 world,
     float3 traversalNormal,
     uint flags,
@@ -20,6 +21,7 @@ inline ChainEntry sps_make_chain_entry(
     ChainEntry entry = (ChainEntry)0;
     entry.cellIndex = cellIndex;
     entry.flipped = flipped;
+    entry.nextLink = nextLink;
     entry.world = world;
     entry.traversalNormal = sps_normalize(traversalNormal);
     entry.flags = flags;
@@ -51,6 +53,7 @@ bool sps_evaluate_chain_candidate(
     SocketData socketData,
     ChainEntry previous,
     float3 sourceForward,
+    bool nextLink,
     out float distanceSq,
     out float3 traversalNormal,
     out uint rejectionFlags
@@ -64,6 +67,7 @@ bool sps_evaluate_chain_candidate(
         sourceForward,
         distanceSq,
         socketData.flags,
+        nextLink,
         traversalNormal,
         rejectionFlags
     );
@@ -86,6 +90,7 @@ int sps_build_chain(
 
     ChainEntry plugEntry = sps_make_chain_entry(
         SPS_CHAIN_REF_INVALID,
+        false,
         false,
         plugWorld,
         -plugForward,
@@ -127,6 +132,7 @@ int sps_build_chain(
                 linkedSocketData,
                 previous,
                 sourceForward,
+                true,
                 unusedDistanceSq,
                 traversalNormal,
                 rejectionFlags
@@ -140,9 +146,10 @@ int sps_build_chain(
             chain[chainIndex] = sps_make_chain_entry(
                 linkedCellData.cellIndex,
                 dot(traversalNormal, sps_normalize(linkedCellData.normal)) < 0,
+                true,
                 sps_resolver_socket_target_world(linkedCellData, linkedSocketData.flags),
                 traversalNormal,
-                linkedSocketData.flags | SPS_SOCKET_FLAG_NEXT_LINK,
+                linkedSocketData.flags,
                 linkedCellData.id,
                 linkedSocketData.nextId,
                 linkedCellData.playerId
@@ -174,6 +181,7 @@ int sps_build_chain(
                 candidateSocketData,
                 previous,
                 sourceForward,
+                false,
                 distanceSq,
                 traversalNormal,
                 rejectionFlags
@@ -199,6 +207,7 @@ int sps_build_chain(
         chain[chainCount] = sps_make_chain_entry(
             best.cellIndex,
             dot(bestTraversalNormal, sps_normalize(best.normal)) < 0,
+            false,
             bestWorld,
             bestTraversalNormal,
             bestSocketData.flags,

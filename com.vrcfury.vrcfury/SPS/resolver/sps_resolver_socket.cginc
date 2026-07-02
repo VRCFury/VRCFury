@@ -11,6 +11,7 @@ bool sps_prepare_and_evaluate_socket(
     float3 sourceForward,
     float distanceSq,
     uint flags,
+    bool nextLink,
     inout float3 normal,
     out uint rejectionFlags
 ) {
@@ -20,6 +21,7 @@ bool sps_prepare_and_evaluate_socket(
     if (sps_has_flag(flags, SPS_SOCKET_FLAG_DOUBLE_SIDED) && dot(sps_normalize(normal), rootDirection) > 0) {
         normal *= -1;
     }
+    if (nextLink) return true;
     if (entryForwardDot < SPS_EXIT_DOT_LIMIT) {
         SPS_DEBUG_SET(rejectionFlags, SPS_DEBUG_FLAG_EXIT_REJECT);
         return false;

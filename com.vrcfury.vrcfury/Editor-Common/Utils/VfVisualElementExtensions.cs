@@ -7,7 +7,16 @@ using UnityEngine.UIElements;
 namespace VF.Utils {
     internal static class VfVisualElementExtensions {
         public static T SetVisible<T>(this T el, bool visible) where T : VisualElement {
-            el.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+            return visible ? el.Show() : el.Hide();
+        }
+
+        public static T Show<T>(this T el) where T : VisualElement {
+            el.style.display = DisplayStyle.Flex;
+            return el;
+        }
+
+        public static T Hide<T>(this T el) where T : VisualElement {
+            el.style.display = DisplayStyle.None;
             return el;
         }
         

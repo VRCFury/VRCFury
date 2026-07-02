@@ -24,6 +24,7 @@ struct v2f {
     #endif
     nointerpolation int chainSlotIndex[SPS_CHAIN_MAX_SOCKETS] : TEXCOORD11;
     nointerpolation bool chainFlipped[SPS_CHAIN_MAX_SOCKETS] : TEXCOORD21;
+    nointerpolation bool chainNextLink[SPS_CHAIN_MAX_SOCKETS] : TEXCOORD26;
 };
 
 #endif

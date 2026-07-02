@@ -6,51 +6,7 @@
 #include "../common/sps_types.cginc"
 #include "../common/sps_utils.cginc"
 #include "sps_deform_bezier.cginc"
-#include "sps_deform_globals.cginc"
-
-inline void sps_deform_segment_control_points(
-    float3 startPoint,
-    float3 startForwardInput,
-    float3 endPoint,
-    float3 endForwardInput,
-    float worldLength,
-    float applyLerp,
-    out float3 p0,
-    out float3 p1,
-    out float3 p2,
-    out float3 p3
-) {
-    p0 = startPoint;
-    p3 = endPoint;
-
-    float3 startForward = startForwardInput;
-    if (length(startForward) <= 0) startForward = sps_normalize(endPoint - startPoint);
-    if (length(startForward) <= 0) startForward = float3(0, 0, 1);
-
-    float3 endForward = endForwardInput;
-    if (length(endForward) <= 0) endForward = sps_normalize(endPoint - startPoint);
-    if (length(endForward) <= 0) endForward = float3(0, 0, 1);
-
-    float bezierLerp = sps_saturated_map(applyLerp, 0, 1);
-    float handleDistance = length(endPoint - startPoint) * 0.5;
-    float handleDistanceWithPullout = sps_map(bezierLerp, 0, 1, worldLength * 5, handleDistance);
-    p1 = p0 + startForward * handleDistanceWithPullout;
-    p2 = p3 - endForward * handleDistance;
-}
-
-inline float sps_deform_segment_pullout_lerp(
-    uint socketFlags,
-    float worldLength,
-    float remainingLength,
-    float3 startPoint,
-    float3 endPoint
-) {
-    if (sps_has_flag(socketFlags, SPS_SOCKET_FLAG_NEXT_LINK)) return 1;
-    float fadeStart = remainingLength + worldLength * 0.2;
-    float fadeEnd = remainingLength + worldLength * 0.6;
-    float distance = length(endPoint - startPoint);
-    return 1 - sps_saturated_map(distance, fadeStart, fadeEnd);
-}
+#include "sps_deform_control_points.cginc"
 
 inline void sps_deform_apply_portal_transfer(
     float3 entryPoint,
@@ -100,6 +56,7 @@ inline void sps_deform_walk_chain(
     float3 startPoint = outPosition;
     float3 startForward = outForward;
     float3 startUp = outUp;
+    float3 startTangentOut = 0;
     float3 currentUp = outUp;
     uint previousFlags = 0u;
 
@@ -110,14 +67,10 @@ inline void sps_deform_walk_chain(
         if (all(endForward == 0)) break;
         float3 endUp = sps_read_resolver_chain_up(resolverCell, sampleIndex);
         uint socketFlags = sps_read_resolver_chain_flags(resolverCell, sampleIndex);
-        float segmentPulloutLerp = sps_deform_segment_pullout_lerp(
-            socketFlags,
-            worldLength,
-            max(worldLength - walkedLength, 0),
-            startPoint,
-            endPoint
-        );
-        if (sampleIndex == 1) outFirstSegmentLerp = segmentPulloutLerp;
+        bool nextLink = sps_read_resolver_chain_next_link(resolverCell, sampleIndex);
+        float3 endTangentIn = sps_read_resolver_chain_tangent_in(resolverCell, sampleIndex);
+        float3 endTangentOut = sps_read_resolver_chain_tangent_out(resolverCell, sampleIndex);
+        float segmentPulloutLerp;
 
         terminalFlags = socketFlags;
         // bool isPortal = sps_has_flag(previousFlags, SPS_SOCKET_FLAG_PORTAL);
@@ -143,11 +96,16 @@ inline void sps_deform_walk_chain(
         sps_deform_segment_control_points(
             startPoint,
             startForward,
+            startTangentOut,
             endPoint,
             endForward,
+            endTangentIn,
+            nextLink,
             worldLength,
-            segmentPulloutLerp,
-            p0, p1, p2, p3);
+            max(worldLength - walkedLength, 0),
+            p0, p1, p2, p3, segmentPulloutLerp);
+
+        if (sampleIndex == 1) outFirstSegmentLerp = segmentPulloutLerp;
 
         float nextRemainingDistance;
         float3 samplePosition;
@@ -166,6 +124,7 @@ inline void sps_deform_walk_chain(
         startPoint = endPoint;
         startForward = endForward;
         startUp = endUp;
+        startTangentOut = endTangentOut;
 
         if (remainingDistance <= 0) return;
         if (sps_has_flag(socketFlags, SPS_SOCKET_FLAG_HOLE)) break;

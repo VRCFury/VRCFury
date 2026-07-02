@@ -106,13 +106,18 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
     uint segmentIndex = chainValueIndex / SPS_RESOLVER_CHAIN_STRIDE;
     int chainSlotIndex = SPS_CHAIN_REF_INVALID;
     bool chainFlipped = false;
+    bool chainNextLink = false;
     SPS_SELECT_5(chainSlotIndex, segmentIndex, input.chainSlotIndex[0], input.chainSlotIndex[1], input.chainSlotIndex[2], input.chainSlotIndex[3], input.chainSlotIndex[4]);
     SPS_SELECT_5(chainFlipped, segmentIndex, input.chainFlipped[0], input.chainFlipped[1], input.chainFlipped[2], input.chainFlipped[3], input.chainFlipped[4]);
+    SPS_SELECT_5(chainNextLink, segmentIndex, input.chainNextLink[0], input.chainNextLink[1], input.chainNextLink[2], input.chainNextLink[3], input.chainNextLink[4]);
     if (chainSlotIndex <= SPS_CHAIN_REF_INVALID) return true;
 
     uint fieldIndex = chainValueIndex - segmentIndex * SPS_RESOLVER_CHAIN_STRIDE;
     CellData socket = sps_read_cell(socketTex, chainSlotIndex);
     SocketData socketData = sps_read_socket(socketTex, socket.cellIndex);
+    float3 tangentOffset = sps_has_flag(socketData.flags, SPS_SOCKET_FLAG_RADIUS_OFFSET)
+        ? socket.up * sps_resolver_radius()
+        : 0;
     if (fieldIndex < 3) {
         float3 sampleWorld = sps_resolver_socket_target_world(socket, socketData.flags);
         rgba = sps_encode_float(sps_resolver_vector_component(sampleWorld, (int)fieldIndex));
@@ -133,6 +138,20 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
     }
     if (fieldIndex < 10) {
         rgba = sps_encode_uint(socketData.flags);
+        return true;
+    }
+    if (fieldIndex < 11) {
+        rgba = sps_encode_uint(chainNextLink ? 1u : 0u);
+        return true;
+    }
+    if (fieldIndex < 14) {
+        float3 tangentIn = any(socketData.tangentIn != 0) ? socketData.tangentIn + tangentOffset : 0;
+        rgba = sps_encode_float(sps_resolver_vector_component(tangentIn, (int)(fieldIndex - 11u)));
+        return true;
+    }
+    if (fieldIndex < 17) {
+        float3 tangentOut = any(socketData.tangentOut != 0) ? socketData.tangentOut + tangentOffset : 0;
+        rgba = sps_encode_float(sps_resolver_vector_component(tangentOut, (int)(fieldIndex - 14u)));
         return true;
     }
     return true;

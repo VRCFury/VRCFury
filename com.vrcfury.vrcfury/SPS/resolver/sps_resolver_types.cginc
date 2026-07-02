@@ -66,11 +66,14 @@ struct SocketData {
     uint flags;
     uint nextId;
     uint tags[SPS_SOCKET_PAYLOAD_TAG_COUNT];
+    float3 tangentIn;
+    float3 tangentOut;
 };
 
 struct ChainEntry {
     int cellIndex;
     bool flipped;
+    bool nextLink;
     float3 world;
     float3 traversalNormal;
     uint flags;

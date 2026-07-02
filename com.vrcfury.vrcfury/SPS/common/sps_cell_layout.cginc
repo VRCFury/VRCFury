@@ -57,6 +57,8 @@
 #define SPS_SOCKET_PAYLOAD_TAG_6 (SPS_SOCKET_PAYLOAD_TAG_START + 5)
 #define SPS_SOCKET_PAYLOAD_TAG_7 (SPS_SOCKET_PAYLOAD_TAG_START + 6)
 #define SPS_SOCKET_PAYLOAD_TAG_8 (SPS_SOCKET_PAYLOAD_TAG_START + 7)
+#define SPS_SOCKET_PAYLOAD_TANGENT_IN_START 10
+#define SPS_SOCKET_PAYLOAD_TANGENT_OUT_START 13
 
 inline uint sps_decode_uint(float4 rgba) {
     uint b0 = (uint)round(sps_decode_channel(rgba.r) * 255.0);

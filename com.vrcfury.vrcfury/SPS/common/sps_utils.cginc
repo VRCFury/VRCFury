@@ -68,6 +68,8 @@ float3 sps_rotate_around_axis(float3 v, float3 axis, float angle) {
 }
 
 float3 sps_toLocal(float3 v) { return mul(unity_WorldToObject, float4(v, 1)).xyz; }
+float3 sps_toWorld(float3 v) { return mul(unity_ObjectToWorld, float4(v, 1)).xyz; }
+float3 sps_direction_toWorld(float3 v) { return mul((float3x3)unity_ObjectToWorld, v); }
 float3 sps_direction_toLocal(float3 v) { return mul((float3x3)unity_WorldToObject, v); }
 
 #endif

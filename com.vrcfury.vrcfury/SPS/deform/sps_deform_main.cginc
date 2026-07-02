@@ -6,6 +6,7 @@ void sps_apply(inout SpsInputs o){}
 #include "../resolver/sps_resolver_payload.cginc"
 #include "../common/sps_utils.cginc"
 #include "sps_deform_bake.cginc"
+#include "sps_deform_control_points.cginc"
 #include "sps_deform_curve.cginc"
 
 // SPS Penetration Shader

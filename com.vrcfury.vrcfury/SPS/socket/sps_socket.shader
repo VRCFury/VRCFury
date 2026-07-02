@@ -6,6 +6,10 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
         //[Toggle] _SPS_SocketPortal("Portal", Float) = 0
         [Toggle] _SPS_SocketRadiusOffset("Radius Offset", Float) = 0
         _SPS_SocketNextId("Restrict Next Socket Id", Float) = 0
+        [Toggle] _SPS_SocketUseTangentIn("Use Tangent In", Float) = 0
+        [Toggle] _SPS_SocketUseTangentOut("Use Tangent Out", Float) = 0
+        _SPS_SocketTangentIn("Tangent In", Vector) = (0,0,0,0)
+        _SPS_SocketTangentOut("Tangent Out", Vector) = (0,0,0,0)
         [Header(Tags)]
         _SPS_SocketTag1("Tag 1", Float) = 0
         _SPS_SocketTag2("Tag 2", Float) = 0
@@ -53,6 +57,10 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketPortal)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketRadiusOffset)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketNextId)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketUseTangentIn)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketUseTangentOut)
+                UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_SocketTangentIn)
+                UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_SocketTangentOut)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag1)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag2)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag3)
@@ -69,6 +77,10 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
             #define _SPS_SocketPortal SPS_SOCKET_PROP(_SPS_SocketPortal)
             #define _SPS_SocketRadiusOffset SPS_SOCKET_PROP(_SPS_SocketRadiusOffset)
             #define _SPS_SocketNextId SPS_SOCKET_PROP(_SPS_SocketNextId)
+            #define _SPS_SocketUseTangentIn SPS_SOCKET_PROP(_SPS_SocketUseTangentIn)
+            #define _SPS_SocketUseTangentOut SPS_SOCKET_PROP(_SPS_SocketUseTangentOut)
+            #define _SPS_SocketTangentIn SPS_SOCKET_PROP(_SPS_SocketTangentIn)
+            #define _SPS_SocketTangentOut SPS_SOCKET_PROP(_SPS_SocketTangentOut)
             #define _SPS_SocketTag1 SPS_SOCKET_PROP(_SPS_SocketTag1)
             #define _SPS_SocketTag2 SPS_SOCKET_PROP(_SPS_SocketTag2)
             #define _SPS_SocketTag3 SPS_SOCKET_PROP(_SPS_SocketTag3)
@@ -142,6 +154,8 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
                 if (uniqueId == 0u) uniqueId = sps_hash_world(i.rootWorld, 0u);
                 uint playerId = sps_player_id();
                 uint nextId = sps_to_uint(_SPS_SocketNextId);
+                float3 tangentIn = sps_to_bool(_SPS_SocketUseTangentIn) ? sps_toWorld(_SPS_SocketTangentIn.xyz) : 0;
+                float3 tangentOut = sps_to_bool(_SPS_SocketUseTangentOut) ? sps_toWorld(_SPS_SocketTangentOut.xyz) : 0;
                 float tagValues[SPS_SOCKET_PAYLOAD_TAG_COUNT] = {
                     _SPS_SocketTag1, _SPS_SocketTag2, _SPS_SocketTag3, _SPS_SocketTag4,
                     _SPS_SocketTag5, _SPS_SocketTag6, _SPS_SocketTag7, _SPS_SocketTag8
@@ -175,6 +189,8 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
                     flags,
                     nextId,
                     tags,
+                    tangentIn,
+                    tangentOut,
                     rgba
                 )) {
                     return rgba;

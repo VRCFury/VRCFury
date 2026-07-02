@@ -18,6 +18,10 @@ namespace VF.Builder.Haptics {
         public const string SocketPortal = "_SPS_SocketPortal";
         public const string SocketRadiusOffset = "_SPS_SocketRadiusOffset";
         public const string SocketNextId = "_SPS_SocketNextId";
+        public const string SocketUseTangentIn = "_SPS_SocketUseTangentIn";
+        public const string SocketUseTangentOut = "_SPS_SocketUseTangentOut";
+        public const string SocketTangentIn = "_SPS_SocketTangentIn";
+        public const string SocketTangentOut = "_SPS_SocketTangentOut";
 
         private readonly Lazy<Mesh> sharedTriggerMesh;
         private readonly Lazy<Material> sharedSocketMaterial;

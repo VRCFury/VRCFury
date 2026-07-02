@@ -30,6 +30,20 @@ namespace VF.Inspector {
     }
 
     internal static class VRCFuryHapticSocketGizmo {
+        static Vector3 TransformLocalPoint(Vector3 origin, Quaternion rotation, Vector3 localPoint) {
+            return origin + rotation * localPoint;
+        }
+
+        static Vector3 GetDefaultTangentOut(Vector3 start, Quaternion startRot, Vector3 end) {
+            var distance = Vector3.Distance(start, end) * 0.5f;
+            return start - (startRot * Vector3.forward) * distance;
+        }
+
+        static Vector3 GetDefaultTangentIn(Vector3 start, Vector3 end, Quaternion endRot) {
+            var distance = Vector3.Distance(start, end) * 0.5f;
+            return end + (endRot * Vector3.forward) * distance;
+        }
+
         static void DrawRadiusOffsetPlane(Vector3 worldPos, Quaternion worldRot) {
             var worldUp = worldRot * Vector3.up;
             var worldRight = worldRot * Vector3.right * 0.02f;
@@ -138,12 +152,19 @@ namespace VF.Inspector {
                 handTouchZoneRadius = handTouchZoneSize?.Item2 ?? 0
             };
 
-            data.guidedPathStops = socket.guidedPathStops
+            var guidedPathStops = socket.guidedPathStops
                 .Where(stop => stop != null && stop.transform != null)
-                .Select(stop => new VRCFurySocketGizmo.GuidedPathStopData {
-                    transform = stop.transform
-                })
                 .ToList();
+            var previousParent = socket.owner();
+            for (var i = 0; i < guidedPathStops.Count; i++) {
+                var stop = guidedPathStops[i];
+                data.guidedPathStops.Add(new VRCFurySocketGizmo.GuidedPathStopData {
+                    transform = stop.transform,
+                    tangentIn = stop.tangentIn != null ? VRCFuryHapticSocketEditor.GetTangentLocal(stop.transform.asVf(), stop.tangentIn) : Vector3.zero,
+                    tangentOut = stop.tangentOut != null ? VRCFuryHapticSocketEditor.GetTangentLocal(previousParent, stop.tangentOut) : Vector3.zero
+                });
+                previousParent = stop.transform.asVf();
+            }
 
             return data;
         }
@@ -175,14 +196,29 @@ namespace VF.Inspector {
                     owner
                 );
                 var previousPos = worldStart + (data.useRadiusOffset ? worldRotation * (Vector3.up * 0.04f) : Vector3.zero);
+                var previousRot = worldRotation;
                 foreach (var stop in guidedPathStops) {
                     if (stop == null || stop.transform == null) continue;
                     var stopPos = stop.transform.position;
                     var stopRot = stop.transform.rotation;
-                    var offsetStopPos = stopPos + (data.useRadiusOffset ? stopRot * (Vector3.up * 0.04f) : Vector3.zero);
-                    VRCFuryGizmoUtils.DrawArrow(previousPos, offsetStopPos, new Color(1f, 0.5f, 0));
-                    DrawGizmo(stopPos, stopRot, VRCFuryHapticSocket.AddLight.RingOneWay, "", data.useRadiusOffset, owner);
-                    previousPos = offsetStopPos;
+                    var previousOut = stop.tangentOut != Vector3.zero
+                        ? TransformLocalPoint(previousPos, previousRot, stop.tangentOut)
+                        : GetDefaultTangentOut(previousPos, previousRot, stopPos);
+                    var currentIn = stop.tangentIn != Vector3.zero
+                        ? TransformLocalPoint(stopPos, stopRot, stop.tangentIn)
+                        : GetDefaultTangentIn(previousPos, stopPos, stopRot);
+                    Handles.DrawBezier(
+                        previousPos,
+                        stopPos,
+                        previousOut,
+                        currentIn,
+                        new Color(1f, 0.5f, 0),
+                        null,
+                        2f
+                    );
+                    DrawGizmo(stopPos, stopRot, VRCFuryHapticSocket.AddLight.RingOneWay, "", false, owner);
+                    previousPos = stopPos;
+                    previousRot = stopRot;
                 }
                 return;
             }
