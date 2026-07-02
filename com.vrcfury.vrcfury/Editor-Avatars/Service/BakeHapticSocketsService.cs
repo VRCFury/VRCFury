@@ -96,7 +96,13 @@ namespace VF.Service {
             VFABool legacyOn = null;
             AnimationClip legacyOffClip = null;
             if (enableLegacy) {
-                legacyOn = fx.NewBool("legacy", synced: true, networkSynced: false, saved: saved, def: true);
+                legacyOn = fx.NewBool(
+                    "legacy",
+                    synced: true,
+                    networkSynced: false,
+                    saved: saved,
+                    def: spsOptions.GetOptions().legacyModeEnabledOnAvatarLoad
+                );
                 menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Legacy Compatibility<\\/b>\n<size=20>DPS \\/ TPS \\/ SPS1\nOne socket at a time", legacyOn);
                 legacyOffClip = clipFactory.NewClip("Turn off SPS Legacy lights");
                 var directTree = directTreeService.Create($"SPS Legacy");
