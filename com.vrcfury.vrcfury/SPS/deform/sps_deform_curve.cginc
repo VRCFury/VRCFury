@@ -137,17 +137,15 @@ inline void sps_deform_walk_chain(
         float collapseStart = worldLength * 0.05;
         float collapseEnd = worldLength * 0.1;
         if (overshootDistance > collapseEnd) {
-            outPosition -= outForward * (overshootDistance - collapseEnd);
+            overshootDistance = collapseEnd;
         }
         outRadiusMult = sps_saturated_map(
             overshootDistance,
             collapseEnd,
             collapseStart
         );
-        return;
-    } else {
-        outPosition += outForward * overshootDistance;
     }
+    outPosition += outForward * overshootDistance;
 }
 
 #endif
