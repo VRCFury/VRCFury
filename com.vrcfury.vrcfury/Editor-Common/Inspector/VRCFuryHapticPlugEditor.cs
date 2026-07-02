@@ -423,6 +423,7 @@ namespace VF.Inspector {
         private class GizmoCache {
             public double time = 0;
             public PlugSizeDetector.SizeResult size;
+            public float[] radiusSamples;
             public string error;
             public Vector3 position;
             public Quaternion rotation;
@@ -442,38 +443,64 @@ namespace VF.Inspector {
                 cache.position = transform.worldPosition;
                 cache.rotation = transform.worldRotation;
                 cache.size = null;
+                cache.radiusSamples = null;
                 cache.error = null;
                 try {
                     cache.size = PlugSizeDetector.GetWorldSize(plug);
+                    if (cache.size != null) {
+                        var worldPosition = transform.TransformPoint(cache.size.localPosition);
+                        var worldRotation = transform.worldRotation * cache.size.localRotation;
+                        cache.radiusSamples = SpsBaker.GetResolverRadiusSamples(
+                            cache.size.renderers.Select(renderer => new SpsBaker.RendererBakeInput {
+                                renderer = renderer,
+                                activeFromMask = PlugMaskGenerator.GetMask(renderer, plug)
+                            }),
+                            worldPosition,
+                            worldRotation,
+                            cache.size.worldLength
+                        );
+                    }
                 } catch (Exception e) {
                     cache.error = e.Message;
                 }
             }
 
             var size = cache.size;
-            var worldRoot = transform.TransformPoint(Vector3.zero);
+            Vector3 worldRoot;
             Vector3 worldForward;
             float worldLength;
             float worldRadius;
             Color color;
             string error = null;
             if (size == null) {
+                worldRoot = transform.TransformPoint(Vector3.zero);
                 worldForward = transform.TransformDirection(Vector3.forward);
                 worldLength = 0.3f;
                 worldRadius = 0.05f;
                 color = Color.red;
                 error = cache.error;
             } else {
+                worldRoot = transform.TransformPoint(size.localPosition);
                 worldForward = transform.TransformDirection(size.localRotation * Vector3.forward);
                 worldLength = size.worldLength;
                 worldRadius = size.worldRadius;
                 color = new Color(1f, 0.5f, 0);
             }
 
+            var isSelected = plug.owner().IsSelected();
+
             var worldEnd = worldRoot + worldForward * worldLength;
             VRCFuryGizmoUtils.DrawCappedCylinder(worldRoot, worldEnd, worldRadius, color);
+            if (isSelected && size != null && cache.radiusSamples != null) {
+                var sampleCount = cache.radiusSamples.Length;
+                for (var i = 0; i < sampleCount; i++) {
+                    var distance = worldLength * ((i + 0.5f) / sampleCount);
+                    var sampleWorld = worldRoot + worldForward * distance;
+                    VRCFuryGizmoUtils.DrawDisc(sampleWorld, worldForward, cache.radiusSamples[i], new Color(0.5f,0.5f,0.5f,0.4f));
+                }
+            }
 
-            if (Selection.activeGameObject == plug.owner()) {
+            if (isSelected) {
                 VRCFuryGizmoUtils.DrawText(
                     worldRoot + (worldEnd - worldRoot) / 2,
                     "SPS Plug" + (error == null ? "" : $"\n({error})"),

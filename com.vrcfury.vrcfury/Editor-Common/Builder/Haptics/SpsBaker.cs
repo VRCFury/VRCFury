@@ -6,7 +6,7 @@ using VF.Utils;
 
 namespace VF.Builder.Haptics {
     internal static class SpsBaker {
-        public const int ResolverRadiusSampleCount = 32;
+        public const int ResolverRadiusSampleCount = 16;
         private const float MinSampleRadius = 0.0001f;
 
         public class RendererBakeInput {
@@ -78,20 +78,43 @@ namespace VF.Builder.Haptics {
             Transform origin,
             float worldLength
         ) {
+            var radii = GetResolverRadiusSamples(
+                renderers,
+                origin.position,
+                origin.rotation,
+                worldLength
+            );
+
+            var packed = new Vector4[ResolverRadiusSampleCount / 4];
+            for (var i = 0; i < ResolverRadiusSampleCount; i++) {
+                var packedIndex = i / 4;
+                var component = i % 4;
+                packed[packedIndex][component] = radii[i];
+            }
+            return packed;
+        }
+
+        public static float[] GetResolverRadiusSamples(
+            IEnumerable<RendererBakeInput> renderers,
+            Vector3 worldPosition,
+            Quaternion worldRotation,
+            float worldLength
+        ) {
             var safeLength = Mathf.Max(worldLength, MinSampleRadius);
             var buckets = Enumerable.Range(0, ResolverRadiusSampleCount)
                 .Select(_ => new List<float>())
                 .ToArray();
+            var inverseWorldRotation = Quaternion.Inverse(worldRotation);
 
             foreach (var input in renderers ?? Enumerable.Empty<RendererBakeInput>()) {
                 if (input?.renderer == null) continue;
-                var bakedMesh = MeshBaker.BakeMesh(input.renderer, origin, true);
+                var bakedMesh = MeshBaker.BakeMesh(input.renderer);
                 if (bakedMesh == null) continue;
 
                 for (var i = 0; i < bakedMesh.vertices.Length; i++) {
                     if (input.activeFromMask != null && i < input.activeFromMask.Length && input.activeFromMask[i] <= 0) continue;
 
-                    var vertex = bakedMesh.vertices[i];
+                    var vertex = inverseWorldRotation * (input.renderer.owner().TransformPoint(bakedMesh.vertices[i]) - worldPosition);
                     if (vertex.z <= 0) continue;
 
                     var bucketIndex = Mathf.Clamp(
@@ -108,14 +131,7 @@ namespace VF.Builder.Haptics {
                 radii[i] = ReduceBucketRadius(buckets[i]);
             }
             BackfillMissingSamples(radii);
-
-            var packed = new Vector4[ResolverRadiusSampleCount / 4];
-            for (var i = 0; i < ResolverRadiusSampleCount; i++) {
-                var packedIndex = i / 4;
-                var component = i % 4;
-                packed[packedIndex][component] = radii[i];
-            }
-            return packed;
+            return radii;
         }
 
         private static float ReduceBucketRadius(List<float> bucket) {

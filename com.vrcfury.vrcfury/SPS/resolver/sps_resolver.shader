@@ -43,10 +43,6 @@ Shader "Hidden/VRCFury/SpsResolver" {
         _SPS_BakedRadiusSamples1("Baked radius samples 1", Vector) = (0,0,0,0)
         _SPS_BakedRadiusSamples2("Baked radius samples 2", Vector) = (0,0,0,0)
         _SPS_BakedRadiusSamples3("Baked radius samples 3", Vector) = (0,0,0,0)
-        _SPS_BakedRadiusSamples4("Baked radius samples 4", Vector) = (0,0,0,0)
-        _SPS_BakedRadiusSamples5("Baked radius samples 5", Vector) = (0,0,0,0)
-        _SPS_BakedRadiusSamples6("Baked radius samples 6", Vector) = (0,0,0,0)
-        _SPS_BakedRadiusSamples7("Baked radius samples 7", Vector) = (0,0,0,0)
     }
     SubShader {
         Tags {

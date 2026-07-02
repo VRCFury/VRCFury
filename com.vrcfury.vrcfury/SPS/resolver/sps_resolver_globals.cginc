@@ -1,7 +1,7 @@
 #ifndef SPS_INC_RESOLVER_GLOBALS
 #define SPS_INC_RESOLVER_GLOBALS
 
-#include "../common/sps_id.cginc"
+#include "sps_resolver_payload.cginc"
 
 UNITY_INSTANCING_BUFFER_START(SpsResolverGlobals)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_BakedLength)
@@ -11,10 +11,6 @@ UNITY_INSTANCING_BUFFER_START(SpsResolverGlobals)
     UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_BakedRadiusSamples1)
     UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_BakedRadiusSamples2)
     UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_BakedRadiusSamples3)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_BakedRadiusSamples4)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_BakedRadiusSamples5)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_BakedRadiusSamples6)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_BakedRadiusSamples7)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_TagInclude1)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_TagInclude2)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_TagInclude3)
@@ -49,10 +45,6 @@ UNITY_INSTANCING_BUFFER_END(SpsResolverGlobals)
 #define _SPS_BakedRadiusSamples1 SPS_RESOLVER_GLOBAL_PROP(_SPS_BakedRadiusSamples1)
 #define _SPS_BakedRadiusSamples2 SPS_RESOLVER_GLOBAL_PROP(_SPS_BakedRadiusSamples2)
 #define _SPS_BakedRadiusSamples3 SPS_RESOLVER_GLOBAL_PROP(_SPS_BakedRadiusSamples3)
-#define _SPS_BakedRadiusSamples4 SPS_RESOLVER_GLOBAL_PROP(_SPS_BakedRadiusSamples4)
-#define _SPS_BakedRadiusSamples5 SPS_RESOLVER_GLOBAL_PROP(_SPS_BakedRadiusSamples5)
-#define _SPS_BakedRadiusSamples6 SPS_RESOLVER_GLOBAL_PROP(_SPS_BakedRadiusSamples6)
-#define _SPS_BakedRadiusSamples7 SPS_RESOLVER_GLOBAL_PROP(_SPS_BakedRadiusSamples7)
 #define _SPS_TagInclude1 SPS_RESOLVER_GLOBAL_PROP(_SPS_TagInclude1)
 #define _SPS_TagInclude2 SPS_RESOLVER_GLOBAL_PROP(_SPS_TagInclude2)
 #define _SPS_TagInclude3 SPS_RESOLVER_GLOBAL_PROP(_SPS_TagInclude3)
@@ -87,25 +79,29 @@ float sps_resolver_radius() {
 }
 
 float4 sps_resolver_radius_block(int blockIndex) {
-    float4 block = _SPS_BakedRadiusSamples7;
+    float4 block = _SPS_BakedRadiusSamples3;
     if (blockIndex == 0) block = _SPS_BakedRadiusSamples0;
     else if (blockIndex == 1) block = _SPS_BakedRadiusSamples1;
     else if (blockIndex == 2) block = _SPS_BakedRadiusSamples2;
     else if (blockIndex == 3) block = _SPS_BakedRadiusSamples3;
-    else if (blockIndex == 4) block = _SPS_BakedRadiusSamples4;
-    else if (blockIndex == 5) block = _SPS_BakedRadiusSamples5;
-    else if (blockIndex == 6) block = _SPS_BakedRadiusSamples6;
     return block;
 }
 
-float sps_resolver_baked_radius_sample(int sampleIndex) {
-    uint clampedIndex = (uint)clamp(sampleIndex, 0, 31);
+float sps_resolver_baked_radius_sample_raw(int sampleIndex) {
+    uint clampedIndex = (uint)clamp(sampleIndex, 0, (int)SPS_RESOLVER_RADIUS_SAMPLE_COUNT - 1);
     float4 block = sps_resolver_radius_block((int)(clampedIndex >> 2));
     uint component = clampedIndex & 3u;
     if (component == 0u) return block.x;
     if (component == 1u) return block.y;
     if (component == 2u) return block.z;
     return block.w;
+}
+
+float sps_resolver_baked_radius_sample(int sampleIndex) {
+    float previous = sps_resolver_baked_radius_sample_raw(sampleIndex - 1);
+    float current = sps_resolver_baked_radius_sample_raw(sampleIndex);
+    float next = sps_resolver_baked_radius_sample_raw(sampleIndex + 1);
+    return previous * 0.25 + current * 0.5 + next * 0.25;
 }
 
 float sps_resolver_radius_sample(int sampleIndex) {
