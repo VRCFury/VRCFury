@@ -394,9 +394,9 @@ namespace VF.Inspector {
                         .ToList();
                     foreach (var stop in guidedPathStops) {
                         var stopObj = stop.transform.asVf();
-                        if (stopObj.childCount > 0 || stopObj.GetComponents().Length > 1) {
+                        if (stopObj.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any()) {
                             throw new Exception(
-                                "SPS guided path stops must be empty transforms with no children or components. Invalid stop: "
+                                "SPS guided path stops should not contain their own sockets. Invalid stop: "
                                 + stopObj.GetPath());
                         }
                     }
