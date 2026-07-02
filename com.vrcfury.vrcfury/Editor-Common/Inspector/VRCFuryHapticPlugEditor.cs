@@ -16,7 +16,7 @@ using VF.Utils;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
     internal class VRCFuryHapticPlugEditor : VRCFuryComponentEditor<VRCFuryHapticPlug> {
-        private const int SpsTagRuleCount = 2;
+        internal const int SpsTagRuleCount = 2;
 
         public static VisualElement SpsTagProp(SerializedProperty prop, string label) {
             var field = new TextField(label) {

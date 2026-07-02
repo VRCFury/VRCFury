@@ -13,7 +13,7 @@ using VF.Utils;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
     internal class VRCFuryHapticSocketEditor : VRCFuryComponentEditor<VRCFuryHapticSocket> {
-        private const int SpsTagCount = 2;
+        internal const int SpsTagCount = 2;
         private const int GuidedPathCount = 3;
 
         private void OnSceneGUI() {

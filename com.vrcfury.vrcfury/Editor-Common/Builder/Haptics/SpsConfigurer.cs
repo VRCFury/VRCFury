@@ -231,17 +231,13 @@ namespace VF.Builder.Haptics {
 
             var closestBone = GetClosestBone(socket.owner());
             var tags = new uint[8];
-            var count = 0;
-            foreach (var tag in socket.tags) {
-                AddTag(tags, ref count, HashTag(tag));
+            for (var i = 0; i < socket.tags.Count && i < VRCFuryHapticSocketEditor.SpsTagCount; i++) {
+                SetTag(tags, i, HashTag(socket.tags[i]));
             }
-            if (socket.useHipAvoidance && closestBone == HumanBodyBones.Hips) {
-                AddTag(tags, ref count, HashTag("hips"));
-            }
-            AddTag(tags, ref count, GetAutoHipFrontBackTag(socket, closestBone));
-            AddTag(tags, ref count, GetAutoSocketTag(closestBone));
+            SetTag(tags, 5, GetAutoSocketTag(closestBone, socket.useHipAvoidance));
+            SetTag(tags, 6, GetAutoHipFrontBackTag(socket, closestBone));
             if (socket.useSharedTag) {
-                AddTag(tags, ref count, SharedTag);
+                SetTag(tags, 7, SharedTag);
             }
             for (var i = 0; i < tags.Length; i++) {
                 set($"_SPS_SocketTag{i + 1}", tags[i]);
@@ -268,21 +264,18 @@ namespace VF.Builder.Haptics {
             var includeFlags = new uint[4];
             var excludeTags = new uint[4];
             var excludeFlags = new uint[4];
-            var includeCount = 0;
-            var excludeCount = 0;
-
-            foreach (var rule in plug.includeTags) {
-                AddTag(includeTags, ref includeCount, rule, includeFlags);
+            for (var i = 0; i < plug.includeTags.Count && i < VRCFuryHapticPlugEditor.SpsTagRuleCount; i++) {
+                SetTag(includeTags, includeFlags, i, plug.includeTags[i]);
             }
             if (plug.useSharedTag) {
-                AddTag(includeTags, ref includeCount, SharedTag, IncludeSelf | IncludeOthers, includeFlags);
+                SetTag(includeTags, 3, SharedTag, IncludeSelf | IncludeOthers, includeFlags);
             }
 
-            foreach (var rule in plug.excludeTags) {
-                AddTag(excludeTags, ref excludeCount, rule, excludeFlags);
+            for (var i = 0; i < plug.excludeTags.Count && i < VRCFuryHapticPlugEditor.SpsTagRuleCount; i++) {
+                SetTag(excludeTags, excludeFlags, i, plug.excludeTags[i]);
             }
             if (plug.useHipAvoidance && onHips) {
-                AddTag(excludeTags, ref excludeCount, HashTag("hips"), IncludeSelf, excludeFlags);
+                SetTag(excludeTags, 3, HashTag("hips"), IncludeSelf, excludeFlags);
             }
 
             for (var i = 0; i < 4; i++) {
@@ -296,21 +289,24 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        private static void AddTag(uint[] tags, ref int count, uint tag, uint ruleFlags = 0, uint[] flags = null) {
-            if (tag == 0 || count >= tags.Length) return;
-            tags[count] = tag;
-            if (flags != null) {
-                flags[count] = ruleFlags;
-            }
-            count++;
+        private static void SetTag(uint[] tags, int index, uint tag) {
+            if (index < 0 || index >= tags.Length) return;
+            tags[index] = tag;
         }
 
-        private static void AddTag(uint[] tags, ref int count, VRCFuryHapticPlug.TagRule rule, uint[] flags = null) {
+        private static void SetTag(uint[] tags, int index, uint tag, uint ruleFlags, uint[] flags) {
+            if (index < 0 || index >= tags.Length) return;
+            SetTag(tags, index, tag);
+            flags[index] = tag == 0 ? 0 : ruleFlags;
+        }
+
+        private static void SetTag(uint[] tags, uint[] flags, int index, VRCFuryHapticPlug.TagRule rule) {
+            if (index < 0 || index >= tags.Length) return;
             if (rule == null) return;
             var ruleFlags = 0u;
             if (rule.allowSelf) ruleFlags |= IncludeSelf;
             if (rule.allowOthers) ruleFlags |= IncludeOthers;
-            AddTag(tags, ref count, HashTag(rule.tag), ruleFlags, flags);
+            SetTag(tags, index, HashTag(rule.tag), ruleFlags, flags);
         }
 
         private static HumanBodyBones? GetClosestBone(VFGameObject obj) {
@@ -370,8 +366,10 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        private static uint GetAutoSocketTag(HumanBodyBones? bone) {
+        private static uint GetAutoSocketTag(HumanBodyBones? bone, bool useHipAvoidance) {
             switch (bone) {
+                case HumanBodyBones.Hips:
+                    return useHipAvoidance ? HashTag("hips") : 0;
                 case HumanBodyBones.Head:
                 case HumanBodyBones.Jaw:
                     return HashTag("head");
