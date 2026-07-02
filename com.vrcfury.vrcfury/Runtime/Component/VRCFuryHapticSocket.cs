@@ -43,8 +43,10 @@ namespace VF.Component {
         [Serializable]
         public class GuidedPathStop {
             public Transform transform;
-            public Transform tangentIn;
-            public Transform tangentOut;
+            public bool customizeTangentIn = false;
+            public bool customizeTangentOut = false;
+            public Vector3 tangentIn = Vector3.zero;
+            public Vector3 tangentOut = Vector3.zero;
         }
         public List<GuidedPathStop> guidedPathStops = new List<GuidedPathStop>();
 

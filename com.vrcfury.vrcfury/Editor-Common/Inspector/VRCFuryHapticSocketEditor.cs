@@ -16,6 +16,11 @@ namespace VF.Inspector {
         private const int SpsTagCount = 2;
         private const int GuidedPathCount = 3;
 
+        private void OnSceneGUI() {
+            if (!(target is VRCFuryHapticSocket socket)) return;
+            VRCFuryHapticSocketGizmo.DrawEditableTangents(socket);
+        }
+
         private static string GetMenuName(VRCFuryHapticSocket socket) {
             return HapticUtils.GetPreferredId(
                 socket,
@@ -68,48 +73,34 @@ namespace VF.Inspector {
 
         private static SerializedProperty AddGuidedPath(SerializedProperty listProp) {
             if (listProp.arraySize >= GuidedPathCount) return null;
-            var index = listProp.arraySize;
-            listProp.InsertArrayElementAtIndex(index);
-            var item = listProp.GetArrayElementAtIndex(index);
-            item.FindPropertyRelative("transform").objectReferenceValue = null;
-            listProp.serializedObject.ApplyModifiedProperties();
-            return item;
+            return VRCFuryEditorUtils.AddToList(listProp);
         }
 
         private static VisualElement GuidedPathList(SerializedProperty listProp) {
-            var output = new VisualElement();
-
-            var showTangents = false;
+            var refreshProps = new List<SerializedProperty> { listProp };
             for (var i = 0; i < Math.Min(listProp.arraySize, GuidedPathCount); i++) {
                 var item = listProp.GetArrayElementAtIndex(i);
-                var tangentIn = item.FindPropertyRelative("tangentIn");
-                var tangentOut = item.FindPropertyRelative("tangentOut");
-                showTangents |= tangentIn.objectReferenceValue != null || tangentOut.objectReferenceValue != null;
+                refreshProps.Add(item.FindPropertyRelative("customizeTangentOut"));
+                refreshProps.Add(item.FindPropertyRelative("customizeTangentIn"));
             }
-
-            var tangentFields = new List<VisualElement>();
-
-            output.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            return VRCFuryEditorUtils.RefreshOnChange(() => {
                 var container = new VisualElement();
-                tangentFields.Clear();
-
-                var warning = VRCFuryEditorUtils.Warn(
-                    "Note: Tangents are baked during the upload. They will follow the nearest stop, and cannot be animated at runtime.");
-                tangentFields.Add(warning);
-                container.Add(warning);
 
                 for (var i = 0; i < Math.Min(listProp.arraySize, GuidedPathCount); i++) {
                     var index = i;
                     var row = new VisualElement();
                     var item = listProp.GetArrayElementAtIndex(index);
+                    var customizeTangentOut = item.FindPropertyRelative("customizeTangentOut");
+                    var customizeTangentIn = item.FindPropertyRelative("customizeTangentIn");
 
-                    var tangentIn = item.FindPropertyRelative("tangentIn");
-                    var tangentOut = item.FindPropertyRelative("tangentOut");
-                    var tangentContainer = new VisualElement();
-                    tangentFields.Add(tangentContainer);
-                    tangentContainer.Add(new PropertyField(tangentOut, "Tangent Out (Optional)"));
-                    tangentContainer.Add(new PropertyField(tangentIn, "Tangent In (Optional)"));
-                    row.Add(tangentContainer);
+                    row.Add(new PropertyField(customizeTangentOut, $"Customize Tangent exiting {(index == 0 ? "Root" : $"Stop {index}")}"));
+                    if (customizeTangentOut.boolValue) {
+                        row.Add(new PropertyField(item.FindPropertyRelative("tangentOut"), "Tangent Out"));
+                    }
+                    row.Add(new PropertyField(customizeTangentIn, $"Customize Tangent entering Stop {index + 1}"));
+                    if (customizeTangentIn.boolValue) {
+                        row.Add(new PropertyField(item.FindPropertyRelative("tangentIn"), "Tangent In"));
+                    }
 
                     row.Add(new PropertyField(item.FindPropertyRelative("transform"), $"Stop {index + 1}"));
 
@@ -123,31 +114,12 @@ namespace VF.Inspector {
                 }
                 if (listProp.arraySize < GuidedPathCount) {
                     container.Add(new Button(() => AddGuidedPath(listProp)) {
-                        text = "Add Path Transform"
+                        text = "Add Stop to Path"
                     });
                 }
 
-                if (!showTangents) {
-                    foreach (var c in tangentFields) {
-                        c.Hide();
-                    }
-                }
-
                 return container;
-            }, listProp));
-
-            if (!showTangents) {
-                VisualElement showButton = null;
-                showButton = new Button(() => {
-                    foreach (var c in tangentFields) c.Show();
-                    showButton.Hide();
-                }) {
-                    text = "Customize Tangents"
-                };
-                output.Add(showButton);
-            }
-
-            return output;
+            }, refreshProps.ToArray());
         }
 
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
@@ -429,8 +401,8 @@ namespace VF.Inspector {
                             socket.useRadiusOffset,
                             false,
                             Vector3.zero,
-                            firstStop.tangentOut != null,
-                            GetTangentLocal(worldSpace, firstStop.tangentOut),
+                            firstStop.customizeTangentOut,
+                            firstStop.tangentOut,
                             pathIds[0]
                         ));
                         for (var i = 0; i < guidedPath.Count; i++) {
@@ -448,10 +420,10 @@ namespace VF.Inspector {
                                 pathIds[i],
                                 spsMarkers,
                                 false,
-                                stop.tangentIn != null,
-                                GetTangentLocal(guidedPath[i], stop.tangentIn),
-                                nextStop != null && nextStop.tangentOut != null,
-                                nextStop != null ? GetTangentLocal(guidedPath[i], nextStop.tangentOut) : Vector3.zero,
+                                stop.customizeTangentIn,
+                                stop.tangentIn,
+                                nextStop != null && nextStop.customizeTangentOut,
+                                nextStop != null ? nextStop.tangentOut : Vector3.zero,
                                 nextSocketId,
                                 includeTags: false,
                                 objectName: "SPS Socket Path"
@@ -551,11 +523,6 @@ namespace VF.Inspector {
             return lightType == VRCFuryHapticSocket.AddLight.Hole
                 ? VRCFuryHapticSocket.AddLight.Hole
                 : VRCFuryHapticSocket.AddLight.RingOneWay;
-        }
-
-        public static Vector3 GetTangentLocal(VFGameObject markerParent, Transform tangent) {
-            if (markerParent == null || tangent == null) return Vector3.zero;
-            return markerParent.InverseTransformPoint(tangent.position);
         }
 
         public static ScreenMarkerResult CreateScreenMarker(

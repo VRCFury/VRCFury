@@ -34,6 +34,10 @@ namespace VF.Inspector {
             return origin + rotation * localPoint;
         }
 
+        static Vector3 InverseTransformLocalPoint(Vector3 origin, Quaternion rotation, Vector3 worldPoint) {
+            return Quaternion.Inverse(rotation) * (worldPoint - origin);
+        }
+
         static Vector3 GetDefaultTangentOut(Vector3 start, Quaternion startRot, Vector3 end) {
             var distance = Vector3.Distance(start, end) * 0.5f;
             return start - (startRot * Vector3.forward) * distance;
@@ -155,15 +159,15 @@ namespace VF.Inspector {
             var guidedPathStops = socket.guidedPathStops
                 .Where(stop => stop != null && stop.transform != null)
                 .ToList();
-            var previousParent = socket.owner();
             for (var i = 0; i < guidedPathStops.Count; i++) {
                 var stop = guidedPathStops[i];
                 data.guidedPathStops.Add(new VRCFurySocketGizmo.GuidedPathStopData {
                     transform = stop.transform,
-                    tangentIn = stop.tangentIn != null ? VRCFuryHapticSocketEditor.GetTangentLocal(stop.transform.asVf(), stop.tangentIn) : Vector3.zero,
-                    tangentOut = stop.tangentOut != null ? VRCFuryHapticSocketEditor.GetTangentLocal(previousParent, stop.tangentOut) : Vector3.zero
+                    customizeTangentIn = stop.customizeTangentIn,
+                    customizeTangentOut = stop.customizeTangentOut,
+                    tangentIn = stop.tangentIn,
+                    tangentOut = stop.tangentOut
                 });
-                previousParent = stop.transform.asVf();
             }
 
             return data;
@@ -201,10 +205,10 @@ namespace VF.Inspector {
                     if (stop == null || stop.transform == null) continue;
                     var stopPos = stop.transform.position;
                     var stopRot = stop.transform.rotation;
-                    var previousOut = stop.tangentOut != Vector3.zero
+                    var previousOut = stop.customizeTangentOut
                         ? TransformLocalPoint(previousPos, previousRot, stop.tangentOut)
                         : GetDefaultTangentOut(previousPos, previousRot, stopPos);
-                    var currentIn = stop.tangentIn != Vector3.zero
+                    var currentIn = stop.customizeTangentIn
                         ? TransformLocalPoint(stopPos, stopRot, stop.tangentIn)
                         : GetDefaultTangentIn(previousPos, stopPos, stopRot);
                     Handles.DrawBezier(
@@ -224,6 +228,43 @@ namespace VF.Inspector {
             }
 
             DrawGizmo(worldStart, worldRotation, data.type, data.name, data.useRadiusOffset, owner);
+        }
+
+        internal static void DrawEditableTangents(VRCFuryHapticSocket socket) {
+            if (socket == null) return;
+            var guidedPathStops = socket.guidedPathStops ?? new List<VRCFuryHapticSocket.GuidedPathStop>();
+            var previousPos = socket.owner().worldPosition + (socket.useRadiusOffset ? socket.owner().worldRotation * (Vector3.up * 0.04f) : Vector3.zero);
+            var previousRot = socket.owner().worldRotation * Quaternion.Euler(socket.rotation);
+            for (var i = 0; i < guidedPathStops.Count; i++) {
+                var stop = guidedPathStops[i];
+                if (stop == null || stop.transform == null) continue;
+                var stopPos = stop.transform.position;
+                var stopRot = stop.transform.rotation;
+                if (stop.customizeTangentOut) {
+                    EditorGUI.BeginChangeCheck();
+                    var tangentOutWorld = TransformLocalPoint(previousPos, previousRot, stop.tangentOut);
+                    var newTangentOutWorld = Handles.PositionHandle(tangentOutWorld, Quaternion.identity);
+                    if (EditorGUI.EndChangeCheck()) {
+                        Undo.RecordObject(socket, "Move SPS Tangent Out");
+                        stop.tangentOut = InverseTransformLocalPoint(previousPos, previousRot, newTangentOutWorld);
+                        EditorUtility.SetDirty(socket);
+                    }
+                }
+
+                if (stop.customizeTangentIn) {
+                    EditorGUI.BeginChangeCheck();
+                    var tangentInWorld = TransformLocalPoint(stopPos, stopRot, stop.tangentIn);
+                    var newTangentInWorld = Handles.PositionHandle(tangentInWorld, Quaternion.identity);
+                    if (EditorGUI.EndChangeCheck()) {
+                        Undo.RecordObject(socket, "Move SPS Tangent In");
+                        stop.tangentIn = InverseTransformLocalPoint(stopPos, stopRot, newTangentInWorld);
+                        EditorUtility.SetDirty(socket);
+                    }
+                }
+
+                previousPos = stopPos;
+                previousRot = stopRot;
+            }
         }
 
         [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
