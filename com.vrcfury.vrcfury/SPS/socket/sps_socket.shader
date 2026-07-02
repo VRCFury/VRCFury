@@ -5,6 +5,8 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
         [Toggle] _SPS_SocketDoubleSided("Double Sided", Float) = 0
         //[Toggle] _SPS_SocketPortal("Portal", Float) = 0
         [Toggle] _SPS_SocketRadiusOffset("Radius Offset", Float) = 0
+        [Toggle] _SPS_SocketUnlockLocalX("Unlock Local X", Float) = 0
+        [Toggle] _SPS_SocketUnlockAll("Unlock All", Float) = 0
         _SPS_SocketNextId("Restrict Next Socket Id", Float) = 0
         [Toggle] _SPS_SocketUseTangentIn("Use Tangent In", Float) = 0
         [Toggle] _SPS_SocketUseTangentOut("Use Tangent Out", Float) = 0
@@ -56,6 +58,8 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketDoubleSided)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketPortal)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketRadiusOffset)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketUnlockLocalX)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketUnlockAll)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketNextId)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketUseTangentIn)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketUseTangentOut)
@@ -76,6 +80,8 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
             #define _SPS_SocketDoubleSided SPS_SOCKET_PROP(_SPS_SocketDoubleSided)
             #define _SPS_SocketPortal SPS_SOCKET_PROP(_SPS_SocketPortal)
             #define _SPS_SocketRadiusOffset SPS_SOCKET_PROP(_SPS_SocketRadiusOffset)
+            #define _SPS_SocketUnlockLocalX SPS_SOCKET_PROP(_SPS_SocketUnlockLocalX)
+            #define _SPS_SocketUnlockAll SPS_SOCKET_PROP(_SPS_SocketUnlockAll)
             #define _SPS_SocketNextId SPS_SOCKET_PROP(_SPS_SocketNextId)
             #define _SPS_SocketUseTangentIn SPS_SOCKET_PROP(_SPS_SocketUseTangentIn)
             #define _SPS_SocketUseTangentOut SPS_SOCKET_PROP(_SPS_SocketUseTangentOut)
@@ -166,10 +172,16 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
                     tags[tagIndex] = sps_to_uint(tagValues[tagIndex]);
                 }
                 uint flags = 0u;
-                float flagValues[4] = { _SPS_SocketHole, _SPS_SocketDoubleSided, _SPS_SocketPortal, _SPS_SocketRadiusOffset };
-                uint flagMasks[4] = { SPS_SOCKET_FLAG_HOLE, SPS_SOCKET_FLAG_DOUBLE_SIDED, SPS_SOCKET_FLAG_PORTAL, SPS_SOCKET_FLAG_RADIUS_OFFSET };
+                float flagValues[6] = {
+                    _SPS_SocketHole, _SPS_SocketDoubleSided, _SPS_SocketPortal, _SPS_SocketRadiusOffset,
+                    _SPS_SocketUnlockLocalX, _SPS_SocketUnlockAll
+                };
+                uint flagMasks[6] = {
+                    SPS_SOCKET_FLAG_HOLE, SPS_SOCKET_FLAG_DOUBLE_SIDED, SPS_SOCKET_FLAG_PORTAL, SPS_SOCKET_FLAG_RADIUS_OFFSET,
+                    SPS_SOCKET_FLAG_UNLOCK_LOCAL_X, SPS_SOCKET_FLAG_UNLOCK_ALL
+                };
                 [unroll]
-                for (uint flagIndex = 0u; flagIndex < 4u; flagIndex++) {
+                for (uint flagIndex = 0u; flagIndex < 6u; flagIndex++) {
                     if (sps_to_bool(flagValues[flagIndex])) flags |= flagMasks[flagIndex];
                 }
                 if (sps_try_get_slot_header_rgba(

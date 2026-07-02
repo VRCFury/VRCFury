@@ -105,10 +105,12 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
     uint chainValueIndex = payloadIndex - SPS_RESOLVER_CHAIN_BASE;
     uint segmentIndex = chainValueIndex / SPS_RESOLVER_CHAIN_STRIDE;
     int chainSlotIndex = SPS_CHAIN_REF_INVALID;
-    bool chainFlipped = false;
     bool isGuideTarget = false;
+    float3 chainForward = 0;
+    float3 chainUp = 0;
     SPS_SELECT_5(chainSlotIndex, segmentIndex, input.chainSlotIndex[0], input.chainSlotIndex[1], input.chainSlotIndex[2], input.chainSlotIndex[3], input.chainSlotIndex[4]);
-    SPS_SELECT_5(chainFlipped, segmentIndex, input.chainFlipped[0], input.chainFlipped[1], input.chainFlipped[2], input.chainFlipped[3], input.chainFlipped[4]);
+    SPS_SELECT_5(chainForward, segmentIndex, input.chainForward[0], input.chainForward[1], input.chainForward[2], input.chainForward[3], input.chainForward[4]);
+    SPS_SELECT_5(chainUp, segmentIndex, input.chainUp[0], input.chainUp[1], input.chainUp[2], input.chainUp[3], input.chainUp[4]);
     SPS_SELECT_5(isGuideTarget, segmentIndex, input.isGuideTarget[0], input.isGuideTarget[1], input.isGuideTarget[2], input.isGuideTarget[3], input.isGuideTarget[4]);
     if (chainSlotIndex <= SPS_CHAIN_REF_INVALID) return true;
 
@@ -124,16 +126,11 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
         return true;
     }
     if (fieldIndex < 6) {
-        float3 sampleForward = -(socket.normal * (chainFlipped ? -1 : 1));
-        rgba = sps_encode_float(sps_resolver_vector_component(sampleForward, (int)(fieldIndex - 3u)));
+        rgba = sps_encode_float(sps_resolver_vector_component(chainForward, (int)(fieldIndex - 3u)));
         return true;
     }
     if (fieldIndex < 9) {
-        float3 sampleUp = sps_nearest_normal(
-            -(socket.normal * (chainFlipped ? -1 : 1)),
-            socket.up
-        );
-        rgba = sps_encode_float(sps_resolver_vector_component(sampleUp, (int)(fieldIndex - 6u)));
+        rgba = sps_encode_float(sps_resolver_vector_component(chainUp, (int)(fieldIndex - 6u)));
         return true;
     }
     if (fieldIndex < 10) {

@@ -71,11 +71,13 @@ void sps_emit_resolver(
     for (int segmentIndex = 0; segmentIndex < SPS_CHAIN_MAX_SOCKETS; segmentIndex++) {
         if (found && segmentIndex < chainCount) {
             output.chainSlotIndex[segmentIndex] = chain[segmentIndex].cellIndex;
-            output.chainFlipped[segmentIndex] = chain[segmentIndex].flipped;
+            output.chainForward[segmentIndex] = -chain[segmentIndex].traversalNormal;
+            output.chainUp[segmentIndex] = chain[segmentIndex].up;
             output.isGuideTarget[segmentIndex] = chain[segmentIndex].isGuideTarget;
         } else {
             output.chainSlotIndex[segmentIndex] = SPS_CHAIN_REF_INVALID;
-            output.chainFlipped[segmentIndex] = false;
+            output.chainForward[segmentIndex] = 0;
+            output.chainUp[segmentIndex] = 0;
             output.isGuideTarget[segmentIndex] = false;
         }
     }
@@ -94,6 +96,7 @@ void geom(triangle v2g input[3], inout TriangleStream<v2f> stream) {
 
     float3 plugWorld = sps_object_origin_world();
     float3 plugForward = sps_object_forward_world();
+    float3 plugUp = sps_object_up_world();
     uint debugFlags = 0;
     int candidateCount;
     CellData cells[SPS_CANDIDATE_COUNT];
@@ -122,6 +125,7 @@ void geom(triangle v2g input[3], inout TriangleStream<v2f> stream) {
         tex,
         plugWorld,
         plugForward,
+        plugUp,
         candidateCount,
         cells,
         chain,

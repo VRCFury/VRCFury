@@ -13,6 +13,7 @@ inline ChainEntry sps_make_chain_entry(
     bool isGuideTarget,
     float3 world,
     float3 traversalNormal,
+    float3 up,
     uint flags,
     uint id,
     uint nextId,
@@ -23,7 +24,8 @@ inline ChainEntry sps_make_chain_entry(
     entry.flipped = flipped;
     entry.isGuideTarget = isGuideTarget;
     entry.world = world;
-    entry.traversalNormal = sps_normalize(traversalNormal);
+    entry.traversalNormal = traversalNormal;
+    entry.up = up;
     entry.flags = flags;
     entry.id = id;
     entry.nextId = nextId;
@@ -48,35 +50,11 @@ bool sps_chain_contains_id(
     return false;
 }
 
-bool sps_evaluate_chain_candidate(
-    CellData candidate,
-    SocketData socketData,
-    ChainEntry previous,
-    float3 sourceForward,
-    bool nextLink,
-    out float distanceSq,
-    out float3 traversalNormal,
-    out uint rejectionFlags
-) {
-    float3 entryOffset = sps_resolver_socket_target_world(candidate, socketData.flags) - previous.world;
-    distanceSq = sps_length_sq(entryOffset);
-    traversalNormal = sps_normalize(candidate.normal);
-    rejectionFlags = 0u;
-    return sps_prepare_and_evaluate_socket(
-        entryOffset,
-        sourceForward,
-        distanceSq,
-        socketData.flags,
-        nextLink,
-        traversalNormal,
-        rejectionFlags
-    );
-}
-
 int sps_build_chain(
     SpsTexture socketTex,
     float3 plugWorld,
     float3 plugForward,
+    float3 plugUp,
     int candidateCount,
     CellData candidates[SPS_CANDIDATE_COUNT],
     out ChainEntry chain[SPS_CHAIN_MAX_SOCKETS],
@@ -94,6 +72,7 @@ int sps_build_chain(
         false,
         plugWorld,
         -plugForward,
+        plugUp,
         0u,
         0u,
         0u,
@@ -104,7 +83,7 @@ int sps_build_chain(
     ChainEntry previous = plugEntry;
 
     for (int chainIndex = 0; chainIndex < SPS_CHAIN_MAX_SOCKETS; chainIndex++) {
-        float3 sourceForward = sps_normalize(-previous.traversalNormal);
+        float3 sourceForward = -previous.traversalNormal;
 
         if (previous.nextId > 0) {
             int linkedCellIndex = -1;
@@ -124,15 +103,17 @@ int sps_build_chain(
 
             float unusedDistanceSq;
             float3 traversalNormal;
+            float3 traversalUp;
             uint rejectionFlags;
-            bool candidateEligible = sps_evaluate_chain_candidate(
+            bool candidateEligible = sps_resolver_check_socket(
                 linkedCellData,
                 linkedSocketData,
-                previous,
+                previous.world,
                 sourceForward,
                 true,
                 unusedDistanceSq,
                 traversalNormal,
+                traversalUp,
                 rejectionFlags
             );
             if (!candidateEligible) {
@@ -141,12 +122,14 @@ int sps_build_chain(
                 break;
             }
 
+            float3 linkedTargetWorld = sps_resolver_socket_target_world(linkedCellData, linkedSocketData.flags);
             chain[chainIndex] = sps_make_chain_entry(
                 linkedCellData.cellIndex,
-                dot(traversalNormal, sps_normalize(linkedCellData.normal)) < 0,
+                dot(traversalNormal, linkedCellData.normal) < 0,
                 true,
-                sps_resolver_socket_target_world(linkedCellData, linkedSocketData.flags),
+                linkedTargetWorld,
                 traversalNormal,
+                traversalUp,
                 linkedSocketData.flags,
                 linkedCellData.id,
                 linkedSocketData.nextId,
@@ -164,6 +147,7 @@ int sps_build_chain(
         float bestDistanceSq = 0;
         int bestCandidateIndex = -1;
         float3 bestTraversalNormal = float3(0, 0, 1);
+        float3 bestTraversalUp = float3(0, 1, 0);
         SocketData bestSocketData = sps_make_empty_socket();
         for (int candidateIndex = 0; candidateIndex < SPS_CANDIDATE_COUNT; candidateIndex++) {
             if (candidateIndex >= candidateCount) break;
@@ -177,15 +161,17 @@ int sps_build_chain(
 
             float distanceSq;
             float3 traversalNormal;
+            float3 traversalUp;
             uint rejectionFlags;
-            bool candidateEligible = sps_evaluate_chain_candidate(
+            bool candidateEligible = sps_resolver_check_socket(
                 candidate,
                 candidateSocketData,
-                previous,
+                previous.world,
                 sourceForward,
                 false,
                 distanceSq,
                 traversalNormal,
+                traversalUp,
                 rejectionFlags
             );
             if (!candidateEligible) {
@@ -198,6 +184,7 @@ int sps_build_chain(
                 bestCandidateIndex = candidateIndex;
                 bestDistanceSq = distanceSq;
                 bestTraversalNormal = traversalNormal;
+                bestTraversalUp = traversalUp;
                 bestSocketData = candidateSocketData;
             }
         }
@@ -208,10 +195,11 @@ int sps_build_chain(
         float3 bestWorld = sps_resolver_socket_target_world(best, bestSocketData.flags);
         chain[chainCount] = sps_make_chain_entry(
             best.cellIndex,
-            dot(bestTraversalNormal, sps_normalize(best.normal)) < 0,
+            dot(bestTraversalNormal, best.normal) < 0,
             false,
             bestWorld,
             bestTraversalNormal,
+            bestTraversalUp,
             bestSocketData.flags,
             best.id,
             bestSocketData.nextId,

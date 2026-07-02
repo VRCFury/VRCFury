@@ -23,8 +23,9 @@ struct v2f {
     nointerpolation float4 debug : TEXCOORD1;
     #endif
     nointerpolation int chainSlotIndex[SPS_CHAIN_MAX_SOCKETS] : TEXCOORD11;
-    nointerpolation bool chainFlipped[SPS_CHAIN_MAX_SOCKETS] : TEXCOORD21;
-    nointerpolation bool isGuideTarget[SPS_CHAIN_MAX_SOCKETS] : TEXCOORD26;
+    nointerpolation float3 chainForward[SPS_CHAIN_MAX_SOCKETS] : TEXCOORD21;
+    nointerpolation float3 chainUp[SPS_CHAIN_MAX_SOCKETS] : TEXCOORD26;
+    nointerpolation bool isGuideTarget[SPS_CHAIN_MAX_SOCKETS] : TEXCOORD31;
 };
 
 #endif

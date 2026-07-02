@@ -76,6 +76,7 @@ struct ChainEntry {
     bool isGuideTarget;
     float3 world;
     float3 traversalNormal;
+    float3 up;
     uint flags;
     uint id;
     uint nextId;
