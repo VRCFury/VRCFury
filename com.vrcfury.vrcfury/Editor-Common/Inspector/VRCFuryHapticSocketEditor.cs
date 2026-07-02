@@ -389,9 +389,13 @@ namespace VF.Inspector {
                 });
 
                 if (BuildTargetUtils.IsDesktop()) {
-                    var guidedPathStops = socket.guidedPathStops
-                        .Where(stop => stop != null && stop.transform != null)
-                        .ToList();
+                    var guidedPathStops = socket.guidedPathStops.ToList();
+                    for (var i = 0; i < guidedPathStops.Count; i++) {
+                        var stop = guidedPathStops[i];
+                        if (stop == null || stop.transform == null) {
+                            throw new Exception($"SPS guided path stop {i + 1} is missing its transform.");
+                        }
+                    }
                     foreach (var stop in guidedPathStops) {
                         var stopObj = stop.transform.asVf();
                         if (stopObj.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any()) {
@@ -410,6 +414,41 @@ namespace VF.Inspector {
                         if (result == null) return;
                         screenMarkerResults.Add(result);
                         screenMarkers.Add(result.obj);
+                    }
+
+                    ScreenMarkerResult CreateGuidedPathScreenMarker(
+                        VFGameObject target,
+                        VRCFuryHapticSocket.AddLight markerType,
+                        float socketId,
+                        bool useTangentIn,
+                        Vector3 tangentIn,
+                        bool useTangentOut,
+                        Vector3 tangentOut,
+                        int nextSocketId
+                    ) {
+                        var result = CreateScreenMarker(
+                            worldSpace,
+                            socket,
+                            markerType,
+                            socketId,
+                            spsMarkers,
+                            false,
+                            useTangentIn,
+                            tangentIn,
+                            useTangentOut,
+                            tangentOut,
+                            nextSocketId,
+                            includeTags: false,
+                            objectName: "SPS Socket Path"
+                        );
+                        if (result == null) return null;
+
+                        result.obj.worldPosition = target.worldPosition;
+                        result.obj.worldRotation = target.worldRotation;
+                        var constraint = VFConstraint.CreateParent(result.obj);
+                        constraint.AddSource(target, 1);
+
+                        return result;
                     }
 
                     if (socket.useLights) {
@@ -472,20 +511,15 @@ namespace VF.Inspector {
                             var nextSocketId = isLast ? 0 : pathIds[i + 1];
                             var stop = guidedPathStops[i];
 
-                            AddScreenMarker(CreateScreenMarker(
+                            AddScreenMarker(CreateGuidedPathScreenMarker(
                                 guidedPath[i],
-                                socket,
                                 pathType,
                                 pathIds[i],
-                                spsMarkers,
-                                false,
                                 stop.customizeTangentIn,
                                 stop.tangentIn,
                                 nextStop?.customizeTangentOut ?? false,
                                 nextStop?.tangentOut ?? Vector3.zero,
-                                nextSocketId,
-                                includeTags: false,
-                                objectName: "SPS Socket Path"
+                                nextSocketId
                             ));
                         }
                     } else {
