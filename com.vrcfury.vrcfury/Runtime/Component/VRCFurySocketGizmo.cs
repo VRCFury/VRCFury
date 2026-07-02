@@ -17,9 +17,13 @@ namespace VF.Component {
         [Serializable]
         public class SocketGizmoData {
             public VRCFuryHapticSocket.AddLight type;
+            public VRCFuryHapticSocket.AddLight legacyType;
             public Vector3 pos;
             public Quaternion rot;
             public bool useRadiusOffset;
+            public bool useLegacyLights;
+            public bool overrideLegacyOffset;
+            public Vector3 legacyOffset;
             public string name;
             public bool hasHandTouchZone;
             public float handTouchZoneLength;

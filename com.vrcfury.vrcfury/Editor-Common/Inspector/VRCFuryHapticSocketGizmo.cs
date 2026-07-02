@@ -13,6 +13,12 @@ namespace VF.Inspector {
         [VFInit]
         private static void Init() {
             VRCFurySocketGizmo.EnableSceneLighting = () => {
+                var hasCamera = VFGameObject.GetRoots()
+                    .Any(root => root.GetComponentsInSelfAndChildren<Camera>().Any(cam => cam.isActiveAndEnabled));
+                if (!hasCamera) {
+                    var cameraObj = new GameObject("Scene Camera");
+                    cameraObj.AddComponent<Camera>();
+                }
                 var sv = EditorWindowFinder.GetWindows<SceneView>().FirstOrDefault();
                 if (sv != null) {
                     sv.sceneLighting = true;
@@ -36,6 +42,18 @@ namespace VF.Inspector {
 
         static Vector3 InverseTransformLocalPoint(Vector3 origin, Quaternion rotation, Vector3 worldPoint) {
             return Quaternion.Inverse(rotation) * (worldPoint - origin);
+        }
+
+        static Vector3 DrawColoredHandle(Vector3 position, Color color) {
+            var oldColor = Handles.color;
+            Handles.color = color;
+            var size = HandleUtility.GetHandleSize(position) * 0.5f;
+            var result = position;
+            result = Handles.Slider(result, Vector3.right, size, Handles.ArrowHandleCap, 0);
+            result = Handles.Slider(result, Vector3.up, size, Handles.ArrowHandleCap, 0);
+            result = Handles.Slider(result, Vector3.forward, size, Handles.ArrowHandleCap, 0);
+            Handles.color = oldColor;
+            return result;
         }
 
         static Vector3 GetDefaultTangentOut(Vector3 start, Quaternion startRot, Vector3 end) {
@@ -82,9 +100,9 @@ namespace VF.Inspector {
             return text;
         }
 
-        static void DrawSocketGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type) {
+        static void DrawSocketGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, Color primaryColor, Color secondaryColor) {
             var orange = new Color(1f, 0.5f, 0);
-            var discColor = orange;
+            var discColor = primaryColor;
             if (!BuildTargetUtils.IsDesktop() || type == VRCFuryHapticSocket.AddLight.None) {
                 discColor = Color.red;
             }
@@ -96,24 +114,24 @@ namespace VF.Inspector {
                 VRCFuryGizmoUtils.DrawArrow(
                     worldPos + worldForward * 0.05f,
                     worldPos + worldForward * -0.05f,
-                    orange
+                    primaryColor
                 );
             } else if (type == VRCFuryHapticSocket.AddLight.Ring) {
                 VRCFuryGizmoUtils.DrawArrow(
                     worldPos,
                     worldPos + worldForward * -0.05f,
-                    orange
+                    primaryColor
                 );
                 VRCFuryGizmoUtils.DrawArrow(
                     worldPos,
                     worldPos + worldForward * 0.05f,
-                    Color.white
+                    secondaryColor
                 );
             } else {
                 VRCFuryGizmoUtils.DrawArrow(
                     worldPos + worldForward * 0.1f,
                     worldPos,
-                    orange
+                    primaryColor
                 );
             }
 
@@ -121,15 +139,15 @@ namespace VF.Inspector {
             Gizmos.DrawSphere(worldPos, 0.04f);
         }
 
-        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, bool radiusOffset) {
+        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, bool radiusOffset, Color primaryColor, Color secondaryColor) {
             if (!radiusOffset) {
-                DrawSocketGizmo(worldPos, worldRot, type);
+                DrawSocketGizmo(worldPos, worldRot, type, primaryColor, secondaryColor);
                 return;
             }
 
             var offsetPos = worldPos + worldRot * (Vector3.up * 0.04f);
             DrawRadiusOffsetPlane(worldPos, worldRot);
-            DrawSocketGizmo(offsetPos, worldRot, type);
+            DrawSocketGizmo(offsetPos, worldRot, type, primaryColor, secondaryColor);
         }
 
         public static VRCFurySocketGizmo.SocketGizmoData BuildGizmoData(VRCFuryHapticSocket socket) {
@@ -137,9 +155,13 @@ namespace VF.Inspector {
             var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket);
             var data = new VRCFurySocketGizmo.SocketGizmoData {
                 type = lightType,
+                legacyType = VRCFuryHapticSocketEditor.GetLegacyLightType(socket, lightType),
                 pos = localPosition,
                 rot = localRotation,
                 useRadiusOffset = socket.useRadiusOffset,
+                useLegacyLights = socket.useLights,
+                overrideLegacyOffset = socket.overrideLegacyOffset,
+                legacyOffset = socket.legacyOffset,
                 name = HapticUtils.GetPreferredId(
                     socket,
                     s => s.name,
@@ -189,7 +211,9 @@ namespace VF.Inspector {
                     worldStart,
                     worldRotation,
                     VRCFuryHapticSocket.AddLight.RingOneWay,
-                    data.useRadiusOffset
+                    data.useRadiusOffset,
+                    new Color(1f, 0.5f, 0),
+                    Color.white
                 );
                 if (owner.IsSelected()) {
                     VRCFuryGizmoUtils.DrawText(
@@ -226,22 +250,35 @@ namespace VF.Inspector {
                         null,
                         2f
                     );
-                    DrawGizmo(stopPos, stopRot, stopType, false);
+                    DrawGizmo(stopPos, stopRot, stopType, false, new Color(1f, 0.5f, 0), Color.white);
                     previousPos = stopPos;
                     previousRot = stopRot;
                 }
-                return;
+            } else {
+                DrawGizmo(worldStart, worldRotation, data.type, data.useRadiusOffset, new Color(1f, 0.5f, 0), Color.white);
+                if (owner.IsSelected()) {
+                    VRCFuryGizmoUtils.DrawText(
+                        worldStart,
+                        "\n" + GetSocketText(data.type, data.name),
+                        Color.gray,
+                        true,
+                        true
+                    );
+                }
             }
 
-            DrawGizmo(worldStart, worldRotation, data.type, data.useRadiusOffset);
-            if (owner.IsSelected()) {
-                VRCFuryGizmoUtils.DrawText(
-                    worldStart,
-                    "\n" + GetSocketText(data.type, data.name),
-                    Color.gray,
-                    true,
-                    true
-                );
+            if (data.useLegacyLights && data.overrideLegacyOffset) {
+                var legacyOrigin = worldStart + worldRotation * (data.overrideLegacyOffset ? data.legacyOffset : Vector3.zero);
+                DrawGizmo(legacyOrigin, worldRotation, data.legacyType, false, Color.yellow, Color.yellow);
+                if (owner.IsSelected()) {
+                    VRCFuryGizmoUtils.DrawText(
+                        legacyOrigin,
+                        "\nLegacy " + GetSocketText(data.legacyType, ""),
+                        Color.yellow,
+                        true,
+                        true
+                    );
+                }
             }
         }
 
@@ -258,7 +295,7 @@ namespace VF.Inspector {
                 if (stop.customizeTangentOut) {
                     EditorGUI.BeginChangeCheck();
                     var tangentOutWorld = TransformLocalPoint(previousPos, previousRot, stop.tangentOut);
-                    var newTangentOutWorld = Handles.PositionHandle(tangentOutWorld, Quaternion.identity);
+                    var newTangentOutWorld = DrawColoredHandle(tangentOutWorld, new Color(0.7f, 0.3f, 1f));
                     if (EditorGUI.EndChangeCheck()) {
                         Undo.RecordObject(socket, "Move SPS Tangent Out");
                         stop.tangentOut = InverseTransformLocalPoint(previousPos, previousRot, newTangentOutWorld);
@@ -269,7 +306,7 @@ namespace VF.Inspector {
                 if (stop.customizeTangentIn) {
                     EditorGUI.BeginChangeCheck();
                     var tangentInWorld = TransformLocalPoint(stopPos, stopRot, stop.tangentIn);
-                    var newTangentInWorld = Handles.PositionHandle(tangentInWorld, Quaternion.identity);
+                    var newTangentInWorld = DrawColoredHandle(tangentInWorld, new Color(0.7f, 0.3f, 1f));
                     if (EditorGUI.EndChangeCheck()) {
                         Undo.RecordObject(socket, "Move SPS Tangent In");
                         stop.tangentIn = InverseTransformLocalPoint(stopPos, stopRot, newTangentInWorld);
@@ -279,6 +316,24 @@ namespace VF.Inspector {
 
                 previousPos = stopPos;
                 previousRot = stopRot;
+            }
+        }
+
+        internal static void DrawEditableLegacyOffset(VRCFuryHapticSocket socket) {
+            if (socket == null) return;
+            if (!socket.useLights) return;
+            if (!socket.overrideLegacyOffset) return;
+
+            var origin = socket.owner().TransformPoint(socket.position);
+            var rotation = socket.owner().worldRotation * Quaternion.Euler(socket.rotation);
+
+            EditorGUI.BeginChangeCheck();
+            var offsetWorld = TransformLocalPoint(origin, rotation, socket.legacyOffset);
+            var newOffsetWorld = DrawColoredHandle(offsetWorld, Color.yellow);
+            if (EditorGUI.EndChangeCheck()) {
+                Undo.RecordObject(socket, "Move SPS Legacy Light Offset");
+                socket.legacyOffset = InverseTransformLocalPoint(origin, rotation, newOffsetWorld);
+                EditorUtility.SetDirty(socket);
             }
         }
 

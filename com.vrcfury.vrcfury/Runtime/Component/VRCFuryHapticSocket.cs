@@ -20,6 +20,11 @@ namespace VF.Component {
             Off
         }
 
+        public enum LegacySocketType {
+            Hole,
+            Ring
+        }
+
         public AddLight addLight = AddLight.Auto;
         public new string name;
         public string oscId;
@@ -38,7 +43,11 @@ namespace VF.Component {
         public bool useHipAvoidance = true;
         public bool useSharedTag = true;
         public bool useLights = true;
+        public bool overrideLegacySocketType = false;
+        public LegacySocketType legacySocketType = LegacySocketType.Hole;
         public bool useRadiusOffset = false;
+        public bool overrideLegacyOffset = false;
+        public Vector3 legacyOffset = Vector3.zero;
         public List<string> tags = new List<string>();
         [Serializable]
         public class GuidedPathStop {
