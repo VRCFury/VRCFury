@@ -137,7 +137,11 @@ namespace VF.Builder.Haptics {
                 return average;
             } finally {
                 RenderTexture.active = previousActive;
-                preview.Cleanup();
+                try {
+                    preview.Cleanup();
+                } catch (Exception e) {
+                    Debug.LogException(e);
+                }
             }
         }
 
