@@ -174,7 +174,7 @@ namespace VF.Service {
                             obj = haptics,
                             usePrefix = false,
                             localOnly = true,
-                            useHipAvoidance = socket.useHipAvoidance
+                            useHipAvoidance = true
                         };
 
                         if (handTouchZoneSize != null) {
@@ -267,7 +267,7 @@ namespace VF.Service {
                         var worldScale = scaleFactorService.GetWorldScale(animRoot);
                         var directTree = directTreeService.Create($"{oscId} - Depth Calculations");
                         var math = directTreeService.GetMath(directTree);
-                        return new SpsDepthContacts(animRoot, oscId, hapticContacts, directTree, math, fx, frameTimeService, socket.useHipAvoidance, worldScale);
+                        return new SpsDepthContacts(animRoot, oscId, hapticContacts, directTree, math, fx, frameTimeService, true, worldScale);
                     });
 
                     if (socket.depthActions2.Count > 0) {

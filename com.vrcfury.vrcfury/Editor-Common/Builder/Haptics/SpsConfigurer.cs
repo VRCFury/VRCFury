@@ -242,8 +242,9 @@ namespace VF.Builder.Haptics {
                 SetTag(tags, i, HashTag(socket.tags[i]));
             }
             if (socket.useSharedTag) {
-                SetTag(tags, 5, GetAutoSocketTag(closestBone, socket.useHipAvoidance));
-                SetTag(tags, 6, GetAutoHipFrontBackTag(socket, closestBone));
+                var autoTags = GetAutoSocketTags(closestBone, socket);
+                if (autoTags.Count >= 1) SetTag(tags, 5, autoTags[0]);
+                if (autoTags.Count >= 2) SetTag(tags, 6, autoTags[1]);
                 SetTag(tags, 7, SharedTag);
             }
             for (var i = 0; i < tags.Length; i++) {
@@ -372,28 +373,29 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        private static uint GetAutoSocketTag(HumanBodyBones? bone, bool useHipAvoidance) {
+        private static IList<uint> GetAutoSocketTags(HumanBodyBones? bone, VRCFuryHapticSocket socket) {
             switch (bone) {
                 case HumanBodyBones.Hips:
-                    return useHipAvoidance ? HashTag("hips") : 0;
+                    return new[] { HashTag("hips"), GetAutoHipFrontBackTag(socket, bone), };
                 case HumanBodyBones.Head:
                 case HumanBodyBones.Jaw:
-                    return HashTag("head");
+                    return new[] { HashTag("head"), };
+                case HumanBodyBones.Chest:
+                case HumanBodyBones.UpperChest:
+                    return new[] { HashTag("chest"), };
                 case HumanBodyBones.LeftHand:
+                    return new[] { HashTag("hand"), HashTag("handleft"), };
                 case HumanBodyBones.RightHand:
-                case HumanBodyBones.LeftLowerArm:
-                case HumanBodyBones.RightLowerArm:
-                    return HashTag("hand");
+                    return new[] { HashTag("hand"), HashTag("handright"), };
                 case HumanBodyBones.LeftFoot:
-                case HumanBodyBones.RightFoot:
                 case HumanBodyBones.LeftToes:
+                    return new[] { HashTag("foot"), HashTag("footleft"), };
+                case HumanBodyBones.RightFoot:
                 case HumanBodyBones.RightToes:
-                case HumanBodyBones.LeftLowerLeg:
-                case HumanBodyBones.RightLowerLeg:
-                    return HashTag("foot");
-                default:
-                    return 0;
+                    return new[] { HashTag("foot"), HashTag("footright"), };
             }
+
+            return new uint[] { };
         }
     }
 }

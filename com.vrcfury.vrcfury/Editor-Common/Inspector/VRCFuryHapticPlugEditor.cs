@@ -284,10 +284,15 @@ namespace VF.Inspector {
                 if (useSharedTag.boolValue) return new VisualElement();
                 return VRCFuryEditorUtils.Warn("This plug does not include the global SPS2 tag, so it will not target most sockets!");
             }, useSharedTag));
-            tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLights"), "'Global' SPS1/DPS/TPS Tag",
+            tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLights"), "Include 'Global' SPS1/DPS/TPS Tag",
                 tooltip: "Allows this plug to target SPS1/DPS/TPS sockets (looking for lights)."));
-            tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Hip Avoidance",
-                tooltip: "If this plug is on your hips, it will not target sockets on your hips."));
+            if (VRCFuryHapticSocketEditor.getClosestBone(target.owner()) == HumanBodyBones.Hips) {
+                tags.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("useHipAvoidance"),
+                    "Exclude sockets on own Hips",
+                    tooltip: "If this plug is on your hips, it will not target sockets on your hips."
+                ));
+            }
             container.Add(tags);
 
             var adv = new Foldout {

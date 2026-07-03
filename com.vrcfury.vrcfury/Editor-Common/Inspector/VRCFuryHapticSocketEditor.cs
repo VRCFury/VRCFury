@@ -274,8 +274,8 @@ namespace VF.Inspector {
                 if (useSharedTag.boolValue) return new VisualElement();
                 return VRCFuryEditorUtils.Warn("This socket does not have the global SPS2 tag, so most plugs will not target it.");
             }, useSharedTag));
-            tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Hip Avoidance",
-                tooltip: "If this socket is on your hips, it will not be targeted by plugs on your hips."));
+            // tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Hip Avoidance",
+            //     tooltip: "If this socket is on your hips, it will not be targeted by plugs on your hips."));
             container.Add(tags);
             
             var adv = new Foldout {
@@ -368,7 +368,7 @@ namespace VF.Inspector {
                     objName = "Root",
                     radius = 0.001f,
                     tags = rootTags.ToArray(),
-                    useHipAvoidance = socket.useHipAvoidance
+                    useHipAvoidance = true
                 });
                 HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                     obj = senders,
@@ -376,7 +376,7 @@ namespace VF.Inspector {
                     objName = "Front",
                     radius = 0.001f,
                     tags = new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront },
-                    useHipAvoidance = socket.useHipAvoidance
+                    useHipAvoidance = true
                 });
             }
 
