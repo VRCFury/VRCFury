@@ -24,14 +24,16 @@ namespace VF.Actions {
         public AnimationClip Build(ChangeSpsTagAction model) {
             var clip = NewClip();
             if (TryGetBinding(model, out var path, out var type, out var lowPropertyName, out var highPropertyName, out var selfPropertyName, out var othersPropertyName)) {
-                var tagHash = SpsConfigurer.HashTag(VRCFuryHapticPlugEditor.SanitizeSpsTag(model.tag));
+                var tagHash = model.globalTag
+                    ? (model.globalTagEnabled ? SpsConfigurer.SharedTag : 0u)
+                    : SpsConfigurer.HashTag(VRCFuryHapticPlugEditor.SanitizeSpsTag(model.tag));
                 clip.SetCurve(path, type, lowPropertyName, SpsMarkersService.GetLow(tagHash));
                 clip.SetCurve(path, type, highPropertyName, SpsMarkersService.GetHigh(tagHash));
                 if (selfPropertyName != null) {
-                    clip.SetCurve(path, type, selfPropertyName, model.allowSelf ? 1 : 0);
+                    clip.SetCurve(path, type, selfPropertyName, model.globalTag ? (model.globalTagEnabled ? 1 : 0) : (model.allowSelf ? 1 : 0));
                 }
                 if (othersPropertyName != null) {
-                    clip.SetCurve(path, type, othersPropertyName, model.allowOthers ? 1 : 0);
+                    clip.SetCurve(path, type, othersPropertyName, model.globalTag ? (model.globalTagEnabled ? 1 : 0) : (model.allowOthers ? 1 : 0));
                 }
             }
             return clip;
@@ -63,11 +65,18 @@ namespace VF.Actions {
             if (targetType == TargetType.Plug) {
                 path = JoinPath(targetPath, "BakedSpsPlug/SpsResolver");
                 type = typeof(MeshRenderer);
-                var prefix = model.exclude ? "_SPS_TagExclude" : "_SPS_TagInclude";
-                lowPropertyName = $"material.{prefix}{slot}Low";
-                highPropertyName = $"material.{prefix}{slot}High";
-                selfPropertyName = $"material.{prefix}{slot}Self";
-                othersPropertyName = $"material.{prefix}{slot}Others";
+                if (model.globalTag) {
+                    lowPropertyName = "material._SPS_TagInclude4Low";
+                    highPropertyName = "material._SPS_TagInclude4High";
+                    selfPropertyName = "material._SPS_TagInclude4Self";
+                    othersPropertyName = "material._SPS_TagInclude4Others";
+                } else {
+                    var prefix = model.exclude ? "_SPS_TagExclude" : "_SPS_TagInclude";
+                    lowPropertyName = $"material.{prefix}{slot}Low";
+                    highPropertyName = $"material.{prefix}{slot}High";
+                    selfPropertyName = $"material.{prefix}{slot}Self";
+                    othersPropertyName = $"material.{prefix}{slot}Others";
+                }
                 return true;
             }
 
@@ -115,6 +124,8 @@ namespace VF.Actions {
         public static VisualElement Editor(SerializedProperty prop) {
             var targetProp = prop.FindPropertyRelative("target");
             var excludeProp = prop.FindPropertyRelative("exclude");
+            var globalTagProp = prop.FindPropertyRelative("globalTag");
+            var globalTagEnabledProp = prop.FindPropertyRelative("globalTagEnabled");
             var allowSelfProp = prop.FindPropertyRelative("allowSelf");
             var allowOthersProp = prop.FindPropertyRelative("allowOthers");
             var tagNumberProp = prop.FindPropertyRelative("tagNumber");
@@ -122,7 +133,7 @@ namespace VF.Actions {
 
             return VRCFuryEditorUtils.RefreshOnChange(() => {
                 var content = new VisualElement();
-                content.Add(VRCFuryEditorUtils.Prop(targetProp, "Target"));
+                content.Add(VRCFuryEditorUtils.Prop(targetProp, "SPS Plug / Socket"));
 
                 var targetType = GetTargetType(targetProp.objectReferenceValue as Transform);
                 var maxSlot = GetMaxSlot(targetType);
@@ -133,42 +144,68 @@ namespace VF.Actions {
                 }
 
                 if (targetType == TargetType.Plug) {
+                    content.Add(new Label("Set this tag:"));
                     var includeButton = new RadioButton {
-                        value = !excludeProp.boolValue
+                        value = !excludeProp.boolValue && !globalTagProp.boolValue
                     };
                     var excludeButton = new RadioButton {
-                        value = excludeProp.boolValue
+                        value = excludeProp.boolValue && !globalTagProp.boolValue
+                    };
+                    var globalButton = new RadioButton {
+                        value = globalTagProp.boolValue
                     };
                     includeButton.RegisterValueChangedCallback(cb => {
                         if (!cb.newValue) return;
+                        globalTagProp.boolValue = false;
                         excludeProp.boolValue = false;
                         excludeProp.serializedObject.ApplyModifiedProperties();
                         excludeButton.SetValueWithoutNotify(false);
+                        globalButton.SetValueWithoutNotify(false);
                     });
                     excludeButton.RegisterValueChangedCallback(cb => {
                         if (!cb.newValue) return;
+                        globalTagProp.boolValue = false;
                         excludeProp.boolValue = true;
                         excludeProp.serializedObject.ApplyModifiedProperties();
                         includeButton.SetValueWithoutNotify(false);
+                        globalButton.SetValueWithoutNotify(false);
+                    });
+                    globalButton.RegisterValueChangedCallback(cb => {
+                        if (!cb.newValue) return;
+                        globalTagProp.boolValue = true;
+                        excludeProp.serializedObject.ApplyModifiedProperties();
+                        includeButton.SetValueWithoutNotify(false);
+                        excludeButton.SetValueWithoutNotify(false);
                     });
                     var row = new VisualElement().Row();
                     row.style.flexWrap = Wrap.NoWrap;
                     var includeProp = VRCFuryEditorUtils.Prop(null, "Include", fieldOverride: includeButton);
                     includeProp.style.marginRight = 12;
                     row.Add(includeProp);
-                    row.Add(VRCFuryEditorUtils.Prop(null, "Exclude", fieldOverride: excludeButton));
+                    var excludeUi = VRCFuryEditorUtils.Prop(null, "Exclude", fieldOverride: excludeButton);
+                    excludeUi.style.marginRight = 12;
+                    row.Add(excludeUi);
+                    row.Add(VRCFuryEditorUtils.Prop(null, "Global", fieldOverride: globalButton));
                     content.Add(row);
                 }
 
-                tagNumberProp.intValue = clampedSlot;
-                content.Add(VRCFuryEditorUtils.Prop(tagNumberProp, "Tag #", onChange: () => {
-                    tagNumberProp.intValue = Mathf.Clamp(tagNumberProp.intValue <= 0 ? 1 : tagNumberProp.intValue, 1, maxSlot);
-                    tagNumberProp.serializedObject.ApplyModifiedProperties();
-                }));
+                if (targetType == TargetType.Plug && globalTagProp.boolValue) {
+                    content.Add(new Label("To this value: (leave empty to unset)"));
+                    content.Add(VRCFuryEditorUtils.Prop(globalTagEnabledProp, "Enabled"));
+                } else {
+                    if (targetType == TargetType.Socket) {
+                        content.Add(new Label("Set this tag:"));
+                    }
+                    tagNumberProp.intValue = clampedSlot;
+                    content.Add(VRCFuryEditorUtils.Prop(tagNumberProp, "Tag #", onChange: () => {
+                        tagNumberProp.intValue = Mathf.Clamp(tagNumberProp.intValue <= 0 ? 1 : tagNumberProp.intValue, 1, maxSlot);
+                        tagNumberProp.serializedObject.ApplyModifiedProperties();
+                    }));
+                    content.Add(new Label("To this value: (leave empty to unset)"));
+                    content.Add(VRCFuryHapticPlugEditor.SpsTagProp(tagProp, "Tag"));
+                }
 
-                content.Add(VRCFuryHapticPlugEditor.SpsTagProp(tagProp, "Tag"));
-
-                if (targetType == TargetType.Plug) {
+                if (targetType == TargetType.Plug && !globalTagProp.boolValue) {
                     var row = new VisualElement().Row();
                     row.style.flexWrap = Wrap.NoWrap;
                     var selfProp = VRCFuryEditorUtils.Prop(allowSelfProp, "Self");
@@ -183,7 +220,7 @@ namespace VF.Actions {
                 }
 
                 return content;
-            }, targetProp, excludeProp, allowSelfProp, allowOthersProp, tagNumberProp);
+            }, targetProp, excludeProp, globalTagProp, globalTagEnabledProp, allowSelfProp, allowOthersProp, tagNumberProp);
         }
     }
 }
