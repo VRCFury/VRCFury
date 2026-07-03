@@ -90,7 +90,7 @@ namespace VF.Service {
             }
 
             var enableLegacy = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
-                .Where(o => o.addMenuItem)
+                .Where(o => o.addMenuItem && o.useLights)
                 .ToArray()
                 .Length >= 1;
             VFABool legacyOn = null;
