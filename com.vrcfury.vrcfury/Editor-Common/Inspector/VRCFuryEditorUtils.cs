@@ -317,7 +317,7 @@ namespace VF.Inspector {
             var isCheckbox = false;
             if (fieldOverride != null) {
                 field = fieldOverride;
-                isCheckbox = field is BaseBoolField;
+                isCheckbox = field is Toggle || field is RadioButton;
                 if (placeholder != null && field is TextFieldWithPlaceholder textFieldOverride) {
                     textFieldOverride.Placeholder = placeholder;
                 }
