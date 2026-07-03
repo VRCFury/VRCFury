@@ -19,7 +19,7 @@ namespace VF.Inspector {
         internal const int SpsTagRuleCount = 2;
 
         public static VisualElement SpsTagProp(SerializedProperty prop, string label) {
-            var field = new TextField(label) {
+            var field = new TextField {
                 isDelayed = true
             };
             field.SetValueWithoutNotify(SanitizeSpsTag(prop.stringValue));
@@ -31,7 +31,7 @@ namespace VF.Inspector {
                 prop.stringValue = sanitized;
                 prop.serializedObject.ApplyModifiedProperties();
             });
-            return field;
+            return VRCFuryEditorUtils.Prop(prop, label, fieldOverride: field);
         }
 
         public static string SanitizeSpsTag(string input) {
@@ -77,7 +77,7 @@ namespace VF.Inspector {
             return VRCFuryEditorUtils.RefreshOnChange(() => {
                 var container = new VisualElement();
                 for (var i = 0; i < Math.Min(listProp.arraySize, SpsTagRuleCount); i++) {
-                    container.Add(SpsTagRuleProp(listProp, i, $"{labelPrefix} {i + 1}"));
+                    container.Add(SpsTagRuleProp(listProp, i, $"{labelPrefix} #{i + 1}"));
                 }
                 if (listProp.arraySize < SpsTagRuleCount) {
                     container.Add(new Button(() => AddSpsTagRule(listProp)) {

@@ -54,7 +54,7 @@ namespace VF.Inspector {
                 for (var i = 0; i < Math.Min(listProp.arraySize, SpsTagCount); i++) {
                     var index = i;
                     var row = new VisualElement();
-                    row.Add(VRCFuryHapticPlugEditor.SpsTagProp(listProp.GetArrayElementAtIndex(index), $"Tag {index + 1}"));
+                    row.Add(VRCFuryHapticPlugEditor.SpsTagProp(listProp.GetArrayElementAtIndex(index), $"Tag #{index + 1}"));
                     row.Add(new Button(() => {
                         listProp.DeleteArrayElementAtIndex(index);
                         listProp.serializedObject.ApplyModifiedProperties();
