@@ -21,8 +21,9 @@ namespace VF.Actions {
             Socket
         }
 
-        public AnimationClip Build(ChangeSpsTagAction model) {
+        public AnimationClip Build(ChangeSpsTagAction model, bool debugMode) {
             var clip = NewClip();
+            if (debugMode) return clip;
             if (TryGetBinding(model, out var path, out var type, out var lowPropertyName, out var highPropertyName, out var selfPropertyName, out var othersPropertyName)) {
                 var tagHash = model.globalTag
                     ? (model.globalTagEnabled ? SpsConfigurer.SharedTag : 0u)

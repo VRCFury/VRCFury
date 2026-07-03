@@ -109,7 +109,7 @@ namespace VF.Hooks {
                 injector.Set("avatarObject", avatarObject);
                 injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
                 var mainBuilder = injector.GetService<ActionClipService>();
-                var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject);
+                var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject, debugMode: true);
                 var bindings = new AnimatorIterator.Clips().From(test.onClip)
                     .SelectMany(clip => clip.GetAllBindings())
                     .ToImmutableHashSet();
