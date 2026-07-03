@@ -145,13 +145,13 @@ namespace VF.Actions {
 
                 if (targetType == TargetType.Plug) {
                     content.Add(new Label("Set this tag:"));
-                    var includeButton = new RadioButton {
+                    var includeButton = new Toggle {
                         value = !excludeProp.boolValue && !globalTagProp.boolValue
                     };
-                    var excludeButton = new RadioButton {
+                    var excludeButton = new Toggle {
                         value = excludeProp.boolValue && !globalTagProp.boolValue
                     };
-                    var globalButton = new RadioButton {
+                    var globalButton = new Toggle {
                         value = globalTagProp.boolValue
                     };
                     includeButton.RegisterValueChangedCallback(cb => {
