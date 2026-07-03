@@ -23,9 +23,10 @@ namespace VF.Actions {
 
         public AnimationClip Build(ChangeSpsTagAction model) {
             var clip = NewClip();
-            if (TryGetBinding(model, out var path, out var type, out var propertyName, out var selfPropertyName, out var othersPropertyName)) {
+            if (TryGetBinding(model, out var path, out var type, out var lowPropertyName, out var highPropertyName, out var selfPropertyName, out var othersPropertyName)) {
                 var tagHash = SpsConfigurer.HashTag(VRCFuryHapticPlugEditor.SanitizeSpsTag(model.tag));
-                clip.SetCurve(path, type, propertyName, (float)tagHash);
+                clip.SetCurve(path, type, lowPropertyName, SpsMarkersService.GetLow(tagHash));
+                clip.SetCurve(path, type, highPropertyName, SpsMarkersService.GetHigh(tagHash));
                 if (selfPropertyName != null) {
                     clip.SetCurve(path, type, selfPropertyName, model.allowSelf ? 1 : 0);
                 }
@@ -40,13 +41,15 @@ namespace VF.Actions {
             ChangeSpsTagAction model,
             out string path,
             out System.Type type,
-            out string propertyName,
+            out string lowPropertyName,
+            out string highPropertyName,
             out string selfPropertyName,
             out string othersPropertyName
         ) {
             path = null;
             type = null;
-            propertyName = null;
+            lowPropertyName = null;
+            highPropertyName = null;
             selfPropertyName = null;
             othersPropertyName = null;
 
@@ -61,7 +64,8 @@ namespace VF.Actions {
                 path = JoinPath(targetPath, "BakedSpsPlug/SpsResolver");
                 type = typeof(MeshRenderer);
                 var prefix = model.exclude ? "_SPS_TagExclude" : "_SPS_TagInclude";
-                propertyName = $"material.{prefix}{slot}";
+                lowPropertyName = $"material.{prefix}{slot}Low";
+                highPropertyName = $"material.{prefix}{slot}High";
                 selfPropertyName = $"material.{prefix}{slot}Self";
                 othersPropertyName = $"material.{prefix}{slot}Others";
                 return true;
@@ -70,7 +74,8 @@ namespace VF.Actions {
             if (targetType == TargetType.Socket) {
                 path = JoinPath(targetPath, "BakedSpsSocket/WorldSpace/SpsScreenMarker");
                 type = typeof(MeshRenderer);
-                propertyName = $"material._SPS_SocketTag{slot}";
+                lowPropertyName = $"material._SPS_SocketTag{slot}Low";
+                highPropertyName = $"material._SPS_SocketTag{slot}High";
                 return true;
             }
 

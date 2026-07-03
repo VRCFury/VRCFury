@@ -8,10 +8,16 @@
 UNITY_INSTANCING_BUFFER_START(SpsInstanceBuf_Id)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_Configured)
     #define _SPS_Configured UNITY_ACCESS_INSTANCED_PROP(SpsInstanceBuf_Id, _SPS_Configured)
-    UNITY_DEFINE_INSTANCED_PROP(float, _SPS_Id)
-    #define _SPS_Id UNITY_ACCESS_INSTANCED_PROP(SpsInstanceBuf_Id, _SPS_Id)
-    UNITY_DEFINE_INSTANCED_PROP(float, _SPS_PlayerId)
-    #define _SPS_PlayerId UNITY_ACCESS_INSTANCED_PROP(SpsInstanceBuf_Id, _SPS_PlayerId)
+    UNITY_DEFINE_INSTANCED_PROP(float, _SPS_IdLow)
+    #define _SPS_IdLow UNITY_ACCESS_INSTANCED_PROP(SpsInstanceBuf_Id, _SPS_IdLow)
+    UNITY_DEFINE_INSTANCED_PROP(float, _SPS_IdHigh)
+    #define _SPS_IdHigh UNITY_ACCESS_INSTANCED_PROP(SpsInstanceBuf_Id, _SPS_IdHigh)
+    #define _SPS_Id SPS_MERGE_SPLIT(_SPS_Id)
+    UNITY_DEFINE_INSTANCED_PROP(float, _SPS_PlayerIdLow)
+    #define _SPS_PlayerIdLow UNITY_ACCESS_INSTANCED_PROP(SpsInstanceBuf_Id, _SPS_PlayerIdLow)
+    UNITY_DEFINE_INSTANCED_PROP(float, _SPS_PlayerIdHigh)
+    #define _SPS_PlayerIdHigh UNITY_ACCESS_INSTANCED_PROP(SpsInstanceBuf_Id, _SPS_PlayerIdHigh)
+    #define _SPS_PlayerId SPS_MERGE_SPLIT(_SPS_PlayerId)
 UNITY_INSTANCING_BUFFER_END(SpsInstanceBuf_Id)
 
 inline bool sps_should_abort() {
@@ -24,11 +30,11 @@ inline bool sps_should_abort() {
 }
 
 inline uint sps_player_id() {
-    return sps_to_uint(_SPS_PlayerId);
+    return _SPS_PlayerId;
 }
 
 inline uint sps_id() {
-    return sps_to_uint(_SPS_Id);
+    return _SPS_Id;
 }
 
 inline uint sps_hash_id(uint id, uint playerId) {

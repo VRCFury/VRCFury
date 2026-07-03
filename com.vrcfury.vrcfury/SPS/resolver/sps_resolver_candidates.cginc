@@ -42,8 +42,8 @@ void sps_resolver_parse_tag_rules(
     out uint excludeTags[4],
     out uint excludeFlags[4]
 ) {
-    float includeTagValues[4] = { _SPS_TagInclude1, _SPS_TagInclude2, _SPS_TagInclude3, _SPS_TagInclude4 };
-    float excludeTagValues[4] = { _SPS_TagExclude1, _SPS_TagExclude2, _SPS_TagExclude3, _SPS_TagExclude4 };
+    uint includeTagValues[4] = { _SPS_TagInclude1, _SPS_TagInclude2, _SPS_TagInclude3, _SPS_TagInclude4 };
+    uint excludeTagValues[4] = { _SPS_TagExclude1, _SPS_TagExclude2, _SPS_TagExclude3, _SPS_TagExclude4 };
     float includeSelfValues[4] = { _SPS_TagInclude1Self, _SPS_TagInclude2Self, _SPS_TagInclude3Self, _SPS_TagInclude4Self };
     float includeOtherValues[4] = { _SPS_TagInclude1Others, _SPS_TagInclude2Others, _SPS_TagInclude3Others, _SPS_TagInclude4Others };
     float excludeSelfValues[4] = { _SPS_TagExclude1Self, _SPS_TagExclude2Self, _SPS_TagExclude3Self, _SPS_TagExclude4Self };
@@ -51,8 +51,8 @@ void sps_resolver_parse_tag_rules(
 
     [unroll]
     for (uint i = 0u; i < 4u; i++) {
-        includeTags[i] = sps_to_uint(includeTagValues[i]);
-        excludeTags[i] = sps_to_uint(excludeTagValues[i]);
+        includeTags[i] = includeTagValues[i];
+        excludeTags[i] = excludeTagValues[i];
 
         includeFlags[i] = 0u;
         excludeFlags[i] = 0u;

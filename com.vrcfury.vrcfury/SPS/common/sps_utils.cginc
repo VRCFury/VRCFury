@@ -3,6 +3,9 @@
 
 #include "UnityShaderVariables.cginc"
 
+#define SPS_SPLIT_ID_BASE (1u << 16)
+#define SPS_MERGE_SPLIT(name) sps_join_id(name##Low, name##High)
+
 inline float sps_map(float value, float min1, float max1, float min2, float max2) {
     return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
@@ -38,6 +41,10 @@ inline bool sps_to_bool(float v) {
 
 inline uint sps_to_uint(float v) {
     return (uint)round(v);
+}
+
+inline uint sps_join_id(float low, float high) {
+    return sps_to_uint(low) | (sps_to_uint(high) << 16);
 }
 
 inline void sps_clip_rect(int2 local, int2 size) {

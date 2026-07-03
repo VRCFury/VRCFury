@@ -21,7 +21,6 @@ namespace VF.Builder.Haptics {
         public const string SpsOverrun = "_SPS_Overrun";
         public const string SpsLegacy = "_SPS_Legacy";
         private const string SpsBake = "_SPS_Bake";
-        private const uint TagMask = 0x00ffffff;
         private const uint IncludeSelf = 1;
         private const uint IncludeOthers = 2;
 
@@ -29,6 +28,11 @@ namespace VF.Builder.Haptics {
             public UnityEngine.Component component;
             public string propertyName;
             public float value;
+        }
+
+        private static void SetSplitId(Action<string, float> set, string lowProperty, string highProperty, uint value) {
+            set(lowProperty, SpsMarkersService.GetLow(value));
+            set(highProperty, SpsMarkersService.GetHigh(value));
         }
 
         public static void ConfigureSpsMaterial(
@@ -39,7 +43,7 @@ namespace VF.Builder.Haptics {
             VRCFuryHapticPlug plug,
             VFGameObject bakeRoot,
             IList<string> spsBlendshapes,
-            float resolverHash
+            uint resolverHash
         ) {
             if (DpsConfigurer.IsDps(m) || TpsConfigurer.IsTps(m)) {
                 throw new Exception(
@@ -62,8 +66,10 @@ namespace VF.Builder.Haptics {
             if (plug.spsAnimatedEnabled == 0) bakeRoot.active = false;
             m.SetTexture(SpsBake, spsBaked);
             m.SetFloat(SpsMarkersService.Configured, 1);
-            m.SetFloat(SpsMarkersService.Id, resolverHash);
-            m.SetFloat(SpsMarkersService.PlayerId, 0);
+            m.SetFloat(SpsMarkersService.IdLow, SpsMarkersService.GetLow(resolverHash));
+            m.SetFloat(SpsMarkersService.IdHigh, SpsMarkersService.GetHigh(resolverHash));
+            m.SetFloat(SpsMarkersService.PlayerIdLow, 0);
+            m.SetFloat(SpsMarkersService.PlayerIdHigh, 0);
             m.SetFloat("_SPS_BlendshapeCount", spsBlendshapes.Count);
             m.SetFloat("_SPS_BlendshapeVertCount", skin.GetVertexCount());
             for (var i = 0; i < spsBlendshapes.Count; i++) {
@@ -80,7 +86,7 @@ namespace VF.Builder.Haptics {
             float worldRadius,
             Vector4[] bakedRadiusSamples,
             Color metadataColor,
-            float resolverHash,
+            uint resolverHash,
             VRCFuryHapticPlug plug
         ) {
             Transform transform = renderer.owner();
@@ -109,7 +115,7 @@ namespace VF.Builder.Haptics {
             Add(SpsLegacy, plug.useLights ? 1 : 0);
             ConfigureResolverTagRules(Add, plug);
             Add(SpsMarkersService.Configured, 1);
-            Add(SpsMarkersService.Id, resolverHash);
+            SetSplitId(Add, SpsMarkersService.IdLow, SpsMarkersService.IdHigh, resolverHash);
             return properties;
         }
 
@@ -129,13 +135,13 @@ namespace VF.Builder.Haptics {
             Renderer renderer,
             VRCFuryHapticSocket socket,
             VRCFuryHapticSocket.AddLight lightType,
-            float socketId,
+            uint socketId,
             bool useTangentIn,
             Vector3 tangentIn,
             bool useTangentOut,
             Vector3 tangentOut,
             bool useRadiusOffset,
-            int nextSocketId = 0,
+            uint nextSocketId = 0,
             bool includeTags = true
         ) {
             Transform transform = renderer.owner();
@@ -153,11 +159,11 @@ namespace VF.Builder.Haptics {
                 });
             }
             Add(SpsMarkersService.Configured, 1);
-            Add(SpsMarkersService.Id, socketId);
+            SetSplitId(Add, SpsMarkersService.IdLow, SpsMarkersService.IdHigh, socketId);
             Add(SpsMarkersService.SocketHole, lightType == VRCFuryHapticSocket.AddLight.Hole ? 1 : 0);
             Add(SpsMarkersService.SocketDoubleSided, lightType == VRCFuryHapticSocket.AddLight.Ring ? 1 : 0);
             Add(SpsMarkersService.SocketRadiusOffset, useRadiusOffset ? 1 : 0);
-            Add(SpsMarkersService.SocketNextId, nextSocketId);
+            SetSplitId(Add, SpsMarkersService.GuidedTargetIdLow, SpsMarkersService.GuidedTargetIdHigh, nextSocketId);
             Add(SpsMarkersService.SocketUseTangentIn, useTangentIn ? 1 : 0);
             Add(SpsMarkersService.SocketUseTangentOut, useTangentOut ? 1 : 0);
             Add(SpsMarkersService.SocketTangentIn + ".x", tangentIn.x);
@@ -174,7 +180,8 @@ namespace VF.Builder.Haptics {
             return propertyName == $"material.{SpsEnabled}"
                 || propertyName == $"material.{SpsBakedLength}"
                 || propertyName == $"material.{SpsBakedRadius}"
-                || propertyName == $"material.{SpsMarkersService.PlayerId}"
+                || propertyName == $"material.{SpsMarkersService.PlayerIdLow}"
+                || propertyName == $"material.{SpsMarkersService.PlayerIdHigh}"
                 || propertyName == $"material.{SpsOverrun}"
                 || propertyName == $"material.{SpsLegacy}";
         }
@@ -224,7 +231,7 @@ namespace VF.Builder.Haptics {
         private static void ConfigureSocketTags(Action<string, float> set, VRCFuryHapticSocket socket, bool includeTags = true) {
             if (!includeTags) {
                 for (var i = 0; i < 8; i++) {
-                    set($"_SPS_SocketTag{i + 1}", 0);
+                    SetSplitId(set, $"_SPS_SocketTag{i + 1}Low", $"_SPS_SocketTag{i + 1}High", 0);
                 }
                 return;
             }
@@ -234,13 +241,13 @@ namespace VF.Builder.Haptics {
             for (var i = 0; i < socket.tags.Count && i < VRCFuryHapticSocketEditor.SpsTagCount; i++) {
                 SetTag(tags, i, HashTag(socket.tags[i]));
             }
-            SetTag(tags, 5, GetAutoSocketTag(closestBone, socket.useHipAvoidance));
-            SetTag(tags, 6, GetAutoHipFrontBackTag(socket, closestBone));
             if (socket.useSharedTag) {
+                SetTag(tags, 5, GetAutoSocketTag(closestBone, socket.useHipAvoidance));
+                SetTag(tags, 6, GetAutoHipFrontBackTag(socket, closestBone));
                 SetTag(tags, 7, SharedTag);
             }
             for (var i = 0; i < tags.Length; i++) {
-                set($"_SPS_SocketTag{i + 1}", tags[i]);
+                SetSplitId(set, $"_SPS_SocketTag{i + 1}Low", $"_SPS_SocketTag{i + 1}High", tags[i]);
             }
         }
 
@@ -254,7 +261,6 @@ namespace VF.Builder.Haptics {
                 hash *= 16777619;
             }
 
-            hash &= TagMask;
             return hash == 0 ? 1u : hash;
         }
 
@@ -280,10 +286,10 @@ namespace VF.Builder.Haptics {
 
             for (var i = 0; i < 4; i++) {
                 var slot = i + 1;
-                set($"_SPS_TagInclude{slot}", includeTags[i]);
+                SetSplitId(set, $"_SPS_TagInclude{slot}Low", $"_SPS_TagInclude{slot}High", includeTags[i]);
                 set($"_SPS_TagInclude{slot}Self", (includeFlags[i] & IncludeSelf) != 0 ? 1 : 0);
                 set($"_SPS_TagInclude{slot}Others", (includeFlags[i] & IncludeOthers) != 0 ? 1 : 0);
-                set($"_SPS_TagExclude{slot}", excludeTags[i]);
+                SetSplitId(set, $"_SPS_TagExclude{slot}Low", $"_SPS_TagExclude{slot}High", excludeTags[i]);
                 set($"_SPS_TagExclude{slot}Self", (excludeFlags[i] & IncludeSelf) != 0 ? 1 : 0);
                 set($"_SPS_TagExclude{slot}Others", (excludeFlags[i] & IncludeOthers) != 0 ? 1 : 0);
             }

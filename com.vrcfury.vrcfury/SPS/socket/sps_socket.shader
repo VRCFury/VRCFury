@@ -7,24 +7,35 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
         [Toggle] _SPS_SocketRadiusOffset("Radius Offset", Float) = 0
         [Toggle] _SPS_SocketUnlockLocalX("Unlock Local X", Float) = 0
         [Toggle] _SPS_SocketUnlockAll("Unlock All", Float) = 0
-        _SPS_SocketNextId("Restrict Next Socket Id", Float) = 0
+        _SPS_GuidedTargetIdLow("Guided Target Id Low", Float) = 0
+        _SPS_GuidedTargetIdHigh("Guided Target Id High", Float) = 0
         [Toggle] _SPS_SocketUseTangentIn("Use Tangent In", Float) = 0
         [Toggle] _SPS_SocketUseTangentOut("Use Tangent Out", Float) = 0
         _SPS_SocketTangentIn("Tangent In", Vector) = (0,0,0,0)
         _SPS_SocketTangentOut("Tangent Out", Vector) = (0,0,0,0)
         [Header(Tags)]
-        _SPS_SocketTag1("Tag 1", Float) = 0
-        _SPS_SocketTag2("Tag 2", Float) = 0
-        _SPS_SocketTag3("Tag 3", Float) = 0
-        _SPS_SocketTag4("Tag 4", Float) = 0
-        _SPS_SocketTag5("Tag 5", Float) = 0
-        _SPS_SocketTag6("Tag 6", Float) = 0
-        _SPS_SocketTag7("Tag 7", Float) = 0
-        _SPS_SocketTag8("Tag 8", Float) = 1337
+        _SPS_SocketTag1Low("Tag 1 Low", Float) = 0
+        _SPS_SocketTag1High("Tag 1 High", Float) = 0
+        _SPS_SocketTag2Low("Tag 2 Low", Float) = 0
+        _SPS_SocketTag2High("Tag 2 High", Float) = 0
+        _SPS_SocketTag3Low("Tag 3 Low", Float) = 0
+        _SPS_SocketTag3High("Tag 3 High", Float) = 0
+        _SPS_SocketTag4Low("Tag 4 Low", Float) = 0
+        _SPS_SocketTag4High("Tag 4 High", Float) = 0
+        _SPS_SocketTag5Low("Tag 5 Low", Float) = 0
+        _SPS_SocketTag5High("Tag 5 High", Float) = 0
+        _SPS_SocketTag6Low("Tag 6 Low", Float) = 0
+        _SPS_SocketTag6High("Tag 6 High", Float) = 0
+        _SPS_SocketTag7Low("Tag 7 Low", Float) = 0
+        _SPS_SocketTag7High("Tag 7 High", Float) = 0
+        _SPS_SocketTag8Low("Tag 8 Low", Float) = 1337
+        _SPS_SocketTag8High("Tag 8 High", Float) = 0
         [Header(Unique ID)]
         _SPS_Configured("ID Configured", Float) = 0
-        _SPS_Id("ID", Float) = 0
-        _SPS_PlayerId("Player ID", Float) = 0
+        _SPS_IdLow("ID Low", Float) = 0
+        _SPS_IdHigh("ID High", Float) = 0
+        _SPS_PlayerIdLow("Player ID Low", Float) = 0
+        _SPS_PlayerIdHigh("Player ID High", Float) = 0
     }
     SubShader {
         Tags {
@@ -60,19 +71,28 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketRadiusOffset)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketUnlockLocalX)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketUnlockAll)
-                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketNextId)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_GuidedTargetIdLow)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_GuidedTargetIdHigh)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketUseTangentIn)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketUseTangentOut)
                 UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_SocketTangentIn)
                 UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_SocketTangentOut)
-                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag1)
-                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag2)
-                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag3)
-                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag4)
-                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag5)
-                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag6)
-                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag7)
-                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag8)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag1Low)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag1High)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag2Low)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag2High)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag3Low)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag3High)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag4Low)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag4High)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag5Low)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag5High)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag6Low)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag6High)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag7Low)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag7High)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag8Low)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag8High)
             UNITY_INSTANCING_BUFFER_END(SpsSocketProps)
 
             #define SPS_SOCKET_PROP(name) UNITY_ACCESS_INSTANCED_PROP(SpsSocketProps, name)
@@ -82,19 +102,37 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
             #define _SPS_SocketRadiusOffset SPS_SOCKET_PROP(_SPS_SocketRadiusOffset)
             #define _SPS_SocketUnlockLocalX SPS_SOCKET_PROP(_SPS_SocketUnlockLocalX)
             #define _SPS_SocketUnlockAll SPS_SOCKET_PROP(_SPS_SocketUnlockAll)
-            #define _SPS_SocketNextId SPS_SOCKET_PROP(_SPS_SocketNextId)
+            #define _SPS_GuidedTargetIdLow SPS_SOCKET_PROP(_SPS_GuidedTargetIdLow)
+            #define _SPS_GuidedTargetIdHigh SPS_SOCKET_PROP(_SPS_GuidedTargetIdHigh)
+            #define _SPS_GuidedTargetId SPS_MERGE_SPLIT(_SPS_GuidedTargetId)
             #define _SPS_SocketUseTangentIn SPS_SOCKET_PROP(_SPS_SocketUseTangentIn)
             #define _SPS_SocketUseTangentOut SPS_SOCKET_PROP(_SPS_SocketUseTangentOut)
             #define _SPS_SocketTangentIn SPS_SOCKET_PROP(_SPS_SocketTangentIn)
             #define _SPS_SocketTangentOut SPS_SOCKET_PROP(_SPS_SocketTangentOut)
-            #define _SPS_SocketTag1 SPS_SOCKET_PROP(_SPS_SocketTag1)
-            #define _SPS_SocketTag2 SPS_SOCKET_PROP(_SPS_SocketTag2)
-            #define _SPS_SocketTag3 SPS_SOCKET_PROP(_SPS_SocketTag3)
-            #define _SPS_SocketTag4 SPS_SOCKET_PROP(_SPS_SocketTag4)
-            #define _SPS_SocketTag5 SPS_SOCKET_PROP(_SPS_SocketTag5)
-            #define _SPS_SocketTag6 SPS_SOCKET_PROP(_SPS_SocketTag6)
-            #define _SPS_SocketTag7 SPS_SOCKET_PROP(_SPS_SocketTag7)
-            #define _SPS_SocketTag8 SPS_SOCKET_PROP(_SPS_SocketTag8)
+            #define _SPS_SocketTag1Low SPS_SOCKET_PROP(_SPS_SocketTag1Low)
+            #define _SPS_SocketTag1High SPS_SOCKET_PROP(_SPS_SocketTag1High)
+            #define _SPS_SocketTag1 SPS_MERGE_SPLIT(_SPS_SocketTag1)
+            #define _SPS_SocketTag2Low SPS_SOCKET_PROP(_SPS_SocketTag2Low)
+            #define _SPS_SocketTag2High SPS_SOCKET_PROP(_SPS_SocketTag2High)
+            #define _SPS_SocketTag2 SPS_MERGE_SPLIT(_SPS_SocketTag2)
+            #define _SPS_SocketTag3Low SPS_SOCKET_PROP(_SPS_SocketTag3Low)
+            #define _SPS_SocketTag3High SPS_SOCKET_PROP(_SPS_SocketTag3High)
+            #define _SPS_SocketTag3 SPS_MERGE_SPLIT(_SPS_SocketTag3)
+            #define _SPS_SocketTag4Low SPS_SOCKET_PROP(_SPS_SocketTag4Low)
+            #define _SPS_SocketTag4High SPS_SOCKET_PROP(_SPS_SocketTag4High)
+            #define _SPS_SocketTag4 SPS_MERGE_SPLIT(_SPS_SocketTag4)
+            #define _SPS_SocketTag5Low SPS_SOCKET_PROP(_SPS_SocketTag5Low)
+            #define _SPS_SocketTag5High SPS_SOCKET_PROP(_SPS_SocketTag5High)
+            #define _SPS_SocketTag5 SPS_MERGE_SPLIT(_SPS_SocketTag5)
+            #define _SPS_SocketTag6Low SPS_SOCKET_PROP(_SPS_SocketTag6Low)
+            #define _SPS_SocketTag6High SPS_SOCKET_PROP(_SPS_SocketTag6High)
+            #define _SPS_SocketTag6 SPS_MERGE_SPLIT(_SPS_SocketTag6)
+            #define _SPS_SocketTag7Low SPS_SOCKET_PROP(_SPS_SocketTag7Low)
+            #define _SPS_SocketTag7High SPS_SOCKET_PROP(_SPS_SocketTag7High)
+            #define _SPS_SocketTag7 SPS_MERGE_SPLIT(_SPS_SocketTag7)
+            #define _SPS_SocketTag8Low SPS_SOCKET_PROP(_SPS_SocketTag8Low)
+            #define _SPS_SocketTag8High SPS_SOCKET_PROP(_SPS_SocketTag8High)
+            #define _SPS_SocketTag8 SPS_MERGE_SPLIT(_SPS_SocketTag8)
 
             struct appdata {
                 float2 uv : TEXCOORD0;
@@ -159,17 +197,17 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
                 uint uniqueId = sps_id();
                 if (uniqueId == 0u) uniqueId = sps_hash_world(i.rootWorld, 0u);
                 uint playerId = sps_player_id();
-                uint nextId = sps_to_uint(_SPS_SocketNextId);
+                uint nextId = _SPS_GuidedTargetId;
                 float3 tangentIn = sps_to_bool(_SPS_SocketUseTangentIn) ? sps_toWorld(_SPS_SocketTangentIn.xyz) : 0;
                 float3 tangentOut = sps_to_bool(_SPS_SocketUseTangentOut) ? sps_toWorld(_SPS_SocketTangentOut.xyz) : 0;
-                float tagValues[SPS_SOCKET_PAYLOAD_TAG_COUNT] = {
+                uint tagValues[SPS_SOCKET_PAYLOAD_TAG_COUNT] = {
                     _SPS_SocketTag1, _SPS_SocketTag2, _SPS_SocketTag3, _SPS_SocketTag4,
                     _SPS_SocketTag5, _SPS_SocketTag6, _SPS_SocketTag7, _SPS_SocketTag8
                 };
                 uint tags[SPS_SOCKET_PAYLOAD_TAG_COUNT];
                 [unroll]
                 for (uint tagIndex = 0u; tagIndex < SPS_SOCKET_PAYLOAD_TAG_COUNT; tagIndex++) {
-                    tags[tagIndex] = sps_to_uint(tagValues[tagIndex]);
+                    tags[tagIndex] = tagValues[tagIndex];
                 }
                 uint flags = 0u;
                 float flagValues[6] = {

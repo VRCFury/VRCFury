@@ -419,12 +419,12 @@ namespace VF.Inspector {
                     ScreenMarkerResult CreateGuidedPathScreenMarker(
                         VFGameObject target,
                         VRCFuryHapticSocket.AddLight markerType,
-                        float socketId,
+                        uint socketId,
                         bool useTangentIn,
                         Vector3 tangentIn,
                         bool useTangentOut,
                         Vector3 tangentOut,
-                        int nextSocketId
+                        uint nextSocketId
                     ) {
                         var result = CreateScreenMarker(
                             worldSpace,
@@ -484,14 +484,14 @@ namespace VF.Inspector {
 
                     if (hasGuidedPath) {
                         var pathIds = guidedPath
-                            .Select(_ => (int)spsMarkers.NewMarkerId())
+                            .Select(_ => spsMarkers.NewMarkerId())
                             .ToList();
                         var firstStop = guidedPathStops[0];
                         AddScreenMarker(CreateScreenMarker(
                             worldSpace,
                             socket,
                             firstStop.shrink ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay,
-                            (int)spsMarkers.NewMarkerId(),
+                            spsMarkers.NewMarkerId(),
                             spsMarkers,
                             socket.useRadiusOffset,
                             false,
@@ -527,7 +527,7 @@ namespace VF.Inspector {
                             worldSpace,
                             socket,
                             lightType,
-                            (int)spsMarkers.NewMarkerId(),
+                            spsMarkers.NewMarkerId(),
                             spsMarkers,
                             socket.useRadiusOffset,
                             false,
@@ -633,14 +633,14 @@ namespace VF.Inspector {
             VFGameObject parent,
             VRCFuryHapticSocket socket,
             VRCFuryHapticSocket.AddLight lightType,
-            float socketId,
+            uint socketId,
             SpsMarkersService spsMarkers,
             bool useRadiusOffset,
             bool useTangentIn = false,
             Vector3 tangentIn = default(Vector3),
             bool useTangentOut = false,
             Vector3 tangentOut = default(Vector3),
-            int nextSocketId = 0,
+            uint nextSocketId = 0,
             bool includeTags = true,
             string objectName = "SpsScreenMarker"
         ) {

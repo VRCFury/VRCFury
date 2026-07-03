@@ -11,18 +11,20 @@ namespace VF.Builder.Haptics {
         public const string ResolverShaderName = "Hidden/VRCFury/SpsResolver";
         public const string DataGrabPassShaderName = "Hidden/VRCFury/SpsDataGrabPass";
         public const string Configured = "_SPS_Configured";
-        public const string Id = "_SPS_Id";
-        public const string PlayerId = "_SPS_PlayerId";
+        public const string IdLow = "_SPS_IdLow";
+        public const string IdHigh = "_SPS_IdHigh";
+        public const string PlayerIdLow = "_SPS_PlayerIdLow";
+        public const string PlayerIdHigh = "_SPS_PlayerIdHigh";
         public const string SocketHole = "_SPS_SocketHole";
         public const string SocketDoubleSided = "_SPS_SocketDoubleSided";
         public const string SocketPortal = "_SPS_SocketPortal";
         public const string SocketRadiusOffset = "_SPS_SocketRadiusOffset";
-        public const string SocketNextId = "_SPS_SocketNextId";
+        public const string GuidedTargetIdLow = "_SPS_GuidedTargetIdLow";
+        public const string GuidedTargetIdHigh = "_SPS_GuidedTargetIdHigh";
         public const string SocketUseTangentIn = "_SPS_SocketUseTangentIn";
         public const string SocketUseTangentOut = "_SPS_SocketUseTangentOut";
         public const string SocketTangentIn = "_SPS_SocketTangentIn";
         public const string SocketTangentOut = "_SPS_SocketTangentOut";
-
         private readonly Lazy<Mesh> sharedTriggerMesh;
         private readonly Lazy<Material> sharedSocketMaterial;
         private readonly Lazy<Material> sharedResolverMaterial;
@@ -35,11 +37,18 @@ namespace VF.Builder.Haptics {
             sharedGrabPassMaterial = new Lazy<Material>(() => CreateSharedMaterial(DataGrabPassShaderName));
         }
 
-        public float NewMarkerId() {
+        public uint NewMarkerId() {
             uint hash = (uint)Guid.NewGuid().GetHashCode();
-            hash &= 0x00ffffffu;
             if (hash == 0) hash = 1;
             return hash;
+        }
+
+        public static uint GetLow(uint value) {
+            return value & 0xffffu;
+        }
+
+        public static uint GetHigh(uint value) {
+            return value >> 16;
         }
 
         private Material CreateSharedMaterial(string shaderName) {

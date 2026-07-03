@@ -1,8 +1,10 @@
 Shader "Hidden/VRCFury/SpsDataGrabPass" {
     Properties {
         _SPS_Configured("ID Configured", Float) = 0
-        _SPS_Id("ID", Float) = 0
-        _SPS_PlayerId("Player ID", Float) = 0
+        _SPS_IdLow("ID Low", Float) = 0
+        _SPS_IdHigh("ID High", Float) = 0
+        _SPS_PlayerIdLow("Player ID Low", Float) = 0
+        _SPS_PlayerIdHigh("Player ID High", Float) = 0
     }
     SubShader {
         Tags {

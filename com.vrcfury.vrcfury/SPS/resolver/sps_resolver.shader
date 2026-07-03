@@ -5,35 +5,45 @@ Shader "Hidden/VRCFury/SpsResolver" {
         _SPS_Enabled("Apply Fraction", Float) = 1
 
         [Header(Tags)]
-        _SPS_TagInclude1("Include 1", Float) = 0
+        _SPS_TagInclude1Low("Include 1 Low", Float) = 0
+        _SPS_TagInclude1High("Include 1 High", Float) = 0
         [Toggle] _SPS_TagInclude1Self("Include 1 Self", Float) = 0
         [Toggle] _SPS_TagInclude1Others("Include 1 Others", Float) = 0
-        _SPS_TagInclude2("Include 2", Float) = 0
+        _SPS_TagInclude2Low("Include 2 Low", Float) = 0
+        _SPS_TagInclude2High("Include 2 High", Float) = 0
         [Toggle] _SPS_TagInclude2Self("Include 2 Self", Float) = 0
         [Toggle] _SPS_TagInclude2Others("Include 2 Others", Float) = 0
-        _SPS_TagInclude3("Include 3", Float) = 0
+        _SPS_TagInclude3Low("Include 3 Low", Float) = 0
+        _SPS_TagInclude3High("Include 3 High", Float) = 0
         [Toggle] _SPS_TagInclude3Self("Include 3 Self", Float) = 0
         [Toggle] _SPS_TagInclude3Others("Include 3 Others", Float) = 0
-        _SPS_TagInclude4("Include 4", Float) = 1337
+        _SPS_TagInclude4Low("Include 4 Low", Float) = 1337
+        _SPS_TagInclude4High("Include 4 High", Float) = 0
         [Toggle] _SPS_TagInclude4Self("Include 4 Self", Float) = 1
         [Toggle] _SPS_TagInclude4Others("Include 4 Others", Float) = 1
-        _SPS_TagExclude1("Exclude 1", Float) = 0
+        _SPS_TagExclude1Low("Exclude 1 Low", Float) = 0
+        _SPS_TagExclude1High("Exclude 1 High", Float) = 0
         [Toggle] _SPS_TagExclude1Self("Exclude 1 Self", Float) = 0
         [Toggle] _SPS_TagExclude1Others("Exclude 1 Others", Float) = 0
-        _SPS_TagExclude2("Exclude 2", Float) = 0
+        _SPS_TagExclude2Low("Exclude 2 Low", Float) = 0
+        _SPS_TagExclude2High("Exclude 2 High", Float) = 0
         [Toggle] _SPS_TagExclude2Self("Exclude 2 Self", Float) = 0
         [Toggle] _SPS_TagExclude2Others("Exclude 2 Others", Float) = 0
-        _SPS_TagExclude3("Exclude 3", Float) = 0
+        _SPS_TagExclude3Low("Exclude 3 Low", Float) = 0
+        _SPS_TagExclude3High("Exclude 3 High", Float) = 0
         [Toggle] _SPS_TagExclude3Self("Exclude 3 Self", Float) = 0
         [Toggle] _SPS_TagExclude3Others("Exclude 3 Others", Float) = 0
-        _SPS_TagExclude4("Exclude 4", Float) = 0
+        _SPS_TagExclude4Low("Exclude 4 Low", Float) = 0
+        _SPS_TagExclude4High("Exclude 4 High", Float) = 0
         [Toggle] _SPS_TagExclude4Self("Exclude 4 Self", Float) = 0
         [Toggle] _SPS_TagExclude4Others("Exclude 4 Others", Float) = 0
 
         [Header(Unique ID)]
         _SPS_Configured("ID Configured", Float) = 0
-        _SPS_Id("ID", Float) = 0
-        _SPS_PlayerId("Player ID", Float) = 0
+        _SPS_IdLow("ID Low", Float) = 0
+        _SPS_IdHigh("ID High", Float) = 0
+        _SPS_PlayerIdLow("Player ID Low", Float) = 0
+        _SPS_PlayerIdHigh("Player ID High", Float) = 0
 
         [Header(Bake)]
         _SPS_BakedLength("Baked length (m)", Float) = 0

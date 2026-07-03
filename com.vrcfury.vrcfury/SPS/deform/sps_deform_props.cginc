@@ -1,7 +1,9 @@
 [Header(SPS Resolver ID)]
 _SPS_Configured("ID Configured", Float) = 0
-_SPS_Id("ID", Float) = 0
-_SPS_PlayerId("Player ID", Float) = 0
+_SPS_IdLow("ID Low", Float) = 0
+_SPS_IdHigh("ID High", Float) = 0
+_SPS_PlayerIdLow("Player ID Low", Float) = 0
+_SPS_PlayerIdHigh("Player ID High", Float) = 0
 
 [Header(SPS Blendshapes)]
 _SPS_BlendshapeVertCount("Vertex count", Float) = 0
