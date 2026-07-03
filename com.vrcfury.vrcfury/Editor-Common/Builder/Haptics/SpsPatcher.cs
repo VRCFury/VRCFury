@@ -48,6 +48,20 @@ namespace VF.Builder.Haptics {
             return new Regex(pattern, RegexOptions.Compiled);
         }
 
+        /**
+         * PCSS has a broken META pass which does not compile.
+         * Rather than wait, we can just patch it here.
+         */
+        private static string ApplyPcssFix(Shader shader, string contents) {
+            if (shader == null) return contents;
+            if (shader.name.IndexOf("PCSS", StringComparison.OrdinalIgnoreCase) < 0) return contents;
+            return GetRegex("(?m)^(\\s*#include\\s*\"[^\"]*[\\\\/]custom\\.hlsl\"\\s*)$").Replace(
+                contents,
+                "$1\n#undef LIL_V2F_POSITION_WS",
+                1
+            );
+        }
+
         private static void PatchUnsafe(Material mat, bool keepImports) {
             var shader = mat.shader;
             var newShader = PatchUnsafe(shader, keepImports);
@@ -60,20 +74,9 @@ namespace VF.Builder.Haptics {
             public int patchedPrograms;
         }
         private static PatchResult PatchUnsafe(Shader shader, bool keepImports, string parentHash = null) {
-            var testMat = VrcfObjectFactory.CreateMaterial(shader);
-            for (int i = 0; i < testMat.passCount; i++) {
-                ShaderUtil.CompilePass(testMat, i, true);
-            }
-
-            if (ShaderUtil.ShaderHasError(shader)) {
-                var error = ShaderUtil
-                    .GetShaderMessages(shader)
-                    .First(x => x.severity == ShaderCompilerMessageSeverity.Error);
-                throw new SpsErrorMatException($"The vanilla shader at {AssetDatabase.GetAssetPath(shader)} has an internal error:\n\n" + error.file+":"+error.line+" "+error.message);
-            }
-            
             var pathToSps = GetPathToSps();
             var (contents,isBuiltIn) = ReadFile(shader);
+            contents = ApplyPcssFix(shader, contents);
 
             void Replace(string pattern, string replacement, int count) {
                 var startLen = contents.Length + "" + contents.GetHashCode();
@@ -205,10 +208,21 @@ namespace VF.Builder.Haptics {
             }
 
             if (ShaderUtil.ShaderHasError(newShader)) {
-                var error = ShaderUtil
+                var testMat = VrcfObjectFactory.CreateMaterial(shader);
+                for (int i = 0; i < testMat.passCount; i++) {
+                    ShaderUtil.CompilePass(testMat, i, true);
+                }
+                if (ShaderUtil.ShaderHasError(shader)) {
+                    var vanillaError = ShaderUtil
+                        .GetShaderMessages(shader)
+                        .First(x => x.severity == ShaderCompilerMessageSeverity.Error);
+                    throw new SpsErrorMatException($"The vanilla shader at {AssetDatabase.GetAssetPath(shader)} has an internal error:\n\n" + vanillaError.file+":"+vanillaError.line+" "+vanillaError.message);
+                }
+
+                var patchedError = ShaderUtil
                     .GetShaderMessages(newShader)
                     .First(x => x.severity == ShaderCompilerMessageSeverity.Error);
-                throw new VRCFBuilderException("Patch succeeded, but shader failed to compile.\n\n" + error.file+":"+error.line+" "+error.message);
+                throw new VRCFBuilderException("Patch succeeded, but shader failed to compile.\n\n" + patchedError.file+":"+patchedError.line+" "+patchedError.message);
             }
 
             return new PatchResult {
