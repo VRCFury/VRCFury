@@ -328,15 +328,6 @@ namespace VF.Builder.Haptics {
             if (closestBone != HumanBodyBones.Hips) return 0;
 
             var root = socket.owner().root;
-            var hipSockets = root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
-                .Where(other => other != null && GetClosestBone(other.owner()) == HumanBodyBones.Hips)
-                .OrderBy(other => other.owner().worldPosition.y)
-                .ThenBy(other => other.owner().GetPath(root))
-                .Take(2)
-                .ToList();
-
-            if (hipSockets.Count != 2) return 0;
-
             var hips = VRCFuryHapticSocketEditor.getBoneOnArmature?.Invoke(root, HumanBodyBones.Hips);
             var rightHand = VRCFuryHapticSocketEditor.getBoneOnArmature?.Invoke(root, HumanBodyBones.RightHand);
             if (hips == null || rightHand == null) return 0;
@@ -350,9 +341,21 @@ namespace VF.Builder.Haptics {
             if (forward.sqrMagnitude <= 0.000001f) return 0;
             forward.Normalize();
 
-            var midpoint = (hipSockets[0].owner().worldPosition + hipSockets[1].owner().worldPosition) * 0.5f;
+            var hipSockets = root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
+                .Where(other => other != null && GetClosestBone(other.owner()) == HumanBodyBones.Hips)
+                .OrderBy(other => {
+                    var offset = other.owner().worldPosition - hips.worldPosition;
+                    var axisOffset = Vector3.Project(offset, forward);
+                    return (offset - axisOffset).sqrMagnitude;
+                })
+                .ThenBy(other => other.owner().GetPath(root))
+                .Take(2)
+                .ToList();
+
+            if (hipSockets.Count != 2) return 0;
+
             hipSockets = hipSockets
-                .OrderBy(other => Vector3.Dot(other.owner().worldPosition - midpoint, forward))
+                .OrderBy(other => Vector3.Dot(other.owner().worldPosition - hips.worldPosition, forward))
                 .ThenBy(other => other.owner().GetPath(root))
                 .ToList();
 
