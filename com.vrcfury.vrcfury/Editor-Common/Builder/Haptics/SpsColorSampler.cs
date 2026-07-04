@@ -103,6 +103,7 @@ namespace VF.Builder.Haptics {
                         currentSubmesh
                     );
                 }
+
                 preview.camera.Render();
 
                 var rendered = preview.EndPreview() as RenderTexture;
@@ -135,6 +136,8 @@ namespace VF.Builder.Haptics {
                 var average = total / count;
                 average.a = 1;
                 return average;
+            } catch (Exception) {
+                return Color.black;
             } finally {
                 RenderTexture.active = previousActive;
                 try {
