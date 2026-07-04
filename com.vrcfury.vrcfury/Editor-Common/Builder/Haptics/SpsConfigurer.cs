@@ -345,8 +345,7 @@ namespace VF.Builder.Haptics {
                 .Where(other => other != null && GetClosestBone(other.owner()) == HumanBodyBones.Hips)
                 .OrderBy(other => {
                     var offset = other.owner().worldPosition - hips.worldPosition;
-                    var axisOffset = Vector3.Project(offset, forward);
-                    return (offset - axisOffset).sqrMagnitude;
+                    return Mathf.Abs(Vector3.Dot(offset, forward));
                 })
                 .ThenBy(other => other.owner().GetPath(root))
                 .Take(2)
