@@ -12,6 +12,7 @@ using VF.Utils;
 namespace VF.Service {
     [VFService]
     internal class BoundingBoxFixService {
+        private const float MaxStepSizeInMeters = 5f;
         [VFAutowired] private readonly GlobalsService globals;
         private VFGameObject avatarObject => globals.avatarObject;
 
@@ -101,13 +102,13 @@ namespace VF.Service {
                 SetBounds(b);
                 var newAvatarBounds = startBounds;
                 newAvatarBounds.Encapsulate(renderer.bounds);
-                if (!Approximately(startBounds, newAvatarBounds)) {
+                if (Approximately(startBounds, newAvatarBounds)) {
                     SetBounds(original);
                 }
             }
 
             var minStepInMeters = 0.01f;
-            var stepSizeInMeters = GetMaxSize(startBounds);
+            var stepSizeInMeters = Mathf.Min(GetMaxSize(startBounds), MaxStepSizeInMeters);
             while (stepSizeInMeters >= minStepInMeters) {
                 var stepX = GetLocalStep(stepSizeInMeters, root.worldScale.x);
                 var stepY = GetLocalStep(stepSizeInMeters, root.worldScale.y);
