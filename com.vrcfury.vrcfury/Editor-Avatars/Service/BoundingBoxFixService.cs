@@ -102,7 +102,7 @@ namespace VF.Service {
                 SetBounds(b);
                 var newAvatarBounds = startBounds;
                 newAvatarBounds.Encapsulate(renderer.bounds);
-                if (Approximately(startBounds, newAvatarBounds)) {
+                if (!Approximately(startBounds, newAvatarBounds)) {
                     SetBounds(original);
                 }
             }
