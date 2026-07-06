@@ -2,24 +2,62 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using VF.Exceptions;
 using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.PhysBone.Components;
+using Object = UnityEngine.Object;
 
 namespace VF.Builder.Haptics {
     internal static class SpsAutoRigger {
-        public static void AutoRig(SkinnedMeshRenderer skin, VFGameObject bakeRoot, float worldLength, float worldRadius, float[] activeFromMask) {
+        public static Renderer AutoRig(Renderer renderer, VFGameObject bakeRoot, float worldLength, float worldRadius, float[] activeFromMask) {
+            if (renderer is SkinnedMeshRenderer existingSkin && existingSkin.bones.Length > 1) return renderer;
+
+            SkinnedMeshRenderer skin;
+            if (renderer is MeshRenderer mr) {
+                var obj = mr.owner();
+                var staticMesh = mr.GetMesh();
+                var meshFilter = obj.GetComponent<MeshFilter>();
+                var mats = mr.sharedMaterials;
+                var shadowCastingMode = mr.shadowCastingMode;
+                var receiveShadows = mr.receiveShadows;
+                var lightProbeUsage = mr.lightProbeUsage;
+                var reflectionProbeUsage = mr.reflectionProbeUsage;
+                var probeAnchor = mr.probeAnchor;
+
+                Object.DestroyImmediate(mr);
+                Object.DestroyImmediate(meshFilter);
+
+                skin = obj.AddComponent<SkinnedMeshRenderer>();
+                skin.SetMesh(staticMesh);
+                skin.sharedMaterials = mats;
+                skin.shadowCastingMode = shadowCastingMode;
+                skin.receiveShadows = receiveShadows;
+                skin.lightProbeUsage = lightProbeUsage;
+                skin.reflectionProbeUsage = reflectionProbeUsage;
+                skin.probeAnchor = probeAnchor;
+            } else if (renderer is SkinnedMeshRenderer s) {
+                skin = s;
+            } else {
+                return renderer;
+            }
+
+            var mesh = skin.GetMutableMesh("SPS Autorig");
+            if (mesh == null) throw new Exception("Missing mesh");
+
+            if (skin.bones.Length == 0 || mesh.boneWeights.Length == 0) {
+                var mainBone = GameObjects.Create("SpsMainBone", skin.owner());
+                mesh.boneWeights = mesh.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
+                mesh.bindposes = new[] { Matrix4x4.identity };
+                mesh.Dirty();
+                skin.bones = new Transform[] { mainBone };
+            }
+
             float GetActive(int i) {
                 return activeFromMask == null ? 1 : activeFromMask[i];
             }
 
-            if (skin.bones.Length != 1) {
-                return;
-            }
-
-            var mesh = skin.GetMutableMesh("Needed to add rig for SPS auto-rig");
-            if (mesh == null) throw new Exception("Missing mesh");
-            var bake = MeshBaker.BakeMesh(skin, skin.rootBone);
+            var bake = MeshBaker.BakeMesh(skin, bakeRoot);
             const int boneCount = 10;
 
             // This is left outside of the bake root so that it isn't shown by head chop
@@ -28,8 +66,8 @@ namespace VF.Builder.Haptics {
             var lastParent = autoRigRoot;
             var bones = new List<Transform>();
             var bindPoses = new List<Matrix4x4>();
-            var localLength = worldLength / skin.rootBone.lossyScale.z;
-            var localRadius = worldRadius / skin.rootBone.lossyScale.z;
+            var localLength = worldLength / bakeRoot.worldScale.z;
+            var localRadius = worldRadius / bakeRoot.worldScale.z;
             for (var i = 0; i < boneCount; i++) {
                 var bone = GameObjects.Create("Bone" + i, lastParent);
                 var pos = bone.localPosition;
@@ -58,6 +96,7 @@ namespace VF.Builder.Haptics {
                 weights[i] = CalculateWeight(closestBoneId, otherBoneId, distanceToOther, GetActive(i));
             }
             mesh.boneWeights = weights;
+            mesh.RecalculateBounds();
 
             var physbone = autoRigRoot.AddComponent<VRCPhysBone>();
             physbone.integrationType = VRCPhysBoneBase.IntegrationType.Advanced;
@@ -69,6 +108,8 @@ namespace VF.Builder.Haptics {
             var radiusEnd = Mathf.Max(0.0f, 1.0f - localRadius / localLength);
             physbone.radiusCurve = AnimationCurve.Linear(radiusEnd, 1.0f, 1.0f, 0.0f);
             physbone.radius = localRadius;
+
+            return skin;
         }
 
         private static BoneWeight CalculateWeight(int closestBoneId, int otherBoneId, float distanceToOther, float activeFromMask) {

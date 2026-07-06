@@ -316,5 +316,9 @@ namespace VF.Utils {
         public static UnityEngine.Component[] GetComponentsInAllOpenScenes(Type type) {
             return GetRoots().SelectMany(r => r.GetComponentsInSelfAndChildren(type)).ToArray();
         }
+
+        public bool IsSelected() {
+            return Selection.gameObjects.Contains(gameObject);
+        }
     }
 }

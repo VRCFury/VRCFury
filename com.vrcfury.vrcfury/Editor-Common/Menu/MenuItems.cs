@@ -30,7 +30,7 @@ namespace VF.Menu {
 
         public const string utilities = prefix + "Utilities/";
         public const int utilitiesPriority = 1311;
-        public const string nukeZawoo = utilities + "Utilities/Nuke Zawoo";
+        public const string nukeZawoo = utilities + "Nuke Zawoo";
         public const int nukeZawooPriority = utilitiesPriority;
         public const string unusedBones = utilities + "Nuke unused bones";
         public const int unusedBonesPriority = utilitiesPriority + 1;

@@ -36,7 +36,7 @@ namespace VF.Utils {
             state.Drives(param).value = value;
             return state;
         }
-        public static VFState DrivesRandom(this VFState state, VFAInteger param, float min, float max) {
+        public static VFState DrivesRandom(this VFState state, VFAParam param, float min, float max) {
             var p = state.Drives(param);
             p.type = VRC_AvatarParameterDriver.ChangeType.Random;
             p.valueMin = min;

@@ -606,6 +606,10 @@ namespace VF.Feature {
                     return output;
                 } else {
                     output.Add(MakeTabbed("When toggle is enabled:", c));
+                    output.Add(MakeTabbed(
+                        "When toggle is disabled:",
+                        VRCFuryEditorUtils.WrappedLabel("Behaviour will return to the default")
+                    ));
                 }
                 return output;
             }, sliderProp, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));

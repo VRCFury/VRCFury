@@ -27,6 +27,10 @@ namespace VF.Feature {
             ));
 
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("saveSockets"), "Save Sockets Between Worlds"));
+            c.Add(VRCFuryEditorUtils.Prop(
+                prop.FindPropertyRelative("legacyModeEnabledOnAvatarLoad"),
+                "Legacy Mode enabled on avatar load"
+            ));
             return c;
         }
     }

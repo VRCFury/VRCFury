@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Actions;
+using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
@@ -64,6 +65,7 @@ namespace VF.Hooks {
             };
 
             VRCFuryHapticSocketEditor.getClosestBone = ClosestBoneUtils.GetClosestHumanoidBone;
+            VRCFuryHapticSocketEditor.getBoneOnArmature = VRCFArmatureUtils.FindBoneOnArmatureOrNull;
 
             VFGameObject.getUploadRoots = obj => {
                 return new[] { obj.GetAvatarRoot() };
@@ -107,7 +109,7 @@ namespace VF.Hooks {
                 injector.Set("avatarObject", avatarObject);
                 injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
                 var mainBuilder = injector.GetService<ActionClipService>();
-                var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject);
+                var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject, debugMode: true);
                 var bindings = new AnimatorIterator.Clips().From(test.onClip)
                     .SelectMany(clip => clip.GetAllBindings())
                     .ToImmutableHashSet();

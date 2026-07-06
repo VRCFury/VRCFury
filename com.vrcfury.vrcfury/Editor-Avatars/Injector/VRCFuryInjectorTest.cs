@@ -73,6 +73,7 @@ namespace VF.Injector {
                         injector.Set(Activator.CreateInstance(modelType));
                         injector.Set("actionName", null);
                         injector.Set("animObject", null);
+                        injector.Set("debugMode", false);
                         injector.Set(typeof(ActionClipService), null);
                         var buildMethod = builderType.VFMethod("Build");
                         injector.VerifyMethod(buildMethod);

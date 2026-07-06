@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
+using VF.Exceptions;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Menu;
@@ -49,53 +50,85 @@ namespace VF.Service {
             }
         }
 
-        private void AdjustBoundingBox(SkinnedMeshRenderer skin) {
-            var usesLights = skin.sharedMaterials.Any(mat =>
-                DpsConfigurer.IsDps(mat) || TpsConfigurer.IsTps(mat) || SpsConfigurer.IsSps(mat));
+        private void AdjustBoundingBox(Renderer renderer) {
+            if (renderer == null) return;
+
+            var usesLights = renderer.sharedMaterials.Any(mat =>
+                DpsConfigurer.IsDps(mat) || TpsConfigurer.IsTps(mat));
             if (usesLights) return;
 
-            skin.updateWhenOffscreen = false;
+            if (renderer is SkinnedMeshRenderer skin) {
+                skin.updateWhenOffscreen = false;
+                skin.Dirty();
+            }
+
             var startBounds = CalculateFullBounds(avatarObject);
+            var root = renderer.GetRootBone();
+            var currentBounds = GetLocalBounds(renderer);
+            Mesh mutableMesh = null;
 
-            var root = HapticUtils.GetMeshRoot(skin);
+            void SetBounds(Bounds bounds) {
+                currentBounds = bounds;
+                if (renderer is SkinnedMeshRenderer skinned) {
+                    skinned.localBounds = bounds;
+                    skinned.Dirty();
+                    return;
+                }
+                if (renderer is MeshRenderer meshRenderer) {
+                    if (mutableMesh == null) {
+                        mutableMesh = meshRenderer.GetMutableMesh("Bounding box adjustment");
+                    }
+                    if (mutableMesh != null) mutableMesh.bounds = bounds;
+                    return;
+                }
+                throw new VRCFBuilderException("Unsupported renderer type for bounding box fix");
+            }
 
-            void ModifyBounds(float sizeX = 0, float sizeY = 0, float sizeZ = 0, float centerX = 0, float centerY = 0, float centerZ = 0) {
-                var original = skin.localBounds;
+            void ModifyBounds(float sideX = 0, float sideY = 0, float sideZ = 0) {
+                var original = currentBounds;
                 var b = original;
                 var extents = b.extents;
-                extents.x += sizeX;
-                extents.y += sizeY;
-                extents.z += sizeZ;
+                extents.x += Mathf.Abs(sideX) / 2;
+                extents.y += Mathf.Abs(sideY) / 2;
+                extents.z += Mathf.Abs(sideZ) / 2;
                 b.extents = extents;
                 var center = b.center;
-                center.x += centerX;
-                center.y += centerY;
-                center.z += centerZ;
+                center.x += sideX / 2;
+                center.y += sideY / 2;
+                center.z += sideZ / 2;
                 b.center = center;
 
-                skin.localBounds = b;
+                SetBounds(b);
                 var newAvatarBounds = startBounds;
-                newAvatarBounds.Encapsulate(skin.bounds);
-                //if (debug) Debug.Log("Expanding to " + b + " updated world bounds: " + updatedBounds);
-                if (startBounds != newAvatarBounds) {
-                    //if (debug) Debug.LogError("FAILED");
-                    skin.localBounds = original;
+                newAvatarBounds.Encapsulate(renderer.bounds);
+                if (!Approximately(startBounds, newAvatarBounds)) {
+                    SetBounds(original);
                 }
             }
 
-            var stepSizeInMeters = 0.05f;
-            var maxSteps = 20;
-            var stepSize = stepSizeInMeters / root.worldScale.x;
-            for (var i = 0; i < maxSteps; i++) {
-                ModifyBounds(sizeX: stepSize, centerX: -stepSize);
-                ModifyBounds(sizeX: stepSize, centerX: stepSize);
-                ModifyBounds(sizeY: stepSize, centerY: -stepSize);
-                ModifyBounds(sizeY: stepSize, centerY: stepSize);
-                ModifyBounds(sizeZ: stepSize, centerZ: -stepSize);
-                ModifyBounds(sizeZ: stepSize, centerZ: stepSize);
+            var minStepInMeters = 0.01f;
+            var stepSizeInMeters = GetMaxSize(startBounds);
+            while (stepSizeInMeters >= minStepInMeters) {
+                var stepX = GetLocalStep(stepSizeInMeters, root.worldScale.x);
+                var stepY = GetLocalStep(stepSizeInMeters, root.worldScale.y);
+                var stepZ = GetLocalStep(stepSizeInMeters, root.worldScale.z);
+                ModifyBounds(sideX: -stepX);
+                ModifyBounds(sideX: stepX);
+                ModifyBounds(sideY: -stepY);
+                ModifyBounds(sideY: stepY);
+                ModifyBounds(sideZ: -stepZ);
+                ModifyBounds(sideZ: stepZ);
+                stepSizeInMeters /= 2;
             }
+        }
 
-            skin.Dirty();
+        private static Bounds GetLocalBounds(Renderer renderer) {
+            if (renderer is SkinnedMeshRenderer skin) return skin.localBounds;
+            if (renderer is MeshRenderer meshRenderer) {
+                var mesh = meshRenderer.GetMesh();
+                return (mesh != null) ? mesh.bounds : new Bounds();
+            }
+            throw new VRCFBuilderException("Unsupported renderer type for bounding box fix");
         }
 
         private static Bounds CalculateFullBounds(VFGameObject avatarObject) {
@@ -106,6 +139,28 @@ namespace VF.Service {
                 }
             }
             return bounds;
+        }
+
+        private static float GetLocalStep(float worldStep, float scale) {
+            var absScale = Mathf.Abs(scale);
+            if (absScale < 0.0001f) return 0;
+            return worldStep / absScale;
+        }
+
+        private static float GetMaxSize(Bounds bounds) {
+            var size = bounds.size;
+            return Mathf.Max(size.x, size.y, size.z);
+        }
+
+        private static bool Approximately(Bounds a, Bounds b) {
+            return Approximately(a.center, b.center) && Approximately(a.extents, b.extents);
+        }
+
+        private static bool Approximately(Vector3 a, Vector3 b) {
+            const float tolerance = 0.0001f;
+            return Mathf.Abs(a.x - b.x) <= tolerance
+                && Mathf.Abs(a.y - b.y) <= tolerance
+                && Mathf.Abs(a.z - b.z) <= tolerance;
         }
     }
 }

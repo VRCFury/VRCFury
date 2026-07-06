@@ -131,5 +131,49 @@ namespace VF.Utils {
         public VFGameObject owner() {
             return component.owner();
         }
+
+        public static VFConstraint CreateParent(VFGameObject owner) {
+#if VRCSDK_HAS_VRCCONSTRAINTS
+            var c = owner.AddComponent<VRCParentConstraint>();
+            c.GlobalWeight = 1;
+            c.IsActive = true;
+            c.Locked = true;
+            return new VFConstraint(c);
+#else
+            var c = owner.AddComponent<ParentConstraint>();
+            c.weight = 1;
+            c.constraintActive = true;
+            c.locked = true;
+            return new VFConstraint(c);
+#endif
+        }
+
+        public void AddSource(VFGameObject source, float weight = 0) {
+#if VRCSDK_HAS_VRCCONSTRAINTS
+            if (component is VRCConstraintBase vrcConstraint) {
+                vrcConstraint.Sources.Add(new VRCConstraintSource(
+                    source,
+                    weight,
+                    Vector3.zero,
+                    Vector3.zero
+                ));
+            }
+#endif
+            if (component is IConstraint unityConstraint) {
+                unityConstraint.AddSource(new ConstraintSource {
+                    sourceTransform = source,
+                    weight = weight
+                });
+            }
+        }
+
+        public string GetWeightProperty(int index) {
+#if VRCSDK_HAS_VRCCONSTRAINTS
+            if (component is VRCConstraintBase vrcConstraint) {
+                return $"Sources.source{index}.Weight";
+            }
+#endif
+            return $"m_Sources.Array.data[{index}].weight";
+        }
     }
 }
