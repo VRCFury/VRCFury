@@ -52,9 +52,7 @@ void sps_apply_real(
 		float3 bakedWorldForward = sps_normalize(sps_cell_header_forward(resolvedCell));
 		float3 bakedWorldUp = sps_nearest_normal(bakedWorldForward, sps_cell_header_up(resolvedCell));
 		float3 bakedWorldRight = sps_normalize(cross(bakedWorldUp, bakedWorldForward));
-		float3 bakedWorldVertex = bakedWorldOrigin + bakedWorldRight * bakedVertex.x + bakedWorldUp * bakedVertex.y + bakedWorldForward * bakedVertex.z;
-		float3 bakedWorldNormal = bakedWorldRight * bakedNormal.x + bakedWorldUp * bakedNormal.y + bakedWorldForward * bakedNormal.z;
-		float3 bakedWorldTangent = bakedWorldRight * bakedTangent.x + bakedWorldUp * bakedTangent.y + bakedWorldForward * bakedTangent.z;
+
 		float socketDist = 0;
 		float3 stop1Forward = sps_read_resolver_chain_forward(resolvedCell, 1);
 		if (!sps_is_zero(stop1Forward)) {
@@ -62,28 +60,26 @@ void sps_apply_real(
 			float3 stop1Pos = sps_read_resolver_chain_world(resolvedCell, 1);
 			socketDist = length(stop1Pos - rootPos);
 		}
-		sps_toLocal(bakedWorldVertex, bakedWorldNormal, bakedWorldTangent);
+
 		#ifdef SPS_VANILLA_STRUCT_POSITION_NAME
+			float3 bakedWorldVertex = bakedWorldOrigin + bakedWorldRight * bakedVertex.x + bakedWorldUp * bakedVertex.y + bakedWorldForward * bakedVertex.z;
+			bakedWorldVertex = sps_toLocal(bakedWorldVertex);
 			input.SPS_VANILLA_STRUCT_POSITION_NAME.xyz = bakedWorldVertex;
 		#endif
 		#ifdef SPS_VANILLA_STRUCT_NORMAL_NAME
+			float3 bakedWorldNormal = bakedWorldRight * bakedNormal.x + bakedWorldUp * bakedNormal.y + bakedWorldForward * bakedNormal.z;
+			bakedWorldNormal = sps_direction_toLocal(bakedWorldNormal);
 			input.SPS_VANILLA_STRUCT_NORMAL_NAME.xyz = bakedWorldNormal;
 		#endif
 		#ifdef SPS_VANILLA_STRUCT_TANGENT_NAME
+			float3 bakedWorldTangent = bakedWorldRight * bakedTangent.x + bakedWorldUp * bakedTangent.y + bakedWorldForward * bakedTangent.z;
+			bakedWorldTangent = sps_direction_toLocal(bakedWorldTangent);
 			input.SPS_VANILLA_STRUCT_TANGENT_NAME.xyz = bakedWorldTangent;
 		#endif
 		SPS_MODIFY_BAKE(input, socketDist, worldLength);
 		#ifdef SPS_VANILLA_STRUCT_POSITION_NAME
 			bakedWorldVertex = input.SPS_VANILLA_STRUCT_POSITION_NAME.xyz;
-		#endif
-		#ifdef SPS_VANILLA_STRUCT_NORMAL_NAME
-			bakedWorldNormal = input.SPS_VANILLA_STRUCT_NORMAL_NAME.xyz;
-		#endif
-		#ifdef SPS_VANILLA_STRUCT_TANGENT_NAME
-			bakedWorldTangent = input.SPS_VANILLA_STRUCT_TANGENT_NAME.xyz;
-		#endif
-		sps_toWorld(bakedWorldVertex, bakedWorldNormal, bakedWorldTangent);
-		#ifdef SPS_VANILLA_STRUCT_POSITION_NAME
+			bakedWorldVertex = sps_toWorld(bakedWorldVertex);
 			float3 modifiedWorldVertex = bakedWorldVertex - bakedWorldOrigin;
 			bakedVertex = float3(
 				dot(modifiedWorldVertex, bakedWorldRight),
@@ -92,6 +88,8 @@ void sps_apply_real(
 			);
 		#endif
 		#ifdef SPS_VANILLA_STRUCT_NORMAL_NAME
+			bakedWorldNormal = input.SPS_VANILLA_STRUCT_NORMAL_NAME.xyz;
+			bakedWorldNormal = sps_direction_toWorld(bakedWorldNormal);
 			bakedNormal = float3(
 				dot(bakedWorldNormal, bakedWorldRight),
 				dot(bakedWorldNormal, bakedWorldUp),
@@ -99,6 +97,8 @@ void sps_apply_real(
 			);
 		#endif
 		#ifdef SPS_VANILLA_STRUCT_TANGENT_NAME
+			bakedWorldTangent = input.SPS_VANILLA_STRUCT_TANGENT_NAME.xyz;
+			bakedWorldTangent = sps_direction_toWorld(bakedWorldTangent);
 			bakedTangent = float3(
 				dot(bakedWorldTangent, bakedWorldRight),
 				dot(bakedWorldTangent, bakedWorldUp),
