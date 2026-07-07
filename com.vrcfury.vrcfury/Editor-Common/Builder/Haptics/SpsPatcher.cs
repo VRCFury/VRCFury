@@ -392,6 +392,7 @@ namespace VF.Builder.Haptics {
 
             var newStructBody = new List<string>();
             if (!useStructExtends) newStructBody.Add(oldStructBody);
+            newStructBody.Add(GetKeywordDefinesFromStruct(oldStructBody, "SPS_VANILLA_STRUCT"));
             newStructBody.Add(GetKeywordDefinesFromStruct(oldStructBody));
 
             void AddParamIfMissing(string keyword, string defaultName, string defaultType) {
@@ -453,7 +454,7 @@ namespace VF.Builder.Haptics {
             return program;
         }
 
-        public static string GetKeywordDefinesFromStruct(string structBody) {
+        public static string GetKeywordDefinesFromStruct(string structBody, string prefix = "SPS_STRUCT") {
             // Remove comments
             structBody = Regex.Replace(structBody, @"(//[^\n]*)|(/\*.*?\*/)", "", RegexOptions.Singleline);
             var output = new List<string>();
@@ -469,9 +470,9 @@ namespace VF.Builder.Haptics {
                     if (keyword.EndsWith("0")) {
                         keyword = keyword.Substring(0, keyword.Length - 1);
                     }
-                    output.Add($"#define SPS_STRUCT_{keyword}_TYPE {type}");
-                    output.Add($"#define SPS_STRUCT_{keyword}_TYPE_{type}");
-                    output.Add($"#define SPS_STRUCT_{keyword}_NAME {name}");
+                    output.Add($"#define {prefix}_{keyword}_TYPE {type}");
+                    output.Add($"#define {prefix}_{keyword}_TYPE_{type}");
+                    output.Add($"#define {prefix}_{keyword}_NAME {name}");
                 }
                 sinceLastIf = "";
             }

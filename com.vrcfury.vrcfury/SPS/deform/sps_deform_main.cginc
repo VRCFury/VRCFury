@@ -11,6 +11,7 @@ void sps_apply(inout SpsInputs o){}
 
 // SPS Penetration Shader
 void sps_apply_real(
+	inout SPS_VANILLA_VERT_PARAM_TYPE input,
 	inout SPS_STRUCT_POSITION_TYPE vertex,
 	inout SPS_STRUCT_NORMAL_TYPE normal,
 	inout SPS_STRUCT_TANGENT_TYPE tangent,
@@ -42,10 +43,69 @@ void sps_apply_real(
 	);
 	if (!hasResolvedPath) return;
 	SpsCell resolvedCell = sps_get_cell(resolverTex, resolverSlotIndex);
-	float currentLength = resolvedCell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_METADATA_LENGTH_INDEX));
+	float worldLength = resolvedCell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_METADATA_LENGTH_INDEX));
 	float bakeScale = sps_cell_header_scale(resolvedCell);
-
 	bakedVertex *= bakeScale;
+
+	#ifdef SPS_MODIFY_BAKE
+		float3 bakedWorldOrigin = sps_cell_header_world(resolvedCell);
+		float3 bakedWorldForward = sps_normalize(sps_cell_header_forward(resolvedCell));
+		float3 bakedWorldUp = sps_nearest_normal(bakedWorldForward, sps_cell_header_up(resolvedCell));
+		float3 bakedWorldRight = sps_normalize(cross(bakedWorldUp, bakedWorldForward));
+		float3 bakedWorldVertex = bakedWorldOrigin + bakedWorldRight * bakedVertex.x + bakedWorldUp * bakedVertex.y + bakedWorldForward * bakedVertex.z;
+		float3 bakedWorldNormal = bakedWorldRight * bakedNormal.x + bakedWorldUp * bakedNormal.y + bakedWorldForward * bakedNormal.z;
+		float3 bakedWorldTangent = bakedWorldRight * bakedTangent.x + bakedWorldUp * bakedTangent.y + bakedWorldForward * bakedTangent.z;
+		float socketDist = 0;
+		float3 stop1Forward = sps_read_resolver_chain_forward(resolvedCell, 1);
+		if (!sps_is_zero(stop1Forward)) {
+			float3 rootPos = sps_read_resolver_chain_world(resolvedCell, 0);
+			float3 stop1Pos = sps_read_resolver_chain_world(resolvedCell, 1);
+			socketDist = length(stop1Pos - rootPos);
+		}
+		sps_toLocal(bakedWorldVertex, bakedWorldNormal, bakedWorldTangent);
+		#ifdef SPS_VANILLA_STRUCT_POSITION_NAME
+			input.SPS_VANILLA_STRUCT_POSITION_NAME.xyz = bakedWorldVertex;
+		#endif
+		#ifdef SPS_VANILLA_STRUCT_NORMAL_NAME
+			input.SPS_VANILLA_STRUCT_NORMAL_NAME.xyz = bakedWorldNormal;
+		#endif
+		#ifdef SPS_VANILLA_STRUCT_TANGENT_NAME
+			input.SPS_VANILLA_STRUCT_TANGENT_NAME.xyz = bakedWorldTangent;
+		#endif
+		SPS_MODIFY_BAKE(input, socketDist, worldLength);
+		#ifdef SPS_VANILLA_STRUCT_POSITION_NAME
+			bakedWorldVertex = input.SPS_VANILLA_STRUCT_POSITION_NAME.xyz;
+		#endif
+		#ifdef SPS_VANILLA_STRUCT_NORMAL_NAME
+			bakedWorldNormal = input.SPS_VANILLA_STRUCT_NORMAL_NAME.xyz;
+		#endif
+		#ifdef SPS_VANILLA_STRUCT_TANGENT_NAME
+			bakedWorldTangent = input.SPS_VANILLA_STRUCT_TANGENT_NAME.xyz;
+		#endif
+		sps_toWorld(bakedWorldVertex, bakedWorldNormal, bakedWorldTangent);
+		#ifdef SPS_VANILLA_STRUCT_POSITION_NAME
+			float3 modifiedWorldVertex = bakedWorldVertex - bakedWorldOrigin;
+			bakedVertex = float3(
+				dot(modifiedWorldVertex, bakedWorldRight),
+				dot(modifiedWorldVertex, bakedWorldUp),
+				dot(modifiedWorldVertex, bakedWorldForward)
+			);
+		#endif
+		#ifdef SPS_VANILLA_STRUCT_NORMAL_NAME
+			bakedNormal = float3(
+				dot(bakedWorldNormal, bakedWorldRight),
+				dot(bakedWorldNormal, bakedWorldUp),
+				dot(bakedWorldNormal, bakedWorldForward)
+			);
+		#endif
+		#ifdef SPS_VANILLA_STRUCT_TANGENT_NAME
+			bakedTangent = float3(
+				dot(bakedWorldTangent, bakedWorldRight),
+				dot(bakedWorldTangent, bakedWorldUp),
+				dot(bakedWorldTangent, bakedWorldForward)
+			);
+		#endif
+	#endif
 
 	float firstSegmentLerp;
 	float radiusMult = 1;
@@ -55,7 +115,7 @@ void sps_apply_real(
 	float pathDistance = max(bakedVertex.z, 0);
 	sps_deform_walk_chain(
 		resolvedCell,
-		currentLength,
+		worldLength,
 		pathDistance,
 		firstSegmentLerp,
 		radiusMult,
@@ -83,7 +143,9 @@ void sps_apply(inout SpsInputs o) {
 	// When VERTEXLIGHT_ON is missing, there are no lights nearby, and the 4light arrays will be full of junk
 	// Temporarily disable this check since apparently it causes some passes to not apply SPS
 	//#ifdef VERTEXLIGHT_ON
+	SPS_VANILLA_VERT_PARAM_TYPE input = (SPS_VANILLA_VERT_PARAM_TYPE)o;
 	sps_apply_real(
+		input,
 		o.SPS_STRUCT_POSITION_NAME,
 		o.SPS_STRUCT_NORMAL_NAME,
 		o.SPS_STRUCT_TANGENT_NAME,
