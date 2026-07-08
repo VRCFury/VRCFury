@@ -26,6 +26,7 @@ namespace VF.Builder.Haptics {
         
         public static void Patch(Material mat, bool keepImports) {
             if (!mat.shader) return;
+            if (mat.shader.name == "VRChat/Mobile/Particles/Additive") return;
             try {
                 var renderQueue = mat.renderQueue;
                 PatchUnsafe(mat, keepImports);
@@ -738,9 +739,11 @@ namespace VF.Builder.Haptics {
             if (path.StartsWith("Resources") || path.StartsWith("Library")) {
                 isBuiltIn = true;
                 if (shader.name == "Standard") {
-                    path = $"{GetPathToSps()}/Standard.shader.orig";
+                    path = $"{GetPathToSps()}/vanilla~/Standard.shader";
                 } else if (shader.name == "Standard (Specular setup)") {
-                    path = $"{GetPathToSps()}/StandardSpecular.shader.orig";
+                    path = $"{GetPathToSps()}/vanilla~/StandardSpecular.shader";
+                } else if (shader.name == "Unlit/Color") {
+                    path = $"{GetPathToSps()}/vanilla~/Unlit-Color.shader";
                 } else if (shader.name.Contains("Error")) {
                     throw new SpsErrorMatException();
                 } else {
