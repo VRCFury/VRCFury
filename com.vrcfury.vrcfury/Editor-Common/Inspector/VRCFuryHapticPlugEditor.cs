@@ -242,7 +242,7 @@ namespace VF.Inspector {
                                  " Beware that disabling this may cause plug to appear to 'fold in' near holes like a map, which may be strange."
                     ));
                     spsBox.Add(VRCFuryEditorUtils.BetterProp(
-                        serializedObject.FindProperty("spsDisableDepth"),
+                        serializedObject.FindProperty("disableDepth"),
                         "Disable Depth Pass",
                         tooltip: "Skips the plug in camera depth rendering to avoid ghost plug artifacts. " +
                                  "Depth-based effects may stop reacting to this plug, even when not deforming."
