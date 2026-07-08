@@ -1,7 +1,7 @@
 #ifndef SPS_INC_TEXTURE
 #define SPS_INC_TEXTURE
 
-#include "UnityCG.cginc"
+#include "HLSLSupport.cginc"
 
 #ifndef UNITY_SEPARATE_TEXTURE_SAMPLER
     #error SPS requires separate texture/sampler support for exact integer texel loads.

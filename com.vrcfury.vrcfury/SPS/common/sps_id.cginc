@@ -1,7 +1,9 @@
 #ifndef SPS_INC_ID
 #define SPS_INC_ID
 
-#include "UnityCG.cginc"
+#include "UnityShaderVariables.cginc"
+#include "UnityShaderUtilities.cginc"
+#include "UnityInstancing.cginc"
 #include "sps_cell_hash.cginc"
 #include "sps_utils.cginc"
 
