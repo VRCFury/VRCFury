@@ -24,6 +24,7 @@ namespace VF.Component {
         public List<string> spsBlendshapes = new List<string>();
         public List<Renderer> configureTpsMesh = new List<Renderer>();
         public float spsAnimatedEnabled = 1;
+        public bool disableDepth = true;
         public bool useLegacyRendererFinder = false;
         public bool addDpsTipLight = false;
         [DoNotApplyRestingState]

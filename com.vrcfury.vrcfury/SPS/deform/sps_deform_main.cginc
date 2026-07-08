@@ -9,6 +9,14 @@ void sps_apply(inout SpsInputs o){}
 #include "sps_deform_control_points.cginc"
 #include "sps_deform_curve.cginc"
 
+inline bool sps_is_depth_shadowcaster_pass() {
+	#if defined(UNITY_PASS_SHADOWCASTER)
+		return all(unity_LightShadowBias == 0);
+	#else
+		return false;
+	#endif
+}
+
 // SPS Penetration Shader
 void sps_apply_real(
 	inout SPS_VANILLA_VERT_PARAM_TYPE input,
@@ -143,6 +151,11 @@ void sps_apply(inout SpsInputs o) {
 	// When VERTEXLIGHT_ON is missing, there are no lights nearby, and the 4light arrays will be full of junk
 	// Temporarily disable this check since apparently it causes some passes to not apply SPS
 	//#ifdef VERTEXLIGHT_ON
+	if (sps_to_bool(_SPS_DisableDepth) && sps_is_depth_shadowcaster_pass()) {
+		float spsNan = asfloat(0x7fc00000);
+		o.SPS_STRUCT_POSITION_NAME.xyz = float3(spsNan, spsNan, spsNan);
+		return;
+	}
 	SPS_VANILLA_VERT_PARAM_TYPE input = (SPS_VANILLA_VERT_PARAM_TYPE)o;
 	sps_apply_real(
 		input,

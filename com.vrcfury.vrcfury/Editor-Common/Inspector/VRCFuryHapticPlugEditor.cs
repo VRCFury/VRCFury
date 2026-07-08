@@ -241,6 +241,12 @@ namespace VF.Inspector {
                         tooltip: "This allows the plug to extend very slightly past holes to improve collapse visuals." +
                                  " Beware that disabling this may cause plug to appear to 'fold in' near holes like a map, which may be strange."
                     ));
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("spsDisableDepth"),
+                        "Disable Depth Pass",
+                        tooltip: "Skips the plug in camera depth rendering to avoid ghost plug artifacts. " +
+                                 "Depth-based effects may stop reacting to this plug, even when not deforming."
+                    ));
                 }
                 return c;
             }, enableSps));
