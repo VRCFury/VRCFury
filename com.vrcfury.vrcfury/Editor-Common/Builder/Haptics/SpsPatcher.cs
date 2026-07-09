@@ -98,7 +98,7 @@ namespace VF.Builder.Haptics {
                     $"$1\n{propertiesContent}\n",
                     1
                 );
-                contents = GetRegex(@"\n\s+CustomEditor [^\n]+").Replace(contents, "");
+                contents = GetRegex(@"(?:^|\n)[ \t]*CustomEditor[ \t]+[^\n]+").Replace(contents, "");
             }
 
             string spsMain;
@@ -172,7 +172,7 @@ namespace VF.Builder.Haptics {
                 }
             );
             var childShaders = new Dictionary<Shader, Shader>();
-            contents = GetRegex(@"\n[ \t]*UsePass[ \t]+""([^""]+)/([^""/]+)""").Replace(contents, match => {
+            contents = GetRegex(@"(?:^|\n)[ \t]*UsePass[ \t]+""([^""]+)/([^""/]+)""").Replace(contents, match => {
                 var shaderName = match.Groups[1].ToString();
                 var passName = match.Groups[2].ToString();
                 var includedShader = Shader.Find(shaderName);
@@ -530,10 +530,10 @@ namespace VF.Builder.Haptics {
         private static void WithEachCgInclude(string content, Action<string> withInclude) {
             var lastIncludeEnd = 0;
             while (true) {
-                var nextProgramStart = GetRegex(@"\n\s*(CGINCLUDE)\s*\n").Match(content, lastIncludeEnd);
+                var nextProgramStart = GetRegex(@"(?:^|\n)[ \t]*(CGINCLUDE)[ \t]*(?:\n|$)").Match(content, lastIncludeEnd);
                 if (nextProgramStart.Success) {
                     var start = nextProgramStart.Index + nextProgramStart.Length;
-                    var endMatch = GetRegex(@"\n\s*ENDCG\s*\n").Match(content, start);
+                    var endMatch = GetRegex(@"(?:^|\n)[ \t]*ENDCG[ \t]*(?:\n|$)").Match(content, start);
                     if (!endMatch.Success) {
                         throw new Exception("Failed to find CGINCLUDE end marker");
                     }
@@ -551,12 +551,12 @@ namespace VF.Builder.Haptics {
             var output = "";
             var lastProgramEnd = 0;
             while (true) {
-                var nextProgramStart = GetRegex(@"\n\s*(CGPROGRAM|HLSLPROGRAM)\s*\n").Match(content, lastProgramEnd);
+                var nextProgramStart = GetRegex(@"(?:^|\n)[ \t]*(CGPROGRAM|HLSLPROGRAM)[ \t]*(?:\n|$)").Match(content, lastProgramEnd);
                 if (nextProgramStart.Success) {
                     var start = nextProgramStart.Index + nextProgramStart.Length;
                     var isCg = nextProgramStart.Groups[1].ToString() == "CGPROGRAM";
                     output += content.Substring(lastProgramEnd, start - lastProgramEnd);
-                    var endMatch = GetRegex(@"\n\s*" + (isCg ? "ENDCG" : "ENDHLSL") + @"\s*\n").Match(content, start);
+                    var endMatch = GetRegex(@"(?:^|\n)[ \t]*" + (isCg ? "ENDCG" : "ENDHLSL") + @"[ \t]*(?:\n|$)").Match(content, start);
                     if (!endMatch.Success) {
                         throw new Exception($"Failed to find {nextProgramStart.Groups[1].ToString()} end marker");
                     }
@@ -578,7 +578,7 @@ namespace VF.Builder.Haptics {
             var lastPassEnd = 0;
             var processedPasses = new List<string>();
             while (true) {
-                var nextPassStart = GetRegex(@"\n\s*Pass[\s{]*\s*\n").Match(content, lastPassEnd);
+                var nextPassStart = GetRegex(@"(?:^|\n)[ \t]*Pass(?:[ \t]|{)*[ \t]*(?:\n|$)").Match(content, lastPassEnd);
                 if (nextPassStart.Success) {
                     var start = nextPassStart.Index + nextPassStart.Length;
                     output += content.Substring(lastPassEnd, start - lastPassEnd);
