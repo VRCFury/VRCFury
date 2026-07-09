@@ -292,7 +292,7 @@ namespace VF.Inspector {
             }, useSharedTag));
             tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLights"), "Include 'Global' SPS1/DPS/TPS Tag",
                 tooltip: "Allows this plug to target SPS1/DPS/TPS sockets (looking for lights)."));
-            if (VRCFuryHapticSocketEditor.getClosestBone(target.owner()) == HumanBodyBones.Hips) {
+            if (VRCFuryHapticSocketEditor.getClosestBone?.Invoke(target.owner()) == HumanBodyBones.Hips) {
                 tags.Add(VRCFuryEditorUtils.BetterProp(
                     serializedObject.FindProperty("useHipAvoidance"),
                     "Exclude sockets on own Hips",
