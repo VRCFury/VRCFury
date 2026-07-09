@@ -648,6 +648,9 @@ namespace VF.Inspector {
                         if (plug.enableSps && plug.spsAutorig) {
                             renderer = SpsAutoRigger.AutoRig(renderer, localSpace, worldLength, worldRadius, activeFromMask);
                         }
+                        if (plug.enableSps) {
+                            SpsConfigurer.ExtendBoundsForSps(renderer, localSpace, worldLength);
+                        }
 
                         var spsBaked = plug.enableSps ? SpsBaker.Bake(renderer, localSpace, activeFromMask, false, spsBlendshapes) : null;
 

@@ -31,6 +31,24 @@ namespace VF.Builder.Haptics {
             public float value;
         }
 
+        public static void ExtendBoundsForSps(Renderer renderer, VFGameObject bakeRoot, float worldLength) {
+            if (renderer == null || bakeRoot == null) return;
+
+            var bounds = renderer.GetLocalBounds();
+            var rendererRoot = renderer.GetRootBone();
+            var localRoot = rendererRoot.InverseTransformPoint(bakeRoot.worldPosition);
+            var localRight = rendererRoot.InverseTransformPoint(bakeRoot.TransformPoint(Vector3.right * worldLength));
+            var localLeft = rendererRoot.InverseTransformPoint(bakeRoot.TransformPoint(Vector3.left * worldLength));
+            var localUp = rendererRoot.InverseTransformPoint(bakeRoot.TransformPoint(Vector3.up * worldLength));
+            var localDown = rendererRoot.InverseTransformPoint(bakeRoot.TransformPoint(Vector3.down * worldLength));
+            bounds.Encapsulate(localRoot);
+            bounds.Encapsulate(localRight);
+            bounds.Encapsulate(localLeft);
+            bounds.Encapsulate(localUp);
+            bounds.Encapsulate(localDown);
+            renderer.SetLocalBounds(bounds, "SPS bounds expansion");
+        }
+
         private static void SetSplitId(Action<string, float> set, string lowProperty, string highProperty, uint value) {
             set(lowProperty, SpsMarkersService.GetLow(value));
             set(highProperty, SpsMarkersService.GetHigh(value));

@@ -3,7 +3,6 @@ using System.Linq;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
-using VF.Exceptions;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Menu;
@@ -65,25 +64,7 @@ namespace VF.Service {
 
             var startBounds = CalculateFullBounds(avatarObject);
             var root = renderer.GetRootBone();
-            var currentBounds = GetLocalBounds(renderer);
-            Mesh mutableMesh = null;
-
-            void SetBounds(Bounds bounds) {
-                currentBounds = bounds;
-                if (renderer is SkinnedMeshRenderer skinned) {
-                    skinned.localBounds = bounds;
-                    skinned.Dirty();
-                    return;
-                }
-                if (renderer is MeshRenderer meshRenderer) {
-                    if (mutableMesh == null) {
-                        mutableMesh = meshRenderer.GetMutableMesh("Bounding box adjustment");
-                    }
-                    if (mutableMesh != null) mutableMesh.bounds = bounds;
-                    return;
-                }
-                throw new VRCFBuilderException("Unsupported renderer type for bounding box fix");
-            }
+            var currentBounds = renderer.GetLocalBounds();
 
             void ModifyBounds(float sideX = 0, float sideY = 0, float sideZ = 0) {
                 var original = currentBounds;
@@ -99,11 +80,13 @@ namespace VF.Service {
                 center.z += sideZ / 2;
                 b.center = center;
 
-                SetBounds(b);
+                currentBounds = b;
+                renderer.SetLocalBounds(b);
                 var newAvatarBounds = startBounds;
                 newAvatarBounds.Encapsulate(renderer.bounds);
                 if (!Approximately(startBounds, newAvatarBounds)) {
-                    SetBounds(original);
+                    currentBounds = original;
+                    renderer.SetLocalBounds(original);
                 }
             }
 
@@ -121,15 +104,6 @@ namespace VF.Service {
                 ModifyBounds(sideZ: stepZ);
                 stepSizeInMeters /= 2;
             }
-        }
-
-        private static Bounds GetLocalBounds(Renderer renderer) {
-            if (renderer is SkinnedMeshRenderer skin) return skin.localBounds;
-            if (renderer is MeshRenderer meshRenderer) {
-                var mesh = meshRenderer.GetMesh();
-                return (mesh != null) ? mesh.bounds : new Bounds();
-            }
-            throw new VRCFBuilderException("Unsupported renderer type for bounding box fix");
         }
 
         private static Bounds CalculateFullBounds(VFGameObject avatarObject) {
