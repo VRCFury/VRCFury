@@ -28,6 +28,7 @@ _SPS_Blendshape15("15", Float) = 0
 [Header(SPS Bake)]
 _SPS_BakedLength("Baked length", Float) = 0
 _SPS_Bake("Baked data", 2D) = "white" {}
+_SPS_DisableShadows("Disable shadows", Float) = 0
 _SPS_DisableDepth("Disable depth pass", Float) = 0
 
 [Header(Original Shader Follows)]

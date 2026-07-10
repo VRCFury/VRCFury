@@ -20,6 +20,7 @@ namespace VF.Builder.Haptics {
         public const string SpsMetadataColor = "_SPS_MetadataColor";
         public const string SpsOverrun = "_SPS_Overrun";
         public const string SpsLegacy = "_SPS_Legacy";
+        public const string SpsDisableShadows = "_SPS_DisableShadows";
         public const string SpsDisableDepth = "_SPS_DisableDepth";
         private const string SpsBake = "_SPS_Bake";
         private const uint IncludeSelf = 1;
@@ -89,7 +90,8 @@ namespace VF.Builder.Haptics {
             m.SetFloat(SpsMarkersService.IdHigh, SpsMarkersService.GetHigh(resolverHash));
             m.SetFloat(SpsMarkersService.PlayerIdLow, 0);
             m.SetFloat(SpsMarkersService.PlayerIdHigh, 0);
-            m.SetFloat(SpsDisableDepth, plug.disableDepth ? 1 : 0);
+            m.SetFloat(SpsDisableShadows, 0);
+            m.SetFloat(SpsDisableDepth, 0);
             m.SetFloat("_SPS_BlendshapeCount", spsBlendshapes.Count);
             m.SetFloat("_SPS_BlendshapeVertCount", skin.GetVertexCount());
             for (var i = 0; i < spsBlendshapes.Count; i++) {
