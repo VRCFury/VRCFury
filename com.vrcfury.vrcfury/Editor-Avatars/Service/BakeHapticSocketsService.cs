@@ -37,6 +37,7 @@ namespace VF.Service {
         [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
         [VFAutowired] private readonly SpsPlayerIdService spsPlayerIdService;
         [VFAutowired] private readonly SpsMarkersService spsMarkersService;
+        [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
@@ -259,14 +260,14 @@ namespace VF.Service {
                         ogbEnabledService.Register(haptics);
                     }
 
+                    var worldScale = new Lazy<VFAFloat>(() => scaleFactorService.GetWorldScale(bakeResult.bakeRoot));
                     var animObjects = new List<VFGameObject>();
                     var Contacts = new Lazy<SpsDepthContacts>(() => {
                         var animRoot = GameObjects.Create("Animations", bakeResult.worldSpace);
                         animObjects.Add(animRoot);
-                        var worldScale = scaleFactorService.GetWorldScale(animRoot);
                         var directTree = directTreeService.Create($"{oscId} - Depth Calculations");
                         var math = directTreeService.GetMath(directTree);
-                        return new SpsDepthContacts(animRoot, oscId, hapticContacts, directTree, math, fx, frameTimeService, true, worldScale);
+                        return new SpsDepthContacts(animRoot, oscId, hapticContacts, directTree, math, fx, frameTimeService, true, worldScale.Value);
                     });
 
                     if (socket.depthActions2.Count > 0) {
@@ -279,33 +280,90 @@ namespace VF.Service {
                         );
                     }
 
-                    var injectDepthToFullControllerParams = globals.allBuildersInRun
-                        .OfType<FullControllerBuilder>()
-                        .Where(fc => fc.featureBaseObject.IsChildOf(socket.owner()))
-                        .Select(fc => fc.injectSpsDepthParam)
-                        .NotNull()
+                    var injectRequests = parameterInjectService.GetRequests()
+                        .Where(r => r.sourceObject == socket.owner())
                         .ToList();
-                    foreach (var i in injectDepthToFullControllerParams) {
-                        directTreeService.GetMath(Contacts.Value.directTree)
-                            .CopyInPlace(Contacts.Value.closestDistancePlugLengths.Value, i);
-                    }
-                    var injectVelocityToFullControllerParams = globals.allBuildersInRun
-                        .OfType<FullControllerBuilder>()
-                        .Where(fc => fc.featureBaseObject.IsChildOf(socket.owner()))
-                        .Select(fc => fc.injectSpsVelocityParam)
-                        .NotNull()
-                        .ToList();
-                    foreach (var i in injectVelocityToFullControllerParams) {
-                        directTreeService.GetMath(Contacts.Value.directTree)
-                            .CopyInPlace(Contacts.Value.velocity.Value, i);
-                    }
                     if (socket.IsValidPlugLength) {
-                        directTreeService.GetMath(Contacts.Value.directTree)
-                            .CopyInPlace(Contacts.Value.closestLength.Value, socket.plugLengthParameterName);
+                        injectRequests.Add(new ParameterInjectService.Request() {
+                            sourceObject = socket.owner(),
+                            resolvedParam = socket.plugLengthParameterName,
+                            sourceParam = VRCFuryHapticPlugEditor.SpsPlugLengthMeters
+                        });
                     }
                     if (socket.IsValidPlugWidth) {
-                        directTreeService.GetMath(Contacts.Value.directTree)
-                            .CopyInPlace(Contacts.Value.closestRadius.Value, socket.plugWidthParameterName);
+                        injectRequests.Add(new ParameterInjectService.Request() {
+                            sourceObject = socket.owner(),
+                            resolvedParam = socket.plugWidthParameterName,
+                            sourceParam = VRCFuryHapticPlugEditor.SpsPlugRadiusMeters
+                        });
+                    }
+
+                    foreach (var inject in injectRequests) {
+                        VFAFloat value = null;
+                        switch (inject.sourceParam) {
+                            case VRCFuryHapticPlugEditor.SpsDepthMeters:
+                                value = Contacts.Value.closestDistanceMeters.Value;
+                                break;
+                            case VRCFuryHapticPlugEditor.SpsDepthLocal:
+                                value = Contacts.Value.closestDistanceLocal.Value;
+                                break;
+                            case VRCFuryHapticPlugEditor.SpsDepthPlugLengths:
+                                value = Contacts.Value.closestDistancePlugLengths.Value;
+                                break;
+                            case VRCFuryHapticPlugEditor.SpsVelocityMeters:
+                                value = Contacts.Value.velocity.Value;
+                                break;
+                            case VRCFuryHapticPlugEditor.SpsVelocityLocal:
+                                value = Contacts.Value.velocityLocal.Value;
+                                break;
+                            case VRCFuryHapticPlugEditor.SpsVelocityPlugLengths:
+                                value = Contacts.Value.velocityPlugLengths.Value;
+                                break;
+                            case VRCFuryHapticPlugEditor.SpsPlugLengthMeters:
+                                value = Contacts.Value.closestLength.Value;
+                                break;
+                            case VRCFuryHapticPlugEditor.SpsPlugLengthLocal:
+                                value = directTreeService.GetMath(Contacts.Value.directTree).Multiply(
+                                    $"{oscId}/Closest/LengthInSpsScale",
+                                    directTreeService.GetMath(Contacts.Value.directTree).Invert(
+                                        $"{oscId}/Closest/SpsScaleInvertedForLength",
+                                        worldScale.Value
+                                    ),
+                                    Contacts.Value.closestLength.Value
+                                );
+                                break;
+                            case VRCFuryHapticPlugEditor.SpsPlugLengthPlugLengths:
+                                value = fx.One();
+                                break;
+                            case VRCFuryHapticPlugEditor.SpsPlugRadiusMeters:
+                                value = Contacts.Value.closestRadius.Value;
+                                break;
+                            case VRCFuryHapticPlugEditor.SpsPlugRadiusLocal:
+                                value = directTreeService.GetMath(Contacts.Value.directTree).Multiply(
+                                    $"{oscId}/Closest/RadiusInSpsScale",
+                                    directTreeService.GetMath(Contacts.Value.directTree).Invert(
+                                        $"{oscId}/Closest/SpsScaleInvertedForRadius",
+                                        worldScale.Value
+                                    ),
+                                    Contacts.Value.closestRadius.Value
+                                );
+                                break;
+                            case VRCFuryHapticPlugEditor.SpsPlugRadiusPlugLengths:
+                                value = directTreeService.GetMath(Contacts.Value.directTree).Multiply(
+                                    $"{oscId}/Closest/RadiusInPlugLengths",
+                                    directTreeService.GetMath(Contacts.Value.directTree).Invert(
+                                        $"{oscId}/Closest/LengthInvertedForRadius",
+                                        Contacts.Value.closestLength.Value
+                                    ),
+                                    Contacts.Value.closestRadius.Value
+                                );
+                                break;
+                        }
+                        if (value != null) {
+                            fx.NewFloat(inject.resolvedParam, usePrefix: false);
+                            directTreeService.GetMath(Contacts.Value.directTree)
+                                .CopyInPlace(value, inject.resolvedParam);
+                        }
                     }
 
                     if (stealthClip != null) {

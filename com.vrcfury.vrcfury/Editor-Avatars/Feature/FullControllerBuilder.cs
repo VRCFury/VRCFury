@@ -8,6 +8,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Component;
 using VF.Exceptions;
 using VF.Feature.Base;
 using VF.Injector;
@@ -40,9 +41,7 @@ namespace VF.Feature {
         private MenuManager avatarMenu => menuService.GetMenu();
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ClipRewritersService clipRewritersService;
-
-        public string injectSpsDepthParam = null;
-        public string injectSpsVelocityParam = null;
+        [VFAutowired] private readonly ParameterInjectService parameterInjectService;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -145,6 +144,43 @@ namespace VF.Feature {
                 }
             }
 
+            foreach (var inject in model.injectParams) {
+                if (inject == null) continue;
+                if (inject.sourceObject == null) continue;
+                if (string.IsNullOrWhiteSpace(inject.sourceParam)) continue;
+                var resolvedParam = RewriteParamName(inject.targetParam);
+                if (resolvedParam == null) continue;
+                parameterInjectService.Register(new ParameterInjectService.Request {
+                    sourceObject = inject.sourceObject,
+                    sourceParam = inject.sourceParam,
+                    resolvedParam = resolvedParam
+                });
+            }
+
+            foreach (var socket in featureBaseObject.GetComponentsInSelfAndParents<VRCFuryHapticSocket>()) {
+                if (!string.IsNullOrWhiteSpace(model.injectSpsDepthParam)) {
+                    var resolvedParam = RewriteParamName(model.injectSpsDepthParam);
+                    if (resolvedParam != null) {
+                        parameterInjectService.Register(new ParameterInjectService.Request {
+                            sourceObject = socket.owner(),
+                            sourceParam = VRCFuryHapticPlugEditor.SpsDepthPlugLengths,
+                            resolvedParam = resolvedParam
+                        });
+                    }
+                }
+                if (!string.IsNullOrWhiteSpace(model.injectSpsVelocityParam)) {
+                    var resolvedParam = RewriteParamName(model.injectSpsVelocityParam);
+                    if (resolvedParam != null) {
+                        parameterInjectService.Register(new ParameterInjectService.Request {
+                            sourceObject = socket.owner(),
+                            sourceParam = VRCFuryHapticPlugEditor.SpsVelocityMeters,
+                            resolvedParam = resolvedParam
+                        });
+                    }
+                }
+                break;
+            }
+
             if (missingAssets.Count > 0) {
                 if (model.allowMissingAssets) {
                     var list = missingAssets.Select(w => VrcfObjectId.FromId(w.id).Pretty()).Join(", ");
@@ -218,18 +254,6 @@ namespace VF.Feature {
         private string RewriteParamNameUncached(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (VRChatGlobalParams.Contains(name)) return name;
-            if (!string.IsNullOrEmpty(model.injectSpsDepthParam) && name == model.injectSpsDepthParam) {
-                if (injectSpsDepthParam == null) {
-                    injectSpsDepthParam = controllers.MakeUniqueParamName(name);
-                }
-                return injectSpsDepthParam;
-            }
-            if (!string.IsNullOrEmpty(model.injectSpsVelocityParam) && name == model.injectSpsVelocityParam) {
-                if (injectSpsVelocityParam == null) {
-                    injectSpsVelocityParam = controllers.MakeUniqueParamName(name);
-                }
-                return injectSpsVelocityParam;
-            }
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
                     var prms = p.parameters.Get();
@@ -554,6 +578,40 @@ namespace VF.Feature {
             }
         }
 
+        [CustomPropertyDrawer(typeof(FullController.InjectParamEntry))]
+        public class InjectParamDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var content = new VisualElement();
+                var sourceObjectProp = prop.FindPropertyRelative("sourceObject");
+                var sourceParamProp = prop.FindPropertyRelative("sourceParam");
+                content.Add(VRCFuryEditorUtils.Prop(sourceObjectProp, "Source Object", onChange: () => {
+                    var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
+                    if (sourceObject == null) return;
+                    if (sourceObject.GetComponent<VRCFuryHapticPlug>() == null
+                        && sourceObject.GetComponent<VRCFuryHapticSocket>() == null) return;
+                    sourceParamProp.stringValue = VRCFuryHapticPlugEditor.SpsDepthMeters;
+                    sourceParamProp.serializedObject.ApplyModifiedProperties();
+                }));
+                content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                    var wrapper = new VisualElement();
+                    var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
+                    if (sourceObject != null) {
+                        if (sourceObject.GetComponent<VRCFuryHapticPlug>() != null
+                            || sourceObject.GetComponent<VRCFuryHapticSocket>() != null) {
+                            wrapper.Add(VRCFuryHapticPlugEditor.RenderSpsInjectParamEditor(prop));
+                        } else {
+                            wrapper.Add(VRCFuryEditorUtils.Warn("This object doesn't contain any injectable parameters"));
+                        }
+                    } else {
+                        wrapper.Add(VRCFuryEditorUtils.Prop(sourceParamProp, "Source Param"));
+                    }
+                    return wrapper;
+                }, sourceObjectProp));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("targetParam"), "Target Param"));
+                return content;
+            }
+        }
+
         [FeatureEditor]
         public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject, VFGameObject componentObject, FullController model) {
             var content = new VisualElement();
@@ -620,14 +678,24 @@ namespace VF.Feature {
                 adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("rewriteBindings")));
             }
 
+            {
+                var (a, b) = VRCFuryEditorUtils.CreateTooltip(
+                    "Inject Parameters",
+                    "Inject values from other VRCFury components into this controller (or global if it's also marked as a global param)"
+                );
+                adv.Add(a);
+                adv.Add(b);
+                adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("injectParams")));
+            }
+
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam"), "(Deprecated) Toggle using param"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootObjOverride"), "(Deprecated) Root object override"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "(Deprecated) Make all unsynced params global"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allowMissingAssets"), "(Deprecated) Don't fail if assets are missing"));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsDepthParam"), "Inject nearest SPS depth (in plug lengths) as a parameter"));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsVelocityParam"), "Inject nearest SPS velocity (in plug lengths / sec) as a parameter"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsDepthParam"), "(Deprecated) Inject nearest SPS depth (use Inject Parameters instead)"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsVelocityParam"), "(Deprecated) Inject nearest SPS velocity (use Inject Parameters instead)"));
 
             content.Add(adv);
 

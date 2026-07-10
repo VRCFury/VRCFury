@@ -37,6 +37,7 @@ namespace VF.Service {
         [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
         [VFAutowired] private readonly SpsPlayerIdService spsPlayerIdService;
         [VFAutowired] private readonly SpsMarkersService spsMarkersService;
+        [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
@@ -316,29 +317,80 @@ namespace VF.Service {
                 tipLightOnClip.SetEnabled(tip, true);
             }
 
-            // Depth Actions
-            if (plug.depthActions2.Count > 0) {
-                var directTree = directTreeService.Create($"{name} - Depth Calculations");
-                var math = directTreeService.GetMath(directTree);
-                var contacts = new SpsDepthContacts(
+            var injectRequests = parameterInjectService.GetRequests()
+                .Where(r => r.sourceObject == plug.owner())
+                .ToList();
+
+            var directTree = new Lazy<VFBlendTreeDirect>(() => directTreeService.Create($"{name} - Depth Calculations"));
+            var math = new Lazy<BlendtreeMath>(() => directTreeService.GetMath(directTree.Value));
+            var contacts = new Lazy<SpsDepthContacts>(() => new SpsDepthContacts(
                     worldSpace,
                     name,
                     hapticContacts,
-                    directTree,
-                    math,
+                    directTree.Value,
+                    math.Value,
                     fx,
                     frameTimeService,
                     plug.useHipAvoidance,
                     worldScale.Value,
                     localLength
-                );
+                ));
+
+            // Depth Actions / Injected SPS params
+            if (plug.depthActions2.Count > 0) {
                 _hapticAnimContactsService.CreateAnims(
                     $"{name} - Depth Animations",
                     plug.depthActions2,
                     plug.owner(),
                     name,
-                    contacts
+                    contacts.Value
                 );
+            }
+            foreach (var inject in injectRequests) {
+                VFAFloat value = null;
+                switch (inject.sourceParam) {
+                    case VRCFuryHapticPlugEditor.SpsDepthMeters:
+                        value = contacts.Value.closestDistanceMeters.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsDepthLocal:
+                        value = contacts.Value.closestDistanceLocal.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsDepthPlugLengths:
+                        value = contacts.Value.closestDistancePlugLengths.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsVelocityMeters:
+                        value = contacts.Value.velocity.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsVelocityLocal:
+                        value = contacts.Value.velocityLocal.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsVelocityPlugLengths:
+                        value = contacts.Value.velocityPlugLengths.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugLengthMeters:
+                        value = math.Value.Multiply($"{name}/PlugLengthMeters", worldScale.Value, worldLength);
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugLengthLocal:
+                        value = fx.MakeAap($"{name}/PlugLengthLocal", localLength);
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugLengthPlugLengths:
+                        value = fx.One();
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugRadiusMeters:
+                        value = math.Value.Multiply($"{name}/PlugRadiusMeters", worldScale.Value, worldRadius);
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugRadiusLocal:
+                        value = fx.MakeAap($"{name}/PlugRadiusLocal", worldRadius / bakeRoot.worldScale.x);
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugRadiusPlugLengths:
+                        value = fx.MakeAap($"{name}/PlugRadiusInPlugLengths", worldRadius / worldLength);
+                        break;
+                }
+
+                if (value != null) {
+                    fx.NewFloat(inject.resolvedParam, usePrefix: false);
+                    math.Value.CopyInPlace(value, inject.resolvedParam);
+                }
             }
 
             if (propsToScale.Count > 0) {

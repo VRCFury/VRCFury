@@ -17,6 +17,94 @@ namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
     internal class VRCFuryHapticPlugEditor : VRCFuryComponentEditor<VRCFuryHapticPlug> {
         internal const int SpsTagRuleCount = 2;
+        public const string SpsParamDepth = "Depth";
+        public const string SpsParamVelocity = "Velocity";
+        public const string SpsParamPlugLength = "Plug Length";
+        public const string SpsParamPlugRadius = "Plug Radius";
+        public const string SpsUnitsMeters = "Meters";
+        public const string SpsUnitsLocal = "Local";
+        public const string SpsUnitsPlugLengths = "Plug Lengths";
+        public const string SpsDepthMeters = "__sps_depth_meters";
+        public const string SpsDepthLocal = "__sps_depth_local";
+        public const string SpsDepthPlugLengths = "__sps_depth_plug_lengths";
+        public const string SpsVelocityMeters = "__sps_velocity_meters";
+        public const string SpsVelocityLocal = "__sps_velocity_local";
+        public const string SpsVelocityPlugLengths = "__sps_velocity_plug_lengths";
+        public const string SpsPlugLengthMeters = "__sps_plug_length_meters";
+        public const string SpsPlugLengthLocal = "__sps_plug_length_local";
+        public const string SpsPlugLengthPlugLengths = "__sps_plug_length_plug_lengths";
+        public const string SpsPlugRadiusMeters = "__sps_plug_radius_meters";
+        public const string SpsPlugRadiusLocal = "__sps_plug_radius_local";
+        public const string SpsPlugRadiusPlugLengths = "__sps_plug_radius_plug_lengths";
+
+        public static readonly string[] SpsParams = {
+            SpsParamDepth,
+            SpsParamVelocity,
+            SpsParamPlugLength,
+            SpsParamPlugRadius
+        };
+        public static readonly string[] SpsUnits = {
+            SpsUnitsMeters,
+            SpsUnitsLocal,
+            SpsUnitsPlugLengths
+        };
+
+        public static string GetSpsMagicParam(string param, string units) {
+            if (param == SpsParamDepth && units == SpsUnitsMeters) return SpsDepthMeters;
+            if (param == SpsParamDepth && units == SpsUnitsLocal) return SpsDepthLocal;
+            if (param == SpsParamDepth && units == SpsUnitsPlugLengths) return SpsDepthPlugLengths;
+            if (param == SpsParamVelocity && units == SpsUnitsMeters) return SpsVelocityMeters;
+            if (param == SpsParamVelocity && units == SpsUnitsLocal) return SpsVelocityLocal;
+            if (param == SpsParamVelocity && units == SpsUnitsPlugLengths) return SpsVelocityPlugLengths;
+            if (param == SpsParamPlugLength && units == SpsUnitsMeters) return SpsPlugLengthMeters;
+            if (param == SpsParamPlugLength && units == SpsUnitsLocal) return SpsPlugLengthLocal;
+            if (param == SpsParamPlugLength && units == SpsUnitsPlugLengths) return SpsPlugLengthPlugLengths;
+            if (param == SpsParamPlugRadius && units == SpsUnitsMeters) return SpsPlugRadiusMeters;
+            if (param == SpsParamPlugRadius && units == SpsUnitsLocal) return SpsPlugRadiusLocal;
+            if (param == SpsParamPlugRadius && units == SpsUnitsPlugLengths) return SpsPlugRadiusPlugLengths;
+            return "";
+        }
+
+        public static (string param, string units)? ParseSpsMagicParam(string sourceParam) {
+            switch (sourceParam) {
+                case SpsDepthMeters: return (SpsParamDepth, SpsUnitsMeters);
+                case SpsDepthLocal: return (SpsParamDepth, SpsUnitsLocal);
+                case SpsDepthPlugLengths: return (SpsParamDepth, SpsUnitsPlugLengths);
+                case SpsVelocityMeters: return (SpsParamVelocity, SpsUnitsMeters);
+                case SpsVelocityLocal: return (SpsParamVelocity, SpsUnitsLocal);
+                case SpsVelocityPlugLengths: return (SpsParamVelocity, SpsUnitsPlugLengths);
+                case SpsPlugLengthMeters: return (SpsParamPlugLength, SpsUnitsMeters);
+                case SpsPlugLengthLocal: return (SpsParamPlugLength, SpsUnitsLocal);
+                case SpsPlugLengthPlugLengths: return (SpsParamPlugLength, SpsUnitsPlugLengths);
+                case SpsPlugRadiusMeters: return (SpsParamPlugRadius, SpsUnitsMeters);
+                case SpsPlugRadiusLocal: return (SpsParamPlugRadius, SpsUnitsLocal);
+                case SpsPlugRadiusPlugLengths: return (SpsParamPlugRadius, SpsUnitsPlugLengths);
+                default: return null;
+            }
+        }
+
+        public static VisualElement RenderSpsInjectParamEditor(SerializedProperty injectProp) {
+            var sourceParamProp = injectProp.FindPropertyRelative("sourceParam");
+            var parsed = ParseSpsMagicParam(sourceParamProp.stringValue);
+            var selectedParam = parsed?.param ?? SpsParamDepth;
+            var selectedUnits = parsed?.units ?? SpsUnitsMeters;
+
+            var content = new VisualElement();
+            var paramField = new PopupField<string>("Parameter", SpsParams.ToList(), selectedParam);
+            var unitsField = new PopupField<string>("Units", SpsUnits.ToList(), selectedUnits);
+
+            void Save() {
+                sourceParamProp.stringValue = GetSpsMagicParam(paramField.value, unitsField.value);
+                sourceParamProp.serializedObject.ApplyModifiedProperties();
+            }
+
+            paramField.RegisterValueChangedCallback(_ => Save());
+            unitsField.RegisterValueChangedCallback(_ => Save());
+
+            content.Add(paramField);
+            content.Add(unitsField);
+            return content;
+        }
 
         public static VisualElement SpsTagProp(SerializedProperty prop, string label) {
             var field = new TextField {

@@ -288,9 +288,9 @@ namespace VF.Inspector {
             adv.Add(plugParams);
             var enablePlugLengthParameterProp = serializedObject.FindProperty("enablePlugLengthParameter");
             var enablePlugWidthParameterProp = serializedObject.FindProperty("enablePlugWidthParameter");
-            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugLengthParameterProp, "Plug Length (meters)"));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugLengthParameterProp, "Plug Length (meters) (Deprecated, use Inject Parameters on Full Controller)"));
             plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugLengthParameterName")));
-            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Radius (meters)"));
+            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Radius (meters) (Deprecated, use Inject Parameters on Full Controller)"));
             plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugWidthParameterName")));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"), "Units are in world-space"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));

@@ -21,6 +21,8 @@ namespace VF.Model.Feature {
         public bool rootBindingsApplyToAvatar;
         public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
         public bool allowMissingAssets = false;
+        public List<InjectParamEntry> injectParams = new List<InjectParamEntry>();
+
         public string injectSpsDepthParam;
         public string injectSpsVelocityParam;
 
@@ -71,6 +73,13 @@ namespace VF.Model.Feature {
             public string name;
             public float smoothingDuration = 0.2f;
             public SmoothingRange range = SmoothingRange.ZeroToInfinity;
+        }
+
+        [Serializable]
+        public class InjectParamEntry {
+            public GameObject sourceObject;
+            public string sourceParam;
+            public string targetParam;
         }
 
 #pragma warning disable 0612
