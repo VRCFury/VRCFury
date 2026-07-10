@@ -56,6 +56,7 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
             #pragma vertex vert
             #pragma geometry geom
             #pragma fragment frag
+            #pragma exclude_renderers metal
             #pragma multi_compile_instancing
             #include "../common/sps_cell_frag.cginc"
             #include "../common/sps_cell_geom.cginc"
@@ -245,6 +246,45 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
                 )) {
                     return rgba;
                 }
+                return 0;
+            }
+            ENDCG
+        }
+    }
+    SubShader {
+        Tags {
+            "Queue" = "Background-948"
+            "RenderType" = "Opaque"
+            "IgnoreProjector" = "True"
+            "VRCFallback" = "Hidden"
+        }
+        Pass {
+            Cull Off
+            ZWrite Off
+            ZTest Always
+            ColorMask 0
+
+            CGPROGRAM
+            #pragma target 2.0
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma only_renderers metal
+
+            struct appdata {
+                float4 vertex : POSITION;
+            };
+
+            struct v2f {
+                float4 vertex : SV_POSITION;
+            };
+
+            v2f vert(appdata v) {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                return o;
+            }
+
+            float4 frag(v2f input) : SV_Target {
                 return 0;
             }
             ENDCG
