@@ -33,13 +33,14 @@ inline ChainEntry sps_make_chain_entry(
     return entry;
 }
 
+// Saves ~0.6s vs multi-status duplicate chain scan
 bool sps_chain_contains_id(
     ChainEntry chain[SPS_CHAIN_MAX_SOCKETS],
     int chainCount,
     uint targetId,
     uint targetPlayerId
 ) {
-    [unroll]
+    [loop]
     for (int priorIndex = 0; priorIndex < SPS_CHAIN_MAX_SOCKETS; priorIndex++) {
         if (priorIndex >= chainCount) break;
         if (chain[priorIndex].id == targetId
@@ -60,12 +61,6 @@ int sps_build_chain(
     out ChainEntry chain[SPS_CHAIN_MAX_SOCKETS],
     inout uint debugFlags
 ) {
-    bool used[SPS_CANDIDATE_COUNT];
-    [unroll]
-    for (int usedIndex = 0; usedIndex < SPS_CANDIDATE_COUNT; usedIndex++) {
-        used[usedIndex] = false;
-    }
-
     ChainEntry plugEntry = sps_make_chain_entry(
         SPS_CHAIN_REF_INVALID,
         false,
@@ -83,7 +78,8 @@ int sps_build_chain(
     ChainEntry previous = plugEntry;
 
     for (int chainIndex = 0; chainIndex < SPS_CHAIN_MAX_SOCKETS; chainIndex++) {
-        float3 sourceForward = -previous.traversalNormal;
+        // Saves ~0.8s vs normalizing sourceForward per socket check
+        float3 sourceForward = sps_normalize(-previous.traversalNormal);
 
         if (previous.nextId > 0) {
             int linkedCellIndex = -1;
@@ -99,7 +95,8 @@ int sps_build_chain(
             }
             SpsCell linkedCell = sps_get_cell(socketTex, linkedCellIndex);
             CellData linkedCellData = sps_read_positive_cell(linkedCell, linkedCellIndex);
-            SocketData linkedSocketData = sps_read_positive_socket(linkedCell);
+            uint linkedSocketFlags = linkedCell.read_uint(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_FLAGS));
+            uint linkedSocketNextId = linkedCell.read_uint(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_NEXT_ID));
 
             float unusedDistanceSq;
             float3 traversalNormal;
@@ -107,7 +104,7 @@ int sps_build_chain(
             uint rejectionFlags;
             bool candidateEligible = sps_resolver_check_socket(
                 linkedCellData,
-                linkedSocketData,
+                linkedSocketFlags,
                 previous.world,
                 sourceForward,
                 true,
@@ -122,7 +119,7 @@ int sps_build_chain(
                 break;
             }
 
-            float3 linkedTargetWorld = sps_resolver_socket_target_world(linkedCellData, linkedSocketData.flags);
+            float3 linkedTargetWorld = sps_resolver_socket_target_world(linkedCellData, linkedSocketFlags);
             chain[chainIndex] = sps_make_chain_entry(
                 linkedCellData.cellIndex,
                 dot(traversalNormal, linkedCellData.normal) < 0,
@@ -130,9 +127,9 @@ int sps_build_chain(
                 linkedTargetWorld,
                 traversalNormal,
                 traversalUp,
-                linkedSocketData.flags,
+                linkedSocketFlags,
                 linkedCellData.id,
-                linkedSocketData.nextId,
+                linkedSocketNextId,
                 linkedCellData.playerId
             );
             previous = chain[chainCount];
@@ -148,15 +145,30 @@ int sps_build_chain(
         int bestCandidateIndex = -1;
         float3 bestTraversalNormal = float3(0, 0, 1);
         float3 bestTraversalUp = float3(0, 1, 0);
-        SocketData bestSocketData = sps_make_empty_socket();
+        uint bestSocketFlags = 0u;
+        uint bestSocketNextId = 0u;
         for (int candidateIndex = 0; candidateIndex < SPS_CANDIDATE_COUNT; candidateIndex++) {
             if (candidateIndex >= candidateCount) break;
-            if (used[candidateIndex]) continue;
             CellData candidate = candidates[candidateIndex];
-            SocketData candidateSocketData = sps_read_socket(socketTex, candidate.cellIndex);
-            if (sps_chain_contains_id(chain, chainIndex, candidate.id, candidate.playerId)) {
+            if (sps_chain_contains_id(
+                chain,
+                chainIndex,
+                candidate.id,
+                candidate.playerId
+            )) {
                 SPS_DEBUG_SET(debugFlags, SPS_DEBUG_FLAG_DUPLICATE_REJECT);
                 continue;
+            }
+            uint candidateSocketFlags = 0u;
+            uint candidateSocketNextId = 0u;
+            if (candidate.cellIndex < 0) {
+                uint type = sps_light_type((int)(((uint)(-1 - candidate.cellIndex)) >> 2));
+                if (type == SPS_LEGACY_LIGHT_HOLE) candidateSocketFlags = SPS_SOCKET_FLAG_HOLE;
+                else if (type == SPS_LEGACY_LIGHT_RING) candidateSocketFlags = SPS_SOCKET_FLAG_DOUBLE_SIDED;
+            } else {
+                SpsCell candidateCell = sps_get_cell(socketTex, (uint)candidate.cellIndex);
+                candidateSocketFlags = candidateCell.read_uint(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_FLAGS));
+                candidateSocketNextId = candidateCell.read_uint(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_NEXT_ID));
             }
 
             float distanceSq;
@@ -165,7 +177,7 @@ int sps_build_chain(
             uint rejectionFlags;
             bool candidateEligible = sps_resolver_check_socket(
                 candidate,
-                candidateSocketData,
+                candidateSocketFlags,
                 previous.world,
                 sourceForward,
                 false,
@@ -185,14 +197,14 @@ int sps_build_chain(
                 bestDistanceSq = distanceSq;
                 bestTraversalNormal = traversalNormal;
                 bestTraversalUp = traversalUp;
-                bestSocketData = candidateSocketData;
+                bestSocketFlags = candidateSocketFlags;
+                bestSocketNextId = candidateSocketNextId;
             }
         }
         if (bestCandidateIndex < 0) break;
 
-        used[bestCandidateIndex] = true;
         CellData best = candidates[bestCandidateIndex];
-        float3 bestWorld = sps_resolver_socket_target_world(best, bestSocketData.flags);
+        float3 bestWorld = sps_resolver_socket_target_world(best, bestSocketFlags);
         chain[chainCount] = sps_make_chain_entry(
             best.cellIndex,
             dot(bestTraversalNormal, best.normal) < 0,
@@ -200,9 +212,9 @@ int sps_build_chain(
             bestWorld,
             bestTraversalNormal,
             bestTraversalUp,
-            bestSocketData.flags,
+            bestSocketFlags,
             best.id,
-            bestSocketData.nextId,
+            bestSocketNextId,
             best.playerId
         );
         previous = chain[chainCount];

@@ -28,9 +28,6 @@ UNITY_INSTANCING_BUFFER_END(SpsResolverProps)
 #define SPS_DEBUG_FLAG_BEHIND_REJECT     (1u << 6)
 #define SPS_DEBUG_FLAG_TOO_FAR_REJECT    (1u << 7)
 #define SPS_DEBUG_FLAG_DUPLICATE_REJECT  (1u << 8)
-#define SPS_TAG_MATCH_SELF               1u
-#define SPS_TAG_MATCH_OTHERS             2u
-
 #define SPS_CHAIN_REF_INVALID -100
 
 #if SPS_RESOLVER_DEBUG

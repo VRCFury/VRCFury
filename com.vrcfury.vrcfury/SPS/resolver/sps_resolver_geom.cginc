@@ -97,28 +97,18 @@ void geom(triangle v2g input[3], inout TriangleStream<v2f> stream) {
     float3 plugWorld = sps_object_origin_world();
     float3 plugForward = sps_object_forward_world();
     float3 plugUp = sps_object_up_world();
+    uint resolverPlayerId = sps_player_id();
     uint debugFlags = 0;
     int candidateCount;
+    Candidate rawCandidates[SPS_CANDIDATE_COUNT];
     CellData cells[SPS_CANDIDATE_COUNT];
+    SpsTagRules tagRules;
 
     SpsTexture tex = SPS_GET_TEX(_VFGrid56);
-    sps_collect_candidates(tex, plugWorld, candidateCount, cells, debugFlags, SPS_PRODUCT_SOCKET);
-
-    uint includeTags[4];
-    uint includeFlags[4];
-    uint excludeTags[4];
-    uint excludeFlags[4];
-    sps_resolver_parse_tag_rules(includeTags, includeFlags, excludeTags, excludeFlags);
-    sps_filter_cells(
-        tex,
-        candidateCount,
-        cells,
-        sps_player_id(),
-        includeTags,
-        includeFlags,
-        excludeTags,
-        excludeFlags
-    );
+    sps_collect_raw_candidates(tex, plugWorld, candidateCount, rawCandidates, debugFlags, SPS_PRODUCT_SOCKET);
+    sps_resolver_parse_tag_rules(tagRules);
+    sps_filter_candidates(tex, candidateCount, rawCandidates, resolverPlayerId, tagRules);
+    sps_read_candidates(tex, rawCandidates, candidateCount, cells);
 
     ChainEntry chain[SPS_CHAIN_MAX_SOCKETS];
     int chainCount = sps_build_chain(

@@ -37,31 +37,6 @@ float sps_resolver_metadata_color_component(uint payloadIndex) {
     return value;
 }
 
-void sps_resolver_first_socket_data(
-    SpsTexture socketTex,
-    v2f input,
-    out bool found,
-    out CellData socketCell,
-    out SocketData socketData
-) {
-    socketCell = sps_make_empty_cell();
-    socketData = sps_make_empty_socket();
-    found = input.chainSlotIndex[0] > SPS_CHAIN_REF_INVALID;
-    if (!found) return;
-    socketCell = sps_read_cell(socketTex, input.chainSlotIndex[0]);
-    socketData = sps_read_socket(socketTex, socketCell.cellIndex);
-}
-
-float sps_resolver_first_socket_fraction(CellData socketCell, SocketData socketData) {
-    float resolverLength = sps_resolver_length();
-    if (resolverLength <= 0) return 0;
-
-    float3 plugWorld = sps_object_origin_world();
-    float3 targetWorld = sps_resolver_socket_target_world(socketCell, socketData.flags);
-    float distanceToTarget = length(targetWorld - plugWorld);
-    return saturate(1.0 - distanceToTarget / resolverLength);
-}
-
 bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadIndex, out float4 rgba) {
     rgba = 0;
     if (payloadIndex >= SPS_RESOLVER_PAYLOAD_VALUES) return false;
@@ -80,19 +55,33 @@ bool sps_resolver_payload_rgba(SpsTexture socketTex, v2f input, uint payloadInde
             rgba = sps_encode_float(sps_resolver_radius());
             return true;
         }
-        bool foundSocket;
-        CellData firstSocketCell;
-        SocketData firstSocketData;
-        sps_resolver_first_socket_data(socketTex, input, foundSocket, firstSocketCell, firstSocketData);
+        if (input.chainSlotIndex[0] < 0) {
+            rgba = 0;
+            return true;
+        }
+        SpsCell firstSocket = sps_get_cell(socketTex, (uint)input.chainSlotIndex[0]);
         if (payloadIndex == SPS_RESOLVER_METADATA_SOCKET_PLAYER_ID_INDEX) {
-            rgba = sps_encode_uint(foundSocket ? firstSocketCell.playerId : 0u);
+            rgba = sps_encode_uint(sps_cell_header_player_id(firstSocket));
             return true;
         }
         if (payloadIndex == SPS_RESOLVER_METADATA_SOCKET_UNIQUE_ID_INDEX) {
-            rgba = sps_encode_uint(foundSocket ? firstSocketCell.id : 0u);
+            rgba = sps_encode_uint(sps_cell_header_unique_id(firstSocket));
             return true;
         }
-        rgba = sps_encode_float(foundSocket ? sps_resolver_first_socket_fraction(firstSocketCell, firstSocketData) : 0);
+        float firstSocketFraction = 0;
+        float resolverLength = sps_resolver_length();
+        if (resolverLength > 0) {
+            float3 plugWorld = sps_object_origin_world();
+            float3 firstSocketWorld = sps_cell_header_world(firstSocket);
+            uint firstSocketFlags = firstSocket.read_uint(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_FLAGS));
+            float3 targetWorld = firstSocketWorld;
+            if (sps_has_flag(firstSocketFlags, SPS_SOCKET_FLAG_RADIUS_OFFSET)) {
+                targetWorld += sps_normalize(sps_cell_header_up(firstSocket)) * sps_resolver_radius();
+            }
+            float distanceToTarget = length(targetWorld - plugWorld);
+            firstSocketFraction = saturate(1.0 - distanceToTarget / resolverLength);
+        }
+        rgba = sps_encode_float(firstSocketFraction);
         return true;
     }
     if (payloadIndex >= SPS_RESOLVER_RADIUS_SAMPLE_BASE

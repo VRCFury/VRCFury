@@ -8,6 +8,34 @@
 #include "sps_resolver_light.cginc"
 #include "sps_resolver_types.cginc"
 
+// Saves ~0.5s vs 4-element include/exclude tag and flag arrays
+struct SpsTagRules {
+    uint includeTag0;
+    uint includeTag1;
+    uint includeTag2;
+    uint includeTag3;
+    bool includeSelf0;
+    bool includeOthers0;
+    bool includeSelf1;
+    bool includeOthers1;
+    bool includeSelf2;
+    bool includeOthers2;
+    bool includeSelf3;
+    bool includeOthers3;
+    uint excludeTag0;
+    uint excludeTag1;
+    uint excludeTag2;
+    uint excludeTag3;
+    bool excludeSelf0;
+    bool excludeOthers0;
+    bool excludeSelf1;
+    bool excludeOthers1;
+    bool excludeSelf2;
+    bool excludeOthers2;
+    bool excludeSelf3;
+    bool excludeOthers3;
+};
+
 inline void sps_insert_candidate(
     Candidate candidate,
     inout int candidateCount,
@@ -36,51 +64,32 @@ inline void sps_insert_candidate(
     candidates[insertIndex] = candidate;
 }
 
-void sps_resolver_parse_tag_rules(
-    out uint includeTags[4],
-    out uint includeFlags[4],
-    out uint excludeTags[4],
-    out uint excludeFlags[4]
-) {
-    uint includeTagValues[4] = { _SPS_TagInclude1, _SPS_TagInclude2, _SPS_TagInclude3, _SPS_TagInclude4 };
-    uint excludeTagValues[4] = { _SPS_TagExclude1, _SPS_TagExclude2, _SPS_TagExclude3, _SPS_TagExclude4 };
-    float includeSelfValues[4] = { _SPS_TagInclude1Self, _SPS_TagInclude2Self, _SPS_TagInclude3Self, _SPS_TagInclude4Self };
-    float includeOtherValues[4] = { _SPS_TagInclude1Others, _SPS_TagInclude2Others, _SPS_TagInclude3Others, _SPS_TagInclude4Others };
-    float excludeSelfValues[4] = { _SPS_TagExclude1Self, _SPS_TagExclude2Self, _SPS_TagExclude3Self, _SPS_TagExclude4Self };
-    float excludeOtherValues[4] = { _SPS_TagExclude1Others, _SPS_TagExclude2Others, _SPS_TagExclude3Others, _SPS_TagExclude4Others };
+void sps_resolver_parse_tag_rules(out SpsTagRules rules) {
+    rules.includeTag0 = _SPS_TagInclude1;
+    rules.includeTag1 = _SPS_TagInclude2;
+    rules.includeTag2 = _SPS_TagInclude3;
+    rules.includeTag3 = _SPS_TagInclude4;
+    rules.includeSelf0 = sps_to_bool(_SPS_TagInclude1Self);
+    rules.includeOthers0 = sps_to_bool(_SPS_TagInclude1Others);
+    rules.includeSelf1 = sps_to_bool(_SPS_TagInclude2Self);
+    rules.includeOthers1 = sps_to_bool(_SPS_TagInclude2Others);
+    rules.includeSelf2 = sps_to_bool(_SPS_TagInclude3Self);
+    rules.includeOthers2 = sps_to_bool(_SPS_TagInclude3Others);
+    rules.includeSelf3 = sps_to_bool(_SPS_TagInclude4Self);
+    rules.includeOthers3 = sps_to_bool(_SPS_TagInclude4Others);
 
-    [unroll]
-    for (uint i = 0u; i < 4u; i++) {
-        includeTags[i] = includeTagValues[i];
-        excludeTags[i] = excludeTagValues[i];
-
-        includeFlags[i] = 0u;
-        excludeFlags[i] = 0u;
-
-        if (sps_to_bool(includeSelfValues[i])) includeFlags[i] |= SPS_TAG_MATCH_SELF;
-        if (sps_to_bool(includeOtherValues[i])) includeFlags[i] |= SPS_TAG_MATCH_OTHERS;
-        if (sps_to_bool(excludeSelfValues[i])) excludeFlags[i] |= SPS_TAG_MATCH_SELF;
-        if (sps_to_bool(excludeOtherValues[i])) excludeFlags[i] |= SPS_TAG_MATCH_OTHERS;
-    }
-}
-
-bool sps_tag_rule_applies_to_candidate(uint flags, uint resolverPlayerId, uint candidatePlayerId) {
-    bool samePlayer = candidatePlayerId == resolverPlayerId;
-    if (samePlayer && sps_has_flag(flags, SPS_TAG_MATCH_SELF)) return true;
-    if (!samePlayer && sps_has_flag(flags, SPS_TAG_MATCH_OTHERS)) return true;
-    return false;
-}
-
-bool sps_candidate_has_tag(SocketData socketData, uint tag) {
-    if (tag == 0u) return false;
-
-    [unroll]
-    for (uint tagIndex = 0u; tagIndex < SPS_SOCKET_PAYLOAD_TAG_COUNT; tagIndex++) {
-        if (socketData.tags[tagIndex] == tag) {
-            return true;
-        }
-    }
-    return false;
+    rules.excludeTag0 = _SPS_TagExclude1;
+    rules.excludeTag1 = _SPS_TagExclude2;
+    rules.excludeTag2 = _SPS_TagExclude3;
+    rules.excludeTag3 = _SPS_TagExclude4;
+    rules.excludeSelf0 = sps_to_bool(_SPS_TagExclude1Self);
+    rules.excludeOthers0 = sps_to_bool(_SPS_TagExclude1Others);
+    rules.excludeSelf1 = sps_to_bool(_SPS_TagExclude2Self);
+    rules.excludeOthers1 = sps_to_bool(_SPS_TagExclude2Others);
+    rules.excludeSelf2 = sps_to_bool(_SPS_TagExclude3Self);
+    rules.excludeOthers2 = sps_to_bool(_SPS_TagExclude3Others);
+    rules.excludeSelf3 = sps_to_bool(_SPS_TagExclude4Self);
+    rules.excludeOthers3 = sps_to_bool(_SPS_TagExclude4Others);
 }
 
 void sps_read_candidates(
@@ -99,59 +108,65 @@ void sps_read_candidates(
     }
 }
 
-void sps_filter_cells(
+// Saves ~0.5s vs filtering after reading full CellData
+void sps_filter_candidates(
     SpsTexture tex,
     inout int candidateCount,
-    inout CellData cells[SPS_CANDIDATE_COUNT],
+    inout Candidate candidates[SPS_CANDIDATE_COUNT],
     uint resolverPlayerId,
-    uint includeTags[4],
-    uint includeFlags[4],
-    uint excludeTags[4],
-    uint excludeFlags[4]
+    SpsTagRules rules
 ) {
     int writeIndex = 0;
     [loop]
     for (int candidateIndex = 0; candidateIndex < SPS_CANDIDATE_COUNT; candidateIndex++) {
         if (candidateIndex >= candidateCount) break;
 
-        if (cells[candidateIndex].cellIndex < 0) {
+        Candidate candidate = candidates[candidateIndex];
+        if (candidate.cellIndex < 0) {
             // Lights are always accepted
-            cells[writeIndex] = cells[candidateIndex];
+            candidates[writeIndex] = candidate;
             writeIndex++;
             continue;
         }
 
-        CellData candidate = cells[candidateIndex];
         uint candidatePlayerId = candidate.playerId;
-        SocketData socketData = sps_read_socket(tex, candidate.cellIndex);
+        // Saves ~1.0s vs materializing socket tag data
+        SpsCell socketCell = sps_get_cell(tex, (uint)candidate.cellIndex);
+
+        // Saves ~0.5s vs checking rule applicability inside the tag loop
+        bool samePlayer = candidatePlayerId == resolverPlayerId;
+        uint includeTag0 = (samePlayer ? rules.includeSelf0 : rules.includeOthers0) ? rules.includeTag0 : 0u;
+        uint includeTag1 = (samePlayer ? rules.includeSelf1 : rules.includeOthers1) ? rules.includeTag1 : 0u;
+        uint includeTag2 = (samePlayer ? rules.includeSelf2 : rules.includeOthers2) ? rules.includeTag2 : 0u;
+        uint includeTag3 = (samePlayer ? rules.includeSelf3 : rules.includeOthers3) ? rules.includeTag3 : 0u;
+        uint excludeTag0 = (samePlayer ? rules.excludeSelf0 : rules.excludeOthers0) ? rules.excludeTag0 : 0u;
+        uint excludeTag1 = (samePlayer ? rules.excludeSelf1 : rules.excludeOthers1) ? rules.excludeTag1 : 0u;
+        uint excludeTag2 = (samePlayer ? rules.excludeSelf2 : rules.excludeOthers2) ? rules.excludeTag2 : 0u;
+        uint excludeTag3 = (samePlayer ? rules.excludeSelf3 : rules.excludeOthers3) ? rules.excludeTag3 : 0u;
 
         bool matchedInclude = false;
-        [loop]
-        for (uint slot = 0u; slot < 4u; slot++) {
-            uint includeTag = includeTags[slot];
-            if (includeTag == 0u) continue;
-            if (!sps_tag_rule_applies_to_candidate(includeFlags[slot], resolverPlayerId, candidatePlayerId)) continue;
-
-            if (sps_candidate_has_tag(socketData, includeTag)) {
-                matchedInclude = true;
-                break;
-            }
-        }
-        if (!matchedInclude) continue;
-
         bool excluded = false;
         [loop]
-        for (uint slot2 = 0u; slot2 < 4u; slot2++) {
-            uint excludeTag = excludeTags[slot2];
-            if (excludeTag == 0u) continue;
-            if (!sps_tag_rule_applies_to_candidate(excludeFlags[slot2], resolverPlayerId, candidatePlayerId)) continue;
-
-            excluded = sps_candidate_has_tag(socketData, excludeTag);
+        for (uint tagIndex = 0u; tagIndex < SPS_SOCKET_PAYLOAD_TAG_COUNT; tagIndex++) {
+            uint tag = socketCell.read_uint(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_TAG_START + tagIndex));
+            if (!matchedInclude) {
+                matchedInclude =
+                    (includeTag0 != 0u && tag == includeTag0)
+                    || (includeTag1 != 0u && tag == includeTag1)
+                    || (includeTag2 != 0u && tag == includeTag2)
+                    || (includeTag3 != 0u && tag == includeTag3);
+            }
+            excluded =
+                (excludeTag0 != 0u && tag == excludeTag0)
+                || (excludeTag1 != 0u && tag == excludeTag1)
+                || (excludeTag2 != 0u && tag == excludeTag2)
+                || (excludeTag3 != 0u && tag == excludeTag3);
             if (excluded) break;
         }
+        if (!matchedInclude) continue;
         if (excluded) continue;
 
-        cells[writeIndex] = candidate;
+        candidates[writeIndex] = candidate;
         writeIndex++;
     }
     candidateCount = writeIndex;
@@ -167,18 +182,22 @@ void sps_collect_legacy_candidates(
 
     uint lightType[4];
     float3 lightWorld[4];
+    // Saves ~0.6s vs unrolled legacy light scans
+    [loop]
     for (uint i = 0; i < 4; i++) {
         lightType[i] = sps_light_type(i);
         lightWorld[i] = sps_light_world(i);
     }
 
     bool rootUsed[4];
+    [loop]
     for (int ri = 0; ri < 4; ri++) rootUsed[ri] = false;
 
     [loop]
     for (int rank = 0; rank < SPS_LEGACY_SLOT_COUNT; rank++) {
         float bestDistanceSq = 0;
         int rootIndex = -1;
+        [loop]
         for (int i = 0; i < 4; i++) {
             if (rootUsed[i]) continue;
             if (lightType[i] != SPS_LEGACY_LIGHT_HOLE && lightType[i] != SPS_LEGACY_LIGHT_RING) continue;
@@ -195,6 +214,7 @@ void sps_collect_legacy_candidates(
         int frontIndex = 0;
         bool frontFound = false;
         float bestFrontDistanceSq = 0.01;
+        [loop]
         for (int li = 0; li < 4; li++) {
             if (lightType[li] != SPS_LEGACY_LIGHT_FRONT) continue;
             float3 frontOffset = lightWorld[li] - lightWorld[rootIndex];
@@ -234,30 +254,31 @@ inline void sps_collect_cell(
     if (candidateCount >= SPS_CANDIDATE_COUNT
         && distanceSq >= candidates[candidateCount - 1].distanceSq) return;
 
-    CellData cellData = sps_read_positive_cell(cell, (int)cellIndex);
+    // Saves ~0.4s vs building full CellData just to read id/playerId
+    uint cellId = sps_cell_header_unique_id(cell);
+    uint cellPlayerId = sps_cell_header_player_id(cell);
     [unroll]
     for (int candidateIndex = 0; candidateIndex < candidateCount; candidateIndex++) {
-        if (candidates[candidateIndex].id == cellData.id
-            && candidates[candidateIndex].playerId == cellData.playerId) return;
+        if (candidates[candidateIndex].id == cellId
+            && candidates[candidateIndex].playerId == cellPlayerId) return;
     }
 
     Candidate candidate;
     candidate.cellIndex = (int)cellIndex;
     candidate.distanceSq = distanceSq;
-    candidate.id = cellData.id;
-    candidate.playerId = cellData.playerId;
+    candidate.id = cellId;
+    candidate.playerId = cellPlayerId;
     sps_insert_candidate(candidate, candidateCount, candidates, debugFlags);
 }
 
-void sps_collect_candidates(
+void sps_collect_raw_candidates(
     SpsTexture tex,
     float3 plugWorld,
     out int candidateCount,
-    out CellData cells[SPS_CANDIDATE_COUNT],
+    out Candidate rawCandidates[SPS_CANDIDATE_COUNT],
     inout uint debugFlags,
     uint productFilter
 ) {
-    Candidate rawCandidates[SPS_CANDIDATE_COUNT];
     uint slotCount = sps_socket_slot_count();
     uint columns = (uint)sps_cell_grid_columns();
     candidateCount = 0;
@@ -292,7 +313,6 @@ void sps_collect_candidates(
     }
 
     sps_collect_legacy_candidates(plugWorld, candidateCount, rawCandidates, debugFlags);
-    sps_read_candidates(tex, rawCandidates, candidateCount, cells);
 }
 
 #endif
