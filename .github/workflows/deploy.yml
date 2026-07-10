@@ -30,9 +30,9 @@ jobs:
           - vrcsdkUnityVersion: [ 3.10.4, 2022.3.22f1 ]
             platform: windows
             sdkKind: worlds
-          - vrcsdkUnityVersion: [ 3.10.4, 2022.3.22f1 ]
-            platform: android
-            sdkKind: worlds
+#          - vrcsdkUnityVersion: [ 3.10.4, 2022.3.22f1 ]
+#            platform: android
+#            sdkKind: worlds
     steps:
       - uses: actions/checkout@v6
 
