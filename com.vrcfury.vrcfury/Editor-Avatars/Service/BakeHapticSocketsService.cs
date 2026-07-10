@@ -99,7 +99,6 @@ namespace VF.Service {
                 legacyOn = fx.NewBool(
                     "legacy",
                     synced: true,
-                    networkSynced: false,
                     saved: saved,
                     def: spsOptions.GetOptions().legacyModeEnabledOnAvatarLoad
                 );
