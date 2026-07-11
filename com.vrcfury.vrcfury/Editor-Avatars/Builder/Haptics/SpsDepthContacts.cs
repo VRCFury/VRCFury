@@ -93,8 +93,8 @@ namespace VF.Builder.Haptics {
             });
             velocityLocal = new Lazy<VFAFloat>(() => {
                 var output = controller.MakeAap($"{paramPrefix}/Dist/Local/Vel");
-                var invertedScaleFactor = math.Invert($"{paramPrefix}/Scale/InvertedForVel", worldScale);
-                math.MultiplyInPlace(output, invertedScaleFactor, velocity.Value);
+                var invertedWorldScale = math.Invert($"{paramPrefix}/Scale/InvertedForVel", worldScale);
+                math.MultiplyInPlace(output, invertedWorldScale, velocity.Value);
                 return output;
             });
         }
@@ -116,7 +116,7 @@ namespace VF.Builder.Haptics {
                 ControllerManager controller,
                 bool useHipAvoidance,
                 HapticUtils.ReceiverParty party,
-                VFAFloat scaleFactor,
+                VFAFloat worldScale,
                 float localPlugLength
             ) {
                 var contactRadius = 3f;
@@ -134,7 +134,7 @@ namespace VF.Builder.Haptics {
                         });
                     });
                     plugLength = new Lazy<VFAFloat>(() => {
-                        return blendtreeMath.Multiply($"{paramPrefix}/LengthMeters", scaleFactor, localPlugLength);
+                        return blendtreeMath.Multiply($"{paramPrefix}/LengthMeters", worldScale, localPlugLength);
                     });
                     distanceMeters = new Lazy<VFAFloat>(() => {
                         var output = controller.MakeAap($"{paramPrefix}/Dist/Meters", def: 100);
@@ -274,8 +274,8 @@ namespace VF.Builder.Haptics {
                 });
                 distanceLocal = new Lazy<VFAFloat>(() => {
                     var output = controller.MakeAap($"{paramPrefix}/Dist/Local", def: 100);
-                    var invertedScaleFactor = blendtreeMath.Invert($"{paramPrefix}/Scale/Inverted", scaleFactor);
-                    blendtreeMath.MultiplyInPlace(output, invertedScaleFactor, distanceMeters.Value);
+                    var invertedWorldScale = blendtreeMath.Invert($"{paramPrefix}/Scale/Inverted", worldScale);
+                    blendtreeMath.MultiplyInPlace(output, invertedWorldScale, distanceMeters.Value);
                     return output;
                 });
             }

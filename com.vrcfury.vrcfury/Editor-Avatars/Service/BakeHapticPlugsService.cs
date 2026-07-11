@@ -31,7 +31,7 @@ namespace VF.Service {
         [VFAutowired] private readonly AllClipsService allClipsService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly AvatarBindingStateService avatarBindingStateService;
-        [VFAutowired] private readonly ScaleFactorService scaleFactorService;
+        [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
         [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
@@ -160,7 +160,7 @@ namespace VF.Service {
             var worldLength = bakeInfo.worldLength;
             var localLength = worldLength / bakeRoot.worldScale.x;
             var propsToScale = new List<(UnityEngine.Component, string, float)>();
-            var worldScale = new Lazy<VFAFloat>(() => scaleFactorService.GetWorldScale(bakeRoot));
+            var worldScale = new Lazy<VFAFloat>(() => worldScaleService.GetWorldScale(bakeRoot));
             
             globals.addOtherFeature(new ShowInFirstPerson {
                 useObjOverride = true,
@@ -368,7 +368,7 @@ namespace VF.Service {
                         value = contacts.Value.velocityPlugLengths.Value;
                         break;
                     case VRCFuryHapticPlugEditor.SpsPlugLengthMeters:
-                        value = math.Value.Multiply($"{name}/PlugLengthMeters", worldScale.Value, worldLength);
+                        value = math.Value.Multiply($"{name}/PlugLengthMeters", worldScale.Value, localLength);
                         break;
                     case VRCFuryHapticPlugEditor.SpsPlugLengthLocal:
                         value = fx.MakeAap($"{name}/PlugLengthLocal", localLength);
@@ -377,7 +377,7 @@ namespace VF.Service {
                         value = fx.One();
                         break;
                     case VRCFuryHapticPlugEditor.SpsPlugRadiusMeters:
-                        value = math.Value.Multiply($"{name}/PlugRadiusMeters", worldScale.Value, worldRadius);
+                        value = math.Value.Multiply($"{name}/PlugRadiusMeters", worldScale.Value, worldRadius / bakeRoot.worldScale.x);
                         break;
                     case VRCFuryHapticPlugEditor.SpsPlugRadiusLocal:
                         value = fx.MakeAap($"{name}/PlugRadiusLocal", worldRadius / bakeRoot.worldScale.x);

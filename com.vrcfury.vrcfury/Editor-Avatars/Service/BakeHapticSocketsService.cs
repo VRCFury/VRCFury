@@ -30,7 +30,7 @@ namespace VF.Service {
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        [VFAutowired] private readonly ScaleFactorService scaleFactorService;
+        [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
@@ -260,7 +260,7 @@ namespace VF.Service {
                         ogbEnabledService.Register(haptics);
                     }
 
-                    var worldScale = new Lazy<VFAFloat>(() => scaleFactorService.GetWorldScale(bakeResult.bakeRoot));
+                    var worldScale = new Lazy<VFAFloat>(() => worldScaleService.GetWorldScale(bakeResult.bakeRoot));
                     var animObjects = new List<VFGameObject>();
                     var Contacts = new Lazy<SpsDepthContacts>(() => {
                         var animRoot = GameObjects.Create("Animations", bakeResult.worldSpace);

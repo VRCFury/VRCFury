@@ -13,10 +13,11 @@ using Random = UnityEngine.Random;
 namespace VF.Service {
     /**
      * "Fixes" https://feedback.vrchat.com/bug-reports/p/scalefactor-is-not-synchronized-to-late-joiners-or-existing-players-in-newly-joi
-     * by using local ScaleFactor to move a contact receiver, then syncing that contact receiver's proximity value
+     * by placing a contact receiver at an upload-scale-normalized local offset, then using the synced proximity
+     * value to reconstruct the target's live world scale.
      */
     [VFService]
-    internal class ScaleFactorService {
+    internal class WorldScaleDetectorService {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
@@ -33,7 +34,7 @@ namespace VF.Service {
         private readonly Lazy<VFGameObject> markerObject;
         private readonly Dictionary<VFGameObject, VFAFloat> cache = new Dictionary<VFGameObject, VFAFloat>();
 
-        public ScaleFactorService() {
+        public WorldScaleDetectorService() {
             math = new Lazy<BlendtreeMath>(() => dbtLayerService.GetMath(dbtLayerService.Create()));
             offset = new Lazy<Vector3>(() => new Vector3(
                 -30f + (Random.value * 60f),
@@ -45,6 +46,7 @@ namespace VF.Service {
         }
 
         [CanBeNull]
+        // Returns the live absolute world scale of localSpace.
         public VFAFloat GetWorldScale(VFGameObject localSpace) {
             return cache.GetOrCreate(localSpace, () => Create(localSpace));
         }
