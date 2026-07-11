@@ -47,4 +47,6 @@ Shader "Hidden/VRCFury/SpsSceneViewRestore" {
             ENDCG
         }
     }
+
+    Fallback Off
 }

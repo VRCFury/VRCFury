@@ -77,4 +77,6 @@ Shader "Hidden/VRCFury/SpsDataGrabPass" {
             ENDCG
         }
     }
+
+    Fallback Off
 }

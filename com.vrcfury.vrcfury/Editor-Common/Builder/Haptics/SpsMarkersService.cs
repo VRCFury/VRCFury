@@ -101,9 +101,9 @@ namespace VF.Builder.Haptics {
             var mesh = VrcfObjectFactory.Register(new Mesh());
             mesh.name = "SpsTriggerMesh";
             mesh.vertices = new[] {
-                BoundsExtent * new Vector3(-1, -1, -1),
-                BoundsExtent * new Vector3(-1, -1, 1),
-                BoundsExtent * new Vector3(1, 1, 1)
+                new Vector3(-0.005f, -0.005f, 0),
+                new Vector3(-0.005f, 0.005f, 0),
+                new Vector3(0.005f, 0.005f, 0)
             };
             mesh.uv = new[] {
                 new Vector2(0, 0),
@@ -111,7 +111,7 @@ namespace VF.Builder.Haptics {
                 new Vector2(0, 1)
             };
             mesh.triangles = new[] { 0, 1, 2 };
-            mesh.RecalculateBounds();
+            mesh.bounds = new Bounds(Vector3.zero, Vector3.one * BoundsExtent * 2);
             return mesh;
         }
     }

@@ -290,4 +290,6 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
             ENDCG
         }
     }
+
+    Fallback Off
 }

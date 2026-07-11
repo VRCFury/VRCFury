@@ -142,4 +142,6 @@ Shader "Hidden/VRCFury/SpsResolver" {
             ENDCG
         }
     }
+
+    Fallback Off
 }
