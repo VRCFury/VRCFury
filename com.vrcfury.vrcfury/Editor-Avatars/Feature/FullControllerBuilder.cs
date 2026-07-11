@@ -584,14 +584,16 @@ namespace VF.Feature {
                 var content = new VisualElement();
                 var sourceObjectProp = prop.FindPropertyRelative("sourceObject");
                 var sourceParamProp = prop.FindPropertyRelative("sourceParam");
-                content.Add(VRCFuryEditorUtils.Prop(sourceObjectProp, "Source Object", onChange: () => {
+                void OnSourceObjectChange() {
                     var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
                     if (sourceObject == null) return;
                     if (sourceObject.GetComponent<VRCFuryHapticPlug>() == null
                         && sourceObject.GetComponent<VRCFuryHapticSocket>() == null) return;
                     sourceParamProp.stringValue = VRCFuryHapticPlugEditor.SpsDepthMeters;
                     sourceParamProp.serializedObject.ApplyModifiedProperties();
-                }));
+                }
+                content.Add(VRCFuryEditorUtils.Prop(sourceObjectProp, "Source Object"));
+                content.Add(VRCFuryEditorUtils.OnChange(sourceObjectProp, OnSourceObjectChange));
                 content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                     var wrapper = new VisualElement();
                     var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;

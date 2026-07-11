@@ -353,9 +353,6 @@ namespace VF.Inspector {
                     case SerializedPropertyType.ObjectReference: {
                         var objectField = new ObjectField { bindingPath = prop.propertyPath };
                         objectField.objectType = GetPropertyType(prop);
-                        objectField.RegisterValueChangedCallback(e => {
-                            onChange?.Invoke();
-                        });
                         field = objectField;
                         break;
                     }
