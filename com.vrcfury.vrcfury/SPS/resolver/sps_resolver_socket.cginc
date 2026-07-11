@@ -12,6 +12,7 @@ bool sps_resolver_check_socket(
     float3 previousWorld,
     float3 sourceForward,
     bool isGuideTarget,
+    bool allowHilt,
     out float distanceSq,
     out float3 normal,
     out float3 up,
@@ -40,7 +41,7 @@ bool sps_resolver_check_socket(
 
     float worldLength = sps_resolver_length();
     bool isHilted = false;
-    if (sps_has_flag(socketFlags, SPS_SOCKET_FLAG_HOLE)) {
+    if (allowHilt && sps_has_flag(socketFlags, SPS_SOCKET_FLAG_HOLE)) {
         float hiltDistance = worldLength * 0.5;
         float rootDistanceSq = sps_length_sq(candidate.world - previousWorld);
         isHilted = rootDistanceSq <= hiltDistance * hiltDistance;
