@@ -264,9 +264,9 @@ namespace VF.Builder.Haptics {
                 SetTag(tags, i, HashTag(socket.tags[i]));
             }
             if (socket.useSharedTag) {
-                var autoTags = GetAutoSocketTags(closestBone, socket);
-                if (autoTags.Count >= 1) SetTag(tags, 5, autoTags[0]);
-                if (autoTags.Count >= 2) SetTag(tags, 6, autoTags[1]);
+                var autoTags = GetAutoSocketTagNames(socket);
+                if (autoTags.Count >= 1) SetTag(tags, 5, HashTag(autoTags[0]));
+                if (autoTags.Count >= 2) SetTag(tags, 6, HashTag(autoTags[1]));
                 SetTag(tags, 7, SharedTag);
             }
             for (var i = 0; i < tags.Length; i++) {
@@ -346,21 +346,19 @@ namespace VF.Builder.Haptics {
             return GetClosestBone(obj) == HumanBodyBones.Hips;
         }
 
-        private static uint GetAutoHipFrontBackTag(VRCFuryHapticSocket socket, HumanBodyBones? closestBone) {
-            if (closestBone != HumanBodyBones.Hips) return 0;
+        private static string GetAutoHipFrontBackTagName(VRCFuryHapticSocket socket, HumanBodyBones? closestBone) {
+            if (closestBone != HumanBodyBones.Hips) return null;
 
             var root = socket.owner().root;
             var hips = VRCFuryHapticSocketEditor.getBoneOnArmature?.Invoke(root, HumanBodyBones.Hips);
             var rightHand = VRCFuryHapticSocketEditor.getBoneOnArmature?.Invoke(root, HumanBodyBones.RightHand);
-            if (hips == null || rightHand == null) return 0;
+            if (hips == null || rightHand == null) return null;
 
             var right = rightHand.worldPosition - hips.worldPosition;
-            if (right.sqrMagnitude <= 0.000001f) return 0;
+            if (right.sqrMagnitude <= 0.000001f) return null;
 
-            var up = Vector3.up;
-
-            var forward = Vector3.Cross(right.normalized, up.normalized);
-            if (forward.sqrMagnitude <= 0.000001f) return 0;
+            var forward = Vector3.Cross(right.normalized, Vector3.up.normalized);
+            if (forward.sqrMagnitude <= 0.000001f) return null;
             forward.Normalize();
 
             var hipSockets = root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
@@ -373,18 +371,16 @@ namespace VF.Builder.Haptics {
                 .Take(2)
                 .ToList();
 
-            if (hipSockets.Count != 2) return 0;
+            if (hipSockets.Count != 2) return null;
 
             hipSockets = hipSockets
                 .OrderBy(other => Vector3.Dot(other.owner().worldPosition - hips.worldPosition, forward))
                 .ThenBy(other => other.owner().GetPath(root))
                 .ToList();
 
-            return hipSockets[0] == socket
-                ? HashTag("hipsback")
-                : hipSockets[1] == socket
-                    ? HashTag("hipsfront")
-                    : 0;
+            if (hipSockets[0] == socket) return "hipsback";
+            if (hipSockets[1] == socket) return "hipsfront";
+            return null;
         }
 
         public static void MarkSpsPropertiesAnimated(Material material) {
@@ -397,29 +393,30 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        private static IList<uint> GetAutoSocketTags(HumanBodyBones? bone, VRCFuryHapticSocket socket) {
+        public static IList<string> GetAutoSocketTagNames(VRCFuryHapticSocket socket) {
+            var bone = GetClosestBone(socket.owner());
             switch (bone) {
                 case HumanBodyBones.Hips:
-                    return new[] { HashTag("hips"), GetAutoHipFrontBackTag(socket, bone), };
+                    return new[] { "hips", GetAutoHipFrontBackTagName(socket, bone), }.Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
                 case HumanBodyBones.Head:
                 case HumanBodyBones.Jaw:
-                    return new[] { HashTag("head"), };
+                    return new[] { "head", };
                 case HumanBodyBones.Chest:
                 case HumanBodyBones.UpperChest:
-                    return new[] { HashTag("chest"), };
+                    return new[] { "chest", };
                 case HumanBodyBones.LeftHand:
-                    return new[] { HashTag("hand"), HashTag("handleft"), };
+                    return new[] { "hand", "handleft", };
                 case HumanBodyBones.RightHand:
-                    return new[] { HashTag("hand"), HashTag("handright"), };
+                    return new[] { "hand", "handright", };
                 case HumanBodyBones.LeftFoot:
                 case HumanBodyBones.LeftToes:
-                    return new[] { HashTag("foot"), HashTag("footleft"), };
+                    return new[] { "foot", "footleft", };
                 case HumanBodyBones.RightFoot:
                 case HumanBodyBones.RightToes:
-                    return new[] { HashTag("foot"), HashTag("footright"), };
+                    return new[] { "foot", "footright", };
             }
 
-            return new uint[] { };
+            return new string[] { };
         }
     }
 }

@@ -271,11 +271,15 @@ namespace VF.Inspector {
             tags.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "'Global' SPS2 Tag",
                 tooltip: "Allows all SPS2 plugs (which are configured using the defaults) to target this socket."));
             tags.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (useSharedTag.boolValue) return new VisualElement();
-                return VRCFuryEditorUtils.Warn("This socket does not have the global SPS2 tag, so most plugs will not target it.");
+                if (!useSharedTag.boolValue) {
+                    return VRCFuryEditorUtils.Warn("This socket does not have the global SPS2 tag, so most plugs will not target it.");
+                }
+                var autoTags = SpsConfigurer.GetAutoSocketTagNames(target);
+                if (autoTags.Count > 0) {
+                    return VRCFuryEditorUtils.Info("Additional automatic tags included: " +autoTags.Join(", "));
+                }
+                return new VisualElement();
             }, useSharedTag));
-            // tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useHipAvoidance"), "Hip Avoidance",
-            //     tooltip: "If this socket is on your hips, it will not be targeted by plugs on your hips."));
             container.Add(tags);
             
             var adv = new Foldout {
