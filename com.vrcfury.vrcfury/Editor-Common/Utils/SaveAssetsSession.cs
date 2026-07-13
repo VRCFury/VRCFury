@@ -9,8 +9,11 @@ using UnityEngine;
 namespace VF.Utils {
     internal class SaveAssetsSession {
         private readonly HashSet<Object> workLogManifest = new HashSet<Object>();
+        private readonly HashSet<UnityEngine.Component> scannedComponents = new HashSet<UnityEngine.Component>();
+        private readonly HashSet<Object> savedRootAssets = new HashSet<Object>();
 
         public void SaveUnsavedComponentAssets(UnityEngine.Component component, string tmpDir) {
+            if (!scannedComponents.Add(component)) return;
             foreach (var asset in GetUnsavedChildren(component, false, true)) {
                 string filename;
                 if (asset.GetType().Name == "VRCExpressionsMenu") {
@@ -67,6 +70,7 @@ namespace VF.Utils {
 
         public void SaveAssetAndChildren(Object asset, string filename, string tmpDir, bool reuseOriginalClips) {
             if (!VrcfObjectFactory.DidCreate(asset)) return;
+            if (!savedRootAssets.Add(asset)) return;
 
             var unsavedChildren = GetUnsavedChildren(asset, true, reuseOriginalClips);
 

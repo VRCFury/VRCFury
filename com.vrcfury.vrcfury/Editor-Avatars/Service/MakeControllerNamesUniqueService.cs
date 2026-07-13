@@ -19,30 +19,28 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.MakeControllerNamesUnique)]
         public void Apply() {
             foreach (var controller in controllers.GetAllUsedControllers()) {
-                var raw = controller.GetRaw();
-                MakeLayerNamesUnique(raw);
+                MakeLayerNamesUnique(controller);
                 foreach (var layer in controller.GetLayers()) {
                     MakeStateNamesUnique(layer);
                 }
             }
         }
 
-        private static void MakeLayerNamesUnique(AnimatorController controller) {
+        private static void MakeLayerNamesUnique(VFController controller) {
             var existingNames = new List<string>();
             var changed = false;
-            var layers = controller.layers;
-            for (var i = 0; i < layers.Length; i++) {
-                var layer = layers[i];
-                var uniqueName = ObjectNames.GetUniqueName(existingNames.ToArray(), layer.name);
-                if (layer.name != uniqueName) {
-                    layer.name = uniqueName;
-                    changed = true;
+            controller.EditRawLayers(layers => {
+                for (var i = 0; i < layers.Length; i++) {
+                    var layer = layers[i];
+                    var uniqueName = ObjectNames.GetUniqueName(existingNames.ToArray(), layer.name);
+                    if (layer.name != uniqueName) {
+                        layer.name = uniqueName;
+                        changed = true;
+                    }
+                    existingNames.Add(layer.name);
                 }
-                existingNames.Add(layer.name);
-            }
-            if (changed) {
-                controller.layers = layers;
-            }
+                return changed;
+            });
         }
 
         private static void MakeStateNamesUnique(VFLayer layer) {

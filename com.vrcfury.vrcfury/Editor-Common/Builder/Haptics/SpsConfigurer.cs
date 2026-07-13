@@ -84,20 +84,20 @@ namespace VF.Builder.Haptics {
                 }
             }
             if (plug.spsAnimatedEnabled == 0) bakeRoot.active = false;
-            m.SetTexture(SpsBake, spsBaked);
-            m.SetFloat(SpsMarkersService.Configured, 1);
-            m.SetFloat(SpsMarkersService.IdLow, SpsMarkersService.GetLow(resolverHash));
-            m.SetFloat(SpsMarkersService.IdHigh, SpsMarkersService.GetHigh(resolverHash));
-            m.SetFloat(SpsMarkersService.PlayerIdLow, 0);
-            m.SetFloat(SpsMarkersService.PlayerIdHigh, 0);
-            m.SetFloat(SpsDisableShadows, 0);
-            m.SetFloat(SpsDisableDepth, 0);
-            m.SetFloat("_SPS_BlendshapeCount", spsBlendshapes.Count);
-            m.SetFloat("_SPS_BlendshapeVertCount", skin.GetVertexCount());
+            m.SetTextureFast(SpsBake, spsBaked);
+            m.SetFloatFast(SpsMarkersService.Configured, 1);
+            m.SetFloatFast(SpsMarkersService.IdLow, SpsMarkersService.GetLow(resolverHash));
+            m.SetFloatFast(SpsMarkersService.IdHigh, SpsMarkersService.GetHigh(resolverHash));
+            m.SetFloatFast(SpsMarkersService.PlayerIdLow, 0);
+            m.SetFloatFast(SpsMarkersService.PlayerIdHigh, 0);
+            m.SetFloatFast(SpsDisableShadows, 0);
+            m.SetFloatFast(SpsDisableDepth, 0);
+            m.SetFloatFast("_SPS_BlendshapeCount", spsBlendshapes.Count);
+            m.SetFloatFast("_SPS_BlendshapeVertCount", skin.GetVertexCount());
             for (var i = 0; i < spsBlendshapes.Count; i++) {
                 var name = spsBlendshapes[i];
                 if (skin.HasBlendshape(name)) {
-                    m.SetFloat("_SPS_Blendshape" + i, skin.GetBlendshapeWeight(name));
+                    m.SetFloatFast("_SPS_Blendshape" + i, skin.GetBlendshapeWeight(name));
                 }
             }
         }

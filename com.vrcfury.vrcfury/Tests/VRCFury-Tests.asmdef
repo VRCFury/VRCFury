@@ -4,7 +4,8 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "VRCFury"
+        "VRCFury",
+        "VRCFury-Editor-Common"
     ],
     "includePlatforms": [
         "Editor"

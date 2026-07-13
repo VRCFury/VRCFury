@@ -2,6 +2,7 @@
 using VF.Service;
 using VF.Service.Compressor;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Hooks {
@@ -10,6 +11,7 @@ namespace VF.Hooks {
 
         protected override void Process(VFGameObject avatarObject) {
             var injector = VRCFuryInjectorBuilder.GetInjector(avatarObject.GetComponent<VRCAvatarDescriptor>());
+            VFController.ClearCache();
             injector.GetService<ControllersService>().ClearCache();
             injector.GetService<ParamsService>().ClearCache();
             injector.GetService<ParameterCompressorService>().Apply();

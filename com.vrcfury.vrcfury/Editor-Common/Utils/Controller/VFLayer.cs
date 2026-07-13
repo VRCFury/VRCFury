@@ -12,6 +12,7 @@ namespace VF.Utils.Controller {
     internal class VFLayer : VFPrettyNamed {
         private readonly AnimatorStateMachine rootStateMachine;
         private readonly AnimatorController ctrl;
+        private readonly VFController controller;
 
         private Vector2 nextOffset = new Vector2(1, 0);
         private VFState lastCreatedState;
@@ -19,6 +20,7 @@ namespace VF.Utils.Controller {
         public VFLayer(AnimatorController ctrl, AnimatorStateMachine rootStateMachine) {
             this.ctrl = ctrl;
             this.rootStateMachine = rootStateMachine;
+            controller = new VFController(ctrl);
         }
 
         public static bool operator ==(VFLayer a, VFLayer b) => a?.rootStateMachine == b?.rootStateMachine;
@@ -27,47 +29,47 @@ namespace VF.Utils.Controller {
         public override int GetHashCode() => rootStateMachine.GetHashCode();
 
         public bool Exists() {
-            return ctrl.layers.Any(l => l.stateMachine == rootStateMachine);
+            return FindLayerId() != -1;
         }
 
         public int GetLayerId() {
-            var id = ctrl.layers
-                .Select((l, i) => (l, i))
-                .Where(tuple => tuple.Item1.stateMachine == rootStateMachine)
-                .Select(tuple => tuple.Item2)
-                .DefaultIfEmpty(-1)
-                .First();
+            var id = FindLayerId();
             if (id == -1) {
                 throw new Exception("Layer not found in controller. It may have been accessed after it was removed.");
             }
             return id;
         }
 
+        private int FindLayerId() {
+            return controller.GetLayerId(rootStateMachine);
+        }
+
         private void WithLayer(Action<AnimatorControllerLayer> with) {
-            var layers = ctrl.layers;
-            with(layers[GetLayerId()]);
-            ctrl.layers = layers;
+            controller.EditRawLayers(layers => {
+                with(layers[GetLayerId()]);
+                return true;
+            });
         }
 
         public float weight {
-            get => ctrl.layers[GetLayerId()].defaultWeight;
+            get => controller.GetRawLayers()[GetLayerId()].defaultWeight;
             set { WithLayer(l => l.defaultWeight = value); }
         }
-        
+
         public string name {
-            get => ctrl.layers[GetLayerId()].name;
+            get => controller.GetRawLayers()[GetLayerId()].name;
             set { WithLayer(l => l.name = value); }
         }
 
         public string prettyName => $"Controller `{ctrl.name}` Layer `{name}`";
 
         public AnimatorLayerBlendingMode blendingMode {
-            get => ctrl.layers[GetLayerId()].blendingMode;
+            get => controller.GetRawLayers()[GetLayerId()].blendingMode;
             set { WithLayer(l => l.blendingMode = value); }
         }
-        
+
         public AvatarMask mask {
-            get => ctrl.layers[GetLayerId()].avatarMask;
+            get => controller.GetRawLayers()[GetLayerId()].avatarMask;
             set { WithLayer(l => l.avatarMask = value); }
         }
 
@@ -132,22 +134,23 @@ namespace VF.Utils.Controller {
         }
 
         public void Move(int newIndex) {
-            var layers = ctrl.layers;
-            var myLayer = layers
-                .First(l => l.stateMachine == rootStateMachine);
+            controller.EditRawLayers(layers => {
+                var myLayer = layers
+                    .First(l => l.stateMachine == rootStateMachine);
 
-            var newList = layers
-                .Where(l => l.stateMachine != rootStateMachine)
-                .ToList();
-            newList.Insert(newIndex, myLayer);
-            ctrl.layers = newList.ToArray();
+                var newList = layers
+                    .Where(l => l.stateMachine != rootStateMachine)
+                    .ToList();
+                newList.Insert(newIndex, myLayer);
+                return newList.ToArray();
+            });
         }
 
         public void Remove() {
             var layerId = GetLayerId();
-            ctrl.layers = ctrl.layers
+            controller.EditRawLayers(layers => layers
                 .Where((_, index) => index != layerId)
-                .ToArray();
+                .ToArray());
         }
 
         private IReadOnlyCollection<AnimatorStateMachine> allRawStateMachines =>

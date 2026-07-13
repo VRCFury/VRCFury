@@ -10,15 +10,15 @@ using Object = UnityEngine.Object;
 namespace VF.Builder.Haptics {
     internal static class TpsConfigurer {
         private static readonly string TpsPenetratorKeyword = "TPS_Penetrator";
-        private static readonly int TpsPenetratorEnabled = Shader.PropertyToID("_TPSPenetratorEnabled");
-        private static readonly int TpsPenetratorLength = Shader.PropertyToID("_TPS_PenetratorLength");
-        private static readonly int TpsPenetratorScale = Shader.PropertyToID("_TPS_PenetratorScale");
-        private static readonly int TpsPenetratorRight = Shader.PropertyToID("_TPS_PenetratorRight");
-        private static readonly int TpsPenetratorUp = Shader.PropertyToID("_TPS_PenetratorUp");
-        private static readonly int TpsPenetratorForward = Shader.PropertyToID("_TPS_PenetratorForward");
-        private static readonly int TpsIsSkinnedMeshRenderer = Shader.PropertyToID("_TPS_IsSkinnedMeshRenderer");
+        private static readonly string TpsPenetratorEnabledName = "_TPSPenetratorEnabled";
+        private static readonly string TpsPenetratorLengthName = "_TPS_PenetratorLength";
+        private static readonly string TpsPenetratorScaleName = "_TPS_PenetratorScale";
+        private static readonly string TpsPenetratorRightName = "_TPS_PenetratorRight";
+        private static readonly string TpsPenetratorUpName = "_TPS_PenetratorUp";
+        private static readonly string TpsPenetratorForwardName = "_TPS_PenetratorForward";
+        private static readonly string TpsIsSkinnedMeshRendererName = "_TPS_IsSkinnedMeshRenderer";
+        private static readonly string TpsBakedMeshName = "_TPS_BakedMesh";
         private static readonly string TpsIsSkinnedMeshKeyword = "TPS_IsSkinnedMesh";
-        private static readonly int TpsBakedMesh = Shader.PropertyToID("_TPS_BakedMesh");
 
         public static void ConfigureTpsMaterial(
             Renderer skin,
@@ -40,15 +40,15 @@ namespace VF.Builder.Haptics {
             var localScale = origin.lossyScale;
 
             mat.EnableKeyword(TpsPenetratorKeyword);
-            mat.SetFloat(TpsPenetratorEnabled, 1);
-            mat.SetFloat(TpsPenetratorLength, worldLength);
-            mat.SetVector(TpsPenetratorScale, ThreeToFour(localScale));
-            mat.SetVector(TpsPenetratorRight, ThreeToFour(shaderRotation * Vector3.right));
-            mat.SetVector(TpsPenetratorUp, ThreeToFour(shaderRotation * Vector3.up));
-            mat.SetVector(TpsPenetratorForward, ThreeToFour(shaderRotation * Vector3.forward));
-            mat.SetFloat(TpsIsSkinnedMeshRenderer, 1);
+            mat.SetFloatFast(TpsPenetratorEnabledName, 1);
+            mat.SetFloatFast(TpsPenetratorLengthName, worldLength);
+            mat.SetVectorFast(TpsPenetratorScaleName, ThreeToFour(localScale));
+            mat.SetVectorFast(TpsPenetratorRightName, ThreeToFour(shaderRotation * Vector3.right));
+            mat.SetVectorFast(TpsPenetratorUpName, ThreeToFour(shaderRotation * Vector3.up));
+            mat.SetVectorFast(TpsPenetratorForwardName, ThreeToFour(shaderRotation * Vector3.forward));
+            mat.SetFloatFast(TpsIsSkinnedMeshRendererName, 1);
             mat.EnableKeyword(TpsIsSkinnedMeshKeyword);
-            mat.SetTexture(TpsBakedMesh, SpsBaker.Bake(skin, origin, activeFromMask, true));
+            mat.SetTextureFast(TpsBakedMeshName, SpsBaker.Bake(skin, origin, activeFromMask, true));
             mat.Dirty();
         }
         
@@ -58,12 +58,14 @@ namespace VF.Builder.Haptics {
             if (mat == null) return false;
             var shader = mat.shader;
             if (shader == null) return false;
-            return mat.GetPropertyType("_TPSPenetratorEnabled") != null && mat.GetFloat(TpsPenetratorEnabled) > 0;
+            return mat.GetPropertyType(TpsPenetratorEnabledName) != null &&
+                   mat.TryGetFloatFast(TpsPenetratorEnabledName, out var enabled) &&
+                   enabled > 0;
         }
 
         public static Quaternion GetTpsRotation(Material mat) {
-            if (mat.GetPropertyType("_TPS_PenetratorForward") != null) {
-                var c = mat.GetVector(TpsPenetratorForward);
+            if (mat.GetPropertyType(TpsPenetratorForwardName) != null) {
+                mat.TryGetVectorFast(TpsPenetratorForwardName, out var c);
                 return Quaternion.LookRotation(new Vector3(c.x, c.y, c.z));
             }
             return Quaternion.identity;

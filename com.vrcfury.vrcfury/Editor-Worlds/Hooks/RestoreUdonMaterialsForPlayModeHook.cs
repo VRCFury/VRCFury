@@ -148,29 +148,37 @@ namespace VF.Hooks {
                 var propertyName = material.shader.GetPropertyName(i);
                 switch (material.shader.GetPropertyType(i)) {
                     case ShaderPropertyType.Color:
-                        if (material.GetColor(propertyName) != snapshot.GetColor(propertyName)) {
+                        material.TryGetColorFast(propertyName, out var materialColor);
+                        snapshot.TryGetColorFast(propertyName, out var snapshotColor);
+                        if (materialColor != snapshotColor) {
                             yield return propertyName;
                         }
                         break;
                     case ShaderPropertyType.Vector:
-                        if (material.GetVector(propertyName) != snapshot.GetVector(propertyName)) {
+                        material.TryGetVectorFast(propertyName, out var materialVector);
+                        snapshot.TryGetVectorFast(propertyName, out var snapshotVector);
+                        if (materialVector != snapshotVector) {
                             yield return propertyName;
                         }
                         break;
                     case ShaderPropertyType.Float:
                     case ShaderPropertyType.Range:
-                        if (!Mathf.Approximately(material.GetFloat(propertyName), snapshot.GetFloat(propertyName))) {
+                        material.TryGetFloatFast(propertyName, out var materialFloat);
+                        snapshot.TryGetFloatFast(propertyName, out var snapshotFloat);
+                        if (!Mathf.Approximately(materialFloat, snapshotFloat)) {
                             yield return propertyName;
                         }
                         break;
                     case ShaderPropertyType.Texture:
-                        if (material.GetTexture(propertyName) != snapshot.GetTexture(propertyName)) {
+                        material.TryGetTextureFast(propertyName, out var materialTexture);
+                        snapshot.TryGetTextureFast(propertyName, out var snapshotTexture);
+                        if (materialTexture != snapshotTexture) {
                             yield return propertyName;
                         }
-                        if (material.GetTextureOffset(propertyName) != snapshot.GetTextureOffset(propertyName)) {
+                        if (material.GetTextureOffsetFast(propertyName) != snapshot.GetTextureOffsetFast(propertyName)) {
                             yield return propertyName + "_Offset";
                         }
-                        if (material.GetTextureScale(propertyName) != snapshot.GetTextureScale(propertyName)) {
+                        if (material.GetTextureScaleFast(propertyName) != snapshot.GetTextureScaleFast(propertyName)) {
                             yield return propertyName + "_Scale";
                         }
                         break;

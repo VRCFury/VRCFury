@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Hooks.UnityFixes;
 using VF.Utils;
 using VRC.Dynamics;
 using Object = UnityEngine.Object;
@@ -200,6 +201,20 @@ namespace VF.Utils {
                 return "Avatar Root";
             }
             return AnimationUtility.CalculateTransformPath(this, root);
+        }
+
+        public bool GetFloatValue(EditorCurveBinding binding, out float data) {
+            // Material property bindings internally delegate into Material.GetFloat, which may apply material
+            // property drawers. Suppress that path here so AnimationUtility.GetFloatValue stays fast.
+            try {
+                using (SuppressMaterialPropertyDrawersHook.Suppress()) {
+                    return AnimationUtility.GetFloatValue(this, binding, out data);
+                }
+            } catch (Exception) {
+                // Unity throws a `UnityException: Invalid type` if you request an object that is actually a float or vice versa.
+                data = 0;
+                return false;
+            }
         }
 
         public VFGameObject Clone() {

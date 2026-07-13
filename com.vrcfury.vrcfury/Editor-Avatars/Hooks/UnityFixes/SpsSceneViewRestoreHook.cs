@@ -9,7 +9,7 @@ namespace VF.Hooks.UnityFixes {
     internal static class SpsSceneViewRestoreHook {
         private const string RestoreShaderName = "Hidden/VRCFury/SpsSceneViewRestore";
         private const string CaptureBufferName = "VRCFury SceneView SPS Capture";
-        private static readonly int SavedTexId = Shader.PropertyToID("_VRCFurySceneViewSpsSaved");
+        private const string SavedTex = "_VRCFurySceneViewSpsSaved";
 
         private static CameraCapture? capture;
         private static Mesh fullscreenMesh;
@@ -51,7 +51,7 @@ namespace VF.Hooks.UnityFixes {
             if (capture == null || capture.Value.rt == null) return;
 
             var bounds = new Bounds(Vector3.zero, Vector3.one * 1000000);
-            restoreMaterial.SetTexture(SavedTexId, capture.Value.rt);
+            restoreMaterial.SetTextureFast(SavedTex, capture.Value.rt);
             var restoreParams = new RenderParams(restoreMaterial) {
                 camera = camera,
                 worldBounds = bounds,

@@ -2,4 +2,5 @@
 
 [assembly: InternalsVisibleTo("VRCFury-Editor-Avatars")]
 [assembly: InternalsVisibleTo("VRCFury-Editor-Worlds")]
+[assembly: InternalsVisibleTo("VRCFury-Tests")]
 [assembly: InternalsVisibleTo("com.vrcfury.api")]

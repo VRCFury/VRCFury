@@ -6,13 +6,40 @@ using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
+using VF.Utils;
 
 namespace VF.Utils.Controller {
     internal class VFController {
         private readonly AnimatorController ctrl;
+        private readonly ControllerCache cache;
+
+        private static readonly Dictionary<AnimatorController, ControllerCache> caches
+            = new Dictionary<AnimatorController, ControllerCache>();
+
+        private class ControllerCache {
+            public AnimatorControllerLayer[] layers;
+            public Dictionary<AnimatorStateMachine, int> layerIds;
+        }
+
+        [VFInit]
+        private static void Init() {
+            Scheduler.Schedule(ClearCacheForNewFrame, 0);
+        }
+
+        public static void ClearCache() {
+            foreach (var cache in caches.Values) {
+                cache.layers = null;
+                cache.layerIds = null;
+            }
+        }
+
+        private static void ClearCacheForNewFrame() {
+            caches.Clear();
+        }
 
         public VFController(AnimatorController ctrl) {
             this.ctrl = ctrl;
+            cache = caches.GetOrCreate(ctrl, () => new ControllerCache());
         }
     
         //public static implicit operator VFController(AnimatorController d) => new VFController(d);
@@ -29,6 +56,38 @@ namespace VF.Utils.Controller {
 
         public AnimatorController GetRaw() {
             return ctrl;
+        }
+
+        internal AnimatorControllerLayer[] GetRawLayers() {
+            return cache.layers ?? (cache.layers = ctrl.layers);
+        }
+
+        internal void SetRawLayers(AnimatorControllerLayer[] layers) {
+            ctrl.layers = layers;
+            cache.layers = layers;
+            cache.layerIds = null;
+        }
+
+        public void EditRawLayers(Func<AnimatorControllerLayer[], bool> action) {
+            var layers = GetRawLayers();
+            if (action(layers)) {
+                SetRawLayers(layers);
+            }
+        }
+
+        public void EditRawLayers(Func<AnimatorControllerLayer[], AnimatorControllerLayer[]> action) {
+            SetRawLayers(action(GetRawLayers()));
+        }
+
+        internal int GetLayerId(AnimatorStateMachine sm) {
+            if (cache.layerIds == null) {
+                cache.layerIds = new Dictionary<AnimatorStateMachine, int>();
+                var layers = GetRawLayers();
+                for (var i = 0; i < layers.Length; i++) {
+                    cache.layerIds[layers[i].stateMachine] = i;
+                }
+            }
+            return cache.layerIds.TryGetValue(sm, out var id) ? id : -1;
         }
         
         protected virtual string NewLayerName(string name) {
@@ -47,7 +106,7 @@ namespace VF.Utils.Controller {
                 name = name,
                 stateMachine = sm
             };
-            ctrl.layers = ctrl.layers.Concat(new[] { newLayer }).ToArray();
+            EditRawLayers(layers => layers.Concat(new[] { newLayer }).ToArray());
             var layer = new VFLayer(ctrl, sm);
             if (insertAt >= 0) {
                 layer.Move(insertAt);
@@ -64,7 +123,7 @@ namespace VF.Utils.Controller {
          */
         public void TakeOwnershipOf(VFController other, bool putOnTop = false, bool prefix = true) {
             ctrl.WorkLog(
-                $"Merged in {other.ctrl.layers.Length} layers and {other.parameters.Length} parameters from controller {other.ctrl.GetPathAndName()}"
+                $"Merged in {other.GetRawLayers().Length} layers and {other.parameters.Length} parameters from controller {other.ctrl.GetPathAndName()}"
             );
             // Merge Layers
             if (prefix) {
@@ -74,12 +133,12 @@ namespace VF.Utils.Controller {
             }
 
             if (putOnTop) {
-                ctrl.layers = other.ctrl.layers.Concat(ctrl.layers).ToArray();
+                EditRawLayers(layers => other.GetRawLayers().Concat(layers).ToArray());
             } else {
-                ctrl.layers = ctrl.layers.Concat(other.ctrl.layers).ToArray();
+                EditRawLayers(layers => layers.Concat(other.GetRawLayers()).ToArray());
             }
 
-            other.ctrl.layers = new AnimatorControllerLayer[] { };
+            other.EditRawLayers(_ => new AnimatorControllerLayer[] { });
             
             // Merge Params
             foreach (var p in other.parameters) {
@@ -142,13 +201,13 @@ namespace VF.Utils.Controller {
         }
     
         public IList<VFLayer> GetLayers() {
-            return ctrl.layers.Select(l => new VFLayer(ctrl, l.stateMachine)).ToArray();
+            return GetRawLayers().Select(l => new VFLayer(ctrl, l.stateMachine)).ToArray();
         }
         public IList<VFLayer> layers => GetLayers();
 
         [CanBeNull]
         public VFLayer GetLayer(int index) {
-            var ls = ctrl.layers;
+            var ls = GetRawLayers();
             if (index < 0 || index >= ls.Length) return null;
             return new VFLayer(ctrl, ls[index].stateMachine);
         }
@@ -216,14 +275,14 @@ namespace VF.Utils.Controller {
          * We can't just delete it because it would interfere with the layer index numbers.
          */
         private void FixNullStateMachines() {
-            ctrl.layers = ctrl.layers.Select(layer => {
+            EditRawLayers(layers => layers.Select(layer => {
                 if (layer.stateMachine == null) {
                     var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
                     sm.name = layer.name;
                     layer.stateMachine = sm;
                 }
                 return layer;
-            }).ToArray();
+            }).ToArray());
         }
 
         /**
@@ -271,12 +330,13 @@ namespace VF.Utils.Controller {
          * but it's better than nothing.
          */
         private void ReplaceSyncedLayers() {
-            ctrl.layers = ctrl.layers.Select((layer, id) => {
+            var layers = GetRawLayers();
+            EditRawLayers(_ => layers.Select((layer, id) => {
                 if (layer.syncedLayerIndex < 0 || layer.syncedLayerIndex == id) {
                     layer.syncedLayerIndex = -1;
                     return layer;
                 }
-                if (layer.syncedLayerIndex >= ctrl.layers.Length) {
+                if (layer.syncedLayerIndex >= layers.Length) {
                     var sm = VrcfObjectFactory.Create<AnimatorStateMachine>();
                     sm.name = layer.name;
                     layer.stateMachine = sm;
@@ -284,7 +344,7 @@ namespace VF.Utils.Controller {
                     return layer;
                 }
 
-                var copy = ctrl.layers[layer.syncedLayerIndex].stateMachine.Clone();
+                var copy = layers[layer.syncedLayerIndex].stateMachine.Clone();
                 layer.syncedLayerIndex = -1;
                 layer.stateMachine = copy;
                 foreach (var state in new AnimatorIterator.States().From(new VFLayer(ctrl, layer.stateMachine))) {
@@ -296,7 +356,7 @@ namespace VF.Utils.Controller {
                 }
 
                 return layer;
-            }).ToArray();
+            }).ToArray());
 
         }
 
@@ -308,7 +368,7 @@ namespace VF.Utils.Controller {
          */
         private void RemoveDuplicateStateMachines() {
             var seenStateMachines = new HashSet<AnimatorStateMachine>();
-            ctrl.layers = ctrl.layers.Select(layer => {
+            EditRawLayers(layers => layers.Select(layer => {
                 if (layer.stateMachine != null) {
                     if (seenStateMachines.Contains(layer.stateMachine)) {
                         return null;
@@ -316,7 +376,7 @@ namespace VF.Utils.Controller {
                     seenStateMachines.Add(layer.stateMachine);
                 }
                 return layer;
-            }).NotNull().ToArray();
+            }).NotNull().ToArray());
         }
         
         /**
