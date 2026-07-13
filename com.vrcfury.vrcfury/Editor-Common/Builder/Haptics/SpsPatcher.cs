@@ -76,7 +76,26 @@ namespace VF.Builder.Haptics {
         }
         private static PatchResult PatchUnsafe(Shader shader, bool keepImports, string parentHash = null) {
             var pathToSps = GetPathToSps();
-            var (contents,isBuiltIn) = ReadFile(shader);
+            var sourcePath = ResolveShaderSource(shader);
+            var hash = GetPatchHash(sourcePath, pathToSps, keepImports, parentHash);
+
+            string newShaderName;
+            if (shader.name.StartsWith("Hidden/Locked/")) {
+                // Special case for Poiyomi
+                // This prevents Poiyomi from complaining that the mat isn't locked and bailing on the build
+                newShaderName = $"Hidden/Locked/SPSPatched/{hash}";
+            } else {
+                newShaderName = $"Hidden/SPSPatched/{hash}";
+            }
+            var alreadyExists = Shader.Find(newShaderName);
+            if (alreadyExists != null && !ShaderUtil.ShaderHasError(alreadyExists)) {
+                return new PatchResult {
+                    shader = alreadyExists,
+                    patchedPrograms = 0
+                };
+            }
+
+            var contents = ReadFile(sourcePath, true);
             contents = ApplyPcssFix(shader, contents);
 
             void Replace(string pattern, string replacement, int count) {
@@ -108,35 +127,6 @@ namespace VF.Builder.Haptics {
                 spsMain = ReadAndFlattenPath($"{pathToSps}/deform/sps_deform_main.cginc");
             }
             
-            var md5 = MD5.Create();
-            var hashContent = contents + spsMain + HashBuster;
-            if (isBuiltIn) hashContent += Application.unityVersion;
-            var hashContentBytes = Encoding.UTF8.GetBytes(hashContent);
-            var hashBytes = md5.ComputeHash(hashContentBytes);
-            var hash = Enumerable.Range(0, hashBytes.Length)
-                .Select(i => hashBytes[i].ToString("x2"))
-                .Join("");
-
-            if (parentHash != null) {
-                hash = $"{parentHash}-{hash}";
-            }
-
-            string newShaderName;
-            if (shader.name.StartsWith("Hidden/Locked/")) {
-                // Special case for Poiyomi
-                // This prevents Poiyomi from complaining that the mat isn't locked and bailing on the build
-                newShaderName = $"Hidden/Locked/SPSPatched/{hash}";
-            } else {
-                newShaderName = $"Hidden/SPSPatched/{hash}";
-            }
-            var alreadyExists = Shader.Find(newShaderName);
-            if (alreadyExists != null && !ShaderUtil.ShaderHasError(alreadyExists)) {
-                return new PatchResult {
-                    shader = alreadyExists,
-                    patchedPrograms = 0
-                };
-            }
-
             Replace(
                 @"((?:^|\n)\s*Shader\s*"")([^""]*)",
                 $"$1{Regex.Escape(newShaderName)}",
@@ -729,15 +719,51 @@ namespace VF.Builder.Haptics {
             }
             return path;
         }
-        private static (string,bool) ReadFile(Shader shader) {
+        private static string GetPatchHash(string sourcePath, string pathToSps, bool keepImports, string parentHash) {
+            using (var md5 = MD5.Create()) {
+                var hashContent = new StringBuilder();
+                void Add(string value) {
+                    hashContent.Append(value ?? "");
+                    hashContent.Append('\n');
+                }
+
+                void AddFile(string path) {
+                    if (string.IsNullOrWhiteSpace(path)) return;
+                    Add(path.Replace('\\', '/'));
+                    if (File.Exists(path)) {
+                        var info = new FileInfo(path);
+                        Add(info.LastWriteTimeUtc.Ticks.ToString());
+                        Add(info.Length.ToString());
+                    }
+                }
+
+                Add(HashBuster);
+                Add(keepImports.ToString());
+                AddFile(sourcePath);
+                if (parentHash == null) AddFile($"{pathToSps}/deform/sps_deform_props.cginc");
+                AddFile($"{pathToSps}/deform/sps_deform_main.cginc");
+
+                var hashContentBytes = Encoding.UTF8.GetBytes(hashContent.ToString());
+                var hashBytes = md5.ComputeHash(hashContentBytes);
+                var hash = Enumerable.Range(0, hashBytes.Length)
+                    .Select(i => hashBytes[i].ToString("x2"))
+                    .Join("");
+
+                if (parentHash != null) {
+                    hash = $"{parentHash}-{hash}";
+                }
+
+                return hash;
+            }
+        }
+
+        private static string ResolveShaderSource(Shader shader) {
             var path = AssetDatabase.GetAssetPath(shader);
             if (string.IsNullOrWhiteSpace(path)) {
                 throw new Exception("Failed to find source file for the shader");
             }
 
-            var isBuiltIn = false;
             if (path.StartsWith("Resources") || path.StartsWith("Library")) {
-                isBuiltIn = true;
                 if (shader.name == "Standard") {
                     path = $"{GetPathToSps()}/vanilla~/Standard.shader";
                 } else if (shader.name == "Standard (Specular setup)") {
@@ -752,7 +778,7 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            return (ReadFile(path, true), isBuiltIn);
+            return path;
         }
         private static string ReadFile(string path, bool isMainShader = false) {
             string content;
