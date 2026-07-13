@@ -45,6 +45,18 @@ namespace VF.Utils {
             if (prop.propertyPath == "") return prop.Next(true);
             if (prop.propertyType == SerializedPropertyType.String) return prop.Next(false);
 
+            // Params in an animator controller
+            if (prop.propertyPath == "m_AnimatorParameters") return prop.Next(false);
+            // Float arrays in an animation clip
+            if (prop.propertyPath == "m_FloatCurves") return prop.Next(false);
+            if (prop.propertyPath == "m_EulerEditorCurves") return prop.Next(false);
+            if (prop.propertyPath == "m_EditorCurves") return prop.Next(false);
+            if (prop.propertyPath == "m_ClipBindingConstant") return prop.Next(false);
+            // Numeric properties in a material
+            if (prop.propertyPath == "m_SavedProperties.m_Ints") return prop.Next(false);
+            if (prop.propertyPath == "m_SavedProperties.m_Floats") return prop.Next(false);
+            if (prop.propertyPath == "m_SavedProperties.m_Colors") return prop.Next(false);
+
             if (prop.isArray) {
                 if (prop.arraySize == 0) return prop.Next(false);
                 var firstElement = prop.GetArrayElementAtIndex(0);
