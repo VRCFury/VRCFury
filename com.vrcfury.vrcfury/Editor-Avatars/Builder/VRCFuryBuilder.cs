@@ -22,7 +22,7 @@ namespace VF.Builder {
         internal static void RunMain(VFGameObject avatarObject) {
             Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
-            SkipAssetPostprocessorsForVrcfAssetWritesHook.WithPostprocessSuppressed(() => {
+            using (SkipAssetPostprocessorsForVrcfAssetWritesHook.Suppress()) {
                 VRCFuryAssetDatabase.WithAssetEditing(() => {
                     try {
                         MaterialLocker.injectedAvatarObject = avatarObject;
@@ -31,7 +31,7 @@ namespace VF.Builder {
                         MaterialLocker.injectedAvatarObject = null;
                     }
                 });
-            });
+            }
         }
 
         internal static bool ShouldRun(VFGameObject avatarObject) {

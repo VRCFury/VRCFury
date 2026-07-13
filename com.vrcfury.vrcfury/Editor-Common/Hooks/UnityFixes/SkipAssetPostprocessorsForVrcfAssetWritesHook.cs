@@ -1,16 +1,19 @@
+using System;
 using VF.Utils;
 
 namespace VF.Hooks.UnityFixes {
     internal static class SkipAssetPostprocessorsForVrcfAssetWritesHook {
         private static int suppressPostprocessDepth;
 
-        public static void WithPostprocessSuppressed(System.Action action) {
-            suppressPostprocessDepth++;
-            try {
-                action();
-            } finally {
+        public struct SuppressionScope : IDisposable {
+            public void Dispose() {
                 suppressPostprocessDepth--;
             }
+        }
+
+        public static SuppressionScope Suppress() {
+            suppressPostprocessDepth++;
+            return new SuppressionScope();
         }
 
         private abstract class Reflection : ReflectionHelper {
