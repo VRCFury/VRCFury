@@ -56,11 +56,13 @@ namespace VF.Builder.Haptics {
 
         public static bool IsTps(Material mat) {
             if (mat == null) return false;
-            return mat.HasProperty(TpsPenetratorEnabled) && mat.GetFloat(TpsPenetratorEnabled) > 0;
+            var shader = mat.shader;
+            if (shader == null) return false;
+            return mat.GetPropertyType("_TPSPenetratorEnabled") != null && mat.GetFloat(TpsPenetratorEnabled) > 0;
         }
 
         public static Quaternion GetTpsRotation(Material mat) {
-            if (mat.HasProperty(TpsPenetratorForward)) {
+            if (mat.GetPropertyType("_TPS_PenetratorForward") != null) {
                 var c = mat.GetVector(TpsPenetratorForward);
                 return Quaternion.LookRotation(new Vector3(c.x, c.y, c.z));
             }

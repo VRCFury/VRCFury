@@ -64,13 +64,13 @@ namespace VF.Service {
                         // However, in editor, AnimationUtility.GetFloatValue pulls from all slots. We need to replicate
                         // the in-game behaviour here so that FixWriteDefaults knows to record defaults affected by this
                         if (renderer.sharedMaterials.Length < 1 || renderer.sharedMaterials[0] == null ||
-                            !renderer.sharedMaterials[0].HasProperty(matProp)) {
+                            renderer.sharedMaterials[0].GetPropertyType(matProp) == null) {
                             data = 0;
                             return false;
                         }
                     } else {
                         foreach (var mat in renderer.sharedMaterials.NotNull()) {
-                            if (mat.HasProperty(matProp)) {
+                            if (mat.GetPropertyType(matProp) != null) {
                                 data = mat.GetFloat(matProp);
                                 return true;
                             }
@@ -231,7 +231,7 @@ namespace VF.Service {
                 mat.SetVector(bundleName, newValue);
                 return mat;
             }
-            if (bundleType == MaterialExtensions.StPropertyType && bundleName.EndsWith("_ST")) {
+            if (bundleType == ShaderExtensions.StPropertyType && bundleName.EndsWith("_ST")) {
                 var textureName = bundleName.Substring(0, bundleName.Length - 3);
                 var oldScale = mat.GetTextureScale(textureName);
                 var oldOffset = mat.GetTextureOffset(textureName);

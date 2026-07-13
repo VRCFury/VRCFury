@@ -354,7 +354,7 @@ namespace VF.Actions {
                     return MaterialPropertyAction.Type.Color;
                 case ShaderPropertyType.Vector:
                     return MaterialPropertyAction.Type.Vector;
-                case MaterialExtensions.StPropertyType:
+                case ShaderExtensions.StPropertyType:
                     return MaterialPropertyAction.Type.St;
                 case null:
                     return setting == MaterialPropertyAction.Type.LegacyAuto

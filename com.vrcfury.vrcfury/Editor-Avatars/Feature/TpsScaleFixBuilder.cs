@@ -101,14 +101,14 @@ namespace VF.Feature {
                     scaledProps[propName] = val;
                 }
                 void AddVector(string propName) {
-                    if (!mat.HasProperty(propName)) return;
+                    if (mat.GetPropertyType(propName) == null) return;
                     var val = mat.GetVector(propName);
                     Add(propName + ".x", val.x);
                     Add(propName + ".y", val.y);
                     Add(propName + ".z", val.z);
                 }
                 void AddFloat(string propName) {
-                    if (!mat.HasProperty(propName)) return;
+                    if (mat.GetPropertyType(propName) == null) return;
                     var val = mat.GetFloat(propName);
                     Add(propName, val);
                 }

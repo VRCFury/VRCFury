@@ -8,6 +8,7 @@ using UnityEngine;
 using VF.Component;
 using VF.Exceptions;
 using VF.Feature.Base;
+using VF.Hooks.UnityFixes;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
@@ -21,13 +22,15 @@ namespace VF.Builder {
         internal static void RunMain(VFGameObject avatarObject) {
             Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
-            VRCFuryAssetDatabase.WithAssetEditing(() => {
-                try {
-                    MaterialLocker.injectedAvatarObject = avatarObject;
-                    Run(avatarObject);
-                } finally {
-                    MaterialLocker.injectedAvatarObject = null;
-                }
+            SkipAssetPostprocessorsForVrcfAssetWritesHook.WithPostprocessSuppressed(() => {
+                VRCFuryAssetDatabase.WithAssetEditing(() => {
+                    try {
+                        MaterialLocker.injectedAvatarObject = avatarObject;
+                        Run(avatarObject);
+                    } finally {
+                        MaterialLocker.injectedAvatarObject = null;
+                    }
+                });
             });
         }
 

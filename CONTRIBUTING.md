@@ -59,6 +59,8 @@ For more information, please refer to <https://unlicense.org>
   * Added bone radius to SPS autorig physbone
 * CobaltSpace
   * Ensured that gogoloco params are always global
+* cubic^2
+  * Special thanks for original concept of how to make SPS work without lights
 * dummics
   * Fixed handling input controllers with corrupt (null) transitions
 * GameGeek720
