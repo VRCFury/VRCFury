@@ -112,14 +112,15 @@ namespace VF.Utils {
                 using (var so = new SerializedObject(ext.originalSourceClip)) {
                     so.Update();
                     void ProcessArray(string arrayPath) {
-                        var length = so.FindProperty(arrayPath)?.arraySize ?? 0;
-                        if (length == 0) return;
-                        foreach (var i in Enumerable.Range(0, length)) {
-                            var rotationOrderProp = so.FindProperty($"{arrayPath}.Array.data[{i}].curve.m_RotationOrder");
+                        var array = so.FindProperty(arrayPath);
+                        var length = array?.arraySize ?? 0;
+                        for (var i = 0; i < length; i++) {
+                            var element = array.GetArrayElementAtIndex(i);
+                            var rotationOrderProp = element.FindPropertyRelative("curve.m_RotationOrder");
                             if (rotationOrderProp == null || rotationOrderProp.propertyType != SerializedPropertyType.Integer) continue;
                             var rotationOrder = rotationOrderProp.intValue;
                             if (rotationOrder == 4) continue;
-                            var pathProp = so.FindProperty($"{arrayPath}.Array.data[{i}].path");
+                            var pathProp = element.FindPropertyRelative("path");
                             if (pathProp == null || pathProp.propertyType != SerializedPropertyType.String) continue;
                             var path = pathProp.stringValue;
                             nonStandardEulerOrders[path] = rotationOrder;
@@ -134,14 +135,15 @@ namespace VF.Utils {
                         so.Update();
                         var changedOne = false;
                         void ProcessArray(string arrayPath) {
-                            var length = so.FindProperty(arrayPath)?.arraySize ?? 0;
-                            if (length == 0) return;
-                            foreach (var i in Enumerable.Range(0, length)) {
-                                var pathProp = so.FindProperty($"{arrayPath}.Array.data[{i}].path");
+                            var array = so.FindProperty(arrayPath);
+                            var length = array?.arraySize ?? 0;
+                            for (var i = 0; i < length; i++) {
+                                var element = array.GetArrayElementAtIndex(i);
+                                var pathProp = element.FindPropertyRelative("path");
                                 if (pathProp == null || pathProp.propertyType != SerializedPropertyType.String) continue;
                                 var path = pathProp.stringValue;
                                 if (nonStandardEulerOrders.TryGetValue(path, out var rotationOrder)) {
-                                    var rotationOrderProp = so.FindProperty($"{arrayPath}.Array.data[{i}].curve.m_RotationOrder");
+                                    var rotationOrderProp = element.FindPropertyRelative("curve.m_RotationOrder");
                                     if (rotationOrderProp == null || rotationOrderProp.propertyType != SerializedPropertyType.Integer) continue;
                                     rotationOrderProp.intValue = rotationOrder;
                                     changedOne = true;
