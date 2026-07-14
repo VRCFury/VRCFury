@@ -13,6 +13,8 @@ namespace VF.Builder.Haptics {
         public readonly Lazy<VFAFloat> closestDistanceMeters;
         public readonly Lazy<VFAFloat> closestDistancePlugLengths;
         public readonly Lazy<VFAFloat> closestDistanceLocal;
+        public readonly Lazy<VFAFloat> closestLengthInverted;
+        public readonly Lazy<VFAFloat> worldScaleInverted;
         public readonly Lazy<VFAFloat> velocity;
         public readonly Lazy<VFAFloat> velocityPlugLengths;
         public readonly Lazy<VFAFloat> velocityLocal;
@@ -53,6 +55,8 @@ namespace VF.Builder.Haptics {
             closestDistanceMeters = new Lazy<VFAFloat>(() => MakeClosest("Dist/Meters", o => o.distanceMeters));
             closestDistancePlugLengths = new Lazy<VFAFloat>(() => MakeClosest("Dist/PlugLens", o => o.distancePlugLengths));
             closestDistanceLocal = new Lazy<VFAFloat>(() => MakeClosest("Dist/Local", o => o.distanceLocal));
+            closestLengthInverted = new Lazy<VFAFloat>(() => math.Invert($"{paramPrefix}/Length/Inverted", closestLength.Value));
+            worldScaleInverted = new Lazy<VFAFloat>(() => math.Invert($"{paramPrefix}/Scale/Inverted", worldScale));
             velocity = new Lazy<VFAFloat>(() => {
                 var prefix = $"{paramPrefix}/Dist/Meters/Vel";
                 var currentTime = frameTimeService.GetTimeSinceLoad();
@@ -87,24 +91,24 @@ namespace VF.Builder.Haptics {
             });
             velocityPlugLengths = new Lazy<VFAFloat>(() => {
                 var output = controller.MakeAap($"{paramPrefix}/Dist/PlugLens/Vel");
-                var invertedPlugLength = math.Invert($"{paramPrefix}/Length/InvertedForVel", closestLength.Value);
-                math.MultiplyInPlace(output, invertedPlugLength, velocity.Value);
+                math.MultiplyInPlace(output, closestLengthInverted.Value, velocity.Value);
                 return output;
             });
             velocityLocal = new Lazy<VFAFloat>(() => {
                 var output = controller.MakeAap($"{paramPrefix}/Dist/Local/Vel");
-                var invertedWorldScale = math.Invert($"{paramPrefix}/Scale/InvertedForVel", worldScale);
-                math.MultiplyInPlace(output, invertedWorldScale, velocity.Value);
+                math.MultiplyInPlace(output, worldScaleInverted.Value, velocity.Value);
                 return output;
             });
         }
 
         public class TipRootPair {
             public readonly Lazy<VFAFloat> plugLength;
-            public readonly Lazy<VFAFloat> plugRadius;
-            public readonly Lazy<VFAFloat> distanceMeters;
-            public readonly Lazy<VFAFloat> distancePlugLengths;
-            public readonly Lazy<VFAFloat> distanceLocal;
+                public readonly Lazy<VFAFloat> plugRadius;
+                public readonly Lazy<VFAFloat> distanceMeters;
+                public readonly Lazy<VFAFloat> distancePlugLengths;
+                public readonly Lazy<VFAFloat> distanceLocal;
+                public readonly Lazy<VFAFloat> plugLengthInverted;
+                public readonly Lazy<VFAFloat> worldScaleInverted;
 
             public TipRootPair(
                 VFGameObject parent,
@@ -266,16 +270,17 @@ namespace VF.Builder.Haptics {
                     });
                 }
 
+                plugLengthInverted = new Lazy<VFAFloat>(() => blendtreeMath.Invert($"{paramPrefix}/Length/Inverted", plugLength.Value));
+                worldScaleInverted = new Lazy<VFAFloat>(() => blendtreeMath.Invert($"{paramPrefix}/Scale/Inverted", worldScale));
+
                 distancePlugLengths = new Lazy<VFAFloat>(() => {
                     var output = controller.MakeAap($"{paramPrefix}/Dist/PlugLens", def: 100);
-                    var invertedPlugLength = blendtreeMath.Invert($"{paramPrefix}/Length/Inverted", plugLength.Value);
-                    blendtreeMath.MultiplyInPlace(output, invertedPlugLength, distanceMeters.Value);
+                    blendtreeMath.MultiplyInPlace(output, plugLengthInverted.Value, distanceMeters.Value);
                     return output;
                 });
                 distanceLocal = new Lazy<VFAFloat>(() => {
                     var output = controller.MakeAap($"{paramPrefix}/Dist/Local", def: 100);
-                    var invertedWorldScale = blendtreeMath.Invert($"{paramPrefix}/Scale/Inverted", worldScale);
-                    blendtreeMath.MultiplyInPlace(output, invertedWorldScale, distanceMeters.Value);
+                    blendtreeMath.MultiplyInPlace(output, worldScaleInverted.Value, distanceMeters.Value);
                     return output;
                 });
             }

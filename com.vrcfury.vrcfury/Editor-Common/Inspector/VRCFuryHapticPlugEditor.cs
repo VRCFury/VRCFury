@@ -662,9 +662,11 @@ namespace VF.Inspector {
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
             var localSpace = GameObjects.Create("BakedSpsPlug", transform);
-            localSpace.worldScale = Vector3.one;
             localSpace.localPosition = localPosition;
             localSpace.localRotation = localRotation;
+
+            var oneSpace = GameObjects.Create("OneSpace", localSpace);
+            oneSpace.worldScale = Vector3.one;
 
             var worldSpace = GameObjects.Create("WorldSpace", localSpace);
             ConstraintUtils.MakeWorldSpace(worldSpace);
@@ -803,7 +805,7 @@ namespace VF.Inspector {
                     worldLength
                 );
                 var metadataColor = SpsColorSampler.GetColor(rendererResults.Select(r => r.renderer));
-                var resolverObj = GameObjects.Create("SpsResolver", localSpace);
+                var resolverObj = GameObjects.Create("SpsResolver", oneSpace);
                 resolverObj.AddComponent<MeshFilter>();
                 var meshRenderer = resolverObj.AddComponent<MeshRenderer>();
                 spsMarkers.ConfigureResolverRenderer(meshRenderer);

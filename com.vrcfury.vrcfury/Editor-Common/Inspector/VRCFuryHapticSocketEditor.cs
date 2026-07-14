@@ -339,9 +339,11 @@ namespace VF.Inspector {
             var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket);
 
             var bakeRoot = GameObjects.Create("BakedSpsSocket", transform);
-            bakeRoot.worldScale = Vector3.one;
             bakeRoot.localPosition = localPosition;
             bakeRoot.localRotation = localRotation;
+
+            var oneSpace = GameObjects.Create("OneSpace", bakeRoot);
+            oneSpace.worldScale = Vector3.one;
 
             var worldSpace = GameObjects.Create("WorldSpace", bakeRoot);
             ConstraintUtils.MakeWorldSpace(worldSpace);
@@ -431,7 +433,7 @@ namespace VF.Inspector {
                         uint nextSocketId
                     ) {
                         var result = CreateScreenMarker(
-                            worldSpace,
+                            oneSpace,
                             socket,
                             markerType,
                             socketId,
@@ -492,7 +494,7 @@ namespace VF.Inspector {
                             .ToList();
                         var firstStop = guidedPathStops[0];
                         AddScreenMarker(CreateScreenMarker(
-                            worldSpace,
+                            oneSpace,
                             socket,
                             firstStop.shrink ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay,
                             spsMarkers.NewMarkerId(),
@@ -528,7 +530,7 @@ namespace VF.Inspector {
                         }
                     } else {
                         AddScreenMarker(CreateScreenMarker(
-                            worldSpace,
+                            oneSpace,
                             socket,
                             lightType,
                             spsMarkers.NewMarkerId(),
