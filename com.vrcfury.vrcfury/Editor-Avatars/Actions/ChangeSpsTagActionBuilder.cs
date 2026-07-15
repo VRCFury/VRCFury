@@ -64,7 +64,7 @@ namespace VF.Actions {
             var targetPath = target.gameObject.asVf().GetPath(avatarObject);
 
             if (targetType == TargetType.Plug) {
-                path = JoinPath(targetPath, "BakedSpsPlug/SpsResolver");
+                path = JoinPath(targetPath, "BakedSpsPlug/OneSpace/SpsResolver");
                 type = typeof(MeshRenderer);
                 if (model.globalTag) {
                     lowPropertyName = "material._SPS_TagInclude4Low";
@@ -82,7 +82,7 @@ namespace VF.Actions {
             }
 
             if (targetType == TargetType.Socket) {
-                path = JoinPath(targetPath, "BakedSpsSocket/WorldSpace/SpsScreenMarker");
+                path = JoinPath(targetPath, "BakedSpsSocket/OneSpace/SpsScreenMarker");
                 type = typeof(MeshRenderer);
                 lowPropertyName = $"material._SPS_SocketTag{slot}Low";
                 highPropertyName = $"material._SPS_SocketTag{slot}High";

@@ -826,6 +826,7 @@ namespace VF.Inspector {
 
             return new BakeResult {
                 bakeRoot = localSpace,
+                oneSpace = oneSpace,
                 worldSpace = worldSpace,
                 renderers = rendererResults,
                 resolverRenderer = resolverRenderer,
@@ -838,6 +839,7 @@ namespace VF.Inspector {
 
         public class BakeResult {
             public VFGameObject bakeRoot;
+            public VFGameObject oneSpace;
             public VFGameObject worldSpace;
             public ICollection<RendererResult> renderers;
             public MeshRenderer resolverRenderer;

@@ -175,7 +175,7 @@ namespace VF.Service {
             if (HapticsToggleMenuItem.Get() && !plug.fromSpsForAll) {
                 // Haptic Receivers
                 var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
-                var haptics = GameObjects.Create("Haptics", bakeRoot);
+                var haptics = GameObjects.Create("Haptics", bakeInfo.oneSpace);
                 var halfWay = Vector3.forward * (worldLength / 2);
                 var extraRadiusForTouch = Math.Min(worldRadius, 0.08f /* 8cm */);
                 // Extra rub radius should always match for everyone, so when two plugs collide, both trigger at the same time

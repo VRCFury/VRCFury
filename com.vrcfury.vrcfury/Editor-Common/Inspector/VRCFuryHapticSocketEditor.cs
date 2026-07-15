@@ -552,6 +552,7 @@ namespace VF.Inspector {
 
             return new BakeResult {
                 bakeRoot = bakeRoot,
+                oneSpace = oneSpace,
                 worldSpace = worldSpace,
                 screenMarkers = screenMarkers,
                 screenMarkerResults = screenMarkerResults,
@@ -753,6 +754,7 @@ namespace VF.Inspector {
 
         public class BakeResult {
             public VFGameObject bakeRoot;
+            public VFGameObject oneSpace;
             public VFGameObject worldSpace;
             public List<VFGameObject> screenMarkers;
             public List<ScreenMarkerResult> screenMarkerResults;

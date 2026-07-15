@@ -168,7 +168,7 @@ namespace VF.Service {
 
                         // Receivers
                         var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket);
-                        haptics = GameObjects.Create("Haptics", bakeResult.worldSpace);
+                        haptics = GameObjects.Create("Haptics", bakeResult.oneSpace);
 
                         var baseReq = new HapticContactsService.ReceiverRequest() {
                             obj = haptics,
