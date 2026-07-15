@@ -207,9 +207,9 @@ namespace VF.Utils.Controller {
 
         [CanBeNull]
         public VFLayer GetLayer(int index) {
-            var ls = GetRawLayers();
-            if (index < 0 || index >= ls.Length) return null;
-            return new VFLayer(ctrl, ls[index].stateMachine);
+            var layer = GetRawLayers().GetOrDefault(index);
+            if (layer == null) return null;
+            return new VFLayer(ctrl, layer.stateMachine);
         }
 
         public AnimatorControllerParameter[] parameters {

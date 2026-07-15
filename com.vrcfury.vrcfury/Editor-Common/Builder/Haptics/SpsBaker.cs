@@ -33,7 +33,7 @@ namespace VF.Builder.Haptics {
             }
 
             float GetActive(int i) {
-                return activeFromMask == null ? 1 : activeFromMask[i];
+                return activeFromMask.GetOrDefault(i, 1);
             }
 
             for (var i = 0; i < bakedMesh.vertices.Length; i++) {
@@ -43,11 +43,11 @@ namespace VF.Builder.Haptics {
                     if (GetActive(i) == 0) {
                         baked.WriteVector3(new Vector3(0,0,0));
                     } else {
-                        baked.WriteVector3(bakedMesh.normals[i]);
+                        baked.WriteVector3(bakedMesh.normals.GetOrDefault(i, Vector3.zero));
                     }
                 } else {
-                    baked.WriteVector3(i < bakedMesh.normals.Length ? bakedMesh.normals[i] : Vector3.zero);
-                    baked.WriteVector3(i < bakedMesh.tangents.Length ? bakedMesh.tangents[i] : Vector3.zero);
+                    baked.WriteVector3(bakedMesh.normals.GetOrDefault(i, Vector3.zero));
+                    baked.WriteVector3(bakedMesh.tangents.GetOrDefault(i, Vector3.zero));
                     baked.WriteFloat(GetActive(i));
                 }
             }
@@ -60,11 +60,19 @@ namespace VF.Builder.Haptics {
                     renderer.SetBlendshapeWeight(bs, 100);
                     var bsBakedMeshOn = MeshBaker.BakeMesh(renderer, origin, true);
                     renderer.SetBlendshapeWeight(bs, weight);
+                    if (bsBakedMeshOff == null || bsBakedMeshOn == null) continue;
                     baked.WriteFloat(weight);
-                    for (var v = 0; v < bsBakedMeshOn.vertices.Length; v++) {
+                    var vertexCount = Mathf.Min(bsBakedMeshOn.vertices.Length, bsBakedMeshOff.vertices.Length);
+                    for (var v = 0; v < vertexCount; v++) {
                         baked.WriteVector3(bsBakedMeshOn.vertices[v] - bsBakedMeshOff.vertices[v]);
-                        baked.WriteVector3(v < bsBakedMeshOn.normals.Length ? bsBakedMeshOn.normals[v] - bsBakedMeshOff.normals[v] : Vector3.zero);
-                        baked.WriteVector3(v < bsBakedMeshOn.tangents.Length ? bsBakedMeshOn.tangents[v] - bsBakedMeshOff.tangents[v] : Vector3.zero);
+                        baked.WriteVector3(
+                            bsBakedMeshOn.normals.GetOrDefault(v, Vector3.zero)
+                            - bsBakedMeshOff.normals.GetOrDefault(v, Vector3.zero)
+                        );
+                        baked.WriteVector3(
+                            bsBakedMeshOn.tangents.GetOrDefault(v, Vector3.zero)
+                            - bsBakedMeshOff.tangents.GetOrDefault(v, Vector3.zero)
+                        );
                     }
                 }
             }
@@ -112,7 +120,7 @@ namespace VF.Builder.Haptics {
                 if (bakedMesh == null) continue;
 
                 for (var i = 0; i < bakedMesh.vertices.Length; i++) {
-                    if (input.activeFromMask != null && i < input.activeFromMask.Length && input.activeFromMask[i] <= 0) continue;
+                    if (input.activeFromMask.GetOrDefault(i, 1) <= 0) continue;
 
                     var vertex = inverseWorldRotation * (input.renderer.owner().TransformPoint(bakedMesh.vertices[i]) - worldPosition);
                     if (vertex.z <= 0) continue;

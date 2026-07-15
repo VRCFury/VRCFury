@@ -144,7 +144,7 @@ namespace VF.Builder.Haptics {
         private static void AddPackedVectors(Action<string, float> add, string baseName, Vector4[] values, int count) {
             var components = new[] { ".x", ".y", ".z", ".w" };
             for (var i = 0; i < count; i++) {
-                var value = values != null && i < values.Length ? values[i] : Vector4.zero;
+                var value = values.GetOrDefault(i, Vector4.zero);
                 var property = $"{baseName}{i}";
                 add(property + components[0], value.x);
                 add(property + components[1], value.y);

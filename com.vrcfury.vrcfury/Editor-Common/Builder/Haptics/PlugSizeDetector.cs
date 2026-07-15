@@ -122,7 +122,7 @@ namespace VF.Builder.Haptics {
                     .Select(vert => renderer.owner().TransformPoint(vert))
                     .Select(v => inverseWorldRotation * (v - worldPosition))
                     .Select((v, i) => {
-                        var isUsed = mask == null || mask[i] > 0;
+                        var isUsed = mask.GetOrDefault(i, 1) > 0;
                         isUsed &= v.z > 0;
                         return (v, i, isUsed);
                     });

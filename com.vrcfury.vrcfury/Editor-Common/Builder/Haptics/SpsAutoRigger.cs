@@ -54,7 +54,7 @@ namespace VF.Builder.Haptics {
             }
 
             float GetActive(int i) {
-                return activeFromMask == null ? 1 : activeFromMask[i];
+                return activeFromMask.GetOrDefault(i, 1);
             }
 
             var bake = MeshBaker.BakeMesh(skin, bakeRoot);
@@ -82,7 +82,8 @@ namespace VF.Builder.Haptics {
             skin.bones = skin.bones.Concat(bones).ToArray();
             mesh.bindposes = mesh.bindposes.Concat(bindPoses).ToArray();
             var weights = mesh.boneWeights;
-            for (var i = 0; i < mesh.vertices.Length; i++) {
+            var bakedVertexCount = bake?.vertices?.Length ?? 0;
+            for (var i = 0; i < mesh.vertices.Length && i < bakedVertexCount; i++) {
                 var bakedVert = bake.vertices[i];
                 if (bakedVert.z < 0) continue;
                 var boneNum = bakedVert.z / localLength * boneCount;
