@@ -819,6 +819,7 @@ namespace VF.Inspector {
                     plug
                 );
                 resolverObj.AddComponent<VRCFuryHideGizmoUnlessSelected>();
+                resolverObj.AddComponent<VRCFurySpsGreenScreenFix>();
                 resolverRenderer = meshRenderer;
             }
 

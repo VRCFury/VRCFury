@@ -13,12 +13,6 @@ namespace VF.Inspector {
         [VFInit]
         private static void Init() {
             VRCFurySocketGizmo.EnableSceneLighting = () => {
-                var hasCamera = VFGameObject.GetRoots()
-                    .Any(root => root.GetComponentsInSelfAndChildren<Camera>().Any(cam => cam.isActiveAndEnabled));
-                if (!hasCamera) {
-                    var cameraObj = new GameObject("Scene Camera");
-                    cameraObj.AddComponent<Camera>();
-                }
                 var sv = EditorWindowFinder.GetWindows<SceneView>().FirstOrDefault();
                 if (sv != null) {
                     sv.sceneLighting = true;

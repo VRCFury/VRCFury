@@ -659,6 +659,7 @@ namespace VF.Inspector {
             var meshRenderer = screenMarker.AddComponent<MeshRenderer>();
             spsMarkers.ConfigureSocketRenderer(meshRenderer);
             screenMarker.AddComponent<VRCFuryHideGizmoUnlessSelected>();
+            screenMarker.AddComponent<VRCFurySpsGreenScreenFix>();
             return new ScreenMarkerResult {
                 obj = screenMarker,
                 renderer = meshRenderer,
