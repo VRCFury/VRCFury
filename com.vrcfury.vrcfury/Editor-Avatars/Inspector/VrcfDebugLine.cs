@@ -46,7 +46,7 @@ namespace VF.Inspector {
                 output += "D";
             }
 
-            if (VRCExpressionParametersExtensions.IsDexProtectPresent()) {
+            if (DexProtectUtils.IsDexProtectPresent()) {
                 output += "E";
             }
             
