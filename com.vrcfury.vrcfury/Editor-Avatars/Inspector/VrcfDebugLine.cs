@@ -45,6 +45,10 @@ namespace VF.Inspector {
             if (avatarObject != null && MaterialLocker.UsesD4rk(avatarObject, false)) {
                 output += "D";
             }
+
+            if (VRCExpressionParametersExtensions.IsDexProtectPresent()) {
+                output += "E";
+            }
             
             if (!HapticsToggleMenuItem.Get()) {
                 output += "H";

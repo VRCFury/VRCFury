@@ -196,6 +196,13 @@ namespace VF.Inspector {
             var container = new VisualElement();
             var configureTps = serializedObject.FindProperty("configureTps");
             var enableSps = serializedObject.FindProperty("enableSps");
+
+            if (DexProtectUtils.IsDexProtectPresent()) {
+                container.Add(VRCFuryEditorUtils.Warn("This avatar uses DexProtect. Plug may not scale properly when deforming. If affected, consider removing DexProtect."));
+            }
+            if (MaterialLocker.UsesD4rk(target.owner().uploadRoots.First(), false)) {
+                container.Add(VRCFuryEditorUtils.Warn("This avatar uses D4rk Optimizer. Plug may break unexpectedly when deforming. If affected, consider removing D4rk Optimizer."));
+            }
             
             container.Add(ConstraintWarning(target));
             

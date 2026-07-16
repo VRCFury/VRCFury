@@ -28,26 +28,29 @@ namespace VF.Inspector {
         private GameObject dummyObject;
 
         public sealed override VisualElement CreateInspectorGUI() {
-            VisualElement content;
+            VisualElement versionLabel;
+            if (VRCFuryComponentEditor.getDebugLine != null) {
+                versionLabel = new Label(VRCFuryComponentEditor.getDebugLine.Invoke(target as UnityEngine.Component));
+                versionLabel.AddToClassList("vfVersionLabel");
+            } else {
+                versionLabel = new VisualElement();
+            }
+
+            var content = new VisualElement();
+            content.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
+
             try {
-                content = CreateInspectorGUIUnsafe();
+                content.Add(CreateInspectorGUIUnsafe(versionLabel));
             } catch (Exception e) {
                 Debug.LogException(new Exception("Failed to render editor", e));
-                content = VRCFuryEditorUtils.Error("Failed to render editor (see unity console)");
+                content.Add(versionLabel);
+                content.Add(VRCFuryEditorUtils.Error("Failed to render editor (see unity console)"));
             }
-            
-            var contentWithVersion = new VisualElement();
-            contentWithVersion.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
-            if (VRCFuryComponentEditor.getDebugLine != null) {
-                var versionLabel = new Label(VRCFuryComponentEditor.getDebugLine.Invoke(target as UnityEngine.Component));
-                versionLabel.AddToClassList("vfVersionLabel");
-                contentWithVersion.Add(versionLabel);
-            }
-            contentWithVersion.Add(content);
-            return contentWithVersion;
+
+            return content;
         }
 
-        private VisualElement CreateInspectorGUIUnsafe() {
+        private VisualElement CreateInspectorGUIUnsafe(VisualElement versionLabel) {
             if (!(target is UnityEngine.Component c)) {
                 return VRCFuryEditorUtils.Error("This isn't a component?");
             }
@@ -66,14 +69,16 @@ namespace VF.Inspector {
 
             var container = new VisualElement();
 
-            container.Add(CreateOverrideLabel());
-
             if (isInstance) {
                 // We prevent users from adding overrides on prefabs, because it does weird things (at least in unity 2019)
                 // when you apply modifications to an object that lives within a SerializedReference. Some properties not overridden
                 // will just be thrown out randomly, and unity will dump a bunch of errors.
                 container.Add(CreatePrefabInstanceLabel(v));
             }
+
+            container.Add(versionLabel);
+
+            container.Add(CreateOverrideLabel());
 
             VisualElement body;
             if (isInstance) {

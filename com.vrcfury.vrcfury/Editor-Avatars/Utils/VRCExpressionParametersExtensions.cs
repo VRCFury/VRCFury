@@ -12,17 +12,13 @@ namespace VF.Utils {
             p.Dirty();
         }
 
-        private static readonly Lazy<bool> HasDexProtect = new Lazy<bool>(() => {
-            return AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "DexProtectEditor");
-        });
-
         public static int GetMaxCost() {
             var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
             if (maxBits > 9999) {
                 // Some modified versions of the VRChat SDK have a broken value for this
                 maxBits = 256;
             }
-            if (HasDexProtect.Value) {
+            if (DexProtectUtils.IsDexProtectPresent()) {
                 maxBits -= 19;
             }
             return maxBits;
