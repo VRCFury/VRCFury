@@ -1,0 +1,53 @@
+{
+    "name": "VRCFury-Editor-Worlds",
+    "rootNamespace": "VF",
+    "references": [
+        "VRCFury",
+        "com.vrcfury.udon",
+        "VRCFury-Editor-Common",
+        "VRC.SDKBase.Editor.BuildPipeline",
+        "VRC.SDKBase.Editor",
+        "VRC.SDK3.Editor",
+        "VRC.Udon",
+        "VRC.Udon.Editor",
+        "VRC.Udon.Serialization.OdinSerializer",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "System.Collections.Immutable.dll",
+        "VRCSDKBase.dll",
+        "VRC.Dynamics.dll",
+        "VRCSDK3.dll",
+        "VRC.SDK3.Dynamics.PhysBone.dll",
+        "VRC.SDK3.Dynamics.Contact.dll",
+        "VRC.SDK3.Dynamics.Constraint.dll",
+        "VRCSDKBase-Editor.dll",
+        "VRCCore-Editor.dll",
+        "VRC.Udon.Common.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UDON",
+        "VRCF_WORLDS"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "",
+            "define": "VRCF_WORLDS"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.7.5",
+            "define": "VRCSDK_HAS_ACTIVE_BUILD_TYPE"
+        }
+    ],
+    "noEngineReferences": false
+}

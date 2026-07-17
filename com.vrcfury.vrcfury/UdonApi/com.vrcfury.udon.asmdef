@@ -1,0 +1,27 @@
+{
+    "name": "com.vrcfury.udon",
+    "rootNamespace": "com.vrcfury.udon",
+    "references": [
+        "VRCFury"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "VRCSDKBase.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UDON",
+        "VRCF_WORLDS"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "",
+            "define": "VRCF_WORLDS"
+        }
+    ],
+    "noEngineReferences": false
+}

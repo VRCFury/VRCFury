@@ -1,8 +1,7 @@
 {
     "name": "VRCFury",
-    "references": [
-        "VrcfEditorOnly"
-    ],
+    "rootNamespace": "VF",
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
@@ -20,6 +19,16 @@
             "name": "com.vrchat.base",
             "expression": "3.1.12",
             "define": "VRC_NEW_HOOK_API"
+        },
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "",
+            "define": "VRCF_WORLDS"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "",
+            "define": "VRCF_AVATARS"
         }
     ],
     "noEngineReferences": false

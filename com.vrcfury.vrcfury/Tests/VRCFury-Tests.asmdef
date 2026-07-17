@@ -4,7 +4,8 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "VRCFury"
+        "VRCFury",
+        "VRCFury-Editor-Common"
     ],
     "includePlatforms": [
         "Editor"
@@ -13,17 +14,24 @@
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-        "nunit.framework.dll"
+        "nunit.framework.dll",
+        "Mono.Cecil.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [
-        "UNITY_TEST_FRAMEWORK_PRESENT"
+        "UNITY_TEST_FRAMEWORK_PRESENT",
+        "CECIL_PRESENT"
     ],
     "versionDefines": [
         {
             "name": "com.unity.test-framework",
             "expression": "",
             "define": "UNITY_TEST_FRAMEWORK_PRESENT"
+        },
+        {
+            "name": "com.unity.nuget.mono-cecil",
+            "expression": "",
+            "define": "CECIL_PRESENT"
         }
     ],
     "noEngineReferences": false

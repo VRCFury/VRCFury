@@ -1,0 +1,51 @@
+﻿{
+  "name": "VRCFury-Editor-Common",
+  "rootNamespace": "VF",
+  "references": [
+    "VRCFury",
+    "VRC.SDKBase.Editor.BuildPipeline",
+    "VRC.SDKBase.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "System.Collections.Immutable.dll",
+    "VRCSDKBase.dll",
+    "VRC.Dynamics.dll",
+    "VRC.SDK3.Dynamics.PhysBone.dll",
+    "VRC.SDK3.Dynamics.Contact.dll",
+    "VRC.SDK3.Dynamics.Constraint.dll",
+    "VRCSDKBase-Editor.dll",
+    "VRCCore-Editor.dll",
+    "0Harmony.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.vrchat.base",
+      "expression": "3.1.12",
+      "define": "VRC_NEW_HOOK_API"
+    },
+    {
+      "name": "com.vrchat.base",
+      "expression": "3.3.0",
+      "define": "VRC_NEW_PUBLIC_SDK"
+    },
+    {
+      "name": "com.vrchat.base",
+      "expression": "3.7.5",
+      "define": "VRCSDK_HAS_ACTIVE_BUILD_TYPE"
+    },
+    {
+      "name": "com.vrchat.base",
+      "expression": "3.7.0",
+      "define": "VRCSDK_HAS_VRCCONSTRAINTS"
+    }
+  ],
+  "noEngineReferences": false
+}

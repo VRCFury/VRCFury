@@ -1,0 +1,867 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using JetBrains.Annotations;
+using UnityEditor;
+using UnityEditor.UIElements;
+using UnityEngine;
+using UnityEngine.UIElements;
+using VF.Builder;
+using VF.Builder.Haptics;
+using VF.Component;
+using VF.Exceptions;
+using VF.Menu;
+using VF.Utils;
+
+namespace VF.Inspector {
+    [CustomEditor(typeof(VRCFuryHapticPlug), true)]
+    internal class VRCFuryHapticPlugEditor : VRCFuryComponentEditor<VRCFuryHapticPlug> {
+        internal const int SpsTagRuleCount = 2;
+        public const string SpsParamDepth = "Depth";
+        public const string SpsParamVelocity = "Velocity";
+        public const string SpsParamPlugLength = "Plug Length";
+        public const string SpsParamPlugRadius = "Plug Radius";
+        public const string SpsUnitsMeters = "Meters";
+        public const string SpsUnitsLocal = "Local";
+        public const string SpsUnitsPlugLengths = "Plug Lengths";
+        public const string SpsDepthMeters = "__sps_depth_meters";
+        public const string SpsDepthLocal = "__sps_depth_local";
+        public const string SpsDepthPlugLengths = "__sps_depth_plug_lengths";
+        public const string SpsVelocityMeters = "__sps_velocity_meters";
+        public const string SpsVelocityLocal = "__sps_velocity_local";
+        public const string SpsVelocityPlugLengths = "__sps_velocity_plug_lengths";
+        public const string SpsPlugLengthMeters = "__sps_plug_length_meters";
+        public const string SpsPlugLengthLocal = "__sps_plug_length_local";
+        public const string SpsPlugLengthPlugLengths = "__sps_plug_length_plug_lengths";
+        public const string SpsPlugRadiusMeters = "__sps_plug_radius_meters";
+        public const string SpsPlugRadiusLocal = "__sps_plug_radius_local";
+        public const string SpsPlugRadiusPlugLengths = "__sps_plug_radius_plug_lengths";
+
+        public static readonly string[] SpsParams = {
+            SpsParamDepth,
+            SpsParamVelocity,
+            SpsParamPlugLength,
+            SpsParamPlugRadius
+        };
+        public static readonly string[] SpsUnits = {
+            SpsUnitsMeters,
+            SpsUnitsLocal,
+            SpsUnitsPlugLengths
+        };
+
+        public static string GetSpsMagicParam(string param, string units) {
+            if (param == SpsParamDepth && units == SpsUnitsMeters) return SpsDepthMeters;
+            if (param == SpsParamDepth && units == SpsUnitsLocal) return SpsDepthLocal;
+            if (param == SpsParamDepth && units == SpsUnitsPlugLengths) return SpsDepthPlugLengths;
+            if (param == SpsParamVelocity && units == SpsUnitsMeters) return SpsVelocityMeters;
+            if (param == SpsParamVelocity && units == SpsUnitsLocal) return SpsVelocityLocal;
+            if (param == SpsParamVelocity && units == SpsUnitsPlugLengths) return SpsVelocityPlugLengths;
+            if (param == SpsParamPlugLength && units == SpsUnitsMeters) return SpsPlugLengthMeters;
+            if (param == SpsParamPlugLength && units == SpsUnitsLocal) return SpsPlugLengthLocal;
+            if (param == SpsParamPlugLength && units == SpsUnitsPlugLengths) return SpsPlugLengthPlugLengths;
+            if (param == SpsParamPlugRadius && units == SpsUnitsMeters) return SpsPlugRadiusMeters;
+            if (param == SpsParamPlugRadius && units == SpsUnitsLocal) return SpsPlugRadiusLocal;
+            if (param == SpsParamPlugRadius && units == SpsUnitsPlugLengths) return SpsPlugRadiusPlugLengths;
+            return "";
+        }
+
+        public static (string param, string units)? ParseSpsMagicParam(string sourceParam) {
+            switch (sourceParam) {
+                case SpsDepthMeters: return (SpsParamDepth, SpsUnitsMeters);
+                case SpsDepthLocal: return (SpsParamDepth, SpsUnitsLocal);
+                case SpsDepthPlugLengths: return (SpsParamDepth, SpsUnitsPlugLengths);
+                case SpsVelocityMeters: return (SpsParamVelocity, SpsUnitsMeters);
+                case SpsVelocityLocal: return (SpsParamVelocity, SpsUnitsLocal);
+                case SpsVelocityPlugLengths: return (SpsParamVelocity, SpsUnitsPlugLengths);
+                case SpsPlugLengthMeters: return (SpsParamPlugLength, SpsUnitsMeters);
+                case SpsPlugLengthLocal: return (SpsParamPlugLength, SpsUnitsLocal);
+                case SpsPlugLengthPlugLengths: return (SpsParamPlugLength, SpsUnitsPlugLengths);
+                case SpsPlugRadiusMeters: return (SpsParamPlugRadius, SpsUnitsMeters);
+                case SpsPlugRadiusLocal: return (SpsParamPlugRadius, SpsUnitsLocal);
+                case SpsPlugRadiusPlugLengths: return (SpsParamPlugRadius, SpsUnitsPlugLengths);
+                default: return null;
+            }
+        }
+
+        public static VisualElement RenderSpsInjectParamEditor(SerializedProperty injectProp) {
+            var sourceParamProp = injectProp.FindPropertyRelative("sourceParam");
+            var parsed = ParseSpsMagicParam(sourceParamProp.stringValue);
+            var selectedParam = parsed?.param ?? SpsParamDepth;
+            var selectedUnits = parsed?.units ?? SpsUnitsMeters;
+
+            var content = new VisualElement();
+            var paramField = new PopupField<string>("Parameter", SpsParams.ToList(), selectedParam);
+            var unitsField = new PopupField<string>("Units", SpsUnits.ToList(), selectedUnits);
+
+            void Save() {
+                sourceParamProp.stringValue = GetSpsMagicParam(paramField.value, unitsField.value);
+                sourceParamProp.serializedObject.ApplyModifiedProperties();
+            }
+
+            paramField.RegisterValueChangedCallback(_ => Save());
+            unitsField.RegisterValueChangedCallback(_ => Save());
+
+            content.Add(paramField);
+            content.Add(unitsField);
+            return content;
+        }
+
+        public static VisualElement SpsTagProp(SerializedProperty prop, string label) {
+            var field = new TextField {
+                isDelayed = true
+            };
+            field.SetValueWithoutNotify(SanitizeSpsTag(prop.stringValue));
+            field.RegisterValueChangedCallback(cb => {
+                var sanitized = SanitizeSpsTag(cb.newValue);
+                if (field.value != sanitized) {
+                    field.SetValueWithoutNotify(sanitized);
+                }
+                prop.stringValue = sanitized;
+                prop.serializedObject.ApplyModifiedProperties();
+            });
+            return VRCFuryEditorUtils.Prop(prop, label, fieldOverride: field);
+        }
+
+        public static string SanitizeSpsTag(string input) {
+            if (string.IsNullOrEmpty(input)) return "";
+
+            var chars = input
+                .Trim()
+                .ToLowerInvariant()
+                .Where(c => c >= 'a' && c <= 'z' || c >= '0' && c <= '9')
+                .ToArray();
+            return new string(chars);
+        }
+
+        private static SerializedProperty AddSpsTagRule(SerializedProperty listProp) {
+            if (listProp.arraySize >= SpsTagRuleCount) return null;
+            var index = listProp.arraySize;
+            listProp.InsertArrayElementAtIndex(index);
+            var item = listProp.GetArrayElementAtIndex(index);
+            item.FindPropertyRelative("tag").stringValue = "";
+            item.FindPropertyRelative("allowSelf").boolValue = true;
+            item.FindPropertyRelative("allowOthers").boolValue = true;
+            listProp.serializedObject.ApplyModifiedProperties();
+            return item;
+        }
+
+        private static VisualElement SpsTagRuleProp(SerializedProperty listProp, int index, string label) {
+            var prop = listProp.GetArrayElementAtIndex(index);
+            var row = new VisualElement();
+            row.Add(SpsTagProp(prop.FindPropertyRelative("tag"), label));
+            row.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("allowSelf"), "Self"));
+            row.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("allowOthers"), "Others"));
+            var remove = new Button(() => {
+                listProp.DeleteArrayElementAtIndex(index);
+                listProp.serializedObject.ApplyModifiedProperties();
+            }) {
+                text = "Remove"
+            };
+            row.Add(remove);
+            return row;
+        }
+
+        private static VisualElement SpsTagRuleList(SerializedProperty listProp, string labelPrefix) {
+            return VRCFuryEditorUtils.RefreshOnChange(() => {
+                var container = new VisualElement();
+                for (var i = 0; i < Math.Min(listProp.arraySize, SpsTagRuleCount); i++) {
+                    container.Add(SpsTagRuleProp(listProp, i, $"{labelPrefix} #{i + 1}"));
+                }
+                if (listProp.arraySize < SpsTagRuleCount) {
+                    container.Add(new Button(() => AddSpsTagRule(listProp)) {
+                        text = $"Add {labelPrefix}"
+                    });
+                }
+                return container;
+            }, listProp);
+        }
+
+        private static string GetOscId(VRCFuryHapticPlug plug) {
+            return HapticUtils.GetPreferredId(
+                plug,
+                p => p.name,
+                p => {
+                    var renderers = GetRenderers(p);
+                    if (renderers.Count > 0) {
+                        return HapticUtils.GetFallbackId(renderers.First().owner());
+                    }
+
+                    return HapticUtils.GetFallbackId(p.owner());
+                }
+            );
+        }
+
+        protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticPlug target) {
+            var container = new VisualElement();
+            var configureTps = serializedObject.FindProperty("configureTps");
+            var enableSps = serializedObject.FindProperty("enableSps");
+
+            if (DexProtectUtils.IsDexProtectPresent()) {
+                container.Add(VRCFuryEditorUtils.Warn("This avatar uses DexProtect. Plug may not scale properly when deforming. If affected, consider removing DexProtect."));
+            }
+            if (MaterialLocker.UsesD4rk(target.owner().uploadRoots.First(), false)) {
+                container.Add(VRCFuryEditorUtils.Warn("This avatar uses D4rk Optimizer. Plug may break unexpectedly when deforming. If affected, consider removing D4rk Optimizer."));
+            }
+            
+            container.Add(ConstraintWarning(target));
+            
+            var boneWarning = VRCFuryEditorUtils.Warn(
+                "WARNING: This renderer is rigged with bones, but you didn't put the SPS Plug inside a bone! When SPS is used" +
+                " with rigged meshes, you should put the SPS Plug inside the bone nearest the 'base'!");
+            boneWarning.SetVisible(false);
+            container.Add(boneWarning);
+
+            var sizeSection = VRCFuryEditorUtils.Section("Size and Masking");
+            container.Add(sizeSection);
+            
+            var autoMesh = serializedObject.FindProperty("autoRenderer");
+            sizeSection.Add(VRCFuryEditorUtils.BetterProp(autoMesh, "Automatically find mesh"));
+            sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (!autoMesh.boolValue) {
+                    c.Add(VRCFuryEditorUtils.List(serializedObject.FindProperty("configureTpsMesh")));
+                }
+                return c;
+            }, autoMesh));
+
+            sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (!configureTps.boolValue && !enableSps.boolValue) {
+                    c.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("autoPosition"),
+                        "Detect position/rotation from mesh"));
+                }
+                return c;
+            }, configureTps, enableSps));
+
+            var autoLength = serializedObject.FindProperty("autoLength");
+            sizeSection.Add(VRCFuryEditorUtils.BetterProp(autoLength, "Detect length from mesh"));
+            sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (!autoLength.boolValue) {
+                    c.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("length"), "Length"));
+                }
+                return c;
+            }, autoLength));
+
+            var autoRadius = serializedObject.FindProperty("autoRadius");
+            sizeSection.Add(VRCFuryEditorUtils.BetterProp(autoRadius, "Detect radius from mesh"));
+            sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (!autoRadius.boolValue) {
+                    c.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("radius"), "Radius"));
+                }
+                return c;
+            }, autoRadius));
+            
+            sizeSection.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("useBoneMask"),
+                "Automatically mask using bone weights"
+            ));
+
+            sizeSection.Add(VRCFuryEditorUtils.BetterProp(
+                serializedObject.FindProperty("textureMask"),
+                "Optional additional texture mask (white = 'do not deform or use in length calculations')"
+            ));
+            
+            sizeSection.Add(VRCFuryEditorUtils.Debug(refreshMessage: () => {
+                var size = PlugSizeDetector.GetWorldSize(target);
+                var text = new List<string>();
+                text.Add("Attached renderers: " + size.renderers.Select(r => r.owner().name).Join(", "));
+                text.Add($"Detected Length: {size.worldLength}m");
+                text.Add($"Detected Radius: {size.worldRadius}m");
+
+                text.Add("Patching Material Slots:");
+                foreach (var renderer in size.matSlots.GetKeys()) {
+                    text.Add($"  {renderer.name}");
+                    foreach (var slot in size.matSlots.Get(renderer)) {
+                        var matName = renderer.GetComponent<Renderer>()?.sharedMaterials[slot]?.name ?? "Unset";
+                        text.Add($"    #{slot} (currently {matName})");
+                    }
+                }
+
+                var bones = size.renderers.OfType<SkinnedMeshRenderer>()
+                    .SelectMany(skin => skin.bones)
+                    .Where(bone => bone != null)
+                    .ToArray();
+                var isInsideBone = bones.Any(bone => target.owner().IsChildOf(bone));
+                var displayWarning = bones.Length > 0 && !isInsideBone;
+                boneWarning.SetVisible(displayWarning);
+                
+                return text.Join('\n');
+            }));
+            
+            container.Add(VRCFuryEditorUtils.BetterProp(enableSps, "Enable Deformation"));
+            container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (enableSps.boolValue) {
+                    var spsBox = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "This plug will deform toward SPS/TPS/DPS sockets\nCheck out vrcfury.com/sps for details");
+                    c.Add(spsBox);
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("spsAutorig"),
+                        "Auto-Rig (If mesh is static, add bones and a physbone to make it sway)"
+                    ));
+                    
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("postBakeActions"),
+                        "Post-Bake Actions",
+                        tooltip: "SPS Plug meshes should be posed 'straight' so that length and pose calculations" +
+                                 " can be performed. If you'd like it to appear in a different way by default in game, you can add actions here" +
+                                 " which will be applied to the avatar after the calculations are finished."
+                    ));
+
+                    var animatedProp = serializedObject.FindProperty("spsAnimatedEnabled");
+                    var animatedField = new Toggle();
+                    animatedField.SetValueWithoutNotify(animatedProp.floatValue > 0);
+                    animatedField.RegisterValueChangedCallback(cb => {
+                        animatedProp.floatValue = cb.newValue ? 1 : 0;
+                        animatedProp.serializedObject.ApplyModifiedProperties();
+                    });
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("spsAnimatedEnabled"),
+                        "Animated Toggle",
+                        fieldOverride: animatedField,
+                        tooltip: "You can ANIMATE this box on and off with an animation clip, in order to" +
+                                 " turn deformation off during certain situations."
+                    ));
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("spsBlendshapes"),
+                        "Animated blendshapes to keep while deforming",
+                        fieldOverride: VRCFuryEditorUtils.List(serializedObject.FindProperty("spsBlendshapes")),
+                        tooltip: "Usually, SPS penetrators revert blendshapes back to exactly the way they look in the editor while deforming toward a socket." +
+                                 " You can specify up to 16 blendshapes in this list which can still be animated while deforming."
+                    ));
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("spsOverrun"),
+                        "Allow Hole Overrun",
+                        tooltip: "This allows the plug to extend very slightly past holes to improve collapse visuals." +
+                                 " Beware that disabling this may cause plug to appear to 'fold in' near holes like a map, which may be strange."
+                    ));
+                }
+                return c;
+            }, enableSps));
+
+            // Depth Animations
+            var list = serializedObject.FindProperty("depthActions2");
+            container.Add(VRCFuryEditorUtils.CheckboxList(
+                list,
+                "Enable Depth Animations",
+                "Allows you to animate anything based on the proximity of a socket near this plug",
+                "Depth Animations",
+                VRCFuryEditorUtils.List(list, () => {
+                    VRCFuryEditorUtils.AddToList(list, newAction => {
+                        newAction.FindPropertyRelative("range").vector2Value = new Vector2(-1, 0);
+                        newAction.FindPropertyRelative("units").enumValueIndex =
+                            (int)VRCFuryHapticSocket.DepthActionUnits.Plugs;
+                    });
+                })
+            ));
+
+            container.Add(GetOgbHapticsSection(haptics => {
+                haptics.Add(SpsEditorUtils.AutoHapticIdProp(
+                    serializedObject.FindProperty("name"),
+                    "ID sent to OGB",
+                    target,
+                    target.owner(),
+                    avatar => avatar.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>(),
+                    GetOscId
+                ));
+            }));
+
+            var tags = VRCFuryEditorUtils.Section("Tags", "Filter which sockets this plug will target");
+            var includeTags = serializedObject.FindProperty("includeTags");
+            var excludeTags = serializedObject.FindProperty("excludeTags");
+            tags.Add(SpsTagRuleList(includeTags, "Include"));
+            tags.Add(SpsTagRuleList(excludeTags, "Exclude"));
+            var useSharedTag = serializedObject.FindProperty("useSharedTag");
+            tags.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Include 'Global' SPS2 Tag",
+                tooltip: "Adds the global SPS tag so this plug can target most normal sockets."));
+            tags.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                if (useSharedTag.boolValue) return new VisualElement();
+                return VRCFuryEditorUtils.Warn("This plug does not include the global SPS2 tag, so it will not target most sockets!");
+            }, useSharedTag));
+            tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLights"), "Include 'Global' SPS1/DPS/TPS Tag",
+                tooltip: "Allows this plug to target SPS1/DPS/TPS sockets (looking for lights)."));
+            if (VRCFuryHapticSocketEditor.getClosestBone?.Invoke(target.owner()) == HumanBodyBones.Hips) {
+                tags.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("useHipAvoidance"),
+                    "Exclude sockets on own Hips",
+                    tooltip: "If this plug is on your hips, it will not target sockets on your hips."
+                ));
+            }
+            container.Add(tags);
+
+            var adv = new Foldout {
+                text = "Advanced Plug Options",
+                value = false
+            };
+            container.Add(adv);
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"), "(Deprecated) Units are in world-space"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLegacyRendererFinder"), "(Deprecated) Use legacy renderer search"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(configureTps, "(Deprecated) Auto-configure Poiyomi TPS"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("addDpsTipLight"), "(Deprecated) Add legacy DPS tip light (must enable in menu)"));
+
+            return container;
+        }
+
+        public static Func<bool> getHapticsEnabled;
+        public static VisualElement GetOgbHapticsSection(Action<VisualElement> buildBody) {
+            var container = new VisualElement();
+            if (getHapticsEnabled == null) return container;
+
+            var hapticsEnabled = getHapticsEnabled();
+            var hapticsEnabledToggle = new Toggle();
+            hapticsEnabledToggle.SetValueWithoutNotify(hapticsEnabled);
+            hapticsEnabledToggle.SetEnabled(false);
+            container.Add(VRCFuryEditorUtils.BetterProp(
+                null,
+                "Enable OGB Haptics",
+                fieldOverride: hapticsEnabledToggle
+            ));
+
+            var haptics = VRCFuryEditorUtils.Section("OGB Haptics");
+            if (!hapticsEnabled) {
+                haptics.Add(VRCFuryEditorUtils.Error("Haptics have been disabled in the VRCFury unity settings"));
+            }
+            buildBody(haptics);
+            container.Add(haptics);
+
+            return container;
+        }
+
+        public static VisualElement ConstraintWarning(UnityEngine.Component c, bool isSocket = false) {
+            var reg = new VrcRegistryConfig();
+            
+            return VRCFuryEditorUtils.Debug(refreshElement: () => {
+                var output = new VisualElement();
+                var legacyRendererPaths = new List<string>();
+                var tipLightPaths = new List<string>();
+                var orificeLightPaths = new List<string>();
+
+                foreach (var light in c.owner().GetComponentsInUploadRoot<Light>()) {
+                    if (light.type != LightType.Point && light.type != LightType.Spot) continue;
+                    var path = light.owner().GetPath();
+                    var type = VRCFuryHapticSocketEditor.GetLegacyDpsLightType(light);
+                    if (type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Tip)
+                        tipLightPaths.Add(path);
+                    else if (type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Hole ||
+                             type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Ring ||
+                             type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Front)
+                        orificeLightPaths.Add(path);
+                }
+                foreach (var renderer in c.owner().GetComponentsInUploadRoot<Renderer>()) {
+                    foreach (var m in renderer.sharedMaterials) {
+                        if (DpsConfigurer.IsDps(m) || TpsConfigurer.IsTps(m)) {
+                            legacyRendererPaths.Add($"{m.name} in {renderer.owner().GetPath()}");
+                        }
+                    }
+                }
+
+                output.Clear();
+                if (tipLightPaths.Any()) {
+                    var warning = VRCFuryEditorUtils.Warn(
+                        "This avatar still contains a DPS tip light! This means your avatar has not been fully converted to SPS," +
+                        " and your DPS penetrator may cause issues if too many sockets are on nearby." +
+                        " Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
+                        tipLightPaths.Join('\n')
+                    );
+                    output.Add(warning);
+                }
+                if (orificeLightPaths.Any()) {
+                    var warning = VRCFuryEditorUtils.Warn(
+                        "This avatar still contains un-upgraded DPS orifice lights! This means your avatar has not been fully converted to SPS," +
+                        " and your DPS orifices may cause issues if too many are active at the same time." +
+                        " Check out https://vrcfury.com/sps for details about how to upgrade DPS orifices to SPS sockets.\n\n" +
+                        orificeLightPaths.Join('\n')
+                    );
+                    output.Add(warning);
+                }
+                if (legacyRendererPaths.Any()) {
+                    var warning = VRCFuryEditorUtils.Warn(
+                        "This avatar still contains a legacy DPS or TPS penetrator! This means your avatar has not been fully converted to SPS," +
+                        " and your legacy penetrator may cause issues if too many sockets are on nearby." +
+                        " Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
+                        legacyRendererPaths.Join('\n')
+                    );
+                    output.Add(warning);
+                }
+
+                var inConstraints = c.owner().GetConstraints(true).Any();
+                if (inConstraints) {
+                    var warning = VRCFuryEditorUtils.Warn(
+                        "This SPS component is used within a Constraint! " +
+                        "AVOID using SPS within constraints if at all possible. " +
+                        (isSocket
+                            ? "Sharing one socket in multiple locations will make your avatar LESS performant, not more! "
+                            : "") +
+                        " Check out https://vrcfury.com/sps/constraints for details.");
+                    output.Add(warning);
+                }
+
+                if (reg.TryGet("VRC_AV_INTERACT_SELF", out var val) && val != 1) {
+                    output.Add(VRCFuryEditorUtils.Error(
+                        "You must enable 'Settings > Avatar > Avatar Interactions > Avatar Self Interact' in the VRChat settings" +
+                        " for SPS to work properly."
+                    ));
+                }
+                if (reg.TryGet("VRC_AV_INTERACT_LEVEL", out var val2) && val2 != 2) {
+                    output.Add(VRCFuryEditorUtils.Warn(
+                        "You do not have 'Settings > Avatar > Avatar Interactions > Avatar Allowed to Interact' set to 'Everyone' in the VRChat settings." +
+                        " This may prevent SPS from working properly with other players."
+                    ));
+                }
+                if (reg.TryGet("PIXEL_LIGHT_COUNT", out var val3) && val3 != 3) {
+                    output.Add(VRCFuryEditorUtils.Warn(
+                        "Your VRChat 'Pixel Light Count' setting is not set to HIGH. This may cause SPS to work improperly in some worlds." +
+                        " Please set 'Settings > Graphics > Advanced > Pixel Light Count' to 'High' in the VRChat settings."
+                    ));
+                }
+
+                return output;
+            });
+        }
+
+        private class GizmoCache {
+            public double time = 0;
+            public PlugSizeDetector.SizeResult size;
+            public float[] radiusSamples;
+            public string error;
+            public Vector3 position;
+            public Quaternion rotation;
+        }
+
+        private static readonly ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache> gizmoCache
+            = new ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache>();
+        
+        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
+        //[DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
+        static void DrawGizmo(VRCFuryHapticPlug plug, GizmoType gizmoType) {
+            var transform = plug.owner();
+            
+            var cache = gizmoCache.GetOrCreateValue(plug);
+            if (cache.time == 0 || transform.worldPosition != cache.position || transform.worldRotation != cache.rotation || EditorApplication.timeSinceStartup > cache.time + 1) {
+                cache.time = EditorApplication.timeSinceStartup;
+                cache.position = transform.worldPosition;
+                cache.rotation = transform.worldRotation;
+                cache.size = null;
+                cache.radiusSamples = null;
+                cache.error = null;
+                try {
+                    cache.size = PlugSizeDetector.GetWorldSize(plug);
+                    if (cache.size != null) {
+                        var worldPosition = transform.TransformPoint(cache.size.localPosition);
+                        var worldRotation = transform.worldRotation * cache.size.localRotation;
+                        cache.radiusSamples = SpsBaker.GetResolverRadiusSamples(
+                            cache.size.renderers.Select(renderer => new SpsBaker.RendererBakeInput {
+                                renderer = renderer,
+                                activeFromMask = PlugMaskGenerator.GetMask(renderer, plug)
+                            }),
+                            worldPosition,
+                            worldRotation,
+                            cache.size.worldLength
+                        );
+                    }
+                } catch (Exception e) {
+                    cache.error = e.Message;
+                }
+            }
+
+            var size = cache.size;
+            Vector3 worldRoot;
+            Vector3 worldForward;
+            float worldLength;
+            float worldRadius;
+            Color color;
+            string error = null;
+            if (size == null) {
+                worldRoot = transform.TransformPoint(Vector3.zero);
+                worldForward = transform.TransformDirection(Vector3.forward);
+                worldLength = 0.3f;
+                worldRadius = 0.05f;
+                color = Color.red;
+                error = cache.error;
+            } else {
+                worldRoot = transform.TransformPoint(size.localPosition);
+                worldForward = transform.TransformDirection(size.localRotation * Vector3.forward);
+                worldLength = size.worldLength;
+                worldRadius = size.worldRadius;
+                color = new Color(1f, 0.5f, 0);
+            }
+
+            var isSelected = plug.owner().IsSelected();
+
+            var worldEnd = worldRoot + worldForward * worldLength;
+            VRCFuryGizmoUtils.DrawCappedCylinder(worldRoot, worldEnd, worldRadius, color);
+            if (isSelected && size != null && cache.radiusSamples != null) {
+                var sampleCount = cache.radiusSamples.Length;
+                for (var i = 0; i < sampleCount; i++) {
+                    var distance = worldLength * ((i + 0.5f) / sampleCount);
+                    var sampleWorld = worldRoot + worldForward * distance;
+                    VRCFuryGizmoUtils.DrawDisc(sampleWorld, worldForward, cache.radiusSamples[i], new Color(0.5f,0.5f,0.5f,0.4f));
+                }
+            }
+
+            if (isSelected) {
+                VRCFuryGizmoUtils.DrawText(
+                    worldRoot + (worldEnd - worldRoot) / 2,
+                    "SPS Plug" + (error == null ? "" : $"\n({error})"),
+                    Color.gray,
+                    true
+                );
+            }
+
+            Gizmos.color = Color.clear;
+            var gizmoStart = worldRoot;
+            var gizmoEnd = worldEnd - worldForward * worldRadius;
+            var gizmoCount = 5;
+            for (var i = 0; i < gizmoCount; i++) {
+                Gizmos.DrawSphere(gizmoStart + (gizmoEnd - gizmoStart) * i / (gizmoCount-1), worldRadius);
+            }
+        }
+
+        public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug plug) {
+            var renderers = new List<Renderer>();
+            if (plug.autoRenderer) {
+                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(plug.owner(), !plug.useLegacyRendererFinder));
+            } else {
+                renderers.AddRange(plug.configureTpsMesh.Where(r => r != null));
+            }
+            return renderers;
+        }
+
+        [CanBeNull]
+        public static BakeResult Bake(
+            VRCFuryHapticPlug plug,
+            SpsMarkersService spsMarkers,
+            Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
+            bool deferMaterialConfig = false
+        ) {
+            var transform = plug.owner();
+            if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.fromSpsForAll)) {
+                return null;
+            }
+
+            var resolverHash = spsMarkers.NewMarkerId();
+
+            var size = PlugSizeDetector.GetWorldSize(plug);
+            var renderers = size.renderers;
+            var worldLength = size.worldLength;
+            var worldRadius = size.worldRadius;
+            var localRotation = size.localRotation;
+            var localPosition = size.localPosition;
+
+            if (usedRenderers != null) {
+                foreach (var r in renderers) {
+                    var rendererObject = r.owner();
+                    if (usedRenderers.TryGetValue(rendererObject, out var otherPlug)) {
+                        throw new Exception(
+                            "Multiple SPS Plugs target the same renderer. This is probably a mistake. " +
+                            "Maybe there was an extra created by accident?\n\n" +
+                            $"Renderer: {r.owner().GetPath()}\n\n" +
+                            $"Plug 1: {otherPlug.owner().GetPath()}\n\n" +
+                            $"Plug 2: {plug.owner().GetPath()}");
+                    }
+                    usedRenderers[rendererObject] = plug;
+                }
+            }
+
+            // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
+            var capsuleRotation = Quaternion.Euler(90,0,0);
+
+            var localSpace = GameObjects.Create("BakedSpsPlug", transform);
+            localSpace.localPosition = localPosition;
+            localSpace.localRotation = localRotation;
+
+            var oneSpace = GameObjects.Create("OneSpace", localSpace);
+            oneSpace.worldScale = Vector3.one;
+
+            var worldSpace = GameObjects.Create("WorldSpace", localSpace);
+            ConstraintUtils.MakeWorldSpace(worldSpace);
+
+            // Senders
+            var halfWay = Vector3.forward * (worldLength / 2);
+            var senders = GameObjects.Create("Senders", localSpace);
+            HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+                obj = senders,
+                objName = "Length",
+                radius = worldLength,
+                tags = new [] { HapticUtils.CONTACT_PEN_MAIN },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+                obj = senders,
+                objName = "WidthHelper",
+                radius = Mathf.Max(0.01f, worldLength - worldRadius*2),
+                tags = new [] { HapticUtils.CONTACT_PEN_WIDTH },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+                obj = senders,
+                pos = halfWay,
+                objName = "Envelope",
+                radius = worldRadius,
+                tags = new [] { HapticUtils.CONTACT_PEN_CLOSE },
+                rotation = capsuleRotation,
+                height = worldLength,
+                useHipAvoidance = plug.useHipAvoidance
+            });
+            HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+                obj = worldSpace,
+                objName = "Sender - Root",
+                radius = 0.01f,
+                tags = new [] { HapticUtils.CONTACT_PEN_ROOT },
+                useHipAvoidance = plug.useHipAvoidance
+            });
+
+            // TODO: Check if there are 0 renderers,
+            // or if there are 0 materials on any of the renderers
+
+            RendererResult[] rendererResults;
+            MeshRenderer resolverRenderer = null;
+            List<SpsConfigurer.MaterialProperty> resolverMaterialProperties = null;
+
+            if (plug.configureTps || plug.enableSps) {
+                var checkboxName = plug.enableSps ? "Enable Deformation" : "Auto-Configure TPS";
+                if (renderers.Count == 0) {
+                    throw new Exception(
+                        $"VRCFury SPS Plug has '{checkboxName}' checked, but no renderer was found.");
+                }
+
+                rendererResults = renderers.Select(renderer => {
+                    var owner = renderer.owner();
+                    try {
+                        var spsBlendshapes = plug.spsBlendshapes
+                            .Where(renderer.HasBlendshape)
+                            .Distinct()
+                            .Take(16)
+                            .ToArray();
+
+                        var activeFromMask = PlugMaskGenerator.GetMask(renderer, plug);
+                        if (plug.enableSps && plug.spsAutorig) {
+                            renderer = SpsAutoRigger.AutoRig(renderer, localSpace, worldLength, worldRadius, activeFromMask);
+                        }
+                        if (plug.enableSps) {
+                            SpsConfigurer.ExtendBoundsForSps(renderer, localSpace, worldLength);
+                        }
+
+                        var spsBaked = plug.enableSps ? SpsBaker.Bake(renderer, localSpace, activeFromMask, false, spsBlendshapes) : null;
+
+                        var finishedCopies = new HashSet<Material>();
+                        Material ConfigureMaterial(int slotNum, Material mat) {
+                            var shouldPatch = size.matSlots.Get(renderer.owner()).Contains(slotNum);
+                            if (!shouldPatch) return mat;
+
+                            try {
+                                if (mat == null) return null;
+                                if (!BuildTargetUtils.IsDesktop()) return mat;
+
+                                if (plug.enableSps) {
+                                    var copy = mat.Clone("Needed to swap shader to SPS");
+                                    if (finishedCopies.Contains(copy)) return copy;
+                                    finishedCopies.Add(copy);
+                                    SpsConfigurer.ConfigureSpsMaterial(renderer, copy, worldLength,
+                                        spsBaked,
+                                        plug, localSpace, spsBlendshapes, resolverHash);
+                                    return copy;
+                                }
+                                if (plug.configureTps && TpsConfigurer.IsTps(mat)) {
+                                    var copy = mat.Clone("Needed to change properties for TPS autoconfiguration");
+                                    if (finishedCopies.Contains(copy)) return copy;
+                                    finishedCopies.Add(copy);
+                                    TpsConfigurer.ConfigureTpsMaterial(renderer, localSpace, copy, worldLength, activeFromMask);
+                                    return copy;
+                                }
+
+                                return mat;
+                            } catch (Exception e) {
+                                throw new ExceptionWithCause($"Failed to configure material: {mat.name}", e);
+                            }
+                        }
+
+                        return new RendererResult {
+                            renderer = renderer,
+                            configureMaterial = ConfigureMaterial,
+                            spsBlendshapes = spsBlendshapes,
+                            activeFromMask = activeFromMask
+                        };
+                    } catch (Exception e) {
+                        throw new ExceptionWithCause($"Failed to configure renderer: {owner.GetPath()}", e);
+                    }
+                }).ToArray();
+            } else {
+                rendererResults = renderers.Select(r => new RendererResult {
+                    renderer = r,
+                    configureMaterial = (slotNum,m) => m,
+                    activeFromMask = null
+                }).ToArray();
+            }
+
+            if (!deferMaterialConfig) {
+                foreach (var r in rendererResults) {
+                    r.renderer.sharedMaterials = r.renderer.sharedMaterials.Select((mat,slotNum) => r.configureMaterial(slotNum, mat)).ToArray();
+                }
+            }
+
+            if (plug.enableSps) {
+                var bakedRadiusSamples = SpsBaker.GetPackedResolverRadiusSamples(
+                    rendererResults.Select(r => new SpsBaker.RendererBakeInput {
+                        renderer = r.renderer,
+                        activeFromMask = r.activeFromMask
+                    }),
+                    localSpace,
+                    worldLength
+                );
+                var metadataColor = SpsColorSampler.GetColor(rendererResults.Select(r => r.renderer));
+                var resolverObj = GameObjects.Create("SpsResolver", oneSpace);
+                resolverObj.AddComponent<MeshFilter>();
+                var meshRenderer = resolverObj.AddComponent<MeshRenderer>();
+                spsMarkers.ConfigureResolverRenderer(meshRenderer);
+                resolverMaterialProperties = SpsConfigurer.GetResolverProperties(
+                    meshRenderer,
+                    worldLength,
+                    worldRadius,
+                    bakedRadiusSamples,
+                    metadataColor,
+                    resolverHash,
+                    plug
+                );
+                resolverObj.AddComponent<VRCFuryHideGizmoUnlessSelected>();
+                resolverObj.AddComponent<VRCFurySpsGreenScreenFix>();
+                resolverRenderer = meshRenderer;
+            }
+
+            var oscId = GetOscId(plug);
+
+            return new BakeResult {
+                bakeRoot = localSpace,
+                oneSpace = oneSpace,
+                worldSpace = worldSpace,
+                renderers = rendererResults,
+                resolverRenderer = resolverRenderer,
+                worldLength = worldLength,
+                worldRadius = worldRadius,
+                resolverMaterialProperties = resolverMaterialProperties,
+                oscId = oscId,
+            };
+        }
+
+        public class BakeResult {
+            public VFGameObject bakeRoot;
+            public VFGameObject oneSpace;
+            public VFGameObject worldSpace;
+            public ICollection<RendererResult> renderers;
+            public MeshRenderer resolverRenderer;
+            public float worldLength;
+            public float worldRadius;
+            public List<SpsConfigurer.MaterialProperty> resolverMaterialProperties;
+            public string oscId;
+        }
+
+        public class RendererResult {
+            public Renderer renderer;
+            public Func<int, Material, Material> configureMaterial;
+            public IList<string> spsBlendshapes;
+            public float[] activeFromMask;
+        }
+    }
+}

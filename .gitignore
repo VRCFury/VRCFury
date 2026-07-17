@@ -1,3 +1,4 @@
 .vs/
 node_modules/
 .idea/
+temp-compile/
