@@ -77,17 +77,10 @@ namespace VF.Service {
                 .Distinct()
                 .ToArray();
         }
-        public IList<VFController> GetAllReadOnlyControllers() {
-            return VRCAvatarUtils.GetAllControllers(avatar)
-                .Select(found => found.controller as AnimatorController)
-                .NotNull()
-                .Select(c => VFController.Load(c, new VFLoadContext()))
-                .ToArray();
-        }
 
         private bool IsParamUsed(string name) {
             if (paramsService.GetReadOnlyParams()?.FindParameter(name) != null) return true;
-            foreach (var c in GetAllReadOnlyControllers()) {
+            foreach (var c in GetAllUsedControllers()) {
                 if (c.GetParam(name) != null) return true;
             }
             return false;

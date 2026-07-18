@@ -17,8 +17,6 @@ namespace VF.Hooks {
                     injector.GetService<ControllersService>().ClearCache();
                     injector.GetService<ParamsService>().ClearCache();
                     injector.GetService<ParameterCompressorService>().Apply();
-                    injector.GetService<SaveControllersService>().Apply();
-                    injector.GetService<SaveAssetsService>().Run();
                 });
             }
         }

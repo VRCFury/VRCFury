@@ -39,7 +39,7 @@ namespace VF.Service.Compressor {
             var useBadPriorityMethod = false;
 
             // Avoid making this clone controllers
-            foreach (var drivenParam in controllers.GetAllReadOnlyControllers()
+            foreach (var drivenParam in controllers.GetAllUsedControllers()
                          .SelectMany(controller => controller.layers)
                          .SelectMany(layer => layer.GetBehaviours<VRCAvatarParameterDriver>())
                          .SelectMany(driver => driver.parameters)) {
@@ -93,7 +93,7 @@ namespace VF.Service.Compressor {
             }
 
             var controllerUsedParams = new HashSet<string>();
-            foreach (var c in controllers.GetAllReadOnlyControllers()) {
+            foreach (var c in controllers.GetAllUsedControllers()) {
                 c.RewriteParameters(p => {
                     controllerUsedParams.Add(p);
                     return p;

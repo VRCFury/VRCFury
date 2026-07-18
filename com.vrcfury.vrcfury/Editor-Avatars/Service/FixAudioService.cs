@@ -39,7 +39,6 @@ namespace VF.Service {
                 } else {
                     output = input.Clone("Needed to enable Load In Background to make VRCSDK happy");
                     var so = new SerializedObject(output);
-                    so.Update();
                     so.FindProperty("m_LoadInBackground").boolValue = true;
                     so.ApplyModifiedPropertiesWithoutUndo();
                 }

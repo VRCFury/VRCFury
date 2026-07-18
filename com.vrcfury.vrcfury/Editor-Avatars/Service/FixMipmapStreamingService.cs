@@ -25,7 +25,6 @@ namespace VF.Service {
                 if (original.mipmapCount > 1 && !original.streamingMipmaps) {
                     output = original.Clone("Needed to enable mipmap streaming on texture to make VRCSDK happy");
                     var so = new SerializedObject(output);
-                    so.Update();
                     so.FindProperty("m_StreamingMipmaps").boolValue = true;
                     so.FindProperty("m_StreamingMipmapsPriority").intValue = 0;
                     so.ApplyModifiedPropertiesWithoutUndo();
