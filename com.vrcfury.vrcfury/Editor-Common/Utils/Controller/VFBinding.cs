@@ -176,8 +176,12 @@ namespace VF.Utils {
             return output;
         }
 
-        internal bool TryGetCurrentFloat(out float data) {
+        internal bool TryGetCurrentFloat(VFGameObject animatorObject, out float data) {
             if (target == null) {
+                data = 0;
+                return false;
+            }
+            if (animatorObject == null) {
                 data = 0;
                 return false;
             }
@@ -186,7 +190,7 @@ namespace VF.Utils {
             // property drawers. Suppress that path here so AnimationUtility.GetFloatValue stays fast.
             try {
                 using (SuppressMaterialPropertyDrawersHook.Suppress()) {
-                    return AnimationUtility.GetFloatValue((GameObject)target, ToEditorCurveBinding(target), out data);
+                    return AnimationUtility.GetFloatValue((GameObject)animatorObject, ToEditorCurveBinding(animatorObject), out data);
                 }
             } catch (Exception) {
                 // Unity throws a `UnityException: Invalid type` if you request an object that is actually a float or vice versa.

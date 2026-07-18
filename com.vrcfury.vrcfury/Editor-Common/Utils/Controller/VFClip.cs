@@ -96,7 +96,7 @@ namespace VF.Utils.Controller {
                     && binding.target == context.AnimatorObject
                     && binding.type == typeof(Transform)
                     && binding.propertyName.StartsWith("m_LocalScale.")
-                    && binding.TryGetCurrentFloat(out var rootScale)
+                    && binding.TryGetCurrentFloat(context.AnimatorObject, out var rootScale)
                     && rootScale != 1) {
                     curve = curve.Scale(rootScale);
                     output.changedFromOriginalSourceClip = true;

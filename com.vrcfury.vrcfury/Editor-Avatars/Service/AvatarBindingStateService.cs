@@ -77,7 +77,7 @@ namespace VF.Service {
                 }
             }
 
-            return binding.TryGetCurrentFloat(out data);
+            return binding.TryGetCurrentFloat(avatarObject, out data);
         }
         public bool GetObject(VFBinding binding, out Object data, bool trustUnity = false) {
             if (!trustUnity) {
