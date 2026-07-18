@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -9,32 +10,31 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Change SPS Tag")]
     internal class ChangeSpsTagActionBuilder : ActionBuilder<ChangeSpsTagAction> {
-        [VFAutowired] private readonly VFGameObject avatarObject;
-
         private enum TargetType {
             None,
             Plug,
             Socket
         }
 
-        public AnimationClip Build(ChangeSpsTagAction model, bool debugMode) {
+        public VFClip Build(ChangeSpsTagAction model, bool debugMode) {
             var clip = NewClip();
             if (debugMode) return clip;
-            if (TryGetBinding(model, out var path, out var type, out var lowPropertyName, out var highPropertyName, out var selfPropertyName, out var othersPropertyName)) {
+            if (TryGetBinding(model, out var target, out var type, out var lowPropertyName, out var highPropertyName, out var selfPropertyName, out var othersPropertyName)) {
                 var tagHash = model.globalTag
                     ? (model.globalTagEnabled ? SpsConfigurer.SharedTag : 0u)
                     : SpsConfigurer.HashTag(VRCFuryHapticPlugEditor.SanitizeSpsTag(model.tag));
-                clip.SetCurve(path, type, lowPropertyName, SpsMarkersService.GetLow(tagHash));
-                clip.SetCurve(path, type, highPropertyName, SpsMarkersService.GetHigh(tagHash));
+                clip.SetCurve(target, type, lowPropertyName, SpsMarkersService.GetLow(tagHash));
+                clip.SetCurve(target, type, highPropertyName, SpsMarkersService.GetHigh(tagHash));
                 if (selfPropertyName != null) {
-                    clip.SetCurve(path, type, selfPropertyName, model.globalTag ? (model.globalTagEnabled ? 1 : 0) : (model.allowSelf ? 1 : 0));
+                    clip.SetCurve(target, type, selfPropertyName, model.globalTag ? (model.globalTagEnabled ? 1 : 0) : (model.allowSelf ? 1 : 0));
                 }
                 if (othersPropertyName != null) {
-                    clip.SetCurve(path, type, othersPropertyName, model.globalTag ? (model.globalTagEnabled ? 1 : 0) : (model.allowOthers ? 1 : 0));
+                    clip.SetCurve(target, type, othersPropertyName, model.globalTag ? (model.globalTagEnabled ? 1 : 0) : (model.allowOthers ? 1 : 0));
                 }
             }
             return clip;
@@ -42,14 +42,14 @@ namespace VF.Actions {
 
         private bool TryGetBinding(
             ChangeSpsTagAction model,
-            out string path,
+            out VFGameObject bindingTarget,
             out System.Type type,
             out string lowPropertyName,
             out string highPropertyName,
             out string selfPropertyName,
             out string othersPropertyName
         ) {
-            path = null;
+            bindingTarget = null;
             type = null;
             lowPropertyName = null;
             highPropertyName = null;
@@ -61,10 +61,13 @@ namespace VF.Actions {
 
             var targetType = GetTargetType(target);
             var slot = GetClampedSlot(model, targetType);
-            var targetPath = target.gameObject.asVf().GetPath(avatarObject);
+            var targetObject = target.gameObject.asVf();
 
             if (targetType == TargetType.Plug) {
-                path = JoinPath(targetPath, "BakedSpsPlug/OneSpace/SpsResolver");
+                bindingTarget = targetObject.Find("BakedSpsPlug/OneSpace/SpsResolver");
+                if (bindingTarget == null) {
+                    throw new Exception($"Change SPS Tag target `{targetObject.GetPath()}` is missing `BakedSpsPlug/OneSpace/SpsResolver`");
+                }
                 type = typeof(MeshRenderer);
                 if (model.globalTag) {
                     lowPropertyName = "material._SPS_TagInclude4Low";
@@ -82,7 +85,10 @@ namespace VF.Actions {
             }
 
             if (targetType == TargetType.Socket) {
-                path = JoinPath(targetPath, "BakedSpsSocket/OneSpace/SpsScreenMarker");
+                bindingTarget = targetObject.Find("BakedSpsSocket/OneSpace/SpsScreenMarker");
+                if (bindingTarget == null) {
+                    throw new Exception($"Change SPS Tag target `{targetObject.GetPath()}` is missing `BakedSpsSocket/OneSpace/SpsScreenMarker`");
+                }
                 type = typeof(MeshRenderer);
                 lowPropertyName = $"material._SPS_SocketTag{slot}Low";
                 highPropertyName = $"material._SPS_SocketTag{slot}High";
@@ -90,11 +96,6 @@ namespace VF.Actions {
             }
 
             return false;
-        }
-
-        private static string JoinPath(string basePath, string suffix) {
-            if (string.IsNullOrEmpty(basePath)) return suffix;
-            return basePath + "/" + suffix;
         }
 
         private static int GetClampedSlot(ChangeSpsTagAction model, TargetType targetType) {

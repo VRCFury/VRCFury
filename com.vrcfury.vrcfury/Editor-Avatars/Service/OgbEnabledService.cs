@@ -11,7 +11,7 @@ namespace VF.Service {
 
         private ControllerManager fx => controllers.GetFx();
         private VFABool ogbEnabled = null;
-        private UnityEngine.AnimationClip ogbEnableClip = null;
+        private VFClip ogbEnableClip = null;
 
         private VFABool GetOgbEnabled() {
             if (ogbEnabled != null) return ogbEnabled;

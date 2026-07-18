@@ -5,19 +5,20 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Enable SPS")]
     [FeatureHideTitleInEditor]
     internal class SpsOnActionBuilder : ActionBuilder<SpsOnAction> {
-        public AnimationClip Build(SpsOnAction model) {
+        public VFClip Build(SpsOnAction model) {
             return MakeClip(model, true);
         }
-        public AnimationClip BuildOff(SpsOnAction model) {
+        public VFClip BuildOff(SpsOnAction model) {
             return MakeClip(model, false);
         }
 
-        private AnimationClip MakeClip(SpsOnAction model, bool enabled) {
+        private VFClip MakeClip(SpsOnAction model, bool enabled) {
             var clip = NewClip();
             if (model.target == null) {
                 //Debug.LogWarning("Missing target in action: " + name);

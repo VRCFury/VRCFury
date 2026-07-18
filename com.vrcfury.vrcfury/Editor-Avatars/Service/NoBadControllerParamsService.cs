@@ -3,6 +3,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -17,14 +18,15 @@ namespace VF.Service {
         public void Apply() {
             foreach (var c in controllers.GetAllUsedControllers()) {
                 foreach (var tree in new AnimatorIterator.Trees().From(c)) {
-                    if (tree.blendType == BlendTreeType.Direct) {
-                        tree.RewriteChildren(child => {
-                            if (child.directBlendParameter == VFBlendTreeDirect.AlwaysOneParam) {
-                                child.directBlendParameter = c.One();
-                            }
-                            return child;
-                        });
+                    if (tree.blendType != BlendTreeType.Direct) {
+                        continue;
                     }
+                    tree.RewriteChildren(child => {
+                        if (child.directBlendParameter == VFBlendTreeDirect.AlwaysOneParam) {
+                            child.directBlendParameter = c.One();
+                        }
+                        return child;
+                    });
                 }
                 c.UpgradeWrongParamTypes();
                 c.RemoveWrongParamTypes();

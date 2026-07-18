@@ -42,17 +42,18 @@ namespace VF.Service {
                 limitToObjects.UnionWith(allClipsService.GetAllClips()
                     .SelectMany(clip => clip.GetFloatBindings())
                     .Where(binding => typeof(IVRCConstraint).IsAssignableFrom(binding.type))
-                    .Select(binding => avatarObject.Find(binding.path))
+                    .Select(binding => binding.target)
                     .NotNull());
                 limitToObjects.UnionWith(avatarObject.GetSelfAndAllChildren()
                     .Where(obj => obj.GetComponent<IVRCConstraint>() != null));
             }
 
-            EditorCurveBinding RewriteBinding(EditorCurveBinding binding, VFGameObject animatorObject) {
+            VFBinding RewriteBinding(VFBinding binding) {
                 if (!typeof(IConstraint).IsAssignableFrom(binding.type)) return binding;
                 if (limitToObjects != null) {
-                    var obj = animatorObject.Find(binding.path);
-                    if (obj == null || !limitToObjects.Contains(obj)) return binding;
+                    var obj = binding.target;
+                    if (obj == null) return binding;
+                    if (!limitToObjects.Contains(obj)) return binding;
                 }
                 if (AvatarDynamicsSetup.TryGetSubstituteAnimationBinding(
                         binding.type,
@@ -61,19 +62,20 @@ namespace VF.Service {
                         out var newPropertyName,
                         out var isArrayProperty
                     )) {
-                    binding.type = newType;
-                    binding.propertyName = newPropertyName;
+                    binding = binding
+                        .WithType(newType)
+                        .WithPropertyName(newPropertyName);
                 }
                 return binding;
             }
 
             allClipsService.RewriteAllClips(AnimationRewriter.RewriteBinding(binding =>
-                RewriteBinding(binding, avatarObject)
+                RewriteBinding(binding)
             ));
 
-            foreach (var (owner,controller) in animators.GetSubControllers()) {
+            foreach (var (_, controller) in animators.GetSubControllers()) {
                 controller.Rewrite(AnimationRewriter.RewriteBinding(binding =>
-                    RewriteBinding(binding, owner)
+                    RewriteBinding(binding)
                 ));
             }
 

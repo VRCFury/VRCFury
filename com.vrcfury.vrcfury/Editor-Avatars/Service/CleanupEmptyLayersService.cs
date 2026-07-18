@@ -6,6 +6,7 @@ using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -23,16 +24,17 @@ namespace VF.Service {
                 var removedBindings = new List<string>();
 
                 // Delete bindings targeting things that don't exist
-                foreach (var clip in new AnimatorIterator.Clips().From(c)) {
+                foreach (var clip in c.GetClips()) {
                     if (clip.GetUseOriginalUserClip() != null && validateBindingsService.HasValidBinding(clip)) {
                         // We haven't touched this clip at all during the build so far,
                         // and it contains some useful bindings, so go ahead and just leave it as is
                         // so the original file will be used, rather than generating a fresh copy.
                     } else {
                         // Rip out all impossible bindings
+                        var clipName = clip.name;
                         clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
                             if (!validateBindingsService.IsValid(binding)) {
-                                removedBindings.Add($"{binding.PrettyString()} from {clip.name}");
+                                removedBindings.Add($"{binding.PrettyString()} from {clipName}");
                                 return null;
                             }
                             return binding;
@@ -50,7 +52,7 @@ namespace VF.Service {
                 foreach (var (layer, i) in c.GetLayers().Select((l,i) => (l,i))) {
                     var hasNonEmptyClip = new AnimatorIterator.Clips().From(layer)
                         .Any(clip => validateBindingsService.HasValidBinding(clip));
-                    var hasBehaviour = layer.allBehaviours.Any();
+                    var hasBehaviour = layer.HasBehaviours();
 
                     if (!hasNonEmptyClip && !hasBehaviour) {
                         Debug.LogWarning($"Removing layer {layer.name} from {c.GetType()} because it doesn't do anything");

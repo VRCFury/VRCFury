@@ -184,37 +184,26 @@ namespace VF.Feature {
             }
         }
 
-        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(VFGameObject obj, VFController controller) {
-            var prefix = obj.GetPath(avatarObject);
-
-            var clipsInController = new AnimatorIterator.Clips().From(controller);
-
-            return clipsInController
+        private ICollection<(VFBinding, AnimationCurve)> GetBindings(VFController controller) {
+            return new AnimatorIterator.Clips().From(controller)
                 .SelectMany(clip => clip.GetFloatCurves())
-                .Select(pair => {
-                    var (binding, curve) = pair;
-                    binding.path = ClipRewritersService.Join(prefix, binding.path, allowAdvancedOperators: false);
-                    return (binding, curve);
-                })
                 .ToList();
         }
 
         private ICollection<string> CollectAnimatedBlendshapesForMesh(SkinnedMeshRenderer skin) {
             var animatedBindings = controllers.GetAllUsedControllers()
-                .SelectMany(controller => GetBindings(avatarObject, controller))
+                .SelectMany(GetBindings)
                 .Concat(animators.GetSubControllers().SelectMany(pair =>
-                    GetBindings(pair.owner, pair.controller)
+                    GetBindings(pair.controller)
                 ))
                 .ToList();
-
-            var skinPath = skin.owner().GetPath(avatarObject);
             
             var animatedBlendshapes = new HashSet<string>();
             foreach (var tuple in animatedBindings) {
                 var (binding, curve) = tuple;
                 if (binding.type != typeof(SkinnedMeshRenderer)) continue;
                 if (!binding.propertyName.StartsWith("blendShape.")) continue;
-                if (binding.path != skinPath) continue;
+                if (!binding.Targets(skin.owner())) continue;
                 var blendshape = binding.propertyName.Substring(11);
                 var animatesToNondefaultValue = false;
                 if (skin.HasBlendshape(blendshape)) {

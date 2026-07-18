@@ -41,10 +41,10 @@ namespace VF.Service {
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
-        private readonly Lazy<AnimationClip> materialPropertiesClip;
+        private readonly Lazy<VFClip> materialPropertiesClip;
 
         public BakeHapticSocketsService() {
-            materialPropertiesClip = new Lazy<AnimationClip>(() => {
+            materialPropertiesClip = new Lazy<VFClip>(() => {
                 var clip = clipFactory.NewClip("SpsSocketMarkerProperties");
                 directTreeService.Create("SPS Socket Marker Properties").Add(clip);
                 return clip;
@@ -52,7 +52,7 @@ namespace VF.Service {
         }
 
         private void RegisterMaterialProperties(IEnumerable<SpsConfigurer.MaterialProperty> properties) {
-            SpsConfigurer.AddMaterialPropertyCurves(materialPropertiesClip.Value, avatarObject, properties);
+            SpsConfigurer.AddMaterialPropertyCurves(materialPropertiesClip.Value, properties);
         }
 
         [FeatureBuilderAction]
@@ -64,7 +64,7 @@ namespace VF.Service {
                 .ToArray()
                 .Length >= 2;
             VFABool autoOn = null;
-            AnimationClip autoOnClip = null;
+            VFClip autoOnClip = null;
             if (enableAuto) {
                 autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false, saved: saved);
                 menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
@@ -81,7 +81,7 @@ namespace VF.Service {
                 .ToArray()
                 .Length >= 1;
             VFABool stealthOn = null;
-            AnimationClip stealthClip = null;
+            VFClip stealthClip = null;
             if (enableStealth) {
                 stealthOn = fx.NewBool("stealth", synced: true, saved: saved);
                 menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
@@ -95,7 +95,7 @@ namespace VF.Service {
                 .ToArray()
                 .Length >= 1;
             VFABool legacyOn = null;
-            AnimationClip legacyOffClip = null;
+            VFClip legacyOffClip = null;
             if (enableLegacy) {
                 legacyOn = fx.NewBool(
                     "legacy",

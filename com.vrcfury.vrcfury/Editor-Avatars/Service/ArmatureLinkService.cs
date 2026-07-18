@@ -62,8 +62,6 @@ namespace VF.Service {
                 }
             }
 
-            mover.ApplyDeferred();
-            
             // Clean up objects that don't need to exist anymore
             // (this should happen before toggle rewrites, so we don't have to add toggles for a ton of things that won't exist anymore)
             var usedReasons = GetUsageReasons(avatarObject);
@@ -78,12 +76,11 @@ namespace VF.Service {
             foreach (var clip in controllers.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
                 foreach (var binding in clip.GetFloatBindings()) {
                     if (binding.type != typeof(GameObject)) continue;
-                    var transform = avatarObject.Find(binding.path);
+                    var transform = binding.target;
                     if (transform == null) continue;
                     foreach (var other in animLink.Get(transform)) {
                         if (other == null) continue; // it got deleted because the propBone wasn't used
-                        var b = binding;
-                        b.path = other.GetPath(avatarObject);
+                        var b = binding.WithTarget(other);
                         clip.SetCurve(b, clip.GetFloatCurve(binding));
                     }
                 }
@@ -238,7 +235,7 @@ namespace VF.Service {
                             $"Aramture link was asked to move an object to a destination with the forced name" +
                             $" '{exists.GetPath(avatarObject)}', but that object already exists at the destination.");
                     }
-                    mover.Move(propBone, avatarBone, model.forceMergedName, defer: true);
+                    mover.Move(propBone, avatarBone, model.forceMergedName);
                     pruneCheck.Add(propBone);
                     AddDebugInfo($"Forcefully named {model.forceMergedName} by Armature Link Force Naming." +
                                  $" Note that this may break toggles or offset animations for this object!");
@@ -262,7 +259,7 @@ namespace VF.Service {
                         AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {original.name}");
                     }
 
-                    mover.Move(propBone, current, "Original Object", defer: true);
+                    mover.Move(propBone, current, "Original Object");
                 }
 
                 if (ShouldReuseBone()) {
@@ -454,7 +451,7 @@ namespace VF.Service {
                     if (!string.IsNullOrWhiteSpace(to.offset)) {
                         var offsetObj = VRCFObjectPathCache.Find(obj, to.offset);
                         if (offsetObj == null) {
-                            throw new Exception($"Failed to find object at path '{ClipRewritersService.Join(obj.GetPath(avatarObject), to.offset)}'");
+                            throw new Exception($"Failed to find object at path '{AnimationBindingUtils.JoinPaths(obj.GetPath(avatarObject), to.offset)}'");
                         }
                         obj = offsetObj;
                     }

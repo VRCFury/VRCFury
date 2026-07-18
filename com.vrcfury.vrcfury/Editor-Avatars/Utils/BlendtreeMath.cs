@@ -22,7 +22,7 @@ namespace VF.Utils {
 
         // A VFAFloat, but it's guaranteed to be 0 or 1
         public class VFAFloatBool {
-            public delegate Motion CreateCallback(Motion whenTrue, Motion whenFalse);
+            public delegate VFMotion CreateCallback(VFMotion whenTrue, VFMotion whenFalse);
             public CreateCallback create { private set; get; }
             public bool defaultIsTrue { private set; get; }
 
@@ -93,14 +93,13 @@ namespace VF.Utils {
             public float GetDefault() => value.GetDefault();
             public VFAFloat AsFloat() => value;
 
-            public AnimationClip MakeSetter(float to) {
-                var clip = VrcfObjectFactory.Create<AnimationClip>();
-                clip.name = $"AAP: {Name()} = {to}";
+            public VFClip MakeSetter(float to) {
+                var clip = VFClip.Create($"AAP: {Name()} = {to}");
                 clip.SetAap(Name(), to);
                 return clip;
             }
 
-            public Motion MakeCopier(string from, float minSupported = 0, float maxSupported = float.MaxValue, float multiplier = 1) {
+            public VFMotion MakeCopier(string from, float minSupported = 0, float maxSupported = float.MaxValue, float multiplier = 1) {
                 var name = $"AAP: {Name()} = {from}";
                 if (multiplier != 1) name += $" * {multiplier}";
                 if (minSupported >= 0) {
@@ -149,9 +148,9 @@ namespace VF.Utils {
         }
         
         public void SetValueWithConditions(
-            params (Motion whenTrue,VFAFloatBool condition)[] targets
+            params (VFMotion whenTrue,VFAFloatBool condition)[] targets
         ) {
-            Motion elseTree = null;
+            VFMotion elseTree = null;
 
             foreach (var target in targets.Reverse()) {
                 if (target.condition == null) {
@@ -222,8 +221,8 @@ namespace VF.Utils {
         public static VFAFloatBool GreaterThan(VFAFloat a, VFAFloat b, string name = null) {
             name = name ?? $"{a} > {b}";
             return new VFAFloatBool((whenTrue, whenFalse) => {
-                if (whenTrue == null) whenTrue = VrcfObjectFactory.Create<AnimationClip>();
-                if (whenFalse == null) whenFalse = VrcfObjectFactory.Create<AnimationClip>();
+                if (whenTrue == null) whenTrue = VFClip.Create();
+                if (whenFalse == null) whenFalse = VFClip.Create();
                 var tree = VFBlendTree2D.CreateSimpleDirectional(name, a, b);
                 tree.Add(new Vector2(-10000, -10000), whenFalse);
                 tree.Add(new Vector2(10000, 10000), whenFalse);
@@ -304,9 +303,9 @@ namespace VF.Utils {
          * input : [0,Infinity)
          * multiplier : (-Infinity,Infinity)
          */
-        public static Motion Add(string name, VFAap output, params (VFAFloatOrConst input,float multiplier)[] components) {
-            var clipCache = new Dictionary<float, AnimationClip>();
-            Motion MakeCachedSetter(float multiplier) {
+        public static VFMotion Add(string name, VFAap output, params (VFAFloatOrConst input,float multiplier)[] components) {
+            var clipCache = new Dictionary<float, VFClip>();
+            VFMotion MakeCachedSetter(float multiplier) {
                 if (clipCache.TryGetValue(multiplier, out var cached)) return cached;
                 return clipCache[multiplier] = output.MakeSetter(multiplier);
             }
@@ -325,7 +324,7 @@ namespace VF.Utils {
         /**
          * input : [0,Infinity)
          */
-        public static Motion Add(string name, params (string input,Motion motion)[] components) {
+        public static VFMotion Add(string name, params (string input,VFMotion motion)[] components) {
             var tree = VFBlendTreeDirect.Create(name);
             foreach (var (input,motion) in components) {
                 tree.Add(input, motion);
@@ -342,7 +341,7 @@ namespace VF.Utils {
             var tmp = Add($"{name}/Tmp", (input, 10000), (-1, 1));
             var tree = VFBlendTreeDirect.Create(name);
             tree.SetNormalizedBlendValues(true);
-            tree.Add(tmp, VrcfObjectFactory.Create<AnimationClip>());
+            tree.Add(tmp, VFClip.Create());
             tree.Add(output.MakeSetter(10000));
             directTree.Add(tree);
             return output;
@@ -400,18 +399,16 @@ namespace VF.Utils {
         }
 
         public void MultiplyInPlace(VFAap output, VFAFloat multiplier, VFAFloat existing) {
-            var oldBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), existing.Name());
-            var newBinding = oldBinding;
-            newBinding.propertyName = output;
+            var oldBinding = VFBinding.MakeAnimatorBinding(existing.Name());
+            var newBinding = oldBinding.WithPropertyName(output);
             foreach (var tree in new AnimatorIterator.Trees().From(directTree)) {
                 tree.RewriteChildren(child => {
-                    if (!(child.motion is AnimationClip oldClip)) return child;
+                    if (!(child.motion is VFClip oldClip)) return child;
                     var oldCurve = oldClip.GetCurve(oldBinding, true);
                     if (oldCurve == null) return child;
                     if (oldCurve.FloatCurve.keys.Length == 1 && oldCurve.FloatCurve.keys[0].value == 0) return child;
 
-                    var newClip = VrcfObjectFactory.Create<AnimationClip>();
-                    newClip.name = $"{output.Name()} = {oldCurve.FloatCurve.keys[0].value}";
+                    var newClip = VFClip.Create($"{output.Name()} = {oldCurve.FloatCurve.keys[0].value}");
                     var newCurve = oldCurve.Clone();
                     newClip.SetCurve(newBinding, newCurve);
                     var newTree = VFBlendTreeDirect.Create(oldClip.name);
@@ -425,9 +422,8 @@ namespace VF.Utils {
         }
         
         public void CopyInPlace(VFAFloat existing, string output, float multiplier = 1f) {
-            var oldBinding = EditorCurveBinding.FloatCurve("", typeof(Animator), existing.Name());
-            var newBinding = oldBinding;
-            newBinding.propertyName = output;
+            var oldBinding = VFBinding.MakeAnimatorBinding(existing.Name());
+            var newBinding = oldBinding.WithPropertyName(output);
             foreach (var clip in new AnimatorIterator.Clips().From(directTree)) {
                 var curve = clip.GetCurve(oldBinding, true);
                 if (curve != null) {

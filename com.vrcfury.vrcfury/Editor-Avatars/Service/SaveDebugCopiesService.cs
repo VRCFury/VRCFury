@@ -9,7 +9,9 @@ namespace VF.Service {
     [VFService]
     internal class SaveDebugCopiesService {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly TmpDirService tmpDirService;
+        [VFAutowired] private readonly ControllersService controllers;
         
         [FeatureBuilderAction(FeatureOrder.BackupBefore)]
         public void SaveBefore() {
@@ -25,13 +27,12 @@ namespace VF.Service {
             if (!DebugCopyMenuItem.Get()) return;
             var outputDir = $"{tmpDirService.GetTempDir()}/{folderName}";
             var session = new SaveAssetsSession();
-            foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
-                if (c.controller == null) continue;
+            foreach (var c in controllers.GetAllUsedControllers()) {
+                var raw = c.Save(avatarObject, reuseSourceAssets: false);
                 session.SaveAssetAndChildren(
-                    c.controller.Clone(),
-                    VRCFEnumUtils.GetName(c.type),
-                    outputDir,
-                    false
+                    raw,
+                    VRCFEnumUtils.GetName(c.vrcType),
+                    outputDir
                 );
             }
             session.FlushWorkLogManifest(outputDir);

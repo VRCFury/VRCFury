@@ -40,7 +40,6 @@ namespace VF.Feature {
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager avatarMenu => menuService.GetMenu();
         [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly ClipRewritersService clipRewritersService;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
@@ -68,13 +67,25 @@ namespace VF.Feature {
             }
 
             var fromControllers = new List<VFControllerWithVrcType>();
+            var baseObject = GetBaseObject(model, featureBaseObject);
             foreach (var c in model.controllers) {
                 var source = c.controller.Get();
                 if (source == null) {
                     missingAssets.Add(c.controller);
                     continue;
                 }
-                var copy = VFControllerWithVrcType.CopyAndLoadController(source, c.type);
+                var copy = VFControllerWithVrcType.Load(
+                    source,
+                    c.type,
+                    new VFLoadContext {
+                        OwnerObject = baseObject,
+                        AnimatorObject = globals.avatarObject,
+                        RootBindingsApplyToAvatar = model.rootBindingsApplyToAvatar,
+                        AdjustRootScale = true,
+                        RewritePath = path => RewritePath(model, path),
+                        FindObject = VRCFObjectPathCache.Find
+                    }
+                );
                 if (copy != null) {
                     fromControllers.Add(copy);
                 }
@@ -87,8 +98,10 @@ namespace VF.Feature {
                 var to = controllers.GetController(from.vrcType);
 
                 // Fail if trying to merge a controller that is on the avatar descriptor
-                if (VrcfObjectCloner.GetOriginal(to.GetRaw()) != null && to.GetRaw().GetCloneSource() == from.GetRaw().GetCloneSource()) {
-                    if (AssetDatabase.GetAssetPath(to.GetRaw().GetCloneSource())?.ToLower().Contains("goloco") ?? false) {
+                var toSource = to.GetSourceAsset();
+                var fromSource = from.GetSourceAsset();
+                if (toSource != null && toSource == fromSource) {
+                    if (AssetDatabase.GetAssetPath(toSource)?.ToLower().Contains("goloco") ?? false) {
                         throw new Exception(
                             "You've installed GogoLoco using VRCFury, but your avatar descriptor also contains GogoLoco controllers." +
                             " Make sure your Avatar Descriptor does not contain any gogoloco files."
@@ -316,11 +329,11 @@ namespace VF.Feature {
                 while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
 
                 if (from == "") {
-                    path = ClipRewritersService.Join(to, path);
+                    path = AnimationBindingUtils.JoinPaths(to, path);
                     if (rewrite.delete) return null;
                 } else if (path.StartsWith(from + "/")) {
                     path = path.Substring(from.Length + 1);
-                    path = ClipRewritersService.Join(to, path);
+                    path = AnimationBindingUtils.JoinPaths(to, path);
                     if (rewrite.delete) return null;
                 } else if (path == from) {
                     path = to;
@@ -340,17 +353,6 @@ namespace VF.Feature {
                     avatar.autoLocomotion = false;
                 }
             }
-
-            // Rewrite clips
-            from.Rewrite(AnimationRewriter.Combine(
-                AnimationRewriter.RewritePath(path => RewritePath(model, path)),
-                clipRewritersService.CreateNearestMatchPathRewriter(
-                    GetBaseObject(model, featureBaseObject),
-                    rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
-                ),
-                clipRewritersService.AdjustRootScale(),
-                clipRewritersService.AnimatorBindingsAlwaysTargetRoot()
-            ));
 
             // Rewrite params
             // (we do this after rewriting paths to ensure animator bindings all hit "")
@@ -445,7 +447,7 @@ namespace VF.Feature {
                     smoothedDict[rewritten] = smoothed;
                 }
 
-                VFControllerAvatarExtensions.doNotRewriteCopyDriverSources(() => {
+                VFParameterRewriteSettings.WithoutCopyDriverSourceRewrites(() => {
                     to.RewriteParameters(name => {
                         if (smoothedDict.TryGetValue(name, out var smoothed)) {
                             return smoothed;
@@ -711,7 +713,7 @@ namespace VF.Feature {
                     .NotNull()
                     .ToList();
                 var usesWdOff = controllers
-                    .SelectMany(c => new AnimatorIterator.States().From(new VFController(c)))
+                    .SelectMany(c => new AnimatorIterator.States().From(VFController.Load(c, new VFLoadContext())))
                     .Any(state => !state.writeDefaultValues);
                 var rewrites = prop.FindPropertyRelative("rewriteBindings");
                 var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(

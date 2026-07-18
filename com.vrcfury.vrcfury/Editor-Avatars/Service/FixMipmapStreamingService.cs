@@ -58,8 +58,8 @@ namespace VF.Service {
             }
 
             var clipRewriter = AnimationRewriter.RewriteObject(o => (o is Material m) ? OptimizeMat(m) : o);
-            foreach (var clip in controllers.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
-                clip.Rewrite(clipRewriter);
+            foreach (var controller in controllers.GetAllUsedControllers()) {
+                controller.Rewrite(clipRewriter);
             }
         }
     }

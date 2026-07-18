@@ -23,15 +23,13 @@ namespace VF.Service {
             var removedFromActiveRootRenderer = false;
 
             foreach (var ctrl in controllers.GetAllUsedControllers()) {
-                foreach (var clip in ctrl.GetClips()) {
-                    clip.Rewrite(AnimationRewriter.RewriteObject(obj => {
-                        if (obj is Material m && !IsMobileMat(m)) {
-                            removedMats.Add($"{m.name} in animation {clip.name}");
-                            return null;
-                        }
-                        return obj;
-                    }));
-                }
+                ctrl.Rewrite(AnimationRewriter.RewriteObject(obj => {
+                    if (obj is Material m && !IsMobileMat(m)) {
+                        removedMats.Add($"{m.name} in controller {ctrl.name}");
+                        return null;
+                    }
+                    return obj;
+                }));
             }
 
             foreach (var renderer in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {

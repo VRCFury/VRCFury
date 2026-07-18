@@ -93,7 +93,7 @@ namespace VF.Feature {
             var clip = actionClipService.LoadState("senkygesture", input);
             return new State() {
                 actions = {
-                    new AnimationClipAction { motion = clip },
+                    new AnimationClipAction { vfClip = clip },
                     new BlockBlinkingAction()
                 }
             };

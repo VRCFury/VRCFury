@@ -134,9 +134,5 @@ namespace VF.Utils {
                 }).ToArray();
             }
         }
-
-        public static FloatOrObjectCurve DummyFloatCurve(float length) {
-            return AnimationCurve.Constant(0, length, 0);
-        }
     }
 }

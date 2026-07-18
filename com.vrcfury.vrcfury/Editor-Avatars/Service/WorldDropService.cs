@@ -61,7 +61,7 @@ namespace VF.Service {
         }
 
 #if VRCSDK_HAS_VRCCONSTRAINTS
-        private void MakeVrcConstrint(VFGameObject obj, AnimationClip dropClip) {
+        private void MakeVrcConstrint(VFGameObject obj, VFClip dropClip) {
             var parent = obj.parent;
             var droppable = GameObjects.Create("Droppable", parent);
             mover.Move(obj, droppable);
@@ -73,7 +73,7 @@ namespace VF.Service {
         }
 #endif
 
-        private void MakeLegacyConstraint(VFGameObject obj, AnimationClip dropClip) {
+        private void MakeLegacyConstraint(VFGameObject obj, VFClip dropClip) {
             var parent = obj.parent;
             var worldSpaceObj = GameObjects.Create("Droppable (WorldSpace)", parent);
             var worldConstraint = worldSpaceObj.AddComponent<ParentConstraint>();

@@ -8,6 +8,7 @@ using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("World Drop")]
@@ -15,7 +16,7 @@ namespace VF.Actions {
     internal class WorldDropActionBuilder : ActionBuilder<WorldDropAction> {
         [VFAutowired] [CanBeNull] private readonly WorldDropService worldDropService;
         
-        public AnimationClip Build(WorldDropAction model, string actionName) {
+        public VFClip Build(WorldDropAction model, string actionName) {
             var onClip = NewClip();
             if (model.obj != null && worldDropService != null) {
                 var param = worldDropService.Add(model.obj, actionName);

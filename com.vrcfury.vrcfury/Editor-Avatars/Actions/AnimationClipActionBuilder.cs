@@ -1,4 +1,4 @@
-﻿using System.Collections.Immutable;
+using System.Collections.Immutable;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
@@ -11,6 +11,7 @@ using VF.Model;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Animation Clip")]
@@ -18,24 +19,30 @@ namespace VF.Actions {
     internal class AnimationClipActionBuilder : ActionBuilder<AnimationClipAction> {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] [CanBeNull] private readonly FullBodyEmoteService fullBodyEmoteService;
-        [VFAutowired] [CanBeNull] private readonly ClipRewritersService clipRewritersService;
-        
-        public Motion Build(AnimationClipAction clipAction, VFGameObject animObject) {
-            var input = clipAction.motion;
-            if (input == null) input = clipAction.clip.Get();
-            if (input == null) return NewClip();
 
-            var copy = input.Clone();
+        public VFMotion Build(AnimationClipAction clipAction, VFGameObject animObject) {
+            VFMotion copy;
+
+            if (clipAction.vfClip is VFMotion vfClip) {
+                copy = vfClip.Clone();
+            } else {
+                var input = clipAction.motion;
+                if (input == null) input = clipAction.clip.Get();
+                if (input == null) return NewClip();
+
+                copy = VFMotion.Load(
+                    input,
+                    new VFLoadContext {
+                        OwnerObject = animObject,
+                        AnimatorObject = avatarObject,
+                        AdjustRootScale = true,
+                        FindObject = VRCFObjectPathCache.Find
+                    }
+                );
+            }
+
             foreach (var clip in new AnimatorIterator.Clips().From(copy)) {
                 AddFullBodyClip(clip);
-
-                var rewriters = (clipRewritersService ?? new ClipRewritersService(avatarObject));
-                var rewriter = AnimationRewriter.Combine(
-                    rewriters.CreateNearestMatchPathRewriter(animObject),
-                    rewriters.AdjustRootScale(),
-                    rewriters.AnimatorBindingsAlwaysTargetRoot()
-                );
-                clip.Rewrite(rewriter);
             }
 
             return copy;
@@ -52,7 +59,7 @@ namespace VF.Actions {
                 if (clip == null) {
                     var newPath = EditorUtility.SaveFilePanelInProject("VRCFury Recorder", "New Animation", "anim", "Path to new animation");
                     if (string.IsNullOrEmpty(newPath)) return;
-                    clip = VrcfObjectFactory.Create<AnimationClip>();
+                    clip = VFClip.Create().Save(componentObject) as AnimationClip;
                     VRCFuryAssetDatabase.SaveAsset(clip, newPath);
                     GuidWrapperPropertyDrawer.SetValue(clipProp, clip);
                     clipProp.serializedObject.ApplyModifiedProperties();
@@ -62,16 +69,16 @@ namespace VF.Actions {
             return row;
         }
         
-        private void AddFullBodyClip(AnimationClip clip) {
+        private void AddFullBodyClip(VFClip clip) {
             if (fullBodyEmoteService == null) return;
             var types = clip.GetMuscleBindingTypes();
-            if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle)) {
-                types = types.Remove(EditorCurveBindingExtensions.MuscleBindingType.NonMuscle);
+            if (types.Contains(VFBinding.MuscleBindingType.NonMuscle)) {
+                types = types.Remove(VFBinding.MuscleBindingType.NonMuscle);
             }
-            if (types.Contains(EditorCurveBindingExtensions.MuscleBindingType.Body)) {
-                types = ImmutableHashSet.Create(EditorCurveBindingExtensions.MuscleBindingType.Body);
+            if (types.Contains(VFBinding.MuscleBindingType.Body)) {
+                types = ImmutableHashSet.Create(VFBinding.MuscleBindingType.Body);
             }
-            var copy = clip.Clone();
+            var copy = clip.Clone() as VFClip;
             foreach (var muscleType in types) {
                 var trigger = fullBodyEmoteService.AddClip(copy, muscleType);
                 clip.SetAap(trigger, 1);

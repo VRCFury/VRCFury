@@ -38,7 +38,7 @@ namespace VF.Service {
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var layer in controller.GetLayers()) {
                     var layerOwner = controller.GetLayerOwner(layer);
-                    layer.RewriteBehaviours<VRCPlayableLayerControl>(playableControl => {
+                    layer.RewriteBehaviours<VRCPlayableLayerControl>((behaviour, playableControl) => {
                         var drivesTypeName = VRCFEnumUtils.GetName(playableControl.layer);
                         var drivesType = VRCFEnumUtils.Parse<VRCAvatarDescriptor.AnimLayerType>(drivesTypeName);
                         
@@ -46,28 +46,29 @@ namespace VF.Service {
                         // (see Hailey avatar, Gesture Controller, SB_FX Weight layer)
                         // For now, only worry about things driving action
                         if (drivesType != VRCAvatarDescriptor.AnimLayerType.Action) {
-                            return playableControl;
+                            return behaviour;
                         }
 
                         if (!ownersByController.TryGetValue(drivesType, out var uniqueOwnersOnType)) {
                             // They're driving a controller that doesn't exist?
                             // uhh... keep it I guess
-                            return playableControl;
+                            return behaviour;
                         }
                         if (!uniqueOwnersOnType.Contains(layerOwner)) return null;
-                        if (uniqueOwnersOnType.Count == 1) return playableControl;
+                        if (uniqueOwnersOnType.Count == 1) return behaviour;
 
                         var drivesController = controllers.GetController(drivesType);
                         var drivesLayers = drivesController.GetLayers()
                             .Where(l => drivesController.GetLayerOwner(l) == layerOwner)
                             .ToList();
                         return drivesLayers.Select(drivesLayer => {
-                            var layerControl = VrcfObjectFactory.Create<VRCAnimatorLayerControl>();
-                            layerControl.playable =
-                                VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(drivesTypeName);
-                            layerControl.goalWeight = playableControl.goalWeight;
-                            layerControl.blendDuration = 0;
-                            layerControl.debugString = playableControl.debugString;
+                            var layerControl = new VFBehaviourContainer().AddBehaviour<VRCAnimatorLayerControl>(control => {
+                                control.playable =
+                                    VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(drivesTypeName);
+                                control.goalWeight = playableControl.goalWeight;
+                                control.blendDuration = 0;
+                                control.debugString = playableControl.debugString;
+                            });
                             animatorLayerControlManager.Register(layerControl, drivesLayer);
                             return layerControl;
                         }).ToArray();
@@ -82,9 +83,10 @@ namespace VF.Service {
                 action.EnsureEmptyBaseLayer();
                 var enableLayer = action.NewLayer("VRCF Force Enable");
                 var enable = enableLayer.NewState("Enable");
-                var enableControl = enable.AddBehaviour<VRCPlayableLayerControl>();
-                enableControl.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
-                enableControl.goalWeight = 1;
+                enable.behaviours.AddBehaviour<VRCPlayableLayerControl>(enableControl => {
+                    enableControl.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
+                    enableControl.goalWeight = 1;
+                });
                 var i = 0;
                 foreach (var layer in action.GetLayers()) {
                     var layerNum = i++;

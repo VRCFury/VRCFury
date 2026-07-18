@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -10,67 +9,145 @@ using VF.Utils;
 
 namespace VF.Utils.Controller {
     internal class VFLayer : VFPrettyNamed {
-        private readonly AnimatorStateMachine rootStateMachine;
-        private readonly AnimatorController ctrl;
-        private readonly VFController controller;
+        private VFController controller;
+        private VFMask maskValue;
+        private VFStateMachine stateMachineValue;
 
         private Vector2 nextOffset = new Vector2(1, 0);
         private VFState lastCreatedState;
 
-        public VFLayer(AnimatorController ctrl, AnimatorStateMachine rootStateMachine) {
-            this.ctrl = ctrl;
-            this.rootStateMachine = rootStateMachine;
-            controller = new VFController(ctrl);
+        private static readonly HashSet<VFState> createdStates = new HashSet<VFState>();
+
+        [VFInit]
+        private static void ClearCreatedStates() {
+            EditorApplication.update += () => createdStates.Clear();
         }
 
-        public static bool operator ==(VFLayer a, VFLayer b) => a?.rootStateMachine == b?.rootStateMachine;
+        private VFLayer(VFController controller) {
+            this.controller = controller;
+            syncedLayerIndex = -1;
+        }
+
+        internal static VFLayer Load(
+            VFController controller,
+            AnimatorControllerLayer rawLayer,
+            VFLoadContext context
+        ) {
+            var layer = LoadWithoutStateMachine(controller, rawLayer, context);
+            layer.stateMachineValue = VFStateMachine.Load(
+                layer,
+                rawLayer.stateMachine,
+                context
+            );
+            return layer;
+        }
+
+        internal static VFLayer LoadWithoutStateMachine(
+            VFController controller,
+            AnimatorControllerLayer rawLayer,
+            VFLoadContext context
+        ) {
+            var layer = new VFLayer(controller);
+            layer.name = rawLayer.name;
+            layer.weight = rawLayer.defaultWeight;
+            layer.blendingMode = rawLayer.blendingMode;
+            layer.iKPass = rawLayer.iKPass;
+            layer.syncedLayerAffectsTiming = rawLayer.syncedLayerAffectsTiming;
+            layer.syncedLayerIndex = rawLayer.syncedLayerIndex;
+            layer.maskValue = rawLayer.avatarMask != null
+                ? VFMask.Load(rawLayer.avatarMask, context)
+                : null;
+            return layer;
+        }
+
+        public static VFLayer Create(VFController controller, string name) {
+            var layer = new VFLayer(controller) {
+                name = name,
+                weight = 1
+            };
+            layer.stateMachineValue = VFStateMachine.Create(layer, name);
+            layer.stateMachineValue.anyStatePosition = VFState.CalculateOffsetPosition(layer.stateMachineValue.entryPosition, 0, 1);
+            return layer;
+        }
+
+        public VFLayer Clone(VFController newController, VFMotionCloneContext cloneContext) {
+            Dictionary<VFState, VFState> stateMap = null;
+            var output = new VFLayer(newController) {
+                name = name,
+                weight = weight,
+                blendingMode = blendingMode,
+                iKPass = iKPass,
+                syncedLayerAffectsTiming = syncedLayerAffectsTiming,
+                syncedLayerIndex = syncedLayerIndex,
+                maskValue = maskValue?.Clone()
+            };
+            if (stateMachineValue != null) {
+                output.stateMachineValue = stateMachineValue.Clone(output, cloneContext, out stateMap);
+            }
+            output.nextOffset = nextOffset;
+            output.lastCreatedState = lastCreatedState != null ? stateMap.GetOrDefault(lastCreatedState) : null;
+            return output;
+        }
+
+        internal void ReassignController(VFController newController) {
+            controller = newController ?? throw new ArgumentNullException(nameof(newController));
+        }
+
+        public static bool operator ==(VFLayer a, VFLayer b) => ReferenceEquals(a, b);
         public static bool operator !=(VFLayer a, VFLayer b) => !(a == b);
-        public override bool Equals(object obj) => this == (VFLayer)obj;
-        public override int GetHashCode() => rootStateMachine.GetHashCode();
+        public override bool Equals(object obj) => ReferenceEquals(this, obj);
+        public override int GetHashCode() => base.GetHashCode();
+
+        internal AnimatorControllerLayer Save(VFSaveContext saveContext) {
+            AvatarMask savedMask = null;
+            if (maskValue != null) {
+                savedMask = maskValue.Save(saveContext.BindingRoot, saveContext.ReuseSourceAssets);
+            }
+            return new AnimatorControllerLayer {
+                name = name,
+                avatarMask = savedMask,
+                blendingMode = blendingMode,
+                defaultWeight = weight,
+                iKPass = iKPass,
+                syncedLayerAffectsTiming = syncedLayerAffectsTiming,
+                syncedLayerIndex = syncedLayerIndex,
+                stateMachine = stateMachineValue?.Save(saveContext)
+            };
+        }
+
+        public VFStateMachine stateMachine {
+            get => stateMachineValue;
+            internal set => stateMachineValue = value;
+        }
+
+        public int syncedLayerIndex { get; internal set; }
 
         public bool Exists() {
-            return FindLayerId() != -1;
+            return TryGetLayerId(out _);
         }
 
         public int GetLayerId() {
-            var id = FindLayerId();
-            if (id == -1) {
+            if (!TryGetLayerId(out var id)) {
                 throw new Exception("Layer not found in controller. It may have been accessed after it was removed.");
             }
             return id;
         }
 
-        private int FindLayerId() {
-            return controller.GetLayerId(rootStateMachine);
+        public bool TryGetLayerId(out int id) {
+            id = controller.GetLayerId(this);
+            return id != -1;
         }
 
-        private void WithLayer(Action<AnimatorControllerLayer> with) {
-            controller.EditRawLayers(layers => {
-                with(layers[GetLayerId()]);
-                return true;
-            });
-        }
+        public float weight { get; set; }
+        public string name { get; set; }
+        public bool iKPass { get; set; }
+        public bool syncedLayerAffectsTiming { get; set; }
+        public string prettyName => $"Controller `{controller.name}` Layer `{name}`";
+        public AnimatorLayerBlendingMode blendingMode { get; set; }
 
-        public float weight {
-            get => controller.GetRawLayers()[GetLayerId()].defaultWeight;
-            set { WithLayer(l => l.defaultWeight = value); }
-        }
-
-        public string name {
-            get => controller.GetRawLayers()[GetLayerId()].name;
-            set { WithLayer(l => l.name = value); }
-        }
-
-        public string prettyName => $"Controller `{ctrl.name}` Layer `{name}`";
-
-        public AnimatorLayerBlendingMode blendingMode {
-            get => controller.GetRawLayers()[GetLayerId()].blendingMode;
-            set { WithLayer(l => l.blendingMode = value); }
-        }
-
-        public AvatarMask mask {
-            get => controller.GetRawLayers()[GetLayerId()].avatarMask;
-            set { WithLayer(l => l.avatarMask = value); }
+        public VFMask mask {
+            get => maskValue;
+            set => maskValue = value;
         }
 
         private static string WrapStateName(string name, int attemptWrapAt = 35) {
@@ -95,145 +172,143 @@ namespace VF.Utils.Controller {
             nextOffset = new Vector2(x, y);
         }
 
-        private static readonly HashSet<AnimatorState> createdStates = new HashSet<AnimatorState>();
-
-        [VFInit]
-        private static void ClearCreatedStates() {
-            EditorApplication.update += () => createdStates.Clear();
-        }
-
         public VFState NewState(string name) {
-            // Unity breaks if name contains .
-            name = WrapStateName(name);
-            name = name.Replace(".", "");
+            name = WrapStateName(name).Replace(".", "");
+            var state = VFState.Create(this, stateMachineValue, name);
+            stateMachineValue.AddState(state);
 
-            var s = VrcfObjectFactory.Create<AnimatorState>();
-            s.name = name;
-            s.writeDefaultValues = true;
-            var node = new ChildAnimatorState {
-                state = s
-            };
-            rootStateMachine.states = rootStateMachine.states.Concat(new[] { node }).ToArray();
-
-            var state = new VFState(this, node, rootStateMachine);
-            
             if (lastCreatedState != null) {
                 state.Move(lastCreatedState, nextOffset.x, nextOffset.y);
             } else {
-                state.Move(rootStateMachine.entryPosition, nextOffset.x, nextOffset.y);
+                state.Move(stateMachineValue.entryPosition, nextOffset.x, nextOffset.y);
             }
 
             SetNextOffset(0, 1);
             lastCreatedState = state;
-            createdStates.Add(node.state);
+            createdStates.Add(state);
             return state;
         }
 
-        public static bool Created(AnimatorState state) {
+        public static bool Created(VFState state) {
             return createdStates.Contains(state);
         }
 
         public void Move(int newIndex) {
-            controller.EditRawLayers(layers => {
-                var myLayer = layers
-                    .First(l => l.stateMachine == rootStateMachine);
-
-                var newList = layers
-                    .Where(l => l.stateMachine != rootStateMachine)
-                    .ToList();
-                newList.Insert(newIndex, myLayer);
-                return newList.ToArray();
-            });
+            var newList = controller.GetLayers()
+                .Where(l => l != this)
+                .ToList();
+            newList.Insert(newIndex, this);
+            controller.ReplaceLayers(newList);
         }
 
         public void Remove() {
             var layerId = GetLayerId();
-            controller.EditRawLayers(layers => layers
-                .Where((_, index) => index != layerId)
-                .ToArray());
+            controller.ReplaceLayers(controller.GetLayers()
+                .Where((_, index) => index != layerId));
         }
 
-        private IReadOnlyCollection<AnimatorStateMachine> allRawStateMachines =>
-            AnimatorIterator.GetRecursive(rootStateMachine, s => s.stateMachines.Select(c => c.stateMachine));
+        public IEnumerable<VFStateMachine> allStateMachines =>
+            stateMachineValue == null
+                ? Enumerable.Empty<VFStateMachine>()
+                : stateMachineValue.GetAllStateMachines();
 
-        public IReadOnlyCollection<VFStateMachine> allStateMachines =>
-            allRawStateMachines.Select(sm => new VFStateMachine(this, sm)).ToArray();
+        public bool hasSubMachines => allStateMachines.Skip(1).Any();
+        public bool hasDefaultState => stateMachineValue?.defaultState != null;
+        public VFState defaultState => stateMachineValue?.defaultState;
+        public VFEntryTransition[] entryTransitions => stateMachineValue?.entryTransitions.ToArray() ?? Array.Empty<VFEntryTransition>();
+        public Vector3 entryPosition => stateMachineValue?.entryPosition ?? Vector3.zero;
 
-        public bool hasSubMachines => rootStateMachine.stateMachines.Any();
-        public bool hasDefaultState => rootStateMachine.defaultState != null;
-        public AnimatorState defaultState => rootStateMachine.defaultState;
-        public AnimatorTransition[] entryTransitions => rootStateMachine.entryTransitions;
-        public Vector2 entryPosition => rootStateMachine.entryPosition;
+        public IEnumerable<VFState> allStates => allStateMachines
+            .SelectMany(sm => sm.states);
 
-        public IImmutableSet<AnimatorState> allStates => allRawStateMachines
-            .SelectMany(sm => sm.states)
-            .Select(child => child.state)
-            .NotNull()
-            .ToImmutableHashSet();
+        private IEnumerable<VFBehaviourContainer> allBehaviourContainers => allStateMachines
+            .Select(sm => sm.behaviours)
+            .Concat(allStates.Select(state => state.behaviours));
 
-        private IImmutableSet<VFBehaviourContainer> allBehaviourContainers => allStateMachines
-            .SelectMany(sm => sm.states.OfType<VFBehaviourContainer>().Append(sm))
-            .ToImmutableHashSet();
+        public IEnumerable<VFBehaviour> allBehaviours => allBehaviourContainers
+            .SelectMany(container => container);
 
-        public IImmutableSet<StateMachineBehaviour> allBehaviours => allBehaviourContainers
-            .SelectMany(container => container.behaviours)
-            .ToImmutableHashSet();
-        
-        public void RemoveBadBehaviours() {
-            foreach (var c in allBehaviourContainers) {
-                c.RemoveBadBehaviours();
-            }
+        public IEnumerable<T> GetBehaviours<T>() where T : StateMachineBehaviour {
+            return allBehaviourContainers
+                .SelectMany(container => container.GetBehaviours<T>());
+        }
+
+        public bool HasBehaviours() {
+            return allBehaviours.Any();
+        }
+
+        public bool HasBehaviour<T>() where T : StateMachineBehaviour {
+            return allBehaviourContainers.Any(container => container.HasBehaviour<T>());
         }
 
         public void RewriteBehaviours(Func<StateMachineBehaviour, OneOrMany<StateMachineBehaviour>> action) {
-            RewriteBehaviours<StateMachineBehaviour>(action);
+            foreach (var container in allBehaviourContainers) {
+                container.ReplaceWith(container.SelectMany(behaviour => behaviour.RewriteRaw<StateMachineBehaviour>(action)).ToArray());
+            }
         }
+
         public void RewriteBehaviours<T>(Func<T, OneOrMany<StateMachineBehaviour>> action) where T : StateMachineBehaviour {
             foreach (var container in allBehaviourContainers) {
-                container.behaviours = container.behaviours.SelectMany(b => b is T t ? action(t).Get() : new [] { b }).ToArray();
+                container.ReplaceWith(container.SelectMany(behaviour => behaviour.RewriteRaw(action)).ToArray());
             }
         }
 
-        public void RewriteConditions(Func<AnimatorCondition, AnimatorTransitionBaseExtensions.Rewritten> action) {
-            RewriteTransitions(t => t.RewriteConditions(action));
-        }
-
-        public IImmutableSet<AnimatorTransitionBase> allTransitions => allRawStateMachines
-            .SelectMany(sm =>
-                sm.entryTransitions
-                    .Concat<AnimatorTransitionBase>(sm.anyStateTransitions)
-                    .Concat(sm.stateMachines.SelectMany(childSm => sm.GetStateMachineTransitions(childSm.stateMachine)))
-                    .Concat(sm.states.SelectMany(child => child.state.transitions))
-            )
-            .NotNull()
-            .ToImmutableHashSet();
-
-        public void RewriteTransitions(Func<AnimatorTransitionBase, OneOrMany<AnimatorTransitionBase>> action) {
-            foreach (var sm in allRawStateMachines) {
-                RewriteTransitions(sm.entryTransitions, a => sm.entryTransitions = a, action);
-                RewriteTransitions(sm.anyStateTransitions, a => sm.anyStateTransitions = a, action);
-                foreach (var childSm in sm.stateMachines.Select(child => child.stateMachine)) {
-                    RewriteTransitions(sm.GetStateMachineTransitions(childSm), a => sm.SetStateMachineTransitions(childSm, a), action);
-                }
-                foreach (var state in sm.states.Select(child => child.state)) {
-                    RewriteTransitions(state.transitions, a => state.transitions = a, action);
-                }
+        public void RewriteBehaviours<T>(Func<VFBehaviour, T, OneOrMany<VFBehaviour>> action) where T : StateMachineBehaviour {
+            foreach (var container in allBehaviourContainers) {
+                container.ReplaceWith(container.SelectMany(behaviour => behaviour.Rewrite(action)).ToArray());
             }
         }
 
-        private static void RewriteTransitions<T>(
-            T[] input,
-            Action<T[]> setter,
-            Func<AnimatorTransitionBase, OneOrMany<AnimatorTransitionBase>> action
-        ) where T : AnimatorTransitionBase {
-            var changed = false;
-            if (input == null) input = new T[] { };
-            var output = input.SelectMany(oneTransition => {
-                var result = action(oneTransition).Get();
-                changed |= result.Count != 1 || result[0] != oneTransition;
-                return result;
-            }).OfType<T>().ToArray();
-            if (changed) setter(output);
+        public void RewriteConditions(Func<AnimatorCondition, AnimatorConditionExtensions.Rewritten> action) {
+            RewriteTransitions(t => RewriteTransitionConditions(t, action));
+        }
+
+        public IEnumerable<VFTransitionBase> allTransitions => stateMachineValue == null
+            ? Enumerable.Empty<VFTransitionBase>()
+            : stateMachineValue.GetAllTransitions();
+
+        public void RewriteTransitions(Func<VFTransitionBase, OneOrMany<VFTransitionBase>> action) {
+            stateMachineValue?.RewriteTransitionLists(action);
+        }
+
+        private static OneOrMany<VFTransitionBase> RewriteTransitionConditions(
+            VFTransitionBase transition,
+            Func<AnimatorCondition, AnimatorConditionExtensions.Rewritten> action
+        ) {
+            var conditions = transition.conditions ?? Array.Empty<AnimatorCondition>();
+            var updated = false;
+            var andOr = conditions.SelectMany(condition => {
+                var rewritten = action(condition);
+                if (rewritten.andOr.Length != 1 || rewritten.andOr[0].Length != 1 || !rewritten.andOr[0][0].Equals(condition)) {
+                    updated = true;
+                }
+                return rewritten.andOr;
+            }).ToArray();
+
+            if (!updated) {
+                return transition;
+            }
+
+            return andOr.CrossProduct()
+                .Select(and => {
+                    var clone = transition.Clone(
+                        new Dictionary<VFState, VFState>(),
+                        new Dictionary<VFStateMachine, VFStateMachine>()
+                    );
+                    clone.conditions = and.ToArray();
+                    if (clone.destinationState == null) clone.destinationState = transition.destinationState;
+                    if (clone.destinationStateMachine == null) clone.destinationStateMachine = transition.destinationStateMachine;
+                    return clone;
+                })
+                .ToArray();
+        }
+
+        internal void ReplaceStateMachine(VFStateMachine newStateMachine) {
+            stateMachineValue = newStateMachine;
+        }
+
+        internal VFState FindStateBySource(AnimatorState rawState) {
+            return allStates.FirstOrDefault(state => state.GetSourceAsset() == rawState);
         }
     }
 }

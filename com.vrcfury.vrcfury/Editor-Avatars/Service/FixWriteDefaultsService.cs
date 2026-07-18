@@ -28,7 +28,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
 
-        public void RecordDefaultNow(EditorCurveBinding binding, bool isFloat, bool force = false) {
+        public void RecordDefaultNow(VFBinding binding, bool isFloat, bool force = false) {
             if (binding.type == typeof(Animator)) return;
             if (GetDefaultClip().GetCurve(binding, isFloat) != null) return;
             if (!bindingStateService.Get(binding, isFloat, out var value)) return;
@@ -53,8 +53,8 @@ namespace VF.Service {
         }
 
         private VFLayer _defaultLayer = null;
-        private AnimationClip _defaultClip = null;
-        public AnimationClip GetDefaultClip() {
+        private VFClip _defaultClip = null;
+        public VFClip GetDefaultClip() {
             if (_defaultClip == null) {
                 _defaultClip = clipFactory.NewClip("Defaults");
                 _defaultLayer = fx.NewLayer("Defaults", 0);
@@ -79,7 +79,7 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.RecordAllDefaults)]
         public void RecordAllDefaults() {
-            var propsInNonFx = new HashSet<EditorCurveBinding>();
+            var propsInNonFx = new HashSet<VFBinding>();
             foreach (var c in controllers.GetAllUsedControllers()) {
                 if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) continue;
                 foreach (var layer in c.GetLayers()) {

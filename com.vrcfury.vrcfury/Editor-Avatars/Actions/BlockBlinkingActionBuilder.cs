@@ -6,13 +6,14 @@ using VF.Injector;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Disable Blinking")]
     internal class BlockBlinkingActionBuilder : ActionBuilder<BlockBlinkingAction> {
         [VFAutowired] [CanBeNull] private readonly TrackingConflictResolverService trackingConflictResolverService;
 
-        public AnimationClip Build(string actionName) {
+        public VFClip Build(string actionName) {
             var onClip = NewClip();
             if (trackingConflictResolverService == null) return onClip;
             var blockTracking = trackingConflictResolverService.AddInhibitor(

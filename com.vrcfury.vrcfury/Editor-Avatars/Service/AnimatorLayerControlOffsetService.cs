@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
@@ -19,8 +20,8 @@ namespace VF.Service {
     internal class AnimatorLayerControlOffsetService {
         [VFAutowired] private readonly ControllersService controllers;
 
-        private readonly VFMultimapList<VRCAnimatorLayerControl, VFLayer> mapping
-            = new VFMultimapList<VRCAnimatorLayerControl, VFLayer>();
+        private readonly VFMultimapList<long, VFLayer> mapping
+            = new VFMultimapList<long, VFLayer>();
         
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlRecordBase)]
         public void RecordBase() {
@@ -49,8 +50,8 @@ namespace VF.Service {
 
             foreach (var c in controllers.GetAllUsedControllers()) {
                 foreach (var l in c.GetLayers()) {
-                    l.RewriteBehaviours<VRCAnimatorLayerControl>(control => {
-                        var targetLayers = mapping.Get(control);
+                    l.RewriteBehaviours<VRCAnimatorLayerControl>((behaviour, control) => {
+                        var targetLayers = mapping.Get(behaviour.Identity);
                         if (targetLayers.Count == 0) {
                             debugLog.Add("Removing invalid AnimatorLayerControl (not found in mapping??) " + control);
                             return null;
@@ -62,15 +63,17 @@ namespace VF.Service {
                                 return null;
                             }
 
-                            var copy = control.Clone();
                             var (newType, newI) = pair;
                             var newCastedType = VRCFEnumUtils.Parse<VRC_AnimatorLayerControl.BlendableLayer>(
                                 VRCFEnumUtils.GetName(newType));
                             debugLog.Add(
                                 $"Rewriting {control} from {control.playable}:{control.layer} to {newCastedType}:{newI}");
-                            copy.playable = newCastedType;
-                            copy.layer = newI;
-                            return copy;
+                            var output = targetLayer == targetLayers.First() ? behaviour : new VFBehaviour(control);
+                            output.Edit<VRCAnimatorLayerControl>(rewritten => {
+                                rewritten.playable = newCastedType;
+                                rewritten.layer = newI;
+                            });
+                            return output;
                         }).NotNull().ToArray();
                     });
                 }
@@ -82,7 +85,7 @@ namespace VF.Service {
         public void RegisterControllerSet<T>(ICollection<T> set) where T : VFControllerWithVrcType {
             foreach (var controller in set) {
                 foreach (var layer in controller.GetLayers()) {
-                    layer.RewriteBehaviours<VRCAnimatorLayerControl>(control => {
+                    layer.RewriteBehaviours<VRCAnimatorLayerControl>((behaviour, control) => {
                         T targetController;
                         if (VRCFEnumUtils.GetName(controller.vrcType) == VRCFEnumUtils.GetName(control.playable)) {
                             targetController = controller;
@@ -92,15 +95,15 @@ namespace VF.Service {
                         if (targetController == null) return null;
                         if (control.layer < 0 || control.layer >= targetController.layers.Count) return null;
                         var targetSm = targetController.layers[control.layer];
-                        Register(control, targetSm);
-                        return control;
+                        Register(behaviour, targetSm);
+                        return behaviour;
                     });
                 }
             }
         }
 
-        public void Register(VRCAnimatorLayerControl control, VFLayer targetSm) {
-            mapping.Put(control, targetSm);
+        public void Register(VFBehaviour control, VFLayer targetSm) {
+            mapping.Put(control.Identity, targetSm);
         }
 
         public void Alias(VFLayer oldTargetSm, VFLayer newTargetSm) {
@@ -111,12 +114,6 @@ namespace VF.Service {
             }
         }
         
-        public void Alias(VRCAnimatorLayerControl from, VRCAnimatorLayerControl to) {
-            foreach (var sm in mapping.Get(from)) {
-                mapping.Put(to, sm);
-            }
-        }
-
         public bool IsLayerTargeted(VFLayer sm) {
             return mapping.ContainsValue(sm);
         }

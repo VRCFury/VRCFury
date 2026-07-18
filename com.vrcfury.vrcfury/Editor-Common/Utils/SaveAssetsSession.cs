@@ -14,7 +14,7 @@ namespace VF.Utils {
 
         public void SaveUnsavedComponentAssets(UnityEngine.Component component, string tmpDir) {
             if (!scannedComponents.Add(component)) return;
-            foreach (var asset in GetUnsavedChildren(component, false, true)) {
+            foreach (var asset in GetUnsavedChildren(component, false)) {
                 string filename;
                 if (asset.GetType().Name == "VRCExpressionsMenu") {
                     filename = "VRCFury Menu";
@@ -26,53 +26,29 @@ namespace VF.Utils {
                 SaveAssetAndChildren(
                     asset,
                     filename,
-                    tmpDir,
-                    true
+                    tmpDir
                 );
             }
         }
 
-        private static IList<Object> GetUnsavedChildren(Object obj, bool recurse, bool reuseOriginalClips) {
+        private static IList<Object> GetUnsavedChildren(Object obj, bool recurse) {
             var unsavedChildren = new List<Object>();
-            var clipReplacements = new Dictionary<Object, Object>();
             MutableManager.ForEachChild(obj, asset => {
                 if (asset == obj) return true;
                 if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
                 if (!VrcfObjectFactory.DidCreate(asset)) return false;
                 if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) return true;
-                if (asset is AnimationClip vac) {
-                    if (reuseOriginalClips) {
-                        var useOriginalClip = vac.GetUseOriginalUserClip();
-                        if (useOriginalClip != null) {
-                            clipReplacements[vac] = useOriginalClip;
-                            return false;
-                        }
-                    }
-                    vac.FinalizeAsset();
-                }
                 unsavedChildren.Add(asset);
                 return recurse;
             });
-            if (clipReplacements.Count > 0) {
-                foreach (var o in unsavedChildren) {
-                    MutableManager.RewriteInternals(o, clipReplacements);
-                }
-            }
-            foreach (var o in unsavedChildren) {
-                if (o is AnimationClip clip) {
-                    // There's a bug in unity where if you change the reference pose using SerializedObject, sometimes it won't update
-                    // unity's internal cache and it'll blow up. This forces the cache to refresh. This bug still exists as of Unity 6.2.
-                    AnimationUtility.SetAnimationClipSettings(clip, AnimationUtility.GetAnimationClipSettings(clip));
-                }
-            }
             return unsavedChildren;
         }
 
-        public void SaveAssetAndChildren(Object asset, string filename, string tmpDir, bool reuseOriginalClips) {
+        public void SaveAssetAndChildren(Object asset, string filename, string tmpDir) {
             if (!VrcfObjectFactory.DidCreate(asset)) return;
             if (!savedRootAssets.Add(asset)) return;
 
-            var unsavedChildren = GetUnsavedChildren(asset, true, reuseOriginalClips);
+            var unsavedChildren = GetUnsavedChildren(asset, true);
 
             // Save child textures
             // If we don't save textures before the materials that use them, unity just throws them away

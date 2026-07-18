@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
 
@@ -12,11 +13,11 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarBindingStateService bindingStateService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
-        public AnimationClip MergeSingleFrameClips(params (float, AnimationClip)[] sources) {
+        public VFClip MergeSingleFrameClips(params (float, VFClip)[] sources) {
             var output = clipFactory.NewClip("Merged");
             foreach (var binding in sources.SelectMany(tuple => tuple.Item2.GetFloatBindings()).Distinct()) {
                 var exists = bindingStateService.GetFloat(binding, out var defaultValue);
-                if (!exists && binding.path == "" && binding.type == typeof(Animator)) {
+                if (!exists && binding.type == typeof(Animator)) {
                     exists = true;
                     defaultValue = 0;
                 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -23,21 +23,38 @@ namespace VF.Utils {
             Func<string, string> rewritePath = null,
             Action<string> addPathRewrite = null
         ) {
-            var bindings = new HashSet<EditorCurveBinding>();
+            var bindings = new HashSet<VFBinding>();
+            var avatarObject = componentObject.GetAvatarRoot();
             foreach (var c in controllers) {
-                var controller = new VFController(c);
+                var controller = VFController.Load(c, new VFLoadContext {
+                    OwnerObject = componentObject,
+                    AnimatorObject = avatarObject,
+                    RewritePath = rewritePath,
+                    FindObject = VRCFObjectPathCache.Find
+                });
                 foreach (var state in new AnimatorIterator.States().From(controller)) {
                     bindings.UnionWith(new AnimatorIterator.Clips().From(state)
                         .SelectMany(clip => clip.GetAllBindings())
                     );
                 }
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-                bindings.UnionWith(controller.layers
-                    .SelectMany(c => c.allBehaviours)
-                    .OfType<VRCAnimatorPlayAudio>()
-                    .Select(audio => audio.SourcePath)
-                    .Where(path => path != "")
-                    .Select(path => EditorCurveBinding.FloatCurve(path, typeof(GameObject), "animatorPlayAudio"))
+                bindings.UnionWith(
+                    controller.layers
+                        .SelectMany(layer => layer.allBehaviours)
+                        .Where(behaviour => behaviour.Read<VRCAnimatorPlayAudio>() != null)
+                        .SelectMany(behaviour => {
+                            var audioSource = behaviour.GetAudioSource();
+                            if (!audioSource.HasValue || string.IsNullOrEmpty(audioSource.Value.SourcePath)) {
+                                return Array.Empty<VFBinding>();
+                            }
+
+                            return new[] {
+                                VFBinding.FromResolvedObject(
+                                    audioSource.Value,
+                                    EditorCurveBinding.FloatCurve(audioSource.Value.SourcePath, typeof(GameObject), "animatorPlayAudio")
+                                )
+                            };
+                        })
                 );
 #endif
             }
@@ -46,7 +63,7 @@ namespace VF.Utils {
         }
         
         public static List<VisualElement> BuildDebugInfo(
-            IEnumerable<EditorCurveBinding> bindings,
+            IEnumerable<VFBinding> bindings,
             VFGameObject componentObject,
             Func<string,string> rewritePath = null,
             bool isController = false,
@@ -58,16 +75,18 @@ namespace VF.Utils {
             var missingBindings = new HashSet<string>();
             var autofixPrefixes = new HashSet<string>();
 
-            var cr = new ClipRewritersService(avatarObject);
-            AnimationRewriter nearestRewriter = cr.CreateNearestMatchPathRewriter(
-                componentObject,
-                rootBindingsApplyToAvatar: false,
-                nullIfNotFound: true
-            );
-
-            var usedBindings = new HashSet<EditorCurveBinding>();
+            var usedBindings = new HashSet<VFBinding>();
             foreach (var binding in bindings) {
-                var path = binding.path;
+                if (binding.target != null) {
+                    if (binding.target == componentObject || binding.target.IsChildOf(componentObject)) {
+                        usedBindings.Add(binding);
+                    } else {
+                        outsidePrefabBindings.Add(binding.PrettyString());
+                    }
+                    continue;
+                }
+
+                var path = binding.GetStoredPath();
                 if (rewritePath != null) path = rewritePath(path);
                 if (path == null) {
                     // binding was deleted by rules :)
@@ -76,41 +95,10 @@ namespace VF.Utils {
                 if (IsProbablyIgnoredBinding(path)) {
                     continue;
                 }
-                if (componentObject.Find(path) != null) {
-                    // Found as relative path. All good!
-                    usedBindings.Add(binding);
-                    continue;
-                }
 
-                var debugPath = binding.path;
-                if (binding.path != path) debugPath += " -> " + path;
-                if (avatarObject == componentObject) {
-                    missingBindings.Add(debugPath);
-                } else {
-                    var foundFullPath = nearestRewriter?.RewritePath(path);
-                    if (foundFullPath == null) {
-                        missingBindings.Add(debugPath);
-                    } else {
-                        var foundObject = avatarObject.Find(foundFullPath);
-                        if (foundObject != null) {
-                            var nearestBinding = binding;
-                            nearestBinding.path = foundFullPath;
-                            usedBindings.Add(nearestBinding);
-                            if (foundObject == componentObject) {
-                                nonRewriteSafeBindings.Add(debugPath);
-                                autofixPrefixes.Add(componentObject.GetPath(avatarObject));
-                            } else if (foundObject.IsChildOf(componentObject)) {
-                                nonRewriteSafeBindings.Add(debugPath);
-                                var partInsideComponent = "/" + foundObject.GetPath(componentObject);
-                                if (path.EndsWith(partInsideComponent)) {
-                                    autofixPrefixes.Add(path.Substring(0, path.Length - partInsideComponent.Length));
-                                }
-                            } else {
-                                outsidePrefabBindings.Add(debugPath);
-                            }
-                        }
-                    }
-                }
+                var debugPath = binding.GetStoredPath();
+                if (binding.GetStoredPath() != path) debugPath += " -> " + path;
+                missingBindings.Add(debugPath);
             }
             
             var warnings = new List<VisualElement>();
@@ -123,10 +111,10 @@ namespace VF.Utils {
             var badPhysboneTransforms = new HashSet<string>();
             foreach (var binding in usedBindings) {
                 if (binding.type != typeof(Transform)) continue;
-                var obj = avatarObject.Find(binding.path);
+                var obj = binding.target;
                 if (obj == null) continue;
                 if (!inNonAnimatedPhysbones.Contains(obj)) continue;
-                badPhysboneTransforms.Add(binding.path);
+                badPhysboneTransforms.Add(obj.GetPath(avatarObject));
             }
             if (badPhysboneTransforms.Any()) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
@@ -138,7 +126,7 @@ namespace VF.Utils {
             var nonAnimatedPoi = new VFMultimapSet<string,string>();
             foreach (var binding in usedBindings) {
                 if (AvatarBindingStateService.TryParseMaterialProperty(binding, out var propertyName)) {
-                    var obj = avatarObject.Find(binding.path);
+                    var obj = binding.target;
                     if (obj == null) continue;
                     var renderer = obj.GetComponent<Renderer>();
                     if (renderer == null) continue;
@@ -214,7 +202,7 @@ namespace VF.Utils {
             var overLimitConstraints = new HashSet<string>();
             foreach (var binding in usedBindings) {
                 if (binding.IsOverLimitConstraint(out var slotNum)) {
-                    overLimitConstraints.Add($"Source {slotNum} on {binding.path}");
+                    overLimitConstraints.Add($"Source {slotNum} on {binding.GetDebugPath(avatarObject)}");
                 }
             }
             if (overLimitConstraints.Any()) {

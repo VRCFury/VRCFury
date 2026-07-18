@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -60,7 +60,7 @@ namespace VF.Service {
             Debug.Log("Optimization report:\n\n" + debugLog.Join('\n'));
         }
 
-        private void OptimizeLayer(VFLayer layer, Dictionary<VFLayer, ICollection<EditorCurveBinding>> bindingsByLayer, Lazy<VFBlendTreeDirect> directTree) {
+        private void OptimizeLayer(VFLayer layer, Dictionary<VFLayer, ICollection<VFBinding>> bindingsByLayer, Lazy<VFBlendTreeDirect> directTree) {
             // We must never optimize the defaults layer.
             // While it may seem impossible for the defaults layer to be optimized (because it shares keys
             // with other layers), it's theoretically possible for the layer to be created early with bindings
@@ -87,19 +87,21 @@ namespace VF.Service {
                 throw new DoNotOptimizeException("Contains submachine");
             }
 
-            var hasBehaviour = layer.allBehaviours.Any();
+            var hasBehaviour = layer.HasBehaviours();
             if (hasBehaviour) {
                 throw new DoNotOptimizeException($"Contains behaviours");
             }
 
             var hasExitTime = layer.allTransitions
-                .Any(b => b is AnimatorStateTransition t && t.hasExitTime);
+                .OfType<VFTransition>()
+                .Any(t => t.hasExitTime);
             if (hasExitTime) {
                 throw new DoNotOptimizeException($"Contains a transition using exit time");
             }
-            
+
             var hasNonZeroTransitonTime = layer.allTransitions
-                .Any(b => b is AnimatorStateTransition t && t.duration != 0);
+                .OfType<VFTransition>()
+                .Any(t => t.duration != 0);
             if (hasNonZeroTransitonTime) {
                 throw new DoNotOptimizeException($"Contains a transition with a non-0 duration");
             }
@@ -114,22 +116,24 @@ namespace VF.Service {
                 // flattened down to a single clip later on. This means it's unsafe for us to optimize rotations in a blendtree here.
                 // If we didn't create the layer (it came from the descriptor or a full controller), then it should still be safe
                 // to optimize.
-                if (state.motion is BlendTree && !layerSourceService.DidCreate(layer)) return false;
+                if (state.motion is VFTree && !layerSourceService.DidCreate(layer)) return false;
                 return new AnimatorIterator.Clips().From(state.motion)
                     .SelectMany(clip => clip.GetAllBindings())
                     .Where(binding => validateBindingsService.IsValid(binding))
                     .Select(binding => binding.Normalize(true))
-                    .Any(b => b.propertyName == EditorCurveBindingExtensions.NormalizedRotationProperty);
+                    .Any(b => b.propertyName == VFBinding.NormalizedRotationProperty);
             });
             if (hasEulerRotation) {
                 throw new DoNotOptimizeException($"Animates transform rotations, which work differently within blend trees");
             }
             
             var usedBindings = bindingsByLayer[layer];
+            if (!layer.TryGetLayerId(out var layerId)) {
+                throw new DoNotOptimizeException("Layer was removed");
+            }
             var otherLayersAnimateTheSameThing = bindingsByLayer
                 .Where(pair => pair.Key != layer) // It's not the current layer
-                .Where(pair => pair.Key.Exists()) // The other layer hasn't been deleted
-                .Where(pair => pair.Key.GetLayerId() >= layer.GetLayerId()) // The other layer has higher priority
+                .Where(pair => pair.Key.TryGetLayerId(out var otherLayerId) && otherLayerId >= layerId) // The other layer has higher priority
                 .Where(pair => pair.Value.Any(b => usedBindings.Contains(b))) // The other layer animates the same thing we do
                 .Select(pair => pair.Key)
                 .ToArray();
@@ -166,7 +170,7 @@ namespace VF.Service {
             }
             
             var param = new VFAFloat(state0Condition.Value.parameter, 0);
-            var paramType = fx.GetRaw().parameters
+            var paramType = fx.parameters
                 .Where(p => p.name == param)
                 .Select(p => p.type)
                 .DefaultIfEmpty(AnimatorControllerParameterType.Float)
@@ -184,17 +188,17 @@ namespace VF.Service {
             Optimize(state0Condition.Value, state0Clip, state1Clip, directTree);
         }
         
-        private static bool IsEntryOnlyState(VFLayer layer, AnimatorState state) {
+        private static bool IsEntryOnlyState(VFLayer layer, VFState state) {
             return layer.defaultState == state && GetTransitionsTo(layer, state).Count == 0;
         }
-        
-        private static bool IsUnreachableState(VFLayer layer, AnimatorState state) {
+
+        private static bool IsUnreachableState(VFLayer layer, VFState state) {
             return layer.defaultState != state && GetTransitionsTo(layer, state).Count == 0;
         }
-        
-        private static ICollection<AnimatorTransitionBase> GetTransitionsTo(VFLayer layer, AnimatorState state) {
-            var output = new List<AnimatorTransitionBase>();
-            var ignoreTransitions = new HashSet<AnimatorTransitionBase>();
+
+        private static ICollection<VFTransitionBase> GetTransitionsTo(VFLayer layer, VFState state) {
+            var output = new List<VFTransitionBase>();
+            var ignoreTransitions = new HashSet<VFTransitionBase>();
             var entryState = layer.defaultState;
 
             if (layer.entryTransitions.Length == 1 &&
@@ -212,7 +216,7 @@ namespace VF.Service {
             return output.ToArray();
         }
 
-        private void Optimize(AnimatorCondition condition, Motion on, Motion off, Lazy<VFBlendTreeDirect> directTree) {
+        private void Optimize(AnimatorCondition condition, VFMotion on, VFMotion off, Lazy<VFBlendTreeDirect> directTree) {
             if (on == null) on = clipFactory.GetEmptyClip();
             if (off == null) off = clipFactory.GetEmptyClip();
             
@@ -249,7 +253,7 @@ namespace VF.Service {
         }
 
         [CanBeNull]
-        private Motion Make0LengthClipForState(VFLayer layer, AnimatorState state) {
+        private VFMotion Make0LengthClipForState(VFLayer layer, VFState state) {
             if (state.motion == null) return null;
 
             if (state.motion.IsStatic()) {
@@ -290,7 +294,7 @@ namespace VF.Service {
                     subTree.Add(1, startMotion);
                 }
                 return subTree;
-            } else if (state.motion is AnimationClip) {
+            } else if (state.motion is VFClip) {
                 if (clipsInMotion.Any(clip => clip.GetLengthInFrames() > 5)) {
                     throw new DoNotOptimizeException($"{state.name} contains a non-static clip that is long enough to notice the animation");
                 }
@@ -308,7 +312,7 @@ namespace VF.Service {
             }
         }
 
-        private ICollection<EditorCurveBinding> GetBindingsAnimatedInLayer(VFLayer layer) {
+        private ICollection<VFBinding> GetBindingsAnimatedInLayer(VFLayer layer) {
             return new AnimatorIterator.Clips().From(layer)
                 .SelectMany(clip => clip.GetAllBindings())
                 .Where(binding => validateBindingsService.IsValid(binding))
@@ -316,7 +320,7 @@ namespace VF.Service {
                 .ToImmutableHashSet();
         }
 
-        private static AnimatorCondition? GetSingleCondition(IEnumerable<AnimatorTransitionBase> transitions) {
+        private static AnimatorCondition? GetSingleCondition(IEnumerable<VFTransitionBase> transitions) {
             var allConditions = transitions
                 .SelectMany(t => t.conditions)
                 .Distinct()

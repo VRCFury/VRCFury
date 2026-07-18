@@ -5,19 +5,20 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Object Toggle")]
     [FeatureHideTitleInEditor]
     internal class ObjectToggleActionBuilder : ActionBuilder<ObjectToggleAction> {
-        public AnimationClip Build(ObjectToggleAction toggle) {
+        public VFClip Build(ObjectToggleAction toggle) {
             return MakeClip(toggle);
         }
-        public AnimationClip BuildOff(ObjectToggleAction toggle) {
+        public VFClip BuildOff(ObjectToggleAction toggle) {
             return MakeClip(toggle, true);
         }
 
-        private static AnimationClip MakeClip(ObjectToggleAction toggle, bool invert = false) {
+        private static VFClip MakeClip(ObjectToggleAction toggle, bool invert = false) {
             var clip = NewClip();
             if (toggle.obj == null) {
                 //Debug.LogWarning("Missing object in action: " + name);

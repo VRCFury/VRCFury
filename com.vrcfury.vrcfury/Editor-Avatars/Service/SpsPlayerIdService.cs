@@ -16,8 +16,8 @@ namespace VF.Service {
         private VFAInteger playerIdHighRandomInt = null;
         private VFAFloat playerIdLowFloat = null;
         private VFAFloat playerIdHighFloat = null;
-        private UnityEngine.AnimationClip playerIdLowClip = null;
-        private UnityEngine.AnimationClip playerIdHighClip = null;
+        private VFClip playerIdLowClip = null;
+        private VFClip playerIdHighClip = null;
 
         private VFAInteger GetPlayerIdLowRandomInt() {
             if (playerIdLowRandomInt != null) return playerIdLowRandomInt;

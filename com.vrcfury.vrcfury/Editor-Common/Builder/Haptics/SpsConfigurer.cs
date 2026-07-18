@@ -220,33 +220,26 @@ namespace VF.Builder.Haptics {
         }
 
         private static void AddMaterialPropertyAnimator(VFGameObject obj, IEnumerable<MaterialProperty> properties) {
-            var clip = VrcfObjectFactory.Create<AnimationClip>();
-            clip.name = "SpsMaterialProperties";
+            var clip = VFClip.Create("SpsMaterialProperties");
 
-            var controller = VrcfObjectFactory.Create<AnimatorController>();
-            controller.name = "SpsMaterialProperties";
-            new VFController(controller)
+            var controller = VFController.Create("SpsMaterialProperties");
+            controller
                 .NewLayer("SPS Material Properties")
                 .NewState("Properties")
                 .WithAnimation(clip);
 
-            AddMaterialPropertyCurves(clip, obj, properties);
+            AddMaterialPropertyCurves(clip, properties);
 
             var animator = obj.AddComponent<Animator>();
-            animator.runtimeAnimatorController = controller;
+            animator.runtimeAnimatorController = controller.Save(obj);
         }
 
-        public static void AddMaterialPropertyCurves(
-            AnimationClip clip,
-            VFGameObject animatorObject,
-            IEnumerable<MaterialProperty> properties
-        ) {
+        public static void AddMaterialPropertyCurves(VFClip clip, IEnumerable<MaterialProperty> properties) {
             foreach (var property in properties ?? new List<MaterialProperty>()) {
                 if (property?.component == null) continue;
                 var component = property.component;
                 var owner = component.owner();
-                var path = owner.GetPath(animatorObject);
-                clip.SetCurve(path, component.GetType(), property.propertyName, property.value);
+                clip.SetCurve(owner, component.GetType(), property.propertyName, property.value);
             }
         }
 

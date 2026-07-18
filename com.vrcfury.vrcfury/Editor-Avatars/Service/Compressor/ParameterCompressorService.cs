@@ -57,7 +57,7 @@ namespace VF.Service.Compressor {
             } else {
                 newLayerService.BuildLayer(decision);
             }
-            fx.GetRaw().WorkLog(
+            fx.WorkLog(
                 $"Added parameter compression logic to FX controller for {decision.compress.Count} parameters"
             );
             
@@ -71,8 +71,6 @@ namespace VF.Service.Compressor {
             );
 
             fx.UpgradeWrongParamTypes();
-            // Hopefully temporary until we can work out a better "re-save and/or re-dirty everything in a build hook at the end of the build" system
-            fx.GetRaw().Dirty();
             paramz.Dirty();
             CreateDebugInfo(decisionWithInfo, originalCost, newCost);
         }

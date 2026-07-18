@@ -10,13 +10,14 @@ using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Flipbook Builder")]
     internal class FlipBookBuilderActionBuilder : ActionBuilder<FlipBookBuilderAction> {
         [VFAutowired] [CanBeNull] private readonly ClipBuilderService clipBuilder;
 
-        public AnimationClip Build(FlipBookBuilderAction model, VFGameObject animObject, ActionClipService actionClipService) {
+        public VFClip Build(FlipBookBuilderAction model, VFGameObject animObject, ActionClipService actionClipService) {
             var onClip = NewClip();
             var states = model.pages.Select(page => page.state).ToList();
             if (states.Count == 0) return onClip;

@@ -83,7 +83,7 @@ namespace VF.Utils {
                 foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
                     var controller_ = c.controller as AnimatorController;
                     if (controller_ == null) continue;
-                    var controller = new VFController(controller_);
+                    var controller = VFController.Load(controller_, new VFLoadContext());
                     var typeName = VRCFEnumUtils.GetName(c.type);
                     if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller_)) {
                         removeItems.Add("Avatar Controller: " + typeName);
@@ -119,7 +119,6 @@ namespace VF.Utils {
                             }
                         }
 
-                        if (perform) controller_.Dirty();
                     }
                 }
 
@@ -220,7 +219,7 @@ namespace VF.Utils {
                 state.timeParameter == param
             );
             isUsed |= new AnimatorIterator.Trees().From(layer)
-                .Any(tree => tree.blendParameter == param || tree.blendParameterY == param);
+                .Any(tree => tree.BlendParameter == param || tree.BlendParameterY == param);
             return isUsed;
         }
     }

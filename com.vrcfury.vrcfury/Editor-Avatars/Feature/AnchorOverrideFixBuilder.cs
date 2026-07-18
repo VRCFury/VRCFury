@@ -31,10 +31,11 @@ namespace VF.Feature {
 
             var worldAnimatedObjs = controllers.GetAllUsedControllers()
                 .SelectMany(c => c.GetClips())
+                .Distinct()
                 .SelectMany(clip => clip.GetAllBindings())
                 .Where(b => b.propertyName == "FreezeToWorld")
-                .Select(b => b.path)
-                .Select(path => avatarObject.Find(path))
+                .Select(b => b.target)
+                .NotNull()
                 .ToImmutableHashSet();
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 if (skin.owner().GetComponentInSelfOrParent<Rigidbody>() != null) {

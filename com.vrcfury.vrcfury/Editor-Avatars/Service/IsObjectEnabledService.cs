@@ -54,7 +54,7 @@ namespace VF.Service {
                     var curve = pair.Item2;
                     if (binding.type != typeof(GameObject)) continue;
                     if (binding.propertyName != "m_IsActive") continue;
-                    var animatedObject = avatarObject.Find(binding.path);
+                    var animatedObject = binding.target;
                     if (animatedObject == null) continue;
                     animatedActiveObjects.Add(animatedObject);
                     if (curve.keys.Any(key => key.value > 0)) {
@@ -112,14 +112,16 @@ namespace VF.Service {
                 );
             }
 
-            var byPath = selfEnabled.ToDictionary(pair => pair.Key.GetAnimatedPath(), pair => pair.Value);
+            var byObject = selfEnabled.ToDictionary(pair => pair.Key, pair => pair.Value);
             foreach (var clip in allClipsService.GetAllClips()) {
                 foreach (var pair in clip.GetFloatCurves()) {
                     var binding = pair.Item1;
                     var curve = pair.Item2;
                     if (binding.type != typeof(GameObject)) continue;
                     if (binding.propertyName != "m_IsActive") continue;
-                    if (!byPath.TryGetValue(binding.path, out var enabled)) continue;
+                    var animatedObject = binding.target;
+                    if (animatedObject == null) continue;
+                    if (!byObject.TryGetValue(animatedObject, out var enabled)) continue;
 
                     clip.SetAap(enabled.Name(), curve.Clone());
                 }

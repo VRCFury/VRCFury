@@ -59,9 +59,11 @@ namespace VF.Service {
             }
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
             foreach (var c in controllers.GetAllUsedControllers()) {
-                foreach (var audio in c.layers.SelectMany(layer => layer.allBehaviours).OfType<VRCAnimatorPlayAudio>()) {
-                    audio.Clips = audio.Clips.Select(FixClip).ToArray();
-                    EditorUtility.SetDirty(audio);
+                foreach (var layer in c.GetLayers()) {
+                    layer.RewriteBehaviours<VRCAnimatorPlayAudio>(audio => {
+                        audio.Clips = audio.Clips.Select(FixClip).ToArray();
+                        return audio;
+                    });
                 }
             }
 #endif

@@ -1,8 +1,10 @@
 using UnityEngine;
+using UnityEditor.Animations;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
     [VFService]
@@ -10,6 +12,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly TmpDirService tmpDirService;
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
 
         [FeatureBuilderAction(FeatureOrder.SaveAssets)]
         public void Run() {
@@ -25,19 +28,15 @@ namespace VF.Service {
                     session.SaveUnsavedComponentAssets(component, tmpDir);
                 }
 
-                // Special handling for mask and controller names
                 foreach (var controller in controllers.GetAllMutatedControllers()) {
-                    foreach (var layer in controller.GetLayers()) {
-                        if (layer.mask != null) {
-                            layer.mask.name = "Mask for " + layer.name;
-                        }
+                    var raw = VRCAvatarUtils.GetAvatarController(avatar, controller.GetType()).Item2 as AnimatorController;
+                    if (raw == null) {
+                        continue;
                     }
-
                     session.SaveAssetAndChildren(
-                        controller.GetRaw(),
+                        raw,
                         $"VRCFury {controller.GetType().ToString()}",
-                        tmpDir,
-                        true
+                        tmpDir
                     );
                 }
 

@@ -41,8 +41,7 @@ namespace VF.Service.Compressor {
             // Avoid making this clone controllers
             foreach (var drivenParam in controllers.GetAllReadOnlyControllers()
                          .SelectMany(controller => controller.layers)
-                         .SelectMany(layer => layer.allBehaviours)
-                         .OfType<VRCAvatarParameterDriver>()
+                         .SelectMany(layer => layer.GetBehaviours<VRCAvatarParameterDriver>())
                          .SelectMany(driver => driver.parameters)) {
                 drivenParams.Add(drivenParam.name);
                 if (drivenParam.type == VRC_AvatarParameterDriver.ChangeType.Add) addDrivenParams.Add(drivenParam.name);

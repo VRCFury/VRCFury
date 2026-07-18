@@ -46,9 +46,9 @@ namespace VF.Hooks {
                 }
 
                 var overLimit = new HashSet<string>();
-                foreach (var binding in clips.SelectMany(clip => clip.GetFloatBindings())) {
+                foreach (var binding in clips.SelectMany(clip => (VFMotion.Load(clip, new VFLoadContext()) as VFClip)?.GetFloatBindings() ?? System.Array.Empty<VFBinding>())) {
                     if (binding.IsOverLimitConstraint(out _)) {
-                        overLimit.Add(binding.path);
+                        overLimit.Add(binding.GetDebugPath());
                     }
                 }
 
@@ -95,7 +95,7 @@ namespace VF.Hooks {
                 if (!(_c is AnimatorController c)) return;
                 if (c == null) return;
                 controllers.Add(c);
-                clips.UnionWith(new AnimatorIterator.Clips().From(new VFController(c)));
+                clips.UnionWith(new AnimatorIterator.Clips().From(VFController.Load(c, new VFLoadContext())).Select(clip => clip.GetSourceAsset() as AnimationClip).Where(clip => clip != null));
             }
             void FoundClip(AnimationClip clip) {
                 if (clip == null) return;
@@ -112,7 +112,7 @@ namespace VF.Hooks {
                 }
                 if (visit.value is AnimatorController ac && ac != null) {
                     FoundController(ac);
-                    clips.UnionWith(new AnimatorIterator.Clips().From(new VFController(ac)));
+                    clips.UnionWith(new AnimatorIterator.Clips().From(VFController.Load(ac, new VFLoadContext())).Select(clip => clip.GetSourceAsset() as AnimationClip).Where(clip => clip != null));
                     return UnitySerializationUtils.IterateResult.Skip;
                 }
                 if (visit.value is AnimationClip c2 && c2 != null) {

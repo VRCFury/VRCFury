@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
@@ -6,6 +6,7 @@ using UnityEngine.Animations;
 using VF.Builder;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Validation.Performance;
 
@@ -15,30 +16,25 @@ namespace VF.Service {
      */
     [VFService]
     internal class ValidateBindingsService {
-        private readonly VFGameObject baseObject;
         [CanBeNull] [VFAutowired] private readonly AnimatorHolderService animators;
 
-        public ValidateBindingsService(VFGameObject avatarObject) {
-            this.baseObject = avatarObject;
-        }
-
-        public bool HasValidBinding(Motion motion) {
+        public bool HasValidBinding(VFMotion motion) {
             return new AnimatorIterator.Clips().From(motion).Any(HasValidBinding);
         }
 
-        private bool HasValidBinding(AnimationClip clip) {
+        public bool HasValidBinding(VFClip clip) {
             return clip.GetAllBindings().Any(IsValid);
         }
 
-        public bool IsValid(EditorCurveBinding binding) {
-            var obj = baseObject.Find(binding.path);
-            if (obj == null) return false;
+        public bool IsValid(VFBinding binding) {
+            var obj = binding.target;
             if (binding.type == null) return false;
+            if (binding.type == typeof(Animator)) return true;
+            if (obj == null) return false;
             if (binding.type == typeof(GameObject)) return true;
 
             // because we delete the animators during the build
             if (binding.type.IsAssignableFrom(typeof(Animator))) {
-                if (binding.path == "") return true;
                 if (animators != null && animators.GetSubControllers().Any(s => s.owner == obj)) return true;
             }
 

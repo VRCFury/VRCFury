@@ -30,7 +30,7 @@ namespace VF.Builder {
         [CanBeNull]
         public static VFGameObject Find(VFGameObject from, string relativePath) {
             if (objectToPath.TryGetValue(from, out var fromPath)) {
-                var toPath = ClipRewritersService.Join(fromPath, relativePath);
+                var toPath = AnimationBindingUtils.JoinPaths(fromPath, relativePath);
                 return pathToObject.TryGetValue(toPath, out var to) ? to : null;
             }
             return from.Find(relativePath);

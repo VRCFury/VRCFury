@@ -23,10 +23,10 @@ namespace VF.Service {
         public void Optimize() {
             var alwaysOneParams = GetAlwaysOneParams();
             foreach (var state in new AnimatorIterator.States().From(fx).Where(VFLayer.Created)) {
-                if (state.motion is BlendTree tree) {
+                if (state.motion is VFTree tree) {
                     Optimize(tree, alwaysOneParams);
                     if (tree.blendType == BlendTreeType.Direct
-                        && tree.children.Length == 1
+                        && tree.children.Count == 1
                         && alwaysOneParams.Contains(tree.children[0].directBlendParameter)) {
                         state.motion = tree.children[0].motion;
                     }
@@ -46,7 +46,7 @@ namespace VF.Service {
 
         private ISet<string> GetAlwaysOneParams() {
             var animatedParams = GetAnimatedParams();
-            return fx.GetRaw().parameters
+            return fx.parameters
                 .Where(p => p.type == AnimatorControllerParameterType.Float)
                 .Where(p => p.defaultFloat == 1)
                 .Where(p => !animatedParams.Contains(p.name))
@@ -63,8 +63,7 @@ namespace VF.Service {
             animatedParams.UnionWith(vrcControlled);
             var driven = controllers.GetAllUsedControllers()
                 .SelectMany(c => c.layers)
-                .SelectMany(l => l.allBehaviours)
-                .OfType<VRCAvatarParameterDriver>()
+                .SelectMany(l => l.GetBehaviours<VRCAvatarParameterDriver>())
                 .SelectMany(driver => driver.parameters)
                 .Select(p => p.name);
             animatedParams.UnionWith(driven);
@@ -76,9 +75,9 @@ namespace VF.Service {
             return animatedParams;
         }
 
-        private void Optimize(BlendTree tree, ISet<string> alwaysOneParams) {
+        private void Optimize(VFTree tree, ISet<string> alwaysOneParams) {
             foreach (var child in tree.children) {
-                if (child.motion is BlendTree t) Optimize(t, alwaysOneParams);
+                if (child.motion is VFTree t) Optimize(t, alwaysOneParams);
             }
 
             ClaimSubtreesWithOneChild(tree, alwaysOneParams);
@@ -86,26 +85,26 @@ namespace VF.Service {
             MergeClipsWithSameWeight(tree, alwaysOneParams);
         }
 
-        private void MergeSubtreesWithOneWeight(BlendTree tree, ISet<string> alwaysOneParams) {
+        private void MergeSubtreesWithOneWeight(VFTree tree, ISet<string> alwaysOneParams) {
             if (tree.blendType != BlendTreeType.Direct) return;
-            if (tree.GetNormalizedBlendValues()) return;
+            if (tree.NormalizedBlendValues) return;
             tree.RewriteChildren(child => {
                 if (alwaysOneParams.Contains(child.directBlendParameter)
-                    && child.motion is BlendTree childTree
+                    && child.motion is VFTree childTree
                     && childTree.blendType == BlendTreeType.Direct
-                    && !childTree.GetNormalizedBlendValues()
+                    && !childTree.NormalizedBlendValues
                 ) {
-                    return childTree.children;
+                    return childTree.children.Select(c => c.ShallowClone()).ToArray();
                 }
-                return new ChildMotion[] { child };
+                return child;
             });
         }
 
-        private void ClaimSubtreesWithOneChild(BlendTree tree, ISet<string> alwaysOneParams) {
+        private void ClaimSubtreesWithOneChild(VFTree tree, ISet<string> alwaysOneParams) {
             tree.RewriteChildren(child => {
-                if (child.motion is BlendTree childTree
+                if (child.motion is VFTree childTree
                     && childTree.blendType == BlendTreeType.Direct
-                    && childTree.children.Length == 1
+                    && childTree.children.Count == 1
                     && alwaysOneParams.Contains(childTree.children[0].directBlendParameter)
                 ) {
                     child.motion = childTree.children[0].motion;
@@ -113,45 +112,44 @@ namespace VF.Service {
                     child.mirror = childTree.children[0].mirror;
                     child.cycleOffset = childTree.children[0].cycleOffset;
                 }
-                return new ChildMotion[] { child };
+                return child;
             });
         }
 
-        private void MergeClipsWithSameWeight(BlendTree tree, ISet<string> alwaysOneParams) {
+        private void MergeClipsWithSameWeight(VFTree tree, ISet<string> alwaysOneParams) {
             if (tree.blendType != BlendTreeType.Direct) return;
-            if (tree.GetNormalizedBlendValues()) return;
+            if (tree.NormalizedBlendValues) return;
 
-            var firstClipByWeightParam = new Dictionary<string, AnimationClip>();
+            var firstClipByWeightParam = new Dictionary<string, VFClip>();
             tree.RewriteChildren(child => {
-                if (!(child.motion is AnimationClip clip)) return new [] { child };
+                if (!(child.motion is VFClip clip)) return child;
                 // Don't merge if we're using an original clip from the user
-                if (clip.GetUseOriginalUserClip()) return new [] { child };
+                if (clip.GetUseOriginalUserClip() != null) return child;
 
                 var param = child.directBlendParameter;
                 if (alwaysOneParams.Contains(param)) param = VFBlendTreeDirect.AlwaysOneParam;
                 if (!firstClipByWeightParam.TryGetValue(param, out var firstClip)) {
-                    var clone = clip.Clone();
-                    clone.WorkLog("Flattened direct blend tree by merging clips with identical weights");
+                    var clone = clip.Clone() as VFClip;
                     child.motion = clone;
                     firstClipByWeightParam[param] = clone;
-                    return new [] { child };
+                    return child;
                 }
 
                 // Eliminating a non-zero length clip has side effects on the playable length of the tree,
                 // so don't merge those.
                 if (clip.GetLengthInSeconds() != 0) {
-                    return new [] { child };
+                    return child;
                 }
 
                 // If the two clips share any bindings, don't merge them since they
                 // would normally be additive
                 if (firstClip.GetAllBindings().Intersect(clip.GetAllBindings()).Any()) {
-                    return new [] { child };
+                    return child;
                 }
 
                 firstClip.SetCurves(clip.GetAllCurves());
-                firstClip.name += " + " + clip.name;
-                return new ChildMotion[] { };
+                firstClip.name = firstClip.name + " + " + clip.name;
+                return System.Array.Empty<VFTreeChild>();
             });
         }
     }
