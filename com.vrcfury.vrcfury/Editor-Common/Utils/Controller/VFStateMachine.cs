@@ -265,6 +265,9 @@ namespace VF.Utils.Controller {
         internal void AddState(VFState state) {
             statesValue.Add(state);
             state.ReassignStateMachine(this);
+            if (defaultState == null) {
+                defaultState = state;
+            }
         }
 
         internal IEnumerable<VFStateMachine> GetAllStateMachines() {
