@@ -197,7 +197,7 @@ namespace VF.Utils.Controller {
         }
 
         internal override VFMotion Clone(VFMotionCloneContext context = null) {
-            context ??= new VFMotionCloneContext();
+            if (context == null) context = new VFMotionCloneContext();
             if (context.TryGet(this, out var existing)) {
                 return existing;
             }

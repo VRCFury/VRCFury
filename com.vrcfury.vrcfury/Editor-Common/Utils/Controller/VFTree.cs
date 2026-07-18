@@ -70,7 +70,7 @@ namespace VF.Utils.Controller {
 
         internal void AddChild(VFTreeChild child) {
             if (child == null) throw new ArgumentNullException(nameof(child));
-            _children ??= new List<VFTreeChild>();
+            if (_children == null) _children = new List<VFTreeChild>();
             _children.Add(child);
             isDirty = true;
         }
@@ -164,7 +164,7 @@ namespace VF.Utils.Controller {
         }
 
         internal override VFMotion Clone(VFMotionCloneContext context = null) {
-            context ??= new VFMotionCloneContext();
+            if (context == null) context = new VFMotionCloneContext();
             if (context.TryGet(this, out var existing)) {
                 return existing;
             }

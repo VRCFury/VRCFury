@@ -340,7 +340,7 @@ namespace VF.Utils.Controller {
                 return null;
             }
 
-            context ??= new VFLoadContext();
+            if (context == null) context = new VFLoadContext();
             var previousRewriteMotion = context.RewriteMotion;
             context.RewriteMotion = motion => {
                 var current = previousRewriteMotion?.Invoke(motion) ?? motion;
