@@ -12,7 +12,7 @@
       "onFail": "download"
     }
   },
-  "dependencies": {
+  "devDependencies": {
     "archiver": "^8.0.0",
     "hasha": "^7.0.0",
     "promisify-child-process": "^5.0.1",
