@@ -1,4 +1,2 @@
 minimumReleaseAge: 10080
-useNodeVersion: 26.5.0
-engineStrict: true
 blockExoticSubdeps: true

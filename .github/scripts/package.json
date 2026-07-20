@@ -1,5 +1,17 @@
 {
   "type": "module",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.15.1",
+      "onFail": "download"
+    },
+    "runtime": {
+      "name": "node",
+      "version": "26.5.0",
+      "onFail": "download"
+    }
+  },
   "dependencies": {
     "archiver": "^8.0.0",
     "hasha": "^7.0.0",
@@ -7,6 +19,5 @@
     "semver": "^7.8.5",
     "tar": "^7.5.20",
     "tmp-promise": "^3.0.3"
-  },
-  "packageManager": "pnpm@11.15.1"
+  }
 }
