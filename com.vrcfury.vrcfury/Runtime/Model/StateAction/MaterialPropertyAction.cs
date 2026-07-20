@@ -39,5 +39,29 @@ namespace VF.Model.StateAction {
             St,
             LegacyAuto
         }
+
+        public override bool Equals(Action other) => Equals(other as MaterialPropertyAction); 
+        public bool Equals(MaterialPropertyAction other) {
+            if (other == null) return false;
+            if (affectAllMeshes != other.affectAllMeshes) return false;
+            if (!affectAllMeshes && renderer2 != other.renderer2) return false;
+            if (propertyName != other.propertyName) return false;
+            switch (propertyType) {
+                case Type.Float:
+                case Type.LegacyAuto:
+                    if (value != other.value) return false;
+                    break;
+                case Type.Color:
+                    if (valueColor != other.valueColor) return false;
+                    break;
+                case Type.Vector:
+                case Type.St:
+                    if (valueVector != other.valueVector) return false;
+                    break;
+                default:
+                    return false;
+            }
+            return true;
+        }
     }
 }

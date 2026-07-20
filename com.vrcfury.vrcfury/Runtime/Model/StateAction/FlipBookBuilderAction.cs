@@ -29,5 +29,15 @@ namespace VF.Model.StateAction {
         public override int GetLatestVersion() {
             return 1;
         }
+
+        public override bool Equals(Action other) => Equals(other as FlipBookBuilderAction); 
+        public bool Equals(FlipBookBuilderAction other) {
+            if (other == null) return false;
+            if (pages.Count != other.pages.Count) return false;
+            for (int i = 0; i < pages.Count; i++) {
+                if (!pages[i].state.Equals(other.pages[i].state)) return false; 
+            }
+            return true;
+        }
     }
 }
