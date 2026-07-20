@@ -7,7 +7,7 @@ import { hashFile } from 'hasha';
 import semver from 'semver';
 import tmp from 'tmp-promise';
 import { spawn } from 'promisify-child-process';
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 import { once } from 'node:events';
 
 const [vrcfuryRepoPathArg, versionManifestRepoPathArg] = process.argv.slice(2);
@@ -180,7 +180,7 @@ async function createTar(dir, outputFilename) {
 }
 async function createZip(dir, outputFilename) {
     const output = fsPlain.createWriteStream(outputFilename);
-    const archive = archiver('zip', {
+    const archive = new ZipArchive({
         zlib: { level: 9 } // Sets the compression level.
     });
     const streamClosed = Promise.race([

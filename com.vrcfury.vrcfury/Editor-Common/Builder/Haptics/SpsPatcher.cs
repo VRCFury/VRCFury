@@ -732,7 +732,6 @@ namespace VF.Builder.Haptics {
                     Add(path.Replace('\\', '/'));
                     if (File.Exists(path)) {
                         var info = new FileInfo(path);
-                        Add(info.LastWriteTimeUtc.Ticks.ToString());
                         Add(info.Length.ToString());
                     }
                 }
