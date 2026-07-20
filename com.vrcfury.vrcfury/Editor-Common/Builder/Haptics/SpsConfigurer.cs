@@ -37,16 +37,16 @@ namespace VF.Builder.Haptics {
 
             var bounds = renderer.GetLocalBounds();
             var rendererRoot = renderer.GetRootBone();
-            var localRoot = rendererRoot.InverseTransformPoint(bakeRoot.worldPosition);
-            var localRight = rendererRoot.InverseTransformPoint(bakeRoot.TransformPoint(Vector3.right * worldLength));
-            var localLeft = rendererRoot.InverseTransformPoint(bakeRoot.TransformPoint(Vector3.left * worldLength));
-            var localUp = rendererRoot.InverseTransformPoint(bakeRoot.TransformPoint(Vector3.up * worldLength));
-            var localDown = rendererRoot.InverseTransformPoint(bakeRoot.TransformPoint(Vector3.down * worldLength));
-            bounds.Encapsulate(localRoot);
-            bounds.Encapsulate(localRight);
-            bounds.Encapsulate(localLeft);
-            bounds.Encapsulate(localUp);
-            bounds.Encapsulate(localDown);
+            Vector3 ToRendererLocal(Vector3 direction) {
+                return rendererRoot.InverseTransformPoint(
+                    bakeRoot.worldPosition + bakeRoot.TransformDirection(direction));
+            }
+            bounds.Encapsulate(ToRendererLocal(Vector3.zero));
+            bounds.Encapsulate(ToRendererLocal(Vector3.right * worldLength));
+            bounds.Encapsulate(ToRendererLocal(Vector3.left * worldLength));
+            bounds.Encapsulate(ToRendererLocal(Vector3.up * worldLength));
+            bounds.Encapsulate(ToRendererLocal(Vector3.down * worldLength));
+            bounds.Encapsulate(ToRendererLocal(Vector3.back * worldLength * 0.5f));
             renderer.SetLocalBounds(bounds, "SPS bounds expansion");
         }
 
