@@ -1,12 +1,12 @@
 {
   "type": "module",
   "dependencies": {
-    "archiver": "^7.0.1",
-    "hasha": "^6.0.0",
-    "promisify-child-process": "^4.1.2",
-    "semver": "^7.6.3",
-    "tar": "^7.4.3",
+    "archiver": "^8.0.0",
+    "hasha": "^7.0.0",
+    "promisify-child-process": "^5.0.1",
+    "semver": "^7.8.5",
+    "tar": "^7.5.19",
     "tmp-promise": "^3.0.3"
   },
-  "packageManager": "pnpm@10.30.3"
+  "packageManager": "pnpm@11.14.0"
 }

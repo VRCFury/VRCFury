@@ -33,7 +33,7 @@ jobs:
 #            platform: android
 #            sdkKind: worlds
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Github's "ubuntu-latest" comes with a ton of unused stuff that pushes us over the disk limit
       - name: Clean up node
@@ -82,7 +82,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: repo
       - name: Copy license
@@ -93,12 +93,12 @@ jobs:
           cp CONTRIBUTING.md com.vrcfury.vrcfury/CONTRIBUTING.md
           cp .github/files/CONTRIBUTING.md.meta com.vrcfury.vrcfury/CONTRIBUTING.md.meta
       - name: Checkout version manifest
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: versions
           repository: VRCFury/vrcfury-updater-manifest
           ssh-key: ${{ secrets.VERSION_DEPLOY_KEY }}
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: repo/.github/scripts/package.json
           standalone: true
