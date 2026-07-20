@@ -8,5 +8,5 @@
     "tar": "^7.5.19",
     "tmp-promise": "^3.0.3"
   },
-  "packageManager": "pnpm@11.14.0"
+  "packageManager": "pnpm@11.15.1"
 }
