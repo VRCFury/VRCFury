@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -209,6 +209,8 @@ namespace VF.Utils.Controller {
                 state.Save(stateMap, saveContext);
                 var child = state.ToChildAnimatorState(stateMap);
                 raw.AddState(child.state, child.position);
+                // RATS harmony patches AddState and changes writeDefaultValues :(
+                child.state.writeDefaultValues = state.writeDefaultValues;
             }
 
             foreach (var child in childStateMachines) {
