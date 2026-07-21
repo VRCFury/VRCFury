@@ -122,6 +122,17 @@ namespace VF.Utils {
             }
         }
 
+        public static HashSet<Object> GetDependencies(Object root, params Type[] types) {
+            var dependencies = new HashSet<Object>();
+            ForEachChild(root, obj => {
+                if (obj == root) return true;
+                if (!IsType(obj, types)) return false;
+                dependencies.Add(obj);
+                return true;
+            });
+            return dependencies;
+        }
+
         private static bool IsType(Object obj, Type[] types) =>
             types.Any(type => type.IsInstanceOfType(obj));
     }

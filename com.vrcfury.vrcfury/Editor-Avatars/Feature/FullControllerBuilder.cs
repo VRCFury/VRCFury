@@ -703,18 +703,12 @@ namespace VF.Feature {
 
             content.Add(adv);
 
-            content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-                var debug = new VisualElement();
-                if (avatarObject == null) return debug;
-                
+            if (avatarObject != null) {
                 var baseObject = GetBaseObject(model, componentObject);
                 var controllers = model.controllers
                     .Select(c => c?.controller?.Get() as AnimatorController)
                     .NotNull()
                     .ToList();
-                var usesWdOff = controllers
-                    .SelectMany(c => new AnimatorIterator.States().From(VFController.Load(c, new VFLoadContext())))
-                    .Any(state => !state.writeDefaultValues);
                 var rewrites = prop.FindPropertyRelative("rewriteBindings");
                 var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
                     controllers,
@@ -726,21 +720,12 @@ namespace VF.Feature {
                             entry.FindPropertyRelative("to").stringValue = "";
                         });
                     }
-                ).ToList();
-                if (usesWdOff) {
-                    warnings.Add(VRCFuryEditorUtils.Warn(
-                        "This controller uses WD off!" +
-                        " If you want this prop to be reusable, you should use WD on." +
-                        " VRCFury will automatically convert the WD on or off to match the client's avatar," +
-                        " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost."
-                    ));
-                }
-                foreach (var c in warnings) {
-                    debug.Add(c);
-                }
+                );
 
-                return debug;
-            }));
+                foreach (var warning in warnings) {
+                    content.Add(warning);
+                }
+            }
 
             return content;
         }

@@ -20,23 +20,18 @@ namespace VF.Feature {
                     " This component has no impact on the avatar, and changes nothing about the upload. Any detected warnings will be shown below."
                 ));
             
-            output.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-                var debugInfo = new VisualElement();
-                if (avatarObject == null) return debugInfo;
+            if (avatarObject != null) {
                 var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
-                if (avatar == null) return debugInfo;
-
-                var controllers = VRCAvatarUtils.GetAllControllers(avatar)
-                    .Select(c => c.controller as AnimatorController)
-                    .NotNull()
-                    .ToList();
-                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(controllers, avatarObject);
-                
-                foreach (var w in warnings) {
-                    debugInfo.Add(w);
+                if (avatar != null) {
+                    var controllers = VRCAvatarUtils.GetAllControllers(avatar)
+                        .Select(c => c.controller as AnimatorController)
+                        .NotNull()
+                        .ToList();
+                    foreach (var warning in VrcfAnimationDebugInfo.BuildDebugInfo(controllers, avatarObject)) {
+                        output.Add(warning);
+                    }
                 }
-                return debugInfo;
-            }));
+            }
 
             return output;
         }

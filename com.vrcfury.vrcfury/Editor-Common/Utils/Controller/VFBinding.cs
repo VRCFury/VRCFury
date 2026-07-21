@@ -22,32 +22,18 @@ namespace VF.Utils {
         public VFGameObject target => resolvedObject?.target;
 
         internal static VFBinding MakeAnimatorBinding(string propertyName) {
-            return FromResolvedObject(null, EditorCurveBinding.FloatCurve("", typeof(Animator), propertyName));
+            return From(null, EditorCurveBinding.FloatCurve("", typeof(Animator), propertyName));
         }
 
-        internal static VFBinding FromResolvedObject(VFResolvedObject? resolvedObject, EditorCurveBinding rawBinding) {
+        internal static VFBinding From(VFResolvedObject? resolvedObject, EditorCurveBinding rawBinding) {
+            // Animator bindings always target the animator itself. Keeping resolved-object state for them only
+            // creates multiple in-memory representations of the same binding.
+            if (rawBinding.type == typeof(Animator)) resolvedObject = null;
             return new VFBinding(resolvedObject, rawBinding);
         }
 
-        public VFBinding(VFGameObject target, EditorCurveBinding rawBinding) {
-            this = rawBinding.type == typeof(Animator)
-                ? FromResolvedObject(null, rawBinding)
-                : FromResolvedObject(new VFResolvedObject(
-                    target,
-                    rawBinding.path,
-                    rawBinding.path,
-                    target != null
-                ), rawBinding);
-        }
-
-        internal VFBinding(VFGameObject target, EditorCurveBinding rawBinding, string storedPath, string unresolvedPath, bool isResolved = false) {
-            this = FromResolvedObject(new VFResolvedObject(target, storedPath, unresolvedPath, isResolved), rawBinding);
-        }
-
         private VFBinding(VFResolvedObject? resolvedObject, EditorCurveBinding rawBinding) {
-            // Animator bindings always target the animator itself. Keeping resolved-object state for them only
-            // creates multiple in-memory representations of the same binding.
-            this.resolvedObject = rawBinding.type == typeof(Animator) ? null : resolvedObject;
+            this.resolvedObject = resolvedObject;
             rawBinding.path = "";
             this.rawBinding = rawBinding;
         }
@@ -80,7 +66,7 @@ namespace VF.Utils {
         internal VFBinding Normalize(bool combineRotation = false) {
             var output = rawBinding;
             output.propertyName = GetNormalizedPropertyName(combineRotation);
-            return FromResolvedObject(resolvedObject, output);
+            return From(resolvedObject, output);
         }
 
         private string GetNormalizedPropertyName(bool combineRotation) {
@@ -201,28 +187,28 @@ namespace VF.Utils {
 
         internal VFBinding WithTarget(VFGameObject newTarget) {
             if (!resolvedObject.HasValue) return this;
-            return FromResolvedObject(resolvedObject.Value.WithTarget(newTarget, rawBinding.type != typeof(Animator)), rawWithPath);
+            return From(resolvedObject.Value.WithTarget(newTarget, rawBinding.type != typeof(Animator)), rawWithPath);
         }
 
         internal VFBinding WithPath(string newPath) {
             if (!resolvedObject.HasValue) return this;
             var output = rawBinding;
             output.path = newPath;
-            return FromResolvedObject(resolvedObject.Value.AsUnresolved(newPath), output);
+            return From(resolvedObject.Value.AsUnresolved(newPath), output);
         }
 
         internal VFBinding WithPropertyName(string newPropertyName) {
             var output = rawWithPath;
             output.propertyName = newPropertyName;
-            return FromResolvedObject(resolvedObject, output);
+            return From(resolvedObject, output);
         }
 
         internal VFBinding WithType(Type newType) {
             var output = rawWithPath;
             output.type = newType;
             return newType == typeof(Animator)
-                ? FromResolvedObject(null, output)
-                : FromResolvedObject(resolvedObject, output);
+                ? From(null, output)
+                : From(resolvedObject, output);
         }
 
         internal bool ShouldDropOnSave() {

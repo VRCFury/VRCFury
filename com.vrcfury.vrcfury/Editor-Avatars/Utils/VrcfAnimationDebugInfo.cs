@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -17,49 +16,126 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Utils {
     internal static class VrcfAnimationDebugInfo {
+        private class ControllerDebugInfo {
+            public HashSet<EditorCurveBinding> bindings;
+            public bool usesWdOff;
+        }
+
+        private static readonly AssetChangeCache<ControllerDebugInfo> controllerCache =
+            new AssetChangeCache<ControllerDebugInfo>(
+                typeof(AnimatorController),
+                typeof(AnimatorState),
+                typeof(AnimatorStateMachine),
+                typeof(Motion),
+                typeof(StateMachineBehaviour)
+            );
+
         public static List<VisualElement> BuildDebugInfo(
             IEnumerable<AnimatorController> controllers,
             VFGameObject componentObject,
             Func<string, string> rewritePath = null,
             Action<string> addPathRewrite = null
         ) {
+            var usesWdOff = false;
             var bindings = new HashSet<VFBinding>();
             var avatarObject = componentObject.GetAvatarRoot();
             foreach (var c in controllers) {
-                var controller = VFController.Load(c, new VFLoadContext {
+                var debugInfo = controllerCache.Get(c, () => BuildControllerDebugInfo(c));
+
+                usesWdOff |= debugInfo.usesWdOff;
+                var context = new VFLoadContext {
                     OwnerObject = componentObject,
                     AnimatorObject = avatarObject,
                     RewritePath = rewritePath,
                     FindObject = VRCFObjectPathCache.Find
-                });
-                foreach (var state in new AnimatorIterator.States().From(controller)) {
-                    bindings.UnionWith(new AnimatorIterator.Clips().From(state)
-                        .SelectMany(clip => clip.GetAllBindings())
-                    );
+                };
+                foreach (var binding in debugInfo.bindings) {
+                    VFResolvedObject? resolved = null;
+                    if (binding.type != typeof(Animator)) {
+                        resolved = VFResolvedObject.Load(binding.path, context, binding.type);
+                        if (!resolved.HasValue) continue;
+                    }
+                    bindings.Add(VFBinding.From(resolved, binding));
                 }
-#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-                bindings.UnionWith(
-                    controller.layers
-                        .SelectMany(layer => layer.allBehaviours)
-                        .Where(behaviour => behaviour.Read<VRCAnimatorPlayAudio>() != null)
-                        .SelectMany(behaviour => {
-                            var audioSource = behaviour.GetAudioSource();
-                            if (!audioSource.HasValue || string.IsNullOrEmpty(audioSource.Value.SourcePath)) {
-                                return Array.Empty<VFBinding>();
-                            }
-
-                            return new[] {
-                                VFBinding.FromResolvedObject(
-                                    audioSource.Value,
-                                    EditorCurveBinding.FloatCurve(audioSource.Value.SourcePath, typeof(GameObject), "animatorPlayAudio")
-                                )
-                            };
-                        })
-                );
-#endif
             }
 
-            return BuildDebugInfo(bindings, componentObject, rewritePath, true, addPathRewrite);
+            var warnings = BuildDebugInfo(bindings, componentObject, rewritePath, true, addPathRewrite);
+
+            if (usesWdOff) {
+                warnings.Add(VRCFuryEditorUtils.Warn(
+                    "This controller uses WD off!" +
+                    " If you want this prop to be reusable, you should use WD on." +
+                    " VRCFury will automatically convert the WD on or off to match the client's avatar," +
+                    " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost."
+                ));
+            }
+
+            return warnings;
+        }
+
+        private static ControllerDebugInfo BuildControllerDebugInfo(AnimatorController source) {
+            var bindings = new HashSet<EditorCurveBinding>();
+            var usesWdOff = false;
+            var layers = source.layers;
+            for (var layerIndex = 0; layerIndex < layers.Length; layerIndex++) {
+                var layer = layers[layerIndex];
+                var syncedLayerIndex = layer.syncedLayerIndex;
+                if (syncedLayerIndex >= layers.Length) continue;
+                var isSynced = syncedLayerIndex >= 0 && syncedLayerIndex != layerIndex;
+                var sourceLayer = isSynced ? layers[syncedLayerIndex] : layer;
+
+                var stateMachines = new Stack<AnimatorStateMachine>();
+                var seenStateMachines = new HashSet<AnimatorStateMachine>();
+                stateMachines.Push(sourceLayer.stateMachine);
+                while (stateMachines.Count > 0) {
+                    var stateMachine = stateMachines.Pop();
+                    if (stateMachine == null || !seenStateMachines.Add(stateMachine)) continue;
+                    foreach (var childStateMachine in stateMachine.stateMachines) {
+                        stateMachines.Push(childStateMachine.stateMachine);
+                    }
+                    foreach (var childState in stateMachine.states) {
+                        var state = childState.state;
+                        if (state == null) continue;
+                        usesWdOff |= !state.writeDefaultValues;
+
+                        var behaviours = state.behaviours;
+                        if (isSynced) {
+                            behaviours = layer.GetOverrideBehaviours(state) ?? behaviours;
+                        }
+
+                        foreach (var behaviour in behaviours ?? Array.Empty<StateMachineBehaviour>()) {
+#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
+                            if (!(behaviour is VRCAnimatorPlayAudio playAudio)
+                                || string.IsNullOrEmpty(playAudio.SourcePath)) continue;
+                            bindings.Add(EditorCurveBinding.FloatCurve(
+                                playAudio.SourcePath,
+                                typeof(GameObject),
+                                "animatorPlayAudio"
+                            ));
+#endif
+                        }
+                    }
+                }
+            }
+
+            var clips = new Stack<AnimationClip>(source.animationClips ?? Array.Empty<AnimationClip>());
+            var seenClips = new HashSet<AnimationClip>();
+            while (clips.Count > 0) {
+                var clip = clips.Pop();
+                if (clip == null || !seenClips.Add(clip)) continue;
+                var additiveClip = AnimationUtility.GetAnimationClipSettings(clip).additiveReferencePoseClip;
+                if (additiveClip != null) clips.Push(additiveClip);
+                foreach (var binding in AnimationUtility.GetCurveBindings(clip)
+                             .Concat(AnimationUtility.GetObjectReferenceCurveBindings(clip))) {
+                    if (binding.path == null || binding.propertyName == null || binding.type == null) continue;
+                    bindings.Add(binding);
+                }
+            }
+
+            return new ControllerDebugInfo {
+                bindings = bindings,
+                usesWdOff = usesWdOff
+            };
         }
         
         public static List<VisualElement> BuildDebugInfo(
@@ -77,6 +153,7 @@ namespace VF.Utils {
 
             var usedBindings = new HashSet<VFBinding>();
             foreach (var binding in bindings) {
+                if (binding.type == typeof(Animator)) continue;
                 if (binding.target != null) {
                     if (binding.target == componentObject || binding.target.IsChildOf(componentObject)) {
                         usedBindings.Add(binding);

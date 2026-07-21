@@ -89,7 +89,7 @@ namespace VF.Utils.Controller {
                     output.changedFromOriginalSourceClip = true;
                     continue;
                 }
-                var binding = VFBinding.FromResolvedObject(resolvedObject.Value, rawBinding);
+                var binding = VFBinding.From(resolvedObject.Value, rawBinding);
                 if ((context?.AdjustRootScale ?? false)
                     && context?.AnimatorObject != null
                     && curve.IsFloat
@@ -296,12 +296,9 @@ namespace VF.Utils.Controller {
             var binding = curve == null || curve.IsFloat
                 ? EditorCurveBinding.FloatCurve("", type, propertyName)
                 : EditorCurveBinding.PPtrCurve("", type, propertyName);
-            SetCurve(new VFBinding(
-                target,
-                binding,
-                binding.path,
-                binding.path,
-                type != typeof(Animator)
+            SetCurve(VFBinding.From(
+                new VFResolvedObject(target, null, null, true),
+                binding
             ), curve);
         }
 
