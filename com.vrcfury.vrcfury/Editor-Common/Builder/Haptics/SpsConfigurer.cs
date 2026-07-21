@@ -208,18 +208,22 @@ namespace VF.Builder.Haptics {
                 || propertyName == $"material.{SpsLegacy}";
         }
 
-        public static void AddMaterialPropertyAnimator(IEnumerable<MaterialProperty> properties) {
+        public static void AddMaterialPropertyAnimator(IEnumerable<MaterialProperty> properties, string outputDir) {
             var propertyList = (properties ?? new List<MaterialProperty>())
                 .Where(property => property?.component != null)
                 .ToList();
             if (propertyList.Count == 0) return;
 
             foreach (var group in propertyList.GroupBy(property => property.component.owner())) {
-                AddMaterialPropertyAnimator(group.Key, group);
+                AddMaterialPropertyAnimator(group.Key, group, outputDir);
             }
         }
 
-        private static void AddMaterialPropertyAnimator(VFGameObject obj, IEnumerable<MaterialProperty> properties) {
+        private static void AddMaterialPropertyAnimator(
+            VFGameObject obj,
+            IEnumerable<MaterialProperty> properties,
+            string outputDir
+        ) {
             var clip = VFClip.Create("SpsMaterialProperties");
 
             var controller = VFController.Create("SpsMaterialProperties");
@@ -231,7 +235,7 @@ namespace VF.Builder.Haptics {
             AddMaterialPropertyCurves(clip, properties);
 
             var animator = obj.AddComponent<Animator>();
-            animator.runtimeAnimatorController = controller.Save(obj);
+            animator.runtimeAnimatorController = controller.Save(obj, outputDir, "SpsMaterialProperties");
         }
 
         public static void AddMaterialPropertyCurves(VFClip clip, IEnumerable<MaterialProperty> properties) {

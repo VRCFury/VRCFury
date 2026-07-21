@@ -11,14 +11,19 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly TmpDirService tmpDirService;
 
         [FeatureBuilderAction(FeatureOrder.SaveControllers)]
         public void Apply() {
             foreach (var controller in controllers.GetAllUsedControllers()) {
-                var raw = controller.Save(avatarObject);
-                raw.parameters = raw.parameters
+                controller.parameters = controller.parameters
                     .OrderBy(p => p.name)
                     .ToArray();
+                var raw = controller.Save(
+                    avatarObject,
+                    tmpDirService.GetTempDir(),
+                    $"VRCFury {controller.GetType().ToString()}"
+                );
                 VRCAvatarUtils.SetAvatarController(avatar, controller.GetType(), raw);
             }
         }

@@ -42,7 +42,8 @@ namespace VF.Utils.Controller {
 
         public override AnimatorTransitionBase Save(
             IReadOnlyDictionary<VFState, AnimatorState> stateMap,
-            IReadOnlyDictionary<VFStateMachine, AnimatorStateMachine> stateMachineMap
+            IReadOnlyDictionary<VFStateMachine, AnimatorStateMachine> stateMachineMap,
+            VFSaveContext saveContext
         ) {
             if (!HasDestination(stateMap, stateMachineMap)) {
                 return null;
@@ -62,6 +63,7 @@ namespace VF.Utils.Controller {
             raw.exitTime = exitTime;
             raw.duration = duration;
             raw.interruptionSource = interruptionSource;
+            saveContext.AddNewAsset(raw);
             return raw;
         }
 

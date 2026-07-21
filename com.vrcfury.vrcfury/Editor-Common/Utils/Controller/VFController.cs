@@ -365,8 +365,15 @@ namespace VF.Utils.Controller {
             return output;
         }
 
-        public AnimatorController Save(VFGameObject bindingRoot, bool reuseSourceAssets = true) {
+        public AnimatorController Save(
+            VFGameObject bindingRoot,
+            string outputDir,
+            string filename,
+            bool reuseSourceAssets = true
+        ) {
             if (bindingRoot == null) throw new ArgumentNullException(nameof(bindingRoot));
+            if (string.IsNullOrEmpty(outputDir)) throw new ArgumentNullException(nameof(outputDir));
+            if (string.IsNullOrEmpty(filename)) throw new ArgumentNullException(nameof(filename));
             var saveContext = new VFSaveContext(bindingRoot, reuseSourceAssets);
 
             var finalizedRaw = new AnimatorController();
@@ -392,6 +399,9 @@ namespace VF.Utils.Controller {
             foreach (var item in workLog) {
                 finalizedRaw.WorkLog(item);
             }
+            var session = new SaveAssetsSession();
+            session.SaveAssetAndChildren(finalizedRaw, saveContext.NewAssets, filename, outputDir);
+            session.FlushWorkLogManifest(outputDir);
             return finalizedRaw;
         }
 

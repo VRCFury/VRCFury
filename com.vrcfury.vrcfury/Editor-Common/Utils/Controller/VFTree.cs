@@ -159,6 +159,7 @@ namespace VF.Utils.Controller {
             output.maxThreshold = maxThreshold;
             SetNormalizedBlendValuesRaw(output, normalizedBlendValues);
             output.children = outputChildren;
+            context.AddNewAsset(output);
             context.Add(this, output);
             return output;
         }

@@ -26,16 +26,14 @@ namespace VF.Service {
         private void Backup(string folderName) {
             if (!DebugCopyMenuItem.Get()) return;
             var outputDir = $"{tmpDirService.GetTempDir()}/{folderName}";
-            var session = new SaveAssetsSession();
             foreach (var c in controllers.GetAllUsedControllers()) {
-                var raw = c.Save(avatarObject, reuseSourceAssets: false);
-                session.SaveAssetAndChildren(
-                    raw,
+                c.Save(
+                    avatarObject,
+                    outputDir,
                     VRCFEnumUtils.GetName(c.vrcType),
-                    outputDir
+                    reuseSourceAssets: false
                 );
             }
-            session.FlushWorkLogManifest(outputDir);
         }
     }
 }

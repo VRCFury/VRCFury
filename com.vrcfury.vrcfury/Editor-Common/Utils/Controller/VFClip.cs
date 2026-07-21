@@ -192,6 +192,7 @@ namespace VF.Utils.Controller {
             settings.additiveReferencePoseClip = additiveReferencePoseClip?.Save(context) as AnimationClip;
             AnimationUtility.SetAnimationClipSettings(clip, settings);
 
+            context.AddNewAsset(clip);
             context.Add(this, clip);
             return clip;
         }

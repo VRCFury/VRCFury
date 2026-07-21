@@ -18,10 +18,11 @@ namespace VF.Features {
                     try {
                         var bakeResult = VRCFuryHapticSocketEditor.Bake(socket, spsMarkers);
                         if (bakeResult != null) {
-                            SpsConfigurer.AddMaterialPropertyAnimator(
-                                bakeResult.screenMarkerResults.SelectMany(result => result.materialProperties)
-                            );
                             var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", "Socket mat");
+                            SpsConfigurer.AddMaterialPropertyAnimator(
+                                bakeResult.screenMarkerResults.SelectMany(result => result.materialProperties),
+                                tmpDir
+                            );
                             var saver = new SaveAssetsSession();
                             foreach (var c in bakeResult.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                                 saver.SaveUnsavedComponentAssets(c, tmpDir);
@@ -42,10 +43,10 @@ namespace VF.Features {
                     try {
                         var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, spsMarkers: spsMarkers);
                         if (bakeResult != null) {
-                            if (bakeResult.resolverMaterialProperties != null) {
-                                SpsConfigurer.AddMaterialPropertyAnimator(bakeResult.resolverMaterialProperties);
-                            }
                             var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", bakeResult.oscId);
+                            if (bakeResult.resolverMaterialProperties != null) {
+                                SpsConfigurer.AddMaterialPropertyAnimator(bakeResult.resolverMaterialProperties, tmpDir);
+                            }
                             var saver = new SaveAssetsSession();
                             foreach (var c in bakeResult.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                                 saver.SaveUnsavedComponentAssets(c, tmpDir);

@@ -124,6 +124,7 @@ namespace VF.Utils.Controller {
             raw.tag = tag;
             raw.iKOnFeet = iKOnFeet;
             raw.behaviours = behaviours.Select(behaviour => behaviour.Save(saveContext)).ToArray();
+            saveContext.AddNewAsset(raw);
             stateMap[this] = raw;
             return raw;
         }

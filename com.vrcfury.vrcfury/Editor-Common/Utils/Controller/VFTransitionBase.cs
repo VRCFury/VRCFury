@@ -38,7 +38,8 @@ namespace VF.Utils.Controller {
 
         public abstract AnimatorTransitionBase Save(
             IReadOnlyDictionary<VFState, AnimatorState> stateMap,
-            IReadOnlyDictionary<VFStateMachine, AnimatorStateMachine> stateMachineMap
+            IReadOnlyDictionary<VFStateMachine, AnimatorStateMachine> stateMachineMap,
+            VFSaveContext saveContext
         );
 
         public abstract VFTransitionBase Clone(

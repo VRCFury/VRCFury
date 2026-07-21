@@ -101,7 +101,7 @@ namespace VF.Utils.Controller {
         internal AnimatorControllerLayer Save(VFSaveContext saveContext) {
             AvatarMask savedMask = null;
             if (maskValue != null) {
-                savedMask = maskValue.Save(saveContext.BindingRoot, saveContext.ReuseSourceAssets);
+                savedMask = maskValue.Save(saveContext);
             }
             return new AnimatorControllerLayer {
                 name = name,

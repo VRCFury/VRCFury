@@ -34,6 +34,7 @@ namespace VF.Utils {
         private static IList<Object> GetUnsavedChildren(Object obj, bool recurse) {
             var unsavedChildren = new List<Object>();
             MutableManager.ForEachChild(obj, asset => {
+                if (asset is AnimatorController) return false;
                 if (asset == obj) return true;
                 if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
                 if (!VrcfObjectFactory.DidCreate(asset)) return false;
@@ -45,10 +46,24 @@ namespace VF.Utils {
         }
 
         public void SaveAssetAndChildren(Object asset, string filename, string tmpDir) {
+            SaveAssetAndChildren(asset, GetUnsavedChildren(asset, true), filename, tmpDir);
+        }
+
+        public void SaveAssetAndChildren(
+            Object asset,
+            IEnumerable<Object> children,
+            string filename,
+            string tmpDir
+        ) {
             if (!VrcfObjectFactory.DidCreate(asset)) return;
             if (!savedRootAssets.Add(asset)) return;
 
-            var unsavedChildren = GetUnsavedChildren(asset, true);
+            var unsavedChildren = children
+                .Where(child => child != null)
+                .Where(VrcfObjectFactory.DidCreate)
+                .Where(child => string.IsNullOrEmpty(AssetDatabase.GetAssetPath(child)))
+                .Distinct()
+                .ToList();
 
             // Save child textures
             // If we don't save textures before the materials that use them, unity just throws them away

@@ -29,6 +29,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly TmpDirService tmpDirService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
 
         private class SavedAnimator {
@@ -89,7 +90,13 @@ namespace VF.Service {
                         animator.runtimeAnimatorController = VRCAvatarUtils.GetAvatarController(avatar, fx.GetType()).Item2;
                     }
                 } else {
-                    animator.runtimeAnimatorController = saved.clone?.Save(obj) ?? saved.controller;
+                    animator.runtimeAnimatorController = saved.clone != null
+                        ? saved.clone.Save(
+                            obj,
+                            tmpDirService.GetTempDir(),
+                            $"VRCFury {saved.clone.name} - {obj.name}"
+                        )
+                        : saved.controller;
                     animator.enabled = saved.enabled;
                 }
             }

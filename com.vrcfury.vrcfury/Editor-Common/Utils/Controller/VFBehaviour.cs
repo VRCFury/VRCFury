@@ -213,6 +213,7 @@ namespace VF.Utils.Controller {
                 TrySetAudioSourcePath(output,
                     audioSource.Value.GetPath(saveContext.BindingRoot, "Resolved audio source requires a binding root"));
             }
+            saveContext.AddNewAsset(output);
             return output;
         }
     }

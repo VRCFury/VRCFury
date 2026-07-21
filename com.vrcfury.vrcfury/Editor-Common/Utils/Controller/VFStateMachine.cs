@@ -199,7 +199,7 @@ namespace VF.Utils.Controller {
             var stateMachineMap = new Dictionary<VFStateMachine, AnimatorStateMachine>();
             var stateMap = new Dictionary<VFState, AnimatorState>();
             var raw = SaveRecursive(stateMachineMap, stateMap, saveContext);
-            SaveTransitionsRecursive(raw, stateMachineMap, stateMap);
+            SaveTransitionsRecursive(raw, stateMachineMap, stateMap, saveContext);
             return raw;
         }
 
@@ -209,6 +209,7 @@ namespace VF.Utils.Controller {
             VFSaveContext saveContext
         ) {
             var raw = VrcfObjectFactory.Create<AnimatorStateMachine>();
+            saveContext.AddNewAsset(raw);
             stateMachineMap[this] = raw;
 
             raw.name = thisName;
@@ -237,15 +238,16 @@ namespace VF.Utils.Controller {
         private void SaveTransitionsRecursive(
             AnimatorStateMachine raw,
             IReadOnlyDictionary<VFStateMachine, AnimatorStateMachine> stateMachineMap,
-            IReadOnlyDictionary<VFState, AnimatorState> stateMap
+            IReadOnlyDictionary<VFState, AnimatorState> stateMap,
+            VFSaveContext saveContext
         ) {
             raw.defaultState = defaultState != null ? stateMap.GetOrDefault(defaultState) : null;
             raw.entryTransitions = entryTransitionsValue
-                .Select(t => (AnimatorTransition)t.Save(stateMap, stateMachineMap))
+                .Select(t => (AnimatorTransition)t.Save(stateMap, stateMachineMap, saveContext))
                 .Where(t => t != null)
                 .ToArray();
             raw.anyStateTransitions = anyStateTransitionsValue
-                .Select(t => (AnimatorStateTransition)t.Save(stateMap, stateMachineMap))
+                .Select(t => (AnimatorStateTransition)t.Save(stateMap, stateMachineMap, saveContext))
                 .Where(t => t != null)
                 .ToArray();
 
@@ -253,19 +255,20 @@ namespace VF.Utils.Controller {
                 raw.SetStateMachineTransitions(
                     stateMachineMap[child.stateMachine],
                     child.transitions
-                        .Select(t => (AnimatorTransition)t.Save(stateMap, stateMachineMap))
+                        .Select(t => (AnimatorTransition)t.Save(stateMap, stateMachineMap, saveContext))
                         .Where(t => t != null)
                         .ToArray()
                 );
                 child.stateMachine.SaveTransitionsRecursive(
                     stateMachineMap[child.stateMachine],
                     stateMachineMap,
-                    stateMap
+                    stateMap,
+                    saveContext
                 );
             }
             foreach (var state in statesValue) {
                 stateMap[state].transitions = state.transitions
-                    .Select(t => (AnimatorStateTransition)t.Save(stateMap, stateMachineMap))
+                    .Select(t => (AnimatorStateTransition)t.Save(stateMap, stateMachineMap, saveContext))
                     .Where(t => t != null)
                     .ToArray();
             }

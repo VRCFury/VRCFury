@@ -100,9 +100,10 @@ namespace VF.Utils.Controller {
             return output;
         }
 
-        public AvatarMask Save(VFGameObject bindingRoot, bool reuseSourceAsset = true) {
+        public AvatarMask Save(VFSaveContext context) {
+            var bindingRoot = context.BindingRoot;
             if (bindingRoot == null) throw new ArgumentNullException(nameof(bindingRoot));
-            if (reuseSourceAsset && !changedFromSource && CanUseSourceRaw(bindingRoot)) {
+            if (context.ReuseSourceAssets && !changedFromSource && CanUseSourceRaw(bindingRoot)) {
                 return sourceRaw;
             }
 
@@ -130,6 +131,7 @@ namespace VF.Utils.Controller {
                 }
                 EnsureOneTransform(raw);
             }
+            context.AddNewAsset(raw);
             return raw;
         }
 
