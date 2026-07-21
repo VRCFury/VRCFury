@@ -10,13 +10,9 @@ namespace VF.Utils {
         public delegate (VFBinding, FloatOrObjectCurve, bool) CurveRewriter(VFBinding binding, FloatOrObjectCurve curve);
 
         public static AnimationRewriter RewriteBinding(Func<VFBinding, VFBinding?> rewrite) {
-            var cache = new Dictionary<VFBinding, VFBinding?>();
             var output = RewriteCurve((binding, curve) => {
-                if (!cache.TryGetValue(binding, out var newBinding)) {
-                    newBinding = rewrite(binding);
-                    cache[binding] = newBinding;
-                }
-                if (newBinding == null) return (binding, null, false);
+                var newBinding = rewrite(binding);
+                if (!newBinding.HasValue) return (binding, null, false);
                 return (newBinding.Value, curve, false);
             });
             return output;

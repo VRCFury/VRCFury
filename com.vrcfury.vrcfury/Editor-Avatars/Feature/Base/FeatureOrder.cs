@@ -85,7 +85,6 @@ namespace VF.Feature.Base {
         DisableSyncForAaps,
         MakeAllSyncedDriversLocal,
         RemoveVrcGlobalsFromExpressionParams,
-        ParameterCompressor,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         ApplyModifiedMaterialProperties, // Needs to run before RecordAllDefaults
