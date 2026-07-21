@@ -46,8 +46,7 @@ namespace VF.Utils {
                 var context = new VFLoadContext {
                     OwnerObject = componentObject,
                     AnimatorObject = avatarObject,
-                    RewritePath = rewritePath,
-                    FindObject = VRCFObjectPathCache.Find
+                    RewritePath = rewritePath
                 };
                 foreach (var binding in debugInfo.bindings) {
                     VFResolvedObject? resolved = null;

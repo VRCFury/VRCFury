@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Animations;
 using VRC.Dynamics;
+using VF.Builder;
 
 namespace VF.Utils {
     internal static class AnimationBindingUtils {
@@ -12,8 +13,7 @@ namespace VF.Utils {
             VFGameObject animatorObject,
             string path,
             Type type,
-            bool rootBindingsApplyToAvatar = false,
-            Func<VFGameObject, string, VFGameObject> findObject = null
+            bool rootBindingsApplyToAvatar = false
         ) {
             if (animatorObject == null) return null;
             if (ownerObject == null) return null;
@@ -22,33 +22,26 @@ namespace VF.Utils {
             if (path == "" && rootBindingsApplyToAvatar) {
                 return animatorObject;
             }
-            VFGameObject Find(VFGameObject from, string relativePath) {
-                return findObject != null ? findObject(from, relativePath) : from.Find(relativePath);
-            }
-            VFGameObject Parent(VFGameObject obj) {
-                return findObject != null ? Find(obj, "..") : obj.parent;
-            }
-
             var ancestor = ownerObject;
             while (ancestor != null && ancestor != animatorObject) {
-                ancestor = Parent(ancestor);
+                ancestor = VRCFObjectPathCache.GetParent(ancestor);
             }
             if (ancestor != animatorObject) return null;
 
             if (ownerObject == animatorObject) {
-                var target = Find(animatorObject, path);
+                var target = VRCFObjectPathCache.Find(animatorObject, path);
                 return IsValidResolvedTarget(target, type) ? target : null;
             }
 
             VFGameObject current = ownerObject;
             while (current != null) {
-                var target = Find(current, path);
+                var target = VRCFObjectPathCache.Find(current, path);
                 if (IsValidResolvedTarget(target, type)) {
                     return target;
                 }
 
                 if (current == animatorObject) break;
-                current = Parent(current);
+                current = VRCFObjectPathCache.GetParent(current);
             }
             return null;
         }

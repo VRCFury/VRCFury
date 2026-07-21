@@ -82,8 +82,7 @@ namespace VF.Feature {
                         AnimatorObject = globals.avatarObject,
                         RootBindingsApplyToAvatar = model.rootBindingsApplyToAvatar,
                         AdjustRootScale = true,
-                        RewritePath = path => RewritePath(model, path),
-                        FindObject = VRCFObjectPathCache.Find
+                        RewritePath = path => RewritePath(model, path)
                     }
                 );
                 if (copy != null) {

@@ -35,8 +35,7 @@ namespace VF.Actions {
                     new VFLoadContext {
                         OwnerObject = animObject,
                         AnimatorObject = avatarObject,
-                        AdjustRootScale = true,
-                        FindObject = VRCFObjectPathCache.Find
+                        AdjustRootScale = true
                     }
                 );
             }
