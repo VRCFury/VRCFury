@@ -33,7 +33,7 @@ namespace VF.Utils.Controller {
         ) {
             if (raw == null) return null;
             var output = LoadRecursive(layer, raw, context);
-            LinkRecursive(output, raw, context, new HashSet<VFStateMachine>());
+            LoadTransitionsRecursive(output, raw, context, new HashSet<VFStateMachine>());
             return output;
         }
 
@@ -87,7 +87,7 @@ namespace VF.Utils.Controller {
             return output;
         }
 
-        private static void LinkRecursive(
+        private static void LoadTransitionsRecursive(
             VFStateMachine output,
             AnimatorStateMachine raw,
             VFLoadContext context,
@@ -120,7 +120,7 @@ namespace VF.Utils.Controller {
                         .Select(t => VFEntryTransition.Load(t, context.States, context.StateMachines))
                         .Where(t => t != null)
                 );
-                LinkRecursive(childStateMachine.stateMachine, rawChild.stateMachine, context, linked);
+                LoadTransitionsRecursive(childStateMachine.stateMachine, rawChild.stateMachine, context, linked);
             }
 
             for (var i = 0; i < raw.states.Length; i++) {
@@ -135,7 +135,9 @@ namespace VF.Utils.Controller {
         internal VFStateMachine Clone(VFLayer newLayer, VFMotionCloneContext cloneContext, out Dictionary<VFState, VFState> stateMap) {
             stateMap = new Dictionary<VFState, VFState>();
             var stateMachineMap = new Dictionary<VFStateMachine, VFStateMachine>();
-            return CloneRecursive(newLayer, stateMap, stateMachineMap, cloneContext);
+            var clone = CloneRecursive(newLayer, stateMap, stateMachineMap, cloneContext);
+            CloneTransitionsRecursive(clone, stateMap, stateMachineMap);
+            return clone;
         }
 
         private VFStateMachine CloneRecursive(
@@ -164,6 +166,14 @@ namespace VF.Utils.Controller {
                 });
             }
 
+            return clone;
+        }
+
+        private void CloneTransitionsRecursive(
+            VFStateMachine clone,
+            IReadOnlyDictionary<VFState, VFState> stateMap,
+            IReadOnlyDictionary<VFStateMachine, VFStateMachine> stateMachineMap
+        ) {
             clone.defaultState = defaultState != null ? stateMap.GetOrDefault(defaultState) : null;
             clone.entryTransitionsValue.AddRange(entryTransitionsValue.Select(t => (VFEntryTransition)t.Clone(stateMap, stateMachineMap)));
             clone.anyStateTransitionsValue.AddRange(anyStateTransitionsValue.Select(t => (VFTransition)t.Clone(stateMap, stateMachineMap)));
@@ -177,20 +187,23 @@ namespace VF.Utils.Controller {
                 clone.childStateMachines[i].transitions.AddRange(
                     childStateMachines[i].transitions.Select(t => (VFEntryTransition)t.Clone(stateMap, stateMachineMap))
                 );
+                childStateMachines[i].stateMachine.CloneTransitionsRecursive(
+                    clone.childStateMachines[i].stateMachine,
+                    stateMap,
+                    stateMachineMap
+                );
             }
-
-            return clone;
         }
 
         internal AnimatorStateMachine Save(VFSaveContext saveContext) {
-            return Save(
-                new Dictionary<VFStateMachine, AnimatorStateMachine>(),
-                new Dictionary<VFState, AnimatorState>(),
-                saveContext
-            );
+            var stateMachineMap = new Dictionary<VFStateMachine, AnimatorStateMachine>();
+            var stateMap = new Dictionary<VFState, AnimatorState>();
+            var raw = SaveRecursive(stateMachineMap, stateMap, saveContext);
+            SaveTransitionsRecursive(raw, stateMachineMap, stateMap);
+            return raw;
         }
 
-        private AnimatorStateMachine Save(
+        private AnimatorStateMachine SaveRecursive(
             Dictionary<VFStateMachine, AnimatorStateMachine> stateMachineMap,
             Dictionary<VFState, AnimatorState> stateMap,
             VFSaveContext saveContext
@@ -214,10 +227,18 @@ namespace VF.Utils.Controller {
             }
 
             foreach (var child in childStateMachines) {
-                var childRaw = child.stateMachine.Save(stateMachineMap, stateMap, saveContext);
+                var childRaw = child.stateMachine.SaveRecursive(stateMachineMap, stateMap, saveContext);
                 raw.AddStateMachine(childRaw, child.position);
             }
 
+            return raw;
+        }
+
+        private void SaveTransitionsRecursive(
+            AnimatorStateMachine raw,
+            IReadOnlyDictionary<VFStateMachine, AnimatorStateMachine> stateMachineMap,
+            IReadOnlyDictionary<VFState, AnimatorState> stateMap
+        ) {
             raw.defaultState = defaultState != null ? stateMap.GetOrDefault(defaultState) : null;
             raw.entryTransitions = entryTransitionsValue
                 .Select(t => (AnimatorTransition)t.Save(stateMap, stateMachineMap))
@@ -236,6 +257,11 @@ namespace VF.Utils.Controller {
                         .Where(t => t != null)
                         .ToArray()
                 );
+                child.stateMachine.SaveTransitionsRecursive(
+                    stateMachineMap[child.stateMachine],
+                    stateMachineMap,
+                    stateMap
+                );
             }
             foreach (var state in statesValue) {
                 stateMap[state].transitions = state.transitions
@@ -243,8 +269,6 @@ namespace VF.Utils.Controller {
                     .Where(t => t != null)
                     .ToArray();
             }
-
-            return raw;
         }
 
         internal VFEntryTransition CreateEntryTransition(VFState destination) {
