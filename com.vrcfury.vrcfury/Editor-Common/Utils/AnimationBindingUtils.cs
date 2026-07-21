@@ -19,13 +19,22 @@ namespace VF.Utils {
             if (ownerObject == null) return null;
             if (path == null) return null;
             if (type == typeof(Animator)) return animatorObject;
-            if (ownerObject != animatorObject && !ownerObject.IsChildOf(animatorObject)) return null;
             if (path == "" && rootBindingsApplyToAvatar) {
                 return animatorObject;
             }
             VFGameObject Find(VFGameObject from, string relativePath) {
                 return findObject != null ? findObject(from, relativePath) : from.Find(relativePath);
             }
+            VFGameObject Parent(VFGameObject obj) {
+                return findObject != null ? Find(obj, "..") : obj.parent;
+            }
+
+            var ancestor = ownerObject;
+            while (ancestor != null && ancestor != animatorObject) {
+                ancestor = Parent(ancestor);
+            }
+            if (ancestor != animatorObject) return null;
+
             if (ownerObject == animatorObject) {
                 var target = Find(animatorObject, path);
                 return IsValidResolvedTarget(target, type) ? target : null;
@@ -33,17 +42,13 @@ namespace VF.Utils {
 
             VFGameObject current = ownerObject;
             while (current != null) {
-                if (current != animatorObject && !current.IsChildOf(animatorObject)) break;
-                var candidatePath = current == animatorObject
-                    ? path
-                    : JoinPaths(current.GetPath(animatorObject), path);
-                var target = Find(animatorObject, candidatePath);
+                var target = Find(current, path);
                 if (IsValidResolvedTarget(target, type)) {
                     return target;
                 }
 
                 if (current == animatorObject) break;
-                current = current.parent;
+                current = Parent(current);
             }
             return null;
         }
