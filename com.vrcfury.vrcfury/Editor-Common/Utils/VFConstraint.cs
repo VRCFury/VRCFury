@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -174,6 +176,18 @@ namespace VF.Utils {
             }
 #endif
             return $"m_Sources.Array.data[{index}].weight";
+        }
+
+        public static IEnumerable<VFConstraint> GetConstraintsInSelfAndChildren(IEnumerable<VFGameObject> roots) {
+            return roots.SelectMany(root => root
+                .GetComponentsInSelfAndChildren<IConstraint>()
+                .OfType<UnityEngine.Component>()
+#if VRCSDK_HAS_VRCCONSTRAINTS
+                .Concat(root.GetComponentsInSelfAndChildren<VRCConstraintBase>())
+#endif
+            )
+            .Select(CreateOrNull)
+            .NotNull();
         }
     }
 }

@@ -282,10 +282,7 @@ namespace VF.Utils {
         }
 
         public VFConstraint[] GetConstraints(bool includeParents = false, bool includeChildren = false) {
-            return uploadRoots
-                .SelectMany(root => root.GetComponentsInSelfAndChildren<UnityEngine.Component>())
-                .Select(c => c.AsConstraint())
-                .NotNull()
+            return VFConstraint.GetConstraintsInSelfAndChildren(uploadRoots)
                 .Where(c => {
                     var affectedObject = c.GetAffectedObject();
                     if (affectedObject == null) return false;
