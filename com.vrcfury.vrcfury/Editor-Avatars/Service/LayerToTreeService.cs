@@ -43,13 +43,19 @@ namespace VF.Service {
 
             var bindingsByLayer = fx.GetLayers()
                 .ToDictionary(layer => layer, GetBindingsAnimatedInLayer);
+            var layersByBinding = new Dictionary<VFBinding, HashSet<VFLayer>>();
+            foreach (var pair in bindingsByLayer) {
+                foreach (var binding in pair.Value) {
+                    layersByBinding.GetOrCreate(binding, () => new HashSet<VFLayer>()).Add(pair.Key);
+                }
+            }
 
             var directTree = new Lazy<VFBlendTreeDirect>(() => directTreeService.Create());
             
             var debugLog = new List<string>();
             foreach (var layer in applyToLayers) {
                 try {
-                    OptimizeLayer(layer, bindingsByLayer, directTree);
+                    OptimizeLayer(layer, bindingsByLayer, layersByBinding, directTree);
                     debugLog.Add($"{layer.name} - OPTIMIZED");
                     layer.Remove();
                 } catch (DoNotOptimizeException e) {
@@ -60,7 +66,12 @@ namespace VF.Service {
             Debug.Log("Optimization report:\n\n" + debugLog.Join('\n'));
         }
 
-        private void OptimizeLayer(VFLayer layer, Dictionary<VFLayer, ICollection<VFBinding>> bindingsByLayer, Lazy<VFBlendTreeDirect> directTree) {
+        private void OptimizeLayer(
+            VFLayer layer,
+            Dictionary<VFLayer, ICollection<VFBinding>> bindingsByLayer,
+            Dictionary<VFBinding, HashSet<VFLayer>> layersByBinding,
+            Lazy<VFBlendTreeDirect> directTree
+        ) {
             // We must never optimize the defaults layer.
             // While it may seem impossible for the defaults layer to be optimized (because it shares keys
             // with other layers), it's theoretically possible for the layer to be created early with bindings
@@ -131,11 +142,16 @@ namespace VF.Service {
             if (!layer.TryGetLayerId(out var layerId)) {
                 throw new DoNotOptimizeException("Layer was removed");
             }
-            var otherLayersAnimateTheSameThing = bindingsByLayer
-                .Where(pair => pair.Key != layer) // It's not the current layer
-                .Where(pair => pair.Key.TryGetLayerId(out var otherLayerId) && otherLayerId >= layerId) // The other layer has higher priority
-                .Where(pair => pair.Value.Any(b => usedBindings.Contains(b))) // The other layer animates the same thing we do
-                .Select(pair => pair.Key)
+            var layersWithMatchingBindings = new HashSet<VFLayer>();
+            foreach (var binding in usedBindings) {
+                if (layersByBinding.TryGetValue(binding, out var matchingLayers)) {
+                    layersWithMatchingBindings.UnionWith(matchingLayers);
+                }
+            }
+            var otherLayersAnimateTheSameThing = layersWithMatchingBindings
+                .Where(otherLayer => otherLayer != layer)
+                // Only fail if the other layer has higher priority
+                .Where(otherLayer => otherLayer.TryGetLayerId(out var otherLayerId) && otherLayerId >= layerId)
                 .ToArray();
             if (otherLayersAnimateTheSameThing.Length > 0) {
                 var names = otherLayersAnimateTheSameThing.Select(l => l.name).Join(", ");

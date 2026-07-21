@@ -210,8 +210,7 @@ namespace VF.Utils.Controller {
         internal StateMachineBehaviour Save(VFSaveContext saveContext) {
             var output = CloneRaw(raw);
             if (audioSource.HasValue) {
-                TrySetAudioSourcePath(output,
-                    audioSource.Value.GetPath(saveContext.BindingRoot, "Resolved audio source requires a binding root"));
+                TrySetAudioSourcePath(output, audioSource.Value.GetPath(saveContext.BindingRoot));
             }
             saveContext.AddNewAsset(output);
             return output;

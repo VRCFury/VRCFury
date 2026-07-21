@@ -41,9 +41,8 @@ namespace VF.Utils {
             return new VFResolvedObject(target, sourcePath, unresolvedPath, target != null);
         }
 
-        public string GetPath(VFGameObject root, string resolvedError) {
+        public string GetPath(VFGameObject root) {
             if (target == null) return unresolvedPath;
-            if (root == null) throw new Exception(resolvedError);
             return target.GetPath(root);
         }
 

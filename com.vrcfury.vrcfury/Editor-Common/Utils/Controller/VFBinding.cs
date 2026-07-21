@@ -143,7 +143,7 @@ namespace VF.Utils {
 
         internal string GetPath(VFGameObject root) {
             if (!resolvedObject.HasValue) return "";
-            return resolvedObject.Value.GetPath(root, $"Resolved binding requires a root to rebuild its path: {PrettyString()}");
+            return resolvedObject.Value.GetPath(root);
         }
 
         internal EditorCurveBinding ToEditorCurveBinding(VFGameObject root) {

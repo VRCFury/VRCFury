@@ -119,7 +119,7 @@ namespace VF.Utils.Controller {
                 raw.transformCount = 0;
             } else {
                 var active = transforms
-                    .Select(t => t.GetPath(bindingRoot, "Resolved mask transform requires a binding root"))
+                    .Select(t => t.GetPath(bindingRoot))
                     .ToHashSet();
                 var withParents = WithParents(active)
                     .OrderBy(path => path)
@@ -139,7 +139,7 @@ namespace VF.Utils.Controller {
             if (sourceRaw == null) return false;
             foreach (var transform in transforms) {
                 if (bindingRoot == null) return false;
-                if (transform.GetPath(bindingRoot, "Resolved mask transform requires a binding root") != transform.SourcePath) {
+                if (transform.GetPath(bindingRoot) != transform.SourcePath) {
                     return false;
                 }
             }
