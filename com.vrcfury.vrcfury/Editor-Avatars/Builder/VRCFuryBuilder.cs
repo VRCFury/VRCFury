@@ -22,15 +22,18 @@ namespace VF.Builder {
         internal static void RunMain(VFGameObject avatarObject) {
             Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
-            using (SkipAssetPostprocessorsForVrcfAssetWritesHook.Suppress()) {
-                VRCFuryAssetDatabase.WithAssetEditing(() => {
-                    try {
-                        MaterialLocker.injectedAvatarObject = avatarObject;
-                        Run(avatarObject);
-                    } finally {
-                        MaterialLocker.injectedAvatarObject = null;
-                    }
-                });
+            using (SuppressMaterialPropertyDrawersHook.Suppress()) {
+                using (SkipAssetPostprocessorsForVrcfAssetWritesHook.Suppress()) {
+                    VRCFuryAssetDatabase.WithAssetEditing(() => {
+                        try {
+                            MaterialLocker.injectedAvatarObject = avatarObject;
+                            Run(avatarObject);
+                        }
+                        finally {
+                            MaterialLocker.injectedAvatarObject = null;
+                        }
+                    });
+                }
             }
         }
 
