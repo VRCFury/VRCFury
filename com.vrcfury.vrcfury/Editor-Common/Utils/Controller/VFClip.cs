@@ -48,15 +48,11 @@ namespace VF.Utils.Controller {
             output.loopTime = settings.loopTime;
             output.additiveReferencePoseClip = VFMotion.Load(settings.additiveReferencePoseClip, context) as VFClip;
 
-            if (AssetDatabase.IsMainAsset(raw)) {
-                var path = AssetDatabase.GetAssetPath(raw);
-                if (string.IsNullOrEmpty(path)) {
-                    output.changedFromOriginalSourceClip = true;
-                } else if (Path.GetFileName(path).StartsWith("proxy_")) {
-                    output.originalSourceIsProxyClip = true;
-                }
-            } else {
+            var path = AssetDatabase.GetAssetPath(raw);
+            if (string.IsNullOrEmpty(path)) {
                 output.changedFromOriginalSourceClip = true;
+            } else if (AssetDatabase.IsMainAsset(raw) && Path.GetFileName(path).StartsWith("proxy_")) {
+                output.originalSourceIsProxyClip = true;
             }
 
             var rawPairs =
