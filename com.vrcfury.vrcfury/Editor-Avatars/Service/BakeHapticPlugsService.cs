@@ -153,6 +153,9 @@ namespace VF.Service {
             VFClip disableRealtimeShadowsClip,
             ISet<string> usedNames
         ) {
+            var name = HapticUtils.MakeUniqueId(usedNames, bakeInfo.oscId);
+            Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
+
             var bakeRoot = bakeInfo.bakeRoot;
             var worldSpace = bakeInfo.worldSpace;
             var renderers = bakeInfo.renderers;
@@ -160,16 +163,13 @@ namespace VF.Service {
             var worldLength = bakeInfo.worldLength;
             var localLength = worldLength / bakeRoot.worldScale.x;
             var propsToScale = new List<(UnityEngine.Component, string, float)>();
-            var worldScale = new Lazy<VFAFloat>(() => worldScaleService.GetWorldScale(bakeRoot));
+            var worldScale = new Lazy<VFAFloat>(() => worldScaleService.GetWorldScale(bakeRoot, name));
             
             globals.addOtherFeature(new ShowInFirstPerson {
                 useObjOverride = true,
                 objOverride = bakeRoot,
                 onlyIfChildOfHead = true
             });
-
-            var name = HapticUtils.MakeUniqueId(usedNames, bakeInfo.oscId);
-            Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
             
             // Haptics
             if (HapticsToggleMenuItem.Get() && !plug.fromSpsForAll) {

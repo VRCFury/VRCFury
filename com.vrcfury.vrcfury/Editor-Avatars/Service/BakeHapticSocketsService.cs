@@ -260,7 +260,7 @@ namespace VF.Service {
                         ogbEnabledService.Register(haptics);
                     }
 
-                    var worldScale = new Lazy<VFAFloat>(() => worldScaleService.GetWorldScale(bakeResult.bakeRoot));
+                    var worldScale = new Lazy<VFAFloat>(() => worldScaleService.GetWorldScale(bakeResult.bakeRoot, menuName));
                     var animObjects = new List<VFGameObject>();
                     var Contacts = new Lazy<SpsDepthContacts>(() => {
                         var animRoot = GameObjects.Create("Animations", bakeResult.worldSpace);
