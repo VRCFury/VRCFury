@@ -35,7 +35,8 @@ namespace VF.Utils {
                 context?.AnimatorObject,
                 unresolvedPath,
                 type,
-                context?.RootBindingsApplyToAvatar ?? false
+                context?.RootBindingsApplyToAvatar ?? false,
+                context?.UseCachedPaths ?? true
             );
             return new VFResolvedObject(target, sourcePath, unresolvedPath, target != null);
         }

@@ -34,7 +34,11 @@ namespace VF.Service {
                     new VFLoadContext {
                         OwnerObject = globals.avatarObject,
                         AnimatorObject = globals.avatarObject,
-                        RootBindingsApplyToAvatar = true
+                        RootBindingsApplyToAvatar = true,
+                        // Don't use cached paths SPECIFICALLY for the avatar descriptor controllers,
+                        // because if some other system already messed with the avatar during the build,
+                        // it may have added new objects and clips to these controllers
+                        UseCachedPaths = false
                     }
                 );
             }

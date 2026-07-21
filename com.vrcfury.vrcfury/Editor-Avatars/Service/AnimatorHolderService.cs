@@ -115,7 +115,8 @@ namespace VF.Service {
                         VRCAvatarDescriptor.AnimLayerType.Base,
                         new VFLoadContext {
                             OwnerObject = owner,
-                            AnimatorObject = owner
+                            AnimatorObject = owner,
+                            UseCachedPaths = false
                         }
                     );
                 }

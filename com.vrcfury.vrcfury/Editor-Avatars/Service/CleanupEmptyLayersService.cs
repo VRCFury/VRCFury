@@ -25,9 +25,9 @@ namespace VF.Service {
 
                 // Delete bindings targeting things that don't exist
                 foreach (var clip in c.GetClips()) {
-                    if (clip.GetUseOriginalUserClip() != null && validateBindingsService.HasValidBinding(clip)) {
+                    if (clip.GetUseOriginalUserClip() != null) {
                         // We haven't touched this clip at all during the build so far,
-                        // and it contains some useful bindings, so go ahead and just leave it as is
+                        // so go ahead and just leave it as is
                         // so the original file will be used, rather than generating a fresh copy.
                     } else {
                         // Rip out all impossible bindings

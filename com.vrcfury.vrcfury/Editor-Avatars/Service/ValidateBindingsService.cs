@@ -1,14 +1,10 @@
 using System.Linq;
 using JetBrains.Annotations;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.Animations;
 using VF.Builder;
 using VF.Injector;
 using VF.Utils;
 using VF.Utils.Controller;
-using VRC.SDK3.Avatars.Components;
-using VRC.SDKBase.Validation.Performance;
 
 namespace VF.Service {
     /**
@@ -30,28 +26,13 @@ namespace VF.Service {
             var obj = binding.target;
             if (binding.type == null) return false;
             if (binding.type == typeof(Animator)) return true;
-            if (obj == null) return false;
-            if (binding.type == typeof(GameObject)) return true;
 
             // because we delete the animators during the build
-            if (binding.type.IsAssignableFrom(typeof(Animator))) {
+            if (obj != null && binding.type.IsAssignableFrom(typeof(Animator))) {
                 if (animators != null && animators.GetSubControllers().Any(s => s.owner == obj)) return true;
             }
 
-            if (!typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) {
-                // This can happen if the component type they were animating is no longer available, such as
-                // if the script no longer exists in the project.
-                return false;
-            }
-            if (obj.GetComponent(binding.type) != null) return true;
-            if (binding.type == typeof(BoxCollider) && obj.GetComponent<VRCStation>() != null) return true;
-#if VRCSDK_HAS_VRCCONSTRAINTS
-            // Due to "half-upgraded" assets, animations may point to the wrong kind of constraint
-            // This will be fixed later in the build in UpgradeToVrcConstraintsService
-            if (typeof(IConstraint).IsAssignableFrom(binding.type) && obj.GetComponent<IVRCConstraint>() != null) return true;
-            if (typeof(IVRCConstraint).IsAssignableFrom(binding.type) && obj.GetComponent<IConstraint>() != null) return true;
-#endif
-            return false;
+            return AnimationBindingUtils.IsValidResolvedTarget(obj, binding.type);
         }
     }
 }

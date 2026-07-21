@@ -9,6 +9,7 @@ namespace VF.Utils.Controller {
         public VFGameObject AnimatorObject;
         public bool RootBindingsApplyToAvatar;
         public bool AdjustRootScale;
+        public bool UseCachedPaths = true;
         public Func<string, string> RewritePath;
         public Func<Motion, Motion> RewriteMotion;
         public Dictionary<AnimatorStateMachine, VFStateMachine> StateMachines = new Dictionary<AnimatorStateMachine, VFStateMachine>();

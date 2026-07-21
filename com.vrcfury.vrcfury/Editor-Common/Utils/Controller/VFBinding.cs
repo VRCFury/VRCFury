@@ -42,14 +42,6 @@ namespace VF.Utils {
         public string propertyName => rawBinding.propertyName;
         internal bool IsResolved => resolvedObject?.IsResolved ?? false;
 
-        private EditorCurveBinding rawWithPath {
-            get {
-                var output = rawBinding;
-                output.path = resolvedObject?.UnresolvedPath ?? "";
-                return output;
-            }
-        }
-
         internal string GetStoredPath() {
             return resolvedObject?.SourcePath ?? "";
         }
@@ -64,9 +56,7 @@ namespace VF.Utils {
         }
 
         internal VFBinding Normalize(bool combineRotation = false) {
-            var output = rawBinding;
-            output.propertyName = GetNormalizedPropertyName(combineRotation);
-            return From(resolvedObject, output);
+            return WithPropertyName(GetNormalizedPropertyName(combineRotation));
         }
 
         private string GetNormalizedPropertyName(bool combineRotation) {
@@ -187,28 +177,24 @@ namespace VF.Utils {
 
         internal VFBinding WithTarget(VFGameObject newTarget) {
             if (!resolvedObject.HasValue) return this;
-            return From(resolvedObject.Value.WithTarget(newTarget, rawBinding.type != typeof(Animator)), rawWithPath);
+            return From(resolvedObject.Value.WithTarget(newTarget, true), rawBinding);
         }
 
         internal VFBinding WithPath(string newPath) {
             if (!resolvedObject.HasValue) return this;
-            var output = rawBinding;
-            output.path = newPath;
-            return From(resolvedObject.Value.AsUnresolved(newPath), output);
+            return From(resolvedObject.Value.AsUnresolved(newPath), rawBinding);
         }
 
         internal VFBinding WithPropertyName(string newPropertyName) {
-            var output = rawWithPath;
+            var output = rawBinding;
             output.propertyName = newPropertyName;
             return From(resolvedObject, output);
         }
 
         internal VFBinding WithType(Type newType) {
-            var output = rawWithPath;
+            var output = rawBinding;
             output.type = newType;
-            return newType == typeof(Animator)
-                ? From(null, output)
-                : From(resolvedObject, output);
+            return From(resolvedObject, output);
         }
 
         internal bool ShouldDropOnSave() {
