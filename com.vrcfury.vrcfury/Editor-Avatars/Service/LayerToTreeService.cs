@@ -28,6 +28,7 @@ namespace VF.Service {
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
+        [VFAutowired] private readonly CleanupEmptyLayersService cleanupEmptyLayers;
 
         [FeatureBuilderAction(FeatureOrder.LayerToTree)]
         public void Apply() {
@@ -72,6 +73,10 @@ namespace VF.Service {
             Dictionary<VFBinding, HashSet<VFLayer>> layersByBinding,
             Lazy<VFBlendTreeDirect> directTree
         ) {
+            if (cleanupEmptyLayers.WouldRemove(layer)) {
+                throw new DoNotOptimizeException("Contains no valid animations (VRCF would delete this layer during a normal upload)");
+            }
+
             // We must never optimize the defaults layer.
             // While it may seem impossible for the defaults layer to be optimized (because it shares keys
             // with other layers), it's theoretically possible for the layer to be created early with bindings
