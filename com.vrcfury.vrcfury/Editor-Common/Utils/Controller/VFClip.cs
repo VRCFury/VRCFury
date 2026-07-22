@@ -86,8 +86,8 @@ namespace VF.Utils.Controller {
                     continue;
                 }
                 var binding = VFBinding.From(resolvedObject.Value, rawBinding);
-                if ((context?.AdjustRootScale ?? false)
-                    && context?.AnimatorObject != null
+                if (context.AdjustRootScale
+                    && context.AnimatorObject != null
                     && curve.IsFloat
                     && binding.target == context.AnimatorObject
                     && binding.type == typeof(Transform)

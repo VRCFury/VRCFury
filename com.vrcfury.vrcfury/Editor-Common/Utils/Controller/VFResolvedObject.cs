@@ -21,8 +21,9 @@ namespace VF.Utils {
         public string UnresolvedPath => unresolvedPath;
 
         public static VFResolvedObject? Load(string sourcePath, VFLoadContext context, Type type) {
+            if (context == null) throw new ArgumentNullException(nameof(context));
             var unresolvedPath = sourcePath;
-            if (unresolvedPath != null && context?.RewritePath != null) {
+            if (unresolvedPath != null && context.RewritePath != null) {
                 unresolvedPath = context.RewritePath(unresolvedPath);
             }
 
@@ -30,14 +31,28 @@ namespace VF.Utils {
                 return null;
             }
 
+            var rootBindingsApplyToAvatar = context.RootBindingsApplyToAvatar;
+            var usePreBuildHierarchy = context.UsePreBuildHierarchy;
             var target = AnimationBindingUtils.ResolveTarget(
-                context?.OwnerObject,
-                context?.AnimatorObject,
+                context.OwnerObject,
+                context.AnimatorObject,
                 unresolvedPath,
                 type,
-                context?.RootBindingsApplyToAvatar ?? false,
-                context?.UseCachedPaths ?? true
+                rootBindingsApplyToAvatar,
+                usePreBuildHierarchy
             );
+            if (target == null && usePreBuildHierarchy) {
+                // Some avatar preprocessors, like thiccwater, add objects to the hierarchy along with a VRCFury Full Controller.
+                // These objects won't be in the pre-build hierarchy, so we have to look them up the "normal" way.
+                target = AnimationBindingUtils.ResolveTarget(
+                    context.OwnerObject,
+                    context.AnimatorObject,
+                    unresolvedPath,
+                    type,
+                    rootBindingsApplyToAvatar,
+                    false
+                );
+            }
             return new VFResolvedObject(target, sourcePath, unresolvedPath, target != null);
         }
 

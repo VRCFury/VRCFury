@@ -49,12 +49,9 @@ namespace VF.Utils {
                     RewritePath = rewritePath
                 };
                 foreach (var binding in debugInfo.bindings) {
-                    VFResolvedObject? resolved = null;
-                    if (!VFBinding.IsAnimatorBinding(binding)) {
-                        resolved = VFResolvedObject.Load(binding.path, context, binding.type);
-                        if (!resolved.HasValue) continue;
-                    }
-                    bindings.Add(VFBinding.From(resolved, binding));
+                    var resolved = VFResolvedObject.Load(binding.path, context, binding.type);
+                    if (!resolved.HasValue) continue;
+                    bindings.Add(VFBinding.From(resolved.Value, binding));
                 }
             }
 
@@ -127,6 +124,7 @@ namespace VF.Utils {
                 foreach (var binding in AnimationUtility.GetCurveBindings(clip)
                              .Concat(AnimationUtility.GetObjectReferenceCurveBindings(clip))) {
                     if (binding.path == null || binding.propertyName == null || binding.type == null) continue;
+                    if (VFBinding.IsAnimatorBinding(binding)) continue;
                     bindings.Add(binding);
                 }
             }

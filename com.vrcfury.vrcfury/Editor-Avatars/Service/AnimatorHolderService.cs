@@ -116,7 +116,7 @@ namespace VF.Service {
                         new VFLoadContext {
                             OwnerObject = owner,
                             AnimatorObject = owner,
-                            UseCachedPaths = false
+                            UsePreBuildHierarchy = false
                         }
                     );
                 }

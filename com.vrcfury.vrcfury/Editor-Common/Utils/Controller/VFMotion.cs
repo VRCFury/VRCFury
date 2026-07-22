@@ -17,9 +17,10 @@ namespace VF.Utils.Controller {
         }
 
         internal static VFMotion Load(Motion raw, VFLoadContext context) {
-            raw = context?.RewriteMotion?.Invoke(raw) ?? raw;
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            raw = context.RewriteMotion?.Invoke(raw) ?? raw;
             if (raw == null) return null;
-            if (context != null && context.Motions.TryGetValue(raw, out var existing)) {
+            if (context.Motions.TryGetValue(raw, out var existing)) {
                 return existing;
             }
 
@@ -31,9 +32,7 @@ namespace VF.Utils.Controller {
             } else {
                 throw new Exception($"Unsupported motion type `{raw.GetType().Name}`");
             }
-            if (context != null) {
-                context.Motions[raw] = output;
-            }
+            context.Motions[raw] = output;
             return output;
         }
 

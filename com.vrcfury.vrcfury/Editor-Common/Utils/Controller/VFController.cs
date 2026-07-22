@@ -324,9 +324,8 @@ namespace VF.Utils.Controller {
             RuntimeAnimatorController ctrl,
             VFLoadContext context
         ) {
-            if (ctrl == null) {
-                return null;
-            }
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            if (ctrl == null) return null;
 
             // Collect any override controllers wrapping the main controller
             var overrides = new List<AnimatorOverrideController>();
@@ -340,7 +339,6 @@ namespace VF.Utils.Controller {
                 return null;
             }
 
-            if (context == null) context = new VFLoadContext();
             var previousRewriteMotion = context.RewriteMotion;
             context.RewriteMotion = motion => {
                 var current = previousRewriteMotion?.Invoke(motion) ?? motion;

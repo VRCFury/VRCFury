@@ -16,7 +16,7 @@ namespace VF.Utils {
             string path,
             Type type,
             bool rootBindingsApplyToAvatar = false,
-            bool useCachedPaths = true
+            bool usePreBuildHierarchy = true
         ) {
             if (animatorObject == null) return null;
             if (ownerObject == null) return null;
@@ -26,13 +26,13 @@ namespace VF.Utils {
             }
             var ancestor = ownerObject;
             while (ancestor != null && ancestor != animatorObject) {
-                ancestor = useCachedPaths ? VRCFObjectPathCache.GetParent(ancestor) : ancestor.parent;
+                ancestor = usePreBuildHierarchy ? VRCFObjectPathCache.GetParent(ancestor) : ancestor.parent;
             }
             if (ancestor != animatorObject) return null;
 
             VFGameObject current = ownerObject;
             while (current != null) {
-                var target = useCachedPaths
+                var target = usePreBuildHierarchy
                     ? VRCFObjectPathCache.Find(current, path)
                     : current.Find(path);
                 if (IsValidResolvedTarget(target, type)) {
@@ -40,7 +40,7 @@ namespace VF.Utils {
                 }
 
                 if (current == animatorObject) break;
-                current = useCachedPaths ? VRCFObjectPathCache.GetParent(current) : current.parent;
+                current = usePreBuildHierarchy ? VRCFObjectPathCache.GetParent(current) : current.parent;
             }
             return null;
         }

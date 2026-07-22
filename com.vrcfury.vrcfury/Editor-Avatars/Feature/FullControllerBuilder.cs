@@ -74,6 +74,7 @@ namespace VF.Feature {
                     missingAssets.Add(c.controller);
                     continue;
                 }
+                Debug.Log($"Merging controller from {source.GetPathAndName()}");
                 var copy = VFControllerWithVrcType.Load(
                     source,
                     c.type,
