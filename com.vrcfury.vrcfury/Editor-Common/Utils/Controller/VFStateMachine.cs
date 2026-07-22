@@ -221,16 +221,17 @@ namespace VF.Utils.Controller {
 
             foreach (var state in statesValue) {
                 state.Save(stateMap, saveContext);
-                var child = state.ToChildAnimatorState(stateMap);
-                raw.AddState(child.state, child.position);
-                // RATS harmony patches AddState and changes writeDefaultValues :(
-                child.state.writeDefaultValues = state.writeDefaultValues;
             }
+            raw.states = statesValue
+                .Select(state => state.ToChildAnimatorState(stateMap))
+                .ToArray();
 
-            foreach (var child in childStateMachines) {
-                var childRaw = child.stateMachine.SaveRecursive(stateMachineMap, stateMap, saveContext);
-                raw.AddStateMachine(childRaw, child.position);
-            }
+            raw.stateMachines = childStateMachines
+                .Select(child => new ChildAnimatorStateMachine {
+                    stateMachine = child.stateMachine.SaveRecursive(stateMachineMap, stateMap, saveContext),
+                    position = child.position
+                })
+                .ToArray();
 
             return raw;
         }

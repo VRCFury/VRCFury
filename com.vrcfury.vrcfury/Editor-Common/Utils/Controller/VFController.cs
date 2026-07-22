@@ -380,21 +380,7 @@ namespace VF.Utils.Controller {
             finalizedRaw.name = _name;
             finalizedRaw.parameters = _parameters.Select(CloneParameter).ToArray();
             var savedLayers = GetLayers().Select(layer => layer.Save(saveContext)).ToArray();
-            foreach (var layer in savedLayers) {
-                finalizedRaw.AddLayer(layer.name);
-            }
-            var rawLayers = finalizedRaw.layers;
-            for (var i = 0; i < savedLayers.Length && i < rawLayers.Length; i++) {
-                rawLayers[i].name = savedLayers[i].name;
-                rawLayers[i].avatarMask = savedLayers[i].avatarMask;
-                rawLayers[i].blendingMode = savedLayers[i].blendingMode;
-                rawLayers[i].defaultWeight = savedLayers[i].defaultWeight;
-                rawLayers[i].iKPass = savedLayers[i].iKPass;
-                rawLayers[i].syncedLayerAffectsTiming = savedLayers[i].syncedLayerAffectsTiming;
-                rawLayers[i].syncedLayerIndex = savedLayers[i].syncedLayerIndex;
-                rawLayers[i].stateMachine = savedLayers[i].stateMachine;
-            }
-            finalizedRaw.layers = rawLayers;
+            finalizedRaw.layers = savedLayers;
             finalizedRaw = VrcfObjectFactory.Register(finalizedRaw);
             foreach (var item in workLog) {
                 finalizedRaw.WorkLog(item);

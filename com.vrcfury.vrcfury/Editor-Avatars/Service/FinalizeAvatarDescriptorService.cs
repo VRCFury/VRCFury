@@ -2,6 +2,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Hooks;
 using VF.Injector;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
@@ -14,11 +15,11 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.FinalizeAvatarDescriptor)]
         public void Apply() {
 #if ! VRC_NEW_PUBLIC_SDK
-            // Old VRCSDK didn't apply these fixes itself after running postprocessor
+            // Old VRCSDK didn't apply these fixes itself after running postprocessors
             ApplyFixes();
 #else
-            // When in play mode, the VRCSDK isn't involved, so we have to run the fixes ourself
-            if (Application.isPlaying) {
+            // When the VRCSDK isn't involved, we have to run the fixes ourselves
+            if (!IsActuallyUploadingHook.Get()) {
                 ApplyFixes();
             }
 #endif
