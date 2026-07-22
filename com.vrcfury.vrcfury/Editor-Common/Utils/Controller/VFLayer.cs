@@ -70,8 +70,7 @@ namespace VF.Utils.Controller {
             return layer;
         }
 
-        public VFLayer Clone(VFController newController, VFMotionCloneContext cloneContext) {
-            Dictionary<VFState, VFState> stateMap = null;
+        public VFLayer Clone(VFController newController, VFCloneContext context) {
             var output = new VFLayer(newController) {
                 name = name,
                 weight = weight,
@@ -82,10 +81,10 @@ namespace VF.Utils.Controller {
                 maskValue = maskValue?.Clone()
             };
             if (stateMachineValue != null) {
-                output.stateMachineValue = stateMachineValue.Clone(output, cloneContext, out stateMap);
+                output.stateMachineValue = stateMachineValue.Clone(output, context);
             }
             output.nextOffset = nextOffset;
-            output.lastCreatedState = lastCreatedState != null ? stateMap.GetOrDefault(lastCreatedState) : null;
+            output.lastCreatedState = lastCreatedState != null ? context.States.GetOrDefault(lastCreatedState) : null;
             return output;
         }
 
@@ -98,10 +97,10 @@ namespace VF.Utils.Controller {
         public override bool Equals(object obj) => ReferenceEquals(this, obj);
         public override int GetHashCode() => base.GetHashCode();
 
-        internal AnimatorControllerLayer Save(VFSaveContext saveContext) {
+        internal AnimatorControllerLayer Save(VFSaveContext context) {
             AvatarMask savedMask = null;
             if (maskValue != null) {
-                savedMask = maskValue.Save(saveContext);
+                savedMask = maskValue.Save(context);
             }
             return new AnimatorControllerLayer {
                 name = name,
@@ -111,7 +110,7 @@ namespace VF.Utils.Controller {
                 iKPass = iKPass,
                 syncedLayerAffectsTiming = syncedLayerAffectsTiming,
                 syncedLayerIndex = syncedLayerIndex,
-                stateMachine = stateMachineValue?.Save(saveContext)
+                stateMachine = stateMachineValue?.Save(context)
             };
         }
 
@@ -305,10 +304,6 @@ namespace VF.Utils.Controller {
 
         internal void ReplaceStateMachine(VFStateMachine newStateMachine) {
             stateMachineValue = newStateMachine;
-        }
-
-        internal VFState FindStateBySource(AnimatorState rawState) {
-            return allStates.FirstOrDefault(state => state.GetSourceAsset() == rawState);
         }
     }
 }

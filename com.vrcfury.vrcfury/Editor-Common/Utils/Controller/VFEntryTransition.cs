@@ -30,7 +30,7 @@ namespace VF.Utils.Controller {
         public override AnimatorTransitionBase Save(
             IReadOnlyDictionary<VFState, AnimatorState> stateMap,
             IReadOnlyDictionary<VFStateMachine, AnimatorStateMachine> stateMachineMap,
-            VFSaveContext saveContext
+            VFSaveContext context
         ) {
             if (!HasDestination(stateMap, stateMachineMap)) {
                 return null;
@@ -43,7 +43,7 @@ namespace VF.Utils.Controller {
             raw.destinationStateMachine = destinationStateMachine != null
                 ? stateMachineMap.GetOrDefault(destinationStateMachine)
                 : null;
-            saveContext.AddNewAsset(raw);
+            context.AddNewAsset(raw);
             return raw;
         }
 

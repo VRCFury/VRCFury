@@ -39,7 +39,7 @@ namespace VF.Utils.Controller {
             return sourceRaw;
         }
 
-        internal abstract VFMotion Clone(VFMotionCloneContext context = null);
+        internal abstract VFMotion Clone(VFCloneContext context = null);
 
         public Motion Save(VFGameObject bindingRoot, bool reuseSourceAssets = true) {
             if (bindingRoot == null) throw new ArgumentNullException(nameof(bindingRoot));

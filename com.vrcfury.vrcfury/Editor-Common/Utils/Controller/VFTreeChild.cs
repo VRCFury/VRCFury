@@ -35,7 +35,7 @@ namespace VF.Utils.Controller {
             };
         }
 
-        public VFTreeChild Clone(VFMotionCloneContext context) {
+        public VFTreeChild Clone(VFCloneContext context) {
             return new VFTreeChild {
                 directBlendParameter = directBlendParameter,
                 threshold = threshold,

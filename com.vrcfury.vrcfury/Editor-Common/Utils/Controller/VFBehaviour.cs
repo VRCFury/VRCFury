@@ -207,12 +207,12 @@ namespace VF.Utils.Controller {
             }
         }
 
-        internal StateMachineBehaviour Save(VFSaveContext saveContext) {
+        internal StateMachineBehaviour Save(VFSaveContext context) {
             var output = CloneRaw(raw);
             if (audioSource.HasValue) {
-                TrySetAudioSourcePath(output, audioSource.Value.GetPath(saveContext.BindingRoot));
+                TrySetAudioSourcePath(output, audioSource.Value.GetPath(context.BindingRoot));
             }
-            saveContext.AddNewAsset(output);
+            context.AddNewAsset(output);
             return output;
         }
     }

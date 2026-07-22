@@ -33,7 +33,7 @@ namespace VF.Utils.Controller {
         ) {
             if (raw == null) return null;
             var output = LoadRecursive(layer, raw, context);
-            LoadTransitionsRecursive(output, raw, context, new HashSet<VFStateMachine>());
+            LoadTransitionsRecursive(output, raw, context);
             return output;
         }
 
@@ -58,7 +58,6 @@ namespace VF.Utils.Controller {
             context.StateMachines[sourceRaw] = output;
 
             foreach (var child in raw.stateMachines) {
-                var childSource = child.stateMachine;
                 var childStateMachine = LoadRecursive(
                     layer,
                     child.stateMachine,
@@ -68,11 +67,9 @@ namespace VF.Utils.Controller {
                     stateMachine = childStateMachine,
                     position = child.position
                 });
-                context.StateMachines[childSource] = childStateMachine;
             }
 
             foreach (var child in raw.states) {
-                var stateSource = child.state;
                 var state = VFState.Load(
                     layer,
                     output,
@@ -81,7 +78,6 @@ namespace VF.Utils.Controller {
                     context
                 );
                 output.statesValue.Add(state);
-                context.States[stateSource] = state;
             }
 
             return output;
@@ -90,10 +86,9 @@ namespace VF.Utils.Controller {
         private static void LoadTransitionsRecursive(
             VFStateMachine output,
             AnimatorStateMachine raw,
-            VFLoadContext context,
-            ISet<VFStateMachine> linked
+            VFLoadContext context
         ) {
-            if (output == null || raw == null || !linked.Add(output)) {
+            if (output == null || raw == null || !context.LinkedStateMachines.Add(raw)) {
                 return;
             }
 
@@ -120,7 +115,7 @@ namespace VF.Utils.Controller {
                         .Select(t => VFEntryTransition.Load(t, context.States, context.StateMachines))
                         .Where(t => t != null)
                 );
-                LoadTransitionsRecursive(childStateMachine.stateMachine, rawChild.stateMachine, context, linked);
+                LoadTransitionsRecursive(childStateMachine.stateMachine, rawChild.stateMachine, context);
             }
 
             for (var i = 0; i < raw.states.Length; i++) {
@@ -132,20 +127,19 @@ namespace VF.Utils.Controller {
             }
         }
 
-        internal VFStateMachine Clone(VFLayer newLayer, VFMotionCloneContext cloneContext, out Dictionary<VFState, VFState> stateMap) {
-            stateMap = new Dictionary<VFState, VFState>();
-            var stateMachineMap = new Dictionary<VFStateMachine, VFStateMachine>();
-            var clone = CloneRecursive(newLayer, stateMap, stateMachineMap, cloneContext);
-            CloneTransitionsRecursive(clone, stateMap, stateMachineMap);
+        internal VFStateMachine Clone(VFLayer newLayer, VFCloneContext context) {
+            var clone = CloneRecursive(newLayer, context);
+            CloneTransitionsRecursive(clone, context);
             return clone;
         }
 
         private VFStateMachine CloneRecursive(
             VFLayer newLayer,
-            Dictionary<VFState, VFState> stateMap,
-            Dictionary<VFStateMachine, VFStateMachine> stateMachineMap,
-            VFMotionCloneContext cloneContext
+            VFCloneContext context
         ) {
+            if (context.StateMachines.TryGetValue(this, out var existing)) {
+                return existing;
+            }
             var clone = new VFStateMachine(newLayer, null) {
                 thisName = thisName,
                 behaviours = behaviours.Clone(),
@@ -154,14 +148,14 @@ namespace VF.Utils.Controller {
                 exitPosition = exitPosition,
                 parentStateMachinePosition = parentStateMachinePosition
             };
-            stateMachineMap[this] = clone;
+            context.StateMachines[this] = clone;
 
             foreach (var state in statesValue) {
-                clone.statesValue.Add(state.Clone(newLayer, clone, stateMap, cloneContext));
+                clone.statesValue.Add(state.Clone(newLayer, clone, context));
             }
             foreach (var child in childStateMachines) {
                 clone.childStateMachines.Add(new VFStateMachineChild {
-                    stateMachine = child.stateMachine.CloneRecursive(newLayer, stateMap, stateMachineMap, cloneContext),
+                    stateMachine = child.stateMachine.CloneRecursive(newLayer, context),
                     position = child.position
                 });
             }
@@ -171,64 +165,60 @@ namespace VF.Utils.Controller {
 
         private void CloneTransitionsRecursive(
             VFStateMachine clone,
-            IReadOnlyDictionary<VFState, VFState> stateMap,
-            IReadOnlyDictionary<VFStateMachine, VFStateMachine> stateMachineMap
+            VFCloneContext context
         ) {
-            clone.defaultState = defaultState != null ? stateMap.GetOrDefault(defaultState) : null;
-            clone.entryTransitionsValue.AddRange(entryTransitionsValue.Select(t => (VFEntryTransition)t.Clone(stateMap, stateMachineMap)));
-            clone.anyStateTransitionsValue.AddRange(anyStateTransitionsValue.Select(t => (VFTransition)t.Clone(stateMap, stateMachineMap)));
+            if (!context.LinkedStateMachines.Add(this)) return;
+            clone.defaultState = defaultState != null ? context.States.GetOrDefault(defaultState) : null;
+            clone.entryTransitionsValue.AddRange(entryTransitionsValue.Select(t => (VFEntryTransition)t.Clone(context.States, context.StateMachines)));
+            clone.anyStateTransitionsValue.AddRange(anyStateTransitionsValue.Select(t => (VFTransition)t.Clone(context.States, context.StateMachines)));
 
             for (var i = 0; i < statesValue.Count; i++) {
                 clone.statesValue[i].transitions.AddRange(
-                    statesValue[i].transitions.Select(t => (VFTransition)t.Clone(stateMap, stateMachineMap))
+                    statesValue[i].transitions.Select(t => (VFTransition)t.Clone(context.States, context.StateMachines))
                 );
             }
             for (var i = 0; i < childStateMachines.Count; i++) {
                 clone.childStateMachines[i].transitions.AddRange(
-                    childStateMachines[i].transitions.Select(t => (VFEntryTransition)t.Clone(stateMap, stateMachineMap))
+                    childStateMachines[i].transitions.Select(t => (VFEntryTransition)t.Clone(context.States, context.StateMachines))
                 );
                 childStateMachines[i].stateMachine.CloneTransitionsRecursive(
                     clone.childStateMachines[i].stateMachine,
-                    stateMap,
-                    stateMachineMap
+                    context
                 );
             }
         }
 
-        internal AnimatorStateMachine Save(VFSaveContext saveContext) {
-            var stateMachineMap = new Dictionary<VFStateMachine, AnimatorStateMachine>();
-            var stateMap = new Dictionary<VFState, AnimatorState>();
-            var raw = SaveRecursive(stateMachineMap, stateMap, saveContext);
-            SaveTransitionsRecursive(raw, stateMachineMap, stateMap, saveContext);
+        internal AnimatorStateMachine Save(VFSaveContext context) {
+            var raw = SaveRecursive(context);
+            SaveTransitionsRecursive(raw, context);
             return raw;
         }
 
-        private AnimatorStateMachine SaveRecursive(
-            Dictionary<VFStateMachine, AnimatorStateMachine> stateMachineMap,
-            Dictionary<VFState, AnimatorState> stateMap,
-            VFSaveContext saveContext
-        ) {
+        private AnimatorStateMachine SaveRecursive(VFSaveContext context) {
+            if (context.StateMachines.TryGetValue(this, out var existing)) {
+                return existing;
+            }
             var raw = VrcfObjectFactory.Create<AnimatorStateMachine>();
-            saveContext.AddNewAsset(raw);
-            stateMachineMap[this] = raw;
+            context.AddNewAsset(raw);
+            context.StateMachines[this] = raw;
 
             raw.name = thisName;
-            raw.behaviours = behaviours.Select(behaviour => behaviour.Save(saveContext)).ToArray();
+            raw.behaviours = behaviours.Select(behaviour => behaviour.Save(context)).ToArray();
             raw.entryPosition = entryPosition;
             raw.anyStatePosition = anyStatePosition;
             raw.exitPosition = exitPosition;
             raw.parentStateMachinePosition = parentStateMachinePosition;
 
             foreach (var state in statesValue) {
-                state.Save(stateMap, saveContext);
+                state.Save(context);
             }
             raw.states = statesValue
-                .Select(state => state.ToChildAnimatorState(stateMap))
+                .Select(state => state.ToChildAnimatorState(context.States))
                 .ToArray();
 
             raw.stateMachines = childStateMachines
                 .Select(child => new ChildAnimatorStateMachine {
-                    stateMachine = child.stateMachine.SaveRecursive(stateMachineMap, stateMap, saveContext),
+                    stateMachine = child.stateMachine.SaveRecursive(context),
                     position = child.position
                 })
                 .ToArray();
@@ -238,38 +228,35 @@ namespace VF.Utils.Controller {
 
         private void SaveTransitionsRecursive(
             AnimatorStateMachine raw,
-            IReadOnlyDictionary<VFStateMachine, AnimatorStateMachine> stateMachineMap,
-            IReadOnlyDictionary<VFState, AnimatorState> stateMap,
-            VFSaveContext saveContext
+            VFSaveContext context
         ) {
-            raw.defaultState = defaultState != null ? stateMap.GetOrDefault(defaultState) : null;
+            if (!context.LinkedStateMachines.Add(this)) return;
+            raw.defaultState = defaultState != null ? context.States.GetOrDefault(defaultState) : null;
             raw.entryTransitions = entryTransitionsValue
-                .Select(t => (AnimatorTransition)t.Save(stateMap, stateMachineMap, saveContext))
+                .Select(t => (AnimatorTransition)t.Save(context.States, context.StateMachines, context))
                 .Where(t => t != null)
                 .ToArray();
             raw.anyStateTransitions = anyStateTransitionsValue
-                .Select(t => (AnimatorStateTransition)t.Save(stateMap, stateMachineMap, saveContext))
+                .Select(t => (AnimatorStateTransition)t.Save(context.States, context.StateMachines, context))
                 .Where(t => t != null)
                 .ToArray();
 
             foreach (var child in childStateMachines) {
                 raw.SetStateMachineTransitions(
-                    stateMachineMap[child.stateMachine],
+                    context.StateMachines[child.stateMachine],
                     child.transitions
-                        .Select(t => (AnimatorTransition)t.Save(stateMap, stateMachineMap, saveContext))
+                        .Select(t => (AnimatorTransition)t.Save(context.States, context.StateMachines, context))
                         .Where(t => t != null)
                         .ToArray()
                 );
                 child.stateMachine.SaveTransitionsRecursive(
-                    stateMachineMap[child.stateMachine],
-                    stateMachineMap,
-                    stateMap,
-                    saveContext
+                    context.StateMachines[child.stateMachine],
+                    context
                 );
             }
             foreach (var state in statesValue) {
-                stateMap[state].transitions = state.transitions
-                    .Select(t => (AnimatorStateTransition)t.Save(stateMap, stateMachineMap, saveContext))
+                context.States[state].transitions = state.transitions
+                    .Select(t => (AnimatorStateTransition)t.Save(context.States, context.StateMachines, context))
                     .Where(t => t != null)
                     .ToArray();
             }

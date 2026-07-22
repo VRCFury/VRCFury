@@ -42,55 +42,60 @@ namespace VF.Utils.Controller {
             VFLoadContext context
         ) {
             if (raw == null) return null;
-            return new VFState(layer, stateMachine, raw) {
-                nameValue = raw.name,
-                motionValue = VFMotion.Load(raw.motion, context),
-                writeDefaultValues = raw.writeDefaultValues,
-                speed = raw.speed,
-                cycleOffset = raw.cycleOffset,
-                cycleOffsetParameterActive = raw.cycleOffsetParameterActive,
-                cycleOffsetParameter = raw.cycleOffsetParameter,
-                mirror = raw.mirror,
-                mirrorParameterActive = raw.mirrorParameterActive,
-                mirrorParameter = raw.mirrorParameter,
-                speedParameterActive = raw.speedParameterActive,
-                speedParameter = raw.speedParameter,
-                timeParameterActive = raw.timeParameterActive,
-                timeParameter = raw.timeParameter,
-                tag = raw.tag,
-                iKOnFeet = raw.iKOnFeet,
-                behaviours = VFBehaviourContainer.Load(raw, context),
-                position = rawPosition
-            };
+            if (context.States.TryGetValue(raw, out var existing)) {
+                return existing;
+            }
+            var output = new VFState(layer, stateMachine, raw);
+            context.States[raw] = output;
+            output.nameValue = raw.name;
+            output.motionValue = VFMotion.Load(raw.motion, context);
+            output.writeDefaultValues = raw.writeDefaultValues;
+            output.speed = raw.speed;
+            output.cycleOffset = raw.cycleOffset;
+            output.cycleOffsetParameterActive = raw.cycleOffsetParameterActive;
+            output.cycleOffsetParameter = raw.cycleOffsetParameter;
+            output.mirror = raw.mirror;
+            output.mirrorParameterActive = raw.mirrorParameterActive;
+            output.mirrorParameter = raw.mirrorParameter;
+            output.speedParameterActive = raw.speedParameterActive;
+            output.speedParameter = raw.speedParameter;
+            output.timeParameterActive = raw.timeParameterActive;
+            output.timeParameter = raw.timeParameter;
+            output.tag = raw.tag;
+            output.iKOnFeet = raw.iKOnFeet;
+            output.behaviours = VFBehaviourContainer.Load(raw, context);
+            output.position = rawPosition;
+            return output;
         }
 
         internal VFState Clone(
             VFLayer newLayer,
             VFStateMachine newStateMachine,
-            Dictionary<VFState, VFState> stateMap,
-            VFMotionCloneContext cloneContext
+            VFCloneContext context
         ) {
-            var clone = new VFState(newLayer, newStateMachine, null) {
-                nameValue = nameValue,
-                motionValue = motionValue?.Clone(cloneContext),
-                writeDefaultValues = writeDefaultValues,
-                speed = speed,
-                cycleOffset = cycleOffset,
-                cycleOffsetParameterActive = cycleOffsetParameterActive,
-                cycleOffsetParameter = cycleOffsetParameter,
-                mirror = mirror,
-                mirrorParameterActive = mirrorParameterActive,
-                mirrorParameter = mirrorParameter,
-                speedParameterActive = speedParameterActive,
-                speedParameter = speedParameter,
-                timeParameterActive = timeParameterActive,
-                timeParameter = timeParameter,
-                tag = tag,
-                iKOnFeet = iKOnFeet,
-                behaviours = behaviours.Clone(),
-                position = position
-            };
-            stateMap[this] = clone;
+            if (context.States.TryGetValue(this, out var existing)) {
+                return existing;
+            }
+            var clone = new VFState(newLayer, newStateMachine, sourceRaw);
+            context.States[this] = clone;
+            clone.nameValue = nameValue;
+            clone.motionValue = motionValue?.Clone(context);
+            clone.writeDefaultValues = writeDefaultValues;
+            clone.speed = speed;
+            clone.cycleOffset = cycleOffset;
+            clone.cycleOffsetParameterActive = cycleOffsetParameterActive;
+            clone.cycleOffsetParameter = cycleOffsetParameter;
+            clone.mirror = mirror;
+            clone.mirrorParameterActive = mirrorParameterActive;
+            clone.mirrorParameter = mirrorParameter;
+            clone.speedParameterActive = speedParameterActive;
+            clone.speedParameter = speedParameter;
+            clone.timeParameterActive = timeParameterActive;
+            clone.timeParameter = timeParameter;
+            clone.tag = tag;
+            clone.iKOnFeet = iKOnFeet;
+            clone.behaviours = behaviours.Clone();
+            clone.position = position;
             return clone;
         }
 
@@ -103,12 +108,15 @@ namespace VF.Utils.Controller {
         }
 
         internal AnimatorState Save(
-            Dictionary<VFState, AnimatorState> stateMap,
-            VFSaveContext saveContext
+            VFSaveContext context
         ) {
+            if (context.States.TryGetValue(this, out var existing)) {
+                return existing;
+            }
             var raw = VrcfObjectFactory.Create<AnimatorState>();
+            context.States[this] = raw;
             raw.name = nameValue;
-            raw.motion = motionValue?.Save(saveContext);
+            raw.motion = motionValue?.Save(context);
             raw.writeDefaultValues = writeDefaultValues;
             raw.speed = speed;
             raw.cycleOffset = cycleOffset;
@@ -123,13 +131,12 @@ namespace VF.Utils.Controller {
             raw.timeParameter = timeParameter;
             raw.tag = tag;
             raw.iKOnFeet = iKOnFeet;
-            raw.behaviours = behaviours.Select(behaviour => behaviour.Save(saveContext)).ToArray();
-            saveContext.AddNewAsset(raw);
-            stateMap[this] = raw;
+            raw.behaviours = behaviours.Select(behaviour => behaviour.Save(context)).ToArray();
+            context.AddNewAsset(raw);
             return raw;
         }
 
-        internal ChildAnimatorState ToChildAnimatorState(Dictionary<VFState, AnimatorState> stateMap) {
+        internal ChildAnimatorState ToChildAnimatorState(IReadOnlyDictionary<VFState, AnimatorState> stateMap) {
             return new ChildAnimatorState {
                 state = stateMap[this],
                 position = position
@@ -187,12 +194,6 @@ namespace VF.Utils.Controller {
 
         public VFTransitionBuilder TransitionsTo(VFState other) {
             return new VFTransitionBuilder(transitions, CreateStateTransition(other, null, false));
-        }
-
-        public VFTransitionBuilder TransitionsTo(AnimatorState other) {
-            var destination = layer.FindStateBySource(other)
-                ?? throw new Exception($"Could not find state for raw animator state `{other?.name}`");
-            return TransitionsTo(destination);
         }
 
         public VFTransitionBuilder TransitionsToExit() {

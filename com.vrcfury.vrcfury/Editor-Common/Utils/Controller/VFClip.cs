@@ -104,20 +104,20 @@ namespace VF.Utils.Controller {
         }
 
         internal override Motion Save(VFSaveContext context) {
-            if (context.TryGet(this, out var existing)) {
+            if (context.Motions.TryGetValue(this, out var existing)) {
                 return existing;
             }
             var saveBindingRoot = context.BindingRoot;
             var clip = originalSourceClip != null
                 ? originalSourceClip.Clone()
                 : VrcfObjectFactory.Create<AnimationClip>();
-            context.Add(this, clip);
+            context.Motions[this] = clip;
             if (context.ReuseSourceAssets) {
                 var reuseSource = GetUseOriginalUserClip(saveBindingRoot);
                 var savedAdditiveReferencePoseClip = additiveReferencePoseClip?.Save(context) as AnimationClip;
                 if (reuseSource != null
                     && AnimationUtility.GetAnimationClipSettings(reuseSource).additiveReferencePoseClip == savedAdditiveReferencePoseClip) {
-                    context.Add(this, reuseSource);
+                    context.Motions[this] = reuseSource;
                     return reuseSource;
                 }
             }
@@ -191,17 +191,17 @@ namespace VF.Utils.Controller {
             AnimationUtility.SetAnimationClipSettings(clip, settings);
 
             context.AddNewAsset(clip);
-            context.Add(this, clip);
+            context.Motions[this] = clip;
             return clip;
         }
 
-        internal override VFMotion Clone(VFMotionCloneContext context = null) {
-            if (context == null) context = new VFMotionCloneContext();
-            if (context.TryGet(this, out var existing)) {
+        internal override VFMotion Clone(VFCloneContext context = null) {
+            if (context == null) context = new VFCloneContext();
+            if (context.Motions.TryGetValue(this, out var existing)) {
                 return existing;
             }
             var clone = new VFClip(sourceRaw as AnimationClip);
-            context.Add(this, clone);
+            context.Motions[this] = clone;
             clone.curves = curves.ToDictionary(pair => pair.Key, pair => pair.Value.Clone());
             clone.originalSourceClip = originalSourceClip;
             clone.changedFromOriginalSourceClip = changedFromOriginalSourceClip;

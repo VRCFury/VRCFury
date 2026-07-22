@@ -38,8 +38,8 @@ namespace VF.Utils.Controller {
             sourceAsset = source.sourceAsset;
             workLog.AddRange(source.workLog);
             _parameters = source._parameters.Select(CloneParameter).ToList();
-            var cloneContext = new VFMotionCloneContext();
-            _layers = source._layers.Select(layer => layer?.Clone(this, cloneContext)).ToList();
+            var context = new VFCloneContext();
+            _layers = source._layers.Select(layer => layer?.Clone(this, context)).ToList();
         }
 
         private void InitFromRaw(AnimatorController ctrl, VFLoadContext context) {
@@ -116,10 +116,10 @@ namespace VF.Utils.Controller {
                 return syncedLayer;
             }
 
-            var cloneContext = new VFMotionCloneContext();
-            var clonedStateMachine = sourceLayer.stateMachine.Clone(syncedLayer, cloneContext, out var clonedStates);
+            var clone = new VFCloneContext();
+            var clonedStateMachine = sourceLayer.stateMachine.Clone(syncedLayer, clone);
             syncedLayer.ReplaceStateMachine(clonedStateMachine);
-            ApplySyncedLayerOverrides(sourceLayer, clonedStates, rawLayer, context);
+            ApplySyncedLayerOverrides(sourceLayer, clone.States, rawLayer, context);
             return syncedLayer;
         }
 
@@ -372,19 +372,19 @@ namespace VF.Utils.Controller {
             if (bindingRoot == null) throw new ArgumentNullException(nameof(bindingRoot));
             if (string.IsNullOrEmpty(outputDir)) throw new ArgumentNullException(nameof(outputDir));
             if (string.IsNullOrEmpty(filename)) throw new ArgumentNullException(nameof(filename));
-            var saveContext = new VFSaveContext(bindingRoot, reuseSourceAssets);
+            var context = new VFSaveContext(bindingRoot, reuseSourceAssets);
 
             var finalizedRaw = new AnimatorController();
             finalizedRaw.name = _name;
             finalizedRaw.parameters = _parameters.Select(CloneParameter).ToArray();
-            var savedLayers = GetLayers().Select(layer => layer.Save(saveContext)).ToArray();
+            var savedLayers = GetLayers().Select(layer => layer.Save(context)).ToArray();
             finalizedRaw.layers = savedLayers;
             finalizedRaw = VrcfObjectFactory.Register(finalizedRaw);
             foreach (var item in workLog) {
                 finalizedRaw.WorkLog(item);
             }
             var session = new SaveAssetsSession();
-            session.SaveAssetAndChildren(finalizedRaw, saveContext.NewAssets, filename, outputDir);
+            session.SaveAssetAndChildren(finalizedRaw, context.NewAssets, filename, outputDir);
             session.FlushWorkLogManifest(outputDir);
             return finalizedRaw;
         }

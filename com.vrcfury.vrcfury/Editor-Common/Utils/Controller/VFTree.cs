@@ -114,12 +114,12 @@ namespace VF.Utils.Controller {
         }
 
         internal override Motion Save(VFSaveContext context) {
-            if (context.TryGet(this, out var existing)) {
+            if (context.Motions.TryGetValue(this, out var existing)) {
                 return existing;
             }
             var canReuseSource = context.ReuseSourceAssets && sourceRaw != null && !isDirty;
             var output = VrcfObjectFactory.Create<BlendTree>();
-            context.Add(this, output);
+            context.Motions[this] = output;
             var outputChildren = new ChildMotion[_children.Count];
 
             for (var i = 0; i < _children.Count; i++) {
@@ -140,7 +140,7 @@ namespace VF.Utils.Controller {
             }
 
             if (canReuseSource) {
-                context.Add(this, sourceRaw);
+                context.Motions[this] = sourceRaw;
                 return sourceRaw;
             }
             output.name = treeName;
@@ -153,19 +153,19 @@ namespace VF.Utils.Controller {
             SetNormalizedBlendValuesRaw(output, normalizedBlendValues);
             output.children = outputChildren;
             context.AddNewAsset(output);
-            context.Add(this, output);
+            context.Motions[this] = output;
             return output;
         }
 
-        internal override VFMotion Clone(VFMotionCloneContext context = null) {
-            if (context == null) context = new VFMotionCloneContext();
-            if (context.TryGet(this, out var existing)) {
+        internal override VFMotion Clone(VFCloneContext context = null) {
+            if (context == null) context = new VFCloneContext();
+            if (context.Motions.TryGetValue(this, out var existing)) {
                 return existing;
             }
             var output = new VFTree(
                 sourceRaw as BlendTree
             );
-            context.Add(this, output);
+            context.Motions[this] = output;
             output.treeName = treeName;
             output._blendType = _blendType;
             output.useAutomaticThresholds = useAutomaticThresholds;
