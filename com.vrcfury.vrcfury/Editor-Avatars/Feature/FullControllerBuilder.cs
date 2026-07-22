@@ -161,8 +161,9 @@ namespace VF.Feature {
                 if (inject == null) continue;
                 if (inject.sourceObject == null) continue;
                 if (string.IsNullOrWhiteSpace(inject.sourceParam)) continue;
+                if (string.IsNullOrWhiteSpace(inject.targetParam)) continue;
                 var resolvedParam = RewriteParamName(inject.targetParam);
-                if (resolvedParam == null) continue;
+                if (string.IsNullOrWhiteSpace(resolvedParam)) continue;
                 parameterInjectService.Register(new ParameterInjectService.Request {
                     sourceObject = inject.sourceObject,
                     sourceParam = inject.sourceParam,

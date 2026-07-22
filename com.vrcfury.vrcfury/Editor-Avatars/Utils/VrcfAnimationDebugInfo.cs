@@ -89,6 +89,17 @@ namespace VF.Utils {
                     foreach (var childStateMachine in stateMachine.stateMachines) {
                         stateMachines.Push(childStateMachine.stateMachine);
                     }
+#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
+                    foreach (var behaviour in stateMachine.behaviours ?? Array.Empty<StateMachineBehaviour>()) {
+                        if (!(behaviour is VRCAnimatorPlayAudio playAudio)
+                            || string.IsNullOrEmpty(playAudio.SourcePath)) continue;
+                        bindings.Add(EditorCurveBinding.FloatCurve(
+                            playAudio.SourcePath,
+                            typeof(GameObject),
+                            "animatorPlayAudio"
+                        ));
+                    }
+#endif
                     foreach (var childState in stateMachine.states) {
                         var state = childState.state;
                         if (state == null) continue;
