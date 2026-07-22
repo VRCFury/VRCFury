@@ -17,7 +17,9 @@ namespace VF.Builder {
         public static void WarmupCache(VFGameObject baseObject) {
             foreach (var obj in baseObject.GetSelfAndAllChildren()) {
                 var path = obj.GetPath();
-                pathToObject[path] = obj;
+                if (!pathToObject.ContainsKey(path)) {
+                    pathToObject[path] = obj;
+                }
                 objectToPath[obj] = path;
                 objectToParent[obj] = obj.parent;
             }
