@@ -34,6 +34,7 @@ namespace VF.Menu {
                 SceneManager.MoveGameObjectToScene(clone, originalObject.scene);
             }
             clone.name = cloneName;
+            Undo.RegisterCreatedObjectUndo(clone, "Create VRCF Test Copy");
             Selection.SetActiveObjectWithContext(clone, clone);
         }
 

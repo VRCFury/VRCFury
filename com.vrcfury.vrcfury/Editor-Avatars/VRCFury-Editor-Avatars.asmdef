@@ -23,7 +23,8 @@
         "VRC.SDK3.Dynamics.Contact.dll",
         "VRC.SDK3.Dynamics.Constraint.dll",
         "VRCSDKBase-Editor.dll",
-        "VRCCore-Editor.dll"
+        "VRCCore-Editor.dll",
+        "0Harmony.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [
