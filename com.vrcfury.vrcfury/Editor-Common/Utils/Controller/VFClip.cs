@@ -37,6 +37,7 @@ namespace VF.Utils.Controller {
         internal static VFClip Load(AnimationClip raw, VFLoadContext context) {
             if (raw == null) return null;
             var output = new VFClip(raw);
+            context.Motions[raw] = output;
             output.curves = new Dictionary<VFBinding, FloatOrObjectCurve>();
             output.originalSourceClip = raw;
             output.changedFromOriginalSourceClip = false;
@@ -107,6 +108,10 @@ namespace VF.Utils.Controller {
                 return existing;
             }
             var saveBindingRoot = context.BindingRoot;
+            var clip = originalSourceClip != null
+                ? originalSourceClip.Clone()
+                : VrcfObjectFactory.Create<AnimationClip>();
+            context.Add(this, clip);
             if (context.ReuseSourceAssets) {
                 var reuseSource = GetUseOriginalUserClip(saveBindingRoot);
                 var savedAdditiveReferencePoseClip = additiveReferencePoseClip?.Save(context) as AnimationClip;
@@ -122,9 +127,6 @@ namespace VF.Utils.Controller {
             if (savableCurves.Length != curves.Count) {
                 changedFromOriginalSourceClip = true;
             }
-            var clip = originalSourceClip != null
-                ? originalSourceClip.Clone()
-                : VrcfObjectFactory.Create<AnimationClip>();
             clip.name = clipName ?? clip.name;
             clip.frameRate = frameRate;
 

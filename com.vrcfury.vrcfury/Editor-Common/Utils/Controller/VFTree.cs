@@ -118,6 +118,8 @@ namespace VF.Utils.Controller {
                 return existing;
             }
             var canReuseSource = context.ReuseSourceAssets && sourceRaw != null && !isDirty;
+            var output = VrcfObjectFactory.Create<BlendTree>();
+            context.Add(this, output);
             var outputChildren = new ChildMotion[_children.Count];
 
             for (var i = 0; i < _children.Count; i++) {
@@ -141,7 +143,6 @@ namespace VF.Utils.Controller {
                 context.Add(this, sourceRaw);
                 return sourceRaw;
             }
-            var output = VrcfObjectFactory.Create<BlendTree>();
             output.name = treeName;
             output.blendType = _blendType;
             output.useAutomaticThresholds = useAutomaticThresholds;
@@ -223,82 +224,109 @@ namespace VF.Utils.Controller {
         }
 
         internal override bool IsStatic() {
-            return children.All(child => child.motion == null || child.motion.IsStatic());
+            return GetAllClips().All(clip => clip.IsStatic());
         }
 
         internal override bool IsTwoState() {
-            return children.All(child => child.motion != null && child.motion.IsTwoState());
+            return GetAllClips().All(clip => clip.IsTwoState());
         }
 
         internal override bool IsEmptyOrZeroLength() {
-            return children.All(child => child.motion == null || child.motion.IsEmptyOrZeroLength());
+            return GetAllClips().All(clip => clip.IsEmptyOrZeroLength());
         }
 
         internal override VFClip FlattenToClip(VFMotionFlattenMode mode) {
-            IEnumerable<VFMotion> motions;
+            IEnumerable<VFClip> clips;
             if (mode == VFMotionFlattenMode.AllClips) {
-                motions = children
-                    .Where(child => child.motion != null)
-                    .Select(child => child.motion);
+                clips = GetAllClips();
             } else {
-                motions = GetActiveClips(new HashSet<string> { VFBlendTreeDirect.AlwaysOneParam });
+                clips = GetActiveClips(new HashSet<string> { VFBlendTreeDirect.AlwaysOneParam });
             }
             var flat = VFClip.Create(name);
-            foreach (var motion in motions) {
-                flat.CopyFrom(motion.FlattenToClip(mode));
+            foreach (var clip in clips) {
+                flat.CopyFrom(clip.FlattenToClip(mode));
             }
             return flat;
         }
 
         internal override VFMotion EvaluateMotion(float fraction) {
             var clone = (VFTree)Clone();
-            clone.treeName = $"{name} (sampled at {Math.Round(fraction * 100)}%)";
-            clone.RewriteChildren(child => {
-                child.motion = child.motion?.EvaluateMotion(fraction);
-                return child;
-            });
+            foreach (var tree in clone.GetAllSubtrees()) {
+                tree.treeName = $"{tree.name} (sampled at {Math.Round(fraction * 100)}%)";
+                tree.RewriteChildren(child => {
+                    if (child.motion is VFClip clip) {
+                        child.motion = clip.EvaluateMotion(fraction);
+                    }
+                    return child;
+                });
+            }
             return clone;
         }
 
-        private IList<VFClip> GetActiveClips(HashSet<string> onParams) {
-            if (!children.Any()) {
-                return Array.Empty<VFClip>();
-            }
-            if (blendType == BlendTreeType.Direct) {
-                return children
-                    .Where(child => child.motion != null && onParams.Contains(child.directBlendParameter))
-                    .SelectMany(child => FlattenActiveClips(child.motion, onParams))
-                    .ToArray();
-            }
-            if (blendType == BlendTreeType.Simple1D) {
-                var orderedChildren = children
-                    .Where(child => child.motion != null)
-                    .OrderBy(child => child.threshold)
-                    .ToArray();
-                if (!orderedChildren.Any()) {
-                    return Array.Empty<VFClip>();
+        private IEnumerable<VFTree> GetAllSubtrees() {
+            var visited = new HashSet<VFTree>();
+            var pending = new Stack<VFTree>();
+            pending.Push(this);
+            while (pending.Count > 0) {
+                var tree = pending.Pop();
+                if (!visited.Add(tree)) continue;
+                yield return tree;
+                foreach (var child in tree.children.Reverse()) {
+                    if (child.motion is VFTree childTree) {
+                        pending.Push(childTree);
+                    }
                 }
-                if (onParams.Contains(BlendParameter)) {
-                    return FlattenActiveClips(orderedChildren.Last().motion, onParams);
-                }
-                return FlattenActiveClips(orderedChildren.First().motion, onParams);
             }
-            // This sampler is only used by the DBT/resting-state helpers that currently produce
-            // direct and simple-1D trees. Other tree types are intentionally not approximated here.
-            return Array.Empty<VFClip>();
         }
 
-        private static IList<VFClip> FlattenActiveClips(VFMotion motion, HashSet<string> onParams) {
-            if (motion == null) {
-                return Array.Empty<VFClip>();
+        private IEnumerable<VFClip> GetAllClips() {
+            var visited = new HashSet<VFTree>();
+            var pending = new Stack<VFMotion>();
+            pending.Push(this);
+            while (pending.Count > 0) {
+                var motion = pending.Pop();
+                if (motion is VFClip clip) {
+                    yield return clip;
+                    continue;
+                }
+                if (!(motion is VFTree tree) || !visited.Add(tree)) continue;
+                foreach (var child in tree.children.Reverse()) {
+                    pending.Push(child.motion);
+                }
             }
-            if (motion is VFClip clip) {
-                return new[] { clip };
+        }
+
+        private IEnumerable<VFClip> GetActiveClips(HashSet<string> onParams) {
+            var visited = new HashSet<VFTree>();
+            var pending = new Stack<VFMotion>();
+            pending.Push(this);
+            while (pending.Count > 0) {
+                var motion = pending.Pop();
+                if (motion is VFClip clip) {
+                    yield return clip;
+                    continue;
+                }
+                if (!(motion is VFTree tree) || !visited.Add(tree)) continue;
+
+                if (tree.blendType == BlendTreeType.Direct) {
+                    foreach (var child in tree.children
+                                 .Where(child => onParams.Contains(child.directBlendParameter))
+                                 .Reverse()) {
+                        pending.Push(child.motion);
+                    }
+                } else if (tree.blendType == BlendTreeType.Simple1D) {
+                    var orderedChildren = tree.children
+                        .Where(child => child.motion != null)
+                        .OrderBy(child => child.threshold)
+                        .ToArray();
+                    if (orderedChildren.Any()) {
+                        pending.Push((onParams.Contains(tree.BlendParameter)
+                            ? orderedChildren.Last()
+                            : orderedChildren.First()
+                        ).motion);
+                    }
+                }
             }
-            if (motion is VFTree tree) {
-                return tree.GetActiveClips(onParams);
-            }
-            return Array.Empty<VFClip>();
         }
     }
 }

@@ -32,7 +32,6 @@ namespace VF.Utils.Controller {
             } else {
                 throw new Exception($"Unsupported motion type `{raw.GetType().Name}`");
             }
-            context.Motions[raw] = output;
             return output;
         }
 

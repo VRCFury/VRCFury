@@ -29,7 +29,7 @@ namespace VF.Component {
                 .Where(scene => scene.isLoaded)
                 .SelectMany(scene => scene.GetRootGameObjects())
                 .SelectMany(root => root.GetComponentsInChildren<Camera>())
-                .Any(camera => camera.gameObject.activeInHierarchy);
+                .Any(camera => camera.isActiveAndEnabled);
             if (hasCamera) return;
 
             var cameraObj = new GameObject("Scene Camera");
