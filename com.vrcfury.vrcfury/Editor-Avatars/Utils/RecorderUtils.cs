@@ -179,8 +179,7 @@ namespace VF.Utils {
                 if (binding.target == null) return binding;
                 var bindingRoot = baseObj;
                 while (bindingRoot != avatarObject
-                       && binding.target != bindingRoot
-                       && !binding.target.IsChildOf(bindingRoot)) {
+                       && !binding.target.IsSameOrChildOf(bindingRoot)) {
                     bindingRoot = bindingRoot.parent;
                 }
                 return binding.WithPath(binding.target.GetPath(bindingRoot));

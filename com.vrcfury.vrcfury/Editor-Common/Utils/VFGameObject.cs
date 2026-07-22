@@ -182,7 +182,7 @@ namespace VF.Utils {
             return transform.Find(search);
         }
 
-        public bool IsChildOf(VFGameObject other) {
+        public bool IsSameOrChildOf(VFGameObject other) {
             return transform.IsChildOf(other);
         }
 
@@ -194,7 +194,7 @@ namespace VF.Utils {
                 }
                 return root.name + "/" + AnimationUtility.CalculateTransformPath(this, root);
             }
-            if (!IsChildOf(root)) {
+            if (!IsSameOrChildOf(root)) {
                 throw new Exception($"{GetPath()} is not a child of {root.GetPath()}");
             }
             if (this == root && prettyRoot) {
@@ -286,8 +286,8 @@ namespace VF.Utils {
                 .Where(c => {
                     var affectedObject = c.GetAffectedObject();
                     if (affectedObject == null) return false;
-                    if (includeParents) return IsChildOf(affectedObject);
-                    if (includeChildren) return affectedObject.IsChildOf(this);
+                    if (includeParents) return IsSameOrChildOf(affectedObject);
+                    if (includeChildren) return affectedObject.IsSameOrChildOf(this);
                     return affectedObject == this;
                 })
                 .ToArray();

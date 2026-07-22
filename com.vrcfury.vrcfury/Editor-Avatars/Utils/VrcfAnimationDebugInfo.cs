@@ -169,7 +169,7 @@ namespace VF.Utils {
 
                 usedBindings.Add(binding);
 
-                if (!binding.target.IsChildOf(componentObject)) {
+                if (!binding.target.IsSameOrChildOf(componentObject)) {
                     outsidePrefabBindings.Add(binding.PrettyString());
                     continue;
                 }

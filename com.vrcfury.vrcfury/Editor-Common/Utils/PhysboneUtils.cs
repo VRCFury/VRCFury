@@ -11,8 +11,8 @@ namespace VF.Utils {
             }
             foreach (var physbone in obj.GetComponentsInUploadRoot<VRCPhysBone>()) {
                 var root = physbone.GetRootTransform();
-                if (obj != root && obj.IsChildOf(root)) {
-                    var alreadyExcluded = physbone.ignoreTransforms.Any(other => other != null && obj.IsChildOf(other));
+                if (obj != root && obj.IsSameOrChildOf(root)) {
+                    var alreadyExcluded = physbone.ignoreTransforms.Any(other => other != null && obj.IsSameOrChildOf(other));
                     if (!alreadyExcluded) {
                         physbone.ignoreTransforms.Add(obj);
                     }
@@ -26,18 +26,18 @@ namespace VF.Utils {
         private static bool ContainsBonesUsedExternally(VFGameObject obj) {
             foreach (var s in obj.GetComponentsInUploadRoot<SkinnedMeshRenderer>()) {
                 foreach (var bone in s.bones.AsVf()) {
-                    if (bone && bone.IsChildOf(obj)) return true;
+                    if (bone && bone.IsSameOrChildOf(obj)) return true;
                 }
 
                 var rootBone = s.rootBone.asVf();
-                if (rootBone != null && rootBone.IsChildOf(obj)) return true;
+                if (rootBone != null && rootBone.IsSameOrChildOf(obj)) return true;
             }
 
             var usedAsConstraintSource = obj.uploadRoots
                 .SelectMany(r => r.GetConstraints(includeChildren: true))
                 .SelectMany(constraint => constraint.GetSources())
                 .NotNull()
-                .Any(source => source.IsChildOf(obj));
+                .Any(source => source.IsSameOrChildOf(obj));
             if (usedAsConstraintSource) {
                 return true;
             }

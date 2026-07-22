@@ -197,7 +197,7 @@ namespace VF.Service {
                 {
                     var o = propBone.parent;
                     var parents = new List<VFGameObject>();
-                    while (o != null && o != avatarObject && !avatarBone.IsChildOf(o)) {
+                    while (o != null && o != avatarObject && !avatarBone.IsSameOrChildOf(o)) {
                         parents.Add(o);
                         o = o.parent;
                     }
@@ -353,7 +353,7 @@ namespace VF.Service {
                         VFGameObject target = null;
                         if (value is Transform t) target = t;
                         else if (value is GameObject g) target = g;
-                        if (target != null && target.IsChildOf(avatarObject)) {
+                        if (target != null && target.IsSameOrChildOf(avatarObject)) {
                             reasons.Put(target, path + " in " + component.GetType().Name + " on " + component.owner().GetPath(avatarObject, true));
                         }
                     });
@@ -362,7 +362,7 @@ namespace VF.Service {
 
             foreach (var used in reasons.GetKeys().ToArray()) {
                 foreach (var parent in used.GetSelfAndAllParents()) {
-                    if (parent != used && parent.IsChildOf(avatarObject)) {
+                    if (parent != used && parent.IsSameOrChildOf(avatarObject)) {
                         reasons.Put(parent, "A child object is used");
                     }
                 }
@@ -407,7 +407,7 @@ namespace VF.Service {
         public static VFGameObject GetProbableParent(ArmatureLink model, VFGameObject avatarObject, VFGameObject obj) {
             try {
                 var linkFrom = model.propBone;
-                if (linkFrom == null || !obj.IsChildOf(linkFrom)) return null;
+                if (linkFrom == null || !obj.IsSameOrChildOf(linkFrom)) return null;
                 var links = GetLinks(model, avatarObject);
                 return links.mergeBones
                     .Where(pair => pair.Item1 == obj)
@@ -423,7 +423,7 @@ namespace VF.Service {
             if (propBone == null) return null;
 
             foreach (var b in VRCFArmatureUtils.GetAllBones(avatarObject).Values) {
-                if (b != null && b.IsChildOf(propBone)) {
+                if (b != null && b.IsSameOrChildOf(propBone)) {
                     throw new VRCFBuilderException(
                         "Link From is part of the avatar's armature." +
                         " The object dragged into Armature Link should not be a bone from the avatar's armature." +

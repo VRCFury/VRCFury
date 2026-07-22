@@ -41,7 +41,7 @@ namespace VF.Feature {
                 },
                 recursive = false,
                 onlyIf = () => {
-                    var isChildOfHead = obj.IsChildOf(head);
+                    var isChildOfHead = obj.IsSameOrChildOf(head);
                     if (model.onlyIfChildOfHead && !isChildOfHead) return false;
 
 #if VRCSDK_HAS_HEAD_CHOP
