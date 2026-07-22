@@ -706,9 +706,17 @@ namespace VF.Feature {
 
             if (avatarObject != null) {
                 var rewrites = prop.FindPropertyRelative("rewriteBindings");
-                var warningsContainer = new VisualElement();
-                var refreshScheduled = false;
-                void RefreshWarnings() {
+                IVisualElementScheduledItem scheduledRefresh = null;
+                System.Action refreshWarnings = null;
+                void ScheduleRefreshWarnings() {
+                    scheduledRefresh?.Pause();
+                    scheduledRefresh = content.schedule.Execute(() => {
+                        scheduledRefresh = null;
+                        refreshWarnings?.Invoke();
+                    }).StartingIn(2000);
+                }
+                VisualElement BuildWarnings() {
+                    var warningsContainer = new VisualElement();
                     warningsContainer.Clear();
                     var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
                         model.controllers
@@ -721,20 +729,24 @@ namespace VF.Feature {
                                 entry.FindPropertyRelative("from").stringValue = path;
                                 entry.FindPropertyRelative("to").stringValue = "";
                             });
-                            if (refreshScheduled) return;
-                            refreshScheduled = true;
-                            warningsContainer.schedule.Execute(() => {
-                                refreshScheduled = false;
-                                RefreshWarnings();
-                            });
+                            ScheduleRefreshWarnings();
                         }
                     );
                     foreach (var warning in warnings) {
                         warningsContainer.Add(warning);
                     }
+                    warningsContainer.TrackSerializedObjectValue(
+                        prop.serializedObject,
+                        _ => ScheduleRefreshWarnings()
+                    );
+
+                    return warningsContainer;
                 }
-                RefreshWarnings();
-                content.Add(warningsContainer);
+                content.Add(VRCFuryEditorUtils.RefreshOnTrigger(
+                    BuildWarnings,
+                    prop.serializedObject,
+                    out refreshWarnings
+                ));
             }
 
             return content;
