@@ -49,7 +49,10 @@ namespace VF.Service.Compressor {
             }
 
             var decision = decisionWithInfo.decision;
-            if (!decision.compress.Any()) return;
+            if (!decision.compress.Any()) {
+                saveAssetsService.Run();
+                return;
+            }
 
             var paramz = paramsService.GetParams().GetRaw();
             var originalCost = paramz.CalcTotalCost();
