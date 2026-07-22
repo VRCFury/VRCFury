@@ -21,7 +21,6 @@ namespace VF.Utils {
             if (animatorObject == null) return null;
             if (ownerObject == null) return null;
             if (path == null) return null;
-            if (type == typeof(Animator)) return animatorObject;
             if (path == "" && rootBindingsApplyToAvatar) {
                 return animatorObject;
             }
@@ -50,6 +49,7 @@ namespace VF.Utils {
             if (target == null) return false;
             if (type == null) return false;
             if (type == typeof(GameObject)) return true;
+            if (type == typeof(Animator)) return true;
             if (!typeof(UnityEngine.Component).IsAssignableFrom(type)) return false;
             if (target.GetComponent(type) != null) return true;
 

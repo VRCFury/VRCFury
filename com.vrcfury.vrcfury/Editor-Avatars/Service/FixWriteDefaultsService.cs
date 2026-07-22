@@ -29,7 +29,7 @@ namespace VF.Service {
         private ControllerManager fx => controllers.GetFx();
 
         public void RecordDefaultNow(VFBinding binding, bool isFloat, bool force = false) {
-            if (binding.type == typeof(Animator)) return;
+            if (binding.IsAnimatorBinding()) return;
             if (GetDefaultClip().GetCurve(binding, isFloat) != null) return;
 
             var shouldRecord = force;

@@ -76,7 +76,7 @@ namespace VF.Utils.Controller {
                     output.changedFromOriginalSourceClip = true;
                     continue;
                 }
-                if (rawBinding.type == typeof(Animator)) {
+                if (VFBinding.IsAnimatorBinding(rawBinding)) {
                     output.curves[VFBinding.MakeAnimatorBinding(rawBinding.propertyName)] = curve;
                     continue;
                 }

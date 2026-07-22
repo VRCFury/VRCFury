@@ -17,7 +17,7 @@ namespace VF.Service {
             var output = clipFactory.NewClip("Merged");
             foreach (var binding in sources.SelectMany(tuple => tuple.Item2.GetFloatBindings()).Distinct()) {
                 var exists = bindingStateService.GetFloat(binding, out var defaultValue);
-                if (!exists && binding.type == typeof(Animator)) {
+                if (!exists && binding.IsAnimatorBinding()) {
                     exists = true;
                     defaultValue = 0;
                 }

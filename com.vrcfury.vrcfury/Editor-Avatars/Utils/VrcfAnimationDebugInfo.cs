@@ -50,7 +50,7 @@ namespace VF.Utils {
                 };
                 foreach (var binding in debugInfo.bindings) {
                     VFResolvedObject? resolved = null;
-                    if (binding.type != typeof(Animator)) {
+                    if (!VFBinding.IsAnimatorBinding(binding)) {
                         resolved = VFResolvedObject.Load(binding.path, context, binding.type);
                         if (!resolved.HasValue) continue;
                     }
@@ -152,7 +152,7 @@ namespace VF.Utils {
 
             var usedBindings = new HashSet<VFBinding>();
             foreach (var binding in bindings) {
-                if (binding.type == typeof(Animator)) continue;
+                if (binding.IsAnimatorBinding()) continue;
                 if (binding.target != null) {
                     if (binding.target == componentObject || binding.target.IsChildOf(componentObject)) {
                         usedBindings.Add(binding);

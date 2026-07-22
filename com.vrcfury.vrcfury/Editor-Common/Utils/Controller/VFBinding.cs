@@ -25,10 +25,20 @@ namespace VF.Utils {
             return From(null, EditorCurveBinding.FloatCurve("", typeof(Animator), propertyName));
         }
 
+        internal static bool IsAnimatorBinding(EditorCurveBinding binding) {
+            // m_Enabled on an Animator is really a "normal" non-animator binding,
+            // which the outer animator can use to turn on and off inner animator components
+            return binding.type == typeof(Animator) && binding.propertyName != "m_Enabled";
+        }
+
+        internal bool IsAnimatorBinding() {
+            return IsAnimatorBinding(rawBinding);
+        }
+
         internal static VFBinding From(VFResolvedObject? resolvedObject, EditorCurveBinding rawBinding) {
-            // Animator bindings always target the animator itself. Keeping resolved-object state for them only
-            // creates multiple in-memory representations of the same binding.
-            if (rawBinding.type == typeof(Animator)) resolvedObject = null;
+            // Animator stream bindings always target the animator itself. Keeping resolved-object state for them
+            // only creates multiple in-memory representations of the same binding.
+            if (IsAnimatorBinding(rawBinding)) resolvedObject = null;
             return new VFBinding(resolvedObject, rawBinding);
         }
 
