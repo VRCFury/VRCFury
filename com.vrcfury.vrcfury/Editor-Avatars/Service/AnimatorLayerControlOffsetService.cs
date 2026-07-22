@@ -103,7 +103,9 @@ namespace VF.Service {
         }
 
         public void Register(VFBehaviour control, VFLayer targetSm) {
-            mapping.Put(control.Identity, targetSm);
+            if (!mapping.Get(control.Identity).Contains(targetSm)) {
+                mapping.Put(control.Identity, targetSm);
+            }
         }
 
         public void Alias(VFLayer oldTargetSm, VFLayer newTargetSm) {
