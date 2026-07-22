@@ -704,27 +704,36 @@ namespace VF.Feature {
             content.Add(adv);
 
             if (avatarObject != null) {
-                var baseObject = GetBaseObject(model, componentObject);
-                var controllers = model.controllers
-                    .Select(c => c?.controller?.Get() as AnimatorController)
-                    .NotNull()
-                    .ToList();
                 var rewrites = prop.FindPropertyRelative("rewriteBindings");
-                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
-                    controllers,
-                    baseObject,
-                    path => RewritePath(model, path),
-                    addPathRewrite: path => {
-                        VRCFuryEditorUtils.AddToList(rewrites, entry => {
-                            entry.FindPropertyRelative("from").stringValue = path;
-                            entry.FindPropertyRelative("to").stringValue = "";
-                        });
+                var warningsContainer = new VisualElement();
+                var refreshScheduled = false;
+                void RefreshWarnings() {
+                    warningsContainer.Clear();
+                    var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
+                        model.controllers
+                            .Select(c => c?.controller?.Get() as AnimatorController)
+                            .NotNull(),
+                        GetBaseObject(model, componentObject),
+                        path => RewritePath(model, path),
+                        addPathRewrite: path => {
+                            VRCFuryEditorUtils.AddToList(rewrites, entry => {
+                                entry.FindPropertyRelative("from").stringValue = path;
+                                entry.FindPropertyRelative("to").stringValue = "";
+                            });
+                            if (refreshScheduled) return;
+                            refreshScheduled = true;
+                            warningsContainer.schedule.Execute(() => {
+                                refreshScheduled = false;
+                                RefreshWarnings();
+                            });
+                        }
+                    );
+                    foreach (var warning in warnings) {
+                        warningsContainer.Add(warning);
                     }
-                );
-
-                foreach (var warning in warnings) {
-                    content.Add(warning);
                 }
+                RefreshWarnings();
+                content.Add(warningsContainer);
             }
 
             return content;

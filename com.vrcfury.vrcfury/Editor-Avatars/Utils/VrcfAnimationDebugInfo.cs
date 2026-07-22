@@ -55,7 +55,7 @@ namespace VF.Utils {
                 }
             }
 
-            var warnings = BuildDebugInfo(bindings, componentObject, rewritePath, true, addPathRewrite);
+            var warnings = BuildDebugInfo(bindings, componentObject, true, addPathRewrite);
 
             if (usesWdOff) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
@@ -138,7 +138,6 @@ namespace VF.Utils {
         public static List<VisualElement> BuildDebugInfo(
             IEnumerable<VFBinding> bindings,
             VFGameObject componentObject,
-            Func<string,string> rewritePath = null,
             bool isController = false,
             Action<string> addPathRewrite = null
         ) {
@@ -151,28 +150,42 @@ namespace VF.Utils {
             var usedBindings = new HashSet<VFBinding>();
             foreach (var binding in bindings) {
                 if (binding.IsAnimatorBinding()) continue;
-                if (binding.target != null) {
-                    if (binding.target == componentObject || binding.target.IsChildOf(componentObject)) {
-                        usedBindings.Add(binding);
-                    } else {
-                        outsidePrefabBindings.Add(binding.PrettyString());
+
+                var sourcePath = binding.GetStoredPath();
+                var resolvedPath = binding.GetRewrittenPath();
+                var debugPath = sourcePath + (sourcePath != resolvedPath ? " -> " + resolvedPath : "");
+                if (binding.target == null) {
+                    if (resolvedPath == null) {
+                        // binding was deleted by rules :)
+                        continue;
                     }
+                    if (IsProbablyIgnoredBinding(resolvedPath)) {
+                        // user doesn't care that this is missing :)
+                        continue;
+                    }
+                    missingBindings.Add(debugPath);
                     continue;
                 }
 
-                var path = binding.GetStoredPath();
-                if (rewritePath != null) path = rewritePath(path);
-                if (path == null) {
-                    // binding was deleted by rules :)
-                    continue;
-                }
-                if (IsProbablyIgnoredBinding(path)) {
+                usedBindings.Add(binding);
+
+                if (!binding.target.IsChildOf(componentObject)) {
+                    outsidePrefabBindings.Add(binding.PrettyString());
                     continue;
                 }
 
-                var debugPath = binding.GetStoredPath();
-                if (binding.GetStoredPath() != path) debugPath += " -> " + path;
-                missingBindings.Add(debugPath);
+                var relativeTarget = resolvedPath == "" ? componentObject : componentObject.Find(resolvedPath);
+                if (relativeTarget != binding.target) {
+                    nonRewriteSafeBindings.Add(debugPath);
+                    if (binding.target == componentObject) {
+                        autofixPrefixes.Add(componentObject.GetPath(avatarObject));
+                    } else {
+                        var partInsideComponent = "/" + binding.target.GetPath(componentObject);
+                        if (resolvedPath.EndsWith(partInsideComponent)) {
+                            autofixPrefixes.Add(resolvedPath.Substring(0, resolvedPath.Length - partInsideComponent.Length));
+                        }
+                    }
+                }
             }
             
             var warnings = new List<VisualElement>();

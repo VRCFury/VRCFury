@@ -56,6 +56,10 @@ namespace VF.Utils {
             return resolvedObject?.SourcePath ?? "";
         }
 
+        internal string GetRewrittenPath() {
+            return resolvedObject?.UnresolvedPath;
+        }
+
         internal string GetDebugPath(VFGameObject root = null) {
             if (resolvedObject.HasValue) return resolvedObject.Value.GetDebugPath(root);
             return "";
