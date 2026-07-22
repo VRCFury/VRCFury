@@ -79,7 +79,10 @@ namespace VF.Service {
                     bakeResults[plug] = bakeInfo;
 
                     var postBakeClip = actionClipService.LoadStateAdv("sps_postbake", plug.postBakeActions, plug.owner());
-                    restingState.ApplyClipToRestingState(postBakeClip.onClip.FlattenAll(), owner: "Post-bake clip for plug on " + plug.owner().GetPath(avatarObject));
+                    restingState.ApplyClipToRestingState(
+                        postBakeClip.onClip.EvaluateMotion(1).FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips),
+                        owner: "Post-bake clip for plug on " + plug.owner().GetPath(avatarObject)
+                    );
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }

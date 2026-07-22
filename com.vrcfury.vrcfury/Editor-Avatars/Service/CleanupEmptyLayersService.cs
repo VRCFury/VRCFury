@@ -15,6 +15,7 @@ namespace VF.Service {
      */
     [VFService]
     internal class CleanupEmptyLayersService {
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
         
@@ -25,7 +26,7 @@ namespace VF.Service {
 
                 // Delete bindings targeting things that don't exist
                 foreach (var clip in c.GetClips()) {
-                    if (clip.GetUseOriginalUserClip() != null) {
+                    if (clip.GetUseOriginalUserClip(avatarObject) != null) {
                         // We haven't touched this clip at all during the build so far,
                         // so go ahead and just leave it as is
                         // so the original file will be used, rather than generating a fresh copy.

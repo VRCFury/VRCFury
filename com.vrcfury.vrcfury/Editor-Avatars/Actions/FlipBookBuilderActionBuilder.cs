@@ -26,7 +26,7 @@ namespace VF.Actions {
             var sources = states
                 .Select((substate,i) => {
                     var loaded = actionClipService.LoadStateAdv("tmp", substate, animObject);
-                    return ((float)i, loaded.onClip.FlattenAll());
+                    return ((float)i, loaded.onClip.EvaluateMotion(1).FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips));
                 })
                 .ToArray();
 

@@ -72,7 +72,7 @@ namespace VF.Feature {
             directTree.Add(enabled, volumeTree);
 
             void addViseme(int index, string text, State clipState) {
-                var clip = actionClipService.LoadState("Viseme " + text, clipState).GetLastFrame();
+                var motion = actionClipService.LoadState("Viseme " + text, clipState).EvaluateMotion(1);
 
                 var intensityRaw = math.SetValueWithConditions(
                     $"{text}Raw",
@@ -85,7 +85,7 @@ namespace VF.Feature {
                 } else {
                     intensityToUse = smooth.Smooth(directTree, $"{text}Smooth", intensityRaw, 0.05f, false);
                 }
-                voiceTree.Add(intensityToUse, clip);
+                voiceTree.Add(intensityToUse, motion);
             }
 
             for (var i = 0; i < visemeNames.Length; i++) {

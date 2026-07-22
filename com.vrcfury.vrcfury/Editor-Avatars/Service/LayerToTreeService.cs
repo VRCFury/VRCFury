@@ -273,7 +273,7 @@ namespace VF.Service {
             if (state.motion == null) return null;
 
             if (state.motion.IsStatic()) {
-                return state.motion.GetLastFrame();
+                return state.motion.EvaluateMotion(1);
             }
 
             if (!state.motion.IsTwoState()) {
@@ -292,8 +292,8 @@ namespace VF.Service {
                 throw new DoNotOptimizeException($"{state.name} contains a tree child with a timeScale <= 0");
             }
 
-            var startMotion = state.motion.GetLastFrame(false);
-            var endMotion = state.motion.GetLastFrame(true);
+            var startMotion = state.motion.EvaluateMotion(0);
+            var endMotion = state.motion.EvaluateMotion(1);
 
             if (state.timeParameterActive) {
                 // TODO: This could also break if the animation tangents are not linear

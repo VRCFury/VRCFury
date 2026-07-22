@@ -34,7 +34,7 @@ namespace VF.Feature {
             tree.Add(new Vector2(0,0), clipFactory.GetEmptyClip());
             var i = 0;
             foreach (var stop in model.stops) {
-                tree.Add(new Vector2(stop.x,stop.y), actionClipService.LoadState(model.name + "_" + i++, stop.state).GetLastFrame());
+                tree.Add(new Vector2(stop.x,stop.y), actionClipService.LoadState(model.name + "_" + i++, stop.state).EvaluateMotion(1));
             }
             layer.NewState("Blend").WithAnimation(tree);
 

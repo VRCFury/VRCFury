@@ -112,15 +112,6 @@ namespace VF.Utils.Controller {
             }
         }
 
-        internal override VFMotion GetLastFrame(bool last = true) {
-            var clone = (VFTree)Clone();
-            clone.RewriteChildren(child => {
-                child.motion = child.motion?.GetLastFrame(last);
-                return child;
-            });
-            return clone;
-        }
-
         internal override Motion Save(VFSaveContext context) {
             if (context.TryGet(this, out var existing)) {
                 return existing;
@@ -242,21 +233,30 @@ namespace VF.Utils.Controller {
             return children.All(child => child.motion == null || child.motion.IsEmptyOrZeroLength());
         }
 
-        internal override VFClip FlattenAll() {
+        internal override VFClip FlattenToClip(VFMotionFlattenMode mode) {
+            IEnumerable<VFMotion> motions;
+            if (mode == VFMotionFlattenMode.AllClips) {
+                motions = children
+                    .Where(child => child.motion != null)
+                    .Select(child => child.motion);
+            } else {
+                motions = GetActiveClips(new HashSet<string> { VFBlendTreeDirect.AlwaysOneParam });
+            }
             var flat = VFClip.Create(name);
-            foreach (var child in children) {
-                if (child.motion == null) continue;
-                flat.CopyFrom(child.motion.FlattenAll());
+            foreach (var motion in motions) {
+                flat.CopyFrom(motion.FlattenToClip(mode));
             }
             return flat;
         }
 
-        internal override VFClip EvaluateMotion(float fraction) {
-            var output = VFClip.Create($"{name} (sampled at {Math.Round(fraction * 100)}%)");
-            foreach (var clip in GetActiveClips(new HashSet<string> { VFBlendTreeDirect.AlwaysOneParam })) {
-                output.CopyFrom(clip.EvaluateClip(fraction * clip.GetLengthInSeconds()));
-            }
-            return output;
+        internal override VFMotion EvaluateMotion(float fraction) {
+            var clone = (VFTree)Clone();
+            clone.treeName = $"{name} (sampled at {Math.Round(fraction * 100)}%)";
+            clone.RewriteChildren(child => {
+                child.motion = child.motion?.EvaluateMotion(fraction);
+                return child;
+            });
+            return clone;
         }
 
         private IList<VFClip> GetActiveClips(HashSet<string> onParams) {

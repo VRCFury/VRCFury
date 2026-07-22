@@ -14,6 +14,7 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Service {
     [VFService]
     internal class TreeFlatteningService {
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly ParamsService paramsService;
@@ -124,7 +125,7 @@ namespace VF.Service {
             tree.RewriteChildren(child => {
                 if (!(child.motion is VFClip clip)) return child;
                 // Don't merge if we're using an original clip from the user
-                if (clip.GetUseOriginalUserClip() != null) return child;
+                if (clip.GetUseOriginalUserClip(avatarObject) != null) return child;
 
                 var param = child.directBlendParameter;
                 if (alwaysOneParams.Contains(param)) param = VFBlendTreeDirect.AlwaysOneParam;

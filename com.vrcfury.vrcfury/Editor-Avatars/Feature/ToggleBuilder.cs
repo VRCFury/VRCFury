@@ -188,14 +188,15 @@ namespace VF.Feature {
                 inState = onState = layer.NewState(onName);
                 onState.WithAnimation(builtAction.onClip).MotionTime(weight);
                 onState.TransitionsToExit().When(onCase.Not());
-                restingClip = builtAction.onClip.EvaluateMotion(model.defaultSliderValue);
+                restingClip = builtAction.onClip.EvaluateMotion(model.defaultSliderValue)
+                    .FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips);
             } else if (model.hasTransition) {
                 var builtAction = actionClipService.LoadStateAdv(onName, action);
                 var motion = builtAction.onClip;
                 var inClip = actionClipService.LoadState(onName + " In", inAction);
                 // if clip is empty, copy last frame of transition
                 if (!new AnimatorIterator.Clips().From(motion).SelectMany(clip => clip.GetAllBindings()).Any()) {
-                    motion = inClip.GetLastFrame();
+                    motion = inClip.EvaluateMotion(1);
                 }
                 var outClip = model.simpleOutTransition ? inClip.Clone() : actionClipService.LoadState(onName + " Out", outAction);
                 var outSpeed = model.simpleOutTransition ? -1 : 1;
@@ -230,7 +231,7 @@ namespace VF.Feature {
                     }
                     if (keptOne) {
                         var directTree = VFBlendTreeDirect.Create($"{onName} (with expanded on state)");
-                        directTree.Add(onCopy.GetLastFrame(useLast));
+                        directTree.Add(onCopy.EvaluateMotion(useLast ? 1 : 0));
                         directTree.Add(transitionMotion);
                         return directTree;
                     }
@@ -289,7 +290,8 @@ namespace VF.Feature {
                 var restingMotionLoops = restingMotion != null && new AnimatorIterator.Clips().From(restingMotion)
                     .Any(clip => clip.IsLooping() && !clip.IsStatic());
                 if (!restingMotionLoops) {
-                    savedRestingClip = restingClip ?? restingMotion?.EvaluateMotion(1);
+                    savedRestingClip = restingClip ?? restingMotion?.EvaluateMotion(1)
+                        .FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips);
                     allClipsService.AddAdditionalManagedClip(savedRestingClip);
                 }
             }

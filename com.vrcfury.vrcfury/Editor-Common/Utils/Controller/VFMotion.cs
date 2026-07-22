@@ -4,6 +4,11 @@ using UnityEditor.Animations;
 using UnityEngine;
 
 namespace VF.Utils.Controller {
+    internal enum VFMotionFlattenMode {
+        AllClips,
+        DefaultVisibleClips
+    }
+
     internal abstract class VFMotion {
         protected readonly Motion sourceRaw;
 
@@ -61,8 +66,7 @@ namespace VF.Utils.Controller {
         internal abstract bool IsStatic();
         internal abstract bool IsTwoState();
         internal abstract bool IsEmptyOrZeroLength();
-        internal abstract VFMotion GetLastFrame(bool last = true);
-        internal abstract VFClip FlattenAll();
-        internal abstract VFClip EvaluateMotion(float fraction);
+        internal abstract VFClip FlattenToClip(VFMotionFlattenMode mode);
+        internal abstract VFMotion EvaluateMotion(float fraction);
     }
 }
