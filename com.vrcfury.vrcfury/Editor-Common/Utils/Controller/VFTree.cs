@@ -30,6 +30,7 @@ namespace VF.Utils.Controller {
         internal static VFTree Load(BlendTree raw, VFLoadContext context) {
             if (raw == null) return null;
             var output = new VFTree(raw);
+            context.Motions[raw] = output;
             output.treeName = raw.name;
             output._blendType = raw.blendType;
             output.useAutomaticThresholds = raw.useAutomaticThresholds;
