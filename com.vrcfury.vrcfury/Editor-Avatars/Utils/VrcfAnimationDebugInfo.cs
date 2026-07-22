@@ -174,6 +174,9 @@ namespace VF.Utils {
                     continue;
                 }
 
+                // Programmatically generated bindings target the object directly and have no unresolved path.
+                if (resolvedPath == null) continue;
+
                 var relativeTarget = resolvedPath == "" ? componentObject : componentObject.Find(resolvedPath);
                 if (relativeTarget != binding.target) {
                     nonRewriteSafeBindings.Add(debugPath);
