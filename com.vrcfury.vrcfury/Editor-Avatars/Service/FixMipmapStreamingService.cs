@@ -25,7 +25,6 @@ namespace VF.Service {
                 if (original.mipmapCount > 1 && !original.streamingMipmaps) {
                     output = original.Clone("Needed to enable mipmap streaming on texture to make VRCSDK happy");
                     var so = new SerializedObject(output);
-                    so.Update();
                     so.FindProperty("m_StreamingMipmaps").boolValue = true;
                     so.FindProperty("m_StreamingMipmapsPriority").intValue = 0;
                     so.ApplyModifiedPropertiesWithoutUndo();
@@ -58,8 +57,8 @@ namespace VF.Service {
             }
 
             var clipRewriter = AnimationRewriter.RewriteObject(o => (o is Material m) ? OptimizeMat(m) : o);
-            foreach (var clip in controllers.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
-                clip.Rewrite(clipRewriter);
+            foreach (var controller in controllers.GetAllUsedControllers()) {
+                controller.Rewrite(clipRewriter);
             }
         }
     }

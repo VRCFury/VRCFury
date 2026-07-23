@@ -18,6 +18,7 @@ namespace VF.Service.Compressor {
         [VFAutowired] private readonly ParameterCompressorLayerService newLayerService;
         [VFAutowired] private readonly ParameterCompressorLegacyLayerService legacyLayerService;
         [VFAutowired] private readonly ParameterPlatformAlignmentService platformAlignmentService;
+        [VFAutowired] private readonly SaveAssetsService saveAssetsService;
 
         public const float BATCH_TIME = 0.1f;
 
@@ -47,7 +48,10 @@ namespace VF.Service.Compressor {
             }
 
             var decision = decisionWithInfo.decision;
-            if (!decision.compress.Any()) return;
+            if (!decision.compress.Any()) {
+                saveAssetsService.Run(Enumerable.Empty<ControllerManager>());
+                return;
+            }
 
             var paramz = paramsService.GetParams().GetRaw();
             var originalCost = paramz.CalcTotalCost();
@@ -57,7 +61,7 @@ namespace VF.Service.Compressor {
             } else {
                 newLayerService.BuildLayer(decision);
             }
-            fx.GetRaw().WorkLog(
+            fx.WorkLog(
                 $"Added parameter compression logic to FX controller for {decision.compress.Count} parameters"
             );
             
@@ -71,10 +75,9 @@ namespace VF.Service.Compressor {
             );
 
             fx.UpgradeWrongParamTypes();
-            // Hopefully temporary until we can work out a better "re-save and/or re-dirty everything in a build hook at the end of the build" system
-            fx.GetRaw().Dirty();
             paramz.Dirty();
             CreateDebugInfo(decisionWithInfo, originalCost, newCost);
+            saveAssetsService.Run(new[] { fx });
         }
 
         private void CreateDebugInfo(ParameterCompressorSolverOutput decisionWithInfo, int originalCost, int newCost) {

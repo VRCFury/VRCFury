@@ -5,6 +5,7 @@ namespace VF.Hooks.UnityFixes {
     /**
      * Unity's native Material getters/setters may apply MaterialPropertyDrawers, which can be extremely slow
      * and is not needed for VRCFury's build-time property reads/writes.
+     * Even setting animator.runtimeAnimatorController to a value will trigger a rebind which can cause this.
      */
     internal static class SuppressMaterialPropertyDrawersHook {
         private static int suppressDepth;

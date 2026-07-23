@@ -48,7 +48,8 @@ namespace VF.Utils {
         
         public float lengthInSeconds {
             get {
-                if (isFloat) return floatCurve.keys.Select(k => k.time).DefaultIfEmpty(0).Max();
+                // Unity guarantees AnimationCurve keys are time-sorted, so we can just check the last one
+                if (isFloat) return floatCurve.length == 0 ? 0 : floatCurve[floatCurve.length - 1].time;
                 return objectCurve.Select(k => k.time).DefaultIfEmpty(0).Max();
             }
         }
@@ -133,10 +134,6 @@ namespace VF.Utils {
                     return k;
                 }).ToArray();
             }
-        }
-
-        public static FloatOrObjectCurve DummyFloatCurve(float length) {
-            return AnimationCurve.Constant(0, length, 0);
         }
     }
 }

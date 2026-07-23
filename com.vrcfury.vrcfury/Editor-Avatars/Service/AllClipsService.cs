@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -11,7 +12,7 @@ namespace VF.Service {
     [VFService]
     internal class AllClipsService {
         [VFAutowired] private readonly ControllersService controllers;
-        private readonly List<AnimationClip> additionalClips = new List<AnimationClip>();
+        private readonly List<VFClip> additionalClips = new List<VFClip>();
 
         public void RewriteAllClips(AnimationRewriter rewriter) {
             foreach (var c in controllers.GetAllUsedControllers()) {
@@ -25,16 +26,17 @@ namespace VF.Service {
         /**
          * Note: Does not update audio clip source paths
          */
-        public ISet<AnimationClip> GetAllClips() {
-            var clips = new HashSet<AnimationClip>();
+        public ISet<VFClip> GetAllClips() {
+            var clips = new HashSet<VFClip>();
             foreach (var c in controllers.GetAllUsedControllers()) {
                 clips.UnionWith(c.GetClips());
             }
             clips.UnionWith(additionalClips);
             return clips;
         }
-        
-        public void AddAdditionalManagedClip(AnimationClip clip) {
+
+        public void AddAdditionalManagedClip(VFClip clip) {
+            if (clip == null) return;
             additionalClips.Add(clip);
         }
     }

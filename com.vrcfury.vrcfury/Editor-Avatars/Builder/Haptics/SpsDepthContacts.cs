@@ -204,7 +204,7 @@ namespace VF.Builder.Haptics {
                                 (0.01f, 1)
                             );
                         var whenTipOnly = BlendtreeMath.Add($"{paramPrefix}/{name}/TipOnly", output, (defaultSize, 1));
-                        Motion whenGone = whenTipOnly;
+                        VFMotion whenGone = whenTipOnly;
                         var whenInside = BlendtreeMath.Add($"{paramPrefix}/{name}/Inside", output, (output, 1));
 
                         directTree.Add(

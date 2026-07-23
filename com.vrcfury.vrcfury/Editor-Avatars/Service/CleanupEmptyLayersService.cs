@@ -6,6 +6,7 @@ using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -14,25 +15,33 @@ namespace VF.Service {
      */
     [VFService]
     internal class CleanupEmptyLayersService {
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
+        private readonly HashSet<VFLayer> layersToRemove = new HashSet<VFLayer>();
+
+        public bool WouldRemove(VFLayer layer) {
+            return layersToRemove.Contains(layer);
+        }
         
         [FeatureBuilderAction(FeatureOrder.CleanupEmptyLayers)]
         public void Apply() {
+            layersToRemove.Clear();
             foreach (var c in controllers.GetAllUsedControllers()) {
                 var removedBindings = new List<string>();
 
                 // Delete bindings targeting things that don't exist
-                foreach (var clip in new AnimatorIterator.Clips().From(c)) {
-                    if (clip.GetUseOriginalUserClip() != null && validateBindingsService.HasValidBinding(clip)) {
+                foreach (var clip in c.GetClips()) {
+                    if (clip.GetUseOriginalUserClip(avatarObject) != null) {
                         // We haven't touched this clip at all during the build so far,
-                        // and it contains some useful bindings, so go ahead and just leave it as is
+                        // so go ahead and just leave it as is
                         // so the original file will be used, rather than generating a fresh copy.
                     } else {
                         // Rip out all impossible bindings
+                        var clipName = clip.name;
                         clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
                             if (!validateBindingsService.IsValid(binding)) {
-                                removedBindings.Add($"{binding.PrettyString()} from {clip.name}");
+                                removedBindings.Add($"{binding.PrettyString()} from {clipName}");
                                 return null;
                             }
                             return binding;
@@ -50,9 +59,10 @@ namespace VF.Service {
                 foreach (var (layer, i) in c.GetLayers().Select((l,i) => (l,i))) {
                     var hasNonEmptyClip = new AnimatorIterator.Clips().From(layer)
                         .Any(clip => validateBindingsService.HasValidBinding(clip));
-                    var hasBehaviour = layer.allBehaviours.Any();
+                    var hasBehaviour = layer.HasBehaviours();
 
                     if (!hasNonEmptyClip && !hasBehaviour) {
+                        layersToRemove.Add(layer);
                         Debug.LogWarning($"Removing layer {layer.name} from {c.GetType()} because it doesn't do anything");
                         if (layer.hasDefaultState && !IsActuallyUploadingHook.Get()) {
                             layer.name += " (NO VALID ANIMATIONS)";

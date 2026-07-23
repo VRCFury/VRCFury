@@ -23,47 +23,47 @@ namespace VF.Service {
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
+        [VFAutowired] private readonly IsObjectEnabledService isObjectEnabledService;
 
-        private const string Tag = "VRCF_SCALEFACTORFIX";
+        private const string Tag = "VRCF_WSD";
         private const float ContactRadius = 1f;
         private const float MaxDetectedScale = 100f;
 
+        private readonly Lazy<VFBlendTreeDirect> directTree;
         private readonly Lazy<BlendtreeMath> math;
         private readonly Lazy<Vector3> offset;
         private readonly Lazy<VFGameObject> senderObject;
-        private readonly Lazy<VFGameObject> markerObject;
         private readonly Dictionary<VFGameObject, VFAFloat> cache = new Dictionary<VFGameObject, VFAFloat>();
 
         public WorldScaleDetectorService() {
-            math = new Lazy<BlendtreeMath>(() => dbtLayerService.GetMath(dbtLayerService.Create()));
+            directTree = new Lazy<VFBlendTreeDirect>(() => dbtLayerService.Create());
+            math = new Lazy<BlendtreeMath>(() => dbtLayerService.GetMath(directTree.Value));
             offset = new Lazy<Vector3>(() => new Vector3(
                 -30f + (Random.value * 60f),
                 10f + (Random.value * 30f),
                 -30f + (Random.value * 60f)
             ));
             senderObject = new Lazy<VFGameObject>(CreateSender);
-            markerObject = new Lazy<VFGameObject>(CreateMarker);
         }
 
         [CanBeNull]
         // Returns the live absolute world scale of localSpace.
-        public VFAFloat GetWorldScale(VFGameObject localSpace) {
-            return cache.GetOrCreate(localSpace, () => Create(localSpace));
+        public VFAFloat GetWorldScale(VFGameObject localSpace, string name) {
+            return cache.GetOrCreate(localSpace, () => Create(localSpace, name));
         }
 
         [CanBeNull]
-        private VFAFloat Create(VFGameObject localSpace) {
+        private VFAFloat Create(VFGameObject localSpace, string name) {
             if (!BuildTargetUtils.IsDesktop()) {
                 return null;
             }
 
-            var outerObj = GameObjects.Create("Scale Detector (Receiver)",
-                localSpace,
-                markerObject.Value
-            );
-            var constraint = outerObj.AddComponent<ParentConstraint>();
+            var outerObj = GameObjects.Create(name, senderObject.Value.parent);
+            outerObj.localPosition = new Vector3(-ContactRadius, 0, 0);
+            outerObj.active = false;
+            var constraint = outerObj.AddComponent<ScaleConstraint>();
             constraint.AddSource(new ConstraintSource {
-                sourceTransform = markerObject.Value,
+                sourceTransform = localSpace,
                 weight = 1
             });
             constraint.weight = 1;
@@ -81,31 +81,30 @@ namespace VF.Service {
             localReceiver.receiverType = ContactReceiver.ReceiverType.Proximity;
             localReceiver.collisionTags.Add(Tag);
             localReceiver.radius = ContactRadius;
-            var receiverParam = fx.NewFloat($"SFFix {localSpace.name} - Rcv", def: 1 / MaxDetectedScale);
+            var receiverParam = fx.NewFloat($"WSD - {name} - Rcv", def: 1 / MaxDetectedScale);
             localReceiver.parameter = receiverParam;
 
-            return math.Value.Multiply($"SFFix {localSpace.name} - Final", receiverParam, MaxDetectedScale * localSpace.worldScale.x);
+            var receiverOn = VFClip.Create($"WSD - {name} - On");
+            receiverOn.SetEnabled(outerObj, true);
+            directTree.Value.Add(BlendtreeMath.GreaterThan(isObjectEnabledService.Get(localSpace), 0)
+                .create(receiverOn, null));
+
+            return math.Value.Multiply($"WSD - {name} - Final", receiverParam, MaxDetectedScale * localSpace.worldScale.x);
         }
 
         private VFGameObject CreateSender() {
-            var worldAnchor = GameObjects.Create("Scale Detector", avatarObject);
+            var worldAnchor = GameObjects.Create("World Scale Detector", avatarObject);
             worldAnchor.localPosition = offset.Value;
             worldAnchor.worldRotation = Quaternion.identity;
             worldAnchor.worldScale = Vector3.one;
             ConstraintUtils.MakeWorldSpace(worldAnchor);
 
-            var obj = GameObjects.Create("Scale Detector (Sender)", worldAnchor);
+            var obj = GameObjects.Create("Sender", worldAnchor);
             obj.localPosition = new Vector3(ContactRadius, 0, 0);
 
             var sender = obj.AddComponent<VRCContactSender>();
             sender.radius = ContactRadius;
             sender.collisionTags.Add(Tag);
-            return obj;
-        }
-
-        private VFGameObject CreateMarker() {
-            var obj = GameObjects.Create("Scale Detector (Marker)", senderObject.Value.parent);
-            obj.localPosition = new Vector3(-ContactRadius, 0, 0);
             return obj;
         }
     }

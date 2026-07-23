@@ -29,6 +29,9 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly TmpDirService tmpDirService;
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+        [VFAutowired] private readonly ObjectPathsLookupService objectPaths;
 
         private class SavedAnimator {
             public RuntimeAnimatorController controller;
@@ -85,10 +88,18 @@ namespace VF.Service {
                 animator.avatar = saved.avatar;
                 if (obj == avatarObject) {
                     if (saved.controller != null) {
-                        animator.runtimeAnimatorController = fx.GetRaw();
+                        animator.runtimeAnimatorController = VRCAvatarUtils.GetAvatarController(avatar, fx.GetType()).Item2;
                     }
                 } else {
-                    animator.runtimeAnimatorController = saved.controller;
+                    if (saved.clone != null) {
+                        animator.runtimeAnimatorController = saved.clone.Save(
+                            obj,
+                            tmpDirService.GetTempDir(),
+                            $"VRCFury {saved.clone.name} - {obj.name}"
+                        );
+                    } else {
+                        animator.runtimeAnimatorController = saved.controller;
+                    }
                     animator.enabled = saved.enabled;
                 }
             }
@@ -102,8 +113,15 @@ namespace VF.Service {
                 if (owner == avatarObject) continue;
                 if (saved.controller == null) continue;
                 if (saved.clone == null) {
-                    saved.clone = VFControllerWithVrcType.CopyAndLoadController(saved.controller, VRCAvatarDescriptor.AnimLayerType.Base);
-                    saved.controller = saved.clone?.GetRaw();
+                    saved.clone = VFControllerWithVrcType.Load(
+                        saved.controller,
+                        VRCAvatarDescriptor.AnimLayerType.Base,
+                        new VFLoadContext {
+                            OwnerObject = owner,
+                            AnimatorObject = owner,
+                            ObjectPathLookups = objectPaths.GetLookups()
+                        }
+                    );
                 }
                 if (saved.clone == null) continue;
                 output.Add((owner, saved.clone));

@@ -30,7 +30,7 @@ namespace VF.Service {
             }
         }
 
-        private void CheckState(ControllerManager controller, VFLayer layer, AnimatorState state, AnimationClip noopClip) {
+        private void CheckState(ControllerManager controller, VFLayer layer, VFState state, VFClip noopClip) {
             // ReSharper disable once ReplaceWithSingleAssignment.True
             var replaceNulls = true;
             if (state.writeDefaultValues) {

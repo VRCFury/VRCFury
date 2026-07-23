@@ -46,7 +46,7 @@ namespace VF.Menu {
                 .ToList();
 
             return selected
-                .Where(go => !selected.Any(other => other != go && go.IsChildOf(other)))
+                .Where(go => !selected.Any(other => other != go && go.IsSameOrChildOf(other)))
                 .ToList();
         }
 

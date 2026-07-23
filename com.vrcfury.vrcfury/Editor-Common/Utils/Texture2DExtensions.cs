@@ -7,7 +7,6 @@ namespace VF.Utils {
     internal static class Texture2DExtensions {
         public static void ForceReadable(this Texture2D texture, bool on = true) {
             var so = new SerializedObject(texture);
-            so.Update();
             var sp = so.FindProperty("m_IsReadable");
             sp.boolValue = on;
             so.ApplyModifiedPropertiesWithoutUndo();

@@ -18,7 +18,6 @@ jobs:
           - [ 3.6.1, 2022.3.6f1 ]
           - [ 3.5.2, 2022.3.6f1 ]
           - [ 3.5.0, 2022.3.6f1 ]
-          - [ 3.4.2, 2019.4.31f1 ]
         platform:
           - windows
         sdkKind:
@@ -61,6 +60,7 @@ jobs:
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Verify Compile
+        id: tests
         uses: game-ci/unity-test-runner@08fd329f00a18efa297140b14ac28ebce742759e
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -73,6 +73,19 @@ jobs:
           customImage: ${{ steps.image.outputs.image }}
           customParameters: -testCategory VRCFury
           githubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Unity failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-logs-${{ matrix.sdkKind }}-${{ matrix.platform }}-${{ matrix.vrcsdkUnityVersion[0] }}-${{ matrix.vrcsdkUnityVersion[1] }}-attempt-${{ github.run_attempt }}
+          path: |
+            ${{ steps.tests.outputs.artifactsPath }}
+            ${{ runner.temp }}/_github_home/.config/unity3d/Editor.log
+            ${{ runner.temp }}/_github_home/.config/unity3d/Crashes
+            .github/test_project/Logs
+            .github/test_project/Library/Bee/bee_backend.log
+          if-no-files-found: warn
 
   deploy:
     needs: test

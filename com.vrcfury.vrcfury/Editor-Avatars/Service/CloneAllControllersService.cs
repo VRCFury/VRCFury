@@ -16,10 +16,12 @@ namespace VF.Service {
     [VFService]
     internal class CloneAllControllersService {
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly AnimatorHolderService animators;
 
         [FeatureBuilderAction(FeatureOrder.CloneAllControllers)]
         public void Apply() {
             controllers.GetAllUsedControllers();
+            animators.GetSubControllers();
         }
     }
 }

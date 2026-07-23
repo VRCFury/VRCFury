@@ -284,7 +284,7 @@ namespace VF.Inspector {
                     .SelectMany(skin => skin.bones)
                     .Where(bone => bone != null)
                     .ToArray();
-                var isInsideBone = bones.Any(bone => target.owner().IsChildOf(bone));
+                var isInsideBone = bones.Any(bone => target.owner().IsSameOrChildOf(bone));
                 var displayWarning = bones.Length > 0 && !isInsideBone;
                 boneWarning.SetVisible(displayWarning);
                 

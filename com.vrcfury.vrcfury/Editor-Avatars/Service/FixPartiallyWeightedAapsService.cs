@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using UnityEditor.Animations;
+using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
@@ -31,19 +32,19 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.FixPartiallyWeightedAaps)]
         public void Apply() {
             foreach (var state in new AnimatorIterator.States().From(fx).Where(VFLayer.Created)) {
-                if (state.motion is BlendTree tree) {
+                if (state.motion is VFTree tree) {
                     var aaps = new AnimatorIterator.Clips().From(tree)
                         .SelectMany(clip => clip.GetFloatBindings())
                         .Where(binding => binding.GetPropType() == EditorCurveBindingType.Aap)
                         .Select(binding => binding.propertyName)
                         .ToArray();
                     if (aaps.Any()) {
-                        var wrapper = VFBlendTreeDirect.Create(tree.name + " (AAP Fixed)");
+                        var directTree = VFBlendTreeDirect.Create(tree.name + " (AAP Fixed)");
                         var zeroClip = clipFactory.NewClip("Set AAPs to 0");
-                        wrapper.Add(zeroClip);
-                        wrapper.Add(tree);
-                        state.motion = wrapper;
-                        
+                        directTree.Add(zeroClip);
+                        directTree.Add(tree);
+                        state.motion = directTree;
+
                         foreach (var aap in aaps) {
                             // Ensure every tree that animates an AAP has a 1-weight clip that sets it to zero
                             zeroClip.SetAap(aap, 0);

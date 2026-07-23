@@ -1,93 +1,87 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor.Animations;
+using VF.Builder;
+using VF.Utils;
 
 namespace VF.Utils.Controller {
-    internal class VFTransition {
-        private readonly List<AnimatorStateTransition> createdTransitions = new List<AnimatorStateTransition>();
-        private Func<AnimatorStateTransition> transitionProvider;
-        public VFTransition(Func<AnimatorStateTransition> transitionProvider) {
-            this.transitionProvider = () => {
-                var trans = transitionProvider();
-                trans.duration = 0;
-                trans.canTransitionToSelf = false;
-                trans.hasExitTime = false;
-                createdTransitions.Add(trans);
-                return trans;
-            };
-        }
-        public VFTransition When() {
-            var transition = transitionProvider();
-            return this;
-        }
-        public VFTransition When(VFCondition cond) {
-            foreach (var t in cond.transitions) {
-                var transition = transitionProvider();
-                transition.conditions = t.ToArray();
-            }
-            return this;
-        }
-        public VFTransition WithTransitionToSelf() {
-            foreach (var t in createdTransitions) {
-                t.canTransitionToSelf = true;
-            }
-            var oldProvider = transitionProvider;
-            transitionProvider = () => {
-                var trans = oldProvider();
-                trans.canTransitionToSelf = true;
-                return trans;
-            };
-            return this;
-        }
-        public VFTransition Interruptable() {
-            foreach (var t in createdTransitions) {
-                t.interruptionSource = TransitionInterruptionSource.Destination;
-            }
-            var oldProvider = transitionProvider;
-            transitionProvider = () => {
-                var t = oldProvider();
-                t.interruptionSource = TransitionInterruptionSource.Destination;
-                return t;
-            };
-            return this;
-        }
-        public VFTransition WithTransitionDurationSeconds(float time) {
-            if (time < 0f) return this; // don't even bother
-            foreach (var t in createdTransitions) {
-                t.duration = time;
-            }
-            var oldProvider = transitionProvider;
-            transitionProvider = () => {
-                var trans = oldProvider();
-                trans.duration = time;
-                return trans;
-            };
-            return this;
-        }
-        public VFTransition WithTransitionExitTime(float time) {
-            if (time < 0f) return this; // don't even bother
-            foreach (var t in createdTransitions) {
-                t.hasExitTime = true;
-                t.exitTime = time;
-            }
-            var oldProvider = transitionProvider;
-            transitionProvider = () => {
-                var trans = oldProvider();
-                trans.hasExitTime = true;
-                trans.exitTime = time;
-                return trans;
-            };
-            return this;
+    internal class VFTransition : VFTransitionBase {
+        private AnimatorStateTransition sourceRaw;
+        public bool canTransitionToSelf { get; set; }
+        public bool hasExitTime { get; set; }
+        public bool hasFixedDuration { get; set; } = true;
+        public float exitTime { get; set; }
+        public float duration { get; set; }
+        public TransitionInterruptionSource interruptionSource { get; set; }
+
+        internal VFTransition() {
         }
 
-        public void AddCondition(VFCondition c) {
-            if (c.transitions.Count() != 1) {
-                throw new Exception("Cannot add 'or' conditions to an existing baked transition");
+        public static VFTransition Load(
+            AnimatorStateTransition raw,
+            IReadOnlyDictionary<AnimatorState, VFState> stateMap,
+            IReadOnlyDictionary<AnimatorStateMachine, VFStateMachine> stateMachineMap
+        ) {
+            if (raw == null) return null;
+            return new VFTransition {
+                sourceRaw = raw,
+                conditions = CloneConditions(raw.conditions),
+                destinationState = raw.destinationState != null ? stateMap.GetOrDefault(raw.destinationState) : null,
+                destinationStateMachine = raw.destinationStateMachine != null
+                    ? stateMachineMap.GetOrDefault(raw.destinationStateMachine)
+                    : null,
+                isExit = raw.isExit,
+                canTransitionToSelf = raw.canTransitionToSelf,
+                hasExitTime = raw.hasExitTime,
+                hasFixedDuration = raw.hasFixedDuration,
+                exitTime = raw.exitTime,
+                duration = raw.duration,
+                interruptionSource = raw.interruptionSource
+            };
+        }
+
+        public override AnimatorTransitionBase Save(
+            IReadOnlyDictionary<VFState, AnimatorState> stateMap,
+            IReadOnlyDictionary<VFStateMachine, AnimatorStateMachine> stateMachineMap,
+            VFSaveContext context
+        ) {
+            if (!HasDestination(stateMap, stateMachineMap)) {
+                return null;
             }
-            foreach (var t in createdTransitions) {
-                t.conditions = t.conditions.Concat(c.transitions.First()).ToArray();
-            }
+            var raw = sourceRaw != null
+                ? sourceRaw.Clone()
+                : VrcfObjectFactory.Create<AnimatorStateTransition>();
+            raw.conditions = CloneConditions(conditions);
+            raw.destinationState = destinationState != null ? stateMap.GetOrDefault(destinationState) : null;
+            raw.destinationStateMachine = destinationStateMachine != null
+                ? stateMachineMap.GetOrDefault(destinationStateMachine)
+                : null;
+            raw.isExit = isExit;
+            raw.canTransitionToSelf = canTransitionToSelf;
+            raw.hasExitTime = hasExitTime;
+            raw.hasFixedDuration = hasFixedDuration;
+            raw.exitTime = exitTime;
+            raw.duration = duration;
+            raw.interruptionSource = interruptionSource;
+            context.AddNewAsset(raw);
+            return raw;
+        }
+
+        public override VFTransitionBase Clone(
+            IReadOnlyDictionary<VFState, VFState> stateMap,
+            IReadOnlyDictionary<VFStateMachine, VFStateMachine> stateMachineMap
+        ) {
+            var clone = new VFTransition {
+                sourceRaw = sourceRaw,
+                canTransitionToSelf = canTransitionToSelf,
+                hasExitTime = hasExitTime,
+                hasFixedDuration = hasFixedDuration,
+                exitTime = exitTime,
+                duration = duration,
+                interruptionSource = interruptionSource
+            };
+            CopyBaseTo(clone, stateMap, stateMachineMap);
+            return clone;
         }
     }
 }

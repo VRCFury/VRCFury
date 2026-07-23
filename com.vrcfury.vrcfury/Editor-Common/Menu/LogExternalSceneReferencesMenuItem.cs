@@ -14,7 +14,7 @@ namespace VF.Menu {
         private static void Run() {
             VRCFExceptionUtils.ErrorDialogBoundary(() => {
                 var roots = Selection.gameObjects.AsVf().ToList();
-                roots = roots.Where(go => !roots.Any(other => other != go && go.IsChildOf(other))).ToList();
+                roots = roots.Where(go => !roots.Any(other => other != go && go.IsSameOrChildOf(other))).ToList();
                 if (roots.Count == 0) return;
 
                 var inside = roots.SelectMany(root => root.GetSelfAndAllChildren()).ToImmutableHashSet();

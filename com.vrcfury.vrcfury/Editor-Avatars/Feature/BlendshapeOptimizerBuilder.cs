@@ -40,6 +40,12 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.BlendshapeOptimizer)]
         public void Apply() {
             var keepMmdShapes = globals.allFeaturesInRun.Any(f => f is MmdCompatibility);
+            var blendshapeCurves = new Lazy<ICollection<(VFBinding, AnimationCurve)>>(() =>
+                controllers.GetAllUsedControllers()
+                    .SelectMany(GetBlendshapeCurves)
+                    .Concat(animators.GetSubControllers().SelectMany(pair => GetBlendshapeCurves(pair.controller)))
+                    .ToList()
+            );
 
             var logOutput = "";
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
@@ -52,7 +58,7 @@ namespace VF.Feature {
                 // will print with ┬─ at the start, for nicer viewing in the console
                 logOutput += $"\n\u252c\u2500 Optimizing {path}\n";
 
-                var animatedBlendshapes = CollectAnimatedBlendshapesForMesh(skin);
+                var animatedBlendshapes = CollectAnimatedBlendshapesForMesh(skin, blendshapeCurves);
 
                 bool ShouldKeepName(string name) {
                     if (animatedBlendshapes.Contains(name)) return true;
@@ -184,37 +190,21 @@ namespace VF.Feature {
             }
         }
 
-        private ICollection<(EditorCurveBinding, AnimationCurve)> GetBindings(VFGameObject obj, VFController controller) {
-            var prefix = obj.GetPath(avatarObject);
-
-            var clipsInController = new AnimatorIterator.Clips().From(controller);
-
-            return clipsInController
+        private IEnumerable<(VFBinding, AnimationCurve)> GetBlendshapeCurves(VFController controller) {
+            return new AnimatorIterator.Clips().From(controller)
                 .SelectMany(clip => clip.GetFloatCurves())
-                .Select(pair => {
-                    var (binding, curve) = pair;
-                    binding.path = ClipRewritersService.Join(prefix, binding.path, allowAdvancedOperators: false);
-                    return (binding, curve);
-                })
-                .ToList();
+                .Where(pair => pair.Item1.type == typeof(SkinnedMeshRenderer))
+                .Where(pair => pair.Item1.propertyName.StartsWith("blendShape."));
         }
 
-        private ICollection<string> CollectAnimatedBlendshapesForMesh(SkinnedMeshRenderer skin) {
-            var animatedBindings = controllers.GetAllUsedControllers()
-                .SelectMany(controller => GetBindings(avatarObject, controller))
-                .Concat(animators.GetSubControllers().SelectMany(pair =>
-                    GetBindings(pair.owner, pair.controller)
-                ))
-                .ToList();
-
-            var skinPath = skin.owner().GetPath(avatarObject);
-            
+        private ICollection<string> CollectAnimatedBlendshapesForMesh(
+            SkinnedMeshRenderer skin,
+            Lazy<ICollection<(VFBinding, AnimationCurve)>> animatedBindings
+        ) {
             var animatedBlendshapes = new HashSet<string>();
-            foreach (var tuple in animatedBindings) {
+            foreach (var tuple in animatedBindings.Value) {
                 var (binding, curve) = tuple;
-                if (binding.type != typeof(SkinnedMeshRenderer)) continue;
-                if (!binding.propertyName.StartsWith("blendShape.")) continue;
-                if (binding.path != skinPath) continue;
+                if (!binding.Targets(skin.owner())) continue;
                 var blendshape = binding.propertyName.Substring(11);
                 var animatesToNondefaultValue = false;
                 if (skin.HasBlendshape(blendshape)) {

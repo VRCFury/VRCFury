@@ -44,14 +44,13 @@ namespace VF.Feature {
 
             if (allRenderers) {
                 // Remove old fix attempts
-                foreach (var clip in fx.GetClips()) {
-                    foreach (var binding in clip.GetFloatBindings()) {
-                        if (binding.propertyName.Contains("_TPS_PenetratorLength") ||
-                            binding.propertyName.Contains("_TPS_PenetratorScale")) {
-                            clip.SetCurve(binding, null);
-                        }
+                fx.Rewrite(AnimationRewriter.RewriteBinding(binding => {
+                    if (binding.propertyName.Contains("_TPS_PenetratorLength")
+                        || binding.propertyName.Contains("_TPS_PenetratorScale")) {
+                        return null;
                     }
-                }
+                    return binding;
+                }));
             }
 
             foreach (var renderer in renderers) {

@@ -5,70 +5,71 @@ using VRC.SDKBase;
 
 namespace VF.Utils {
     internal static class VFStateAvatarExtensions {
-        private static VRCAvatarParameterDriver GetDriver(this VFState state) {
-            var exists = state.behaviours
-                .OfType<VRCAvatarParameterDriver>()
-                .FirstOrDefault(b => !b.localOnly);
-            if (exists != null) {
-                return exists;
-            }
-            var driver = state.AddBehaviour<VRCAvatarParameterDriver>();
-            driver.localOnly = false;
-            return driver;
+        private static VFBehaviour GetDriver(this VFState state) {
+            var exists = state.behaviours.FindBehaviour<VRCAvatarParameterDriver>(b => !b.localOnly);
+            if (exists != null) return exists;
+            return state.behaviours.AddBehaviour<VRCAvatarParameterDriver>(driver => {
+                driver.localOnly = false;
+            });
         }
-        private static VRC_AvatarParameterDriver.Parameter Drives(this VFState state, string param) {
-            var driver = state.GetDriver();
-            var p = new VRC_AvatarParameterDriver.Parameter();
-            p.name = param;
-            p.type = VRC_AvatarParameterDriver.ChangeType.Set;
-            driver.parameters.Add(p);
-            return p;
+        private static VFState AddDriverParameter(
+            this VFState state,
+            string param,
+            System.Action<VRC_AvatarParameterDriver.Parameter> edit
+        ) {
+            state.GetDriver().Edit<VRCAvatarParameterDriver>(driver => {
+                var p = new VRC_AvatarParameterDriver.Parameter {
+                    name = param,
+                    type = VRC_AvatarParameterDriver.ChangeType.Set
+                };
+                edit?.Invoke(p);
+                driver.parameters.Add(p);
+            });
+            return state;
         }
         public static VFState Drives(this VFState state, VFABool param, bool value) {
-            state.Drives(param).value = value ? 1 : 0;
-            return state;
+            return state.AddDriverParameter(param.Name(), p => p.value = value ? 1 : 0);
         }
         public static VFState Drives(this VFState state, VFAParam param, float value) {
-            state.Drives(param).value = value;
-            return state;
+            return state.AddDriverParameter(param.Name(), p => p.value = value);
         }
         public static VFState Drives(this VFState state, string param, float value) {
-            state.Drives(param).value = value;
-            return state;
+            return state.AddDriverParameter(param, p => p.value = value);
         }
         public static VFState DrivesRandom(this VFState state, VFAParam param, float min, float max) {
-            var p = state.Drives(param);
-            p.type = VRC_AvatarParameterDriver.ChangeType.Random;
-            p.valueMin = min;
-            p.valueMax = max;
-            return state;
+            return state.AddDriverParameter(param.Name(), p => {
+                p.type = VRC_AvatarParameterDriver.ChangeType.Random;
+                p.valueMin = min;
+                p.valueMax = max;
+            });
         }
         public static VFState DrivesDelta(this VFState state, VFAInteger param, float delta) {
-            var p = state.Drives(param);
-            p.type = VRC_AvatarParameterDriver.ChangeType.Add;
-            p.value = delta;
-            return state;
+            return state.AddDriverParameter(param.Name(), p => {
+                p.type = VRC_AvatarParameterDriver.ChangeType.Add;
+                p.value = delta;
+            });
         }
         public static VFState DrivesCopy(this VFState state, string from, string to, float fromMin = 0, float fromMax = 0, float toMin = 0, float toMax = 0) {
 #if ! VRCSDK_HAS_DRIVER_COPY
             throw new Exception("VRCFury feature failed to build because VRCSDK is outdated");
 #else
-            var driver = state.GetDriver();
-            var p = new VRC_AvatarParameterDriver.Parameter {
-                name = to,
-                source = from
-            };
+            state.GetDriver().Edit<VRCAvatarParameterDriver>(driver => {
+                var p = new VRC_AvatarParameterDriver.Parameter {
+                    name = to,
+                    source = from,
+                    type = VRC_AvatarParameterDriver.ChangeType.Copy
+                };
 
-            if (fromMin != 0 || fromMax != 0) {
-                p.sourceMin = fromMin;
-                p.sourceMax = fromMax;
-                p.destMin = toMin;
-                p.destMax = toMax;
-                p.convertRange = true;
-            }
+                if (fromMin != 0 || fromMax != 0) {
+                    p.sourceMin = fromMin;
+                    p.sourceMax = fromMax;
+                    p.destMin = toMin;
+                    p.destMax = toMax;
+                    p.convertRange = true;
+                }
 
-            p.type = VRC_AvatarParameterDriver.ChangeType.Copy;
-            driver.parameters.Add(p);
+                driver.parameters.Add(p);
+            });
             return state;
 #endif
         }

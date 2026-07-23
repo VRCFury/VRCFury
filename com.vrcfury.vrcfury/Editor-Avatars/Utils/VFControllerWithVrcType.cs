@@ -11,14 +11,21 @@ namespace VF.Utils {
             return vrcType;
         }
 
-        public VFControllerWithVrcType(AnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType vrcType) : base(ctrl) {
+        public VFControllerWithVrcType(VFController ctrl, VRCAvatarDescriptor.AnimLayerType vrcType) : base(ctrl) {
             this.vrcType = vrcType;
         }
 
-        public static VFControllerWithVrcType CopyAndLoadController(RuntimeAnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType type) {
-            var baseCopy = VFController.CopyAndLoadController(ctrl);
+        public static VFControllerWithVrcType Load(
+            RuntimeAnimatorController ctrl,
+            VRCAvatarDescriptor.AnimLayerType type,
+            VFLoadContext context
+        ) {
+            if (context == null) throw new System.ArgumentNullException(nameof(context));
+            if (context.OwnerObject == null) throw new System.ArgumentNullException(nameof(context.OwnerObject));
+            if (context.AnimatorObject == null) throw new System.ArgumentNullException(nameof(context.AnimatorObject));
+            var baseCopy = VFController.Load(ctrl, context);
             if (baseCopy == null) return null;
-            var output = new VFControllerWithVrcType(baseCopy.GetRaw(), type);
+            var output = new VFControllerWithVrcType(baseCopy, type);
             output.ApplyBaseMask(type);
             return output;
         }
@@ -34,7 +41,7 @@ namespace VF.Utils {
             var baseMask = layer0.mask;
             if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
                 if (baseMask == null) {
-                    baseMask = AvatarMaskExtensions.DefaultFxMask();
+                    baseMask = VFMask.DefaultFxMask();
                 } else {
                     baseMask = baseMask.Clone();
                 }
@@ -44,7 +51,7 @@ namespace VF.Utils {
                     // until they fix this. But we fix it here for them temporarily so they can use play mode for now.
                     // Gesture controllers merged using Full Controller with no base mask will slip through and be allowed
                     // by this.
-                    baseMask = AvatarMaskExtensions.Empty();
+                    baseMask = VFMask.Empty();
                     baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
                     baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
                 } else {

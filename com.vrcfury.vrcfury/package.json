@@ -3,7 +3,7 @@
   "displayName": "VRCFury",
   "version": "0.0.0",
   "description": "Non-Destructive Tools for VRChat Avatars",
-  "unity" : "2019.4",
+  "unity" : "2022.3",
   "author": {
     "name": "VRCFury"
   },

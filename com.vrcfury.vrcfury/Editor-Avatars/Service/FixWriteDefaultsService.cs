@@ -28,11 +28,10 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
 
-        public void RecordDefaultNow(EditorCurveBinding binding, bool isFloat, bool force = false) {
-            if (binding.type == typeof(Animator)) return;
+        public void RecordDefaultNow(VFBinding binding, bool isFloat, bool force = false) {
+            if (binding.IsAnimatorBinding()) return;
             if (GetDefaultClip().GetCurve(binding, isFloat) != null) return;
-            if (!bindingStateService.Get(binding, isFloat, out var value)) return;
-            
+
             var shouldRecord = force;
             if (!shouldRecord) {
                 // We must avoid recording our own defaults when WD is on, because a unity bug with WD on can cause our
@@ -40,21 +39,25 @@ namespace VF.Service {
                 var settings = GetBuildSettings();
                 shouldRecord = !settings.useWriteDefaults;
             }
+
+            FloatOrObject value = null;
             if (!shouldRecord) {
                 // If our calculated default value doesn't match unity's default value, we record the default even if we're using WD on
                 // because if we don't, unity will use its own default value which will be wrong.
+                if (!bindingStateService.Get(binding, isFloat, out value)) return;
                 var found = bindingStateService.Get(binding, isFloat, out var valueDeterminedByUnity, true);
                 shouldRecord = !found || value != valueDeterminedByUnity;
             }
 
             if (shouldRecord) {
+                if (value == null && !bindingStateService.Get(binding, isFloat, out value)) return;
                 GetDefaultClip().SetCurve(binding, value);
             }
         }
 
         private VFLayer _defaultLayer = null;
-        private AnimationClip _defaultClip = null;
-        public AnimationClip GetDefaultClip() {
+        private VFClip _defaultClip = null;
+        public VFClip GetDefaultClip() {
             if (_defaultClip == null) {
                 _defaultClip = clipFactory.NewClip("Defaults");
                 _defaultLayer = fx.NewLayer("Defaults", 0);
@@ -79,7 +82,7 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.RecordAllDefaults)]
         public void RecordAllDefaults() {
-            var propsInNonFx = new HashSet<EditorCurveBinding>();
+            var propsInNonFx = new HashSet<VFBinding>();
             foreach (var c in controllers.GetAllUsedControllers()) {
                 if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX) continue;
                 foreach (var layer in c.GetLayers()) {
@@ -95,20 +98,18 @@ namespace VF.Service {
                 }
             }
 
-            foreach (var layer in GetMaintainedLayers(fx)) {
-                foreach (var state in new AnimatorIterator.States().From(layer)) {
-                    if (!state.writeDefaultValues) continue;
-                    foreach (var clip in new AnimatorIterator.Clips().From(state)) {
-                        foreach (var binding in clip.GetFloatBindings()) {
-                            if (propsInNonFx.Contains(binding.Normalize())) continue;
-                            RecordDefaultNow(binding, true);
-                        }
-                        foreach (var binding in clip.GetObjectBindings()) {
-                            if (propsInNonFx.Contains(binding.Normalize())) continue;
-                            RecordDefaultNow(binding, false);
-                        }
-                    }
-                }
+            var bindings = GetMaintainedLayers(fx)
+                .SelectMany(layer => new AnimatorIterator.States().From(layer))
+                .Where(state => state.writeDefaultValues)
+                .SelectMany(state => new AnimatorIterator.Clips().From(state))
+                .SelectMany(clip => clip.GetFloatBindings().Select(binding => (binding, isFloat: true))
+                    .Concat(clip.GetObjectBindings().Select(binding => (binding, isFloat: false))))
+                .Distinct()
+                .Where(pair => !propsInNonFx.Contains(pair.binding.Normalize()))
+                .ToArray();
+
+            foreach (var (binding, isFloat) in bindings) {
+                RecordDefaultNow(binding, isFloat);
             }
         }
 

@@ -40,8 +40,8 @@ namespace VF.Feature {
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager avatarMenu => menuService.GetMenu();
         [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly ClipRewritersService clipRewritersService;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
+        [VFAutowired] private readonly ObjectPathsLookupService objectPaths;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -68,13 +68,26 @@ namespace VF.Feature {
             }
 
             var fromControllers = new List<VFControllerWithVrcType>();
+            var baseObject = GetBaseObject(model, featureBaseObject);
             foreach (var c in model.controllers) {
                 var source = c.controller.Get();
                 if (source == null) {
                     missingAssets.Add(c.controller);
                     continue;
                 }
-                var copy = VFControllerWithVrcType.CopyAndLoadController(source, c.type);
+                Debug.Log($"Merging controller from {source.GetPathAndName()}");
+                var copy = VFControllerWithVrcType.Load(
+                    source,
+                    c.type,
+                    new VFLoadContext {
+                        OwnerObject = baseObject,
+                        AnimatorObject = globals.avatarObject,
+                        RootBindingsApplyToAvatar = model.rootBindingsApplyToAvatar,
+                        AdjustRootScale = true,
+                        ObjectPathLookups = objectPaths.GetLookups(),
+                        RewritePath = path => AnimationBindingUtils.RewriteRelativePath(path, model.rewriteBindings)
+                    }
+                );
                 if (copy != null) {
                     fromControllers.Add(copy);
                 }
@@ -87,8 +100,10 @@ namespace VF.Feature {
                 var to = controllers.GetController(from.vrcType);
 
                 // Fail if trying to merge a controller that is on the avatar descriptor
-                if (VrcfObjectCloner.GetOriginal(to.GetRaw()) != null && to.GetRaw().GetCloneSource() == from.GetRaw().GetCloneSource()) {
-                    if (AssetDatabase.GetAssetPath(to.GetRaw().GetCloneSource())?.ToLower().Contains("goloco") ?? false) {
+                var toSource = to.GetSourceAsset();
+                var fromSource = from.GetSourceAsset();
+                if (toSource != null && toSource == fromSource) {
+                    if (AssetDatabase.GetAssetPath(toSource)?.ToLower().Contains("goloco") ?? false) {
                         throw new Exception(
                             "You've installed GogoLoco using VRCFury, but your avatar descriptor also contains GogoLoco controllers." +
                             " Make sure your Avatar Descriptor does not contain any gogoloco files."
@@ -148,8 +163,9 @@ namespace VF.Feature {
                 if (inject == null) continue;
                 if (inject.sourceObject == null) continue;
                 if (string.IsNullOrWhiteSpace(inject.sourceParam)) continue;
+                if (string.IsNullOrWhiteSpace(inject.targetParam)) continue;
                 var resolvedParam = RewriteParamName(inject.targetParam);
-                if (resolvedParam == null) continue;
+                if (string.IsNullOrWhiteSpace(resolvedParam)) continue;
                 parameterInjectService.Register(new ParameterInjectService.Request {
                     sourceObject = inject.sourceObject,
                     sourceParam = inject.sourceParam,
@@ -306,31 +322,6 @@ namespace VF.Feature {
             }
         }
 
-        private static string RewritePath(FullController model, string path) {
-            foreach (var rewrite in model.rewriteBindings) {
-                var from = rewrite.from;
-                if (from == null) from = "";
-                while (from.EndsWith("/")) from = from.Substring(0, from.Length - 1);
-                var to = rewrite.to;
-                if (to == null) to = "";
-                while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
-
-                if (from == "") {
-                    path = ClipRewritersService.Join(to, path);
-                    if (rewrite.delete) return null;
-                } else if (path.StartsWith(from + "/")) {
-                    path = path.Substring(from.Length + 1);
-                    path = ClipRewritersService.Join(to, path);
-                    if (rewrite.delete) return null;
-                } else if (path == from) {
-                    path = to;
-                    if (rewrite.delete) return null;
-                }
-            }
-
-            return path;
-        }
-
         private void Merge(VFController from, ControllerManager to) {
             var type = to.GetType();
 
@@ -340,17 +331,6 @@ namespace VF.Feature {
                     avatar.autoLocomotion = false;
                 }
             }
-
-            // Rewrite clips
-            from.Rewrite(AnimationRewriter.Combine(
-                AnimationRewriter.RewritePath(path => RewritePath(model, path)),
-                clipRewritersService.CreateNearestMatchPathRewriter(
-                    GetBaseObject(model, featureBaseObject),
-                    rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
-                ),
-                clipRewritersService.AdjustRootScale(),
-                clipRewritersService.AnimatorBindingsAlwaysTargetRoot()
-            ));
 
             // Rewrite params
             // (we do this after rewriting paths to ensure animator bindings all hit "")
@@ -445,7 +425,7 @@ namespace VF.Feature {
                     smoothedDict[rewritten] = smoothed;
                 }
 
-                VFControllerAvatarExtensions.doNotRewriteCopyDriverSources(() => {
+                VFParameterRewriteSettings.WithoutCopyDriverSourceRewrites(() => {
                     to.RewriteParameters(name => {
                         if (smoothedDict.TryGetValue(name, out var smoothed)) {
                             return smoothed;
@@ -701,44 +681,50 @@ namespace VF.Feature {
 
             content.Add(adv);
 
-            content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-                var debug = new VisualElement();
-                if (avatarObject == null) return debug;
-                
-                var baseObject = GetBaseObject(model, componentObject);
-                var controllers = model.controllers
-                    .Select(c => c?.controller?.Get() as AnimatorController)
-                    .NotNull()
-                    .ToList();
-                var usesWdOff = controllers
-                    .SelectMany(c => new AnimatorIterator.States().From(new VFController(c)))
-                    .Any(state => !state.writeDefaultValues);
+            if (avatarObject != null) {
                 var rewrites = prop.FindPropertyRelative("rewriteBindings");
-                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
-                    controllers,
-                    baseObject,
-                    path => RewritePath(model, path),
-                    addPathRewrite: path => {
-                        VRCFuryEditorUtils.AddToList(rewrites, entry => {
-                            entry.FindPropertyRelative("from").stringValue = path;
-                            entry.FindPropertyRelative("to").stringValue = "";
-                        });
+                IVisualElementScheduledItem scheduledRefresh = null;
+                System.Action refreshWarnings = null;
+                void ScheduleRefreshWarnings() {
+                    scheduledRefresh?.Pause();
+                    scheduledRefresh = content.schedule.Execute(() => {
+                        scheduledRefresh = null;
+                        refreshWarnings?.Invoke();
+                    }).StartingIn(2000);
+                }
+                VisualElement BuildWarnings() {
+                    var warningsContainer = new VisualElement();
+                    warningsContainer.Clear();
+                    var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
+                        model.controllers
+                            .Select(c => c?.controller?.Get() as AnimatorController)
+                            .NotNull(),
+                        GetBaseObject(model, componentObject),
+                        path => AnimationBindingUtils.RewriteRelativePath(path, model.rewriteBindings),
+                        addPathRewrite: path => {
+                            VRCFuryEditorUtils.AddToList(rewrites, entry => {
+                                entry.FindPropertyRelative("from").stringValue = path;
+                                entry.FindPropertyRelative("to").stringValue = "";
+                            });
+                            ScheduleRefreshWarnings();
+                        }
+                    );
+                    foreach (var warning in warnings) {
+                        warningsContainer.Add(warning);
                     }
-                ).ToList();
-                if (usesWdOff) {
-                    warnings.Add(VRCFuryEditorUtils.Warn(
-                        "This controller uses WD off!" +
-                        " If you want this prop to be reusable, you should use WD on." +
-                        " VRCFury will automatically convert the WD on or off to match the client's avatar," +
-                        " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost."
-                    ));
-                }
-                foreach (var c in warnings) {
-                    debug.Add(c);
-                }
+                    warningsContainer.TrackSerializedObjectValue(
+                        prop.serializedObject,
+                        _ => ScheduleRefreshWarnings()
+                    );
 
-                return debug;
-            }));
+                    return warningsContainer;
+                }
+                content.Add(VRCFuryEditorUtils.RefreshOnTrigger(
+                    BuildWarnings,
+                    prop.serializedObject,
+                    out refreshWarnings
+                ));
+            }
 
             return content;
         }

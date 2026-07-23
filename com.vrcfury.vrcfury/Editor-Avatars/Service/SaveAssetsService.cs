@@ -1,53 +1,67 @@
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
     [VFService]
     internal class SaveAssetsService {
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly TmpDirService tmpDirService;
 
         [FeatureBuilderAction(FeatureOrder.SaveAssets)]
         public void Run() {
-            // This works without WithoutAssetEditing in <2022, but in unity 6+, saving an asset during AssetEditing
-            // causes the Asset Path to never show up until AssetEditing is ended, which breaks NeedsSaved and
-            // AttachAsset
-            VRCFuryAssetDatabase.WithoutAssetEditing(() => {
-                var tmpDir = tmpDirService.GetTempDir();
-                var session = new SaveAssetsSession();
+            Run(controllers.GetAllUsedControllers());
+        }
 
-                // Save mats and meshes
-                foreach (var component in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
-                    session.SaveUnsavedComponentAssets(component, tmpDir);
+        public void Run(IEnumerable<ControllerManager> controllersToSave) {
+            var controllersToSaveArray = controllersToSave.ToArray();
+            foreach (var controller in controllersToSaveArray) {
+                controller.parameters = controller.parameters
+                    .OrderBy(p => p.name)
+                    .ToArray();
+                var saved = controller.Save(
+                    avatarObject,
+                    tmpDirService.GetTempDir(),
+                    $"VRCFury {controller.GetType()}"
+                );
+                VRCAvatarUtils.SetAvatarController(avatar, controller.GetType(), saved);
+            }
+            if (controllersToSaveArray.Any(controller => controller == controllers.GetFx())) {
+                var rootAnimator = avatarObject.GetComponent<Animator>();
+                if (rootAnimator != null && rootAnimator.runtimeAnimatorController != null) {
+                    rootAnimator.runtimeAnimatorController = VRCAvatarUtils.GetAvatarController(avatar, controllers.GetFx().GetType()).Item2;
                 }
+            }
 
-                // Special handling for mask and controller names
-                foreach (var controller in controllers.GetAllMutatedControllers()) {
-                    foreach (var layer in controller.GetLayers()) {
-                        if (layer.mask != null) {
-                            layer.mask.name = "Mask for " + layer.name;
-                        }
-                    }
-
-                    session.SaveAssetAndChildren(
-                        controller.GetRaw(),
-                        $"VRCFury {controller.GetType().ToString()}",
-                        tmpDir,
-                        true
-                    );
+            var tmpDir = tmpDirService.GetTempDir();
+            var session = new SaveAssetsSession();
+            BinaryContainer otherAssetsParent = null;
+            BinaryContainer GetOtherAssetsParent() {
+                if (otherAssetsParent == null) {
+                    otherAssetsParent = VrcfObjectFactory.Create<BinaryContainer>();
+                    otherAssetsParent.name = "Other";
+                    session.SaveAssetAndChildren(otherAssetsParent, "VRCFury Other", tmpDir);
                 }
+                return otherAssetsParent;
+            }
 
-                // Save everything else
-                foreach (var component in avatarObject.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                    session.SaveUnsavedComponentAssets(component, tmpDir);
-                }
+            // Save mats and meshes
+            session.SaveUnsavedComponentAssets(avatar, tmpDir, GetOtherAssetsParent);
+            foreach (var component in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
+                session.SaveUnsavedComponentAssets(component, tmpDir, GetOtherAssetsParent);
+            }
+            foreach (var audioSource in avatarObject.GetComponentsInSelfAndChildren<AudioSource>()) {
+                session.SaveUnsavedComponentAssets(audioSource, tmpDir, GetOtherAssetsParent);
+            }
 
-                session.FlushWorkLogManifest(tmpDir);
-            });
+            SaveAssetsSession.FlushWorkLogManifest(tmpDir);
         }
     }
 }

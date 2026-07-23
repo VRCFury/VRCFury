@@ -19,7 +19,7 @@ namespace VF.Hooks {
      * This patch causes the ftLightmapsStorage to "awake" (again) during the play mode scene build, which IS
      * the right time, which resolves this issue.
      */
-    public class BakeryStaticBatchPlayModeFixHook : IProcessSceneWithReport {
+    internal class BakeryStaticBatchPlayModeFixHook : IProcessSceneWithReport {
         [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type ftLightmapsStorage = ReflectionUtils.GetTypeFromAnyAssembly("ftLightmapsStorage");

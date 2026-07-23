@@ -6,19 +6,20 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Poiyomi UV Tile")]
     internal class PoiyomiUVTileActionBuilder : ActionBuilder<PoiyomiUVTileAction> {
 
-        public AnimationClip Build(PoiyomiUVTileAction model) {
+        public VFClip Build(PoiyomiUVTileAction model) {
             return MakeClip(model, 0);
         }
-        public AnimationClip BuildOff(PoiyomiUVTileAction model) {
+        public VFClip BuildOff(PoiyomiUVTileAction model) {
             return MakeClip(model, 1);
         }
 
-        private AnimationClip MakeClip(PoiyomiUVTileAction model, int value) {
+        private VFClip MakeClip(PoiyomiUVTileAction model, int value) {
             var clip = NewClip();
             var renderer = model.renderer;
             if (renderer == null) return clip;

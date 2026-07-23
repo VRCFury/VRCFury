@@ -7,11 +7,12 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 using Object = UnityEngine.Object;
 
 namespace VF.Service {
     /**
-     * Allows setting / retrieving properties on the avatar, given the corresponding EditorCurveBinding.
+     * Allows setting / retrieving properties on the avatar, given the corresponding VFBinding.
      * Typically, this would be trivial, but unfortunately there are a lot of small edges cases which must be handled.
      */
     [VFService]
@@ -19,10 +20,10 @@ namespace VF.Service {
         [VFAutowired] private readonly GlobalsService globals;
         private VFGameObject avatarObject => globals.avatarObject;
 
-        public void ApplyClip(AnimationClip clip, string reason) {
-            var copy = clip.Clone();
-            copy.FinalizeAsset();
-            copy.SampleAnimation(avatarObject, 0);
+        public void ApplyClip(VFClip clip, string reason) {
+            var raw = clip?.Save(avatarObject) as AnimationClip;
+            raw?.SampleAnimation(avatarObject, 0);
+            if (clip == null) return;
             foreach (var pair in clip.GetAllCurves()) {
                 var binding = pair.Item1;
                 var curve = pair.Item2;
@@ -32,7 +33,7 @@ namespace VF.Service {
             }
         }
 
-        public bool Get(EditorCurveBinding binding, bool isFloat, out FloatOrObject data, bool trustUnity = false) {
+        public bool Get(VFBinding binding, bool isFloat, out FloatOrObject data, bool trustUnity = false) {
             if (isFloat) {
                 var r = GetFloat(binding, out var d, trustUnity);
                 data = d;
@@ -44,7 +45,7 @@ namespace VF.Service {
             }
         }
         
-        public bool GetFloat(EditorCurveBinding binding, out float data, bool trustUnity = false) {
+        public bool GetFloat(VFBinding binding, out float data, bool trustUnity = false) {
             // Unity always pulls material properties from the first material, even if it doesn't have the property.
             // We improve on this by pulling from the first material that actually has it.
             if (TryParseMaterialProperty(binding, out var matProp)) {
@@ -76,9 +77,9 @@ namespace VF.Service {
                 }
             }
 
-            return avatarObject.GetFloatValue(binding, out data);
+            return binding.TryGetCurrentFloat(avatarObject, out data);
         }
-        public bool GetObject(EditorCurveBinding binding, out Object data, bool trustUnity = false) {
+        public bool GetObject(VFBinding binding, out Object data, bool trustUnity = false) {
             if (!trustUnity) {
                 // Unity incorrectly says that material slots do not exist at all if the material in the slot is unset (null)
                 if (TryParseMaterialSlot(binding, out var renderer, out var slotNum)) {
@@ -88,7 +89,7 @@ namespace VF.Service {
             }
 
             try {
-                return AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out data);
+                return AnimationUtility.GetObjectReferenceValue(avatarObject, binding.ToEditorCurveBinding(avatarObject), out data);
             } catch (Exception) {
                 // Unity throws a `UnityException: Invalid type` if you request an object that is actually a float or vice versa
                 data = null;
@@ -96,7 +97,7 @@ namespace VF.Service {
             }
         }
 
-        public static bool TryParseMaterialProperty(EditorCurveBinding binding, out string propertyName) {
+        public static bool TryParseMaterialProperty(VFBinding binding, out string propertyName) {
             if (binding.propertyName.StartsWith("material.")) {
                 propertyName = binding.propertyName.Substring("material.".Length);
                 return true;
@@ -105,12 +106,12 @@ namespace VF.Service {
             return false;
         }
         
-        private bool TryFindObject(EditorCurveBinding binding, out VFGameObject obj) {
-            obj = avatarObject.Find(binding.path);
+        private bool TryFindObject(VFBinding binding, out VFGameObject obj) {
+            obj = binding.target;
             return obj != null;
         }
 
-        private bool TryFindComponent<T>(EditorCurveBinding binding, out T component) where T : UnityEngine.Component {
+        private bool TryFindComponent<T>(VFBinding binding, out T component) where T : UnityEngine.Component {
             component = null;
             if (!TryFindObject(binding, out var obj)) return false;
             if (binding.type == null || !typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) return false;
@@ -118,7 +119,7 @@ namespace VF.Service {
             return component != null;
         }
 
-        public bool TryParseMaterialSlot(EditorCurveBinding binding, out Renderer renderer, out int slotNum) {
+        public bool TryParseMaterialSlot(VFBinding binding, out Renderer renderer, out int slotNum) {
             renderer = null;
             if (!binding.TryParseArraySlot(out var prefix, out slotNum, out var suffix)) return false;
             if (prefix != "m_Materials") return false;
@@ -128,7 +129,7 @@ namespace VF.Service {
             return true;
         }
 
-        private void HandleMaterialSwaps(EditorCurveBinding binding, FloatOrObject val) {
+        private void HandleMaterialSwaps(VFBinding binding, FloatOrObject val) {
             if (val.IsFloat()) return;
             var newMat = val.GetObject() as Material;
             if (newMat == null) return;
@@ -152,7 +153,7 @@ namespace VF.Service {
         private readonly Dictionary<(VFGameObject, string), (float,string)> forcedMaterialProperties =
             new Dictionary<(VFGameObject, string), (float,string)>();
 
-        private void HandleMaterialProperties(EditorCurveBinding binding, FloatOrObject val_, string reason) {
+        private void HandleMaterialProperties(VFBinding binding, FloatOrObject val_, string reason) {
             if (!val_.IsFloat()) return;
             var val = val_.GetFloat();
             if (!TryParseMaterialProperty(binding, out var propName)) return;

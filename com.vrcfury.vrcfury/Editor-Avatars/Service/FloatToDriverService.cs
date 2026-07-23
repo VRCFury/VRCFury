@@ -15,6 +15,8 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.DriveNonFloatTypes)]
         public void Apply() {
+            if (driveRequests.Count == 0) return;
+
             var dbt = dbtLayerService.Create($"FloatToDriverService (Buffer DBT)");
             var math = dbtLayerService.GetMath(dbt);
 

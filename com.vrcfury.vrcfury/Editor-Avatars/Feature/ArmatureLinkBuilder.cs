@@ -232,7 +232,12 @@ namespace VF.Feature {
                     return "Avatar descriptor is missing";
                 }
 
-                var links = ArmatureLinkService.GetLinks(model, avatarObject);
+                var links = ArmatureLinkService.GetLinks(
+                    model,
+                    avatarObject,
+                    new[] { VRCFObjectPathCache.GetPerFrame(avatarObject) },
+                    VRCFArmatureCache.GetPerFrame(avatarObject)
+                );
                 if (links == null) {
                     return "No valid link target found";
                 }
@@ -304,7 +309,7 @@ namespace VF.Feature {
             {
                 var avatarObject = componentObject.GetAvatarRoot();
                 if (componentObject == avatarObject) return null;
-                var avatarHips = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Hips);
+                var avatarHips = VRCFArmatureCache.GetPerFrame(avatarObject).FindBoneOnArmatureOrNull(HumanBodyBones.Hips);
                 if (avatarHips != null) {
                     var pathToAvatarHips = avatarHips.GetPath(avatarObject);
                     var foundHips = componentObject.Find(pathToAvatarHips);

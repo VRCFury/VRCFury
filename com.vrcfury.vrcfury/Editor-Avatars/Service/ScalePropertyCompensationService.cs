@@ -15,7 +15,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public void AddScaledProp(VFGameObject scaleReference, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
-            var worldScale = worldScaleService.GetWorldScale(scaleReference);
+            var worldScale = worldScaleService.GetWorldScale(scaleReference, "tps scale fix");
             if (worldScale == null) return;
             AddScaledProp(worldScale, properties);
         }

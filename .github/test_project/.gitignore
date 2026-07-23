@@ -3,6 +3,7 @@ Temp/
 Logs/
 ProjectSettings/*
 !ProjectSettings/ProjectVersion.txt
+!ProjectSettings/ProjectSettings.asset
 *.csproj
 *.sln
 Packages/*

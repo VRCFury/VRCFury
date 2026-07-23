@@ -10,6 +10,7 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Model;
 using VF.Utils;
+using VF.Utils.Controller;
 using Action = VF.Model.StateAction.Action;
 
 namespace VF.Service {
@@ -38,12 +39,12 @@ namespace VF.Service {
             Always
         }
 
-        public Motion LoadState(string name, State state, MotionTimeMode motionTime = MotionTimeMode.Never) {
+        public VFMotion LoadState(string name, State state, MotionTimeMode motionTime = MotionTimeMode.Never) {
             return LoadStateAdv(name, state, motionTime: motionTime).onClip;
         }
-        
+
         public class BuiltAction {
-            public Motion onClip;
+            public VFMotion onClip;
             public bool useMotionTime;
         }
 
@@ -92,7 +93,7 @@ namespace VF.Service {
                     if (clip.IsStatic()) {
                         if (clipBuilder != null) {
                             var motionClip = clipBuilder.MergeSingleFrameClips(
-                                (0, VrcfObjectFactory.Create<AnimationClip>()),
+                                (0, VFClip.Create()),
                                 (1, clip)
                             );
                             motionClip.UseLinearTangents();
@@ -105,13 +106,13 @@ namespace VF.Service {
                 }
             }
 
-            Motion output;
+            VFMotion output;
             if (outputMotions.Any()) {
                 var dbt = VFBlendTreeDirect.Create(name);
-                output = dbt;
                 foreach (var motion in outputMotions) {
                     dbt.Add(motion);
                 }
+                output = dbt;
             } else {
                 output = clipFactory.NewClip(name);
             }
@@ -122,7 +123,7 @@ namespace VF.Service {
             };
         }
 
-        private Motion LoadAction(
+        private VFMotion LoadAction(
             string name,
             Action action,
             VFGameObject animObject,
@@ -139,9 +140,9 @@ namespace VF.Service {
             methodInjector.Set("animObject", animObject);
             methodInjector.Set("debugMode", debugMode);
             var buildMethod = builder.GetType().VFMethod("Build");
-            var clip = (Motion)methodInjector.FillMethod(buildMethod, builder);
+            var clip = (VFMotion)methodInjector.FillMethod(buildMethod, builder);
 
-            Motion output = clip;
+            VFMotion output = clip;
             if (fx != null && (action.localOnly || action.remoteOnly)) {
                 if (action.localOnly) {
                     output = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0).create(output, null);
@@ -153,9 +154,9 @@ namespace VF.Service {
             return output;
         }
         
-        public AnimationClip BuildOff(State state) {
+        public VFClip BuildOff(State state) {
             var animObject = componentObject();
-            var clip = VrcfObjectFactory.Create<AnimationClip>();
+            var clip = VFClip.Create();
 
             foreach (var action in GetActiveActions(state)) {
                 if (!modelTypeToBuilder.TryGetValue(action.GetType(), out var builder)) {
@@ -166,7 +167,7 @@ namespace VF.Service {
                 var methodInjector = new VRCFuryInjector();
                 methodInjector.Set(action);
                 methodInjector.Set("animObject", animObject);
-                var c = (AnimationClip)methodInjector.FillMethod(buildMethod, builder);
+                var c = (VFClip)methodInjector.FillMethod(buildMethod, builder);
                 clip.CopyFrom(c);
             }
 

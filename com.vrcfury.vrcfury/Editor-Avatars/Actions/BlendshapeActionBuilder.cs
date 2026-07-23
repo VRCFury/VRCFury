@@ -10,13 +10,14 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("BlendShape")]
     internal class BlendshapeActionBuilder : ActionBuilder<BlendShapeAction> {
         [VFAutowired] private readonly VFGameObject avatarObject;
-        
-        public AnimationClip Build(BlendShapeAction model) {
+
+        public VFClip Build(BlendShapeAction model) {
             var onClip = NewClip();
             var foundOne = false;
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {

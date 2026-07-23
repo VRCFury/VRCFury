@@ -64,8 +64,16 @@ namespace VF.Hooks {
                 return avatar.ViewPosition;
             };
 
-            VRCFuryHapticSocketEditor.getClosestBone = ClosestBoneUtils.GetClosestHumanoidBone;
-            VRCFuryHapticSocketEditor.getBoneOnArmature = VRCFArmatureUtils.FindBoneOnArmatureOrNull;
+            VRCFuryHapticSocketEditor.getClosestBone = obj => {
+                var avatarObject = obj.GetAvatarRoot();
+                return ClosestBoneUtils.GetClosestHumanoidBone(
+                    obj,
+                    new[] { VRCFObjectPathCache.GetPerFrame(avatarObject) },
+                    VRCFArmatureCache.GetPerFrame(avatarObject)
+                );
+            };
+            VRCFuryHapticSocketEditor.getBoneOnArmature = (avatarObject, bone) =>
+                VRCFArmatureCache.GetPerFrame(avatarObject).FindBoneOnArmatureOrNull(bone);
 
             VFGameObject.getUploadRoots = obj => {
                 return new[] { obj.GetAvatarRoot() };
@@ -105,16 +113,18 @@ namespace VF.Hooks {
                 var injector = new VRCFuryInjector();
                 injector.ImportOne(typeof(ActionClipService));
                 injector.ImportOne(typeof(ClipFactoryService));
+                injector.ImportOne(typeof(ObjectPathsLookupService));
                 injector.ImportScan(typeof(ActionBuilder));
                 injector.Set("avatarObject", avatarObject);
                 injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
+                injector.GetService<ObjectPathsLookupService>().Capture(avatarObject);
                 var mainBuilder = injector.GetService<ActionClipService>();
                 var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject, debugMode: true);
                 var bindings = new AnimatorIterator.Clips().From(test.onClip)
                     .SelectMany(clip => clip.GetAllBindings())
                     .ToImmutableHashSet();
                 var warnings =
-                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject);
+                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, gameObject);
 
                 foreach (var warning in warnings) {
                     debugInfo.Add(warning);

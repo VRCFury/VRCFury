@@ -182,7 +182,7 @@ namespace VF.Utils {
             return transform.Find(search);
         }
 
-        public bool IsChildOf(VFGameObject other) {
+        public bool IsSameOrChildOf(VFGameObject other) {
             return transform.IsChildOf(other);
         }
 
@@ -194,27 +194,13 @@ namespace VF.Utils {
                 }
                 return root.name + "/" + AnimationUtility.CalculateTransformPath(this, root);
             }
-            if (!IsChildOf(root)) {
+            if (!IsSameOrChildOf(root)) {
                 throw new Exception($"{GetPath()} is not a child of {root.GetPath()}");
             }
             if (this == root && prettyRoot) {
                 return "Avatar Root";
             }
             return AnimationUtility.CalculateTransformPath(this, root);
-        }
-
-        public bool GetFloatValue(EditorCurveBinding binding, out float data) {
-            // Material property bindings internally delegate into Material.GetFloat, which may apply material
-            // property drawers. Suppress that path here so AnimationUtility.GetFloatValue stays fast.
-            try {
-                using (SuppressMaterialPropertyDrawersHook.Suppress()) {
-                    return AnimationUtility.GetFloatValue(this, binding, out data);
-                }
-            } catch (Exception) {
-                // Unity throws a `UnityException: Invalid type` if you request an object that is actually a float or vice versa.
-                data = 0;
-                return false;
-            }
         }
 
         public VFGameObject Clone() {
@@ -296,15 +282,12 @@ namespace VF.Utils {
         }
 
         public VFConstraint[] GetConstraints(bool includeParents = false, bool includeChildren = false) {
-            return uploadRoots
-                .SelectMany(root => root.GetComponentsInSelfAndChildren<UnityEngine.Component>())
-                .Select(c => c.AsConstraint())
-                .NotNull()
+            return VFConstraint.GetConstraintsInSelfAndChildren(uploadRoots)
                 .Where(c => {
                     var affectedObject = c.GetAffectedObject();
                     if (affectedObject == null) return false;
-                    if (includeParents) return IsChildOf(affectedObject);
-                    if (includeChildren) return affectedObject.IsChildOf(this);
+                    if (includeParents) return IsSameOrChildOf(affectedObject);
+                    if (includeChildren) return affectedObject.IsSameOrChildOf(this);
                     return affectedObject == this;
                 })
                 .ToArray();

@@ -208,45 +208,42 @@ namespace VF.Builder.Haptics {
                 || propertyName == $"material.{SpsLegacy}";
         }
 
-        public static void AddMaterialPropertyAnimator(IEnumerable<MaterialProperty> properties) {
+        public static void AddMaterialPropertyAnimator(IEnumerable<MaterialProperty> properties, string outputDir) {
             var propertyList = (properties ?? new List<MaterialProperty>())
                 .Where(property => property?.component != null)
                 .ToList();
             if (propertyList.Count == 0) return;
 
             foreach (var group in propertyList.GroupBy(property => property.component.owner())) {
-                AddMaterialPropertyAnimator(group.Key, group);
+                AddMaterialPropertyAnimator(group.Key, group, outputDir);
             }
         }
 
-        private static void AddMaterialPropertyAnimator(VFGameObject obj, IEnumerable<MaterialProperty> properties) {
-            var clip = VrcfObjectFactory.Create<AnimationClip>();
-            clip.name = "SpsMaterialProperties";
+        private static void AddMaterialPropertyAnimator(
+            VFGameObject obj,
+            IEnumerable<MaterialProperty> properties,
+            string outputDir
+        ) {
+            var clip = VFClip.Create("SpsMaterialProperties");
 
-            var controller = VrcfObjectFactory.Create<AnimatorController>();
-            controller.name = "SpsMaterialProperties";
-            new VFController(controller)
+            var controller = VFController.Create("SpsMaterialProperties");
+            controller
                 .NewLayer("SPS Material Properties")
                 .NewState("Properties")
                 .WithAnimation(clip);
 
-            AddMaterialPropertyCurves(clip, obj, properties);
+            AddMaterialPropertyCurves(clip, properties);
 
             var animator = obj.AddComponent<Animator>();
-            animator.runtimeAnimatorController = controller;
+            animator.runtimeAnimatorController = controller.Save(obj, outputDir, "SpsMaterialProperties");
         }
 
-        public static void AddMaterialPropertyCurves(
-            AnimationClip clip,
-            VFGameObject animatorObject,
-            IEnumerable<MaterialProperty> properties
-        ) {
+        public static void AddMaterialPropertyCurves(VFClip clip, IEnumerable<MaterialProperty> properties) {
             foreach (var property in properties ?? new List<MaterialProperty>()) {
                 if (property?.component == null) continue;
                 var component = property.component;
                 var owner = component.owner();
-                var path = owner.GetPath(animatorObject);
-                clip.SetCurve(path, component.GetType(), property.propertyName, property.value);
+                clip.SetCurve(owner, component.GetType(), property.propertyName, property.value);
             }
         }
 

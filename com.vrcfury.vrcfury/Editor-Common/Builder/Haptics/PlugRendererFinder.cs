@@ -20,7 +20,7 @@ namespace VF.Builder.Haptics {
 
                     var bestRenderer = current.uploadRoots
                         .SelectMany(root => root.GetComponentsInSelfAndChildren<Renderer>())
-                        .Where(r => !r.owner().IsChildOf(current))
+                        .Where(r => !r.owner().IsSameOrChildOf(current))
                         .Select(r => (r, GetVertsWeightedToBone(r, current)))
                         .Where(pair => pair.Item2 > 0)
                         .OrderByDescending(pair => pair.Item2)

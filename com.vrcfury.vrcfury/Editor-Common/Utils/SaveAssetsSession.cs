@@ -8,13 +8,21 @@ using UnityEngine;
 
 namespace VF.Utils {
     internal class SaveAssetsSession {
-        private readonly HashSet<Object> workLogManifest = new HashSet<Object>();
+        private static readonly HashSet<Object> workLogManifest = new HashSet<Object>();
         private readonly HashSet<UnityEngine.Component> scannedComponents = new HashSet<UnityEngine.Component>();
         private readonly HashSet<Object> savedRootAssets = new HashSet<Object>();
 
-        public void SaveUnsavedComponentAssets(UnityEngine.Component component, string tmpDir) {
+        public void SaveUnsavedComponentAssets(
+            UnityEngine.Component component,
+            string tmpDir,
+            System.Func<Object> getOtherAssetsParent = null
+        ) {
             if (!scannedComponents.Add(component)) return;
-            foreach (var asset in GetUnsavedChildren(component, false, true)) {
+            foreach (var asset in GetUnsavedChildren(component, false)) {
+                if (getOtherAssetsParent != null) {
+                    SaveOtherAssetAndChildren(asset, getOtherAssetsParent());
+                    continue;
+                }
                 string filename;
                 if (asset.GetType().Name == "VRCExpressionsMenu") {
                     filename = "VRCFury Menu";
@@ -26,62 +34,79 @@ namespace VF.Utils {
                 SaveAssetAndChildren(
                     asset,
                     filename,
-                    tmpDir,
-                    true
+                    tmpDir
                 );
             }
         }
 
-        private static IList<Object> GetUnsavedChildren(Object obj, bool recurse, bool reuseOriginalClips) {
+        public void SaveOtherAssetAndChildren(Object asset, Object otherAssetsParent) {
+            var assets = GetUnsavedAssetAndChildren(asset)
+                .Distinct()
+                .OrderBy(child => child is Texture2D ? 0 : 1);
+            foreach (var child in assets) {
+                if (!savedRootAssets.Add(child)) continue;
+                VRCFuryAssetDatabase.AttachAsset(child, otherAssetsParent);
+                RecordWorkLog(child);
+            }
+        }
+
+        private static IList<Object> GetUnsavedChildren(Object obj, bool recurse) {
             var unsavedChildren = new List<Object>();
-            var clipReplacements = new Dictionary<Object, Object>();
             MutableManager.ForEachChild(obj, asset => {
+                if (asset is AnimatorController) return false;
                 if (asset == obj) return true;
                 if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
                 if (!VrcfObjectFactory.DidCreate(asset)) return false;
-                if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) return true;
-                if (asset is AnimationClip vac) {
-                    if (reuseOriginalClips) {
-                        var useOriginalClip = vac.GetUseOriginalUserClip();
-                        if (useOriginalClip != null) {
-                            clipReplacements[vac] = useOriginalClip;
-                            return false;
-                        }
-                    }
-                    vac.FinalizeAsset();
-                }
+                if (!IsUnsaved(asset)) return true;
                 unsavedChildren.Add(asset);
                 return recurse;
             });
-            if (clipReplacements.Count > 0) {
-                foreach (var o in unsavedChildren) {
-                    MutableManager.RewriteInternals(o, clipReplacements);
-                }
-            }
-            foreach (var o in unsavedChildren) {
-                if (o is AnimationClip clip) {
-                    // There's a bug in unity where if you change the reference pose using SerializedObject, sometimes it won't update
-                    // unity's internal cache and it'll blow up. This forces the cache to refresh. This bug still exists as of Unity 6.2.
-                    AnimationUtility.SetAnimationClipSettings(clip, AnimationUtility.GetAnimationClipSettings(clip));
-                }
-            }
             return unsavedChildren;
         }
 
-        public void SaveAssetAndChildren(Object asset, string filename, string tmpDir, bool reuseOriginalClips) {
+        private static IEnumerable<Object> GetUnsavedAssetAndChildren(Object asset) {
+            return GetUnsavedChildren(asset, true)
+                .Concat(IsUnsavedCreated(asset) ? new[] { asset } : Enumerable.Empty<Object>());
+        }
+
+        private static bool IsUnsaved(Object asset) {
+            return asset != null && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset));
+        }
+
+        private static bool IsUnsavedCreated(Object asset) {
+            return VrcfObjectFactory.DidCreate(asset) && IsUnsaved(asset);
+        }
+
+        public void SaveAssetAndChildren(Object asset, string filename, string tmpDir) {
+            SaveAssetAndChildren(asset, GetUnsavedChildren(asset, true), filename, tmpDir);
+        }
+
+        public void SaveAssetAndChildren(
+            Object asset,
+            IEnumerable<Object> children,
+            IEnumerable<Object> otherAssets,
+            string filename,
+            string tmpDir
+        ) {
+            var recursiveOtherAssets = otherAssets
+                .SelectMany(other => GetUnsavedChildren(other, true));
+            SaveAssetAndChildren(asset, children.Concat(otherAssets).Concat(recursiveOtherAssets), filename, tmpDir);
+        }
+
+        public void SaveAssetAndChildren(
+            Object asset,
+            IEnumerable<Object> children,
+            string filename,
+            string tmpDir
+        ) {
             if (!VrcfObjectFactory.DidCreate(asset)) return;
             if (!savedRootAssets.Add(asset)) return;
 
-            var unsavedChildren = GetUnsavedChildren(asset, true, reuseOriginalClips);
-
-            // Save child textures
-            // If we don't save textures before the materials that use them, unity just throws them away
-            foreach (var subAsset in unsavedChildren) {
-                if (subAsset is Texture2D) {
-                    VRCFuryAssetDatabase.SaveAsset(subAsset, tmpDir, filename + "_" + subAsset.name);
-                    RecordWorkLog(subAsset);
-                }
-            }
+            var unsavedChildren = children
+                .Where(IsUnsavedCreated)
+                .Distinct()
+                .OrderBy(subAsset => subAsset is Texture2D ? 0 : 1)
+                .ToList();
 
             // Save the main asset
             if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) {
@@ -91,7 +116,6 @@ namespace VF.Utils {
 
             // Attach children
             foreach (var subAsset in unsavedChildren) {
-                if (subAsset is Texture2D) continue;
                 if (subAsset is AnimatorStateMachine
                     || subAsset is AnimatorState
                     || subAsset is AnimatorTransitionBase
@@ -106,7 +130,7 @@ namespace VF.Utils {
             }
         }
 
-        private void RecordWorkLog(Object obj) {
+        private static void RecordWorkLog(Object obj) {
             if (obj is AnimatorTransitionBase
                 || obj is Motion
                 || obj is AnimatorState
@@ -126,7 +150,11 @@ namespace VF.Utils {
             workLogManifest.Add(obj);
         }
 
-        public void FlushWorkLogManifest(string outputDir) {
+        public static void ResetWorkLogManifest() {
+            workLogManifest.Clear();
+        }
+
+        public static void FlushWorkLogManifest(string outputDir) {
             WriteWorkLogManifest(outputDir, workLogManifest);
             workLogManifest.Clear();
         }

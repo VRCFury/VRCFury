@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,11 +10,6 @@ namespace VF.Utils {
         [VFInit]
         private static void Init() {
             EditorApplication.update += () => cloneOriginals.Clear();
-        }
-
-        [CanBeNull]
-        public static T GetOriginal<T>(T clone) where T : Object {
-            return cloneOriginals.TryGetValue(clone, out var original) ? original as T : null;
         }
 
         public static T Clone<T>(T original) where T : Object {
@@ -46,11 +39,7 @@ namespace VF.Utils {
                 VrcfObjectFactory.Register(copy, copyWorkLogFrom: original);
             } else {
                 copy = (T)VrcfObjectFactory.Create(original.GetType(), copyWorkLogFrom: original);
-                if (original is AnimationClip originalClip && copy is AnimationClip copyClip) {
-                    AnimationClipExtensions.CopyData(originalClip, copyClip);
-                } else {
-                    EditorUtility.CopySerialized(original, copy);
-                }
+                EditorUtility.CopySerialized(original, copy);
             }
 
             copy.name = original.name;
