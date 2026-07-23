@@ -8,7 +8,6 @@ using UnityEngine;
 using VF.Component;
 using VF.Exceptions;
 using VF.Feature.Base;
-using VF.Hooks.UnityFixes;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
@@ -22,17 +21,13 @@ namespace VF.Builder {
         internal static void RunMain(VFGameObject avatarObject) {
             Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
 
-            using (SuppressMaterialPropertyDrawersHook.Suppress()) {
-                using (SkipAssetPostprocessorsForVrcfAssetWritesHook.Suppress()) {
-                    VRCFuryAssetDatabase.WithAssetEditing(() => {
-                        try {
-                            MaterialLocker.injectedAvatarObject = avatarObject;
-                            Run(avatarObject);
-                        }
-                        finally {
-                            MaterialLocker.injectedAvatarObject = null;
-                        }
-                    });
+            using (new VRCFuryBuildContext()) {
+                try {
+                    MaterialLocker.injectedAvatarObject = avatarObject;
+                    Run(avatarObject);
+                }
+                finally {
+                    MaterialLocker.injectedAvatarObject = null;
                 }
             }
         }
@@ -56,10 +51,6 @@ namespace VF.Builder {
                 return;
             }
             
-            // If we don't do this, a unity issue in RepaintImmediately can randomly throw a segfault
-            RenderTexture.active = null;
-            Camera.SetupCurrent(null);
-
             /*
              * We call SaveAssets here for two reasons:
              * 1. If the build crashes unity for some reason, the user won't lose changes

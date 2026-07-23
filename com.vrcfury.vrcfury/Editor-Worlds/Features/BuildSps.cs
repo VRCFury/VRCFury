@@ -11,55 +11,57 @@ using Object = UnityEngine.Object;
 namespace VF.Features {
     internal static class BuildSps {
         public static void Process(Scene scene) {
-            var spsMarkers = new SpsMarkersService();
-            foreach (var root in scene.Roots()) {
-                foreach (var socket in root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
-                    socket.Upgrade();
-                    try {
-                        var bakeResult = VRCFuryHapticSocketEditor.Bake(socket, spsMarkers);
-                        if (bakeResult != null) {
-                            var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", "Socket mat");
-                            SpsConfigurer.AddMaterialPropertyAnimator(
-                                bakeResult.screenMarkerResults.SelectMany(result => result.materialProperties),
-                                tmpDir
-                            );
-                            var saver = new SaveAssetsSession();
-                            foreach (var c in bakeResult.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                                saver.SaveUnsavedComponentAssets(c, tmpDir);
+            using (new VRCFuryBuildContext()) {
+                var spsMarkers = new SpsMarkersService();
+                foreach (var root in scene.Roots()) {
+                    foreach (var socket in root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
+                        socket.Upgrade();
+                        try {
+                            var bakeResult = VRCFuryHapticSocketEditor.Bake(socket, spsMarkers);
+                            if (bakeResult != null) {
+                                var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", "Socket mat");
+                                SpsConfigurer.AddMaterialPropertyAnimator(
+                                    bakeResult.screenMarkerResults.SelectMany(result => result.materialProperties),
+                                    tmpDir
+                                );
+                                var saver = new SaveAssetsSession();
+                                foreach (var c in bakeResult.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
+                                    saver.SaveUnsavedComponentAssets(c, tmpDir);
+                                }
+                                foreach (var c in bakeResult.screenMarkers
+                                             .SelectMany(c => c.GetComponentsInSelfAndChildren<UnityEngine.Component>())) {
+                                    saver.SaveUnsavedComponentAssets(c, tmpDir);
+                                }
+                                VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
                             }
-                            foreach (var c in bakeResult.screenMarkers
-                                         .SelectMany(c => c.GetComponentsInSelfAndChildren<UnityEngine.Component>())) {
-                                saver.SaveUnsavedComponentAssets(c, tmpDir);
-                            }
-                            VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
+                        } catch (Exception e) {
+                            throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath()}", e);
                         }
-                    } catch (Exception e) {
-                        throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath()}", e);
+                        Object.DestroyImmediate(socket);
                     }
-                    Object.DestroyImmediate(socket);
-                }
-                foreach (var plug in root.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
-                    plug.Upgrade();
-                    try {
-                        var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, spsMarkers: spsMarkers);
-                        if (bakeResult != null) {
-                            var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", bakeResult.oscId);
-                            if (bakeResult.resolverMaterialProperties != null) {
-                                SpsConfigurer.AddMaterialPropertyAnimator(bakeResult.resolverMaterialProperties, tmpDir);
+                    foreach (var plug in root.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
+                        plug.Upgrade();
+                        try {
+                            var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, spsMarkers: spsMarkers);
+                            if (bakeResult != null) {
+                                var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", bakeResult.oscId);
+                                if (bakeResult.resolverMaterialProperties != null) {
+                                    SpsConfigurer.AddMaterialPropertyAnimator(bakeResult.resolverMaterialProperties, tmpDir);
+                                }
+                                var saver = new SaveAssetsSession();
+                                foreach (var c in bakeResult.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
+                                    saver.SaveUnsavedComponentAssets(c, tmpDir);
+                                }
+                                foreach (var renderer in bakeResult.renderers) {
+                                    saver.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
+                                }
+                                VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
                             }
-                            var saver = new SaveAssetsSession();
-                            foreach (var c in bakeResult.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                                saver.SaveUnsavedComponentAssets(c, tmpDir);
-                            }
-                            foreach (var renderer in bakeResult.renderers) {
-                                saver.SaveUnsavedComponentAssets(renderer.renderer, tmpDir);
-                            }
-                            VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
+                        } catch (Exception e) {
+                            throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath()}", e);
                         }
-                    } catch (Exception e) {
-                        throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath()}", e);
+                        Object.DestroyImmediate(plug);
                     }
-                    Object.DestroyImmediate(plug);
                 }
             }
         }

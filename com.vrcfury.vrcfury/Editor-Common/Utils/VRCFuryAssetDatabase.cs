@@ -111,17 +111,34 @@ namespace VF.Utils {
 
         private static bool assetEditing = false;
 
-        public static void WithAssetEditing(Action go) {
-            if (!assetEditing) {
-                AssetDatabase.StartAssetEditing();
-                assetEditing = true;
+        private class AssetEditingScope : IDisposable {
+            private bool startedAssetEditing;
+
+            public AssetEditingScope(bool startedAssetEditing) {
+                this.startedAssetEditing = startedAssetEditing;
+            }
+
+            public void Dispose() {
+                if (!startedAssetEditing) return;
+                startedAssetEditing = false;
                 try {
-                    go();
-                } finally {
                     AssetDatabase.StopAssetEditing();
+                } finally {
                     assetEditing = false;
                 }
-            } else {
+            }
+        }
+
+        public static IDisposable WithAssetEditing() {
+            if (assetEditing) return new AssetEditingScope(false);
+
+            AssetDatabase.StartAssetEditing();
+            assetEditing = true;
+            return new AssetEditingScope(true);
+        }
+
+        public static void WithAssetEditing(Action go) {
+            using (WithAssetEditing()) {
                 go();
             }
         }
