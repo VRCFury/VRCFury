@@ -57,6 +57,9 @@ namespace VF.Service {
             foreach (var component in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 session.SaveUnsavedComponentAssets(component, tmpDir, GetOtherAssetsParent);
             }
+            foreach (var component in avatarObject.GetComponentsInSelfAndChildren<MeshFilter>()) {
+                session.SaveUnsavedComponentAssets(component, tmpDir, GetOtherAssetsParent);
+            }
             foreach (var audioSource in avatarObject.GetComponentsInSelfAndChildren<AudioSource>()) {
                 session.SaveUnsavedComponentAssets(audioSource, tmpDir, GetOtherAssetsParent);
             }
