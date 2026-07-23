@@ -15,6 +15,7 @@ namespace VF.Builder {
             = new Dictionary<VFGameObject, VRCFArmatureCache>();
         private readonly Dictionary<HumanBodyBones, string> bonePaths = new Dictionary<HumanBodyBones, string>();
         private readonly Dictionary<HumanBodyBones, VFGameObject> boneObjects = new Dictionary<HumanBodyBones, VFGameObject>();
+        private readonly HashSet<VFGameObject> nonEyeBoneParents = new HashSet<VFGameObject>();
 
         public static VRCFArmatureCache GetPerFrame(VFGameObject avatarObject) {
             return perFrame.GetOrCreate(
@@ -45,6 +46,16 @@ namespace VF.Builder {
                 bonePaths[bone] = path;
                 var obj = avatarObject.Find(path);
                 if (obj != null) boneObjects[bone] = obj;
+            }
+
+            nonEyeBoneParents.Add(avatarObject);
+            foreach (var pair in boneObjects) {
+                if (pair.Key == HumanBodyBones.LeftEye || pair.Key == HumanBodyBones.RightEye) continue;
+                var current = pair.Value;
+                while (current != null && current != avatarObject) {
+                    nonEyeBoneParents.Add(current);
+                    current = current.parent;
+                }
             }
         }
 
@@ -145,6 +156,10 @@ namespace VF.Builder {
 
         public IReadOnlyDictionary<HumanBodyBones, VFGameObject> GetAllBones() {
             return boneObjects;
+        }
+
+        public bool IsNonEyeBoneParent(VFGameObject obj) {
+            return nonEyeBoneParents.Contains(obj);
         }
     }
 }
