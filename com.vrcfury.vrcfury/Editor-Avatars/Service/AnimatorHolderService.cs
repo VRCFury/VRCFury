@@ -44,6 +44,8 @@ namespace VF.Service {
         }
 
         private readonly Dictionary<VFGameObject, SavedAnimator> savedAnimators = new Dictionary<VFGameObject, SavedAnimator>();
+        internal readonly Dictionary<VFGameObject, HashSet<VFGameObject>> animatedObjectsByRoot
+            = new Dictionary<VFGameObject, HashSet<VFGameObject>>();
 
         [FeatureBuilderAction(FeatureOrder.ResetAnimatorBefore)]
         public void ApplyBefore() {
@@ -122,6 +124,13 @@ namespace VF.Service {
                             ObjectPathLookups = objectPaths.GetLookups()
                         }
                     );
+                    animatedObjectsByRoot[owner] = saved.clone
+                        ?.GetClips()
+                        .SelectMany(clip => clip.GetAllBindings())
+                        .Select(binding => binding.target)
+                        .Where(target => target != null)
+                        .ToHashSet()
+                        ?? new HashSet<VFGameObject>();
                 }
                 if (saved.clone == null) continue;
                 output.Add((owner, saved.clone));
