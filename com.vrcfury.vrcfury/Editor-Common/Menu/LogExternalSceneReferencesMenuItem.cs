@@ -20,21 +20,17 @@ namespace VF.Menu {
                 var inside = roots.SelectMany(root => root.GetSelfAndAllChildren()).ToImmutableHashSet();
                 var findings = new List<string>();
 
-                foreach (var root in roots) {
-                    foreach (var obj in root.GetSelfAndAllChildren()) {
-                        foreach (var component in obj.GetComponents<UnityEngine.Component>()) {
-                            if (component == null) continue;
-                            var so = new SerializedObject(component);
-                            foreach (var prop in so.IterateFast()) {
-                                if (prop.propertyType != SerializedPropertyType.ObjectReference) continue;
-                                var target = prop.GetObjectReferenceValueSafe();
-                                var targetGo = GetSceneTarget(target);
-                                if (targetGo == null || inside.Contains(targetGo)) continue;
-                                findings.Add(
-                                    $"[VRCFury] External scene reference: {component.GetType().Name} on {obj.GetPath()} :: {prop.propertyPath} -> {targetGo.GetPath()}"
-                                );
-                            }
-                        }
+                foreach (var obj in inside) {
+                    foreach (var component in obj.GetComponents<UnityEngine.Component>()) {
+                        if (component == null) continue;
+                        if (component is Transform) continue;
+                        MutableManager.ForEachChildObjectReference(component, (path, target, set) => {
+                            var targetGo = GetSceneTarget(target);
+                            if (targetGo == null || inside.Contains(targetGo)) return;
+                            findings.Add(
+                                $"[VRCFury] External scene reference: {component.GetType().Name} on {obj.GetPath()} :: {path} -> {targetGo.GetPath()}"
+                            );
+                        });
                     }
                 }
 

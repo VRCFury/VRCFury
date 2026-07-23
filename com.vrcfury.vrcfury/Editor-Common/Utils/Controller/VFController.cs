@@ -553,7 +553,8 @@ namespace VF.Utils.Controller {
 
         public IEnumerable<VFTree> GetTrees(IEnumerable<VFLayer> layerList = null) {
             return GetMotions(layerList)
-                .SelectMany(motion => new AnimatorIterator.Trees().From(motion));
+                .SelectMany(motion => new AnimatorIterator.Trees().From(motion))
+                .Distinct();
         }
 
         public void RemoveWrongParamTypes() {
