@@ -52,7 +52,7 @@ namespace VF.Utils.Controller {
             var path = AssetDatabase.GetAssetPath(raw);
             if (string.IsNullOrEmpty(path)) {
                 output.changedFromOriginalSourceClip = true;
-            } else if (AssetDatabase.IsMainAsset(raw) && Path.GetFileName(path).StartsWith("proxy_")) {
+            } else if (raw.name.StartsWith("proxy_")) {
                 output.originalSourceIsProxyClip = true;
             }
 
