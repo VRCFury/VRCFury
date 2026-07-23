@@ -108,19 +108,20 @@ namespace VF.Utils.Controller {
                 return existing;
             }
             var saveBindingRoot = context.BindingRoot;
+            if (context.ReuseSourceAssets) {
+                var reuseSource = GetUseOriginalUserClip(saveBindingRoot);
+                if (reuseSource != null) {
+                    context.Motions[this] = reuseSource;
+                    var savedAdditiveReferencePoseClip = additiveReferencePoseClip?.Save(context) as AnimationClip;
+                    if (AnimationUtility.GetAnimationClipSettings(reuseSource).additiveReferencePoseClip == savedAdditiveReferencePoseClip) {
+                        return reuseSource;
+                    }
+                }
+            }
             var clip = originalSourceClip != null
                 ? originalSourceClip.Clone()
                 : VrcfObjectFactory.Create<AnimationClip>();
             context.Motions[this] = clip;
-            if (context.ReuseSourceAssets) {
-                var reuseSource = GetUseOriginalUserClip(saveBindingRoot);
-                var savedAdditiveReferencePoseClip = additiveReferencePoseClip?.Save(context) as AnimationClip;
-                if (reuseSource != null
-                    && AnimationUtility.GetAnimationClipSettings(reuseSource).additiveReferencePoseClip == savedAdditiveReferencePoseClip) {
-                    context.Motions[this] = reuseSource;
-                    return reuseSource;
-                }
-            }
             var savableCurves = curves
                 .Where(pair => !pair.Key.ShouldDropOnSave())
                 .ToArray();

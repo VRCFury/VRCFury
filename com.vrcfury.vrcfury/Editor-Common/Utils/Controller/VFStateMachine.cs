@@ -288,15 +288,28 @@ namespace VF.Utils.Controller {
         }
 
         internal IEnumerable<VFStateMachine> GetAllStateMachines() {
-            yield return this;
-            foreach (var child in childStateMachines) {
-                foreach (var sub in child.stateMachine.GetAllStateMachines()) {
-                    yield return sub;
+            var visited = new HashSet<VFStateMachine>();
+            var pending = new Stack<VFStateMachine>();
+            pending.Push(this);
+            while (pending.Count > 0) {
+                var stateMachine = pending.Pop();
+                if (!visited.Add(stateMachine)) continue;
+                yield return stateMachine;
+                foreach (var child in stateMachine.childStateMachines) {
+                    pending.Push(child.stateMachine);
                 }
             }
         }
 
         internal IEnumerable<VFTransitionBase> GetAllTransitions() {
+            foreach (var stateMachine in GetAllStateMachines()) {
+                foreach (var transition in stateMachine.GetLocalTransitions()) {
+                    yield return transition;
+                }
+            }
+        }
+
+        private IEnumerable<VFTransitionBase> GetLocalTransitions() {
             foreach (var t in entryTransitionsValue) yield return t;
             foreach (var t in anyStateTransitionsValue) yield return t;
             foreach (var child in childStateMachines) {
@@ -305,12 +318,15 @@ namespace VF.Utils.Controller {
             foreach (var state in statesValue) {
                 foreach (var t in state.transitions) yield return t;
             }
-            foreach (var child in childStateMachines) {
-                foreach (var t in child.stateMachine.GetAllTransitions()) yield return t;
-            }
         }
 
         internal void RewriteTransitionLists(System.Func<VFTransitionBase, OneOrMany<VFTransitionBase>> action) {
+            foreach (var stateMachine in GetAllStateMachines()) {
+                stateMachine.RewriteLocalTransitionLists(action);
+            }
+        }
+
+        private void RewriteLocalTransitionLists(System.Func<VFTransitionBase, OneOrMany<VFTransitionBase>> action) {
             var rewrittenEntryTransitions = entryTransitionsValue
                 .SelectMany(t => action(t).Get())
                 .OfType<VFEntryTransition>()
@@ -335,7 +351,6 @@ namespace VF.Utils.Controller {
                     .ToList();
                 child.transitions.Clear();
                 child.transitions.AddRange(rewrittenChildTransitions);
-                child.stateMachine.RewriteTransitionLists(action);
             }
             foreach (var state in statesValue) {
                 var rewritten = state.transitions
