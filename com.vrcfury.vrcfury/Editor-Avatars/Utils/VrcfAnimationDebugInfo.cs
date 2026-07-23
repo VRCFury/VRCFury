@@ -268,7 +268,7 @@ namespace VF.Utils {
                 msg += missingBindings.OrderBy(path => path).Join('\n');
                 warnings.Add(VRCFuryEditorUtils.Warn(msg));
             }
-            if (nonRewriteSafeBindings.Any()) {
+            if (isController && nonRewriteSafeBindings.Any()) {
                 var el = new VisualElement();
                 el.Add(VRCFuryEditorUtils.WrappedLabel(
                     $"The animations provided are not rename-safe! If this object is moved or renamed, the animations will break."
@@ -295,7 +295,7 @@ namespace VF.Utils {
 
                 warnings.Add(VRCFuryEditorUtils.Warn(el));
             }
-            if (outsidePrefabBindings.Any()) {
+            if (isController && outsidePrefabBindings.Any()) {
                 var msg = $"This prefab is not self-contained! It animates things outside of this object.";
                 msg += "\n";
                 msg += outsidePrefabBindings.OrderBy(path => path).Join('\n');
