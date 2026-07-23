@@ -158,6 +158,13 @@ namespace VF.Utils.Controller {
                 .Where(pair => !pair.Value.IsFloat)
                 .Select(pair => (pair.Key.ToEditorCurveBinding(saveBindingRoot), pair.Value.ObjectCurve))
                 .ToList();
+            foreach (var (_, curve) in objectCurves) {
+                foreach (var keyframe in curve) {
+                    if (VrcfObjectFactory.DidCreate(keyframe.value)) {
+                        context.AddNewAsset(keyframe.value);
+                    }
+                }
+            }
             if (objectCurves.Any()) {
                 AnimationUtility.SetObjectReferenceCurves(clip,
                     objectCurves.Select(p => p.Item1).ToArray(),
