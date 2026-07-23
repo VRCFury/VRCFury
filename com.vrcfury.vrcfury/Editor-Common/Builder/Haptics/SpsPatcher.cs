@@ -22,7 +22,7 @@ namespace VF.Builder.Haptics {
             public static readonly FieldInfo ShaderLibsPath = LilShaderContainer?.VFStaticField("shaderLibsPath");
         }
 
-        private const string HashBuster = "15";
+        private const string HashBuster = "16";
         
         public static void Patch(Material mat, bool keepImports) {
             if (!mat.shader) return;

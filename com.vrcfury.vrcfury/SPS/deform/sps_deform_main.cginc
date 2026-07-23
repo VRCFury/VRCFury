@@ -46,6 +46,8 @@ void sps_apply_real(
 	float worldLength = resolvedCell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_METADATA_LENGTH_INDEX));
 	float bakeScale = sps_cell_header_scale(resolvedCell);
 	bakedVertex *= bakeScale;
+	bakedNormal *= bakeScale;
+	bakedTangent *= bakeScale;
 
 	#ifdef SPS_MODIFY_BAKE
 		float3 bakedWorldOrigin = sps_cell_header_world(resolvedCell);
