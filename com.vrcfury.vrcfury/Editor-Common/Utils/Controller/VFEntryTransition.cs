@@ -23,7 +23,8 @@ namespace VF.Utils.Controller {
                 destinationState = raw.destinationState != null ? stateMap.GetOrDefault(raw.destinationState) : null,
                 destinationStateMachine = raw.destinationStateMachine != null
                     ? stateMachineMap.GetOrDefault(raw.destinationStateMachine)
-                    : null
+                    : null,
+                isExit = raw.isExit
             };
         }
 
@@ -43,6 +44,7 @@ namespace VF.Utils.Controller {
             raw.destinationStateMachine = destinationStateMachine != null
                 ? stateMachineMap.GetOrDefault(destinationStateMachine)
                 : null;
+            raw.isExit = isExit;
             context.AddNewAsset(raw);
             return raw;
         }
