@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using JetBrains.Annotations;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
@@ -14,8 +13,10 @@ using VRC.SDK3.Dynamics.Contact.Components;
 namespace VF.Service {
     [VFService]
     internal class HapticContactsService {
-        [VFAutowired] [CanBeNull] private readonly ControllersService controllers;
-        [VFAutowired] [CanBeNull] private readonly OverlappingContactsFixService overlappingService;
+        [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
+        [VFAutowired] private readonly ObjectPathsLookupService objectPaths;
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
 
         public class ReceiverRequest {
             public VFGameObject obj;
@@ -39,17 +40,13 @@ namespace VF.Service {
         }
 
         public VFAFloat AddReceiver(ReceiverRequest req) {
-            if (controllers == null) {
-                throw new Exception("Receiver cannot be created in detached mode");
-            }
-
             var fx = controllers.GetFx();
             if (!BuildTargetUtils.IsDesktop()) return fx.Zero();
 
             var param = fx.NewFloat(req.paramName, usePrefix: req.usePrefix);
             var child = GameObjects.Create(req.objName, req.obj);
             
-            overlappingService?.Activate();
+            overlappingService.Activate();
             var receiver = child.AddComponent<VRCContactReceiver>();
             receiver.position = req.pos;
             receiver.parameter = param;
@@ -71,7 +68,7 @@ namespace VF.Service {
             }
 
             var tags = req.tags;
-            if (req.party == HapticUtils.ReceiverParty.Self && req.useHipAvoidance && ClosestBoneUtils.GetClosestHumanoidBone(req.obj) == HumanBodyBones.Hips) {
+            if (req.party == HapticUtils.ReceiverParty.Self && req.useHipAvoidance && ClosestBoneUtils.GetClosestHumanoidBone(req.obj, objectPaths.GetLookups(), armatureCache) == HumanBodyBones.Hips) {
                 tags = HapticSenderFactory.AddSuffixes(tags, "_SelfNotOnHips");
             }
             receiver.collisionTags = tags.ToList();

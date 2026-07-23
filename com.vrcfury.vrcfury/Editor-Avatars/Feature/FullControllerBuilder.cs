@@ -41,6 +41,7 @@ namespace VF.Feature {
         private MenuManager avatarMenu => menuService.GetMenu();
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
+        [VFAutowired] private readonly ObjectPathsLookupService objectPaths;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -83,7 +84,8 @@ namespace VF.Feature {
                         AnimatorObject = globals.avatarObject,
                         RootBindingsApplyToAvatar = model.rootBindingsApplyToAvatar,
                         AdjustRootScale = true,
-                        RewritePath = path => RewritePath(model, path)
+                        ObjectPathLookups = objectPaths.GetLookups(),
+                        RewritePath = path => AnimationBindingUtils.RewriteRelativePath(path, model.rewriteBindings)
                     }
                 );
                 if (copy != null) {
@@ -318,31 +320,6 @@ namespace VF.Feature {
             } else {
                 return controllers.MakeUniqueParamName(name);
             }
-        }
-
-        private static string RewritePath(FullController model, string path) {
-            foreach (var rewrite in model.rewriteBindings) {
-                var from = rewrite.from;
-                if (from == null) from = "";
-                while (from.EndsWith("/")) from = from.Substring(0, from.Length - 1);
-                var to = rewrite.to;
-                if (to == null) to = "";
-                while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
-
-                if (from == "") {
-                    path = AnimationBindingUtils.JoinPaths(to, path);
-                    if (rewrite.delete) return null;
-                } else if (path.StartsWith(from + "/")) {
-                    path = path.Substring(from.Length + 1);
-                    path = AnimationBindingUtils.JoinPaths(to, path);
-                    if (rewrite.delete) return null;
-                } else if (path == from) {
-                    path = to;
-                    if (rewrite.delete) return null;
-                }
-            }
-
-            return path;
         }
 
         private void Merge(VFController from, ControllerManager to) {
@@ -723,7 +700,7 @@ namespace VF.Feature {
                             .Select(c => c?.controller?.Get() as AnimatorController)
                             .NotNull(),
                         GetBaseObject(model, componentObject),
-                        path => RewritePath(model, path),
+                        path => AnimationBindingUtils.RewriteRelativePath(path, model.rewriteBindings),
                         addPathRewrite: path => {
                             VRCFuryEditorUtils.AddToList(rewrites, entry => {
                                 entry.FindPropertyRelative("from").stringValue = path;

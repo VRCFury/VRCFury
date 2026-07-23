@@ -17,6 +17,7 @@ namespace VF.Feature {
     internal class ConstraintRetargetBuilder : FeatureBuilder<ConstraintRetarget> {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly Func<VFGameObject> componentObject;
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
 
         [FeatureBuilderAction]
         public void Apply() {
@@ -28,9 +29,9 @@ namespace VF.Feature {
 
             VFGameObject newTarget;
             if (model.bone == HumanBodyBones.LastBone) {
-                newTarget = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Hips)?.parent;
+                newTarget = armatureCache.FindBoneOnArmatureOrNull(HumanBodyBones.Hips)?.parent;
             } else {
-                newTarget = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, model.bone);
+                newTarget = armatureCache.FindBoneOnArmatureOrNull(model.bone);
             }
 
             foreach (var c in constraints) {

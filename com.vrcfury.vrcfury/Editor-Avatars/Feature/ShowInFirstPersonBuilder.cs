@@ -17,13 +17,14 @@ namespace VF.Feature {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly FakeHeadService fakeHead;
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
         
         [FeatureBuilderAction]
         public void Apply() {
             var obj = model.useObjOverride ? model.objOverride.asVf() : featureBaseObject;
             if (obj == null) return;
 
-            var head = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Head);
+            var head = armatureCache.FindBoneOnArmatureOrNull(HumanBodyBones.Head);
             if (head == null) return;
 
             globals.addOtherFeature(new ArmatureLink {

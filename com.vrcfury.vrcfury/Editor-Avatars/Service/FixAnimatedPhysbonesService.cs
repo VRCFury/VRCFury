@@ -15,11 +15,12 @@ namespace VF.Service {
     [VFService]
     internal class FixAnimatedPhysbonesService {
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
         private VFGameObject avatarObject => globals.avatarObject;
 
         [FeatureBuilderAction]
         public void Apply() {
-            var bones = VRCFArmatureUtils.GetAllBones(avatarObject).Values.ToImmutableHashSet();
+            var bones = armatureCache.GetAllBones().Values.ToImmutableHashSet();
             foreach (var physbone in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()) {
                 var root = physbone.GetRootTransform();
                 if (root == avatarObject || bones.Contains(root)) {

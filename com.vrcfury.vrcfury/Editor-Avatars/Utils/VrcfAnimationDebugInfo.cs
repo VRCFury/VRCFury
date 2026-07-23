@@ -39,6 +39,7 @@ namespace VF.Utils {
             var usesWdOff = false;
             var bindings = new HashSet<VFBinding>();
             var avatarObject = componentObject.GetAvatarRoot();
+            var objectPaths = VRCFObjectPathCache.GetPerFrame(avatarObject);
             foreach (var c in controllers) {
                 var debugInfo = controllerCache.Get(c, () => BuildControllerDebugInfo(c));
 
@@ -46,6 +47,7 @@ namespace VF.Utils {
                 var context = new VFLoadContext {
                     OwnerObject = componentObject,
                     AnimatorObject = avatarObject,
+                    ObjectPathLookups = new[] { objectPaths },
                     RewritePath = rewritePath
                 };
                 foreach (var binding in debugInfo.bindings) {

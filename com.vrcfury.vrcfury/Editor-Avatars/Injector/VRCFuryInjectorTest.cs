@@ -38,6 +38,7 @@ namespace VF.Injector {
                 var injector = new VRCFuryInjector();
                 injector.ImportOne(typeof(ActionClipService));
                 injector.ImportOne(typeof(ClipFactoryService));
+                injector.ImportOne(typeof(ObjectPathsLookupService));
                 injector.ImportScan(typeof(ActionBuilder));
                 injector.Set("avatarObject", null);
                 injector.Set("componentObject", null);

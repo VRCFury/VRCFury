@@ -2,87 +2,74 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 using VF.Exceptions;
+using VF.Injector;
 using VF.Utils;
 
 namespace VF.Builder {
-    internal static class VRCFArmatureUtils {
-        private class Cached {
-            public Dictionary<HumanBodyBones, string> paths = new Dictionary<HumanBodyBones, string>();
-            public Dictionary<HumanBodyBones, VFGameObject> objects = new Dictionary<HumanBodyBones, VFGameObject>();
+    [VFService]
+    internal class VRCFArmatureCache {
+        private static readonly Dictionary<VFGameObject, VRCFArmatureCache> perFrame
+            = new Dictionary<VFGameObject, VRCFArmatureCache>();
+        private readonly Dictionary<HumanBodyBones, string> bonePaths = new Dictionary<HumanBodyBones, string>();
+        private readonly Dictionary<HumanBodyBones, VFGameObject> boneObjects = new Dictionary<HumanBodyBones, VFGameObject>();
+
+        public static VRCFArmatureCache GetPerFrame(VFGameObject avatarObject) {
+            return perFrame.GetOrCreate(
+                avatarObject,
+                () => new VRCFArmatureCache(avatarObject)
+            );
         }
 
-        private static ConditionalWeakTable<Transform, Cached> cache = new ConditionalWeakTable<Transform, Cached>();
-
-        public static void ClearCache() {
-            cache = new ConditionalWeakTable<Transform, Cached>();
+        [VFInit]
+        private static void Init() {
+            Scheduler.Schedule(perFrame.Clear, 0);
         }
 
-        public static VFGameObject FindBoneOnArmatureOrNull(VFGameObject avatarObject, HumanBodyBones findBone) {
-            try {
-                return FindBoneOnArmatureOrException(avatarObject, findBone);
-            } catch (Exception) {
-                return null;
-            }
-        }
-
-        public static VFGameObject FindBoneOnArmatureOrException(VFGameObject avatarObject, HumanBodyBones findBone) {
-            var data = Load(avatarObject);
-            if (data.objects.TryGetValue(findBone, out var obj)) {
-                return obj;
-            }
-            if (data.paths.TryGetValue(findBone, out var path)) {
-                throw new VRCFBuilderException(
-                    "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +
-                    "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n" +
-                    path);
-            }
-            if (!data.paths.ContainsKey(HumanBodyBones.Hips)) {
-                throw new Exception($"{findBone} bone could not be found because avatar's rig is not set to humanoid");
-            }
-            throw new VRCFBuilderException($"{findBone} bone isn't set in this avatar's rig");
-        }
-
-        public static void WarmupCache(VFGameObject avatarObject) {
-            Load(avatarObject);
-        }
-
-        private static Cached Load(VFGameObject avatarObject) {
-            if (cache.TryGetValue(avatarObject, out var cached)) {
-                return cached;
-            }
-            cached = LoadUncached(avatarObject);
-            cache.Add(avatarObject, cached);
-            return cached;
-        }
-
-        private static Cached LoadUncached(VFGameObject avatarObject) {
-            var output = new Cached();
+        [VFAutowired]
+        public VRCFArmatureCache(VFGameObject avatarObject) {
+            if (avatarObject == null) return;
             var animator = avatarObject.GetComponent<Animator>();
-            if (!animator) {
-                return output;
-            }
-            if (!animator.avatar) {
-                return output;
-            }
+            if (!animator || !animator.avatar) return;
 
             var so = new SerializedObject(animator.avatar);
             var skeletonIndexToBoneHash = GetSkeletonIndexToBoneHash(so);
             var boneHashToPath = GetBoneHashToPath(so);
 
-            foreach (var bone in GetAllBones()) {
+            foreach (var bone in GetAllBoneTypes()) {
                 var skeletonIndex = GetSkeletonIndex(so, bone);
                 if (!skeletonIndexToBoneHash.TryGetValue(skeletonIndex, out var boneHash)) continue;
                 if (!boneHashToPath.TryGetValue(boneHash, out var path)) continue;
-                output.paths[bone] = path;
-                var obj = VRCFObjectPathCache.Find(avatarObject, path);
-                if (obj != null) output.objects[bone] = obj;
+                bonePaths[bone] = path;
+                var obj = avatarObject.Find(path);
+                if (obj != null) boneObjects[bone] = obj;
             }
+        }
 
-            return output;
+        public VFGameObject FindBoneOnArmatureOrNull(HumanBodyBones findBone) {
+            try {
+                return FindBoneOnArmatureOrException(findBone);
+            } catch (Exception) {
+                return null;
+            }
+        }
+
+        public VFGameObject FindBoneOnArmatureOrException(HumanBodyBones findBone) {
+            if (boneObjects.TryGetValue(findBone, out var obj)) {
+                return obj;
+            }
+            if (bonePaths.TryGetValue(findBone, out var path)) {
+                throw new VRCFBuilderException(
+                    "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +
+                    "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n" +
+                    path);
+            }
+            if (!bonePaths.ContainsKey(HumanBodyBones.Hips)) {
+                throw new Exception($"{findBone} bone could not be found because avatar's rig is not set to humanoid");
+            }
+            throw new VRCFBuilderException($"{findBone} bone isn't set in this avatar's rig");
         }
 
         private static int GetSkeletonIndex(SerializedObject so, HumanBodyBones humanoidIndex) {
@@ -150,15 +137,14 @@ namespace VF.Builder {
             return output;
         }
 
-        public static ISet<HumanBodyBones> GetAllBones() {
+        private static ISet<HumanBodyBones> GetAllBoneTypes() {
             return VRCFEnumUtils.GetValues<HumanBodyBones>()
                 .Where(bone => bone != HumanBodyBones.LastBone)
                 .ToImmutableHashSet();
         }
 
-        public static IDictionary<HumanBodyBones, VFGameObject> GetAllBones(VFGameObject avatarObject) {
-            var data = Load(avatarObject);
-            return data.objects;
+        public IReadOnlyDictionary<HumanBodyBones, VFGameObject> GetAllBones() {
+            return boneObjects;
         }
     }
 }

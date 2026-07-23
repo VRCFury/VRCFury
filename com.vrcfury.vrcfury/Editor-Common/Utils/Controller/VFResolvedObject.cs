@@ -32,27 +32,14 @@ namespace VF.Utils {
             }
 
             var rootBindingsApplyToAvatar = context.RootBindingsApplyToAvatar;
-            var usePreBuildHierarchy = context.UsePreBuildHierarchy;
             var target = AnimationBindingUtils.ResolveTarget(
                 context.OwnerObject,
                 context.AnimatorObject,
                 unresolvedPath,
                 type,
                 rootBindingsApplyToAvatar,
-                usePreBuildHierarchy
+                context.ObjectPathLookups
             );
-            if (target == null && usePreBuildHierarchy) {
-                // Some avatar preprocessors, like thiccwater, add objects to the hierarchy along with a VRCFury Full Controller.
-                // These objects won't be in the pre-build hierarchy, so we have to look them up the "normal" way.
-                target = AnimationBindingUtils.ResolveTarget(
-                    context.OwnerObject,
-                    context.AnimatorObject,
-                    unresolvedPath,
-                    type,
-                    rootBindingsApplyToAvatar,
-                    false
-                );
-            }
             return new VFResolvedObject(target, sourcePath, unresolvedPath, target != null);
         }
 

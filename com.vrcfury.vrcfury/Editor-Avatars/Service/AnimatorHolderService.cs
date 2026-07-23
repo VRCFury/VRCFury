@@ -31,6 +31,7 @@ namespace VF.Service {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly TmpDirService tmpDirService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+        [VFAutowired] private readonly ObjectPathsLookupService objectPaths;
 
         private class SavedAnimator {
             public RuntimeAnimatorController controller;
@@ -116,7 +117,7 @@ namespace VF.Service {
                         new VFLoadContext {
                             OwnerObject = owner,
                             AnimatorObject = owner,
-                            UsePreBuildHierarchy = false
+                            ObjectPathLookups = objectPaths.GetLookups()
                         }
                     );
                 }

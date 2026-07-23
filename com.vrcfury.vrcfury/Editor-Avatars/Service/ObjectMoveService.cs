@@ -11,12 +11,13 @@ namespace VF.Service {
     [VFService]
     internal class ObjectMoveService {
         [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
 
         public void Move(VFGameObject obj, VFGameObject newParent = null, string newName = null, bool worldPositionStays = true) {
             var immovableBones = new HashSet<VFGameObject>();
             immovableBones.Add(avatarObject);
             // Eyes are weird, because vrc takes full control of them, and we move them as part of the crosseye fix, so ignore them
-            foreach (var pair in VRCFArmatureUtils.GetAllBones(avatarObject)) {
+            foreach (var pair in armatureCache.GetAllBones()) {
                 var bone = pair.Key;
                 var boneObj = pair.Value;
                 if (bone == HumanBodyBones.LeftEye || bone == HumanBodyBones.RightEye) continue;

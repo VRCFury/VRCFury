@@ -38,16 +38,24 @@ namespace VF.Utils {
                 .ToList();
         }
 
-        public static HumanBodyBones? GetClosestHumanoidBone(VFGameObject obj) {
+        public static HumanBodyBones? GetClosestHumanoidBone(
+            VFGameObject obj,
+            IReadOnlyList<VRCFObjectPathCache> pathLookups,
+            VRCFArmatureCache armatureCache
+        ) {
             if (resultCache.TryGetValue(obj, out var cached)) {
                 return cached.bone;
             }
-            var bone = GetClosestHumanoidBoneUncached(obj);
+            var bone = GetClosestHumanoidBoneUncached(obj, pathLookups, armatureCache);
             resultCache[obj] = new Result() { bone = bone };
             return bone;
         }
 
-        private static HumanBodyBones? GetClosestHumanoidBoneUncached(VFGameObject obj) {
+        private static HumanBodyBones? GetClosestHumanoidBoneUncached(
+            VFGameObject obj,
+            IReadOnlyList<VRCFObjectPathCache> pathLookups,
+            VRCFArmatureCache armatureCache
+        ) {
             var avatarObject = obj.GetAvatarRoot();
 
             var followConstraints = true;
@@ -55,7 +63,7 @@ namespace VF.Utils {
 
             var armatureLinks = GetArmatuareLinks(avatarObject);
 
-            var humanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject)
+            var humanoidBones = armatureCache.GetAllBones()
                 .ToDictionary(x => x.Value, x => x.Key);
             var alreadyChecked = new HashSet<VFGameObject>();
             var current = obj;
@@ -68,7 +76,7 @@ namespace VF.Utils {
                 if (followArmatureLink) {
                     VFGameObject foundParent = null;
                     foreach (var armatureLink in armatureLinks) {
-                        var p = ArmatureLinkService.GetProbableParent(armatureLink, avatarObject, current);
+                        var p = ArmatureLinkService.GetProbableParent(armatureLink, avatarObject, current, pathLookups, armatureCache);
                         if (p != null && !alreadyChecked.Contains(p)) {
                             foundParent = p;
                             break;

@@ -23,13 +23,15 @@ namespace VF.Service {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly ObjectPathsLookupService objectPaths;
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
         
         [FeatureBuilderAction(FeatureOrder.ArmatureLink)]
         public void Apply() {
             var builders = globals.allBuildersInRun.OfType<ArmatureLinkBuilder>().ToList();
 
             var anim = findAnimatedTransformsService.Find();
-            var avatarHumanoidBones = VRCFArmatureUtils.GetAllBones(avatarObject).Values.ToImmutableHashSet();
+            var avatarHumanoidBones = armatureCache.GetAllBones().Values.ToImmutableHashSet();
 
             var doNotReparent = new HashSet<VFGameObject>();
             // We still reparent scale-animated things, because some users take advantage of this to "scale to 0" every bone
@@ -54,7 +56,9 @@ namespace VF.Service {
                         doNotReparent,
                         mover,
                         pruneCheck,
-                        animLink
+                        animLink,
+                        objectPaths.GetLookups(),
+                        armatureCache
                     );
                 } catch (Exception e) {
                     var path = builder.featureBaseObject.GetPath(avatarObject);
@@ -108,7 +112,9 @@ namespace VF.Service {
             ISet<VFGameObject> doNotReparent,
             ObjectMoveService mover,
             ISet<VFGameObject> pruneCheck,
-            VFMultimapList<VFGameObject, VFGameObject> animLink
+            VFMultimapList<VFGameObject, VFGameObject> animLink,
+            IReadOnlyList<VRCFObjectPathCache> pathLookups,
+            VRCFArmatureCache armatureCache
         ) {
             if (model.onlyIf != null && !model.onlyIf.Invoke()) {
                 return;
@@ -121,7 +127,7 @@ namespace VF.Service {
             
             Debug.Log("Armature Linking " + model.propBone.asVf().GetPath(avatarObject));
 
-            var links = GetLinks(model, avatarObject);
+            var links = GetLinks(model, avatarObject, pathLookups, armatureCache);
             if (links == null) {
                 return;
             }
@@ -404,11 +410,17 @@ namespace VF.Service {
                 = new Stack<(VFGameObject, VFGameObject)>();
         }
 
-        public static VFGameObject GetProbableParent(ArmatureLink model, VFGameObject avatarObject, VFGameObject obj) {
+        public static VFGameObject GetProbableParent(
+            ArmatureLink model,
+            VFGameObject avatarObject,
+            VFGameObject obj,
+            IReadOnlyList<VRCFObjectPathCache> pathLookups,
+            VRCFArmatureCache armatureCache
+        ) {
             try {
                 var linkFrom = model.propBone;
                 if (linkFrom == null || !obj.IsSameOrChildOf(linkFrom)) return null;
-                var links = GetLinks(model, avatarObject);
+                var links = GetLinks(model, avatarObject, pathLookups, armatureCache);
                 return links.mergeBones
                     .Where(pair => pair.Item1 == obj)
                     .Select(pair => pair.Item2)
@@ -418,11 +430,23 @@ namespace VF.Service {
             }
         }
 
-        public static Links GetLinks(ArmatureLink model, VFGameObject avatarObject) {
+        public static Links GetLinks(
+            ArmatureLink model,
+            VFGameObject avatarObject,
+            IReadOnlyList<VRCFObjectPathCache> pathLookups,
+            VRCFArmatureCache armatureCache
+        ) {
+            VFGameObject Find(VFGameObject from, string path) {
+                foreach (var lookup in pathLookups) {
+                    var found = lookup.Find(from, path);
+                    if (found != null) return found;
+                }
+                return null;
+            }
             VFGameObject propBone = model.propBone;
             if (propBone == null) return null;
 
-            foreach (var b in VRCFArmatureUtils.GetAllBones(avatarObject).Values) {
+            foreach (var b in armatureCache.GetAllBones().Values) {
                 if (b != null && b.IsSameOrChildOf(propBone)) {
                     throw new VRCFBuilderException(
                         "Link From is part of the avatar's armature." +
@@ -440,7 +464,7 @@ namespace VF.Service {
                 try {
                     VFGameObject obj;
                     if (to.useBone) {
-                        obj = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, to.bone);
+                        obj = armatureCache.FindBoneOnArmatureOrException(to.bone);
                     } else if (to.useObj) {
                         obj = to.obj;
                         if (obj == null) throw new Exception("'Link to' object does not exist");
@@ -449,9 +473,9 @@ namespace VF.Service {
                     }
 
                     if (!string.IsNullOrWhiteSpace(to.offset)) {
-                        var offsetObj = VRCFObjectPathCache.Find(obj, to.offset);
+                        var offsetObj = Find(obj, to.offset);
                         if (offsetObj == null) {
-                            throw new Exception($"Failed to find object at path '{AnimationBindingUtils.JoinPaths(obj.GetPath(avatarObject), to.offset)}'");
+                            throw new Exception($"Failed to find object at path '{AnimationBindingUtils.ResolveRelativePath(obj.GetPath(avatarObject), to.offset)}'");
                         }
                         obj = offsetObj;
                     }
@@ -471,8 +495,8 @@ namespace VF.Service {
             }
             
             if (avatarBone.name.ToLower().Contains("armature") || avatarBone.name.ToLower().Contains("skeleton")) {
-                var hips = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Hips);
-                var spine = VRCFArmatureUtils.FindBoneOnArmatureOrNull(avatarObject, HumanBodyBones.Spine);
+                var hips = armatureCache.FindBoneOnArmatureOrNull(HumanBodyBones.Hips);
+                var spine = armatureCache.FindBoneOnArmatureOrNull(HumanBodyBones.Spine);
                 if (hips == avatarBone && spine.parent != hips) {
                     throw new Exception("Your avatar's fbx rig definition has the 'Hips' bone set incorrectly to the armature root instead of the actual Hips.");
                 }
@@ -500,7 +524,7 @@ namespace VF.Service {
                         if (!string.IsNullOrWhiteSpace(removeBoneSuffix)) {
                             searchName = searchName.Replace(removeBoneSuffix, "");
                         }
-                        var childAvatarBone = VRCFObjectPathCache.Find(checkAvatarBone, searchName);
+                        var childAvatarBone = Find(checkAvatarBone, searchName);
 
                         // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
                         var recurseButDoNotLink = false;
@@ -512,13 +536,13 @@ namespace VF.Service {
                                     recurseButDoNotLink = true;
                                     break;
                                 }
-                                childAvatarBone = VRCFObjectPathCache.Find(checkAvatarBone, b + "/" + searchName);
+                                childAvatarBone = Find(checkAvatarBone, b + "/" + searchName);
                                 if (childAvatarBone != null) {
                                     links.hacksUsed.Add("Avatar has extra mid-bone: " + b);
                                     break;
                                 }
                                 if (checkAvatarBone.name == b) {
-                                    childAvatarBone = VRCFObjectPathCache.Find(checkAvatarBone, "../" + searchName);
+                                    childAvatarBone = Find(checkAvatarBone, "../" + searchName);
                                     if (childAvatarBone != null) {
                                         links.hacksUsed.Add("Avatar has fake mid-bone: " + b);
                                         break;

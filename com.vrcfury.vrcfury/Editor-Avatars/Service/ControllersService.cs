@@ -15,6 +15,7 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ParamsService paramsService;
         [VFAutowired] private readonly ParameterSourceService parameterSourceService;
+        [VFAutowired] private readonly ObjectPathsLookupService objectPaths;
         private ParamManager paramz => paramsService.GetParams();
 
         private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager> _controllers
@@ -35,10 +36,7 @@ namespace VF.Service {
                         OwnerObject = globals.avatarObject,
                         AnimatorObject = globals.avatarObject,
                         RootBindingsApplyToAvatar = true,
-                        // Don't use cached paths SPECIFICALLY for the avatar descriptor controllers,
-                        // because if some other system already messed with the avatar during the build,
-                        // it may have added new objects and clips to these controllers
-                        UsePreBuildHierarchy = false
+                        ObjectPathLookups = objectPaths.GetLookups()
                     }
                 );
             }

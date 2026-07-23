@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Builder;
 
 namespace VF.Utils.Controller {
     internal sealed class VFLoadContext {
@@ -9,7 +10,7 @@ namespace VF.Utils.Controller {
         public VFGameObject AnimatorObject;
         public bool RootBindingsApplyToAvatar;
         public bool AdjustRootScale;
-        public bool UsePreBuildHierarchy = true;
+        public IReadOnlyList<VRCFObjectPathCache> ObjectPathLookups;
         public Func<string, string> RewritePath;
         public Func<Motion, Motion> RewriteMotion;
         public Dictionary<AnimatorStateMachine, VFStateMachine> StateMachines = new Dictionary<AnimatorStateMachine, VFStateMachine>();

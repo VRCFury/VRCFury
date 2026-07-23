@@ -3,46 +3,48 @@ using JetBrains.Annotations;
 using VF.Utils;
 
 namespace VF.Builder {
-    internal static class VRCFObjectPathCache {
-        private static readonly Dictionary<string, VFGameObject> pathToObject = new Dictionary<string, VFGameObject>();
-        private static readonly Dictionary<VFGameObject, string> objectToPath = new Dictionary<VFGameObject, string>();
-        private static readonly Dictionary<VFGameObject, VFGameObject> objectToParent = new Dictionary<VFGameObject, VFGameObject>();
+    internal class VRCFObjectPathCache {
+        private static readonly Dictionary<VFGameObject, VRCFObjectPathCache> perFrame
+            = new Dictionary<VFGameObject, VRCFObjectPathCache>();
+        private readonly Dictionary<string, VFGameObject> pathToObject = new Dictionary<string, VFGameObject>();
+        private readonly Dictionary<VFGameObject, string> objectToPath = new Dictionary<VFGameObject, string>();
+        private readonly Dictionary<VFGameObject, VFGameObject> objectToParent = new Dictionary<VFGameObject, VFGameObject>();
 
-        public static void ClearCache() {
-            pathToObject.Clear();
-            objectToPath.Clear();
-            objectToParent.Clear();
-        }
-
-        public static void WarmupCache(VFGameObject baseObject) {
+        public VRCFObjectPathCache(VFGameObject baseObject) {
             foreach (var obj in baseObject.GetSelfAndAllChildren()) {
-                var path = obj.GetPath();
+                var path = obj.GetPath(baseObject);
                 if (!pathToObject.ContainsKey(path)) {
                     pathToObject[path] = obj;
                 }
                 objectToPath[obj] = path;
-                objectToParent[obj] = obj.parent;
+                objectToParent[obj] = obj == baseObject ? null : obj.parent;
             }
         }
 
-        [CanBeNull]
-        public static VFGameObject GetParent(VFGameObject obj) {
-            return objectToParent.TryGetValue(obj, out var parent) ? parent : obj.parent;
+        public static VRCFObjectPathCache GetPerFrame(VFGameObject baseObject) {
+            return perFrame.GetOrCreate(baseObject, () => new VRCFObjectPathCache(baseObject));
         }
 
         [VFInit]
         private static void Init() {
-            Scheduler.Schedule(ClearCache, 0);
+            Scheduler.Schedule(perFrame.Clear, 0);
         }
 
         [CanBeNull]
-        public static VFGameObject Find(VFGameObject from, string relativePath) {
+        public VFGameObject GetParent(VFGameObject obj) {
+            return objectToParent.TryGetValue(obj, out var parent) ? parent : null;
+        }
+
+        [CanBeNull]
+        public VFGameObject Find(VFGameObject from, string relativePath) {
+            if (from == null || relativePath == null) return null;
             if (relativePath == "") return from;
             if (objectToPath.TryGetValue(from, out var fromPath)) {
-                var toPath = AnimationBindingUtils.JoinPaths(fromPath, relativePath);
+                var toPath = AnimationBindingUtils.ResolveRelativePath(fromPath, relativePath);
+                if (toPath == null) return null;
                 return pathToObject.TryGetValue(toPath, out var to) ? to : null;
             }
-            return from.Find(relativePath);
+            return null;
         }
     }
 }
