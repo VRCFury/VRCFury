@@ -1,8 +1,9 @@
 using System.Collections.Generic;
-using System.Reflection;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Component;
+using VF.Exceptions;
 using VF.Model;
 using VF.Upgradeable;
 using VF.Utils;
@@ -35,9 +36,10 @@ namespace VF {
                 AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
             };
         }
-        
+
         public static void Upgrade(this VRCFuryComponent c) {
-            if (c.IsBroken()) return;
+            var brokenMessage = c.GetBrokenMessage();
+            if (brokenMessage != null) throw new VRCFBuilderException(brokenMessage);
             if (PrefabUtility.IsPartOfPrefabInstance(c)) return;
             if (IUpgradeableUtility.UpgradeRecursive(c)) {
                 if (c != null) c.Dirty();
@@ -53,26 +55,19 @@ namespace VF {
                 return $"This component was created with a newer version of VRCFury";
             }
             
-            var containsNull = false;
-
-            UnitySerializationUtils.IterateResult Check(UnitySerializationUtils.IterateVisit visit) {
-                if (visit.value is VRCFury vf) {
-                    // Old vrcfury components have a null content field, so we have to handle them specially
+            // Old VRCFury components have a null content field but store their features in config.
+            var hasLegacyConfig = false;
 #pragma warning disable 0612
-                    if (vf.content == null) {
-                        if ((c.Version >= 0 && c.Version <= 2) || (vf.config?.features?.Count ?? 0) > 0) {
-                            UnitySerializationUtils.Iterate(vf.config, Check);
-                            return UnitySerializationUtils.IterateResult.Skip;
-                        }
-                    }
-#pragma warning restore 0612
-                }
-                containsNull |=
-                    visit.field?.GetCustomAttribute<SerializeReference>() != null
-                    && visit.value == null;
-                return UnitySerializationUtils.IterateResult.Continue;
+            if (c is VRCFury vf && vf.content == null) {
+                hasLegacyConfig = (c.Version >= 0 && c.Version <= 2) || (vf.config?.features?.Count ?? 0) > 0;
             }
-            UnitySerializationUtils.Iterate(c, Check);
+#pragma warning restore 0612
+
+            var containsNull = new SerializedObject(c).IterateFast().Any(prop =>
+                prop.propertyType == SerializedPropertyType.ManagedReference
+                && prop.managedReferenceValue == null
+                && (!hasLegacyConfig || prop.propertyPath != "content")
+            );
 
             if (containsNull) {
                 DelayReimport(c);

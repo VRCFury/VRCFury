@@ -171,11 +171,6 @@ namespace VF.Builder {
                     continue;
                 }
 
-                var loadFailure = vrcFury.GetBrokenMessage();
-                if (loadFailure != null) {
-                    throw new VRCFBuilderException($"VRCFury component is corrupted on {configObject.name} ({loadFailure})");
-                }
-
                 if (vrcFury.content == null) {
                     continue;
                 }
