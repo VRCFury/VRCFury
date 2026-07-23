@@ -91,13 +91,15 @@ namespace VF.Service {
                         animator.runtimeAnimatorController = VRCAvatarUtils.GetAvatarController(avatar, fx.GetType()).Item2;
                     }
                 } else {
-                    animator.runtimeAnimatorController = saved.clone != null
-                        ? saved.clone.Save(
+                    if (saved.clone != null) {
+                        animator.runtimeAnimatorController = saved.clone.Save(
                             obj,
                             tmpDirService.GetTempDir(),
                             $"VRCFury {saved.clone.name} - {obj.name}"
-                        )
-                        : saved.controller;
+                        );
+                    } else {
+                        animator.runtimeAnimatorController = saved.controller;
+                    }
                     animator.enabled = saved.enabled;
                 }
             }

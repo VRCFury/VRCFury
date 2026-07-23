@@ -70,11 +70,6 @@ namespace VF.Utils {
                 " The file path for your Unity project is probably too long.");
         }
 
-        [PreferBinarySerialization]
-        internal class BinaryContainer : ScriptableObject {
-
-        }
-
         public static void SaveAsset(Object obj, string fullPath) {
             CreateFolder(GetDirectoryName(fullPath));
 

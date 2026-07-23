@@ -384,8 +384,13 @@ namespace VF.Utils.Controller {
                 finalizedRaw.WorkLog(item);
             }
             var session = new SaveAssetsSession();
-            session.SaveAssetAndChildren(finalizedRaw, context.NewAssets, filename, outputDir);
-            session.FlushWorkLogManifest(outputDir);
+            session.SaveAssetAndChildren(
+                finalizedRaw,
+                context.NewAssets,
+                context.OtherAssets,
+                filename,
+                outputDir
+            );
             return finalizedRaw;
         }
 

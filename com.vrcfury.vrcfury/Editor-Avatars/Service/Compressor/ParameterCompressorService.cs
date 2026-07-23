@@ -18,7 +18,6 @@ namespace VF.Service.Compressor {
         [VFAutowired] private readonly ParameterCompressorLayerService newLayerService;
         [VFAutowired] private readonly ParameterCompressorLegacyLayerService legacyLayerService;
         [VFAutowired] private readonly ParameterPlatformAlignmentService platformAlignmentService;
-        [VFAutowired] private readonly SaveControllersService saveControllersService;
         [VFAutowired] private readonly SaveAssetsService saveAssetsService;
 
         public const float BATCH_TIME = 0.1f;
@@ -50,7 +49,7 @@ namespace VF.Service.Compressor {
 
             var decision = decisionWithInfo.decision;
             if (!decision.compress.Any()) {
-                saveAssetsService.Run();
+                saveAssetsService.Run(Enumerable.Empty<ControllerManager>());
                 return;
             }
 
@@ -78,8 +77,7 @@ namespace VF.Service.Compressor {
             fx.UpgradeWrongParamTypes();
             paramz.Dirty();
             CreateDebugInfo(decisionWithInfo, originalCost, newCost);
-            saveControllersService.Apply();
-            saveAssetsService.Run();
+            saveAssetsService.Run(new[] { fx });
         }
 
         private void CreateDebugInfo(ParameterCompressorSolverOutput decisionWithInfo, int originalCost, int newCost) {

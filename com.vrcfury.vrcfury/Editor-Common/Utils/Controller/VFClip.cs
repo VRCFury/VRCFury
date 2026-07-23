@@ -161,7 +161,7 @@ namespace VF.Utils.Controller {
             foreach (var (_, curve) in objectCurves) {
                 foreach (var keyframe in curve) {
                     if (VrcfObjectFactory.DidCreate(keyframe.value)) {
-                        context.AddNewAsset(keyframe.value);
+                        context.AddOtherAsset(keyframe.value);
                     }
                 }
             }

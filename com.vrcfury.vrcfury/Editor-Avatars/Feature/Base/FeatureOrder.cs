@@ -119,11 +119,10 @@ namespace VF.Feature.Base {
         AddDebugVrcParameter,
 
         // Needs to happen after everything is done using the animator, and before SaveAssets
-        SaveControllers,
-        FinalizeAvatarDescriptor,
         ResetAnimatorAfter,
-
         SaveAssets,
+        FinalizeAvatarDescriptor,
+
         Validation,
         HideAddedComponents,
         BackupAfter,

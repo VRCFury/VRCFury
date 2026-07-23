@@ -48,6 +48,7 @@ namespace VF.Builder {
         }
 
         private static void Run(VFGameObject avatarObject) {
+            SaveAssetsSession.ResetWorkLogManifest();
             EditorOnlyUtils.RemoveEditorOnlyObjects(avatarObject);
 
             if (!ShouldRun(avatarObject)) {

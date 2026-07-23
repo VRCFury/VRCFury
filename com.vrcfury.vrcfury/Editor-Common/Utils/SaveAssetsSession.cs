@@ -8,13 +8,21 @@ using UnityEngine;
 
 namespace VF.Utils {
     internal class SaveAssetsSession {
-        private readonly HashSet<Object> workLogManifest = new HashSet<Object>();
+        private static readonly HashSet<Object> workLogManifest = new HashSet<Object>();
         private readonly HashSet<UnityEngine.Component> scannedComponents = new HashSet<UnityEngine.Component>();
         private readonly HashSet<Object> savedRootAssets = new HashSet<Object>();
 
-        public void SaveUnsavedComponentAssets(UnityEngine.Component component, string tmpDir) {
+        public void SaveUnsavedComponentAssets(
+            UnityEngine.Component component,
+            string tmpDir,
+            System.Func<Object> getOtherAssetsParent = null
+        ) {
             if (!scannedComponents.Add(component)) return;
             foreach (var asset in GetUnsavedChildren(component, false)) {
+                if (getOtherAssetsParent != null) {
+                    SaveOtherAssetAndChildren(asset, getOtherAssetsParent());
+                    continue;
+                }
                 string filename;
                 if (asset.GetType().Name == "VRCExpressionsMenu") {
                     filename = "VRCFury Menu";
@@ -31,6 +39,17 @@ namespace VF.Utils {
             }
         }
 
+        public void SaveOtherAssetAndChildren(Object asset, Object otherAssetsParent) {
+            var assets = GetUnsavedAssetAndChildren(asset)
+                .Distinct()
+                .OrderBy(child => child is Texture2D ? 0 : 1);
+            foreach (var child in assets) {
+                if (!savedRootAssets.Add(child)) continue;
+                VRCFuryAssetDatabase.AttachAsset(child, otherAssetsParent);
+                RecordWorkLog(child);
+            }
+        }
+
         private static IList<Object> GetUnsavedChildren(Object obj, bool recurse) {
             var unsavedChildren = new List<Object>();
             MutableManager.ForEachChild(obj, asset => {
@@ -38,15 +57,40 @@ namespace VF.Utils {
                 if (asset == obj) return true;
                 if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
                 if (!VrcfObjectFactory.DidCreate(asset)) return false;
-                if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) return true;
+                if (!IsUnsaved(asset)) return true;
                 unsavedChildren.Add(asset);
                 return recurse;
             });
             return unsavedChildren;
         }
 
+        private static IEnumerable<Object> GetUnsavedAssetAndChildren(Object asset) {
+            return GetUnsavedChildren(asset, true)
+                .Concat(IsUnsavedCreated(asset) ? new[] { asset } : Enumerable.Empty<Object>());
+        }
+
+        private static bool IsUnsaved(Object asset) {
+            return asset != null && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset));
+        }
+
+        private static bool IsUnsavedCreated(Object asset) {
+            return VrcfObjectFactory.DidCreate(asset) && IsUnsaved(asset);
+        }
+
         public void SaveAssetAndChildren(Object asset, string filename, string tmpDir) {
             SaveAssetAndChildren(asset, GetUnsavedChildren(asset, true), filename, tmpDir);
+        }
+
+        public void SaveAssetAndChildren(
+            Object asset,
+            IEnumerable<Object> children,
+            IEnumerable<Object> otherAssets,
+            string filename,
+            string tmpDir
+        ) {
+            var recursiveOtherAssets = otherAssets
+                .SelectMany(other => GetUnsavedChildren(other, true));
+            SaveAssetAndChildren(asset, children.Concat(otherAssets).Concat(recursiveOtherAssets), filename, tmpDir);
         }
 
         public void SaveAssetAndChildren(
@@ -59,20 +103,10 @@ namespace VF.Utils {
             if (!savedRootAssets.Add(asset)) return;
 
             var unsavedChildren = children
-                .Where(child => child != null)
-                .Where(VrcfObjectFactory.DidCreate)
-                .Where(child => string.IsNullOrEmpty(AssetDatabase.GetAssetPath(child)))
+                .Where(IsUnsavedCreated)
                 .Distinct()
+                .OrderBy(subAsset => subAsset is Texture2D ? 0 : 1)
                 .ToList();
-
-            // Save child textures
-            // If we don't save textures before the materials that use them, unity just throws them away
-            foreach (var subAsset in unsavedChildren) {
-                if (subAsset is Texture2D) {
-                    VRCFuryAssetDatabase.SaveAsset(subAsset, tmpDir, filename + "_" + subAsset.name);
-                    RecordWorkLog(subAsset);
-                }
-            }
 
             // Save the main asset
             if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) {
@@ -82,7 +116,6 @@ namespace VF.Utils {
 
             // Attach children
             foreach (var subAsset in unsavedChildren) {
-                if (subAsset is Texture2D) continue;
                 if (subAsset is AnimatorStateMachine
                     || subAsset is AnimatorState
                     || subAsset is AnimatorTransitionBase
@@ -97,7 +130,7 @@ namespace VF.Utils {
             }
         }
 
-        private void RecordWorkLog(Object obj) {
+        private static void RecordWorkLog(Object obj) {
             if (obj is AnimatorTransitionBase
                 || obj is Motion
                 || obj is AnimatorState
@@ -117,7 +150,11 @@ namespace VF.Utils {
             workLogManifest.Add(obj);
         }
 
-        public void FlushWorkLogManifest(string outputDir) {
+        public static void ResetWorkLogManifest() {
+            workLogManifest.Clear();
+        }
+
+        public static void FlushWorkLogManifest(string outputDir) {
             WriteWorkLogManifest(outputDir, workLogManifest);
             workLogManifest.Clear();
         }
