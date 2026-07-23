@@ -124,7 +124,7 @@ namespace VF.Hooks {
                     .SelectMany(clip => clip.GetAllBindings())
                     .ToImmutableHashSet();
                 var warnings =
-                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject);
+                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, gameObject);
 
                 foreach (var warning in warnings) {
                     debugInfo.Add(warning);
