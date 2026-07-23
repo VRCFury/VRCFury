@@ -66,7 +66,7 @@ namespace VF.Service {
         }
 
         public string GetOptionsPath() {
-            if (avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Length == 0) {
+            if (!avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any(s => s.addMenuItem)) {
                 return GetMenuPath();
             }
             return GetMenuPath() + "/<b>Options";
