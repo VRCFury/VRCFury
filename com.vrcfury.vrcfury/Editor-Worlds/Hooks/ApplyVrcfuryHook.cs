@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 using VF.Exceptions;
 using VF.Features;
 using VF.Menu;
+using VF.Utils;
 
 namespace VF.Hooks {
     internal static class ApplyVrcfuryHook {
@@ -28,12 +29,17 @@ namespace VF.Hooks {
             if (Application.isPlaying && !PlayModeMenuItem.Get()) return;
             if (IsActuallyUploadingHook.Get() && !UseInUploadMenuItem.Get()) return;
 
-            var success = VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                TmpFilePackage.Cleanup();
-                BuildInjectUnityActions.Process(scene);
-                BuildSps.Process(scene);
-                BuildMarker.Process(scene);
-                ComponentInjects.Wire(scene);
+            var success = VRCFuryBuildContext.Run(() => {
+                var progress = VRCFProgressWindow.Create();
+                try {
+                    TmpFilePackage.Cleanup();
+                    BuildInjectUnityActions.Process(scene);
+                    BuildSps.Process(scene);
+                    BuildMarker.Process(scene);
+                    ComponentInjects.Wire(scene);
+                } finally {
+                    progress.Close();
+                }
             });
             if (!success) {
                 if (Application.isPlaying) {

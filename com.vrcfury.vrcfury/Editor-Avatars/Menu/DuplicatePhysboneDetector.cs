@@ -12,7 +12,7 @@ namespace VF.Menu {
     internal static class DuplicatePhysboneDetector {
         [MenuItem(MenuItems.detectDuplicatePhysbones, priority = MenuItems.detectDuplicatePhysbonesPriority)]
         private static void Run() {
-            VRCFExceptionUtils.ErrorDialogBoundary(RunUnsafe);
+            VRCFuryBuildContext.Run(RunUnsafe);
         }
         
         private static void RunUnsafe() {

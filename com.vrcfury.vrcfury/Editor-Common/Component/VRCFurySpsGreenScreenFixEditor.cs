@@ -16,7 +16,7 @@ namespace VF {
         }
 
         private static void EnsureRootObject() {
-            using (new VRCFuryBuildContext()) {
+            VRCFuryBuildContext.Run(() => {
                 var scene = SceneManager.GetActiveScene();
                 if (!scene.IsValid()) return;
 
@@ -42,19 +42,12 @@ namespace VF {
                 };
                 obj.AddComponent<MeshRenderer>().sharedMaterials = materials;
 
-                var dir = VRCFuryAssetDatabase.GetUniquePath(
-                    TmpFilePackage.GetPath() + "/Builds",
-                    "SpsGreenScreenFix"
-                );
-                var parent = VrcfObjectFactory.Create<BinaryContainer>();
-                parent.name = "SpsGreenScreenFix";
-                new SaveAssetsSession().SaveAssetAndChildren(
-                    parent,
-                    new UnityEngine.Object[] { mesh, materials[0], materials[1] },
-                    "SpsGreenScreenFix",
-                    dir
-                );
-            }
+                var session = new SaveAssetsSession("SpsGreenScreenFix");
+                session.SaveAssetAndChildren(mesh);
+                session.SaveAssetAndChildren(materials[0]);
+                session.SaveAssetAndChildren(materials[1]);
+                session.Finish();
+            });
         }
 
         private static Mesh CreateTriangleMesh() {

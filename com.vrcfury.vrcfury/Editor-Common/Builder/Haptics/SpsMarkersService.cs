@@ -29,6 +29,7 @@ namespace VF.Builder.Haptics {
         private readonly Lazy<Material> sharedSocketMaterial;
         private readonly Lazy<Material> sharedResolverMaterial;
         private readonly Lazy<Material> sharedGrabPassMaterial;
+        private BinaryContainer detachedOtherAssetsParent;
 
         public SpsMarkersService() {
             sharedTriggerMesh = new Lazy<Mesh>(CreateTriggerMesh);

@@ -2,14 +2,13 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using VF.Exceptions;
 using VF.Utils;
 
 namespace VF.Menu {
     internal static class CleanupRedundantObjectReferenceOverridesMenuItem {
         [MenuItem(MenuItems.cleanupRedundantObjectReferenceOverrides, priority = MenuItems.cleanupRedundantObjectReferenceOverridesPriority)]
         private static void Run() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+            VRCFuryBuildContext.Run(() => {
                 var roots = GetSelectedRoots();
                 if (roots.Count == 0) return;
 

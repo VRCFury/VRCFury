@@ -9,12 +9,14 @@ using VF.Utils;
 
 namespace VF.Utils.Controller {
     internal class VFBehaviour {
+        // Optional because these aren't in world projects or old avatar projects
+        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type VRCAvatarParameterDriver =
                 ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Avatars.Components.VRCAvatarParameterDriver");
             public static readonly FieldInfo DriverParametersField =
                 VRCAvatarParameterDriver?.VFField("parameters");
-            public static readonly Type DriverParameter =
+            private static readonly Type DriverParameter =
                 DriverParametersField?.FieldType.GetGenericArguments().FirstOrDefault();
             public static readonly FieldInfo DriverParameterName =
                 DriverParameter?.VFField("name");

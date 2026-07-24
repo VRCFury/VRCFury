@@ -11,23 +11,10 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Service {
     [VFService]
     internal class TmpDirService {
-        private readonly Lazy<string> tempDirLazy;
-
-        public TmpDirService(OriginalAvatarService originalAvatarService, VFGameObject avatarObject) {
-            tempDirLazy = new Lazy<string>(() => {
-                if (!Application.isPlaying) {
-                    Cleanup();
-                }
-                return VRCFuryAssetDatabase.GetUniquePath(
-                    TmpFilePackage.GetPath() + "/Builds",
-                    originalAvatarService.GetOriginalName() ?? avatarObject.name,
-                    startMaxLen: 16
-                );
-            });
-        }
-
-        public string GetTempDir() {
-            return tempDirLazy.Value;
+        public TmpDirService() {
+            if (!Application.isPlaying) {
+                Cleanup();
+            }
         }
 
         public static void Cleanup() {

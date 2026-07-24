@@ -12,7 +12,7 @@ namespace VF.Menu {
     internal static class LogExternalSceneReferencesMenuItem {
         [MenuItem(MenuItems.logExternalSceneReferences, priority = MenuItems.logExternalSceneReferencesPriority)]
         private static void Run() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+            VRCFuryBuildContext.Run(() => {
                 var roots = Selection.gameObjects.AsVf().ToList();
                 roots = roots.Where(go => !roots.Any(other => other != go && go.IsSameOrChildOf(other))).ToList();
                 if (roots.Count == 0) return;

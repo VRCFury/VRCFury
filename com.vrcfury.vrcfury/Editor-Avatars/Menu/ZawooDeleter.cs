@@ -8,7 +8,7 @@ namespace VF.Menu {
     internal static class ZawooDeleter {
         //[MenuItem(MenuItems.nukeZawoo, priority = MenuItems.nukeZawooPriority)]
         private static void NukeZawooParts() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+            VRCFuryBuildContext.Run(() => {
                 Run(MenuUtils.GetSelectedAvatar());
             });
         }

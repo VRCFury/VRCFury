@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using VF.Exceptions;
 using VF.Hooks.UnityFixes;
 
 namespace VF.Utils {
@@ -17,6 +18,14 @@ namespace VF.Utils {
             // If we don't do this, a unity issue in RepaintImmediately can randomly throw a segfault
             RenderTexture.active = null;
             Camera.SetupCurrent(null);
+        }
+
+        public static bool Run(Action action) {
+            return VRCFExceptionUtils.ErrorDialogBoundary(() => {
+                using (new VRCFuryBuildContext()) {
+                    action();
+                }
+            });
         }
 
         public void Dispose() {

@@ -17,7 +17,7 @@ namespace VF.Builder.Haptics {
     internal static class SpsUpgrader {
         [MenuItem(MenuItems.upgradeLegacyHaptics, priority = MenuItems.upgradeLegacyHapticsPriority)]
         private static void MenuRun() {
-            VRCFExceptionUtils.ErrorDialogBoundary(Run);
+            VRCFuryBuildContext.Run(Run);
         }
 
         [MenuItem(MenuItems.upgradeLegacyHaptics, true)]

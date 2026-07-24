@@ -9,7 +9,7 @@ namespace VF.Menu {
     internal static class UnusedBoneCleaner {
         [MenuItem(MenuItems.unusedBones, priority = MenuItems.unusedBonesPriority)]
         private static void Run() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+            VRCFuryBuildContext.Run(() => {
                 Run(MenuUtils.GetSelectedAvatar());
             });
         }

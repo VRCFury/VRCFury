@@ -19,9 +19,11 @@ namespace VF.Hooks {
                     builder.OnSdkBuildStart += (_3, _4) => callbacks.Clear();
                     builder.OnSdkUploadFinish += (_3, _4) => callbacks.Clear();
                     builder.OnSdkUploadSuccess += (_3, _4) => {
-                        foreach (var c in callbacks) {
-                            VRCFExceptionUtils.ErrorDialogBoundary(c);
-                        }
+                        VRCFuryBuildContext.Run(() => {
+                            foreach (var c in callbacks) {
+                                c();
+                            }
+                        });
                         callbacks.Clear();
                     };
                 }

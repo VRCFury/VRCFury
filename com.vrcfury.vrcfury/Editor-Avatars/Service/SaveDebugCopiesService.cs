@@ -12,6 +12,7 @@ namespace VF.Service {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly TmpDirService tmpDirService;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly SaveAssetsService SaveAssetsService;
         
         [FeatureBuilderAction(FeatureOrder.BackupBefore)]
         public void SaveBefore() {
@@ -25,14 +26,9 @@ namespace VF.Service {
         
         private void Backup(string folderName) {
             if (!DebugCopyMenuItem.Get()) return;
-            var outputDir = $"{tmpDirService.GetTempDir()}/{folderName}";
             foreach (var c in controllers.GetAllUsedControllers()) {
-                c.Save(
-                    avatarObject,
-                    outputDir,
-                    VRCFEnumUtils.GetName(c.vrcType),
-                    reuseSourceAssets: false
-                );
+                c.name = $"{folderName} {VRCFEnumUtils.GetName(c.vrcType)}";
+                c.Save(avatarObject, SaveAssetsService.Session, reuseSourceAssets: false);
             }
         }
     }

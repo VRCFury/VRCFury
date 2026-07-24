@@ -9,7 +9,7 @@ namespace VF.Menu {
     internal static class RemoveUselessOverridesMenuItem {
         [MenuItem(MenuItems.uselessOverrides, priority = MenuItems.uselessOverridesPriority)]
         private static void Run() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+            VRCFuryBuildContext.Run(() => {
                 Run(MenuUtils.GetSelectedAvatar());
             });
         }

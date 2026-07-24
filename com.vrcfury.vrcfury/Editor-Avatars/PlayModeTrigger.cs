@@ -1,5 +1,5 @@
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -7,19 +7,16 @@ using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
-using VF.Exceptions;
 using VF.Hooks;
-using VF.Inspector;
 using VF.Menu;
 using VF.Service;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 using UnityEngine.SceneManagement;
-using Object = UnityEngine.Object;
 
 namespace VF {
-    internal class PlayModeTrigger {
+    internal static class PlayModeTrigger {
         [VFInit]
         private static void Init() {
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
@@ -27,9 +24,9 @@ namespace VF {
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
             if (state == PlayModeStateChange.ExitingEditMode) {
-                using (new VRCFuryBuildContext()) {
+                VRCFuryBuildContext.Run(() => {
                     TmpDirService.Cleanup();
-                }
+                });
             }
         }
 
@@ -44,13 +41,19 @@ namespace VF {
         }
 
         private static void ProcessScene(Scene scene) {
-            var spsMarkers = new SpsMarkersService();
+            var activeSockets = new List<VRCFuryHapticSocket>();
+            var activePlugs = new List<VRCFuryHapticPlug>();
             foreach (var rootObj in scene.GetRootGameObjects()) {
-                ProcessTree(rootObj, spsMarkers);
+                ProcessTree(rootObj, activeSockets, activePlugs);
             }
+            ProcessSps(activeSockets, activePlugs);
         }
 
-        private static void ProcessTree(VFGameObject obj, SpsMarkersService spsMarkers) {
+        private static void ProcessTree(
+            VFGameObject obj,
+            List<VRCFuryHapticSocket> activeSockets,
+            List<VRCFuryHapticPlug> activePlugs
+        ) {
             if (obj == null) return;
             if (IsAv3EmulatorClone(obj)) return;
 
@@ -62,23 +65,44 @@ namespace VF {
 
             var socket = obj.GetComponent<VRCFuryHapticSocket>();
             if (socket != null) {
+                if (obj.activeInHierarchy) {
+                    activeSockets.Add(socket);
+                    return;
+                }
                 ProcessOnStartComponent.Process(obj, () => {
-                    if (socket != null) ProcessSocket(socket, spsMarkers);
+                    if (socket != null) {
+                        ProcessSps(new[] { socket }, Array.Empty<VRCFuryHapticPlug>());
+                    }
                 });
                 return;
             }
 
             var plug = obj.GetComponent<VRCFuryHapticPlug>();
             if (plug != null) {
+                if (obj.activeInHierarchy) {
+                    activePlugs.Add(plug);
+                    return;
+                }
                 ProcessOnStartComponent.Process(obj, () => {
-                    if (plug != null) ProcessPlug(plug, spsMarkers);
+                    if (plug != null) {
+                        ProcessSps(Array.Empty<VRCFuryHapticSocket>(), new[] { plug });
+                    }
                 });
                 return;
             }
 
             foreach (var child in obj.Children()) {
-                ProcessTree(child, spsMarkers);
+                ProcessTree(child, activeSockets, activePlugs);
             }
+        }
+
+        private static void ProcessSps(
+            IList<VRCFuryHapticSocket> sockets,
+            IList<VRCFuryHapticPlug> plugs
+        ) {
+            VRCFuryBuildContext.Run(() => {
+                SpsBakeAndSave.Run(sockets, plugs);
+            });
         }
 
         private static void ProcessAvatar(VFGameObject obj) {
@@ -91,64 +115,6 @@ namespace VF {
             VRCBuildPipelineCallbacks.OnPreprocessAvatar(obj);
             obj.name = orig.name;
             orig.Destroy();
-        }
-
-        private static void ProcessSocket(VRCFuryHapticSocket socket, SpsMarkersService spsMarkers) {
-            using (new VRCFuryBuildContext()) {
-                socket.Upgrade();
-                VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                    try {
-                        var bakeResult = VRCFuryHapticSocketEditor.Bake(socket, spsMarkers);
-                        if (bakeResult != null) {
-                            var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", "Socket mat");
-                            SpsConfigurer.AddMaterialPropertyAnimator(
-                                bakeResult.screenMarkerResults.SelectMany(result => result.materialProperties),
-                                tmpDir
-                            );
-                            var saver = new SaveAssetsSession();
-                            foreach (var c in bakeResult.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                                saver.SaveUnsavedComponentAssets(c, tmpDir);
-                            }
-                            foreach (var c in bakeResult.screenMarkers
-                                         .SelectMany(c => c.GetComponentsInSelfAndChildren<UnityEngine.Component>())) {
-                                saver.SaveUnsavedComponentAssets(c, tmpDir);
-                            }
-                            VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
-                        }
-                    } catch (Exception e) {
-                        throw new ExceptionWithCause($"Failed to bake detached SPS Socket: {socket.owner().GetPath()}", e);
-                    }
-                });
-            }
-            Object.DestroyImmediate(socket);
-        }
-
-        private static void ProcessPlug(VRCFuryHapticPlug plug, SpsMarkersService spsMarkers) {
-            using (new VRCFuryBuildContext()) {
-                plug.Upgrade();
-                VRCFExceptionUtils.ErrorDialogBoundary(() => {
-                    try {
-                        var bakeResult = VRCFuryHapticPlugEditor.Bake(plug, spsMarkers: spsMarkers);
-                        if (bakeResult != null) {
-                            var tmpDir = VRCFuryAssetDatabase.GetUniquePath(TmpFilePackage.GetPath() + "/Builds", bakeResult.oscId);
-                            if (bakeResult.resolverMaterialProperties != null) {
-                                SpsConfigurer.AddMaterialPropertyAnimator(bakeResult.resolverMaterialProperties, tmpDir);
-                            }
-                            var saver = new SaveAssetsSession();
-                            foreach (var c in bakeResult.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                                saver.SaveUnsavedComponentAssets(c, tmpDir);
-                            }
-                            foreach (var c in bakeResult.renderers.SelectMany(r => r.renderer.owner().GetComponentsInSelfAndChildren<UnityEngine.Component>())) {
-                                saver.SaveUnsavedComponentAssets(c, tmpDir);
-                            }
-                            VRCFuryHideGizmoUnlessSelectedExtensions.Hide(bakeResult.bakeRoot);
-                        }
-                    } catch (Exception e) {
-                        throw new ExceptionWithCause($"Failed to bake detached SPS Plug: {plug.owner().GetPath()}", e);
-                    }
-                });
-            }
-            Object.DestroyImmediate(plug);
         }
 
         public static bool IsAv3EmulatorClone(VFGameObject obj) {

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -14,11 +15,22 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly TmpDirService tmpDirService;
+        [VFAutowired] private readonly OriginalAvatarService originalAvatarService;
+        private readonly Lazy<SaveAssetsSession> session;
+
+        public SaveAssetsService() {
+            session = new Lazy<SaveAssetsSession>(() => {
+                var outputDirName = originalAvatarService.GetOriginalName() ?? avatarObject.name;
+                return new SaveAssetsSession(outputDirName);
+            });
+        }
 
         [FeatureBuilderAction(FeatureOrder.SaveAssets)]
         public void Run() {
             Run(controllers.GetAllUsedControllers());
         }
+
+        public SaveAssetsSession Session => session.Value;
 
         public void Run(IEnumerable<ControllerManager> controllersToSave) {
             var controllersToSaveArray = controllersToSave.ToArray();
@@ -26,11 +38,8 @@ namespace VF.Service {
                 controller.parameters = controller.parameters
                     .OrderBy(p => p.name)
                     .ToArray();
-                var saved = controller.Save(
-                    avatarObject,
-                    tmpDirService.GetTempDir(),
-                    $"VRCFury {controller.GetType()}"
-                );
+                controller.name = $"VRCFury {controller.GetType()}";
+                var saved = controller.Save(avatarObject, Session);
                 VRCAvatarUtils.SetAvatarController(avatar, controller.GetType(), saved);
             }
             if (controllersToSaveArray.Any(controller => controller == controllers.GetFx())) {
@@ -40,31 +49,19 @@ namespace VF.Service {
                 }
             }
 
-            var tmpDir = tmpDirService.GetTempDir();
-            var session = new SaveAssetsSession();
-            BinaryContainer otherAssetsParent = null;
-            BinaryContainer GetOtherAssetsParent() {
-                if (otherAssetsParent == null) {
-                    otherAssetsParent = VrcfObjectFactory.Create<BinaryContainer>();
-                    otherAssetsParent.name = "Other";
-                    session.SaveAssetAndChildren(otherAssetsParent, "VRCFury Other", tmpDir);
-                }
-                return otherAssetsParent;
-            }
-
             // Save mats and meshes
-            session.SaveUnsavedComponentAssets(avatar, tmpDir, GetOtherAssetsParent);
+            Session.SaveAssetAndChildren(avatar);
             foreach (var component in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
-                session.SaveUnsavedComponentAssets(component, tmpDir, GetOtherAssetsParent);
+                Session.SaveAssetAndChildren(component);
             }
             foreach (var component in avatarObject.GetComponentsInSelfAndChildren<MeshFilter>()) {
-                session.SaveUnsavedComponentAssets(component, tmpDir, GetOtherAssetsParent);
+                Session.SaveAssetAndChildren(component);
             }
             foreach (var audioSource in avatarObject.GetComponentsInSelfAndChildren<AudioSource>()) {
-                session.SaveUnsavedComponentAssets(audioSource, tmpDir, GetOtherAssetsParent);
+                Session.SaveAssetAndChildren(audioSource);
             }
 
-            SaveAssetsSession.FlushWorkLogManifest(tmpDir);
+            Session.Finish();
         }
     }
 }
