@@ -121,7 +121,7 @@ namespace VF.Service {
                         new VFLoadContext {
                             OwnerObject = owner,
                             AnimatorObject = owner,
-                            ObjectPathLookups = objectPaths.GetLookups()
+                            ObjectPathLookups = objectPaths.GetLookups().Reverse().ToList()
                         }
                     );
                     animatedObjectsByRoot[owner] = saved.clone

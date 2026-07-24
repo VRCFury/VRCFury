@@ -36,7 +36,7 @@ namespace VF.Service {
                         OwnerObject = globals.avatarObject,
                         AnimatorObject = globals.avatarObject,
                         RootBindingsApplyToAvatar = true,
-                        ObjectPathLookups = objectPaths.GetLookups()
+                        ObjectPathLookups = objectPaths.GetLookups().Reverse().ToList()
                     }
                 );
             }

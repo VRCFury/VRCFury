@@ -12,10 +12,9 @@ namespace VF.Service {
             return lookups;
         }
 
-        public VRCFObjectPathCache Capture(VFGameObject avatarObject) {
+        public void Capture(VFGameObject avatarObject) {
             var paths = new VRCFObjectPathCache(avatarObject);
-            lookups.Insert(0, paths);
-            return paths;
+            lookups.Add(paths);
         }
     }
 }
