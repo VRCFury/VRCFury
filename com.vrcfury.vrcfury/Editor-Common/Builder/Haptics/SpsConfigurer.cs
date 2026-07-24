@@ -72,7 +72,7 @@ namespace VF.Builder.Haptics {
                     $" on the mesh instead.");
             }
 
-            SpsPatcher.Patch(m, SpsDevModeMenuItem.Get() && !IsActuallyUploadingHook.Get());
+            SpsPatcher.Patch(m, SpsDevModeMenuItem.Get() && !IsActuallyUploadingHook.Get(), spsBlendshapes.Count > 0);
             {
                 // Prevent poi from stripping our parameters
                 var count = m.shader.GetPropertyCount();
@@ -92,6 +92,7 @@ namespace VF.Builder.Haptics {
             m.SetFloatFast(SpsMarkersService.PlayerIdHigh, 0);
             m.SetFloatFast(SpsDisableShadows, 0);
             m.SetFloatFast(SpsDisableDepth, 0);
+            m.SetFloatFast(SpsOverrun, plug.spsOverrun ? 1 : 0);
             m.SetFloatFast("_SPS_BlendshapeCount", spsBlendshapes.Count);
             m.SetFloatFast("_SPS_BlendshapeVertCount", skin.GetVertexCount());
             for (var i = 0; i < spsBlendshapes.Count; i++) {

@@ -26,8 +26,8 @@ _SPS_Blendshape14("14", Float) = 0
 _SPS_Blendshape15("15", Float) = 0
 
 [Header(SPS Bake)]
-_SPS_BakedLength("Baked length", Float) = 0
 _SPS_Bake("Baked data", 2D) = "white" {}
+[Toggle] _SPS_Overrun("Allow hole overrun", Float) = 1
 _SPS_DisableShadows("Disable shadows", Float) = 0
 _SPS_DisableDepth("Disable depth pass", Float) = 0
 

@@ -22,14 +22,14 @@ namespace VF.Builder.Haptics {
             public static readonly FieldInfo ShaderLibsPath = LilShaderContainer?.VFStaticField("shaderLibsPath");
         }
 
-        private const string HashBuster = "16";
+        private const string HashBuster = "17";
         
-        public static void Patch(Material mat, bool keepImports) {
+        public static void Patch(Material mat, bool keepImports, bool hasBlendshapes) {
             if (!mat.shader) return;
             if (mat.shader.name == "VRChat/Mobile/Particles/Additive") return;
             try {
                 var renderQueue = mat.renderQueue;
-                PatchUnsafe(mat, keepImports);
+                PatchUnsafe(mat, keepImports, hasBlendshapes);
                 mat.renderQueue = renderQueue;
             } catch(SpsErrorMatException e) {
                 var msg = $"Your avatar is using a material ({mat.name}) that couldn't load properly.\n\n" +
@@ -63,9 +63,9 @@ namespace VF.Builder.Haptics {
             );
         }
 
-        private static void PatchUnsafe(Material mat, bool keepImports) {
+        private static void PatchUnsafe(Material mat, bool keepImports, bool hasBlendshapes) {
             var shader = mat.shader;
-            var newShader = PatchUnsafe(shader, keepImports);
+            var newShader = PatchUnsafe(shader, keepImports, hasBlendshapes);
             mat.shader = newShader.shader;
             mat.Dirty();
         }
@@ -74,10 +74,10 @@ namespace VF.Builder.Haptics {
             public Shader shader;
             public int patchedPrograms;
         }
-        private static PatchResult PatchUnsafe(Shader shader, bool keepImports, string parentHash = null) {
+        private static PatchResult PatchUnsafe(Shader shader, bool keepImports, bool hasBlendshapes, string parentHash = null) {
             var pathToSps = GetPathToSps();
             var sourcePath = ResolveShaderSource(shader);
-            var hash = GetPatchHash(sourcePath, pathToSps, keepImports, parentHash);
+            var hash = GetPatchHash(sourcePath, pathToSps, keepImports, hasBlendshapes, parentHash);
 
             string newShaderName;
             if (shader.name.StartsWith("Hidden/Locked/")) {
@@ -122,9 +122,10 @@ namespace VF.Builder.Haptics {
 
             string spsMain;
             if (keepImports) {
-                spsMain = $"#include \"{pathToSps}/deform/sps_deform_main.cginc\"";
+                spsMain = $"{(hasBlendshapes ? "#define SPS_HAS_BLENDSHAPES\n" : "")}#include \"{pathToSps}/deform/sps_deform_main.cginc\"";
             } else {
-                spsMain = ReadAndFlattenPath($"{pathToSps}/deform/sps_deform_main.cginc");
+                spsMain = (hasBlendshapes ? "#define SPS_HAS_BLENDSHAPES\n" : "")
+                    + ReadAndFlattenPath($"{pathToSps}/deform/sps_deform_main.cginc");
             }
             
             Replace(
@@ -171,7 +172,7 @@ namespace VF.Builder.Haptics {
                 }
 
                 if (!childShaders.TryGetValue(includedShader, out var rewrittenIncludedShader)) {
-                    var output = PatchUnsafe(includedShader, keepImports, hash);
+                    var output = PatchUnsafe(includedShader, keepImports, hasBlendshapes, hash);
                     patchedPrograms += output.patchedPrograms;
                     rewrittenIncludedShader = output.shader;
                     childShaders[includedShader] = rewrittenIncludedShader;
@@ -719,7 +720,7 @@ namespace VF.Builder.Haptics {
             }
             return path;
         }
-        private static string GetPatchHash(string sourcePath, string pathToSps, bool keepImports, string parentHash) {
+        private static string GetPatchHash(string sourcePath, string pathToSps, bool keepImports, bool hasBlendshapes, string parentHash) {
             using (var md5 = MD5.Create()) {
                 var hashContent = new StringBuilder();
                 void Add(string value) {
@@ -738,6 +739,7 @@ namespace VF.Builder.Haptics {
 
                 Add(HashBuster);
                 Add(keepImports.ToString());
+                Add(hasBlendshapes.ToString());
                 AddFile(sourcePath);
                 if (parentHash == null) AddFile($"{pathToSps}/deform/sps_deform_props.cginc");
                 AddFile($"{pathToSps}/deform/sps_deform_main.cginc");

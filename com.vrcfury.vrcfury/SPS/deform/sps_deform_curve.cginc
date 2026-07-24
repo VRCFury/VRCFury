@@ -7,6 +7,7 @@
 #include "../common/sps_utils.cginc"
 #include "sps_deform_bezier.cginc"
 #include "sps_deform_control_points.cginc"
+#include "sps_deform_globals.cginc"
 
 inline void sps_deform_apply_portal_transfer(
     float3 entryPoint,
@@ -162,6 +163,9 @@ inline void sps_deform_walk_chain(
             collapseEnd,
             collapseStart
         );
+        if (!sps_to_bool(_SPS_Overrun) && remainingDistance > 0) {
+            remainingDistance = 0;
+        }
     }
     outPosition += outForward * remainingDistance;
 }
