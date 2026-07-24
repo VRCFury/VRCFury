@@ -31,6 +31,7 @@ namespace VF.Hooks {
 
             var success = VRCFuryBuildContext.Run(() => {
                 var progress = VRCFProgressWindow.Create();
+                progress.Progress(0, "Applying VRCFury to world ...");
                 try {
                     TmpFilePackage.Cleanup();
                     BuildInjectUnityActions.Process(scene);
