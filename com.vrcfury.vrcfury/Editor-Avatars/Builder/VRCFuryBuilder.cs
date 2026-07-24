@@ -156,6 +156,31 @@ namespace VF.Builder {
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
                 c.Upgrade();
             }
+            var externalReferences = new List<string>();
+            foreach (var component in avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
+                MutableManager.ForEachChildObjectReference(component, (path, target, set) => {
+                    var targetObject = target switch {
+                        GameObject gameObject => gameObject.asVf(),
+                        UnityEngine.Component targetComponent => targetComponent.owner(),
+                        _ => null
+                    };
+                    if (targetObject == null || EditorUtility.IsPersistent(target)) return;
+                    if (targetObject.IsSameOrChildOf(avatarObject)) return;
+
+                    externalReferences.Add(
+                        $"{component.owner().GetPath()} -> {targetObject.GetPath()}"
+                    );
+                });
+            }
+            if (externalReferences.Count > 0) {
+                throw new Exception(
+                    "One of your VRCFury components is referencing an object outside of the avatar. This is a mistake, and can " +
+                    "happen if you incorrectly copied individual components between avatars. You need to fix these references, or just " +
+                    "delete the VRCFury component since it probably doesn't work anyways.\n\n"
+                    + externalReferences.JoinWithMore(10)
+                );
+            }
+
             foreach (var vrcFury in avatarObject.GetComponentsInSelfAndChildren<VRCFury>()) {
                 var configObject = vrcFury.owner();
                 if (VRCFuryEditorUtils.IsInRagdollSystem(configObject)) {
