@@ -1,28 +1,41 @@
 using System.Collections.Generic;
+using System.Linq;
 using JetBrains.Annotations;
+using VF.Injector;
 using VF.Utils;
 
 namespace VF.Builder {
+    [VFService]
     internal class VRCFObjectPathCache {
         private static readonly Dictionary<VFGameObject, VRCFObjectPathCache> perFrame
             = new Dictionary<VFGameObject, VRCFObjectPathCache>();
-        private readonly Dictionary<string, VFGameObject> pathToObject = new Dictionary<string, VFGameObject>();
-        private readonly Dictionary<VFGameObject, string> objectToPath = new Dictionary<VFGameObject, string>();
-        private readonly Dictionary<VFGameObject, VFGameObject> objectToParent = new Dictionary<VFGameObject, VFGameObject>();
+        private readonly List<Snapshot> snapshots = new List<Snapshot>();
 
-        public VRCFObjectPathCache(VFGameObject baseObject) {
+        private class Snapshot {
+            public readonly Dictionary<string, VFGameObject> pathToObject = new Dictionary<string, VFGameObject>();
+            public readonly Dictionary<VFGameObject, string> objectToPath = new Dictionary<VFGameObject, string>();
+            public readonly Dictionary<VFGameObject, VFGameObject> objectToParent = new Dictionary<VFGameObject, VFGameObject>();
+        }
+
+        public void Capture(VFGameObject baseObject) {
+            var snapshot = new Snapshot();
             foreach (var obj in baseObject.GetSelfAndAllChildren()) {
                 var path = obj.GetPath(baseObject);
-                if (!pathToObject.ContainsKey(path)) {
-                    pathToObject[path] = obj;
+                if (!snapshot.pathToObject.ContainsKey(path)) {
+                    snapshot.pathToObject[path] = obj;
                 }
-                objectToPath[obj] = path;
-                objectToParent[obj] = obj == baseObject ? null : obj.parent;
+                snapshot.objectToPath[obj] = path;
+                snapshot.objectToParent[obj] = obj == baseObject ? null : obj.parent;
             }
+            snapshots.Add(snapshot);
         }
 
         public static VRCFObjectPathCache GetPerFrame(VFGameObject baseObject) {
-            return perFrame.GetOrCreate(baseObject, () => new VRCFObjectPathCache(baseObject));
+            return perFrame.GetOrCreate(baseObject, () => {
+                var cache = new VRCFObjectPathCache();
+                cache.Capture(baseObject);
+                return cache;
+            });
         }
 
         [VFInit]
@@ -30,19 +43,29 @@ namespace VF.Builder {
             Scheduler.Schedule(perFrame.Clear, 0);
         }
 
-        [CanBeNull]
-        public VFGameObject GetParent(VFGameObject obj) {
-            return objectToParent.TryGetValue(obj, out var parent) ? parent : null;
+        private IEnumerable<Snapshot> GetSnapshots(bool reverse = false) {
+            return reverse ? snapshots.AsEnumerable().Reverse() : snapshots;
         }
 
         [CanBeNull]
-        public VFGameObject Find(VFGameObject from, string relativePath) {
+        public VFGameObject GetParent(VFGameObject obj, bool reverse = false) {
+            foreach (var snapshot in GetSnapshots(reverse)) {
+                if (!snapshot.objectToParent.TryGetValue(obj, out var parent)) continue;
+                if (ReferenceEquals(parent, null)) return null;
+                if (parent != null) return parent;
+            }
+            return null;
+        }
+
+        [CanBeNull]
+        public VFGameObject Find(VFGameObject from, string relativePath, bool reverse = false) {
             if (from == null || relativePath == null) return null;
             if (relativePath == "") return from;
-            if (objectToPath.TryGetValue(from, out var fromPath)) {
+            foreach (var snapshot in GetSnapshots(reverse)) {
+                if (!snapshot.objectToPath.TryGetValue(from, out var fromPath)) continue;
                 var toPath = AnimationBindingUtils.ResolveRelativePath(fromPath, relativePath);
                 if (toPath == null) return null;
-                return pathToObject.TryGetValue(toPath, out var to) ? to : null;
+                if (snapshot.pathToObject.TryGetValue(toPath, out var to) && to != null) return to;
             }
             return null;
         }

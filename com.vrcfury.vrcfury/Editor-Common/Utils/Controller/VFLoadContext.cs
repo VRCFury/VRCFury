@@ -10,7 +10,8 @@ namespace VF.Utils.Controller {
         public VFGameObject AnimatorObject;
         public bool RootBindingsApplyToAvatar;
         public bool AdjustRootScale;
-        public IReadOnlyList<VRCFObjectPathCache> ObjectPathLookups;
+        public VRCFObjectPathCache ObjectPaths;
+        public bool ReverseObjectPaths;
         public Func<string, string> RewritePath;
         public Func<Motion, Motion> RewriteMotion;
         public Dictionary<AnimatorStateMachine, VFStateMachine> StateMachines = new Dictionary<AnimatorStateMachine, VFStateMachine>();

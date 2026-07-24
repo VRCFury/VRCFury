@@ -18,9 +18,7 @@ namespace VF.Hooks {
             // gimmicks that change humanoid bones to proxies
             ClosestBoneUtils.ClearCache();
             var injector = VRCFuryInjectorBuilder.GetInjector(avatarObject.GetComponent<VRCAvatarDescriptor>());
-            var objectPaths = injector.GetService<ObjectPathsLookupService>();
-            objectPaths.Capture(avatarObject);
-            injector.GetService<VRCFArmatureCache>();
+            injector.GetService<VRCFObjectPathCache>().Capture(avatarObject);
         }
     }
 }

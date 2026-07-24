@@ -235,7 +235,7 @@ namespace VF.Feature {
                 var links = ArmatureLinkService.GetLinks(
                     model,
                     avatarObject,
-                    new[] { VRCFObjectPathCache.GetPerFrame(avatarObject) },
+                    VRCFObjectPathCache.GetPerFrame(avatarObject),
                     VRCFArmatureCache.GetPerFrame(avatarObject)
                 );
                 if (links == null) {

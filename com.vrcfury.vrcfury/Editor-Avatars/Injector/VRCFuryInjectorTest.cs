@@ -5,6 +5,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Actions;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Service;
 using VF.Utils;
@@ -38,7 +39,7 @@ namespace VF.Injector {
                 var injector = new VRCFuryInjector();
                 injector.ImportOne(typeof(ActionClipService));
                 injector.ImportOne(typeof(ClipFactoryService));
-                injector.ImportOne(typeof(ObjectPathsLookupService));
+                injector.ImportOne(typeof(VRCFObjectPathCache));
                 injector.ImportScan(typeof(ActionBuilder));
                 injector.Set("avatarObject", null);
                 injector.Set("componentObject", null);

@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using VF.Builder;
 using VF.Model.Feature;
+using VF.Utils.Controller;
 #if VRCSDK_HAS_VRCCONSTRAINTS
 using VRC.SDKBase.Validation.Performance;
 #endif
@@ -12,42 +13,40 @@ using VRC.SDKBase.Validation.Performance;
 namespace VF.Utils {
     internal static class AnimationBindingUtils {
         internal static VFGameObject ResolveTarget(
-            VFGameObject ownerObject,
-            VFGameObject animatorObject,
+            VFLoadContext context,
             string path,
-            Type type,
-            bool rootBindingsApplyToAvatar,
-            IReadOnlyList<VRCFObjectPathCache> pathLookups
+            Type type
         ) {
+            var ownerObject = context.OwnerObject;
+            var animatorObject = context.AnimatorObject;
+            var objectPaths = context.ObjectPaths;
+            var reverseObjectPaths = context.ReverseObjectPaths;
             if (animatorObject == null) return null;
             if (ownerObject == null) return null;
             if (path == null) return null;
-            if (path == "" && rootBindingsApplyToAvatar) {
+            if (path == "" && context.RootBindingsApplyToAvatar) {
                 return animatorObject;
             }
-            foreach (var paths in pathLookups) {
-                if (path.StartsWith("/")) {
-                    var target = paths.Find(animatorObject, path.TrimStart('/'));
-                    if (IsValidResolvedTarget(target, type)) return target;
-                    continue;
+            if (path.StartsWith("/")) {
+                var target = objectPaths.Find(animatorObject, path.TrimStart('/'), reverseObjectPaths);
+                return IsValidResolvedTarget(target, type) ? target : null;
+            }
+
+            var ancestor = ownerObject;
+            while (ancestor != null && ancestor != animatorObject) {
+                ancestor = objectPaths.GetParent(ancestor, reverseObjectPaths);
+            }
+            if (ancestor != animatorObject) return null;
+
+            VFGameObject current = ownerObject;
+            while (current != null) {
+                var target = objectPaths.Find(current, path, reverseObjectPaths);
+                if (IsValidResolvedTarget(target, type)) {
+                    return target;
                 }
 
-                var ancestor = ownerObject;
-                while (ancestor != null && ancestor != animatorObject) {
-                    ancestor = paths.GetParent(ancestor);
-                }
-                if (ancestor != animatorObject) continue;
-
-                VFGameObject current = ownerObject;
-                while (current != null) {
-                    var target = paths.Find(current, path);
-                    if (IsValidResolvedTarget(target, type)) {
-                        return target;
-                    }
-
-                    if (current == animatorObject) break;
-                    current = paths.GetParent(current);
-                }
+                if (current == animatorObject) break;
+                current = objectPaths.GetParent(current, reverseObjectPaths);
             }
             return null;
         }

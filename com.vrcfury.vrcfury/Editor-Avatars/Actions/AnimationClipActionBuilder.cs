@@ -19,7 +19,7 @@ namespace VF.Actions {
     internal class AnimationClipActionBuilder : ActionBuilder<AnimationClipAction> {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] [CanBeNull] private readonly FullBodyEmoteService fullBodyEmoteService;
-        [VFAutowired] private readonly ObjectPathsLookupService objectPaths;
+        [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
 
         public VFMotion Build(AnimationClipAction clipAction, VFGameObject animObject) {
             VFMotion copy;
@@ -37,7 +37,7 @@ namespace VF.Actions {
                         OwnerObject = animObject,
                         AnimatorObject = avatarObject,
                         AdjustRootScale = true,
-                        ObjectPathLookups = objectPaths.GetLookups()
+                        ObjectPaths = objectPaths
                     }
                 );
             }

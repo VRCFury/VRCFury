@@ -145,7 +145,7 @@ namespace VF.Utils {
                 var wrapped = VFMotion.Load(clip, new VFLoadContext {
                     OwnerObject = baseObj,
                     AnimatorObject = avatarObject,
-                    ObjectPathLookups = new[] { VRCFObjectPathCache.GetPerFrame(avatarObject) }
+                    ObjectPaths = VRCFObjectPathCache.GetPerFrame(avatarObject)
                 }) as VFClip;
                 if (wrapped == null) throw new Exception("Expected recording clip to load as VFClip");
                 OverwriteClip(clip, wrapped.Save(avatarObject) as AnimationClip);
@@ -162,7 +162,7 @@ namespace VF.Utils {
                     var wrapped = VFMotion.Load(clip, new VFLoadContext {
                         OwnerObject = avatarObject,
                         AnimatorObject = avatarObject,
-                        ObjectPathLookups = new[] { VRCFObjectPathCache.GetPerFrame(avatarObject) }
+                        ObjectPaths = VRCFObjectPathCache.GetPerFrame(avatarObject)
                     }) as VFClip;
                     if (wrapped == null) throw new Exception("Expected recording clip to load as VFClip");
                     ProjectBindingsForRecorder(wrapped, baseObj, avatarObject);

@@ -41,7 +41,7 @@ namespace VF.Feature {
         private MenuManager avatarMenu => menuService.GetMenu();
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
-        [VFAutowired] private readonly ObjectPathsLookupService objectPaths;
+        [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -84,7 +84,7 @@ namespace VF.Feature {
                         AnimatorObject = globals.avatarObject,
                         RootBindingsApplyToAvatar = model.rootBindingsApplyToAvatar,
                         AdjustRootScale = true,
-                        ObjectPathLookups = objectPaths.GetLookups(),
+                        ObjectPaths = objectPaths,
                         RewritePath = path => AnimationBindingUtils.RewriteRelativePath(path, model.rewriteBindings)
                     }
                 );

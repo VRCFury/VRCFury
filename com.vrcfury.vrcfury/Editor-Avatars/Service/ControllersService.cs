@@ -15,7 +15,7 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ParamsService paramsService;
         [VFAutowired] private readonly ParameterSourceService parameterSourceService;
-        [VFAutowired] private readonly ObjectPathsLookupService objectPaths;
+        [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
         private ParamManager paramz => paramsService.GetParams();
 
         private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager> _controllers
@@ -36,7 +36,8 @@ namespace VF.Service {
                         OwnerObject = globals.avatarObject,
                         AnimatorObject = globals.avatarObject,
                         RootBindingsApplyToAvatar = true,
-                        ObjectPathLookups = objectPaths.GetLookups().Reverse().ToList()
+                        ObjectPaths = objectPaths,
+                        ReverseObjectPaths = true
                     }
                 );
             }

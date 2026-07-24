@@ -31,14 +31,10 @@ namespace VF.Utils {
                 return null;
             }
 
-            var rootBindingsApplyToAvatar = context.RootBindingsApplyToAvatar;
             var target = AnimationBindingUtils.ResolveTarget(
-                context.OwnerObject,
-                context.AnimatorObject,
+                context,
                 unresolvedPath,
-                type,
-                rootBindingsApplyToAvatar,
-                context.ObjectPathLookups
+                type
             );
             return new VFResolvedObject(target, sourcePath, unresolvedPath, target != null);
         }

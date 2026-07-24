@@ -23,7 +23,7 @@ namespace VF.Service {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly ObjectPathsLookupService objectPaths;
+        [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
         [VFAutowired] private readonly VRCFArmatureCache armatureCache;
         
         [FeatureBuilderAction(FeatureOrder.ArmatureLink)]
@@ -57,7 +57,7 @@ namespace VF.Service {
                         mover,
                         pruneCheck,
                         animLink,
-                        objectPaths.GetLookups(),
+                        objectPaths,
                         armatureCache
                     );
                 } catch (Exception e) {
@@ -113,7 +113,7 @@ namespace VF.Service {
             ObjectMoveService mover,
             ISet<VFGameObject> pruneCheck,
             VFMultimapList<VFGameObject, VFGameObject> animLink,
-            IReadOnlyList<VRCFObjectPathCache> pathLookups,
+            VRCFObjectPathCache objectPaths,
             VRCFArmatureCache armatureCache
         ) {
             if (model.onlyIf != null && !model.onlyIf.Invoke()) {
@@ -127,7 +127,7 @@ namespace VF.Service {
             
             Debug.Log("Armature Linking " + model.propBone.asVf().GetPath(avatarObject));
 
-            var links = GetLinks(model, avatarObject, pathLookups, armatureCache);
+            var links = GetLinks(model, avatarObject, objectPaths, armatureCache);
             if (links == null) {
                 return;
             }
@@ -414,13 +414,13 @@ namespace VF.Service {
             ArmatureLink model,
             VFGameObject avatarObject,
             VFGameObject obj,
-            IReadOnlyList<VRCFObjectPathCache> pathLookups,
+            VRCFObjectPathCache objectPaths,
             VRCFArmatureCache armatureCache
         ) {
             try {
                 var linkFrom = model.propBone;
                 if (linkFrom == null || !obj.IsSameOrChildOf(linkFrom)) return null;
-                var links = GetLinks(model, avatarObject, pathLookups, armatureCache);
+                var links = GetLinks(model, avatarObject, objectPaths, armatureCache);
                 return links.mergeBones
                     .Where(pair => pair.Item1 == obj)
                     .Select(pair => pair.Item2)
@@ -433,16 +433,9 @@ namespace VF.Service {
         public static Links GetLinks(
             ArmatureLink model,
             VFGameObject avatarObject,
-            IReadOnlyList<VRCFObjectPathCache> pathLookups,
+            VRCFObjectPathCache objectPaths,
             VRCFArmatureCache armatureCache
         ) {
-            VFGameObject Find(VFGameObject from, string path) {
-                foreach (var lookup in pathLookups) {
-                    var found = lookup.Find(from, path);
-                    if (found != null) return found;
-                }
-                return null;
-            }
             VFGameObject propBone = model.propBone;
             if (propBone == null) return null;
 
@@ -473,7 +466,7 @@ namespace VF.Service {
                     }
 
                     if (!string.IsNullOrWhiteSpace(to.offset)) {
-                        var offsetObj = Find(obj, to.offset);
+                        var offsetObj = objectPaths.Find(obj, to.offset);
                         if (offsetObj == null) {
                             throw new Exception($"Failed to find object at path '{AnimationBindingUtils.ResolveRelativePath(obj.GetPath(avatarObject), to.offset)}'");
                         }
@@ -524,7 +517,7 @@ namespace VF.Service {
                         if (!string.IsNullOrWhiteSpace(removeBoneSuffix)) {
                             searchName = searchName.Replace(removeBoneSuffix, "");
                         }
-                        var childAvatarBone = Find(checkAvatarBone, searchName);
+                        var childAvatarBone = objectPaths.Find(checkAvatarBone, searchName);
 
                         // Hack for Rexouium model, which added ChestUp bone at some point and broke a ton of old props
                         var recurseButDoNotLink = false;
@@ -536,13 +529,13 @@ namespace VF.Service {
                                     recurseButDoNotLink = true;
                                     break;
                                 }
-                                childAvatarBone = Find(checkAvatarBone, b + "/" + searchName);
+                                childAvatarBone = objectPaths.Find(checkAvatarBone, b + "/" + searchName);
                                 if (childAvatarBone != null) {
                                     links.hacksUsed.Add("Avatar has extra mid-bone: " + b);
                                     break;
                                 }
                                 if (checkAvatarBone.name == b) {
-                                    childAvatarBone = Find(checkAvatarBone, "../" + searchName);
+                                    childAvatarBone = objectPaths.Find(checkAvatarBone, "../" + searchName);
                                     if (childAvatarBone != null) {
                                         links.hacksUsed.Add("Avatar has fake mid-bone: " + b);
                                         break;

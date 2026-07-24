@@ -40,20 +40,20 @@ namespace VF.Utils {
 
         public static HumanBodyBones? GetClosestHumanoidBone(
             VFGameObject obj,
-            IReadOnlyList<VRCFObjectPathCache> pathLookups,
+            VRCFObjectPathCache objectPaths,
             VRCFArmatureCache armatureCache
         ) {
             if (resultCache.TryGetValue(obj, out var cached)) {
                 return cached.bone;
             }
-            var bone = GetClosestHumanoidBoneUncached(obj, pathLookups, armatureCache);
+            var bone = GetClosestHumanoidBoneUncached(obj, objectPaths, armatureCache);
             resultCache[obj] = new Result() { bone = bone };
             return bone;
         }
 
         private static HumanBodyBones? GetClosestHumanoidBoneUncached(
             VFGameObject obj,
-            IReadOnlyList<VRCFObjectPathCache> pathLookups,
+            VRCFObjectPathCache objectPaths,
             VRCFArmatureCache armatureCache
         ) {
             var avatarObject = obj.GetAvatarRoot();
@@ -76,7 +76,7 @@ namespace VF.Utils {
                 if (followArmatureLink) {
                     VFGameObject foundParent = null;
                     foreach (var armatureLink in armatureLinks) {
-                        var p = ArmatureLinkService.GetProbableParent(armatureLink, avatarObject, current, pathLookups, armatureCache);
+                        var p = ArmatureLinkService.GetProbableParent(armatureLink, avatarObject, current, objectPaths, armatureCache);
                         if (p != null && !alreadyChecked.Contains(p)) {
                             foundParent = p;
                             break;

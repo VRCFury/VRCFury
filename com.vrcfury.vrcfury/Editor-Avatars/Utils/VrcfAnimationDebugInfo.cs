@@ -47,7 +47,7 @@ namespace VF.Utils {
                 var context = new VFLoadContext {
                     OwnerObject = componentObject,
                     AnimatorObject = avatarObject,
-                    ObjectPathLookups = new[] { objectPaths },
+                    ObjectPaths = objectPaths,
                     RewritePath = rewritePath
                 };
                 foreach (var binding in debugInfo.bindings) {
