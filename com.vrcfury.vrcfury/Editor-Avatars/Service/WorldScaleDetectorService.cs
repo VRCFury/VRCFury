@@ -73,7 +73,7 @@ namespace VF.Service {
             overlappingService.Activate();
 
             var innerObj = GameObjects.Create("Inner", outerObj);
-            innerObj.localPosition =  new Vector3(ContactRadius / MaxDetectedScale, 0, 0);
+            innerObj.localPosition = new Vector3(ContactRadius / (MaxDetectedScale * localSpace.worldScale.x), 0, 0);
             ConstraintUtils.MakeWorldSpace(innerObj);
 
             var localReceiver = innerObj.AddComponent<VRCContactReceiver>();
