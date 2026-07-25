@@ -56,15 +56,9 @@ namespace VF.Utils.Controller {
                 output.originalSourceIsProxyClip = true;
             }
 
-            var rawPairs =
-                AnimationUtility.GetObjectReferenceCurveBindings(raw)
-                    .Select(b => (b, (FloatOrObjectCurve)AnimationUtility.GetObjectReferenceCurve(raw, b)))
-                .Concat(AnimationUtility.GetCurveBindings(raw)
-                    .Select(b => (b, (FloatOrObjectCurve)AnimationUtility.GetEditorCurve(raw, b))))
-                .ToList();
+            var rawPairs = GetRawCurves(raw).ToList();
 
             if (raw.events.Length > 0) {
-                Debug.LogWarning($"Clip {raw.GetPathAndName()} contains an AnimationEvent (probably by accident) which has been discarded", raw);
                 output.changedFromOriginalSourceClip = true;
             }
 
@@ -72,13 +66,11 @@ namespace VF.Utils.Controller {
                 var rawBinding = rawPair.Item1;
                 var curve = rawPair.Item2;
                 if (curve.FloatCurve == null && curve.ObjectCurve == null) {
-                    Debug.LogWarning($"Clip {raw.GetPathAndName()} contains a binding that is missing a curve");
                     output.changedFromOriginalSourceClip = true;
                     continue;
                 }
                 output.lengthInSeconds = Math.Max(output.lengthInSeconds, curve.lengthInSeconds);
                 if (rawBinding.path == null || rawBinding.propertyName == null || rawBinding.type == null) {
-                    Debug.LogWarning($"Clip {raw.GetPathAndName()} contains an invalid binding");
                     output.changedFromOriginalSourceClip = true;
                     continue;
                 }
@@ -106,6 +98,13 @@ namespace VF.Utils.Controller {
                 output.curves[binding] = curve;
             }
             return output;
+        }
+
+        internal static IEnumerable<(EditorCurveBinding binding, FloatOrObjectCurve curve)> GetRawCurves(AnimationClip clip) {
+            return AnimationUtility.GetObjectReferenceCurveBindings(clip)
+                .Select(binding => (binding, (FloatOrObjectCurve)AnimationUtility.GetObjectReferenceCurve(clip, binding)))
+                .Concat(AnimationUtility.GetCurveBindings(clip)
+                    .Select(binding => (binding, (FloatOrObjectCurve)AnimationUtility.GetEditorCurve(clip, binding))));
         }
 
         internal override Motion Save(VFSaveContext context) {

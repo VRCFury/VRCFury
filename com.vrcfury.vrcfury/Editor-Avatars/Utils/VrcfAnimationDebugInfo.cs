@@ -320,17 +320,40 @@ namespace VF.Utils {
                     " This will break these animations if this avatar is upgraded to VRC Constraints.\n" + overLimitConstraints.Join('\n')));
             }
 
-            var hasEvents = new HashSet<AnimationClip>();
+            var clipsWithMissingCurves = new HashSet<AnimationClip>();
+            var clipsWithInvalidBindings = new HashSet<AnimationClip>();
+            var clipsWithEvents = new HashSet<AnimationClip>();
             foreach (var clip in clips) {
                 if (clip.events.Length > 0) {
-                    hasEvents.Add(clip);
+                    clipsWithEvents.Add(clip);
+                }
+                foreach (var (binding, curve) in VFClip.GetRawCurves(clip)) {
+                    if (curve.FloatCurve == null && curve.ObjectCurve == null) {
+                        clipsWithMissingCurves.Add(clip);
+                        continue;
+                    }
+                    if (binding.path == null || binding.propertyName == null || binding.type == null) {
+                        clipsWithInvalidBindings.Add(clip);
+                    }
                 }
             }
 
-            if (hasEvents.Any()) {
+            if (clipsWithEvents.Any()) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     $"These animation clips contain AnimationEvents, which are not supported in VRChat.\n" +
-                    hasEvents.Select(c => c.GetPathAndName()).OrderBy(a => a).Join('\n')
+                    clipsWithEvents.Select(c => c.GetPathAndName()).OrderBy(a => a).Join('\n')
+                ));
+            }
+            if (clipsWithMissingCurves.Any()) {
+                warnings.Add(VRCFuryEditorUtils.Warn(
+                    "These animation clips contain bindings that are missing curves. These bindings will be ignored.\n" +
+                    clipsWithMissingCurves.Select(c => c.GetPathAndName()).OrderBy(a => a).Join('\n')
+                ));
+            }
+            if (clipsWithInvalidBindings.Any()) {
+                warnings.Add(VRCFuryEditorUtils.Warn(
+                    "These animation clips contain invalid bindings. These bindings will be ignored.\n" +
+                    clipsWithInvalidBindings.Select(c => c.GetPathAndName()).OrderBy(a => a).Join('\n')
                 ));
             }
 
