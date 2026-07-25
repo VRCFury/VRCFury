@@ -9,20 +9,20 @@ namespace VF.Service {
      */
     [VFService]
     internal class ValidateBindingsService {
-        public bool HasValidBinding(VFMotion motion) {
-            return new AnimatorIterator.Clips().From(motion).Any(HasValidBinding);
+        public bool HasValidBinding(VFMotion motion, VFGameObject bindingRoot) {
+            return new AnimatorIterator.Clips().From(motion).Any(clip => HasValidBinding(clip, bindingRoot));
         }
 
-        public bool HasValidBinding(VFClip clip) {
-            return clip.GetAllBindings().Any(IsValid);
+        public bool HasValidBinding(VFClip clip, VFGameObject bindingRoot) {
+            return clip.GetAllBindings().Any(binding => IsValid(binding, bindingRoot));
         }
 
-        public bool IsValid(VFBinding binding) {
+        public bool IsValid(VFBinding binding, VFGameObject bindingRoot) {
             var obj = binding.target;
             if (binding.type == null) return false;
             if (binding.IsAnimatorBinding()) return true;
 
-            return AnimationBindingUtils.IsValidResolvedTarget(obj, binding.type);
+            return AnimationBindingUtils.IsValidResolvedTarget(obj, binding.type, bindingRoot);
         }
     }
 }

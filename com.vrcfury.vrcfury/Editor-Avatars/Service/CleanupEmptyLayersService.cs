@@ -17,6 +17,7 @@ namespace VF.Service {
     internal class CleanupEmptyLayersService {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly AnimatorHolderService animators;
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
         private readonly HashSet<VFLayer> layersToRemove = new HashSet<VFLayer>();
 
@@ -40,7 +41,7 @@ namespace VF.Service {
                         // Rip out all impossible bindings
                         var clipName = clip.name;
                         clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
-                            if (!validateBindingsService.IsValid(binding)) {
+                            if (!validateBindingsService.IsValid(binding, avatarObject)) {
                                 removedBindings.Add($"{binding.PrettyString()} from {clipName}");
                                 return null;
                             }
@@ -58,7 +59,7 @@ namespace VF.Service {
                 // Delete empty layers
                 foreach (var (layer, i) in c.GetLayers().Select((l,i) => (l,i))) {
                     var hasNonEmptyClip = new AnimatorIterator.Clips().From(layer)
-                        .Any(clip => validateBindingsService.HasValidBinding(clip));
+                        .Any(clip => validateBindingsService.HasValidBinding(clip, avatarObject));
                     var hasBehaviour = layer.HasBehaviours();
 
                     if (!hasNonEmptyClip && !hasBehaviour) {
@@ -82,6 +83,13 @@ namespace VF.Service {
                         layer.weight = 0;
                     }
                 }
+            }
+
+            foreach (var (owner, controller) in animators.GetSubControllers()) {
+                if (controller.GetClips().Any(clip => validateBindingsService.HasValidBinding(clip, owner))) continue;
+
+                Debug.LogWarning($"Removing Animator from {owner.GetPath()} because it contains no valid animation bindings");
+                animators.RemoveSubAnimator(owner);
             }
         }
     }

@@ -29,7 +29,7 @@ namespace VF.Utils {
             }
             if (path.StartsWith("/")) {
                 var target = objectPaths.Find(animatorObject, path.TrimStart('/'), reverseObjectPaths);
-                return IsValidResolvedTarget(target, type) ? target : null;
+                return IsValidResolvedTarget(target, type, animatorObject) ? target : null;
             }
 
             var ancestor = ownerObject;
@@ -41,7 +41,7 @@ namespace VF.Utils {
             VFGameObject current = ownerObject;
             while (current != null) {
                 var target = objectPaths.Find(current, path, reverseObjectPaths);
-                if (IsValidResolvedTarget(target, type)) {
+                if (IsValidResolvedTarget(target, type, animatorObject)) {
                     return target;
                 }
 
@@ -83,8 +83,9 @@ namespace VF.Utils {
             return path;
         }
 
-        internal static bool IsValidResolvedTarget(VFGameObject target, Type type) {
+        internal static bool IsValidResolvedTarget(VFGameObject target, Type type, VFGameObject bindingRoot) {
             if (target == null) return false;
+            if (!target.IsSameOrChildOf(bindingRoot)) return false;
             if (type == null) return false;
             if (type == typeof(GameObject)) return true;
             if (type == typeof(Animator)) return true;

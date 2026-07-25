@@ -26,6 +26,7 @@ namespace VF.Service {
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly CleanupEmptyLayersService cleanupEmptyLayers;
@@ -135,7 +136,7 @@ namespace VF.Service {
                 if (state.motion is VFTree && !layerSourceService.DidCreate(layer)) return false;
                 return new AnimatorIterator.Clips().From(state.motion)
                     .SelectMany(clip => clip.GetAllBindings())
-                    .Where(binding => validateBindingsService.IsValid(binding))
+                    .Where(binding => validateBindingsService.IsValid(binding, avatarObject))
                     .Select(binding => binding.Normalize(true))
                     .Any(b => b.propertyName == VFBinding.NormalizedRotationProperty);
             });
@@ -253,8 +254,8 @@ namespace VF.Service {
                 (on, off) = (off, on);
             }
 
-            var onValid = validateBindingsService.HasValidBinding(on);
-            var offValid = validateBindingsService.HasValidBinding(off);
+            var onValid = validateBindingsService.HasValidBinding(on, avatarObject);
+            var offValid = validateBindingsService.HasValidBinding(off, avatarObject);
             if (!onValid && !offValid) throw new DoNotOptimizeException($"Contains no valid bindings");
 
             var param = new VFAFloat(condition.parameter, 0);
@@ -336,7 +337,7 @@ namespace VF.Service {
         private ICollection<VFBinding> GetBindingsAnimatedInLayer(VFLayer layer) {
             return new AnimatorIterator.Clips().From(layer)
                 .SelectMany(clip => clip.GetAllBindings())
-                .Where(binding => validateBindingsService.IsValid(binding))
+                .Where(binding => validateBindingsService.IsValid(binding, avatarObject))
                 .Select(binding => binding.Normalize(true))
                 .ToImmutableHashSet();
         }

@@ -44,8 +44,6 @@ namespace VF.Service {
         }
 
         private readonly Dictionary<VFGameObject, SavedAnimator> savedAnimators = new Dictionary<VFGameObject, SavedAnimator>();
-        internal readonly Dictionary<VFGameObject, HashSet<VFGameObject>> animatedObjectsByRoot
-            = new Dictionary<VFGameObject, HashSet<VFGameObject>>();
 
         [FeatureBuilderAction(FeatureOrder.ResetAnimatorBefore)]
         public void ApplyBefore() {
@@ -108,6 +106,7 @@ namespace VF.Service {
             var output = new List<(VFGameObject, VFController)>();
             foreach (var pair in savedAnimators) {
                 var owner = pair.Key;
+                if (owner == null) continue;
                 var saved = pair.Value;
                 if (owner == avatarObject) continue;
                 if (saved.controller == null) continue;
@@ -122,18 +121,16 @@ namespace VF.Service {
                             ReverseObjectPaths = true
                         }
                     );
-                    animatedObjectsByRoot[owner] = saved.clone
-                        ?.GetClips()
-                        .SelectMany(clip => clip.GetAllBindings())
-                        .Select(binding => binding.target)
-                        .Where(target => target != null)
-                        .ToHashSet()
-                        ?? new HashSet<VFGameObject>();
                 }
                 if (saved.clone == null) continue;
                 output.Add((owner, saved.clone));
             }
             return output;
+        }
+
+        public void RemoveSubAnimator(VFGameObject owner) {
+            if (owner == avatarObject) return;
+            savedAnimators.Remove(owner);
         }
     }
 }
