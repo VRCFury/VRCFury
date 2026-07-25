@@ -569,6 +569,7 @@ namespace VF.Feature {
                     if (sourceObject == null) return;
                     if (sourceObject.GetComponent<VRCFuryHapticPlug>() == null
                         && sourceObject.GetComponent<VRCFuryHapticSocket>() == null) return;
+                    if (VRCFuryHapticPlugEditor.ParseSpsMagicParam(sourceParamProp.stringValue) != null) return;
                     sourceParamProp.stringValue = VRCFuryHapticPlugEditor.SpsDepthMeters;
                     sourceParamProp.serializedObject.ApplyModifiedProperties();
                 }
