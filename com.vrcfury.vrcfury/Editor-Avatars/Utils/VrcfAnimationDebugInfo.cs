@@ -17,7 +17,8 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 namespace VF.Utils {
     internal static class VrcfAnimationDebugInfo {
         private class ControllerDebugInfo {
-            public HashSet<EditorCurveBinding> bindings;
+            public ISet<AnimationClip> clips;
+            public ISet<EditorCurveBinding> bindings;
             public bool usesWdOff;
         }
 
@@ -37,6 +38,7 @@ namespace VF.Utils {
             Action<string> addPathRewrite = null
         ) {
             var usesWdOff = false;
+            var clips = new HashSet<AnimationClip>();
             var bindings = new HashSet<VFBinding>();
             var avatarObject = componentObject.GetAvatarRoot();
             var objectPaths = VRCFObjectPathCache.GetPerFrame(avatarObject);
@@ -55,9 +57,10 @@ namespace VF.Utils {
                     if (!resolved.HasValue) continue;
                     bindings.Add(VFBinding.From(resolved.Value, binding));
                 }
+                clips.UnionWith(debugInfo.clips);
             }
 
-            var warnings = BuildDebugInfo(bindings, componentObject, true, addPathRewrite);
+            var warnings = BuildDebugInfo(clips, bindings, componentObject, true, addPathRewrite);
 
             if (usesWdOff) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
@@ -127,13 +130,14 @@ namespace VF.Utils {
                 }
             }
 
-            var clips = new Stack<AnimationClip>(source.animationClips ?? Array.Empty<AnimationClip>());
+            var clips = new HashSet<AnimationClip>(source.animationClips ?? Array.Empty<AnimationClip>());
+            var clipStack = new Stack<AnimationClip>(clips);
             var seenClips = new HashSet<AnimationClip>();
-            while (clips.Count > 0) {
-                var clip = clips.Pop();
+            while (clipStack.Count > 0) {
+                var clip = clipStack.Pop();
                 if (clip == null || !seenClips.Add(clip)) continue;
                 var additiveClip = AnimationUtility.GetAnimationClipSettings(clip).additiveReferencePoseClip;
-                if (additiveClip != null) clips.Push(additiveClip);
+                if (additiveClip != null) clipStack.Push(additiveClip);
                 foreach (var binding in AnimationUtility.GetCurveBindings(clip)
                              .Concat(AnimationUtility.GetObjectReferenceCurveBindings(clip))) {
                     if (binding.path == null || binding.propertyName == null || binding.type == null) continue;
@@ -143,12 +147,14 @@ namespace VF.Utils {
             }
 
             return new ControllerDebugInfo {
+                clips = clips,
                 bindings = bindings,
                 usesWdOff = usesWdOff
             };
         }
         
         public static List<VisualElement> BuildDebugInfo(
+            IEnumerable<AnimationClip> clips,
             IEnumerable<VFBinding> bindings,
             VFGameObject componentObject,
             bool isController = false,
@@ -312,6 +318,20 @@ namespace VF.Utils {
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     "VRC Constraints can only have the first 16 source animated, but you are animating a constraint source above this limit!" +
                     " This will break these animations if this avatar is upgraded to VRC Constraints.\n" + overLimitConstraints.Join('\n')));
+            }
+
+            var hasEvents = new HashSet<AnimationClip>();
+            foreach (var clip in clips) {
+                if (clip.events.Length > 0) {
+                    hasEvents.Add(clip);
+                }
+            }
+
+            if (hasEvents.Any()) {
+                warnings.Add(VRCFuryEditorUtils.Warn(
+                    $"These animation clips contain AnimationEvents, which are not supported in VRChat.\n" +
+                    hasEvents.Select(c => c.GetPathAndName()).OrderBy(a => a).Join('\n')
+                ));
             }
 
             return warnings;

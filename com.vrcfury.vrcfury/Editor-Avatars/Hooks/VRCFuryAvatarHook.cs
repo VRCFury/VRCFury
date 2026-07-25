@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
@@ -125,8 +126,15 @@ namespace VF.Hooks {
                 var bindings = new AnimatorIterator.Clips().From(test.onClip)
                     .SelectMany(clip => clip.GetAllBindings())
                     .ToImmutableHashSet();
+                var clips = new HashSet<AnimationClip>();
+                UnitySerializationUtils.Iterate(actionSet, visit => {
+                    if (visit.value is AnimationClip clip && clip != null) {
+                        clips.Add(clip);
+                    }
+                    return UnitySerializationUtils.IterateResult.Continue;
+                });
                 var warnings =
-                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, gameObject);
+                    VrcfAnimationDebugInfo.BuildDebugInfo(clips, bindings, gameObject);
 
                 foreach (var warning in warnings) {
                     debugInfo.Add(warning);

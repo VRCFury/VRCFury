@@ -63,6 +63,11 @@ namespace VF.Utils.Controller {
                     .Select(b => (b, (FloatOrObjectCurve)AnimationUtility.GetEditorCurve(raw, b))))
                 .ToList();
 
+            if (raw.events.Length > 0) {
+                Debug.LogWarning($"Clip {raw.GetPathAndName()} contains an AnimationEvent (probably by accident) which has been discarded", raw);
+                output.changedFromOriginalSourceClip = true;
+            }
+
             foreach (var rawPair in rawPairs) {
                 var rawBinding = rawPair.Item1;
                 var curve = rawPair.Item2;
@@ -127,6 +132,9 @@ namespace VF.Utils.Controller {
                 .ToArray();
             clip.name = clipName ?? clip.name;
             clip.frameRate = frameRate;
+            if (clip.events.Length > 0) {
+                AnimationUtility.SetAnimationEvents(clip, new AnimationEvent[] { });
+            }
 
             ClearRawCurves(clip);
 
