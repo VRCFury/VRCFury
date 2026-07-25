@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -60,9 +61,15 @@ namespace VF.Utils {
             return resolvedObject?.UnresolvedPath;
         }
 
-        internal string GetDebugPath(VFGameObject root = null) {
-            if (resolvedObject.HasValue) return resolvedObject.Value.GetDebugPath(root);
-            return "";
+        internal string GetPath([CanBeNull] VFGameObject root = null) {
+            if (!resolvedObject.HasValue) return "";
+            return resolvedObject.Value.GetPath(root);
+        }
+
+        internal EditorCurveBinding ToEditorCurveBinding(VFGameObject root) {
+            var output = rawBinding;
+            output.path = GetPath(root);
+            return output;
         }
 
         internal bool Targets(VFGameObject other) {
@@ -127,7 +134,7 @@ namespace VF.Utils {
         }
 
         internal string PrettyString() {
-            return $"({GetDebugPath()} {type?.Name} {propertyName})";
+            return $"({GetPath()} {type?.Name} {propertyName})";
         }
 
         internal bool IsOverLimitConstraint(out int slotNum) {
@@ -153,17 +160,6 @@ namespace VF.Utils {
             suffix = bindingPropertyName.Substring(end);
             if (!int.TryParse(slotNumStr, out slotNum)) return false;
             return true;
-        }
-
-        internal string GetPath(VFGameObject root) {
-            if (!resolvedObject.HasValue) return "";
-            return resolvedObject.Value.GetPath(root);
-        }
-
-        internal EditorCurveBinding ToEditorCurveBinding(VFGameObject root) {
-            var output = rawBinding;
-            output.path = GetPath(root);
-            return output;
         }
 
         internal bool TryGetCurrentFloat(VFGameObject animatorObject, out float data) {

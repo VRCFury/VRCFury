@@ -305,7 +305,7 @@ namespace VF.Utils {
             var overLimitConstraints = new HashSet<string>();
             foreach (var binding in usedBindings) {
                 if (binding.IsOverLimitConstraint(out var slotNum)) {
-                    overLimitConstraints.Add($"Source {slotNum} on {binding.GetDebugPath(avatarObject)}");
+                    overLimitConstraints.Add($"Source {slotNum} on {binding.GetPath()}");
                 }
             }
             if (overLimitConstraints.Any()) {

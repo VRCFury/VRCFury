@@ -48,7 +48,7 @@ namespace VF.Hooks {
                 var overLimit = new HashSet<string>();
                 foreach (var binding in clips.SelectMany(clip => (VFMotion.Load(clip, new VFLoadContext()) as VFClip)?.GetFloatBindings() ?? System.Array.Empty<VFBinding>())) {
                     if (binding.IsOverLimitConstraint(out _)) {
-                        overLimit.Add(binding.GetDebugPath());
+                        overLimit.Add(binding.GetPath());
                     }
                 }
 

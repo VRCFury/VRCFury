@@ -6,6 +6,7 @@ using UnityEngine.Experimental.Rendering;
 namespace VF.Utils {
     internal static class Texture2DExtensions {
         public static void ForceReadable(this Texture2D texture, bool on = true) {
+            if (texture.isReadable == on) return;
             var so = new SerializedObject(texture);
             var sp = so.FindProperty("m_IsReadable");
             sp.boolValue = on;

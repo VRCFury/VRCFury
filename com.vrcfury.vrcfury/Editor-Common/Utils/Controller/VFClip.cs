@@ -125,9 +125,6 @@ namespace VF.Utils.Controller {
             var savableCurves = curves
                 .Where(pair => !pair.Key.ShouldDropOnSave())
                 .ToArray();
-            if (savableCurves.Length != curves.Count) {
-                changedFromOriginalSourceClip = true;
-            }
             clip.name = clipName ?? clip.name;
             clip.frameRate = frameRate;
 
@@ -254,9 +251,6 @@ namespace VF.Utils.Controller {
                 return null;
             }
             foreach (var binding in curves.Keys) {
-                if (binding.ShouldDropOnSave()) {
-                    return null;
-                }
                 if (binding.GetPath(bindingRoot) != binding.GetStoredPath()) {
                     return null;
                 }

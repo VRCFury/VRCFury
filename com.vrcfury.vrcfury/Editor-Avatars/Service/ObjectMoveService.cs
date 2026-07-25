@@ -25,16 +25,6 @@ namespace VF.Service {
                         $"VRCFury cannot move {obj.GetPath()} outside the avatar to {newParent.GetPath()}/{obj.name}.");
                 }
 
-                foreach (var (root, animatedObjects) in animators.animatedObjectsByRoot) {
-                    if (obj == root || !obj.IsSameOrChildOf(root)) continue;
-                    if (newParent.IsSameOrChildOf(root)) continue;
-                    if (!animatedObjects.Any(animated => animated != null && animated.IsSameOrChildOf(obj))) continue;
-
-                    throw new Exception(
-                        $"VRCFury cannot move {obj.GetPath()} to {newParent.GetPath()}/{obj.name} because it's animated from an Animator component on {root.GetPath()}." +
-                        " Are you sure that Animator is supposed to be there? Sub-animators are very unusual, and it should probably be deleted.");
-                }
-
                 obj.SetParent(newParent, worldPositionStays);
             }
 

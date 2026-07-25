@@ -1,4 +1,5 @@
 using System;
+using JetBrains.Annotations;
 using UnityEngine;
 using VF.Utils.Controller;
 
@@ -39,14 +40,10 @@ namespace VF.Utils {
             return new VFResolvedObject(target, sourcePath, unresolvedPath, target != null);
         }
 
-        public string GetPath(VFGameObject root) {
+        public string GetPath([CanBeNull] VFGameObject root) {
             if (target == null) return unresolvedPath;
+            if (root != null && !target.IsSameOrChildOf(root)) return unresolvedPath;
             return target.GetPath(root);
-        }
-
-        public string GetDebugPath(VFGameObject root = null) {
-            if (target != null) return root != null ? target.GetPath(root) : target.GetPath();
-            return unresolvedPath;
         }
 
         public bool ShouldDropOnSave() {
