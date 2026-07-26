@@ -19,7 +19,8 @@ namespace VF.Hooks {
     internal static class VFInitHook {
         [InitializeOnLoadMethod]
         private static void Init() {
-            var timings = new List<(string name, long ticks)>();
+            var logTimings = EditorPrefs.GetBool("com.vrcfury.logVfInitTimings", false);
+            var timings = logTimings ? new List<(string name, long ticks)>() : null;
 
             foreach (var method in TypeCache.GetMethodsWithAttribute<VFInitAttribute>()
                          .OrderBy(m => m.DeclaringType?.FullName)
@@ -29,7 +30,7 @@ namespace VF.Hooks {
                     continue;
                 }
 
-                var sw = Stopwatch.StartNew();
+                var sw = logTimings ? Stopwatch.StartNew() : null;
                 try {
                     method.Invoke(null, null);
                 } catch (Exception e) {
@@ -38,17 +39,20 @@ namespace VF.Hooks {
                         e is TargetInvocationException tie && tie.InnerException != null ? tie.InnerException : e
                     ));
                 } finally {
-                    sw.Stop();
-                    timings.Add(($"{method.DeclaringType?.Name}.{method.Name}", sw.ElapsedTicks));
+                    if (sw != null) {
+                        sw.Stop();
+                        timings.Add(($"{method.DeclaringType?.FullName}.{method.Name}", sw.ElapsedTicks));
+                    }
                 }
             }
 
-            // Debug.Log(
-            //     "[VRCFury] InitializeOnLoad timings:\n" +
-            //     string.Join("\n", timings
-            //         .OrderByDescending(x => x.ticks)
-            //         .Select(x => $"{TimeSpan.FromTicks(x.ticks).TotalMilliseconds:F1} ms  {x.name}"))
-            // );
+            if (!logTimings) return;
+            Debug.Log(
+                "[VRCFury] VFInit timings:\n" +
+                string.Join("\n", timings
+                    .OrderByDescending(x => x.ticks)
+                    .Select(x => $"{TimeSpan.FromTicks(x.ticks).TotalMilliseconds:F1} ms  {x.name}"))
+            );
         }
 
         private static bool IsValid(MethodInfo method) {
