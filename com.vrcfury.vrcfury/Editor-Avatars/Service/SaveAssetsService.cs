@@ -60,6 +60,10 @@ namespace VF.Service {
             foreach (var audioSource in avatarObject.GetComponentsInSelfAndChildren<AudioSource>()) {
                 Session.SaveAssetAndChildren(audioSource);
             }
+            // Generated Avatars on generic rigs
+            foreach (var animator in avatarObject.GetComponentsInSelfAndChildren<Animator>()) {
+                Session.SaveAssetAndChildren(animator);
+            }
 
             Session.Finish();
         }

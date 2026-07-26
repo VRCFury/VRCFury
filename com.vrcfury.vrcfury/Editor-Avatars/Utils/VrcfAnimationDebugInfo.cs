@@ -228,7 +228,7 @@ namespace VF.Utils {
             if (badPhysboneTransforms.Any()) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     $"You're animating these transforms, but they are within physbones that are not marked as Is Animated.\n" +
-                    badPhysboneTransforms.OrderBy(a => a).Join('\n')
+                    badPhysboneTransforms.OrderBy(a => a).JoinWithMore(20)
                 ));
             }
 
@@ -261,7 +261,7 @@ namespace VF.Utils {
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     $"You're animating these properties on materials using Poiyomi, but the materials don't have the property set as Animated. " +
                     $"Check the right click menu of the property on the material:\n" +
-                    lines.Join('\n')
+                    lines.JoinWithMore(20)
                 ));
             }
 
@@ -271,7 +271,7 @@ namespace VF.Utils {
                 var msg = $"Paths are animated in {thisName}, but not found in your avatar, thus, they won't do anything! If you are not the creator of this asset, this may be on purpose.";
                 if (addPathRewrite != null) msg += " You may need to use 'Path Rewrite Rules' in the Advanced Settings to fix them if your avatar's objects are in a different location.";
                 msg += "\n";
-                msg += missingBindings.OrderBy(path => path).Join('\n');
+                msg += missingBindings.OrderBy(path => path).JoinWithMore(20);
                 warnings.Add(VRCFuryEditorUtils.Warn(msg));
             }
             if (isController && nonRewriteSafeBindings.Any()) {
@@ -304,7 +304,7 @@ namespace VF.Utils {
             if (isController && outsidePrefabBindings.Any()) {
                 var msg = $"This prefab is not self-contained! It animates things outside of this object.";
                 msg += "\n";
-                msg += outsidePrefabBindings.OrderBy(path => path).Join('\n');
+                msg += outsidePrefabBindings.OrderBy(path => path).JoinWithMore(20);
                 warnings.Add(VRCFuryEditorUtils.Warn(msg));
             }
 
@@ -317,7 +317,7 @@ namespace VF.Utils {
             if (overLimitConstraints.Any()) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     "VRC Constraints can only have the first 16 source animated, but you are animating a constraint source above this limit!" +
-                    " This will break these animations if this avatar is upgraded to VRC Constraints.\n" + overLimitConstraints.Join('\n')));
+                    " This will break these animations if this avatar is upgraded to VRC Constraints.\n" + overLimitConstraints.JoinWithMore(20)));
             }
 
             var clipsWithMissingCurves = new HashSet<AnimationClip>();
@@ -341,19 +341,19 @@ namespace VF.Utils {
             if (clipsWithEvents.Any()) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     $"These animation clips contain AnimationEvents, which are not supported in VRChat.\n" +
-                    clipsWithEvents.Select(c => c.GetPathAndName()).OrderBy(a => a).Join('\n')
+                    clipsWithEvents.Select(c => c.GetPathAndName()).OrderBy(a => a).JoinWithMore(20)
                 ));
             }
             if (clipsWithMissingCurves.Any()) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     "These animation clips contain bindings that are missing curves. These bindings will be ignored.\n" +
-                    clipsWithMissingCurves.Select(c => c.GetPathAndName()).OrderBy(a => a).Join('\n')
+                    clipsWithMissingCurves.Select(c => c.GetPathAndName()).OrderBy(a => a).JoinWithMore(20)
                 ));
             }
             if (clipsWithInvalidBindings.Any()) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     "These animation clips contain invalid bindings. These bindings will be ignored.\n" +
-                    clipsWithInvalidBindings.Select(c => c.GetPathAndName()).OrderBy(a => a).Join('\n')
+                    clipsWithInvalidBindings.Select(c => c.GetPathAndName()).OrderBy(a => a).JoinWithMore(20)
                 ));
             }
 

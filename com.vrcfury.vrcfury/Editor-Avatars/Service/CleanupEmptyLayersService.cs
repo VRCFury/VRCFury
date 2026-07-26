@@ -86,9 +86,17 @@ namespace VF.Service {
             }
 
             foreach (var (owner, controller) in animators.GetSubControllers()) {
-                if (controller.GetClips().Any(clip => validateBindingsService.HasValidBinding(clip, owner))) continue;
+                var hasValidBinding = controller.GetClips()
+                    .Any(clip => validateBindingsService.HasValidBinding(clip, owner));
+                var hasValidAnimatorPlayAudio = controller.GetLayers()
+                    .SelectMany(layer => layer.allBehaviours)
+                    .Any(behaviour => {
+                        var target = behaviour.GetAudioPathTarget();
+                        return target != null && target.IsSameOrChildOf(owner);
+                    });
+                if (hasValidBinding || hasValidAnimatorPlayAudio) continue;
 
-                Debug.LogWarning($"Removing Animator from {owner.GetPath()} because it contains no valid animation bindings");
+                Debug.LogWarning($"Removing Animator from {owner.GetPath()} because it contains no valid animation bindings or Animator Play Audio actions");
                 animators.RemoveSubAnimator(owner);
             }
         }

@@ -111,9 +111,8 @@ namespace VF.Service {
                 if (owner == avatarObject) continue;
                 if (saved.controller == null) continue;
                 if (saved.clone == null) {
-                    saved.clone = VFControllerWithVrcType.Load(
+                    saved.clone = VFController.Load(
                         saved.controller,
-                        VRCAvatarDescriptor.AnimLayerType.Base,
                         new VFLoadContext {
                             OwnerObject = owner,
                             AnimatorObject = owner,
