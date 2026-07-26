@@ -18,6 +18,7 @@ namespace VF.Service.Compressor {
         [VFAutowired] private readonly ParameterCompressorLayerService newLayerService;
         [VFAutowired] private readonly ParameterCompressorLegacyLayerService legacyLayerService;
         [VFAutowired] private readonly ParameterPlatformAlignmentService platformAlignmentService;
+        [VFAutowired] private readonly FixMasksService fixMasksService;
         [VFAutowired] private readonly SaveAssetsService saveAssetsService;
 
         public const float BATCH_TIME = 0.1f;
@@ -77,6 +78,7 @@ namespace VF.Service.Compressor {
             fx.UpgradeWrongParamTypes();
             paramz.Dirty();
             CreateDebugInfo(decisionWithInfo, originalCost, newCost);
+            fixMasksService.FixController(fx);
             saveAssetsService.Run(new[] { fx });
         }
 

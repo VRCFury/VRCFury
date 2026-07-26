@@ -107,38 +107,42 @@ namespace VF.Service {
             }
 
             foreach (var c in controllers.GetAllUsedControllers()) {
-                var ctrl = c;
+                FixController(c);
+            }
+        }
 
-                VFMask expectedMask = null;
-                if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                    expectedMask = GetGestureMask(c);
-                }
+        internal void FixController(ControllerManager c) {
+            var ctrl = c;
 
-                var layer0 = ctrl.GetLayer(0);
-                var createEmptyBaseLayer = false;
-                if (layer0 == null) {
-                    // If there are no layers, we still create a base layer because the VRCSDK freaks out if there is a controller with no layers
+            VFMask expectedMask = null;
+            if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                expectedMask = GetGestureMask(c);
+            }
+
+            var layer0 = ctrl.GetLayer(0);
+            var createEmptyBaseLayer = false;
+            if (layer0 == null) {
+                // If there are no layers, we still create a base layer because the VRCSDK freaks out if there is a controller with no layers
+                createEmptyBaseLayer = true;
+            } else if (layer0.mask != expectedMask) {
+                if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX || c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
+                    // If the mask on layer 0 doesn't match what the base mask needs to be, we need to correct it by making a new base layer
+                    // (Note: VRC only respects the base mask on gesture and fx)
                     createEmptyBaseLayer = true;
-                } else if (layer0.mask != expectedMask) {
-                    if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX || c.GetType() == VRCAvatarDescriptor.AnimLayerType.Gesture) {
-                        // If the mask on layer 0 doesn't match what the base mask needs to be, we need to correct it by making a new base layer
-                        // (Note: VRC only respects the base mask on gesture and fx)
-                        createEmptyBaseLayer = true;
-                    } else {
-                        // If a base layer has humanoid animations AND a mask, it does weird things.
-                        // For example, if the layer 0 in the Additive controller contains a full human pose, and there's a mask limiting it to only the jaw bone,
-                        // it can still impact the hip offset. This doesn't happen if it's on layer 1+. So we must ensure that there's never content with a mask on layer 0 in these cases.
-                        createEmptyBaseLayer = true;
-                    }
-                } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX && (layer0.hasSubMachines || layer0.allStates.Count() > 1)) {
-                    // On FX, do not allow a layer with transitions to live as the base layer, because for some reason transition times can break
-                    //   and animate immediately when performed within the base layer
+                } else {
+                    // If a base layer has humanoid animations AND a mask, it does weird things.
+                    // For example, if the layer 0 in the Additive controller contains a full human pose, and there's a mask limiting it to only the jaw bone,
+                    // it can still impact the hip offset. This doesn't happen if it's on layer 1+. So we must ensure that there's never content with a mask on layer 0 in these cases.
                     createEmptyBaseLayer = true;
                 }
+            } else if (c.GetType() == VRCAvatarDescriptor.AnimLayerType.FX && (layer0.hasSubMachines || layer0.allStates.Count() > 1)) {
+                // On FX, do not allow a layer with transitions to live as the base layer, because for some reason transition times can break
+                //   and animate immediately when performed within the base layer
+                createEmptyBaseLayer = true;
+            }
 
-                if (createEmptyBaseLayer) {
-                    c.EnsureEmptyBaseLayer().mask = expectedMask;
-                }
+            if (createEmptyBaseLayer) {
+                c.EnsureEmptyBaseLayer().mask = expectedMask;
             }
         }
 
