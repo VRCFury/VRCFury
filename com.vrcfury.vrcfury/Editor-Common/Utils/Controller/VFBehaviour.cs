@@ -30,6 +30,8 @@ namespace VF.Utils.Controller {
                 VRCAnimatorPlayAudio?.VFField("SourcePath");
             public static readonly FieldInfo AudioParameterName =
                 VRCAnimatorPlayAudio?.VFField("ParameterName");
+            public static readonly FieldInfo AudioClips =
+                VRCAnimatorPlayAudio?.VFField("Clips");
         }
 
         private static long nextIdentity = 1;
@@ -172,6 +174,13 @@ namespace VF.Utils.Controller {
                 : null;
         }
 
+        private static IEnumerable<AudioClip> GetAudioClips(StateMachineBehaviour raw) {
+            if (Reflection.VRCAnimatorPlayAudio?.IsAssignableFrom(raw?.GetType()) != true) {
+                return Array.Empty<AudioClip>();
+            }
+            return Reflection.AudioClips?.GetValue(raw) as AudioClip[] ?? Array.Empty<AudioClip>();
+        }
+
         private void RewriteDriverParameters(Func<string, string> rewriteParamName, bool includeWrites) {
             if (Reflection.DriverParametersField == null) return;
             if (Reflection.VRCAvatarParameterDriver?.IsAssignableFrom(raw.GetType()) != true) return;
@@ -213,6 +222,9 @@ namespace VF.Utils.Controller {
             var output = CloneRaw(raw);
             if (audioSource.HasValue) {
                 TrySetAudioSourcePath(output, audioSource.Value.GetPath(context.BindingRoot));
+            }
+            foreach (var clip in GetAudioClips(output)) {
+                context.AddOtherAsset(clip);
             }
             context.AddNewAsset(output);
             return output;
