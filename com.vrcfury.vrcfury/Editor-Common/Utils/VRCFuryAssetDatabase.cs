@@ -202,19 +202,29 @@ namespace VF.Utils {
                     // All first level paths are not considered part of the asset database ("Assets", "Packages")
                     continue;
                 }
+
                 if (AssetDatabase.IsValidFolder(p)) {
-                    // Already exists in the database, all good
+                    // It already exists in the assetDB
+                    if (Directory.Exists(p)) {
+                        // We're all good here, everything already exists.
+                    } else {
+                        // Database is corrupt, it thinks the dir exists, but it doesn't.
+                        // Create it manually to get the db in-line.
+                        Directory.CreateDirectory(p);
+                    }
                     continue;
                 }
+
                 if (Directory.Exists(p)) {
-                    // The directory exists, but it's not in the asset database
-                    // This usually means the asset database is corrupt and doesn't know the folder exists
-                    // Should be safe to manually delete it and have the asset database make it again
+                    // Database is corrupt, it thinks the dir is missing, but it exists.
+                    // Delete it manually to get the db in line.
                     Directory.Delete(p, true);
                 }
                 if (File.Exists(p + ".meta")) {
+                    // Delete the meta too, because the assetdb is going to try to write a new one when we "create" the new folder
                     File.Delete(p + ".meta");
                 }
+
                 var parent = GetDirectoryName(p);
                 if (string.IsNullOrEmpty(parent)) continue;
                 var basename = Path.GetFileName(p);
