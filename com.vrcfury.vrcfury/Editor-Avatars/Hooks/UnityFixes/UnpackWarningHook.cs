@@ -8,7 +8,7 @@ namespace VF.Hooks.UnityFixes {
             public static readonly HarmonyUtils.PatchObj UnpackPrefabPatch = HarmonyUtils.Patch(
                 typeof(UnpackWarningHook),
                 nameof(Prefix),
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6000_3_OR_NEWER
                 "UnityEditor.PrefabUtility",
 #else
                 "UnityEditor.SceneHierarchy",
@@ -18,7 +18,7 @@ namespace VF.Hooks.UnityFixes {
             public static readonly HarmonyUtils.PatchObj UnpackPrefabCompletelyPatch = HarmonyUtils.Patch(
                 typeof(UnpackWarningHook),
                 nameof(Prefix),
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6000_3_OR_NEWER
                 "UnityEditor.PrefabUtility",
 #else
                 "UnityEditor.SceneHierarchy",

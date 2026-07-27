@@ -29,7 +29,7 @@ namespace VF.Utils {
                 if (win == null) return;
                 GameObject go = o;
                 Reflection.SetExpanded.Invoke(win, new object[] {
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
                     go.GetEntityId()
 #else
                     go.GetInstanceID()
@@ -40,7 +40,7 @@ namespace VF.Utils {
             _GetExpanded = () => {
                 var win = EditorWindowFinder.GetWindows(Reflection.SceneHierarchyWindow).FirstOrDefault();
                 if (win == null) return new HashSet<VFGameObject>();
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
                 var ids = (Reflection.GetExpandedIDs.Invoke(win, new object[] { }) as EntityId[]) ?? new EntityId[] { };
                 return ids.Select(id => EditorUtility.EntityIdToObject(id) as GameObject).NotNull().AsVf().ToImmutableHashSet();
 #else

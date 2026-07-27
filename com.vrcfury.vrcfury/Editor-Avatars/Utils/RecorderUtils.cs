@@ -17,15 +17,15 @@ namespace VF.Utils {
         private static Action restore = null;
 
         private abstract class Reflection : ReflectionHelper {
-            public static readonly Type animStateType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
+            private static readonly Type animStateType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
             public static readonly PropertyInfo selectionField = animStateType?.VFProperty("selection");
 
-#if UNITY_6000_0_OR_NEWER
-            public static readonly Type AnimationWindowSelectionItem =
+#if UNITY_6000_3_OR_NEWER
+            private static readonly Type AnimationWindowSelectionItem =
                 ReflectionUtils.GetTypeFromAnyAssembly(
                     "UnityEditor.AnimationWindowBuiltin.AnimationWindowSelectionItem");
 #else
-            public static readonly Type AnimationWindowSelectionItem =
+            private static readonly Type AnimationWindowSelectionItem =
                 ReflectionUtils.GetTypeFromAnyAssembly(
                     "UnityEditorInternal.AnimationWindowSelectionItem");
 #endif

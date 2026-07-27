@@ -12,7 +12,7 @@ namespace VF.Hooks.UnityFixes {
                 typeof(SpsSelectionOutlineHook),
                 nameof(Postfix),
                 "UnityEditor.HandleUtility",
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6000_3_OR_NEWER
                 "FilterEntityIds",
 #else
                 "FilterInstanceIDs",
@@ -28,7 +28,7 @@ namespace VF.Hooks.UnityFixes {
         }
 
         private static void Postfix(
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6000_3_OR_NEWER
             ref EntityId[] __2, ref HashSet<EntityId> __3
 #else
             ref int[] __2
@@ -38,14 +38,14 @@ namespace VF.Hooks.UnityFixes {
 
             var directlySelected = new HashSet<GameObject>(Selection.gameObjects);
 
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6000_3_OR_NEWER
             var filtered = new List<EntityId>(__2.Length);
 #else
             var filtered = new List<int>(__2.Length);
 #endif
 
             foreach (var instanceId in __2) {
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6000_3_OR_NEWER
                 var obj = EditorUtility.EntityIdToObject(instanceId) as Renderer;
 #else
                 var obj = EditorUtility.InstanceIDToObject(instanceId) as Renderer;
@@ -70,7 +70,7 @@ namespace VF.Hooks.UnityFixes {
 
             if (filtered.Count == __2.Length) return;
             __2 = filtered.ToArray();
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6000_3_OR_NEWER
             __3.IntersectWith(filtered);
 #endif
         }
