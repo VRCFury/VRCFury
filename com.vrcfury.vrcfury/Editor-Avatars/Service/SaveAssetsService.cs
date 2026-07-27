@@ -14,7 +14,6 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VFGameObject avatarObject;
-        [VFAutowired] private readonly TmpDirService tmpDirService;
         [VFAutowired] private readonly OriginalAvatarService originalAvatarService;
         private readonly Lazy<SaveAssetsSession> session;
 

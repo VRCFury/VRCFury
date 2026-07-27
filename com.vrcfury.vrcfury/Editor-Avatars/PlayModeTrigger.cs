@@ -25,7 +25,7 @@ namespace VF {
         private static void OnPlayModeStateChanged(PlayModeStateChange state) {
             if (state == PlayModeStateChange.ExitingEditMode) {
                 VRCFuryBuildContext.Run(() => {
-                    TmpDirService.Cleanup();
+                    CleanTmpDirService.Cleanup();
                 });
             }
         }

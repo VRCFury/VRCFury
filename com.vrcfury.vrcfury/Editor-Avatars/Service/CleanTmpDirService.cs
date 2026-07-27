@@ -4,14 +4,16 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
     [VFService]
-    internal class TmpDirService {
-        public TmpDirService() {
+    internal class CleanTmpDirService {
+        [FeatureBuilderAction(FeatureOrder.CleanTmpDir)]
+        public void CleanStep() {
             if (!Application.isPlaying) {
                 Cleanup();
             }

@@ -1,6 +1,7 @@
 namespace VF.Feature.Base {
     internal enum FeatureOrder {
-        
+
+        CleanTmpDir,
         CollectExistingComponents,
         CleanupLegacy,
         BackupBefore,

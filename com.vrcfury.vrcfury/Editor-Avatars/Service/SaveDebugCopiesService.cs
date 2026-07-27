@@ -10,7 +10,6 @@ namespace VF.Service {
     internal class SaveDebugCopiesService {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly VFGameObject avatarObject;
-        [VFAutowired] private readonly TmpDirService tmpDirService;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly SaveAssetsService SaveAssetsService;
         
