@@ -30,8 +30,9 @@ namespace VF.Hooks {
 
         [VFInit]
         private static void Init() {
-            if (!ReflectionHelper.IsReady<Reflection>()) return;
-            Reflection.Patch.apply();
+            if (ReflectionHelper.IsReady<Reflection>()) {
+                Reflection.Patch.apply();
+            }
 
             EditorApplication.playModeStateChanged += state => {
                 if (state == PlayModeStateChange.ExitingPlayMode) {

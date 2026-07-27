@@ -55,7 +55,16 @@ namespace VF.Utils {
             foreach (var method in methodsToPatch) {
                 try {
                     madeChange = false;
-                    HarmonyUtils.Transpile(typeof(HarmonyTranspiler), nameof(RunVarAccessTranspile), method);
+                    var patch = HarmonyUtils.Patch(
+                        method,
+                        (typeof(HarmonyTranspiler), nameof(RunVarAccessTranspile)),
+                        HarmonyUtils.PatchMode.Transpiler
+                    );
+                    if (patch.error != null) {
+                        Debug.LogWarning($"Failed to patch {method.DeclaringType?.FullName} {method.Name}: {patch.error}");
+                        continue;
+                    }
+                    patch.apply();
                     if (madeChange) {
                         //Debug.Log($"Patched: {method.DeclaringType?.FullName} {method.Name}");
                     }

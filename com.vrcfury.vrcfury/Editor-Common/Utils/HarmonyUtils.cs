@@ -99,6 +99,9 @@ namespace VF.Utils {
             PatchMode patchMode = PatchMode.Prefix,
             Type internalReplacementClass = null
         ) {
+            if (HarmonyTest.PatchingError != null) {
+                return new PatchObj { error = HarmonyTest.PatchingError };
+            }
             var patchMethod = patch.FindAsPatch();
             if (patchMethod == null) {
                 return new PatchObj { error = $"VRCFury Failed to find patch method: {patch.Id()}" };
@@ -119,18 +122,6 @@ namespace VF.Utils {
                 return new PatchObj { error = $"VRCFury tried to patch a method, but it was internal, and a replacement wasn't available: {original.Id()}" };
             }
             return new PatchObj { apply = () => Patch_Simple(originalMethod, patchMethod, patchMode: patchMode) };
-        }
-
-        public static void Transpile(
-            Type transpilerClass,
-            string transpilerMethodName,
-            MethodInfo original
-        ) {
-            var transpilerMethod = transpilerClass.VFStaticMethod(transpilerMethodName);
-            if (transpilerMethod == null) {
-                Debug.LogError($"VRCFury Failed to find transpile method: {transpilerClass.Name}.{transpilerMethodName}");
-            }
-            Patch_Simple(original, transpilerMethod, PatchMode.Transpiler);
         }
 
         [CanBeNull] 
