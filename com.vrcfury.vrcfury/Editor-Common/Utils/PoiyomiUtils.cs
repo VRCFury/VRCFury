@@ -21,8 +21,35 @@ namespace VF.Utils {
             public static readonly MethodInfo GetRenamedPropertySuffix = ShaderOptimizer?.VFStaticMethod("GetRenamedPropertySuffix");
         }
 
+        [ReflectionHelperOptional]
+        private abstract class ThryPresetsReflection : ReflectionHelper {
+            public static readonly Type Presets = ReflectionUtils.GetTypeFromAnyAssembly("Thry.ThryEditor.Presets");
+            public static readonly FieldInfo KnownMaterials = Presets?.VFStaticField("KnownMaterials");
+            public static readonly MethodInfo AddKnownMaterial = KnownMaterials?.FieldType
+                .VFMethod("Add", new[] { typeof(string) });
+            public static readonly MethodInfo SaveKnownMaterials = KnownMaterials?.FieldType
+                .VFMethod("Save", new Type[] { });
+        }
+
         [CanBeNull]
         public static Type ShaderOptimizer => PoiReflection.ShaderOptimizer;
+
+        public static void AddToKnownMaterials(IEnumerable<string> guids) {
+            if (!guids.Any()) return;
+            try {
+                if (!ReflectionHelper.IsReady<ThryPresetsReflection>()) return;
+
+                var knownMaterials = ThryPresetsReflection.KnownMaterials.GetValue(null);
+                if (knownMaterials == null) return;
+
+                foreach (var guid in guids.Where(guid => !string.IsNullOrEmpty(guid)).Distinct()) {
+                    ThryPresetsReflection.AddKnownMaterial.Invoke(knownMaterials, new object[] { guid });
+                }
+                ThryPresetsReflection.SaveKnownMaterials?.Invoke(knownMaterials, new object[] { });
+            } catch (Exception e) {
+                Debug.LogException(e);
+            }
+        }
 
         private static readonly Dictionary<Material, Dictionary<string, PoiProp>> lockedPropsCache
             = new Dictionary<Material, Dictionary<string, PoiProp>>();

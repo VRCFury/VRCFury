@@ -14,6 +14,7 @@ namespace VF.Utils {
         private readonly Lazy<Object> otherParent;
         private readonly HashSet<Object> workLogManifest = new HashSet<Object>();
         private readonly HashSet<Object> assetsToSave = new HashSet<Object>();
+        private readonly HashSet<string> savedMaterialGuids = new HashSet<string>();
 
         public SaveAssetsSession(string outputDirName) {
             outputDir = VRCFuryAssetDatabase.GetUniquePath(
@@ -45,6 +46,7 @@ namespace VF.Utils {
                     child.hideFlags |= HideFlags.HideInHierarchy;
                 }
                 VRCFuryAssetDatabase.AttachAsset(child, parent.Value);
+                RecordSavedMaterial(child);
                 RecordWorkLog(child);
             }
             // If we don't do this, the attached assets don't show up in the browser
@@ -126,6 +128,13 @@ namespace VF.Utils {
             workLogManifest.Add(obj);
         }
 
+        private void RecordSavedMaterial(Object obj) {
+            if (!(obj is Material)) return;
+            var path = AssetDatabase.GetAssetPath(obj);
+            var guid = AssetDatabase.AssetPathToGUID(path);
+            if (!string.IsNullOrEmpty(guid)) savedMaterialGuids.Add(guid);
+        }
+
         private void WriteWorkLogManifest() {
             VRCFuryAssetDatabase.CreateFolder(outputDir);
 
@@ -154,6 +163,8 @@ namespace VF.Utils {
                 AssetDatabase.SaveAssetIfDirty(asset);
             }
             assetsToSave.Clear();
+            PoiyomiUtils.AddToKnownMaterials(savedMaterialGuids);
+            savedMaterialGuids.Clear();
             WriteWorkLogManifest();
             workLogManifest.Clear();
         }
