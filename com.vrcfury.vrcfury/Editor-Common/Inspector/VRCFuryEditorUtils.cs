@@ -84,7 +84,7 @@ namespace VF.Inspector {
                 }));
             }
 
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
             var listView = new ListView();
             listView.AddToClassList("vfList__listView");
             listView.reorderable = true;

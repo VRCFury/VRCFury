@@ -2,7 +2,7 @@ using System;
 using System.Reflection;
 using UnityEngine;
 
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
 using PrefabStage = UnityEditor.SceneManagement.PrefabStage;
 using PrefabStageUtility = UnityEditor.SceneManagement.PrefabStageUtility;
 #else
@@ -35,7 +35,7 @@ namespace VF.Utils {
         public static string GetStagePath() {
             var stage = PrefabStageUtility.GetCurrentPrefabStage();
             if (stage == null) return null;
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
             return stage.assetPath;
 #else
             return stage.prefabAssetPath;

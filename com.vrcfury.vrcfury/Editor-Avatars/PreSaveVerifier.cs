@@ -30,7 +30,7 @@ namespace VF {
                             ScanScene(scene);
                         }
                     }
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
                 } else if (PrefabStageUtility.GetCurrentPrefabStage()?.assetPath == path) {
                     var scene = PrefabStageUtility.GetCurrentPrefabStage()?.scene;
                     if (scene != null) ScanScene(scene.Value);

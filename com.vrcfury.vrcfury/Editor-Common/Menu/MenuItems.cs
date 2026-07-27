@@ -100,7 +100,7 @@ namespace VF.Menu {
         public const string compressFail = settings + "Fail the build (Vanilla Behaviour)";
         public const int compressFailPriority = settingsPriority + 203;
         
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_1_OR_NEWER
         [MenuItem(recompileAll, priority = recompileAllPriority)]
         private static void RecompileAll() {
             CompilationPipeline.RequestScriptCompilation(RequestScriptCompilationOptions.CleanBuildCache);

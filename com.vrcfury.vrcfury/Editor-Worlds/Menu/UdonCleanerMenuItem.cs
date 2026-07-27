@@ -20,7 +20,7 @@ namespace VF.Menu {
             }
         }
 
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
         public class PostProcessor : AssetPostprocessor {
             private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths, bool didDomainReload) {
                 if (!didDomainReload) return;

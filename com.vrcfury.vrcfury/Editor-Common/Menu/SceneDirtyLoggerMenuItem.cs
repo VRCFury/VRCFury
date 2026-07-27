@@ -66,7 +66,7 @@ namespace VF.Menu {
                 return mods;
             };
 
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2020_2_OR_NEWER
             ObjectChangeEvents.changesPublished += (ref ObjectChangeEventStream stream) => {
                 if (!Get()) return;
                 Remember($"ObjectChangeEvents: {stream.length} changes");

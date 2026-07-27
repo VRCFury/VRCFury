@@ -142,7 +142,7 @@ namespace VF.Utils.Controller {
                 .DefaultIfEmpty(0)
                 .Max();
             var addLengthBinding = lengthInSeconds > curveLength;
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2018_1_OR_NEWER
             var floatCurves = savableCurves
                 .Where(pair => pair.Value.IsFloat)
                 .Select(pair => (pair.Key.ToEditorCurveBinding(saveBindingRoot), pair.Value.FloatCurve))
@@ -606,7 +606,7 @@ namespace VF.Utils.Controller {
         private static void ClearRawCurves(AnimationClip clip) {
             var floatBindings = AnimationUtility.GetCurveBindings(clip);
             var objectBindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2018_1_OR_NEWER
             if (floatBindings.Any()) {
                 AnimationUtility.SetEditorCurves(clip,
                     floatBindings,

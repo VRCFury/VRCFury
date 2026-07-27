@@ -183,7 +183,7 @@ namespace VF.Hooks.UdonCleaner {
                         }
                     );
 
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
                     foreach (var obj in dirtyObjects) {
                         AssetDatabase.SaveAssetIfDirty(obj);
                     }
@@ -226,7 +226,7 @@ namespace VF.Hooks.UdonCleaner {
 
         public class PostProcessor : AssetPostprocessor {
             private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
                 , bool didDomainReload
 #endif
                 ) {
@@ -236,7 +236,7 @@ namespace VF.Hooks.UdonCleaner {
                 var tmpRoot = GetStoragePath();
                 if (tmpRoot == null) return;
                 if (
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
                     didDomainReload ||
 #endif
                     deletedAssets.Contains(tmpRoot) || movedFromAssetPaths.Contains(tmpRoot)) {

@@ -26,7 +26,7 @@ namespace VF.Hooks.VrcsdkFixes {
 
         private static void Prefix(ref string __0) {
             if (string.IsNullOrWhiteSpace(__0)) return;
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
             __0 = FileUtil.GetLogicalPath(__0);
 #endif
         }

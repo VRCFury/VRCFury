@@ -37,7 +37,7 @@ namespace VF.Utils {
             return string.Join(separator, source);
         }
         public static string Join(this IEnumerable<string> source, char separator) {
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
             return string.Join(separator, source);
 #else
             return string.Join(separator+"", source);

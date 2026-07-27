@@ -102,7 +102,7 @@ namespace VF.Injector {
                     .Concat(TypeCache.GetTypesDerivedFrom<FeatureBuilder>())
                     .Concat(TypeCache.GetTypesWithAttribute<VFPrototypeScopeAttribute>())
                     .Concat(TypeCache.GetTypesDerivedFrom<IVRCFuryBuilder>())
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2020_1_OR_NEWER
                     .Concat(TypeCache.GetFieldsWithAttribute<VFAutowiredAttribute>().Select(f => f.DeclaringType))
 #endif
                     .ToImmutableHashSet();

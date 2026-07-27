@@ -11,7 +11,7 @@ namespace VF.Utils {
         private static Action<VFGameObject, bool> _SetExpanded = (o,e) => { };
         private static Func<ISet<VFGameObject>> _GetExpanded = () => new HashSet<VFGameObject>();
 
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2020_2_OR_NEWER
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type SceneHierarchyWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.SceneHierarchyWindow");
             public static readonly MethodInfo SetExpanded = SceneHierarchyWindow?.VFMethod("SetExpanded");
@@ -40,7 +40,7 @@ namespace VF.Utils {
             _GetExpanded = () => {
                 var win = EditorWindowFinder.GetWindows(Reflection.SceneHierarchyWindow).FirstOrDefault();
                 if (win == null) return new HashSet<VFGameObject>();
-#if UNITY_6000_4_OR_NEWER
+#if UNITY_6000_3_OR_NEWER
                 var ids = (Reflection.GetExpandedIDs.Invoke(win, new object[] { }) as EntityId[]) ?? new EntityId[] { };
                 return ids.Select(id => EditorUtility.EntityIdToObject(id) as GameObject).NotNull().AsVf().ToImmutableHashSet();
 #else

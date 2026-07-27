@@ -2,7 +2,7 @@
 
 namespace VF.Utils {
     internal static class PolyfillExtensions {
-#if ! UNITY_2022_1_OR_NEWER
+#if ! UNITY_2021_2_OR_NEWER
         public static V GetValueOrDefault<K, V>(this IDictionary<K, V> dict, K key) {
             return dict.TryGetValue(key, out var value) ? value : default;
         }
