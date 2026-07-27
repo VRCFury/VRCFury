@@ -155,7 +155,7 @@ namespace VF.Utils {
             builder.AppendLine();
 
             File.AppendAllText(manifestPath, builder.ToString());
-            AssetDatabase.ImportAsset(manifestPath);
+            AssetDatabase.ImportAsset(manifestPath, ImportAssetOptions.ForceSynchronousImport);
         }
 
         public void Finish() {

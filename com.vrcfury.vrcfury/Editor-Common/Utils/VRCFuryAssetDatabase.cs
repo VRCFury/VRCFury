@@ -77,7 +77,12 @@ namespace VF.Utils {
             // call this first, or unity will throw an exception
             AssetDatabase.RemoveObjectFromAsset(obj);
             obj.hideFlags &= ~HideFlags.DontSaveInEditor;
+#if UNITY_6000_0_OR_NEWER
+            // Unity 6 just silently... doesn't do anything if you call CreateAsset inside StartAssetEditing
+            WithoutAssetEditing(() => { AssetDatabase.CreateAsset(obj, fullPath); });
+#else
             AssetDatabase.CreateAsset(obj, fullPath);
+#endif
         }
 
         public static void MoveAsset(string from, string to) {
