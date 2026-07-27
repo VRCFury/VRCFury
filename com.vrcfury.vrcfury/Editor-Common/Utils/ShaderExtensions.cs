@@ -15,11 +15,6 @@ namespace VF.Utils {
             public int index;
         }
 
-        private static void ClearCacheForAsset(string path) {
-            var shader = AssetDatabase.LoadAssetAtPath<Shader>(path);
-            if (shader != null) ShaderProperties.Remove(shader);
-        }
-
         private class ShaderAssetPostprocessor : AssetPostprocessor {
             private static void OnPostprocessAllAssets(
                 string[] importedAssets,
@@ -27,9 +22,10 @@ namespace VF.Utils {
                 string[] movedAssets,
                 string[] movedFromAssetPaths
             ) {
-                foreach (var path in importedAssets) {
-                    ClearCacheForAsset(path);
-                }
+                // Platform changes reimport every shader. Loading each one just to find
+                // its cache entry is extremely expensive, while this cache is cheap to
+                // refill lazily for the shaders we actually use.
+                if (importedAssets.Length > 0) ShaderProperties.Clear();
             }
         }
 
