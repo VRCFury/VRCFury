@@ -29,7 +29,9 @@ namespace VF.Utils {
         [VFInit]
         private static void Init() {
             AssemblyReloadEvents.beforeAssemblyReload += () => {
-                harmony.UnpatchAll();
+                if (HarmonyTest.PatchingError != null) {
+                    harmony.UnpatchAll();
+                }
             };
         }
 
