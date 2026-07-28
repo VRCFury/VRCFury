@@ -69,7 +69,7 @@ namespace VF.Service {
                 try {
                     PhysboneUtils.RemoveFromPhysbones(plug.owner());
                     if (!BuildTargetUtils.IsDesktop()) continue;
-                    var bakeInfo = VRCFuryHapticPlugEditor.Bake(
+                    var bakeInfo = VRCFuryHapticPlugBaker.Bake(
                         plug,
                         spsMarkersService,
                         usedRenderers,

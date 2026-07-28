@@ -21,7 +21,7 @@ namespace VF.Builder.Haptics {
             foreach (var socket in sockets) {
                 socket.Upgrade();
                 try {
-                    var result = VRCFuryHapticSocketEditor.Bake(socket, spsMarkers);
+                    var result = VRCFuryHapticSocketBaker.Bake(socket, spsMarkers);
                     if (result == null) continue;
                     SpsConfigurer.AddMaterialPropertyAnimator(
                         result.screenMarkerResults.Select(marker => marker.materialProperties).SelectMany(properties => properties),
@@ -44,7 +44,7 @@ namespace VF.Builder.Haptics {
             foreach (var plug in plugs) {
                 plug.Upgrade();
                 try {
-                    var result = VRCFuryHapticPlugEditor.Bake(plug, spsMarkers: spsMarkers);
+                    var result = VRCFuryHapticPlugBaker.Bake(plug, spsMarkers: spsMarkers);
                     if (result == null) continue;
                     if (result.resolverMaterialProperties != null) {
                         SpsConfigurer.AddMaterialPropertyAnimator(result.resolverMaterialProperties, saveSession);

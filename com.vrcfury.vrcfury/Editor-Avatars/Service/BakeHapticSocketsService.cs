@@ -139,7 +139,7 @@ namespace VF.Service {
                         continue;
                     }
 
-                    var bakeResult = VRCFuryHapticSocketEditor.Bake(socket, spsMarkersService);
+                    var bakeResult = VRCFuryHapticSocketBaker.Bake(socket, spsMarkersService);
                     if (bakeResult == null) continue;
                     var screenMarkers = bakeResult.screenMarkers ?? new List<VFGameObject>();
                     var screenMarkerResults = bakeResult.screenMarkerResults ?? new List<VRCFuryHapticSocketEditor.ScreenMarkerResult>();
