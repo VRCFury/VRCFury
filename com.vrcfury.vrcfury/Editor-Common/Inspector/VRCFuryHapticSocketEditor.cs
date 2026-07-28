@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder.Haptics;
 using VF.Component;
+using VF.Injector;
 using VF.Utils;
 
 namespace VF.Inspector {
@@ -22,7 +23,7 @@ namespace VF.Inspector {
             VRCFuryHapticSocketGizmo.DrawEditableLegacyOffset(socket);
         }
 
-        private static string GetMenuName(VRCFuryHapticSocket socket) {
+        internal static string GetMenuName(VRCFuryHapticSocket socket) {
             return HapticUtils.GetPreferredId(
                 socket,
                 s => s.name,
@@ -274,9 +275,11 @@ namespace VF.Inspector {
                 if (!useSharedTag.boolValue) {
                     return VRCFuryEditorUtils.Warn("This socket does not have the global SPS2 tag, so most plugs will not target it.");
                 }
-                var autoTags = SpsConfigurer.GetAutoSocketTagNames(target);
+                var autoTags = VRCFuryPerFrameInjector.GetPerFrameInjector(target.owner())
+                    .GetService<SpsConfigurer>()
+                    .GetAutoSocketTagNames(target);
                 if (autoTags.Count > 0) {
-                    return VRCFuryEditorUtils.Info("Additional automatic tags included: " +autoTags.Join(", "));
+                    return VRCFuryEditorUtils.Info("Additional automatic tags included: " + autoTags.Join(", "));
                 }
                 return new VisualElement();
             }, useSharedTag));
@@ -329,28 +332,6 @@ namespace VF.Inspector {
             }
         }
 
-        public static Func<VFGameObject, Vector3> getAvatarViewPos;
-        public static Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
-            var enableHandTouchZone = false;
-            if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On) {
-                enableHandTouchZone = true;
-            } else if (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.Auto) {
-                enableHandTouchZone = ShouldProbablyHaveTouchZone(socket);
-            }
-            if (!enableHandTouchZone) {
-                return null;
-            }
-            var length = socket.length * (socket.unitsInMeters ? 1f : socket.owner().worldScale.z);
-            if (length <= 0) {
-                if (getAvatarViewPos == null) return null;
-                var viewPos = getAvatarViewPos(socket.owner());
-                if (viewPos.y <= 0) return null;
-                length = viewPos.y * 0.05f;
-            }
-            var radius = length / 2.5f;
-            return Tuple.Create(length, radius);
-        }
-
         public enum LegacyDpsLightType {
             None,
             Hole,
@@ -370,23 +351,6 @@ namespace VF.Inspector {
             return LegacyDpsLightType.None;
         }
 
-        public static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(VRCFuryHapticSocket socket) {
-            if (socket.addLight != VRCFuryHapticSocket.AddLight.None) {
-                var type = socket.addLight;
-                if (type == VRCFuryHapticSocket.AddLight.Auto) type = ShouldProbablyBeHole(socket) ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.Ring;
-                var position = socket.position;
-                var rotation = Quaternion.Euler(socket.rotation);
-                return Tuple.Create(type, position, rotation);
-            }
-            
-            var lightInfo = GetInfoFromLights(socket.owner());
-            if (lightInfo != null) {
-                return lightInfo;
-            }
-
-            return Tuple.Create(VRCFuryHapticSocket.AddLight.None, Vector3.zero, Quaternion.identity);
-        }
-
         internal static VRCFuryHapticSocket.AddLight GetGuidedPathTerminalType(VRCFuryHapticSocket.AddLight lightType) {
             return lightType == VRCFuryHapticSocket.AddLight.Hole
                 ? VRCFuryHapticSocket.AddLight.Hole
@@ -402,49 +366,6 @@ namespace VF.Inspector {
             return socket.guidedPathStops.Any(stop => stop != null && stop.transform != null)
                 ? VRCFuryHapticSocket.AddLight.Hole
                 : lightType;
-        }
-
-        public static ScreenMarkerResult CreateScreenMarker(
-            VFGameObject parent,
-            VRCFuryHapticSocket socket,
-            VRCFuryHapticSocket.AddLight lightType,
-            uint socketId,
-            SpsMarkersService spsMarkers,
-            bool useRadiusOffset,
-            bool useTangentIn = false,
-            Vector3 tangentIn = default(Vector3),
-            bool useTangentOut = false,
-            Vector3 tangentOut = default(Vector3),
-            uint nextSocketId = 0,
-            bool includeTags = true,
-            string objectName = "SpsScreenMarker"
-        ) {
-            if (!BuildTargetUtils.IsDesktop()) return null;
-            if (lightType == VRCFuryHapticSocket.AddLight.None) return null;
-
-            var screenMarker = GameObjects.Create(objectName, parent);
-            screenMarker.AddComponent<MeshFilter>();
-            var meshRenderer = screenMarker.AddComponent<MeshRenderer>();
-            spsMarkers.ConfigureSocketRenderer(meshRenderer);
-            screenMarker.AddComponent<VRCFuryHideGizmoUnlessSelected>();
-            screenMarker.AddComponent<VRCFurySpsGreenScreenFix>();
-            return new ScreenMarkerResult {
-                obj = screenMarker,
-                renderer = meshRenderer,
-                materialProperties = SpsConfigurer.GetSocketProperties(
-                    meshRenderer,
-                    socket,
-                    lightType,
-                    socketId,
-                    useTangentIn,
-                    tangentIn,
-                    useTangentOut,
-                    tangentOut,
-                    useRadiusOffset,
-                    nextSocketId,
-                    includeTags
-                )
-            };
         }
 
         /**
@@ -498,27 +419,6 @@ namespace VF.Inspector {
             var rotation = Quaternion.LookRotation(forward);
 
             return Tuple.Create(isRing ? VRCFuryHapticSocket.AddLight.Ring : VRCFuryHapticSocket.AddLight.Hole, position, rotation);
-        }
-
-        public static Func<VFGameObject, HumanBodyBones?> getClosestBone;
-        public static Func<VFGameObject, HumanBodyBones, VFGameObject> getBoneOnArmature;
-
-        public static bool ShouldProbablyHaveTouchZone(VRCFuryHapticSocket socket) {
-            if (getClosestBone == null) return false;
-            var closestBone = getClosestBone(socket.owner());
-            if (closestBone != HumanBodyBones.Hips) return false;
-
-            var name = GetMenuName(socket).ToLower();
-            if (name.Contains("rubbing") || name.Contains("job")) return false;
-
-            return true;
-        }
-
-        public static bool ShouldProbablyBeHole(VRCFuryHapticSocket socket) {
-            if (getClosestBone == null) return true;
-            var closestBone = getClosestBone(socket.owner());
-            if (closestBone == HumanBodyBones.Head || closestBone == HumanBodyBones.Jaw) return true;
-            return ShouldProbablyHaveTouchZone(socket);
         }
 
         public class BakeResult {

@@ -11,6 +11,7 @@ using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Exceptions;
+using VF.Injector;
 using VF.Menu;
 using VF.Utils;
 
@@ -382,13 +383,22 @@ namespace VF.Inspector {
             }, useSharedTag));
             tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLights"), "Include 'Global' SPS1/DPS/TPS Tag",
                 tooltip: "Allows this plug to target SPS1/DPS/TPS sockets (looking for lights)."));
-            if (VRCFuryHapticSocketEditor.getClosestBone?.Invoke(target.owner()) == HumanBodyBones.Hips) {
-                tags.Add(VRCFuryEditorUtils.BetterProp(
-                    serializedObject.FindProperty("useHipAvoidance"),
-                    "Exclude sockets on own Hips",
-                    tooltip: "If this plug is on your hips, it will not target sockets on your hips."
-                ));
-            }
+            var useHipAvoidance = serializedObject.FindProperty("useHipAvoidance");
+            tags.Add(VRCFuryEditorUtils.BetterProp(
+                useHipAvoidance,
+                "Exclude sockets on own Hips",
+                tooltip: "If this plug is on your hips, it will not target sockets on your hips."
+            ));
+            tags.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                if (!useHipAvoidance.boolValue) return new VisualElement();
+                var autoTagGenerator = VRCFuryPerFrameInjector.GetPerFrameInjector(target.owner())
+                    .GetServices<SpsAutoTagGenerator>()
+                    .FirstOrDefault();
+                if (autoTagGenerator?.GetClosestBone(target.owner()) != HumanBodyBones.Hips) {
+                    return new VisualElement();
+                }
+                return VRCFuryEditorUtils.Info("This plug will exclude sockets on your hips.");
+            }, useHipAvoidance));
             container.Add(tags);
 
             var adv = new Foldout {

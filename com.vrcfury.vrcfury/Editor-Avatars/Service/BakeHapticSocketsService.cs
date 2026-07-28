@@ -36,7 +36,7 @@ namespace VF.Service {
         [VFAutowired] private readonly FrameTimeService frameTimeService;
         [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
         [VFAutowired] private readonly SpsPlayerIdService spsPlayerIdService;
-        [VFAutowired] private readonly SpsMarkersService spsMarkersService;
+        [VFAutowired] private readonly VRCFuryHapticSocketBaker socketBaker;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
@@ -139,7 +139,7 @@ namespace VF.Service {
                         continue;
                     }
 
-                    var bakeResult = VRCFuryHapticSocketBaker.Bake(socket, spsMarkersService);
+                    var bakeResult = socketBaker.Bake(socket);
                     if (bakeResult == null) continue;
                     var screenMarkers = bakeResult.screenMarkers ?? new List<VFGameObject>();
                     var screenMarkerResults = bakeResult.screenMarkerResults ?? new List<VRCFuryHapticSocketEditor.ScreenMarkerResult>();
@@ -167,7 +167,7 @@ namespace VF.Service {
                         var paramPrefix = "OGB/Orf/" + oscId.Replace('/','_');
 
                         // Receivers
-                        var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket);
+                        var handTouchZoneSize = socketBaker.GetHandTouchZoneSize(socket);
                         haptics = GameObjects.Create("Haptics", bakeResult.oneSpace);
 
                         var baseReq = new HapticContactsService.ReceiverRequest() {

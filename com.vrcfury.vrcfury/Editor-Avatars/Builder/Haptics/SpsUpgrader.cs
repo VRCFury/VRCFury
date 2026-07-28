@@ -176,7 +176,9 @@ namespace VF.Builder.Haptics {
                                     VRCFuryEditorUtils.Rev("2ECIFIRO"), new Vector2(0, 0.03f));
                             }
 
-                            if (VRCFuryHapticSocketEditor.ShouldProbablyHaveTouchZone(socket)) {
+                            var closestBone = ClosestBoneUtils.GetPerFrame(avatarObject)
+                                .GetClosestHumanoidBone(socket.owner());
+                            if (VRCFuryHapticSocketBaker.ShouldProbablyHaveTouchZone(socket, closestBone)) {
                                 AddBlendshapeIfPresent(avatarObject, socket,
                                     VRCFuryEditorUtils.Rev("egluBymmuT"), new Vector2(-0.15f, 0));
                             }

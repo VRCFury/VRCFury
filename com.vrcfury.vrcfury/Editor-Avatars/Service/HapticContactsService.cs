@@ -15,8 +15,7 @@ namespace VF.Service {
     internal class HapticContactsService {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
-        [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
-        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
+        [VFAutowired] private readonly ClosestBoneUtils closestBoneUtils;
 
         public class ReceiverRequest {
             public VFGameObject obj;
@@ -68,7 +67,7 @@ namespace VF.Service {
             }
 
             var tags = req.tags;
-            if (req.party == HapticUtils.ReceiverParty.Self && req.useHipAvoidance && ClosestBoneUtils.GetClosestHumanoidBone(req.obj, objectPaths, armatureCache) == HumanBodyBones.Hips) {
+            if (req.party == HapticUtils.ReceiverParty.Self && req.useHipAvoidance && closestBoneUtils.GetClosestHumanoidBone(req.obj) == HumanBodyBones.Hips) {
                 tags = HapticSenderFactory.AddSuffixes(tags, "_SelfNotOnHips");
             }
             receiver.collisionTags = tags.ToList();

@@ -7,19 +7,25 @@ using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Exceptions;
+using VF.Injector;
 using VF.Utils;
 using BakeResult = VF.Inspector.VRCFuryHapticPlugEditor.BakeResult;
 using RendererResult = VF.Inspector.VRCFuryHapticPlugEditor.RendererResult;
 
 namespace VF.Inspector {
-    internal static class VRCFuryHapticPlugBaker {
+    [VFService]
+    internal class VRCFuryHapticPlugBaker {
+        [VFAutowired] private readonly SpsMarkersService spsMarkers;
+        [VFAutowired] [CanBeNull] private readonly SpsAutoTagGenerator autoTagGenerator;
+        [VFAutowired] private readonly SpsConfigurer spsConfigurer;
+
         [CanBeNull]
-        public static BakeResult Bake(
+        public BakeResult Bake(
             VRCFuryHapticPlug plug,
-            SpsMarkersService spsMarkers,
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
             bool deferMaterialConfig = false
         ) {
+            var isOnHips = autoTagGenerator?.GetClosestBone(plug.owner()) == HumanBodyBones.Hips;
             var transform = plug.owner();
             if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.fromSpsForAll)) {
                 return null;
@@ -70,14 +76,16 @@ namespace VF.Inspector {
                 objName = "Length",
                 radius = worldLength,
                 tags = new [] { HapticUtils.CONTACT_PEN_MAIN },
-                useHipAvoidance = plug.useHipAvoidance
+                useHipAvoidance = plug.useHipAvoidance,
+                isOnHips = isOnHips
             });
             HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                 obj = senders,
                 objName = "WidthHelper",
                 radius = Mathf.Max(0.01f, worldLength - worldRadius*2),
                 tags = new [] { HapticUtils.CONTACT_PEN_WIDTH },
-                useHipAvoidance = plug.useHipAvoidance
+                useHipAvoidance = plug.useHipAvoidance,
+                isOnHips = isOnHips
             });
             HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                 obj = senders,
@@ -87,14 +95,16 @@ namespace VF.Inspector {
                 tags = new [] { HapticUtils.CONTACT_PEN_CLOSE },
                 rotation = capsuleRotation,
                 height = worldLength,
-                useHipAvoidance = plug.useHipAvoidance
+                useHipAvoidance = plug.useHipAvoidance,
+                isOnHips = isOnHips
             });
             HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                 obj = worldSpace,
                 objName = "Sender - Root",
                 radius = 0.01f,
                 tags = new [] { HapticUtils.CONTACT_PEN_ROOT },
-                useHipAvoidance = plug.useHipAvoidance
+                useHipAvoidance = plug.useHipAvoidance,
+                isOnHips = isOnHips
             });
 
             // TODO: Check if there are 0 renderers,
@@ -200,7 +210,7 @@ namespace VF.Inspector {
                 resolverObj.AddComponent<MeshFilter>();
                 var meshRenderer = resolverObj.AddComponent<MeshRenderer>();
                 spsMarkers.ConfigureResolverRenderer(meshRenderer);
-                resolverMaterialProperties = SpsConfigurer.GetResolverProperties(
+                resolverMaterialProperties = spsConfigurer.GetResolverProperties(
                     meshRenderer,
                     worldLength,
                     worldRadius,
@@ -228,5 +238,6 @@ namespace VF.Inspector {
                 oscId = oscId,
             };
         }
+
     }
 }

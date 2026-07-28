@@ -14,7 +14,7 @@ namespace VF.Features {
             using (new VRCFuryBuildContext()) {
                 var sockets = scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()).ToArray();
                 var plugs = scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()).ToArray();
-                SpsBakeAndSave.Run(sockets, plugs);
+                SpsDetachedBakeAndSave.Run(sockets, plugs);
             }
         }
     }

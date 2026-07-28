@@ -36,7 +36,7 @@ namespace VF.Service {
         [VFAutowired] private readonly FrameTimeService frameTimeService;
         [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
         [VFAutowired] private readonly SpsPlayerIdService spsPlayerIdService;
-        [VFAutowired] private readonly SpsMarkersService spsMarkersService;
+        [VFAutowired] private readonly VRCFuryHapticPlugBaker plugBaker;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
@@ -69,12 +69,7 @@ namespace VF.Service {
                 try {
                     PhysboneUtils.RemoveFromPhysbones(plug.owner());
                     if (!BuildTargetUtils.IsDesktop()) continue;
-                    var bakeInfo = VRCFuryHapticPlugBaker.Bake(
-                        plug,
-                        spsMarkersService,
-                        usedRenderers,
-                        deferMaterialConfig: true
-                    );
+                    var bakeInfo = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true);
                     if (bakeInfo == null) continue;
                     bakeResults[plug] = bakeInfo;
 

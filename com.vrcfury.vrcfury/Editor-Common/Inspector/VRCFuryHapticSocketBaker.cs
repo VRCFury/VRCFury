@@ -6,21 +6,29 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder.Haptics;
 using VF.Component;
+using VF.Injector;
 using VF.Utils;
 using static VF.Inspector.VRCFuryHapticSocketEditor;
 using BakeResult = VF.Inspector.VRCFuryHapticSocketEditor.BakeResult;
 using ScreenMarkerResult = VF.Inspector.VRCFuryHapticSocketEditor.ScreenMarkerResult;
 
 namespace VF.Inspector {
-    internal static class VRCFuryHapticSocketBaker {
+    [VFService]
+    internal class VRCFuryHapticSocketBaker {
+        [VFAutowired] private readonly SpsMarkersService spsMarkers;
+        [VFAutowired] [CanBeNull] private readonly SpsAutoTagGenerator autoTagGenerator;
+        [VFAutowired] private readonly SpsSocketMarkerService socketMarkers;
+
         [CanBeNull]
-        public static BakeResult Bake(VRCFuryHapticSocket socket, SpsMarkersService spsMarkers) {
+        public BakeResult Bake(VRCFuryHapticSocket socket) {
+            var closestBone = autoTagGenerator?.GetClosestBone(socket.owner());
+            var isOnHips = closestBone == HumanBodyBones.Hips;
             var transform = socket.owner();
             if (!HapticUtils.AssertValidScale(transform, "socket", shouldThrow: !socket.fromSpsForAll)) {
                 return null;
             }
 
-            var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket);
+            var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket, closestBone);
 
             var bakeRoot = GameObjects.Create("BakedSpsSocket", transform);
             bakeRoot.localPosition = localPosition;
@@ -58,7 +66,8 @@ namespace VF.Inspector {
                     objName = "Root",
                     radius = 0.001f,
                     tags = rootTags.ToArray(),
-                    useHipAvoidance = true
+                    useHipAvoidance = true,
+                    isOnHips = isOnHips
                 });
                 HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                     obj = senders,
@@ -66,7 +75,8 @@ namespace VF.Inspector {
                     objName = "Front",
                     radius = 0.001f,
                     tags = new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront },
-                    useHipAvoidance = true
+                    useHipAvoidance = true,
+                    isOnHips = isOnHips
                 });
             }
 
@@ -116,12 +126,11 @@ namespace VF.Inspector {
                         Vector3 tangentOut,
                         uint nextSocketId
                     ) {
-                        var result = CreateScreenMarker(
+                        var result = socketMarkers.Create(
                             oneSpace,
                             socket,
                             markerType,
                             socketId,
-                            spsMarkers,
                             false,
                             useTangentIn,
                             tangentIn,
@@ -177,12 +186,11 @@ namespace VF.Inspector {
                             .Select(_ => spsMarkers.NewMarkerId())
                             .ToList();
                         var firstStop = guidedPathStops[0];
-                        AddScreenMarker(CreateScreenMarker(
+                        AddScreenMarker(socketMarkers.Create(
                             oneSpace,
                             socket,
                             firstStop.shrink ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay,
                             spsMarkers.NewMarkerId(),
-                            spsMarkers,
                             socket.useRadiusOffset,
                             false,
                             Vector3.zero,
@@ -213,12 +221,11 @@ namespace VF.Inspector {
                             ));
                         }
                     } else {
-                        AddScreenMarker(CreateScreenMarker(
+                        AddScreenMarker(socketMarkers.Create(
                             oneSpace,
                             socket,
                             lightType,
                             spsMarkers.NewMarkerId(),
-                            spsMarkers,
                             socket.useRadiusOffset,
                             false,
                             Vector3.zero,
@@ -231,7 +238,7 @@ namespace VF.Inspector {
             
             if (EditorApplication.isPlaying && !socket.fromSpsForAll) {
                 var gizmo = socket.owner().AddComponent<VRCFurySocketGizmo>();
-                gizmo.data = VRCFuryHapticSocketGizmo.BuildGizmoData(socket);
+                gizmo.data = GetGizmoData(socket);
             }
 
             return new BakeResult {
@@ -244,5 +251,72 @@ namespace VF.Inspector {
                 senders = senders
             };
         }
+
+        public VRCFurySocketGizmo.SocketGizmoData GetGizmoData(VRCFuryHapticSocket socket) {
+            var closestBone = autoTagGenerator?.GetClosestBone(socket.owner());
+            var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket, closestBone);
+            return VRCFuryHapticSocketGizmo.BuildGizmoData(
+                socket,
+                lightType,
+                GetHandTouchZoneSize(socket),
+                localPosition,
+                localRotation
+            );
+        }
+
+        internal static bool ShouldProbablyHaveTouchZone(
+            VRCFuryHapticSocket socket,
+            HumanBodyBones? closestBone
+        ) {
+            if (closestBone != HumanBodyBones.Hips) return false;
+
+            var name = GetMenuName(socket).ToLower();
+            return !name.Contains("rubbing") && !name.Contains("job");
+        }
+
+        public Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
+            var enableHandTouchZone = socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On
+                || (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.Auto
+                    && ShouldProbablyHaveTouchZone(
+                        socket,
+                        autoTagGenerator?.GetClosestBone(socket.owner())
+                    ));
+            if (!enableHandTouchZone) return null;
+
+            var length = socket.length * (socket.unitsInMeters ? 1f : socket.owner().worldScale.z);
+            if (length <= 0) {
+                var viewPosition = autoTagGenerator?.GetAvatarViewPosition(socket.owner());
+                if (viewPosition == null || viewPosition.Value.y <= 0) return null;
+                length = viewPosition.Value.y * 0.05f;
+            }
+            return Tuple.Create(length, length / 2.5f);
+        }
+
+        private static bool ShouldProbablyBeHole(
+            VRCFuryHapticSocket socket,
+            HumanBodyBones? closestBone
+        ) {
+            if (closestBone == HumanBodyBones.Head || closestBone == HumanBodyBones.Jaw) return true;
+            return ShouldProbablyHaveTouchZone(socket, closestBone);
+        }
+
+        private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(
+            VRCFuryHapticSocket socket,
+            HumanBodyBones? closestBone
+        ) {
+            if (socket.addLight != VRCFuryHapticSocket.AddLight.None) {
+                var type = socket.addLight;
+                if (type == VRCFuryHapticSocket.AddLight.Auto) {
+                    type = ShouldProbablyBeHole(socket, closestBone)
+                        ? VRCFuryHapticSocket.AddLight.Hole
+                        : VRCFuryHapticSocket.AddLight.Ring;
+                }
+                return Tuple.Create(type, socket.position, Quaternion.Euler(socket.rotation));
+            }
+
+            var lightInfo = GetInfoFromLights(socket.owner());
+            return lightInfo ?? Tuple.Create(VRCFuryHapticSocket.AddLight.None, Vector3.zero, Quaternion.identity);
+        }
+
     }
 }

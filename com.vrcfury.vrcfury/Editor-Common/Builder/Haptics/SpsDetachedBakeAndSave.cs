@@ -4,24 +4,28 @@ using System.Linq;
 using UnityEngine;
 using VF.Component;
 using VF.Exceptions;
+using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {
-    internal static class SpsBakeAndSave {
+    internal static class SpsDetachedBakeAndSave {
         public static void Run(
             IList<VRCFuryHapticSocket> sockets,
             IList<VRCFuryHapticPlug> plugs
         ) {
             if (sockets.Count == 0 && plugs.Count == 0) return;
 
-            var spsMarkers = new SpsMarkersService();
+            var injector = new VRCFuryInjector();
+            injector.ImportScan(typeof(VFServiceAttribute));
+            var plugBaker = injector.GetService<VRCFuryHapticPlugBaker>();
+            var socketBaker = injector.GetService<VRCFuryHapticSocketBaker>();
             var saveSession = new SaveAssetsSession("SPS");
 
             foreach (var socket in sockets) {
                 socket.Upgrade();
                 try {
-                    var result = VRCFuryHapticSocketBaker.Bake(socket, spsMarkers);
+                    var result = socketBaker.Bake(socket);
                     if (result == null) continue;
                     SpsConfigurer.AddMaterialPropertyAnimator(
                         result.screenMarkerResults.Select(marker => marker.materialProperties).SelectMany(properties => properties),
@@ -44,7 +48,7 @@ namespace VF.Builder.Haptics {
             foreach (var plug in plugs) {
                 plug.Upgrade();
                 try {
-                    var result = VRCFuryHapticPlugBaker.Bake(plug, spsMarkers: spsMarkers);
+                    var result = plugBaker.Bake(plug);
                     if (result == null) continue;
                     if (result.resolverMaterialProperties != null) {
                         SpsConfigurer.AddMaterialPropertyAnimator(result.resolverMaterialProperties, saveSession);
