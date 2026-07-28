@@ -105,20 +105,18 @@ namespace VF.Utils {
         }
 
         internal static string ResolveRelativePath(string a, string b) {
+            if (string.IsNullOrEmpty(b)) return a;
             var output = new List<string>();
-            foreach (var path in new[] { a, b }) {
-                if (string.IsNullOrEmpty(path)) continue;
-                if (path.StartsWith("/")) {
-                    output.Clear();
-                }
-                foreach (var part in path.Split('/')) {
-                    if (part == "..") {
-                        if (output.Count == 0) return null;
-                        output.RemoveAt(output.Count - 1);
-                    } else if (part == ".") {
-                    } else if (part != "") {
-                        output.Add(part);
-                    }
+            if (!b.StartsWith("/")) {
+                output.AddRange(a.Split('/'));
+            }
+            foreach (var part in b.Split('/')) {
+                if (part == "..") {
+                    if (output.Count == 0) return null;
+                    output.RemoveAt(output.Count - 1);
+                } else if (part == ".") {
+                } else if (part != "") {
+                    output.Add(part);
                 }
             }
             return string.Join("/", output);
