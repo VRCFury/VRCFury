@@ -1,67 +1,75 @@
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Builder.Haptics;
 using VF.Hooks;
+using VF.Injector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Utils {
-    internal static class ClosestBoneUtils {
-        private static readonly Dictionary<VFGameObject, Result> resultCache
-            = new Dictionary<VFGameObject, Result>();
-        private static readonly Dictionary<VFGameObject, List<ArmatureLink>> armatureLinkCache
-            = new Dictionary<VFGameObject, List<ArmatureLink>>();
+    [VFService]
+    internal class ClosestBoneUtils {
+        private static readonly Dictionary<VFGameObject, ClosestBoneUtils> perFrame
+            = new Dictionary<VFGameObject, ClosestBoneUtils>();
 
-        private class Result {
-            public HumanBodyBones? bone;
+        private readonly VRCFObjectPathCache objectPaths;
+        private readonly VRCFArmatureCache armatureCache;
+        private readonly Dictionary<VFGameObject, HumanBodyBones?> results = new();
+        private readonly Dictionary<VFGameObject, List<ArmatureLink>> armatureLinks = new();
+
+        [VFAutowired]
+        public ClosestBoneUtils(VRCFObjectPathCache objectPaths, VRCFArmatureCache armatureCache) {
+            this.objectPaths = objectPaths;
+            this.armatureCache = armatureCache;
         }
 
-        public static void ClearCache() {
-            resultCache.Clear();
-            armatureLinkCache.Clear();
+        public static ClosestBoneUtils GetPerFrame(VFGameObject avatarObject) {
+            return perFrame.GetOrCreate(
+                avatarObject,
+                () => new ClosestBoneUtils(
+                    VRCFObjectPathCache.GetPerFrame(avatarObject),
+                    VRCFArmatureCache.GetPerFrame(avatarObject)
+                )
+            );
         }
 
         [VFInit]
         private static void Init() {
-            Scheduler.Schedule(ClearCache, 1000);
+            Scheduler.Schedule(perFrame.Clear, 0);
         }
 
-        private static List<ArmatureLink> GetArmatuareLinks(VFGameObject rootObject) {
-            if (armatureLinkCache.TryGetValue(rootObject, out var cached)) return cached;
-            return armatureLinkCache[rootObject] = rootObject
+        private List<ArmatureLink> GetArmatureLinks(VFGameObject rootObject) {
+            if (armatureLinks.TryGetValue(rootObject, out var cached)) return cached;
+            return armatureLinks[rootObject] = rootObject
                 .GetComponentsInSelfAndChildren<VRCFury>()
                 .SelectMany(v => v.GetAllFeatures())
                 .OfType<ArmatureLink>()
                 .ToList();
         }
 
-        public static HumanBodyBones? GetClosestHumanoidBone(
-            VFGameObject obj,
-            VRCFObjectPathCache objectPaths,
-            VRCFArmatureCache armatureCache
-        ) {
-            if (resultCache.TryGetValue(obj, out var cached)) {
-                return cached.bone;
-            }
-            var bone = GetClosestHumanoidBoneUncached(obj, objectPaths, armatureCache);
-            resultCache[obj] = new Result() { bone = bone };
-            return bone;
+        public HumanBodyBones? GetClosestHumanoidBone(VFGameObject obj) {
+            return results.GetOrCreate(obj, () => GetClosestHumanoidBoneUncached(obj));
         }
 
-        private static HumanBodyBones? GetClosestHumanoidBoneUncached(
-            VFGameObject obj,
-            VRCFObjectPathCache objectPaths,
-            VRCFArmatureCache armatureCache
-        ) {
+        [CanBeNull]
+        public VFGameObject GetBone(VFGameObject obj, HumanBodyBones bone) {
+            return armatureCache.FindBoneOnArmatureOrNull(bone);
+        }
+
+        private HumanBodyBones? GetClosestHumanoidBoneUncached(VFGameObject obj) {
             var avatarObject = obj.GetAvatarRoot();
 
             var followConstraints = true;
             var followArmatureLink = true;
 
-            var armatureLinks = GetArmatuareLinks(avatarObject);
+            var armatureLinks = GetArmatureLinks(avatarObject);
 
             var humanoidBones = armatureCache.GetAllBones()
                 .ToDictionary(x => x.Value, x => x.Key);
@@ -103,6 +111,25 @@ namespace VF.Utils {
                 current = current.parent;
             }
             return null;
+        }
+    }
+
+    [VFService]
+    internal class SpsAvatarAutoTagGenerator : SpsAutoTagGenerator {
+        [VFAutowired] private readonly ClosestBoneUtils closestBoneUtils;
+        [VFAutowired] [CanBeNull] private readonly VRCAvatarDescriptor avatar;
+
+        public HumanBodyBones? GetClosestBone(VFGameObject obj) {
+            return closestBoneUtils.GetClosestHumanoidBone(obj);
+        }
+
+        [CanBeNull]
+        public VFGameObject GetBone(VFGameObject obj, HumanBodyBones bone) {
+            return closestBoneUtils.GetBone(obj, bone);
+        }
+
+        public Vector3? GetAvatarViewPosition(VFGameObject obj) {
+            return (avatar ?? obj.GetAvatarRoot().GetComponent<VRCAvatarDescriptor>())?.ViewPosition;
         }
     }
 }

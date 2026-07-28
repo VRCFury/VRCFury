@@ -1,6 +1,7 @@
 #ifndef SPS_INC_CELL_LAYOUT
 #define SPS_INC_CELL_LAYOUT
 
+#include "UnityShaderVariables.cginc"
 #include "sps_cell_hash.cginc"
 #include "sps_texture.cginc"
 #include "sps_encode.cginc"

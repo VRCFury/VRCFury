@@ -1,17 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Component;
 using VF.Hooks;
+using VF.Injector;
 using VF.Inspector;
 using VF.Menu;
 using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Builder.Haptics {
-    internal static class SpsConfigurer {
+    [VFService]
+    internal class SpsConfigurer {
         public const uint SharedTag = 1337;
         public const string SpsEnabled = "_SPS_Enabled";
         public const string SpsBakedLength = "_SPS_BakedLength";
@@ -25,6 +28,8 @@ namespace VF.Builder.Haptics {
         private const string SpsBake = "_SPS_Bake";
         private const uint IncludeSelf = 1;
         private const uint IncludeOthers = 2;
+
+        [VFAutowired] [CanBeNull] private readonly SpsAutoTagGenerator autoTagGenerator;
 
         public class MaterialProperty {
             public UnityEngine.Component component;
@@ -103,7 +108,7 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        public static List<MaterialProperty> GetResolverProperties(
+        public List<MaterialProperty> GetResolverProperties(
             Renderer renderer,
             float worldLength,
             float worldRadius,
@@ -136,7 +141,11 @@ namespace VF.Builder.Haptics {
             Add(SpsEnabled, plug.spsAnimatedEnabled);
             Add(SpsOverrun, plug.spsOverrun ? 1 : 0);
             Add(SpsLegacy, plug.useLights ? 1 : 0);
-            ConfigureResolverTagRules(Add, plug);
+            ConfigureResolverTagRules(
+                Add,
+                plug,
+                plug.useHipAvoidance && autoTagGenerator?.GetClosestBone(plug.owner()) == HumanBodyBones.Hips
+            );
             Add(SpsMarkersService.Configured, 1);
             SetSplitId(Add, SpsMarkersService.IdLow, SpsMarkersService.IdHigh, resolverHash);
             return properties;
@@ -154,7 +163,7 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        public static List<MaterialProperty> GetSocketProperties(
+        public List<MaterialProperty> GetSocketProperties(
             Renderer renderer,
             VRCFuryHapticSocket socket,
             VRCFuryHapticSocket.AddLight lightType,
@@ -195,7 +204,12 @@ namespace VF.Builder.Haptics {
             Add(SpsMarkersService.SocketTangentOut + ".x", tangentOut.x);
             Add(SpsMarkersService.SocketTangentOut + ".y", tangentOut.y);
             Add(SpsMarkersService.SocketTangentOut + ".z", tangentOut.z);
-            ConfigureSocketTags(Add, socket, includeTags);
+            ConfigureSocketTags(
+                Add,
+                socket,
+                includeTags,
+                includeTags && socket.useSharedTag ? GetAutoSocketTagNames(socket) : null
+            );
             return properties;
         }
 
@@ -248,7 +262,12 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        private static void ConfigureSocketTags(Action<string, float> set, VRCFuryHapticSocket socket, bool includeTags = true) {
+        private static void ConfigureSocketTags(
+            Action<string, float> set,
+            VRCFuryHapticSocket socket,
+            bool includeTags,
+            [CanBeNull] IList<string> autoTags
+        ) {
             if (!includeTags) {
                 for (var i = 0; i < 8; i++) {
                     SetSplitId(set, $"_SPS_SocketTag{i + 1}Low", $"_SPS_SocketTag{i + 1}High", 0);
@@ -256,15 +275,13 @@ namespace VF.Builder.Haptics {
                 return;
             }
 
-            var closestBone = GetClosestBone(socket.owner());
             var tags = new uint[8];
             for (var i = 0; i < socket.tags.Count && i < VRCFuryHapticSocketEditor.SpsTagCount; i++) {
                 SetTag(tags, i, HashTag(socket.tags[i]));
             }
             if (socket.useSharedTag) {
-                var autoTags = GetAutoSocketTagNames(socket);
-                if (autoTags.Count >= 1) SetTag(tags, 5, HashTag(autoTags[0]));
-                if (autoTags.Count >= 2) SetTag(tags, 6, HashTag(autoTags[1]));
+                if (autoTags?.Count >= 1) SetTag(tags, 5, HashTag(autoTags[0]));
+                if (autoTags?.Count >= 2) SetTag(tags, 6, HashTag(autoTags[1]));
                 SetTag(tags, 7, SharedTag);
             }
             for (var i = 0; i < tags.Length; i++) {
@@ -285,8 +302,11 @@ namespace VF.Builder.Haptics {
             return hash == 0 ? 1u : hash;
         }
 
-        private static void ConfigureResolverTagRules(Action<string, float> set, VRCFuryHapticPlug plug) {
-            var onHips = IsOnHips(plug.owner());
+        private static void ConfigureResolverTagRules(
+            Action<string, float> set,
+            VRCFuryHapticPlug plug,
+            bool excludeOwnHips
+        ) {
             var includeTags = new uint[4];
             var includeFlags = new uint[4];
             var excludeTags = new uint[4];
@@ -301,7 +321,7 @@ namespace VF.Builder.Haptics {
             for (var i = 0; i < plug.excludeTags.Count && i < VRCFuryHapticPlugEditor.SpsTagRuleCount; i++) {
                 SetTag(excludeTags, excludeFlags, i, plug.excludeTags[i]);
             }
-            if (plug.useHipAvoidance && onHips) {
+            if (excludeOwnHips) {
                 SetTag(excludeTags, 3, HashTag("hips"), IncludeSelf, excludeFlags);
             }
 
@@ -336,20 +356,16 @@ namespace VF.Builder.Haptics {
             SetTag(tags, index, HashTag(rule.tag), ruleFlags, flags);
         }
 
-        private static HumanBodyBones? GetClosestBone(VFGameObject obj) {
-            return VRCFuryHapticSocketEditor.getClosestBone?.Invoke(obj);
-        }
-
-        private static bool IsOnHips(VFGameObject obj) {
-            return GetClosestBone(obj) == HumanBodyBones.Hips;
-        }
-
-        private static string GetAutoHipFrontBackTagName(VRCFuryHapticSocket socket, HumanBodyBones? closestBone) {
+        private string GetAutoHipFrontBackTagName(
+            VRCFuryHapticSocket socket,
+            HumanBodyBones? closestBone
+        ) {
             if (closestBone != HumanBodyBones.Hips) return null;
+            if (autoTagGenerator == null) return null;
 
             var root = socket.owner().root;
-            var hips = VRCFuryHapticSocketEditor.getBoneOnArmature?.Invoke(root, HumanBodyBones.Hips);
-            var rightHand = VRCFuryHapticSocketEditor.getBoneOnArmature?.Invoke(root, HumanBodyBones.RightHand);
+            var hips = autoTagGenerator.GetBone(socket.owner(), HumanBodyBones.Hips);
+            var rightHand = autoTagGenerator.GetBone(socket.owner(), HumanBodyBones.RightHand);
             if (hips == null || rightHand == null) return null;
 
             var right = rightHand.worldPosition - hips.worldPosition;
@@ -360,7 +376,8 @@ namespace VF.Builder.Haptics {
             forward.Normalize();
 
             var hipSockets = root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
-                .Where(other => other != null && GetClosestBone(other.owner()) == HumanBodyBones.Hips)
+                .Where(other => other != null
+                    && autoTagGenerator.GetClosestBone(other.owner()) == HumanBodyBones.Hips)
                 .OrderBy(other => {
                     var offset = other.owner().worldPosition - hips.worldPosition;
                     return Mathf.Abs(Vector3.Dot(offset, forward));
@@ -391,8 +408,8 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        public static IList<string> GetAutoSocketTagNames(VRCFuryHapticSocket socket) {
-            var bone = GetClosestBone(socket.owner());
+        internal IList<string> GetAutoSocketTagNames(VRCFuryHapticSocket socket) {
+            var bone = autoTagGenerator?.GetClosestBone(socket.owner());
             switch (bone) {
                 case HumanBodyBones.Hips:
                     return new[] { "hips", GetAutoHipFrontBackTagName(socket, bone), }.Where(t => !string.IsNullOrWhiteSpace(t)).ToList();

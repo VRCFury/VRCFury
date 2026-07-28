@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using VF.Exceptions;
@@ -13,6 +14,7 @@ namespace VF.Builder {
     internal class VRCFArmatureCache {
         private static readonly Dictionary<VFGameObject, VRCFArmatureCache> perFrame
             = new Dictionary<VFGameObject, VRCFArmatureCache>();
+        [VFAutowired] [CanBeNull] private VFGameObject avatarObject;
         private readonly List<Snapshot> snapshots = new List<Snapshot>();
 
         private class Snapshot {
@@ -25,8 +27,10 @@ namespace VF.Builder {
             return perFrame.GetOrCreate(
                 avatarObject,
                 () => {
-                    var cache = new VRCFArmatureCache();
-                    cache.Capture(avatarObject);
+                    var cache = new VRCFArmatureCache {
+                        avatarObject = avatarObject
+                    };
+                    cache.Capture();
                     return cache;
                 }
             );
@@ -38,13 +42,20 @@ namespace VF.Builder {
         }
 
         private IEnumerable<Snapshot> GetSnapshots(bool reverse = false) {
+            if (snapshots.Count == 0) Capture();
             return reverse ? snapshots.AsEnumerable().Reverse() : snapshots;
         }
-        public void Capture(VFGameObject avatarObject) {
-            var snapshot = new Snapshot();
-            if (avatarObject == null) return;
+        public void Capture() {
+            var snapshot = CreateSnapshot(avatarObject);
+            if (snapshot != null) snapshots.Add(snapshot);
+        }
+
+        private static Snapshot CreateSnapshot(VFGameObject avatarObject) {
+            if (avatarObject == null) return null;
             var animator = avatarObject.GetComponent<Animator>();
-            if (!animator || !animator.avatar) return;
+            if (animator == null || animator.avatar == null) return null;
+
+            var snapshot = new Snapshot();
 
             var so = new SerializedObject(animator.avatar);
             var skeletonIndexToBoneHash = GetSkeletonIndexToBoneHash(so);
@@ -68,10 +79,13 @@ namespace VF.Builder {
                     current = current.parent;
                 }
             }
-            snapshots.Add(snapshot);
+            return snapshot;
         }
 
-        public VFGameObject FindBoneOnArmatureOrNull(HumanBodyBones findBone, bool reverse = false) {
+        public VFGameObject FindBoneOnArmatureOrNull(
+            HumanBodyBones findBone,
+            bool reverse = false
+        ) {
             try {
                 return FindBoneOnArmatureOrException(findBone, reverse);
             } catch (Exception) {
@@ -79,11 +93,15 @@ namespace VF.Builder {
             }
         }
 
-        public VFGameObject FindBoneOnArmatureOrException(HumanBodyBones findBone, bool reverse = false) {
-            foreach (var snapshot in GetSnapshots(reverse)) {
+        public VFGameObject FindBoneOnArmatureOrException(
+            HumanBodyBones findBone,
+            bool reverse = false
+        ) {
+            var snapshots = GetSnapshots(reverse).ToList();
+            foreach (var snapshot in snapshots) {
                 if (snapshot.boneObjects.TryGetValue(findBone, out var obj) && obj != null) return obj;
             }
-            foreach (var snapshot in GetSnapshots(reverse)) {
+            foreach (var snapshot in snapshots) {
                 if (!snapshot.bonePaths.TryGetValue(findBone, out var path)) continue;
                 throw new VRCFBuilderException(
                     "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +
@@ -167,7 +185,9 @@ namespace VF.Builder {
                 .ToImmutableHashSet();
         }
 
-        public IReadOnlyDictionary<HumanBodyBones, VFGameObject> GetAllBones(bool reverse = false) {
+        public IReadOnlyDictionary<HumanBodyBones, VFGameObject> GetAllBones(
+            bool reverse = false
+        ) {
             var output = new Dictionary<HumanBodyBones, VFGameObject>();
             foreach (var snapshot in GetSnapshots(reverse)) {
                 foreach (var pair in snapshot.boneObjects) {
@@ -178,7 +198,7 @@ namespace VF.Builder {
         }
 
         public bool IsNonEyeBoneParent(VFGameObject obj) {
-            return snapshots.Any(snapshot => snapshot.nonEyeBoneParents.Contains(obj));
+            return GetSnapshots().Any(snapshot => snapshot.nonEyeBoneParents.Contains(obj));
         }
     }
 }

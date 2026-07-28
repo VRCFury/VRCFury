@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using VF.Builder.Haptics;
 using VF.Component;
+using VF.Injector;
 using VF.Utils;
 
 namespace VF.Inspector {
@@ -144,9 +145,13 @@ namespace VF.Inspector {
             DrawSocketGizmo(offsetPos, worldRot, type, primaryColor, secondaryColor);
         }
 
-        public static VRCFurySocketGizmo.SocketGizmoData BuildGizmoData(VRCFuryHapticSocket socket) {
-            var (lightType, localPosition, localRotation) = VRCFuryHapticSocketEditor.GetInfoFromLightsOrComponent(socket);
-            var handTouchZoneSize = VRCFuryHapticSocketEditor.GetHandTouchZoneSize(socket);
+        internal static VRCFurySocketGizmo.SocketGizmoData BuildGizmoData(
+            VRCFuryHapticSocket socket,
+            VRCFuryHapticSocket.AddLight lightType,
+            Tuple<float, float> handTouchZoneSize,
+            Vector3 localPosition,
+            Quaternion localRotation
+        ) {
             var data = new VRCFurySocketGizmo.SocketGizmoData {
                 type = lightType,
                 legacyType = VRCFuryHapticSocketEditor.GetLegacyLightType(socket, lightType),
@@ -333,7 +338,9 @@ namespace VF.Inspector {
 
         [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         static void DrawGizmo2(VRCFuryHapticSocket socket, GizmoType gizmoType) {
-            DrawGizmo(socket.owner(), BuildGizmoData(socket));
+            var baker = VRCFuryPerFrameInjector.GetPerFrameInjector(socket.owner())
+                .GetService<VRCFuryHapticSocketBaker>();
+            DrawGizmo(socket.owner(), baker.GetGizmoData(socket));
         }
     }
 }
