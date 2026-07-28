@@ -142,9 +142,6 @@ void sps_apply_real(
 
 void sps_apply(inout SpsInputs o) {
 
-	// When VERTEXLIGHT_ON is missing, there are no lights nearby, and the 4light arrays will be full of junk
-	// Temporarily disable this check since apparently it causes some passes to not apply SPS
-	//#ifdef VERTEXLIGHT_ON
 	#if defined(UNITY_PASS_SHADOWCASTER)
 		float spsNan = asfloat(0x7fc00000);
 		if (all(unity_LightShadowBias == 0)) {
@@ -158,16 +155,16 @@ void sps_apply(inout SpsInputs o) {
 				return;
 			}
 		}
+	#else
+		SPS_VANILLA_VERT_PARAM_TYPE input = (SPS_VANILLA_VERT_PARAM_TYPE)o;
+		sps_apply_real(
+			input,
+			o.SPS_STRUCT_POSITION_NAME,
+			o.SPS_STRUCT_NORMAL_NAME,
+			o.SPS_STRUCT_TANGENT_NAME,
+			o.SPS_STRUCT_SV_VertexID_NAME
+		);
 	#endif
-	SPS_VANILLA_VERT_PARAM_TYPE input = (SPS_VANILLA_VERT_PARAM_TYPE)o;
-	sps_apply_real(
-		input,
-		o.SPS_STRUCT_POSITION_NAME,
-		o.SPS_STRUCT_NORMAL_NAME,
-		o.SPS_STRUCT_TANGENT_NAME,
-		o.SPS_STRUCT_SV_VertexID_NAME
-	);
-	//#endif
 
 }
 
