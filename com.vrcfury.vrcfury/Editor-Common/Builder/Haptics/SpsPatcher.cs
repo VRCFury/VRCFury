@@ -224,7 +224,7 @@ namespace VF.Builder.Haptics {
         }
 
         private static (string,int) PatchPass(string pass, string spsMain, string cgIncludes, bool isSurfaceShader) {
-            if (GetRegex(@"""LightMode""\s*=\s*""Never""").IsMatch(pass)) {
+            if (GetRegex(@"""LightMode""\s*=\s*""(?:Meta|Never)""").IsMatch(pass)) {
                 return (pass, 0);
             }
 

@@ -107,7 +107,7 @@ namespace VF.Utils {
         internal static string ResolveRelativePath(string a, string b) {
             if (string.IsNullOrEmpty(b)) return a;
             var output = new List<string>();
-            if (!b.StartsWith("/")) {
+            if (!b.StartsWith("/") && !string.IsNullOrEmpty(a)) {
                 output.AddRange(a.Split('/'));
             }
             foreach (var part in b.Split('/')) {
