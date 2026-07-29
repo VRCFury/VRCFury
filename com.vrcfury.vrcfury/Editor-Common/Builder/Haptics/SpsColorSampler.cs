@@ -180,7 +180,7 @@ namespace VF.Builder.Haptics {
         private static void RestoreOverrideLightingSettings() {
             try {
                 Unsupported.RestoreOverrideLightingSettings();
-            } catch (Exception e) {
+            } catch (Exception) {
                 /*
                  * This method throws randomly if it's called while entering play mode with "Reload Scene"
                  * checked in the play mode options, so we just ignore it.
