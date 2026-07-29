@@ -27,6 +27,10 @@ namespace com.vrcfury.api.Components {
             s.enableAuto = false;
         }
 
+        public void UseRadiusOffset() {
+            s.useRadiusOffset = true;
+        }
+
         public FuryActionSet AddDepthActions(Vector2 range, float smoothingSeconds, bool enableSelf = false) {
             var a = new VRCFuryHapticSocket.DepthActionNew {
                 range = range.Ordered(),

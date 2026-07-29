@@ -2,6 +2,7 @@
 using UnityEngine;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -43,7 +44,15 @@ namespace com.vrcfury.api.Components {
         public void AddGlobalParam(string name) {
             c.globalParams.Add(name);
         }
-        
+
+        public void AddInjectedParam(GameObject sourceObject, string sourceParam, string targetParam) {
+            c.injectParams.Add(new FullController.InjectParamEntry {
+                sourceObject = sourceObject,
+                sourceParam = sourceParam,
+                targetParam = targetParam
+            });
+        }
+
         public void AddPathRewrite(string from, string to) {
             c.rewriteBindings.Add(new FullController.BindingRewrite {
                 from = from,
