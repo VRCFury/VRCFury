@@ -31,12 +31,23 @@ namespace VF.Utils {
                 .VFMethod("Save", new Type[] { });
         }
 
+        [ReflectionHelperOptional]
+        private abstract class NewThryPresetsReflection : ReflectionHelper {
+            public static readonly MethodInfo RegisterMaterials = ReflectionUtils
+                .GetTypeFromAnyAssembly("Thry.ThryEditor.Presets")
+                ?.VFStaticMethod("RegisterMaterials", new[] { typeof(IEnumerable<string>) });
+        }
+
         [CanBeNull]
         public static Type ShaderOptimizer => PoiReflection.ShaderOptimizer;
 
         public static void AddToKnownMaterials(IEnumerable<string> guids) {
             if (!guids.Any()) return;
             try {
+                if (ReflectionHelper.IsReady<NewThryPresetsReflection>()) {
+                    NewThryPresetsReflection.RegisterMaterials.Invoke(null, new object[] { guids });
+                    return;
+                }
                 if (!ReflectionHelper.IsReady<ThryPresetsReflection>()) return;
 
                 var knownMaterials = ThryPresetsReflection.KnownMaterials.GetValue(null);
