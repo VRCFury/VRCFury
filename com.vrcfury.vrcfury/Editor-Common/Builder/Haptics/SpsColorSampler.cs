@@ -1,17 +1,30 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {
     internal static class SpsColorSampler {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly FieldInfo SavedState =
+                typeof(PreviewRenderUtility).VFField("m_SavedState");
+            public static readonly MethodInfo RestoreSavedState =
+                SavedState?.FieldType.VFMethod("Restore");
+            public static readonly FieldInfo PreviewOpened =
+                typeof(PreviewRenderUtility).VFField("m_previewOpened");
+            public static readonly FieldInfo RenderTexture =
+                typeof(PreviewRenderUtility).VFField("m_RenderTexture");
+        }
+
         private const int PreviewSize = 128;
-        private const float BoundsPadding = 0.05f;
         private const float AlphaThreshold = 0.001f;
 
         public static Color GetColor(IEnumerable<Renderer> renderers) {
+            if (!ReflectionHelper.IsReady<Reflection>()) return Color.clear;
+
             Renderer bestRenderer = null;
             var bestVertexCount = -1;
 
@@ -72,7 +85,9 @@ namespace VF.Builder.Haptics {
             var previousActive = RenderTexture.active;
 
             try {
-                var extents = bounds.extents + Vector3.one * BoundsPadding;
+                var extents = bounds.extents;
+                var viewExtent = Mathf.Max(extents.y, extents.x);
+                if (viewExtent <= 0) return Color.clear;
                 preview.ambientColor = Color.white;
                 preview.lights[0].color = Color.white;
                 preview.lights[0].intensity = 1.25f;
@@ -85,7 +100,7 @@ namespace VF.Builder.Haptics {
                 preview.camera.orthographic = true;
                 preview.camera.allowHDR = true;
                 preview.camera.aspect = 1;
-                preview.camera.orthographicSize = Mathf.Max(extents.y, extents.x, 0.01f);
+                preview.camera.orthographicSize = viewExtent;
                 var distance = extents.z + 1f;
                 preview.camera.nearClipPlane = 0.01f;
                 preview.camera.farClipPlane = distance * 2f + 1f;
@@ -106,7 +121,7 @@ namespace VF.Builder.Haptics {
 
                 preview.camera.Render();
 
-                var rendered = preview.EndPreview() as RenderTexture;
+                var rendered = EndPreview(preview) as RenderTexture;
                 if (rendered == null) return Color.clear;
                 RenderTexture.active = rendered;
 
@@ -136,7 +151,8 @@ namespace VF.Builder.Haptics {
                 var average = total / count;
                 average.a = 1;
                 return average;
-            } catch (Exception) {
+            } catch (Exception e) {
+                Debug.LogException(e);
                 return Color.black;
             } finally {
                 RenderTexture.active = previousActive;
@@ -145,6 +161,30 @@ namespace VF.Builder.Haptics {
                 } catch (Exception e) {
                     Debug.LogException(e);
                 }
+            }
+        }
+
+        // Do NOT call PreviewRenderUtility.EndPreview directly, because RestoreOverrideLightingSettings
+        // can throw, and then it leaves the PreviewRenderUtility in a really broken state.
+        private static Texture EndPreview(PreviewRenderUtility preview) {
+            RestoreOverrideLightingSettings();
+            Reflection.RestoreSavedState.Invoke(Reflection.SavedState.GetValue(preview), null);
+            RestoreOverrideLightingSettings();
+            foreach (var light in preview.lights) {
+                light.enabled = false;
+            }
+            Reflection.PreviewOpened.SetValue(preview, false);
+            return (Texture)Reflection.RenderTexture.GetValue(preview);
+        }
+
+        private static void RestoreOverrideLightingSettings() {
+            try {
+                Unsupported.RestoreOverrideLightingSettings();
+            } catch (Exception e) {
+                /*
+                 * This method throws randomly if it's called while entering play mode with "Reload Scene"
+                 * checked in the play mode options, so we just ignore it.
+                 */
             }
         }
 

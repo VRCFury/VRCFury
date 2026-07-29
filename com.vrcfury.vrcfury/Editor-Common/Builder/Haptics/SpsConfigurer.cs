@@ -134,10 +134,10 @@ namespace VF.Builder.Haptics {
             Add(SpsBakedLength, worldLength);
             Add(SpsBakedRadius, worldRadius);
             AddPackedVectors(Add, SpsBakedRadiusSamples, bakedRadiusSamples, 4);
-            Add(SpsMetadataColor + ".x", metadataColor.r);
-            Add(SpsMetadataColor + ".y", metadataColor.g);
-            Add(SpsMetadataColor + ".z", metadataColor.b);
-            Add(SpsMetadataColor + ".w", 1);
+            Add(SpsMetadataColor + ".r", metadataColor.r);
+            Add(SpsMetadataColor + ".g", metadataColor.g);
+            Add(SpsMetadataColor + ".b", metadataColor.b);
+            Add(SpsMetadataColor + ".a", 1);
             Add(SpsEnabled, plug.spsAnimatedEnabled);
             Add(SpsOverrun, plug.spsOverrun ? 1 : 0);
             Add(SpsLegacy, plug.useLights ? 1 : 0);

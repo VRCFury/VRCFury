@@ -89,7 +89,7 @@ void sps_apply_real(
 			,stop1Forward
 #endif
 #ifdef SPS_MODIFY_BAKE_INCLUDE_SOCKET_UP
-			,sps_read_resolver_chain_up(resolverCell, 1)
+			,sps_read_resolver_chain_up(resolvedCell, 1)
 #endif
 		);
 
