@@ -14,7 +14,7 @@ namespace VF.Hooks {
             using (SkipAssetPostprocessorsForVrcfAssetWritesHook.Suppress()) {
                 VRCFuryAssetDatabase.WithAssetEditing(() => {
                     var injector = VRCFuryInjectorBuilder.GetInjector(avatarObject.GetComponent<VRCAvatarDescriptor>());
-                    injector.GetService<ControllersService>().ClearCache();
+                    injector.GetService<ControllersService>().ClearCache(applyBaseMask: false);
                     injector.GetService<ParamsService>().ClearCache();
                     injector.GetService<ParameterCompressorService>().Apply();
                 });

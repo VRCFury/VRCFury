@@ -20,6 +20,8 @@ namespace VF.Service {
 
         private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager> _controllers
             = new Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager>();
+        private bool applyBaseMask = true;
+
         public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
             return _controllers.GetOrCreate(type, () => MakeController(type));
         }
@@ -29,17 +31,16 @@ namespace VF.Service {
 
             VFController ctrl = null;
             if (existingController != null) {
-                ctrl = VFControllerWithVrcType.Load(
-                    existingController,
-                    type,
-                    new VFLoadContext {
-                        OwnerObject = globals.avatarObject,
-                        AnimatorObject = globals.avatarObject,
-                        RootBindingsApplyToAvatar = true,
-                        ObjectPaths = objectPaths,
-                        ReverseObjectPaths = true
-                    }
-                );
+                var context = new VFLoadContext {
+                    OwnerObject = globals.avatarObject,
+                    AnimatorObject = globals.avatarObject,
+                    RootBindingsApplyToAvatar = true,
+                    ObjectPaths = objectPaths,
+                    ReverseObjectPaths = true
+                };
+                ctrl = applyBaseMask
+                    ? VFControllerWithVrcType.Load(existingController, type, context)
+                    : VFController.Load(existingController, context);
             }
             if (ctrl == null) {
                 ctrl = VFController.Create();
@@ -62,7 +63,8 @@ namespace VF.Service {
             return output;
         }
 
-        public void ClearCache() {
+        public void ClearCache(bool applyBaseMask = true) {
+            this.applyBaseMask = applyBaseMask;
             _controllers.Clear();
         }
 

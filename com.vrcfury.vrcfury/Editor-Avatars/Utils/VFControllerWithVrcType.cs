@@ -15,7 +15,7 @@ namespace VF.Utils {
             this.vrcType = vrcType;
         }
 
-        public static VFControllerWithVrcType Load(
+        public static VFController Load(
             RuntimeAnimatorController ctrl,
             VRCAvatarDescriptor.AnimLayerType type,
             VFLoadContext context
@@ -23,10 +23,9 @@ namespace VF.Utils {
             if (context == null) throw new System.ArgumentNullException(nameof(context));
             if (context.OwnerObject == null) throw new System.ArgumentNullException(nameof(context.OwnerObject));
             if (context.AnimatorObject == null) throw new System.ArgumentNullException(nameof(context.AnimatorObject));
-            var baseCopy = VFController.Load(ctrl, context);
-            if (baseCopy == null) return null;
-            var output = new VFControllerWithVrcType(baseCopy, type);
-            output.ApplyBaseMask(type);
+            var output = VFController.Load(ctrl, context);
+            if (output == null) return null;
+            ApplyBaseMask(output, type);
             return output;
         }
 
@@ -34,8 +33,8 @@ namespace VF.Utils {
          * VRCF's handles masks by "applying" the base mask to every mask in the controller. This makes things like
          * merging controllers and features much easier. Later on, we recalculate a new base mask in FixMasksBuilder.
          */
-        private void ApplyBaseMask(VRCAvatarDescriptor.AnimLayerType type) {
-            var layer0 = GetLayer(0);
+        private static void ApplyBaseMask(VFController controller, VRCAvatarDescriptor.AnimLayerType type) {
+            var layer0 = controller.GetLayer(0);
             if (layer0 == null) return;
 
             var baseMask = layer0.mask;
@@ -72,7 +71,7 @@ namespace VF.Utils {
             // The transform part of the base mask DOES NOT impact lower layers!!
             baseMask.AllowAllTransforms();
 
-            foreach (var layer in GetLayers()) {
+            foreach (var layer in controller.GetLayers()) {
                 if (layer.mask == null) {
                     layer.mask = baseMask.Clone();
                 } else {

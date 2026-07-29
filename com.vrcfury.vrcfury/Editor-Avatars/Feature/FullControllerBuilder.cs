@@ -89,7 +89,7 @@ namespace VF.Feature {
                     }
                 );
                 if (copy != null) {
-                    fromControllers.Add(copy);
+                    fromControllers.Add(new VFControllerWithVrcType(copy, c.type));
                 }
             }
 
