@@ -21,7 +21,7 @@ namespace VF.Service {
         public VFAFloat AddClip(VFClip clip, VFBinding.MuscleBindingType type) {
             if (!addCache.ContainsKey(type)) {
                 if (type == VFBinding.MuscleBindingType.Body) {
-                    var action = controllers.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
+                    var action = controllers.GetAction();
                     var name = "VRCFury Actions";
                     var param = action.NewInt(name);
                     var paramIndex = 0;

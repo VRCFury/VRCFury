@@ -25,7 +25,6 @@ namespace VF.Service {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
-        [VFAutowired] private readonly ForceStateInAnimatorService _forceStateInAnimatorService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly DbtLayerService directTreeService;
@@ -39,9 +38,11 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCFuryHapticSocketBaker socketBaker;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private ControllerManager fx => controllers.GetFx();
+        private ControllerManager actionController => controllers.GetAction();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         private readonly Lazy<VFClip> materialPropertiesClip;
+        private readonly List<VFGameObject> forceEnable = new List<VFGameObject>();
 
         public BakeHapticSocketsService() {
             materialPropertiesClip = new Lazy<VFClip>(() => {
@@ -53,6 +54,18 @@ namespace VF.Service {
 
         private void RegisterMaterialProperties(IEnumerable<SpsConfigurer.MaterialProperty> properties) {
             SpsConfigurer.AddMaterialPropertyCurves(materialPropertiesClip.Value, properties);
+        }
+
+        [FeatureBuilderAction(FeatureOrder.ForceStateInAnimator)]
+        public void ForceSocketsOn() {
+            if (forceEnable.Count == 0) return;
+
+            var layer = fx.NewLayer("Force Sockets On");
+            var clip = clipFactory.NewClip("Force Sockets On");
+            foreach (var obj in forceEnable) {
+                clip.SetEnabled(obj, true);
+            }
+            layer.NewState("On").WithAnimation(clip);
         }
 
         [FeatureBuilderAction]
@@ -380,7 +393,7 @@ namespace VF.Service {
                     // Do the toggle last so all the objects have been generated and can be toggled on/off
                     if (toggleParam != null) {
                         obj.active = true;
-                        _forceStateInAnimatorService.ForceEnable(obj);
+                        forceEnable.Add(obj);
 
                         bakeResult.bakeRoot.active = false;
                         var onClip = clipFactory.NewClip($"{oscId}");
@@ -417,13 +430,16 @@ namespace VF.Service {
             }
 
             if (exclusiveTriggers.Count >= 2) {
-                var exclusiveLayer = fx.NewLayer("SPS - Socket Exclusivity");
+                var exclusiveLayer = actionController.NewLayer("SPS - Socket Exclusivity");
                 exclusiveLayer.NewState("Start");
+                actionController.AddParam(legacyOn);
+                actionController.AddParam(stealthOn);
                 foreach (var i in Enumerable.Range(0, exclusiveTriggers.Count)) {
                     var (name, on) = exclusiveTriggers[i];
+                    actionController.AddParam(on);
                     var state = exclusiveLayer.NewState(name);
                     var when = on.IsTrue();
-                    when = when.And(fx.IsLocal().IsTrue());
+                    when = when.And(actionController.IsLocal().IsTrue());
                     if (legacyOn != null) when = when.And(legacyOn.IsTrue());
                     if (stealthOn != null) when = when.And(stealthOn.IsFalse());
                     state.TransitionsFromAny().When(when);

@@ -19,6 +19,7 @@ namespace VF.Feature {
     internal class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
+        private ControllerManager actionController => controllers.GetAction();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         
@@ -49,7 +50,7 @@ namespace VF.Feature {
 
             var paramSecuritySync = fx.NewBool("SecurityLockSync", synced: true);
             // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
-            var paramInput = fx.NewInt("SecurityInput", synced: true, networkSynced: false);
+            var paramInput = actionController.NewInt("SecurityInput", synced: true, networkSynced: false);
             
             // Because this is created lazily on demand from some other feature, but we want the position in the menu
             // to be based on where this security lock was placed
@@ -60,7 +61,7 @@ namespace VF.Feature {
                 menu.NewMenuButton("Security/Unlocked", paramInput, 8);
             });
 
-            var layer = fx.NewLayer("Security Lock");
+            var layer = actionController.NewLayer("Security Lock");
             
             var remote = layer.NewState("Remote Trap");
 
@@ -69,15 +70,15 @@ namespace VF.Feature {
             
             var clear = layer.NewState("Clear")
                 .Move(entry, 1, 1);
-            clear.TransitionsTo(entry).When(fx.Always());
+            clear.TransitionsTo(entry).When(actionController.Always());
             clear.Drives(paramInput, 0);
             clear.Drives(paramSecuritySync, false);
 
-            remote.TransitionsTo(entry).When(fx.IsLocal().IsTrue());
+            remote.TransitionsTo(entry).When(actionController.IsLocal().IsTrue());
             
             var digitParams = new List<VFAInteger>();
             for (var i = 0; i < numDigitSlots; i++) {
-                var savedDigit = fx.NewInt("SecurityDigit" + i);
+                var savedDigit = actionController.NewInt("SecurityDigit" + i);
                 digitParams.Add(savedDigit);
                 clear.Drives(savedDigit, 0);
             }

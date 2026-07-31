@@ -19,6 +19,7 @@ namespace VF.Service {
     internal class ActionConflictResolverService {
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly InitBehavioursService initBehavioursService;
 
         [FeatureBuilderAction(FeatureOrder.ActionConflictResolver)]
         public void Apply() {
@@ -78,11 +79,10 @@ namespace VF.Service {
 
             if (ownersByController.ContainsKey(VRCAvatarDescriptor.AnimLayerType.Action)
                 && ownersByController[VRCAvatarDescriptor.AnimLayerType.Action].Count > 1) {
-                var action = controllers.GetController(VRCAvatarDescriptor.AnimLayerType.Action);
+                var action = controllers.GetAction();
                 // Make sure there's nothing on the base layer, since we won't be able to change its weight
                 action.EnsureEmptyBaseLayer();
-                var enableLayer = action.NewLayer("VRCF Force Enable");
-                var enable = enableLayer.NewState("Enable");
+                var enable = initBehavioursService.GetState();
                 enable.behaviours.AddBehaviour<VRCPlayableLayerControl>(enableControl => {
                     enableControl.layer = VRC_PlayableLayerControl.BlendableLayer.Action;
                     enableControl.goalWeight = 1;

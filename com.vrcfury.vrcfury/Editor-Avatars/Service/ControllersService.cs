@@ -71,6 +71,9 @@ namespace VF.Service {
         public ControllerManager GetFx() {
             return GetController(VRCAvatarDescriptor.AnimLayerType.FX);
         }
+        public ControllerManager GetAction() {
+            return GetController(VRCAvatarDescriptor.AnimLayerType.Action);
+        }
         public IList<ControllerManager> GetAllMutatedControllers() {
             return _controllers.Values.ToArray();
         }

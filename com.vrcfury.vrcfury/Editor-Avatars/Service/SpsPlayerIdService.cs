@@ -9,6 +9,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly DbtLayerService directTreeService;
+        [VFAutowired] private readonly InitBehavioursService initBehavioursService;
 
         private const int MaxPlayerIdComponent = (1 << 16) - 1;
         private ControllerManager fx => controllers.GetFx();
@@ -27,6 +28,8 @@ namespace VF.Service {
 
         private VFAInteger GetPlayerIdHighRandomInt() {
             if (playerIdHighRandomInt != null) return playerIdHighRandomInt;
+            // Use fx.NewInt here even though controllers.MakeUniqueParamName would work because
+            // av3emulator won't drive parameters if they're not in at least one controller
             playerIdHighRandomInt = fx.NewInt("SPS_PLAYER_ID_HIGH_RANDOM");
             return playerIdHighRandomInt;
         }
@@ -46,15 +49,11 @@ namespace VF.Service {
         private void EnsureGenerator() {
             if (playerIdLowClip != null && playerIdHighClip != null) return;
 
-            var layer = fx.NewLayer("SPS - Player ID");
-            var entry = layer.NewState("Entry");
-            var randomize = layer.NewState("Randomize");
-
-            entry.TransitionsTo(randomize).When(fx.Always());
-            randomize.DrivesRandom(GetPlayerIdLowRandomInt(), 0, MaxPlayerIdComponent);
-            randomize.DrivesRandom(GetPlayerIdHighRandomInt(), 0, MaxPlayerIdComponent);
-            randomize.DrivesCopy(GetPlayerIdLowRandomInt(), GetPlayerIdLowFloat());
-            randomize.DrivesCopy(GetPlayerIdHighRandomInt(), GetPlayerIdHighFloat());
+            var init = initBehavioursService.GetState();
+            init.DrivesRandom(GetPlayerIdLowRandomInt(), 0, MaxPlayerIdComponent);
+            init.DrivesRandom(GetPlayerIdHighRandomInt(), 0, MaxPlayerIdComponent);
+            init.DrivesCopy(GetPlayerIdLowRandomInt(), GetPlayerIdLowFloat());
+            init.DrivesCopy(GetPlayerIdHighRandomInt(), GetPlayerIdHighFloat());
 
             playerIdLowClip = clipFactory.NewClip("SpsPlayerIdLow");
             playerIdHighClip = clipFactory.NewClip("SpsPlayerIdHigh");

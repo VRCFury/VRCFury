@@ -26,11 +26,13 @@ namespace VF.Feature {
         [VFAutowired] private readonly AllClipsService allClipsService;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
+        private ControllerManager actionController => controllers.GetAction();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly GlobalsService globals;
 
         private VFCondition isOn;
+        private VFAParam exclusiveParam;
         private Action<VFState, bool> drive;
         private VFClip savedRestingClip;
         private bool loadedRestingClip = false;
@@ -96,6 +98,7 @@ namespace VF.Feature {
                     usePrefix: usePrefixOnParam
                 );
                 onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
+                exclusiveParam = model.sliderInactiveAtZero ? param : null;
                 if (model.sliderInactiveAtZero) {
                     drive = (state,on) => { if (!on) state.Drives(param, 0); };
                 }
@@ -111,11 +114,13 @@ namespace VF.Feature {
             } else if (model.useInt) {
                 var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
                 onCase = param.IsNotEqualTo(0);
+                exclusiveParam = param;
                 drive = (state,on) => state.Drives(param, on ? 1 : 0);
                 defaultOn = model.defaultOn;
             } else {
                 var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
                 onCase = param.IsTrue();
+                exclusiveParam = param;
                 drive = (state,on) => state.Drives(param, on ? 1 : 0);
                 defaultOn = model.defaultOn;
                 if (addMenuItem) {
@@ -325,9 +330,10 @@ namespace VF.Feature {
                 }
                 existingGroups.Add(groupToggles);
 
-                var layer = fx.NewLayer($"Exclusive Tag - {tag}");
+                var layer = actionController.NewLayer($"Exclusive Tag - {tag}");
                 layer.NewState("Idle");
                 foreach (var toggle in groupToggles) {
+                    actionController.AddParam(toggle.exclusiveParam);
                     var state = layer.NewState(toggle.model.name);
                     state.TransitionsFromAny().When(toggle.isOn);
                     foreach (var other in groupToggles.Where(o => o != toggle)) {
@@ -337,7 +343,7 @@ namespace VF.Feature {
             }
 
             var exclusiveOffLayer = new Lazy<(VFLayer,VFState)>(() => {
-                var layer = fx.NewLayer("Exclusive Tag - Off States");
+                var layer = actionController.NewLayer("Exclusive Tag - Off States");
                 var idle = layer.NewState("Idle");
                 return (layer,idle);
             });
@@ -347,6 +353,8 @@ namespace VF.Feature {
                     .Where(t => t != toggle)
                     .ToArray();
                 if (conflictsWith.Any()) {
+                    actionController.AddParam(toggle.exclusiveParam);
+                    foreach (var other in conflictsWith) actionController.AddParam(other.exclusiveParam);
                     var triggerWhen = toggle.isOn.Not();
                     foreach (var other in conflictsWith) {
                         triggerWhen = triggerWhen.And(other.isOn.Not());
@@ -357,7 +365,7 @@ namespace VF.Feature {
                 }
             }
             if (exclusiveOffLayer.IsValueCreated) {
-                exclusiveOffLayer.Value.Item2.TransitionsFromAny().When(fx.Always());
+                exclusiveOffLayer.Value.Item2.TransitionsFromAny().When(actionController.Always());
             }
         }
 

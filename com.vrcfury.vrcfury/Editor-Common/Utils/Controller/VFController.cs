@@ -284,6 +284,19 @@ namespace VF.Utils.Controller {
             var p = _NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def);
             return new VFAInteger(p.name, p.defaultInt);
         }
+        public VFAParam AddParam(VFAParam param) {
+            if (param == null) return null;
+
+            if (param is VFABool boolParam) {
+                return _NewBool(boolParam.Name(), boolParam.GetDefault());
+            } else if (param is VFAInteger intParam) {
+                return _NewInt(intParam.Name(), intParam.GetDefault());
+            } else if (param is VFAFloat floatParam) {
+                return _NewFloat(floatParam.Name(), floatParam.GetDefault());
+            } else {
+                throw new ArgumentException("Unknown parameter type");
+            }
+        }
         public AnimatorControllerParameter _NewParam(string name, AnimatorControllerParameterType type, Action<AnimatorControllerParameter> with = null) {
             var exists = GetParam(name);
             if (exists != null) {
