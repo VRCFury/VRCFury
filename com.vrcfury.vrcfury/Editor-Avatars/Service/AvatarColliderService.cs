@@ -10,8 +10,14 @@ using VF.Hooks;
 using VF.Injector;
 using VF.Model.Feature;
 using VF.Utils;
+#if VRCSDK_HAS_GLOBAL_PHYSBONE_COLLIDERS
+using VRC.Dynamics;
+#endif
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
+#if VRCSDK_HAS_GLOBAL_PHYSBONE_COLLIDERS
+using VRC.SDK3.Dynamics.PhysBone.Components;
+#endif
 
 namespace VF.Service {
     [VFService]
@@ -25,6 +31,9 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly GlobalsService globals;
+#if VRCSDK_HAS_GLOBAL_PHYSBONE_COLLIDERS
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
+#endif
 
         private readonly Lazy<IDictionary<String, FoundCollider>> all;
 
@@ -122,6 +131,32 @@ namespace VF.Service {
             }
             found.customizedByVrcf = true;
 
+#if VRCSDK_HAS_GLOBAL_PHYSBONE_COLLIDERS
+            if (found.isFinger && HasGlobalPhysBoneColliderSpace()) {
+                var colliderObject = GameObjects.Create("Global PhysBone Collider", transform);
+                PhysboneUtils.RemoveFromPhysbones(colliderObject);
+                var collider = colliderObject.AddComponent<VRCPhysBoneCollider>();
+                collider.rootTransform = transform;
+                collider.shapeType = height <= radius * 2
+                    ? VRCPhysBoneColliderBase.ShapeType.Sphere
+                    : VRCPhysBoneColliderBase.ShapeType.Capsule;
+                collider.radius = radius;
+                collider.height = height;
+                collider.rotation = Quaternion.Euler(90, 0, 0);
+
+                var head = armatureCache.FindBoneOnArmatureOrNull(HumanBodyBones.Head);
+                if (head != null && transform.IsSameOrChildOf(head)) {
+                    collider.globalCollision = VRCPhysBoneBase.AdvancedBool.Other;
+                    collider.globalCollisionAllowSelf = false;
+                    collider.globalCollisionAllowOthers = true;
+                    collider.globalCollisionFlags = DynamicsUsageFlags.Everything;
+                } else {
+                    collider.globalCollision = VRCPhysBoneBase.AdvancedBool.True;
+                }
+                return;
+            }
+#endif
+
             // Disable mirroring, we don't need to do any mirror math, since OriginalContactsHook would have ensured that that already happened
             // Note, this doesn't actually impact in-game, it just keeps the gui editor from trying to mirror the values
             if (colliderName.EndsWith("L") || colliderName.EndsWith("R")) {
@@ -189,6 +224,14 @@ namespace VF.Service {
                 return collider;
             });
         }
+
+#if VRCSDK_HAS_GLOBAL_PHYSBONE_COLLIDERS
+        private bool HasGlobalPhysBoneColliderSpace() {
+            return avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneCollider>()
+                .Count(collider => collider.globalCollision != VRCPhysBoneBase.AdvancedBool.False)
+                   < 4;
+        }
+#endif
         
         private static void RemoveFromContactList(List<string> collisionTags, string fingerColliderName) {
             var fingerCollisionTag = fingerColliderName.Replace("collider_", "");
