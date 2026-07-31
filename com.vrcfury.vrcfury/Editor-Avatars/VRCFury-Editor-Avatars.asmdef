@@ -68,7 +68,7 @@
         },
         {
             "name": "com.vrchat.base",
-            "expression": "3.10.5",
+            "expression": "3.10.5-0",
             "define": "VRCSDK_HAS_GLOBAL_PHYSBONE_COLLIDER_OTHER"
         },
         {
