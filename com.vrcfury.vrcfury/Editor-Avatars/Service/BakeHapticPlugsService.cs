@@ -413,6 +413,7 @@ namespace VF.Service {
                         var curve = pair.Item2;
                         var isRendererBinding = binding.Targets(rewrite.skin.owner());
                         var isPlugBinding = binding.Targets(rewrite.plugObject);
+                        var finalBinding = binding;
 
                         if (curve.IsFloat) {
                             if (isRendererBinding) {
@@ -439,11 +440,12 @@ namespace VF.Service {
                         if (isRendererBinding
                             && binding.type == typeof(MeshRenderer)
                             && rewrite.skin is SkinnedMeshRenderer) {
+                            finalBinding = binding.WithType(typeof(SkinnedMeshRenderer));
                             clip.SetCurve(binding, null);
-                            clip.SetCurve(binding.WithType(typeof(SkinnedMeshRenderer)), curve);
+                            clip.SetCurve(finalBinding, curve);
                         }
 
-                        if (curve.IsFloat && isRendererBinding && binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName.StartsWith("blendShape.")) {
+                        if (curve.IsFloat && isRendererBinding && finalBinding.type == typeof(SkinnedMeshRenderer) && finalBinding.propertyName.StartsWith("blendShape.")) {
                             var blendshapeName = binding.propertyName.Substring(11);
                             var blendshapeMeshIndex = rewrite.spsBlendshapes.IndexOf(blendshapeName);
                             if (blendshapeMeshIndex >= 0) {
@@ -455,12 +457,12 @@ namespace VF.Service {
                             }
                         }
 
-                        if (!curve.IsFloat && isRendererBinding && avatarBindingStateService.TryParseMaterialSlot(binding, out _, out var slotNum)) {
+                        if (!curve.IsFloat && isRendererBinding && avatarBindingStateService.TryParseMaterialSlot(finalBinding, out _, out var slotNum)) {
                             var newKeys = curve.ObjectCurve.Select(frame => {
                                 if (frame.value is Material m) frame.value = rewrite.configureMaterial(slotNum, m);
                                 return frame;
                             }).ToArray();
-                            clip.SetCurve(binding, newKeys);
+                            clip.SetCurve(finalBinding, newKeys);
                         }
                     }
                 }
