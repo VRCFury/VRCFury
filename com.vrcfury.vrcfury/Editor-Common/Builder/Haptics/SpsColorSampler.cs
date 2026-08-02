@@ -23,6 +23,9 @@ namespace VF.Builder.Haptics {
         private const float AlphaThreshold = 0.001f;
 
         public static Color GetColor(IEnumerable<Renderer> renderers) {
+            // NDMF triggers builds in Awake, which happens before scene lighting has initialized
+            // and using PreviewRenderUtility at that point can crash unity
+            if (Application.isPlaying) return Color.clear;
             if (!ReflectionHelper.IsReady<Reflection>()) return Color.clear;
 
             Renderer bestRenderer = null;
