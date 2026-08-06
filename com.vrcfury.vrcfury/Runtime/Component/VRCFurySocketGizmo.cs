@@ -10,8 +10,8 @@ namespace VF.Component {
             public Transform transform;
             public bool customizeTangentIn;
             public bool customizeTangentOut;
-            public Vector3 tangentIn;
-            public Vector3 tangentOut;
+            public Vector3 tangentInLocal;
+            public Vector3 tangentOutLocal;
         }
 
         [Serializable]
@@ -23,7 +23,7 @@ namespace VF.Component {
             public bool useRadiusOffset;
             public bool useLegacyLights;
             public bool overrideLegacyOffset;
-            public Vector3 legacyOffset;
+            public Vector3 legacyOffsetLocal;
             public string name;
             public bool hasHandTouchZone;
             public float handTouchZoneLength;

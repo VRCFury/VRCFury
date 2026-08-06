@@ -150,6 +150,22 @@ namespace VF.Utils {
 #endif
         }
 
+        public static VFConstraint CreateScale(VFGameObject owner) {
+#if VRCSDK_HAS_VRCCONSTRAINTS
+            var c = owner.AddComponent<VRCScaleConstraint>();
+            c.GlobalWeight = 1;
+            c.IsActive = true;
+            c.Locked = true;
+            return new VFConstraint(c);
+#else
+            var c = owner.AddComponent<ScaleConstraint>();
+            c.weight = 1;
+            c.constraintActive = true;
+            c.locked = true;
+            return new VFConstraint(c);
+#endif
+        }
+
         public void AddSource(VFGameObject source, float weight = 0) {
 #if VRCSDK_HAS_VRCCONSTRAINTS
             if (component is VRCConstraintBase vrcConstraint) {

@@ -47,7 +47,9 @@ namespace VF.Component {
         public LegacySocketType legacySocketType = LegacySocketType.Hole;
         public bool useRadiusOffset = false;
         public bool overrideLegacyOffset = false;
-        public Vector3 legacyOffset = Vector3.zero;
+        [Obsolete] public Vector3 legacyOffset = Vector3.zero;
+        public Vector3 legacyOffsetLocal = Vector3.zero;
+        [SerializeField] private bool offsetsInLocalUnits;
         public List<string> tags = new List<string>();
         [Serializable]
         public class GuidedPathStop {
@@ -55,8 +57,10 @@ namespace VF.Component {
             public bool shrink = false;
             public bool customizeTangentIn = false;
             public bool customizeTangentOut = false;
-            public Vector3 tangentIn = Vector3.zero;
-            public Vector3 tangentOut = Vector3.zero;
+            [Obsolete] public Vector3 tangentIn = Vector3.zero;
+            [Obsolete] public Vector3 tangentOut = Vector3.zero;
+            public Vector3 tangentInLocal = Vector3.zero;
+            public Vector3 tangentOutLocal = Vector3.zero;
         }
         public List<GuidedPathStop> guidedPathStops = new List<GuidedPathStop>();
 
@@ -91,7 +95,11 @@ namespace VF.Component {
             Plugs,
             Local
         }
-        
+
+        private void Reset() {
+            offsetsInLocalUnits = true;
+        }
+
         [Serializable]
         public class DepthActionNew {
             public State actionSet = new State();
@@ -103,6 +111,7 @@ namespace VF.Component {
         }
 
         public override bool Upgrade(int fromVersion) {
+            var changed = false;
 #pragma warning disable 0612
             if (fromVersion < 1) {
                 if (name.Contains("D P S")) {
@@ -158,8 +167,28 @@ namespace VF.Component {
                     activeActions.actions.Clear();
                 }
             }
+            if (!offsetsInLocalUnits) {
+                var previousWorldScale = transform.lossyScale.x;
+                legacyOffsetLocal = legacyOffset / previousWorldScale;
+
+                foreach (var stop in guidedPathStops) {
+                    if (stop == null) continue;
+                    if (stop.transform == null) {
+                        stop.tangentInLocal = stop.tangentIn;
+                        stop.tangentOutLocal = stop.tangentOut;
+                        continue;
+                    }
+
+                    var stopWorldScale = stop.transform.lossyScale.x;
+                    stop.tangentInLocal = stop.tangentIn / stopWorldScale;
+                    stop.tangentOutLocal = stop.tangentOut / previousWorldScale;
+                    previousWorldScale = stopWorldScale;
+                }
+                offsetsInLocalUnits = true;
+                changed = true;
+            }
 #pragma warning restore 0612
-            return false;
+            return changed;
         }
 
         public static float UpgradeFromLegacySmoothing(float oldSmoothingVal) {

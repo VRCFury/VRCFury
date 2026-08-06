@@ -15,10 +15,13 @@ namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
     internal class VRCFuryHapticSocketEditor : VRCFuryComponentEditor<VRCFuryHapticSocket> {
         internal const int SpsTagCount = 2;
+        internal const float GizmoRadiusOffset = 0.04f;
+        internal const float LegacyRadiusOffset = 0.03f;
         private const int GuidedPathCount = 3;
 
         private void OnSceneGUI() {
             if (!(target is VRCFuryHapticSocket socket)) return;
+            if (PrefabUtility.IsPartOfPrefabInstance(socket)) return;
             VRCFuryHapticSocketGizmo.DrawEditableTangents(socket);
             VRCFuryHapticSocketGizmo.DrawEditableLegacyOffset(socket);
         }
@@ -102,12 +105,12 @@ namespace VF.Inspector {
 
                     row.Add(VRCFuryEditorUtils.Prop(customizeTangentOut, $"Customize Tangent exiting {FormatSlot(index-1)}"));
                     if (customizeTangentOut.boolValue) {
-                        row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("tangentOut")));
+                        row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("tangentOutLocal")));
                     }
                     row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("shrink"), $"Collapse plug between {FormatSlot(index-1)} and {FormatSlot(index)}"));
                     row.Add(VRCFuryEditorUtils.Prop(customizeTangentIn, $"Customize Tangent entering {FormatSlot(index)}"));
                     if (customizeTangentIn.boolValue) {
-                        row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("tangentIn")));
+                        row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("tangentInLocal")));
                     }
 
                     row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("transform"), FormatSlot(index)));
@@ -202,7 +205,7 @@ namespace VF.Inspector {
                     legacySupport.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                         if (!overrideLegacyOffset.boolValue) return new VisualElement();
                         return VRCFuryEditorUtils.BetterProp(
-                            serializedObject.FindProperty("legacyOffset"),
+                            serializedObject.FindProperty("legacyOffsetLocal"),
                             "Legacy Entry Offset"
                         );
                     }, overrideLegacyOffset));
@@ -419,6 +422,28 @@ namespace VF.Inspector {
             var rotation = Quaternion.LookRotation(forward);
 
             return Tuple.Create(isRing ? VRCFuryHapticSocket.AddLight.Ring : VRCFuryHapticSocket.AddLight.Hole, position, rotation);
+        }
+
+        public static Tuple<VRCFuryHapticSocket.AddLight, TransformData> GetSocketTransformLocal(
+            VRCFuryHapticSocket socket
+        ) {
+            if (socket.addLight != VRCFuryHapticSocket.AddLight.None) {
+                return Tuple.Create(
+                    socket.addLight,
+                    new TransformData(socket.position, Quaternion.Euler(socket.rotation))
+                );
+            }
+
+            var lightInfo = GetInfoFromLights(socket.owner());
+            return lightInfo == null
+                ? Tuple.Create(
+                    VRCFuryHapticSocket.AddLight.None,
+                    new TransformData(Vector3.zero, Quaternion.identity)
+                )
+                : Tuple.Create(
+                    lightInfo.Item1,
+                    new TransformData(lightInfo.Item2, lightInfo.Item3)
+                );
         }
 
         public class BakeResult {
