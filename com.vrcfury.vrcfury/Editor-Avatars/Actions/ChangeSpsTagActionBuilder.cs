@@ -85,9 +85,9 @@ namespace VF.Actions {
             }
 
             if (targetType == TargetType.Socket) {
-                bindingTarget = targetObject.Find("BakedSpsSocket/SpsScreenMarker");
+                bindingTarget = targetObject.Find("BakedSpsSocket/OneSpace/SpsScreenMarker");
                 if (bindingTarget == null) {
-                    throw new Exception($"Change SPS Tag target `{targetObject.GetPath()}` is missing `BakedSpsSocket/SpsScreenMarker`");
+                    throw new Exception($"Change SPS Tag target `{targetObject.GetPath()}` is missing `BakedSpsSocket/OneSpace/SpsScreenMarker`");
                 }
                 type = typeof(MeshRenderer);
                 lowPropertyName = $"material._SPS_SocketTag{slot}Low";

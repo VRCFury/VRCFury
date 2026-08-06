@@ -14,6 +14,7 @@ namespace VF.Inspector {
         public ScreenMarkerResult Create(
             VFGameObject parent,
             VRCFuryHapticSocket socket,
+            float socketScale,
             VRCFuryHapticSocket.AddLight lightType,
             uint socketId,
             bool useRadiusOffset,
@@ -38,7 +39,7 @@ namespace VF.Inspector {
                 obj = screenMarker,
                 renderer = meshRenderer,
                 materialProperties = spsConfigurer.GetSocketProperties(
-                    meshRenderer, socket, lightType, socketId, useTangentIn, tangentIn,
+                    meshRenderer, socket, socketScale, lightType, socketId, useTangentIn, tangentIn,
                     useTangentOut, tangentOut, useRadiusOffset, nextSocketId, includeTags
                 )
             };

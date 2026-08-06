@@ -25,6 +25,7 @@ namespace VF.Builder.Haptics {
         public const string SocketUseTangentOut = "_SPS_SocketUseTangentOut";
         public const string SocketTangentIn = "_SPS_SocketTangentIn";
         public const string SocketTangentOut = "_SPS_SocketTangentOut";
+        public const string SocketScale = "_SPS_SocketScale";
         private readonly Lazy<Mesh> sharedTriggerMesh;
         private readonly Lazy<Material> sharedSocketMaterial;
         private readonly Lazy<Material> sharedResolverMaterial;

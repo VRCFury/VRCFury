@@ -13,6 +13,7 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
         [Toggle] _SPS_SocketUseTangentOut("Use Tangent Out", Float) = 0
         _SPS_SocketTangentIn("Tangent In", Vector) = (0,0,0,0)
         _SPS_SocketTangentOut("Tangent Out", Vector) = (0,0,0,0)
+        _SPS_SocketScale("Scale", Float) = 1
         [Header(Tags)]
         _SPS_SocketTag1Low("Tag 1 Low", Float) = 0
         _SPS_SocketTag1High("Tag 1 High", Float) = 0
@@ -78,6 +79,7 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketUseTangentOut)
                 UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_SocketTangentIn)
                 UNITY_DEFINE_INSTANCED_PROP(float4, _SPS_SocketTangentOut)
+                UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketScale)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag1Low)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag1High)
                 UNITY_DEFINE_INSTANCED_PROP(float, _SPS_SocketTag2Low)
@@ -110,6 +112,7 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
             #define _SPS_SocketUseTangentOut SPS_SOCKET_PROP(_SPS_SocketUseTangentOut)
             #define _SPS_SocketTangentIn SPS_SOCKET_PROP(_SPS_SocketTangentIn)
             #define _SPS_SocketTangentOut SPS_SOCKET_PROP(_SPS_SocketTangentOut)
+            #define _SPS_SocketScale SPS_SOCKET_PROP(_SPS_SocketScale)
             #define _SPS_SocketTag1Low SPS_SOCKET_PROP(_SPS_SocketTag1Low)
             #define _SPS_SocketTag1High SPS_SOCKET_PROP(_SPS_SocketTag1High)
             #define _SPS_SocketTag1 SPS_MERGE_SPLIT(_SPS_SocketTag1)
@@ -199,8 +202,8 @@ Shader "Hidden/VRCFury/SpsSocketMarker" {
                 if (uniqueId == 0u) uniqueId = sps_hash_world(i.rootWorld, 0u);
                 uint playerId = sps_player_id();
                 uint nextId = _SPS_GuidedTargetId;
-                float3 tangentIn = sps_to_bool(_SPS_SocketUseTangentIn) ? sps_toWorld(_SPS_SocketTangentIn.xyz) : 0;
-                float3 tangentOut = sps_to_bool(_SPS_SocketUseTangentOut) ? sps_toWorld(_SPS_SocketTangentOut.xyz) : 0;
+                float3 tangentIn = sps_to_bool(_SPS_SocketUseTangentIn) ? sps_toWorld(_SPS_SocketTangentIn.xyz * _SPS_SocketScale) : 0;
+                float3 tangentOut = sps_to_bool(_SPS_SocketUseTangentOut) ? sps_toWorld(_SPS_SocketTangentOut.xyz * _SPS_SocketScale) : 0;
                 uint tagValues[SPS_SOCKET_PAYLOAD_TAG_COUNT] = {
                     _SPS_SocketTag1, _SPS_SocketTag2, _SPS_SocketTag3, _SPS_SocketTag4,
                     _SPS_SocketTag5, _SPS_SocketTag6, _SPS_SocketTag7, _SPS_SocketTag8

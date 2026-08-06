@@ -166,6 +166,7 @@ namespace VF.Builder.Haptics {
         public List<MaterialProperty> GetSocketProperties(
             Renderer renderer,
             VRCFuryHapticSocket socket,
+            float socketScale,
             VRCFuryHapticSocket.AddLight lightType,
             uint socketId,
             bool useTangentIn,
@@ -204,6 +205,7 @@ namespace VF.Builder.Haptics {
             Add(SpsMarkersService.SocketTangentOut + ".x", tangentOut.x);
             Add(SpsMarkersService.SocketTangentOut + ".y", tangentOut.y);
             Add(SpsMarkersService.SocketTangentOut + ".z", tangentOut.z);
+            Add(SpsMarkersService.SocketScale, socketScale);
             ConfigureSocketTags(
                 Add,
                 socket,

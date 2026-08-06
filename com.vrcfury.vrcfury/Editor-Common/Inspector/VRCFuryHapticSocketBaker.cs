@@ -34,6 +34,7 @@ namespace VF.Inspector {
             bakeRoot.localPosition = localPosition;
             bakeRoot.localRotation = localRotation;
 
+            var socketScale = bakeRoot.worldScale.x;
             var oneSpace = GameObjects.Create("OneSpace", bakeRoot);
             oneSpace.worldScale = Vector3.one;
 
@@ -127,6 +128,7 @@ namespace VF.Inspector {
                     }
 
                     ScreenMarkerResult CreateGuidedPathScreenMarker(
+                        int stopIndex,
                         VFGameObject target,
                         VRCFuryHapticSocket.AddLight markerType,
                         uint socketId,
@@ -136,11 +138,15 @@ namespace VF.Inspector {
                         Vector3 tangentOut,
                         uint nextSocketId
                     ) {
-                        var markerTransform = GameObjects.Create("SPS Socket Path Transform", bakeRoot);
+                        var markerTransform = GameObjects.Create($"Stop #{stopIndex + 1}", bakeRoot);
                         ConstrainToStop(markerTransform, target);
+                        var markerScale = markerTransform.worldScale.x;
+                        var markerOneSpace = GameObjects.Create("OneSpace", markerTransform);
+                        markerOneSpace.worldScale = Vector3.one;
                         return socketMarkers.Create(
-                            markerTransform,
+                            markerOneSpace,
                             socket,
+                            markerScale,
                             markerType,
                             socketId,
                             false,
@@ -200,8 +206,9 @@ namespace VF.Inspector {
                             .ToList();
                         var firstStop = guidedPathStops[0];
                         var rootMarker = socketMarkers.Create(
-                            bakeRoot,
+                            oneSpace,
                             socket,
+                            socketScale,
                             firstStop.shrink ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay,
                             spsMarkers.NewMarkerId(),
                             socket.useRadiusOffset,
@@ -224,6 +231,7 @@ namespace VF.Inspector {
                             var stop = guidedPathStops[i];
 
                             AddScreenMarker(CreateGuidedPathScreenMarker(
+                                i,
                                 guidedPath[i],
                                 pathType,
                                 pathIds[i],
@@ -238,8 +246,9 @@ namespace VF.Inspector {
                         }
                     } else {
                         AddScreenMarker(socketMarkers.Create(
-                            bakeRoot,
+                            oneSpace,
                             socket,
+                            socketScale,
                             lightType,
                             spsMarkers.NewMarkerId(),
                             socket.useRadiusOffset,
