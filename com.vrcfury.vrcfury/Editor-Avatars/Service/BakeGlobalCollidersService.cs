@@ -16,7 +16,8 @@ namespace VF.Service {
                     avatarColliderService.GetNextFinger(),
                     globalContact.GetTransform(),
                     globalContact.radius,
-                    globalContact.height
+                    globalContact.height,
+                    allowGlobalCollider: true
                 );
             }
         }

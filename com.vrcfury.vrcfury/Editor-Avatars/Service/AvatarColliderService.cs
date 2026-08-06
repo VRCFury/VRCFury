@@ -114,7 +114,13 @@ namespace VF.Service {
             return all.Value.TryGetValue(colliderName, out var c) ? c : null;
         }
 
-        public void CustomizeCollider(string colliderName, VFGameObject transform, float radius, float height) {
+        public void CustomizeCollider(
+            string colliderName,
+            VFGameObject transform,
+            float radius,
+            float height,
+            bool allowGlobalCollider
+        ) {
             var found = GetColliderOrNull(colliderName);
             if (found == null) {
                 throw new Exception("Collider does not exist on avatar: " + colliderName);
@@ -124,7 +130,9 @@ namespace VF.Service {
             }
             found.customizedByVrcf = true;
 
-            if (found.isFinger && vrcsdkGlobalColliders.Create(transform, radius, height, IsOnHead(transform))) {
+            if (allowGlobalCollider
+                && found.isFinger
+                && vrcsdkGlobalColliders.Create(transform, radius, height, IsOnHead(transform))) {
                 return;
             }
 

@@ -77,7 +77,8 @@ namespace VF.Feature {
                 "collider_" + model.colliderName,
                 model.rootTransform,
                 model.radius,
-                model.height
+                model.height,
+                allowGlobalCollider: false
             );
         }
     }
