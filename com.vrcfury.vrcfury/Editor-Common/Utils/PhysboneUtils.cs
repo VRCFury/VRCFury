@@ -1,10 +1,23 @@
 using System.Linq;
 using UnityEngine;
 using VF.Utils;
+using VRC.Dynamics;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Utils {
     internal static class PhysboneUtils {
+        public static bool IsIgnored(this VRCPhysBoneBase physbone, VFGameObject transform) {
+            bool IsInIgnoredBranch(VFGameObject candidate) => physbone.ignoreTransforms.Any(
+                ignored => ignored != null && candidate.IsSameOrChildOf(ignored)
+            );
+
+            if (IsInIgnoredBranch(transform)) return true;
+            var root = physbone.GetRootTransform().asVf();
+            return transform == root
+                   && physbone.multiChildType == VRCPhysBoneBase.MultiChildType.Ignore
+                   && root.Children().Count(child => !IsInIgnoredBranch(child)) > 1;
+        }
+
         public static void RemoveFromPhysbones(VFGameObject obj, bool force = false) {
             if (!force && ContainsBonesUsedExternally(obj)) {
                 return;

@@ -37,15 +37,11 @@ namespace VF.Service {
             foreach (var physBone in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBoneBase>()) {
                 var root = physBone.GetRootTransform().asVf();
                 var path = physBone.owner().GetPath(avatarObject);
-                bool IsIgnored(VFGameObject transform) =>
-                    physBone.ignoreTransforms.Any(ignored => ignored != null && transform.IsSameOrChildOf(ignored));
                 var nonIgnoredChildren = root.Children()
-                    .Where(child => !IsIgnored(child))
+                    .Where(child => !physBone.IsIgnored(child))
                     .ToArray();
 
-                if (nonIgnoredChildren.Length > 1 && physBone.multiChildType == VRCPhysBoneBase.MultiChildType.Ignore) {
-                    // Root is ignored
-                } else {
+                if (!physBone.IsIgnored(root)) {
                     output.physboneRoot.Add(root);
                     output.AddDebugSource(root, $"Physbone root in {path}");
                 }

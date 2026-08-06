@@ -214,8 +214,9 @@ namespace VF.Utils {
             
             var inNonAnimatedPhysbones = avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()
                 .Where(physbone => !physbone.isAnimated)
-                .Select(physbone => physbone.GetRootTransform().asVf())
-                .SelectMany(root => root.GetSelfAndAllChildren())
+                .SelectMany(physbone => physbone.GetRootTransform().asVf()
+                    .GetSelfAndAllChildren()
+                    .Where(transform => !physbone.IsIgnored(transform)))
                 .ToImmutableHashSet();
             var badPhysboneTransforms = new HashSet<string>();
             foreach (var binding in usedBindings) {
