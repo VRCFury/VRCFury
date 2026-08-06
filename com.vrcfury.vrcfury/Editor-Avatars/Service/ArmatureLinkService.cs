@@ -25,10 +25,42 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
         [VFAutowired] private readonly VRCFArmatureCache armatureCache;
-        
+
+        [FeatureBuilderAction(FeatureOrder.ArmatureLinkForceMergedNames)]
+        public void ApplyForceMergedNamesEarly() {
+            var appliedAny = false;
+            foreach (var builder in globals.allBuildersInRun.OfType<ArmatureLinkBuilder>()) {
+                var model = builder.model;
+                if (!IsForceMergedNameLink(model)) continue;
+
+                try {
+                    var propBone = model.propBone.asVf();
+                    if (propBone == null) continue;
+                    var exists = avatarObject.Find(model.forceMergedName);
+                    if (exists != null && exists != propBone) {
+                        throw new Exception(
+                            $"Armature Link was asked to move an object to a destination with the forced name" +
+                            $" '{exists.GetPath(avatarObject)}', but that object already exists at the destination.");
+                    }
+                    if (propBone.parent != avatarObject || propBone.name != model.forceMergedName) {
+                        mover.Move(propBone, avatarObject, model.forceMergedName);
+                        appliedAny = true;
+                    }
+                } catch (Exception e) {
+                    var path = builder.featureBaseObject.GetPath(avatarObject);
+                    throw new ExceptionWithCause($"Failed to apply early ArmatureLink root-name move from {path}", e);
+                }
+            }
+            if (appliedAny) objectPaths.Capture();
+        }
+
         [FeatureBuilderAction(FeatureOrder.ArmatureLink)]
         public void Apply() {
-            var builders = globals.allBuildersInRun.OfType<ArmatureLinkBuilder>().ToList();
+            var builders = globals.allBuildersInRun
+                .OfType<ArmatureLinkBuilder>()
+                .Where(builder => !IsForceMergedNameLink(builder.model))
+                .ToList();
+            if (builders.Count == 0) return;
 
             var anim = findAnimatedTransformsService.Find();
             var avatarHumanoidBones = armatureCache.GetAllBones().Values.ToImmutableHashSet();
@@ -233,45 +265,42 @@ namespace VF.Service {
                     AddDebugInfo($"Aligned to parent scale (with multiplier {scalingFactor})");
                 }
 
-                if (!string.IsNullOrWhiteSpace(model.forceMergedName) && !model.recursive) {
-                    // Special logic for force naming
-                    var exists = avatarBone.Find(model.forceMergedName);
-                    if (exists != null) {
-                        throw new Exception(
-                            $"Aramture link was asked to move an object to a destination with the forced name" +
-                            $" '{exists.GetPath(avatarObject)}', but that object already exists at the destination.");
-                    }
-                    mover.Move(propBone, avatarBone, model.forceMergedName);
-                    pruneCheck.Add(propBone);
-                    AddDebugInfo($"Forcefully named {model.forceMergedName} by Armature Link Force Naming." +
-                                 $" Note that this may break toggles or offset animations for this object!");
-                } else {
-                    var newName = $"[VF{new Random().Next(100,999)}] {propBone.name}";
-                    if (propBone.name != rootName) newName += $" from {rootName}";
-                    var current = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone.parent);
-                    pruneCheck.Add(current);
+                var newName = $"[VF{new Random().Next(100,999)}] {propBone.name}";
+                if (propBone.name != rootName) newName += $" from {rootName}";
+                var current = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone.parent);
+                pruneCheck.Add(current);
 
-                    foreach (var parent in animatedParents) {
-                        // If this animated parent come from a toggle created during another armature link,
-                        // We have to follow the link back to find the original toggle source
-                        var original = animLink
-                            .Where(pair => pair.Value == parent)
-                            .Select(pair => pair.Key)
-                            .DefaultIfEmpty(parent)
-                            .First();
-                        current = GameObjects.Create($"Toggle From {original.name}", current);
-                        current.active = original.active;
-                        animLink.Put(original, current);
-                        AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {original.name}");
-                    }
-
-                    mover.Move(propBone, current, "Original Object");
+                foreach (var parent in animatedParents) {
+                    // If this animated parent come from a toggle created during another armature link,
+                    // We have to follow the link back to find the original toggle source
+                    var original = animLink
+                        .Where(pair => pair.Value == parent)
+                        .Select(pair => pair.Key)
+                        .DefaultIfEmpty(parent)
+                        .First();
+                    current = GameObjects.Create($"Toggle From {original.name}", current);
+                    current.active = original.active;
+                    animLink.Put(original, current);
+                    AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {original.name}");
                 }
+
+                mover.Move(propBone, current, "Original Object");
 
                 if (ShouldReuseBone()) {
                     RewriteSkins(propBone, avatarBone, avatarObject);
                 }
             }
+        }
+
+        private bool IsForceMergedNameLink(ArmatureLink model) {
+            if (model.recursive) return false;
+            if (string.IsNullOrWhiteSpace(model.forceMergedName)) return false;
+            if (model.linkTo.Count == 0) return false;
+            var linkTo = model.linkTo.First();
+            if (linkTo.useBone) return false;
+            if (linkTo.useObj && linkTo.obj != avatarObject) return false;
+            if (!string.IsNullOrWhiteSpace(linkTo.offset)) return false;
+            return true;
         }
 
         private static void RewriteSkins(VFGameObject fromBone, VFGameObject toBone, VFGameObject avatarObject) {

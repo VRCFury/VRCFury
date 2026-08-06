@@ -10,7 +10,6 @@ namespace VF.Service {
     internal class ObjectMoveService {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly VRCFArmatureCache armatureCache;
-        [VFAutowired] private readonly AnimatorHolderService animators;
 
         public void Move(VFGameObject obj, VFGameObject newParent = null, string newName = null, bool worldPositionStays = true) {
             if (armatureCache.IsNonEyeBoneParent(obj)) {

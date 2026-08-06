@@ -3,8 +3,10 @@ namespace VF.Feature.Base {
 
         CleanTmpDir,
         CollectExistingComponents,
-        CleanupLegacy,
-        BackupBefore,
+
+        // Needs to happen before controllers load
+        CaptureInitialState,
+        ArmatureLinkForceMergedNames,
 
         // Needs to happen before everything
         FixDoubleFx,
@@ -15,7 +17,8 @@ namespace VF.Feature.Base {
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore,
         
-        CloneAllControllers,
+        LoadAllControllers,
+        BackupBefore,
         
         EnsureAnimationSafeNames,
         

@@ -18,9 +18,9 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly AnimatorHolderService animators;
 
-        [FeatureBuilderAction(FeatureOrder.CloneAllControllers)]
+        [FeatureBuilderAction(FeatureOrder.LoadAllControllers)]
         public void Apply() {
-            controllers.GetAllUsedControllers();
+            controllers.LoadAllControllers();
             animators.GetSubControllers();
         }
     }

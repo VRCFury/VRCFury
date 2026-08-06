@@ -21,12 +21,19 @@ namespace VF.Service {
         private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager> _controllers
             = new Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager>();
         private bool applyBaseMask = true;
+        private bool controllerLoadingAllowed;
 
         public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
             return _controllers.GetOrCreate(type, () => MakeController(type));
         }
 
         private ControllerManager MakeController(VRCAvatarDescriptor.AnimLayerType type) {
+            if (applyBaseMask && !controllerLoadingAllowed) {
+                throw new System.InvalidOperationException(
+                    "A playable-layer controller was loaded before the Load All Controllers build phase."
+                );
+            }
+
             var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
 
             VFController ctrl = null;
@@ -66,6 +73,11 @@ namespace VF.Service {
         public void ClearCache(bool applyBaseMask = true) {
             this.applyBaseMask = applyBaseMask;
             _controllers.Clear();
+        }
+
+        public void LoadAllControllers() {
+            controllerLoadingAllowed = true;
+            GetAllUsedControllers();
         }
 
         public ControllerManager GetFx() {
