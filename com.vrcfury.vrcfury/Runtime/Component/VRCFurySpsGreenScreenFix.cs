@@ -13,7 +13,10 @@ namespace VF.Component {
             if (!Application.isPlaying) return;
 
             try {
+// World projects create their own active camera when clientsim starts
+#if !VRCF_WORLDS
                 EnsureCameraExists();
+#endif
                 onCreated?.Invoke();
             } finally {
                 DestroyImmediate(this);
@@ -29,7 +32,7 @@ namespace VF.Component {
                 .Any(camera => camera.isActiveAndEnabled);
             if (hasCamera) return;
 
-            var cameraObj = new GameObject("Scene Camera");
+            var cameraObj = new GameObject("_SpsCameraFix");
             SceneManager.MoveGameObjectToScene(cameraObj, SceneManager.GetActiveScene());
             cameraObj.AddComponent<Camera>();
         }
