@@ -74,6 +74,7 @@ namespace VF.Inspector {
                 }
             });
 
+            UpdateLastSeenLabel();
             return output;
         }
     }
