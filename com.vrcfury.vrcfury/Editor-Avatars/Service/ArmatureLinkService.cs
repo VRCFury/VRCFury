@@ -481,8 +481,19 @@ namespace VF.Service {
                 throw new Exception("'Link To' field is empty");
             }
 
-            var exceptions = new List<string>();
-            var avatarBone = model.linkTo.Select(to => {
+            IEnumerable<ArmatureLink.LinkTo> attempts = model.linkTo;
+            var firstHumanoidTarget = model.linkTo.FirstOrDefault(
+                to => to.useBone && string.IsNullOrWhiteSpace(to.offset)
+            );
+            if (firstHumanoidTarget != null) {
+                attempts = attempts.Concat(
+                    FallbackBoneUtils.GetFallbacks(firstHumanoidTarget.bone)
+                        .Select(bone => new ArmatureLink.LinkTo { bone = bone })
+                );
+            }
+
+            Exception firstException = null;
+            var avatarBone = attempts.Select(to => {
                 try {
                     VFGameObject obj;
                     if (to.useBone) {
@@ -507,13 +518,13 @@ namespace VF.Service {
 
                     return obj;
                 } catch (Exception e) {
-                    exceptions.Add(e.Message);
+                    firstException ??= e;
                     return null;
                 }
             }).NotNull().FirstOrDefault();
 
             if (avatarBone == null) {
-                throw new Exception(exceptions.Join('\n'));
+                throw firstException;
             }
             
             if (avatarBone.name.ToLower().Contains("armature") || avatarBone.name.ToLower().Contains("skeleton")) {
@@ -590,5 +601,6 @@ namespace VF.Service {
 
             return links;
         }
+
     }
 }
