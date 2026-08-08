@@ -1,0 +1,29 @@
+{
+    "name": "com.vrcfury.udonbehaviours",
+    "rootNamespace": "com.vrcfury.udon",
+    "references": [
+        "UdonSharp.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "VRCSDKBase.dll",
+        "VRC.Dynamics.dll",
+        "VRC.SDK3.Dynamics.Contact.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UDON",
+        "VRCF_WORLDS"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "",
+            "define": "VRCF_WORLDS"
+        }
+    ],
+    "noEngineReferences": false
+}

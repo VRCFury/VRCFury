@@ -4,6 +4,7 @@
     "references": [
         "VRCFury",
         "com.vrcfury.udon",
+        "com.vrcfury.udonbehaviours",
         "VRCFury-Editor-Common",
         "VRC.SDKBase.Editor.BuildPipeline",
         "VRC.SDKBase.Editor",

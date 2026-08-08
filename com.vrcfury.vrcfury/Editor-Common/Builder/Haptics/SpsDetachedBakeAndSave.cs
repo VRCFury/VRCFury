@@ -12,7 +12,9 @@ namespace VF.Builder.Haptics {
     internal static class SpsDetachedBakeAndSave {
         public static void Run(
             IList<VRCFuryHapticSocket> sockets,
-            IList<VRCFuryHapticPlug> plugs
+            IList<VRCFuryHapticPlug> plugs,
+            Action<VRCFuryHapticSocket, VRCFuryHapticSocketEditor.BakeResult> onSocketBaked = null,
+            Action<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> onPlugBaked = null
         ) {
             if (sockets.Count == 0 && plugs.Count == 0) return;
 
@@ -27,6 +29,7 @@ namespace VF.Builder.Haptics {
                 try {
                     var result = socketBaker.Bake(socket);
                     if (result == null) continue;
+                    onSocketBaked?.Invoke(socket, result);
                     SpsConfigurer.AddMaterialPropertyAnimator(
                         result.screenMarkerResults.Select(marker => marker.materialProperties).SelectMany(properties => properties),
                         saveSession
@@ -50,6 +53,7 @@ namespace VF.Builder.Haptics {
                 try {
                     var result = plugBaker.Bake(plug);
                     if (result == null) continue;
+                    onPlugBaked?.Invoke(plug, result);
                     if (result.resolverMaterialProperties != null) {
                         SpsConfigurer.AddMaterialPropertyAnimator(result.resolverMaterialProperties, saveSession);
                     }
