@@ -68,7 +68,7 @@ namespace VF.Feature {
                     if (TpsConfigurer.IsLocked(mat)) {
                         throw new VRCFBuilderException(
                             "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
-                            $"Please unlock the material on {renderer.owner().GetPath()}");
+                            $"Please unlock the material on {renderer.owner().GetDebugPath()}");
                     }
                     mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
                     mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");

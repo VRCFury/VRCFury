@@ -96,7 +96,7 @@ namespace VF.Service {
                     });
                 if (hasValidBinding || hasValidAnimatorPlayAudio) continue;
 
-                Debug.LogWarning($"Removing Animator from {owner.GetPath()} because it contains no valid animation bindings or Animator Play Audio actions");
+                Debug.LogWarning($"Removing Animator from {owner.GetDebugPath()} because it contains no valid animation bindings or Animator Play Audio actions");
                 animators.RemoveSubAnimator(owner);
             }
         }

@@ -159,12 +159,15 @@ namespace VF.Builder {
                         UnityEngine.Component targetComponent => targetComponent.owner(),
                         _ => null
                     };
-                    if (targetObject == null || EditorUtility.IsPersistent(target)) return;
+                    if (targetObject == null) return;
                     if (targetObject.IsSameOrChildOf(avatarObject)) return;
 
-                    externalReferences.Add(
-                        $"{component.owner().GetPath()} -> {targetObject.GetPath()}"
-                    );
+                        var targetPath = EditorUtility.IsPersistent(target)
+                            ? target.GetPathAndName()
+                            : targetObject.GetDebugPath();
+                        externalReferences.Add(
+                            $"{component.owner().GetDebugPath()} -> {targetPath}"
+                        );
                 });
             }
             if (externalReferences.Count > 0) {

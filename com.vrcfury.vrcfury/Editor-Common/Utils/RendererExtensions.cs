@@ -82,16 +82,13 @@ namespace VF.Utils {
                 var owner = renderer.owner();
                 var filter = owner.GetComponent<MeshFilter>();
                 if (filter == null)
-                    throw new Exception(
-                        "Cannot set mesh on MeshRenderer because it does not contain a MeshFilter: " +
-                        owner.GetPath()
-                    );
+                    throw new Exception("Cannot set mesh on MeshRenderer because it does not contain a MeshFilter: " + owner.GetDebugPath());
                 filter.sharedMesh = mesh;
                 filter.Dirty();
                 return;
             }
 
-            throw new Exception("Cannot set mesh on renderer with unknown type: " + renderer.owner().GetPath());
+            throw new Exception("Cannot set mesh on renderer with unknown type: " + renderer.owner().GetDebugPath());
         }
 
         public static Bounds GetLocalBounds(this Renderer renderer) {
@@ -113,7 +110,7 @@ namespace VF.Utils {
                 if (filter == null)
                     throw new Exception(
                         "Cannot set bounds on MeshRenderer because it does not contain a MeshFilter: " +
-                        owner.GetPath()
+                        owner.GetDebugPath()
                     );
                 if (filter.sharedMesh == null) return;
 
@@ -128,7 +125,7 @@ namespace VF.Utils {
                 return;
             }
 
-            throw new Exception("Cannot set bounds on renderer with unknown type: " + renderer.owner().GetPath());
+            throw new Exception("Cannot set bounds on renderer with unknown type: " + renderer.owner().GetDebugPath());
         }
         
         public static bool HasBlendshape(this Renderer renderer, string name) {

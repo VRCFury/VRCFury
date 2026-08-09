@@ -42,7 +42,7 @@ namespace VF {
                 }
 
                 foreach (var brokenComponent in brokenComponents) {
-                    blocked.Add($"{brokenComponent.owner().GetPath()} in {path} ({brokenComponent.GetBrokenMessage()})");
+                    blocked.Add($"{brokenComponent.owner().GetDebugPath()} in {path} ({brokenComponent.GetBrokenMessage()})");
                     blockedPaths.Add(path);
                 }
             }

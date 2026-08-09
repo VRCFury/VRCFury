@@ -46,10 +46,13 @@ namespace VF.Utils {
             return target.GetPath(root);
         }
 
-        public bool ShouldDropOnSave() {
-            if (isResolved) return target == null; // Resolved object was deleted during the build
-            if (!isResolved) return unresolvedPath == null; // Binding path was rewritten to null during the load-in
-            return false;
+        public bool ShouldDropOnSave(VFGameObject bindingRoot) {
+            if (isResolved) {
+                if (target == null) return true; // Resolved object was deleted during the build
+                if (bindingRoot != null && !target.IsSameOrChildOf(bindingRoot)) return true; // Resolved object was moved outside of the Animator
+                return false;
+            }
+            return unresolvedPath == null; // Binding path was rewritten to null during the load-in
         }
 
         public VFResolvedObject WithTarget(VFGameObject newTarget, bool newIsResolved) {

@@ -31,7 +31,7 @@ namespace VF.Service {
         private void RemoveTPSSenders() {
             foreach (var sender in globals.avatarObject.GetComponentsInSelfAndChildren<VRCContactSender>()) {
                 if (IsTPSSender(sender)) {
-                    Debug.Log("Deleting TPS sender on " + sender.owner().GetPath());
+                    Debug.Log("Deleting TPS sender on " + sender.owner().GetDebugPath());
                     sender.Destroy();
                 }
             }

@@ -207,8 +207,8 @@ namespace VF.Utils {
             return From(resolvedObject, output);
         }
 
-        internal bool ShouldDropOnSave() {
-            return resolvedObject?.ShouldDropOnSave() ?? false;
+        internal bool ShouldDropOnSave(VFGameObject bindingRoot) {
+            return resolvedObject?.ShouldDropOnSave(bindingRoot) ?? false;
         }
 
         public bool Equals(VFBinding other) {

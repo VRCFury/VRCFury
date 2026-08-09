@@ -186,21 +186,29 @@ namespace VF.Utils {
             return transform.IsChildOf(other);
         }
 
-        public string GetPath(VFGameObject root = null, bool prettyRoot = false) {
+        public string GetPath(VFGameObject root = null, bool prettyRoot = false, bool removeCloneFromRoot = false) {
             if (root == null) {
                 root = transform.root;
-                if (this == root) {
-                    return root.name;
+                var rootName = root.name;
+                if (removeCloneFromRoot && rootName.EndsWith("(Clone)")) {
+                    rootName = rootName.Substring(0, rootName.Length - "(Clone)".Length).TrimEnd();
                 }
-                return root.name + "/" + AnimationUtility.CalculateTransformPath(this, root);
+                if (this == root) {
+                    return rootName;
+                }
+                return rootName + "/" + AnimationUtility.CalculateTransformPath(this, root);
             }
             if (!IsSameOrChildOf(root)) {
-                throw new Exception($"{GetPath()} is not a child of {root.GetPath()}");
+                throw new Exception($"{GetDebugPath()} is not a child of {root.GetDebugPath()}");
             }
             if (this == root && prettyRoot) {
                 return "Avatar Root";
             }
             return AnimationUtility.CalculateTransformPath(this, root);
+        }
+
+        public string GetDebugPath() {
+            return GetPath(removeCloneFromRoot: true);
         }
 
         public VFGameObject Clone() {

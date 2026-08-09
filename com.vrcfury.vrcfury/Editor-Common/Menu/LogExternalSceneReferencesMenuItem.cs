@@ -28,7 +28,7 @@ namespace VF.Menu {
                             var targetGo = GetSceneTarget(target);
                             if (targetGo == null || inside.Contains(targetGo)) return;
                             findings.Add(
-                                $"[VRCFury] External scene reference: {component.GetType().Name} on {obj.GetPath()} :: {path} -> {targetGo.GetPath()}"
+                                $"[VRCFury] External scene reference: {component.GetType().Name} on {obj.GetDebugPath()} :: {path} -> {targetGo.GetDebugPath()}"
                             );
                         });
                     }

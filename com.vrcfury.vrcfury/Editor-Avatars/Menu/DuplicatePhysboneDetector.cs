@@ -61,11 +61,11 @@ namespace VF.Menu {
         }
 
         private static string GetName(VFGameObject t) {
-            return t.GetPath()
+            return t.GetDebugPath()
                    + " (" + AssetDatabase.GetAssetPath(t) + ")";
         }
         private static string GetName<T>(T c, Dictionary<T, string> sources) where T : UnityEngine.Component {
-            return c.owner().GetPath()
+            return c.owner().GetDebugPath()
                    + " (" + sources[c] + ")"
                    + (IsMutable(c) ? "" : " (Immutable)");
         }

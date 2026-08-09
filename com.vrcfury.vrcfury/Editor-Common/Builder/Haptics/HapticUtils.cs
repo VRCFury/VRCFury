@@ -65,16 +65,16 @@ namespace VF.Builder.Haptics {
                     if (shouldThrow) throw new Exception(
                         "A haptic component exists on an object with zero scale." +
                         " This object must not be zero scale or size calculation will fail.\n\n" +
-                        "Component path: " + obj.GetPath() + "\n" +
-                        "Offending object: " + current.GetPath());
+                        "Component path: " + obj.GetDebugPath() + "\n" +
+                        "Offending object: " + current.GetDebugPath());
                     return false;
                 }
                 if (IsNegativeScale(current)) {
                     if (shouldThrow) throw new Exception(
                         "A haptic component exists on an object with negative scale." +
                         " This object must have a positive scale or size calculation will fail.\n\n" +
-                        "Component path: " + obj.GetPath() + "\n" +
-                        "Offending object: " + current.GetPath());
+                        "Component path: " + obj.GetDebugPath() + "\n" +
+                        "Offending object: " + current.GetDebugPath());
                     return false;
                 }
                 if (IsNonUniformScale(current)) {
@@ -84,8 +84,8 @@ namespace VF.Builder.Haptics {
                             "A haptic component exists on an object with a non-uniform scale." +
                             " This object (and all parents) must have an X, Y, and Z scale value that match" +
                             " each other, or size calculation will fail.\n\n" +
-                            "Component path: " + obj.GetPath() + "\n" +
-                            "Offending object: " + current.GetPath());
+                            "Component path: " + obj.GetDebugPath() + "\n" +
+                            "Offending object: " + current.GetDebugPath());
                         return false;
                     }
                 }

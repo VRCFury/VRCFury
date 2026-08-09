@@ -38,11 +38,6 @@ namespace VF.Hooks {
             return c.owner().GetAvatarRoot();
         }
 
-        public static string GetAnimatedPath(this VFGameObject obj) {
-            var avatarObject = obj.GetAvatarRoot();
-            return obj.GetPath(avatarObject);
-        }
-
         private static bool AllowRootFeatures(VFGameObject gameObject) {
             var avatarRoot = gameObject.GetAvatarRoot();
             if (gameObject == avatarRoot) {
@@ -147,7 +142,7 @@ namespace VF.Hooks {
                 if (descriptors.Count > 1) {
                     warnings.Add(VRCFuryEditorUtils.Error(
                         "There are multiple avatar descriptors in this hierarchy. Each avatar should only have one avatar descriptor on the avatar root." +
-                        " This may cause issues in this inspector or during your avatar build.\n\n" + descriptors.Select(d => d.owner().GetPath()).Join('\n')));
+                        " This may cause issues in this inspector or during your avatar build.\n\n" + descriptors.Select(d => d.owner().GetDebugPath()).Join('\n')));
                 }
             };
 

@@ -127,7 +127,7 @@ namespace VF.Utils.Controller {
                 : VrcfObjectFactory.Create<AnimationClip>();
             context.Motions[this] = clip;
             var savableCurves = curves
-                .Where(pair => !pair.Key.ShouldDropOnSave())
+                .Where(pair => !pair.Key.ShouldDropOnSave(saveBindingRoot))
                 .ToArray();
             clip.name = clipName ?? clip.name;
             clip.frameRate = frameRate;

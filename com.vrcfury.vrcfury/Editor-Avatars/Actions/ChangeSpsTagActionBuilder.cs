@@ -66,7 +66,7 @@ namespace VF.Actions {
             if (targetType == TargetType.Plug) {
                 bindingTarget = targetObject.Find("BakedSpsPlug/OneSpace/SpsResolver");
                 if (bindingTarget == null) {
-                    throw new Exception($"Change SPS Tag target `{targetObject.GetPath()}` is missing `BakedSpsPlug/OneSpace/SpsResolver`");
+                    throw new Exception($"Change SPS Tag target `{targetObject.GetDebugPath()}` is missing `BakedSpsPlug/OneSpace/SpsResolver`");
                 }
                 type = typeof(MeshRenderer);
                 if (model.globalTag) {
@@ -87,7 +87,7 @@ namespace VF.Actions {
             if (targetType == TargetType.Socket) {
                 bindingTarget = targetObject.Find("BakedSpsSocket/OneSpace/SpsScreenMarker");
                 if (bindingTarget == null) {
-                    throw new Exception($"Change SPS Tag target `{targetObject.GetPath()}` is missing `BakedSpsSocket/OneSpace/SpsScreenMarker`");
+                    throw new Exception($"Change SPS Tag target `{targetObject.GetDebugPath()}` is missing `BakedSpsSocket/OneSpace/SpsScreenMarker`");
                 }
                 type = typeof(MeshRenderer);
                 lowPropertyName = $"material._SPS_SocketTag{slot}Low";

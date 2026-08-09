@@ -450,7 +450,7 @@ namespace VF.Inspector {
 
                 foreach (var light in c.owner().GetComponentsInUploadRoot<Light>()) {
                     if (light.type != LightType.Point && light.type != LightType.Spot) continue;
-                    var path = light.owner().GetPath();
+                    var path = light.owner().GetDebugPath();
                     var type = VRCFuryHapticSocketEditor.GetLegacyDpsLightType(light);
                     if (type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Tip)
                         tipLightPaths.Add(path);
@@ -462,7 +462,7 @@ namespace VF.Inspector {
                 foreach (var renderer in c.owner().GetComponentsInUploadRoot<Renderer>()) {
                     foreach (var m in renderer.sharedMaterials) {
                         if (DpsConfigurer.IsDps(m) || TpsConfigurer.IsTps(m)) {
-                            legacyRendererPaths.Add($"{m.name} in {renderer.owner().GetPath()}");
+                            legacyRendererPaths.Add($"{m.name} in {renderer.owner().GetDebugPath()}");
                         }
                     }
                 }

@@ -47,9 +47,9 @@ namespace VF.Inspector {
                         throw new Exception(
                             "Multiple SPS Plugs target the same renderer. This is probably a mistake. " +
                             "Maybe there was an extra created by accident?\n\n" +
-                            $"Renderer: {r.owner().GetPath()}\n\n" +
-                            $"Plug 1: {otherPlug.owner().GetPath()}\n\n" +
-                            $"Plug 2: {plug.owner().GetPath()}");
+                            $"Renderer: {r.owner().GetDebugPath()}\n\n" +
+                            $"Plug 1: {otherPlug.owner().GetDebugPath()}\n\n" +
+                            $"Plug 2: {plug.owner().GetDebugPath()}");
                     }
                     usedRenderers[rendererObject] = plug;
                 }
@@ -179,7 +179,7 @@ namespace VF.Inspector {
                             activeFromMask = activeFromMask
                         };
                     } catch (Exception e) {
-                        throw new ExceptionWithCause($"Failed to configure renderer: {owner.GetPath()}", e);
+                        throw new ExceptionWithCause($"Failed to configure renderer: {owner.GetDebugPath()}", e);
                     }
                 }).ToArray();
             } else {

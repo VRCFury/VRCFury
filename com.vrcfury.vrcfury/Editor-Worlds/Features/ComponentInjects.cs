@@ -45,7 +45,7 @@ namespace VF.Features {
                 }
 
                 if (!foundOneField) {
-                    throw new Exception("SenkyAutowire failed to find target field on " + inject.owner().GetPath());
+                    throw new Exception("SenkyAutowire failed to find target field on " + inject.owner().GetDebugPath());
                 }
             }
 
@@ -100,12 +100,12 @@ namespace VF.Features {
                 .Select(r => r.Item2)
                 .ToList();
             if (matches.Count == 0) {
-                throw new Exception("SenkyAutowire failed to find " + serviceType.Name + " service to autowire for " + inject.owner().GetPath());
+                throw new Exception("SenkyAutowire failed to find " + serviceType.Name + " service to autowire for " + inject.owner().GetDebugPath());
             }
             if (!isArray && matches.Count > 1) {
                 throw new Exception("SenkyAutowire found multiple ambiguous " + serviceType.Name +
-                                    " services to autowire for " + inject.owner().GetPath() +
-                                    " (" + string.Join(", ", matches.Select(i => i.owner().GetPath())));
+                                    " services to autowire for " + inject.owner().GetDebugPath() +
+                                    " (" + string.Join(", ", matches.Select(i => i.owner().GetDebugPath())));
             }
 
             if (isArray) {

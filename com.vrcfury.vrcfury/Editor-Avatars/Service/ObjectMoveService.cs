@@ -21,7 +21,7 @@ namespace VF.Service {
             if (newParent != null) {
                 if (!newParent.IsSameOrChildOf(avatarObject)) {
                     throw new Exception(
-                        $"VRCFury cannot move {obj.GetPath()} outside the avatar to {newParent.GetPath()}/{obj.name}.");
+                        $"VRCFury cannot move {obj.GetDebugPath()} outside the avatar to {newParent.GetDebugPath()}/{obj.name}.");
                 }
 
                 obj.SetParent(newParent, worldPositionStays);

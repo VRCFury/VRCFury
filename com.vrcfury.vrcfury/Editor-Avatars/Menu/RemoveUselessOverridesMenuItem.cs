@@ -36,7 +36,7 @@ namespace VF.Menu {
 
         private static void Cleanup(VFGameObject obj) {
             if (!PrefabUtility.IsOutermostPrefabInstanceRoot(obj)) return;
-            Debug.Log(obj.GetPath());
+            Debug.Log(obj.GetDebugPath());
             var overrides = PrefabUtility.GetPropertyModifications(obj);
             PrefabUtility.SetPropertyModifications(obj, overrides.Where(ShouldKeepModification).ToArray());
         }

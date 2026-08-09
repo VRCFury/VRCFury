@@ -102,7 +102,7 @@ namespace VF.Inspector {
                         if (stopObj.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any()) {
                             throw new Exception(
                                 "SPS guided path stops should not contain their own sockets. Invalid stop: "
-                                + stopObj.GetPath());
+                                + stopObj.GetDebugPath());
                         }
                     }
                     var guidedPath = guidedPathStops
