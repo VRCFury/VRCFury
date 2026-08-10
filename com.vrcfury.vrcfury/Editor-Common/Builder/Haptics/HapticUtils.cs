@@ -60,39 +60,40 @@ namespace VF.Builder.Haptics {
         }
         public static bool AssertValidScale(VFGameObject obj, string type, bool shouldThrow = true) {
             var current = obj;
+            var nonUniformScales = new List<string>();
             while (true) {
                 if (IsZeroScale(current)) {
                     if (shouldThrow) throw new Exception(
-                        "A haptic component exists on an object with zero scale." +
-                        " This object must not be zero scale or size calculation will fail.\n\n" +
+                        "SPS cannot be used on an object with zero scale.\n\n" +
                         "Component path: " + obj.GetDebugPath() + "\n" +
                         "Offending object: " + current.GetDebugPath());
                     return false;
                 }
                 if (IsNegativeScale(current)) {
                     if (shouldThrow) throw new Exception(
-                        "A haptic component exists on an object with negative scale." +
-                        " This object must have a positive scale or size calculation will fail.\n\n" +
+                        "SPS cannot be used on an object with negative scale.\n\n" +
                         "Component path: " + obj.GetDebugPath() + "\n" +
                         "Offending object: " + current.GetDebugPath());
                     return false;
                 }
                 if (IsNonUniformScale(current)) {
-                    var bypass = obj.Find("ItsOkayThatOgbMightBeBroken") != null;
-                    if (!bypass) {
-                        if (shouldThrow) throw new Exception(
-                            "A haptic component exists on an object with a non-uniform scale." +
-                            " This object (and all parents) must have an X, Y, and Z scale value that match" +
-                            " each other, or size calculation will fail.\n\n" +
-                            "Component path: " + obj.GetDebugPath() + "\n" +
-                            "Offending object: " + current.GetDebugPath());
-                        return false;
-                    }
+                    var scale = current.localScale;
+                    nonUniformScales.Add($"{current.GetDebugPath()}: ({scale.x}, {scale.y}, {scale.z})");
                 }
 
                 var parent = current.parent;
                 if (parent == null) break;
                 current = parent;
+            }
+
+            var bypass = obj.Find("ItsOkayThatOgbMightBeBroken") != null;
+            if (nonUniformScales.Any() && !bypass) {
+                if (shouldThrow) throw new Exception(
+                    "SPS cannot be used on an object with non-uniform scale." +
+                    " This object (and all parents) must have a scale where X=Y=Z, such as 1,1,1, or 1.5,1.5,1.5, etc.\n\n" +
+                    "Component path: " + obj.GetDebugPath() + "\n" +
+                    "Offending objects:\n" + nonUniformScales.Join('\n'));
+                return false;
             }
 
             return true;
