@@ -1,13 +1,11 @@
-﻿using UnityEditor;
-using VF.Builder.Haptics;
+using UnityEditor;
 using VF.Utils;
 
-namespace Hooks {
+namespace VF.Hooks {
     internal static class VRCFuryWorldHook {
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
-            VFGameObject.getUploadRoots = obj => VFGameObject.GetRoots(obj.scene);
-            SpsConfigurer.getIsActuallyUploading = IsActuallyUploadingWorldHook.Get;
+            VFGameObject.getUploadRoots = obj => obj.scene.Roots();
         }
     }
 }

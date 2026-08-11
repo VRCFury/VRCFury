@@ -20,7 +20,8 @@
     "VRC.SDK3.Dynamics.Contact.dll",
     "VRC.SDK3.Dynamics.Constraint.dll",
     "VRCSDKBase-Editor.dll",
-    "VRCCore-Editor.dll"
+    "VRCCore-Editor.dll",
+    "0Harmony.dll"
   ],
   "autoReferenced": false,
   "defineConstraints": [],
@@ -34,6 +35,11 @@
       "name": "com.vrchat.base",
       "expression": "3.3.0",
       "define": "VRC_NEW_PUBLIC_SDK"
+    },
+    {
+      "name": "com.vrchat.base",
+      "expression": "3.7.5",
+      "define": "VRCSDK_HAS_ACTIVE_BUILD_TYPE"
     },
     {
       "name": "com.vrchat.base",

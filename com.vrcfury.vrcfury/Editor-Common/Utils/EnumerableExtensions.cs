@@ -37,7 +37,7 @@ namespace VF.Utils {
             return string.Join(separator, source);
         }
         public static string Join(this IEnumerable<string> source, char separator) {
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
             return string.Join(separator, source);
 #else
             return string.Join(separator+"", source);
@@ -47,8 +47,12 @@ namespace VF.Utils {
         public static string JoinWithMore(this IEnumerable<string> e, int max) {
             var source = e.ToList();
             var count = source.Count();
-            return source.Take(count).Join('\n')
-                   + (count > max ? ("\n ... and " + (count - max) + " more") : "");
+            return source.Take(max).Join('\n')
+                   + (count > max ? ("\n... and " + (count - max) + " more") : "");
+        }
+
+        public static IEnumerable<(A, B)> Zip<A, B>(this IEnumerable<A> a, IEnumerable<B> b) {
+            return a.Zip(b, (a1, b1) => (a1, b1));
         }
     }
 }

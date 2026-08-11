@@ -1,13 +1,14 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
 using VF.Upgradeable;
+using VF.Utils;
 
 namespace VF {
     internal static class VRCFPackageUtils {
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void SendToComponents() {
             VrcfUpgradeableMonoBehaviour.currentVrcfVersion = Version;
         }

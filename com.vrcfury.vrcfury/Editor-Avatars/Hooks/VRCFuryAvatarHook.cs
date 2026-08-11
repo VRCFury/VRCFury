@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
@@ -6,9 +7,11 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Actions;
+using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Feature.Base;
+using VF.Hooks.VrcsdkFixes;
 using VF.Injector;
 using VF.Inspector;
 using VF.Menu;
@@ -35,11 +38,6 @@ namespace VF.Hooks {
             return c.owner().GetAvatarRoot();
         }
 
-        public static string GetAnimatedPath(this VFGameObject obj) {
-            var avatarObject = obj.GetAvatarRoot();
-            return obj.GetPath(avatarObject);
-        }
-
         private static bool AllowRootFeatures(VFGameObject gameObject) {
             var avatarRoot = gameObject.GetAvatarRoot();
             if (gameObject == avatarRoot) {
@@ -52,19 +50,9 @@ namespace VF.Hooks {
                 .All(c => c is VRCFuryComponent || c is Transform);
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
-            SpsConfigurer.getIsActuallyUploading = IsActuallyUploadingHook.Get;
-
             VRCFuryHapticPlugEditor.getHapticsEnabled = HapticsToggleMenuItem.Get;
-
-            VRCFuryHapticSocketEditor.getAvatarViewPos = obj => {
-                var avatar = obj.GetAvatarRoot().GetComponent<VRCAvatarDescriptor>();
-                if (avatar == null) return Vector3.zero;
-                return avatar.ViewPosition;
-            };
-
-            VRCFuryHapticSocketEditor.getClosestBone = ClosestBoneUtils.GetClosestHumanoidBone;
 
             VFGameObject.getUploadRoots = obj => {
                 return new[] { obj.GetAvatarRoot() };
@@ -104,16 +92,27 @@ namespace VF.Hooks {
                 var injector = new VRCFuryInjector();
                 injector.ImportOne(typeof(ActionClipService));
                 injector.ImportOne(typeof(ClipFactoryService));
+                injector.ImportOne(typeof(VRCFObjectPathCache));
+                injector.ImportOne(typeof(VRCFArmatureCache));
                 injector.ImportScan(typeof(ActionBuilder));
                 injector.Set("avatarObject", avatarObject);
                 injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
+                injector.GetService<VRCFObjectPathCache>().Capture();
+                injector.GetService<VRCFArmatureCache>().Capture();
                 var mainBuilder = injector.GetService<ActionClipService>();
-                var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject);
+                var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject, debugMode: true);
                 var bindings = new AnimatorIterator.Clips().From(test.onClip)
                     .SelectMany(clip => clip.GetAllBindings())
                     .ToImmutableHashSet();
+                var clips = new HashSet<AnimationClip>();
+                UnitySerializationUtils.Iterate(actionSet, visit => {
+                    if (visit.value is AnimationClip clip && clip != null) {
+                        clips.Add(clip);
+                    }
+                    return UnitySerializationUtils.IterateResult.Continue;
+                });
                 var warnings =
-                    VrcfAnimationDebugInfo.BuildDebugInfo(bindings, avatarObject);
+                    VrcfAnimationDebugInfo.BuildDebugInfo(clips, bindings, gameObject);
 
                 foreach (var warning in warnings) {
                     debugInfo.Add(warning);
@@ -143,7 +142,7 @@ namespace VF.Hooks {
                 if (descriptors.Count > 1) {
                     warnings.Add(VRCFuryEditorUtils.Error(
                         "There are multiple avatar descriptors in this hierarchy. Each avatar should only have one avatar descriptor on the avatar root." +
-                        " This may cause issues in this inspector or during your avatar build.\n\n" + descriptors.Select(d => d.owner().GetPath()).Join('\n')));
+                        " This may cause issues in this inspector or during your avatar build.\n\n" + descriptors.Select(d => d.owner().GetDebugPath()).Join('\n')));
                 }
             };
 

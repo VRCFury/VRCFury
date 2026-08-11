@@ -6,11 +6,12 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Poiyomi Flipbook Frame")]
     internal class PoiyomiFlipbookFrameActionBuilder : ActionBuilder<FlipbookAction> {
-        public AnimationClip Build(FlipbookAction model) {
+        public VFClip Build(FlipbookAction model) {
             var clip = NewClip();
             var renderer = model.renderer;
             if (renderer == null) return clip;

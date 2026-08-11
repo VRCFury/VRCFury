@@ -11,13 +11,14 @@ namespace VF.Service.Compressor {
     [VFService]
     internal class ParameterCompressorService {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private ControllerManager actionController => controllers.GetAction();
         [VFAutowired] private readonly ParamsService paramsService;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ParameterCompressorSolverService solverService;
         [VFAutowired] private readonly ParameterCompressorLayerService newLayerService;
         [VFAutowired] private readonly ParameterCompressorLegacyLayerService legacyLayerService;
         [VFAutowired] private readonly ParameterPlatformAlignmentService platformAlignmentService;
+        [VFAutowired] private readonly SaveAssetsService saveAssetsService;
 
         public const float BATCH_TIME = 0.1f;
 
@@ -47,18 +48,21 @@ namespace VF.Service.Compressor {
             }
 
             var decision = decisionWithInfo.decision;
-            if (!decision.compress.Any()) return;
+            if (!decision.compress.Any()) {
+                saveAssetsService.Run(Enumerable.Empty<ControllerManager>());
+                return;
+            }
 
             var paramz = paramsService.GetParams().GetRaw();
             var originalCost = paramz.CalcTotalCost();
 
             if (decision.useBadPriorityMethod) {
-                legacyLayerService.BuildLayer(decision);
+                legacyLayerService.BuildLayer(decision, actionController);
             } else {
-                newLayerService.BuildLayer(decision);
+                newLayerService.BuildLayer(decision, actionController);
             }
-            fx.GetRaw().WorkLog(
-                $"Added parameter compression logic to FX controller for {decision.compress.Count} parameters"
+            actionController.WorkLog(
+                $"Added parameter compression logic to Action controller for {decision.compress.Count} parameters"
             );
             
             var compressNames = decision.compress.Select(p => p.name).ToImmutableHashSet();
@@ -70,11 +74,10 @@ namespace VF.Service.Compressor {
                 $"Compressed {decision.compress.Count} expression parameters to fit VRChat limits ({originalCost} bits to {newCost} bits)"
             );
 
-            fx.UpgradeWrongParamTypes();
-            // Hopefully temporary until we can work out a better "re-save and/or re-dirty everything in a build hook at the end of the build" system
-            fx.GetRaw().Dirty();
+            actionController.UpgradeWrongParamTypes();
             paramz.Dirty();
             CreateDebugInfo(decisionWithInfo, originalCost, newCost);
+            saveAssetsService.Run(new[] { actionController });
         }
 
         private void CreateDebugInfo(ParameterCompressorSolverOutput decisionWithInfo, int originalCost, int newCost) {

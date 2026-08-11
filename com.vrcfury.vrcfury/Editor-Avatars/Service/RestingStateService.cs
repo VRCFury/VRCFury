@@ -13,6 +13,7 @@ using VF.Model;
 using VF.Model.Feature;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -31,12 +32,12 @@ namespace VF.Service {
         private readonly List<PendingClip> pendingClips = new List<PendingClip>();
 
         public class PendingClip {
-            public AnimationClip clip;
+            public VFClip clip;
             public string owner;
         }
 
-        public void ApplyClipToRestingState(AnimationClip clip, string owner = null) {
-            var copy = clip.Clone();
+        public void ApplyClipToRestingState(VFClip clip, string owner = null) {
+            var copy = clip?.Clone() as VFClip;
             pendingClips.Add(new PendingClip { clip = copy, owner = owner ?? globals.currentFeatureName });
             allClipsService.AddAdditionalManagedClip(copy);
         }
@@ -52,7 +53,7 @@ namespace VF.Service {
                     var binding = pair.Item1;
                     var curve = pair.Item2;
                     var value = curve.GetLast();
-                    debugLog.Add($"{binding.path} {binding.type.Name} {binding.propertyName} = {value}\n  via {pending.owner}");
+                    debugLog.Add($"{binding.PrettyString()} = {value}\n  via {pending.owner}");
                     StoreBinding(binding, value, pending.owner);
                 }
             }
@@ -96,21 +97,21 @@ namespace VF.Service {
             }
         }
 
-        private readonly Dictionary<EditorCurveBinding, StoredEntry> stored =
-            new Dictionary<EditorCurveBinding, StoredEntry>();
+        private readonly Dictionary<VFBinding, StoredEntry> stored =
+            new Dictionary<VFBinding, StoredEntry>();
 
         private class StoredEntry {
             public string owner;
             public FloatOrObject value;
         }
 
-        public void StoreBinding(EditorCurveBinding binding, FloatOrObject value, string owner) {
+        public void StoreBinding(VFBinding binding, FloatOrObject value, string owner) {
             binding = binding.Normalize();
             if (stored.TryGetValue(binding, out var otherStored)) {
                 if (value != otherStored.value) {
                     throw new Exception(
                         "VRCFury was told to set the resting pose of a property to two different values.\n\n" +
-                        $"Property: {binding.path} {binding.propertyName}\n\n" +
+                        $"Property: {binding.PrettyString()}\n\n" +
                         $"{otherStored.owner} set it to {otherStored.value}\n\n" +
                         $"{owner} set it to {value}");
                 }

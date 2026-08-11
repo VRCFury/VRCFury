@@ -5,13 +5,21 @@ using UnityEngine;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
     [VFService]
     internal class FixAudioService {
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly AnimatorHolderService animators;
         [VFAutowired] private readonly VFGameObject avatarObject;
+
+        private IEnumerable<VFController> GetAllControllers() {
+            return controllers.GetAllUsedControllers()
+                .Cast<VFController>()
+                .Concat(animators.GetSubControllers().Select(entry => entry.controller));
+        }
         
         [FeatureBuilderAction(FeatureOrder.FixAudio)]
         public void Apply() {
@@ -20,7 +28,7 @@ namespace VF.Service {
                     Object.DestroyImmediate(audio);
                 }
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-                foreach (var c in controllers.GetAllUsedControllers()) {
+                foreach (var c in GetAllControllers()) {
                     foreach (var layer in c.GetLayers()) {
                         layer.RewriteBehaviours<VRCAnimatorPlayAudio>(b => null);
                     }
@@ -39,7 +47,6 @@ namespace VF.Service {
                 } else {
                     output = input.Clone("Needed to enable Load In Background to make VRCSDK happy");
                     var so = new SerializedObject(output);
-                    so.Update();
                     so.FindProperty("m_LoadInBackground").boolValue = true;
                     so.ApplyModifiedPropertiesWithoutUndo();
                 }
@@ -58,10 +65,12 @@ namespace VF.Service {
                 }
             }
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-            foreach (var c in controllers.GetAllUsedControllers()) {
-                foreach (var audio in c.layers.SelectMany(layer => layer.allBehaviours).OfType<VRCAnimatorPlayAudio>()) {
-                    audio.Clips = audio.Clips.Select(FixClip).ToArray();
-                    EditorUtility.SetDirty(audio);
+            foreach (var c in GetAllControllers()) {
+                foreach (var layer in c.GetLayers()) {
+                    layer.RewriteBehaviours<VRCAnimatorPlayAudio>(audio => {
+                        audio.Clips = audio.Clips.Select(FixClip).ToArray();
+                        return audio;
+                    });
                 }
             }
 #endif

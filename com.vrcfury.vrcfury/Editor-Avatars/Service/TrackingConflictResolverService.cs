@@ -46,7 +46,7 @@ namespace VF.Service {
             var usedOwners = new HashSet<string>();
             foreach (var controller in controllers.GetAllUsedControllers()) {
                 foreach (var l in controller.GetLayers()) {
-                    if (l.allBehaviours.OfType<VRCAnimatorTrackingControl>().Any()) {
+                    if (l.HasBehaviour<VRCAnimatorTrackingControl>()) {
                         var layerOwner = controller.GetLayerOwner(l);
                         usedOwners.Add(layerOwner);
                     }
@@ -119,10 +119,14 @@ namespace VF.Service {
             // because vrchat doesn't respect the setting for a short duration after avatar load
             idle.TransitionsTo(refresh).WithTransitionExitTime(0.2f).When(frameTimeService.GetTimeSinceLoad().IsLessThan(5));
             refresh.TransitionsToExit().When(fx.Always());
-            var refreshDriver = refresh.AddBehaviour<VRCAvatarParameterDriver>();
-            foreach (var type in typesUsed) {
-                refreshDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type], value = -1 });
-            }
+            refresh.behaviours.AddBehaviour<VRCAvatarParameterDriver>(refreshDriver => {
+                foreach (var type in typesUsed) {
+                    refreshDriver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
+                        name = currentSettingDict[type],
+                        value = -1
+                    });
+                }
+            });
             
             // Lock into this trap state and don't allow anything to touch tracking control
             // while we're in an MMD station
@@ -163,13 +167,19 @@ namespace VF.Service {
                     //    state.TransitionsToExit().When(triggerWhen.Not());
                     //}
 
-                    var control = state.AddBehaviour<VRCAnimatorTrackingControl>();
-                    var driver = state.AddBehaviour<VRCAvatarParameterDriver>();
-                
-                    foreach (var type in types) {
-                        type.SetValue(control, controlValue);
-                        driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() { name = currentSettingDict[type], value = driveValue });
-                    }
+                    state.behaviours.AddBehaviour<VRCAnimatorTrackingControl>(control => {
+                        foreach (var type in types) {
+                            type.SetValue(control, controlValue);
+                        }
+                    });
+                    state.behaviours.AddBehaviour<VRCAvatarParameterDriver>(driver => {
+                        foreach (var type in types) {
+                            driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter() {
+                                name = currentSettingDict[type],
+                                value = driveValue
+                            });
+                        }
+                    });
                 }
                 
                 AddState("All", typesUsed, checkAlreadyActive: false);

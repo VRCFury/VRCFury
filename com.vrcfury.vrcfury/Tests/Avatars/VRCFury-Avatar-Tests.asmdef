@@ -1,0 +1,40 @@
+{
+    "name": "VRCFury-Avatar-Tests",
+    "rootNamespace": "",
+    "references": [
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "VRCFury",
+        "VRCFury-Editor-Common",
+        "VRCFury-Editor-Avatars"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll",
+        "System.Collections.Immutable.dll",
+        "VRCSDK3A.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_TEST_FRAMEWORK_PRESENT",
+        "VRCF_AVATARS"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "",
+            "define": "VRCF_AVATARS"
+        },
+        {
+            "name": "com.unity.test-framework",
+            "expression": "",
+            "define": "UNITY_TEST_FRAMEWORK_PRESENT"
+        }
+    ],
+    "noEngineReferences": false
+}

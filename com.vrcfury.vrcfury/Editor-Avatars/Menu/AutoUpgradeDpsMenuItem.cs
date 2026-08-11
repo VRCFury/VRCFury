@@ -5,16 +5,8 @@ namespace VF.Menu {
     internal static class AutoUpgradeDpsMenuItem {
         private const string EditorPref = "com.vrcfury.autoUpgradeDps";
 
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            EditorApplication.delayCall += UpdateMenu;
-        }
-
         public static bool Get() {
             return EditorPrefs.GetBool(EditorPref, true);
-        }
-        private static void UpdateMenu() {
-            UnityEditor.Menu.SetChecked(MenuItems.dpsAutoUpgrade, Get());
         }
 
         [MenuItem(MenuItems.dpsAutoUpgrade, priority = MenuItems.dpsAutoUpgradePriority)]
@@ -30,7 +22,12 @@ namespace VF.Menu {
                 if (!ok) return;
             }
             EditorPrefs.SetBool(EditorPref, !Get());
-            UpdateMenu();
+        }
+
+        [MenuItem(MenuItems.dpsAutoUpgrade, true)]
+        private static bool Validate() {
+            UnityEditor.Menu.SetChecked(MenuItems.dpsAutoUpgrade, Get());
+            return true;
         }
     }
 }

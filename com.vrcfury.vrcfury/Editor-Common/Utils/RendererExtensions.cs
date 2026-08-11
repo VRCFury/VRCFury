@@ -20,10 +20,12 @@ namespace VF.Utils {
         }
 
         private static readonly Dictionary<Mesh, Mesh> readWriteCache = new Dictionary<Mesh, Mesh>();
+        private static readonly Dictionary<Renderer, Mesh> mutableMeshCache = new Dictionary<Renderer, Mesh>();
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             Scheduler.Schedule(() => readWriteCache.Clear(), 0);
+            Scheduler.Schedule(() => mutableMeshCache.Clear(), 0);
         }
 
         [CanBeNull]
@@ -80,16 +82,50 @@ namespace VF.Utils {
                 var owner = renderer.owner();
                 var filter = owner.GetComponent<MeshFilter>();
                 if (filter == null)
-                    throw new Exception(
-                        "Cannot set mesh on MeshRenderer because it does not contain a MeshFilter: " +
-                        owner.GetPath()
-                    );
+                    throw new Exception("Cannot set mesh on MeshRenderer because it does not contain a MeshFilter: " + owner.GetDebugPath());
                 filter.sharedMesh = mesh;
                 filter.Dirty();
                 return;
             }
 
-            throw new Exception("Cannot set mesh on renderer with unknown type: " + renderer.owner().GetPath());
+            throw new Exception("Cannot set mesh on renderer with unknown type: " + renderer.owner().GetDebugPath());
+        }
+
+        public static Bounds GetLocalBounds(this Renderer renderer) {
+            if (renderer is SkinnedMeshRenderer skin) return skin.localBounds;
+            var mesh = renderer.GetMesh();
+            return mesh != null ? mesh.bounds : new Bounds();
+        }
+
+        public static void SetLocalBounds(this Renderer renderer, Bounds bounds, string reason = "Bounds adjustment") {
+            if (renderer is SkinnedMeshRenderer skin) {
+                skin.localBounds = bounds;
+                skin.Dirty();
+                return;
+            }
+
+            if (renderer is MeshRenderer) {
+                var owner = renderer.owner();
+                var filter = owner.GetComponent<MeshFilter>();
+                if (filter == null)
+                    throw new Exception(
+                        "Cannot set bounds on MeshRenderer because it does not contain a MeshFilter: " +
+                        owner.GetDebugPath()
+                    );
+                if (filter.sharedMesh == null) return;
+
+                if (!mutableMeshCache.TryGetValue(renderer, out var mesh) || mesh == null || mesh != filter.sharedMesh) {
+                    mesh = renderer.GetMutableMesh(reason);
+                    if (mesh == null) return;
+                    mutableMeshCache[renderer] = mesh;
+                }
+
+                mesh.bounds = bounds;
+                mesh.Dirty();
+                return;
+            }
+
+            throw new Exception("Cannot set bounds on renderer with unknown type: " + renderer.owner().GetDebugPath());
         }
         
         public static bool HasBlendshape(this Renderer renderer, string name) {
@@ -121,6 +157,21 @@ namespace VF.Utils {
             var mesh = renderer.GetMesh();
             if (mesh == null) return 0;
             return mesh.vertexCount;
+        }
+
+        public static float GetBlendshapeWeight(this Renderer renderer, string name) {
+            return (renderer is SkinnedMeshRenderer skin) ? skin.GetBlendShapeWeight(name) : 0;
+        }
+
+        public static void SetBlendshapeWeight(this Renderer renderer, string name, float weight) {
+            if (renderer is SkinnedMeshRenderer skin) skin.SetBlendShapeWeight(name, weight);
+        }
+
+        public static VFGameObject GetRootBone(this Renderer r) {
+            if (r is SkinnedMeshRenderer skin && skin.rootBone != null) {
+                return skin.rootBone;
+            }
+            return r.owner();
         }
     }
 }

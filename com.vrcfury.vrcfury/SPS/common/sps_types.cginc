@@ -1,0 +1,13 @@
+#ifndef SPS_INC_TYPES
+#define SPS_INC_TYPES
+
+#include "sps_flags.cginc"
+
+#define SPS_SOCKET_FLAG_HOLE 1u
+#define SPS_SOCKET_FLAG_DOUBLE_SIDED 2u
+#define SPS_SOCKET_FLAG_PORTAL 4u
+#define SPS_SOCKET_FLAG_RADIUS_OFFSET 8u
+#define SPS_SOCKET_FLAG_UNLOCK_LOCAL_X 16u
+#define SPS_SOCKET_FLAG_UNLOCK_ALL 32u
+
+#endif

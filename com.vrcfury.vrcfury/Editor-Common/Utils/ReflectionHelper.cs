@@ -12,42 +12,48 @@ namespace VF.Utils {
     }
 
     internal class ReflectionHelper {
-        private static bool IsMissing(object value) {
-            if (value == null) return true;
-            if (value is ICollection collection) {
-                if (collection.Count == 0) return true;
-                if (collection.Cast<object>().Any(o => o == null)) return true;
+        private static IEnumerable<string> GetMissingDetails(string path, object value) {
+            if (value is HarmonyUtils.PatchObj patch && patch.error != null) {
+                yield return $"{path}: {patch.error}";
+                yield break;
             }
-            if (value is HarmonyUtils.PatchObj patch && patch.error != null) return true;
-            return false;
+            if (value == null) {
+                yield return path;
+                yield break;
+            }
+            if (value is ICollection collection) {
+                if (collection.Count == 0) {
+                    yield return $"{path}: Empty array";
+                    yield break;
+                }
+                var i = 0;
+                foreach (var child in collection) {
+                    foreach (var detail in GetMissingDetails($"{path}[{i}]", child)) {
+                        yield return detail;
+                    }
+                    i++;
+                }
+            }
         }
 
         public static bool IsReady<T>() where T : ReflectionHelper {
             var type = typeof(T);
             foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)) {
-                if (IsMissing(field.GetValue(null))) return false;
+                if (GetMissingDetails(field.Name, field.GetValue(null)).Any()) return false;
             }
             return true;
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             var notReady = new List<string>();
 
-            var helpers = ReflectionUtils.GetVrcfEditorAssemblies()
-                .SelectMany(assembly => assembly.GetTypes())
-                .Where(cls => typeof(ReflectionHelper).IsAssignableFrom(cls))
-                .ToArray();
-
+            var helpers = TypeCache.GetTypesDerivedFrom<ReflectionHelper>();
             foreach (var helper in helpers) {
                 if (helper.GetCustomAttribute<ReflectionHelperOptionalAttribute>() != null) continue;
                 foreach (var field in helper.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)) {
                     var value = field.GetValue(null);
-                    if (value is HarmonyUtils.PatchObj patch && patch.error != null) {
-                        notReady.Add($"{helper.FullName}.{field.Name}: {patch.error}");
-                    } else if (IsMissing(value)) {
-                        notReady.Add($"{helper.FullName}.{field.Name}");
-                    }
+                    notReady.AddRange(GetMissingDetails($"{helper.FullName}.{field.Name}", value));
                 }
             }
             if (notReady.Any()) {

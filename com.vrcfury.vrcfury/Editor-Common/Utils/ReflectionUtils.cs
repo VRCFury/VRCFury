@@ -3,34 +3,43 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
+using UnityEditor;
+using Assembly = System.Reflection.Assembly;
 
 namespace VF.Utils {
     internal static class ReflectionUtils {
+        private static IList<Assembly> userAssemblies;
+
         public static Type GetTypeFromAnyAssembly(string type) {
             return AppDomain.CurrentDomain.GetAssemblies()
                 .Select(assembly => assembly.GetType(type))
                 .FirstOrDefault(t => t != null);
         }
 
-        public static Assembly[] GetVrcfEditorAssemblies() {
-            return  AppDomain.CurrentDomain.GetAssemblies()
-                .Where(assembly => assembly.GetName().Name == "VRCFury-Editor-Common"
-                    || assembly.GetName().Name == "VRCFury-Editor-Avatars"
-                    || assembly.GetName().Name == "VRCFury-Editor-Worlds")
+        public static IList<Assembly> GetUserAssemblies() {
+            if (userAssemblies != null) return userAssemblies;
+            return userAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(assembly => {
+                    if (assembly.IsDynamic) return false;
+                    var name = assembly.GetName().Name;
+                    if (name.StartsWith("Unity")) return false;
+                    if (name.StartsWith("UniTask")) return false;
+                    if (name.StartsWith("Bakery")) return false;
+                    var location = assembly.Location?.Replace('\\', '/');
+                    return !string.IsNullOrEmpty(location)
+                           && location.Contains("/Library/ScriptAssemblies/");
+                })
                 .ToArray();
         }
 
-        public static Type[] GetTypes(Type id) {
-            var candidates = GetVrcfEditorAssemblies()
-                .SelectMany(assembly => assembly.GetTypes())
-                .Where(t => !t.IsAbstract);
+        public static IList<Type> GetTypes(Type id) {
             if (typeof(Attribute).IsAssignableFrom(id)) {
-                return candidates.Where(t => t.GetCustomAttribute(id) != null).ToArray();
+                return TypeCache.GetTypesWithAttribute(id).Where(t => !t.IsAbstract).ToArray();
             } else {
-                return candidates.Where(id.IsAssignableFrom).ToArray();
+                return TypeCache.GetTypesDerivedFrom(id).Where(t => !t.IsAbstract).ToArray();
             }
         }
-        
+
         public static object CallWithOptionalParams(MethodInfo method, object obj, params object[] prms) {
             var list = new List<object>(prms);
             var paramCount = method.GetParameters().Length;

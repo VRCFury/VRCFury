@@ -11,7 +11,7 @@ namespace VF {
             return wrapper?.objRef as T;
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             GuidWrapper.SyncExt = (wrapper,type) => {
                 var changed = false;

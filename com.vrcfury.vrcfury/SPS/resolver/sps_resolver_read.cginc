@@ -1,0 +1,117 @@
+#ifndef SPS_INC_RESOLVER_READ
+#define SPS_INC_RESOLVER_READ
+
+#include "../common/sps_cell_hash.cginc"
+#include "../common/sps_cell_layout.cginc"
+#include "../common/sps_utils.cginc"
+#include "sps_resolver_globals.cginc"
+#include "sps_resolver_types.cginc"
+#include "sps_resolver_light.cginc"
+
+CellData sps_read_legacy_cell(int cellIndex) {
+    uint pairIndex = (uint)(-1 - cellIndex);
+    uint rootIndex = pairIndex >> 2;
+    uint frontIndex = pairIndex & 3u;
+
+    CellData cellData;
+    cellData.cellIndex = cellIndex;
+    cellData.distanceSq = 0;
+    cellData.world = float3(
+        unity_4LightPosX0[rootIndex],
+        unity_4LightPosY0[rootIndex],
+        unity_4LightPosZ0[rootIndex]
+    );
+    cellData.normal = frontIndex == rootIndex
+        ? sps_normalize(sps_object_origin_world() - cellData.world)
+        : sps_normalize(float3(
+            unity_4LightPosX0[frontIndex],
+            unity_4LightPosY0[frontIndex],
+            unity_4LightPosZ0[frontIndex]
+        ) - cellData.world);
+    cellData.up = sps_object_up_world();
+    cellData.id = sps_hash_world(cellData.world, 1);
+    cellData.playerId = 0u;
+    return cellData;
+}
+
+CellData sps_read_positive_cell(SpsCell cell, int cellIndex) {
+    CellData data;
+    data.cellIndex = cellIndex;
+    data.distanceSq = 0;
+    data.world = sps_cell_header_world(cell);
+    data.normal = sps_normalize(sps_cell_header_forward(cell));
+    data.up = sps_normalize(sps_cell_header_up(cell));
+    data.id = sps_cell_header_unique_id(cell);
+    data.playerId = sps_cell_header_player_id(cell);
+    return data;
+}
+
+CellData sps_make_empty_cell() {
+    CellData data;
+    data.cellIndex = -1;
+    data.distanceSq = 0;
+    data.world = 0;
+    data.normal = 0;
+    data.up = 0;
+    data.id = 0u;
+    data.playerId = 0u;
+    return data;
+}
+
+inline SocketData sps_read_positive_socket(SpsCell cell) {
+    SocketData data;
+    data.flags = cell.read_uint(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_FLAGS));
+    data.nextId = cell.read_uint(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_NEXT_ID));
+    [unroll]
+    for (uint tagIndex = 0u; tagIndex < SPS_SOCKET_PAYLOAD_TAG_COUNT; tagIndex++) {
+        data.tags[tagIndex] = cell.read_uint(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_TAG_START + tagIndex));
+    }
+    data.tangentIn = cell.read_float3(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_TANGENT_IN_START));
+    data.tangentOut = cell.read_float3(sps_cell_pixel_index_from_payload_index(SPS_SOCKET_PAYLOAD_TANGENT_OUT_START));
+    return data;
+}
+
+inline SocketData sps_make_empty_socket() {
+    SocketData data;
+    data.flags = 0u;
+    data.nextId = 0u;
+    [unroll]
+    for (uint tagIndex = 0u; tagIndex < SPS_SOCKET_PAYLOAD_TAG_COUNT; tagIndex++) {
+        data.tags[tagIndex] = 0u;
+    }
+    data.tangentIn = 0;
+    data.tangentOut = 0;
+    return data;
+}
+
+SocketData sps_read_legacy_socket(int cellIndex) {
+    SocketData data = sps_make_empty_socket();
+    uint type = sps_light_type((int)(((uint)(-1 - cellIndex)) >> 2));
+    if (type == SPS_LEGACY_LIGHT_HOLE) data.flags = SPS_SOCKET_FLAG_HOLE;
+    else if (type == SPS_LEGACY_LIGHT_RING) data.flags = SPS_SOCKET_FLAG_DOUBLE_SIDED;
+    return data;
+}
+
+CellData sps_read_cell(SpsTexture tex, int cellIndex) {
+    CellData data;
+    if (cellIndex < 0) data = sps_read_legacy_cell(cellIndex);
+    else data = sps_read_positive_cell(sps_get_cell(tex, (uint)cellIndex), cellIndex);
+    return data;
+}
+
+SocketData sps_read_socket(SpsTexture tex, int cellIndex) {
+    SocketData data;
+    if (cellIndex < 0) data = sps_read_legacy_socket(cellIndex);
+    else data = sps_read_positive_socket(sps_get_cell(tex, (uint)cellIndex));
+    return data;
+}
+
+float3 sps_resolver_socket_target_world(CellData candidate, uint flags) {
+    if (sps_has_flag(flags, SPS_SOCKET_FLAG_RADIUS_OFFSET)) {
+        return candidate.world + candidate.up * sps_resolver_radius();
+    } else {
+        return candidate.world;
+    }
+}
+
+#endif

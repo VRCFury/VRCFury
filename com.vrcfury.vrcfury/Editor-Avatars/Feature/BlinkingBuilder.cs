@@ -6,6 +6,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Feature {
 
@@ -15,15 +16,17 @@ namespace VF.Feature {
         [VFAutowired] private readonly TrackingConflictResolverService trackingConflictResolverService;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
+        private ControllerManager actionController => controllers.GetAction();
 
         [FeatureBuilderAction]
         public void Apply() {
             var blinkTriggerSynced = fx.NewBool("BlinkTriggerSynced", synced: true);
+            actionController.AddParam(blinkTriggerSynced);
 
             // Generator
             {
-                var blinkCounter = fx.NewInt("BlinkCounter");
-                var layer = fx.NewLayer("Blink - Generator");
+                var blinkCounter = actionController.NewInt("BlinkCounter");
+                var layer = actionController.NewLayer("Blink - Generator");
                 var remote = layer.NewState("Remote Trap");
                 var entry = layer.NewState("Entry");
                 var idle = layer.NewState("Idle");
@@ -32,23 +35,23 @@ namespace VF.Feature {
                 var trigger1 = layer.NewState("Trigger 1").Move(trigger0, 1, 0);
                 var randomize = layer.NewState("Randomize").Move(idle, 1, 0);
 
-                remote.TransitionsTo(entry).When(fx.IsLocal().IsTrue());
-                entry.TransitionsTo(idle).When(fx.Always());
+                remote.TransitionsTo(entry).When(actionController.IsLocal().IsTrue());
+                entry.TransitionsTo(idle).When(actionController.Always());
 
                 idle.TransitionsTo(trigger0).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsTrue()));
                 trigger0.Drives(blinkTriggerSynced, false);
-                trigger0.TransitionsTo(randomize).When(fx.Always());
+                trigger0.TransitionsTo(randomize).When(actionController.Always());
 
                 idle.TransitionsTo(trigger1).When(blinkCounter.IsLessThan(1).And(blinkTriggerSynced.IsFalse()));
                 trigger1.Drives(blinkTriggerSynced, true);
-                trigger1.TransitionsTo(randomize).When(fx.Always());
+                trigger1.TransitionsTo(randomize).When(actionController.Always());
 
                 randomize.DrivesRandom(blinkCounter, 2, 10);
-                randomize.TransitionsTo(idle).When(fx.Always());
+                randomize.TransitionsTo(idle).When(actionController.Always());
 
-                idle.TransitionsTo(subtract).WithTransitionDurationSeconds(1f).When(fx.Always());
+                idle.TransitionsTo(subtract).WithTransitionDurationSeconds(1f).When(actionController.Always());
                 subtract.DrivesDelta(blinkCounter, -1);
-                subtract.TransitionsTo(idle).When(fx.Always());
+                subtract.TransitionsTo(idle).When(actionController.Always());
             }
 
             // Receiver / Animator

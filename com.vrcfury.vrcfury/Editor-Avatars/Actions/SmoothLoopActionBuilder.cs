@@ -8,28 +8,29 @@ using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Smooth Loop Builder (Breathing, etc)")]
     internal class SmoothLoopActionBuilder : ActionBuilder<SmoothLoopAction> {
         [VFAutowired] [CanBeNull] private readonly ClipBuilderService clipBuilder;
 
-        public AnimationClip Build(SmoothLoopAction model, ActionClipService actionClipService, VFGameObject animObject) {
+        public VFClip Build(SmoothLoopAction model, ActionClipService actionClipService, VFGameObject animObject) {
             var onClip = NewClip();
             var clip1 = actionClipService.LoadStateAdv("tmp", model.state1, animObject);
             var clip2 = actionClipService.LoadStateAdv("tmp", model.state2, animObject);
 
             if (clipBuilder != null) {
                 var built = clipBuilder.MergeSingleFrameClips(
-                    (0, clip1.onClip.FlattenAll()),
-                    (model.loopTime / 2, clip2.onClip.FlattenAll()),
-                    (model.loopTime, clip1.onClip.FlattenAll())
+                    (0, clip1.onClip.EvaluateMotion(1).FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips)),
+                    (model.loopTime / 2, clip2.onClip.EvaluateMotion(1).FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips)),
+                    (model.loopTime, clip1.onClip.EvaluateMotion(1).FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips))
                 );
                 onClip.CopyFrom(built);
             } else {
                 // This is wrong, but it's fine because this branch is for debug info only
-                onClip.CopyFrom(clip1.onClip.FlattenAll());
-                onClip.CopyFrom(clip2.onClip.FlattenAll());
+                onClip.CopyFrom(clip1.onClip.EvaluateMotion(1).FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips));
+                onClip.CopyFrom(clip2.onClip.EvaluateMotion(1).FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips));
             }
 
             onClip.SetLooping(true);

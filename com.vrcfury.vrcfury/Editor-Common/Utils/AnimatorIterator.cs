@@ -1,12 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using UnityEditor;
-using UnityEditor.Animations;
-using UnityEngine;
 using VF.Utils.Controller;
-using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     /**
@@ -15,18 +11,19 @@ namespace VF.Utils {
     internal static class AnimatorIterator {
 
         public abstract class Iterator<T> {
-            public virtual IImmutableSet<T> From(Motion root) {
+            public virtual IImmutableSet<T> From(VFMotion root) {
                 return ImmutableHashSet<T>.Empty;
             }
-            public IImmutableSet<T> From(AnimatorState root) {
+            public IImmutableSet<T> From(VFState root) {
                 if (root == null) return ImmutableHashSet<T>.Empty;
                 return From(root.motion);
             }
             public virtual IImmutableSet<T> From(VFLayer root) {
                 return new States().From(root).SelectMany(From).ToImmutableHashSet();
             }
-            
+
             public IImmutableSet<T> From(IEnumerable<VFLayer> layers) {
+                if (layers == null) return ImmutableHashSet<T>.Empty;
                 return layers.SelectMany(From).ToImmutableHashSet();
             }
 
@@ -36,7 +33,7 @@ namespace VF.Utils {
             }
         }
 
-        public static IImmutableSet<T> GetRecursive<T>(T root, Func<T, IEnumerable<T>> getChildren) where T : Object {
+        public static IImmutableSet<T> GetRecursive<T>(T root, Func<T, IEnumerable<T>> getChildren) {
             var all = new HashSet<T>();
             var stack = new Stack<T>();
             stack.Push(root);
@@ -46,49 +43,42 @@ namespace VF.Utils {
                 if (all.Contains(one)) continue;
                 all.Add(one);
                 foreach (var child in getChildren(one)) {
-                    if (child != null && !(child is T)) {
-                        throw new Exception(
-                            $"{root.name} contains a child object that is not of type {typeof(T).Name}." +
-                            $" This should be impossible, and is usually a sign of cache memory corruption within unity. Try reimporting or renaming the file" +
-                            $" containing this resource. ({AssetDatabase.GetAssetPath(root)})");
-                    }
                     stack.Push(child);
                 }
             }
             return all.ToImmutableHashSet();
         }
 
-        public class States : Iterator<AnimatorState> {
-            public override IImmutableSet<AnimatorState> From(VFLayer root) {
-                return root.allStates;
+        public class States : Iterator<VFState> {
+            public override IImmutableSet<VFState> From(VFLayer root) {
+                return root.allStates.ToImmutableHashSet();
             }
         }
 
-        public class Motions : Iterator<Motion> {
-            public override IImmutableSet<Motion> From(Motion root) {
+        public class Motions : Iterator<VFMotion> {
+            public override IImmutableSet<VFMotion> From(VFMotion root) {
+                if (root == null) return ImmutableHashSet<VFMotion>.Empty;
                 return GetRecursive(root, motion => {
-                    if (motion is BlendTree tree) {
+                    if (motion is VFTree tree) {
                         return tree.children.Select(child => child.motion);
                     }
-                    if (motion is AnimationClip clip) {
-                        var settings = AnimationUtility.GetAnimationClipSettings(clip);
-                        return new Motion[] { settings.additiveReferencePoseClip };
+                    if (motion is VFClip clip) {
+                        return new VFMotion[] { clip.GetAdditiveReferencePoseClip() };
                     }
-
-                    return new Motion[] { };
+                    return Array.Empty<VFMotion>();
                 });
             }
         }
 
-        public class Clips : Iterator<AnimationClip> {
-            public override IImmutableSet<AnimationClip> From(Motion root) {
-                return new Motions().From(root).OfType<AnimationClip>().ToImmutableHashSet();
+        public class Clips : Iterator<VFClip> {
+            public override IImmutableSet<VFClip> From(VFMotion root) {
+                return new Motions().From(root).OfType<VFClip>().ToImmutableHashSet();
             }
         }
-        
-        public class Trees : Iterator<BlendTree> {
-            public override IImmutableSet<BlendTree> From(Motion root) {
-                return new Motions().From(root).OfType<BlendTree>().ToImmutableHashSet();
+
+        public class Trees : Iterator<VFTree> {
+            public override IImmutableSet<VFTree> From(VFMotion root) {
+                return new Motions().From(root).OfType<VFTree>().ToImmutableHashSet();
             }
         }
     }

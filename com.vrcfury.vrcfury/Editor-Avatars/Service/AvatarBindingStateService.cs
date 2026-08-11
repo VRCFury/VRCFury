@@ -1,19 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Rendering;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 using Object = UnityEngine.Object;
 
 namespace VF.Service {
     /**
-     * Allows setting / retrieving properties on the avatar, given the corresponding EditorCurveBinding.
+     * Allows setting / retrieving properties on the avatar, given the corresponding VFBinding.
      * Typically, this would be trivial, but unfortunately there are a lot of small edges cases which must be handled.
      */
     [VFService]
@@ -21,10 +20,10 @@ namespace VF.Service {
         [VFAutowired] private readonly GlobalsService globals;
         private VFGameObject avatarObject => globals.avatarObject;
 
-        public void ApplyClip(AnimationClip clip, string reason) {
-            var copy = clip.Clone();
-            copy.FinalizeAsset();
-            copy.SampleAnimation(avatarObject, 0);
+        public void ApplyClip(VFClip clip, string reason) {
+            var raw = clip?.Save(avatarObject) as AnimationClip;
+            raw?.SampleAnimation(avatarObject, 0);
+            if (clip == null) return;
             foreach (var pair in clip.GetAllCurves()) {
                 var binding = pair.Item1;
                 var curve = pair.Item2;
@@ -34,7 +33,7 @@ namespace VF.Service {
             }
         }
 
-        public bool Get(EditorCurveBinding binding, bool isFloat, out FloatOrObject data, bool trustUnity = false) {
+        public bool Get(VFBinding binding, bool isFloat, out FloatOrObject data, bool trustUnity = false) {
             if (isFloat) {
                 var r = GetFloat(binding, out var d, trustUnity);
                 data = d;
@@ -46,7 +45,7 @@ namespace VF.Service {
             }
         }
         
-        public bool GetFloat(EditorCurveBinding binding, out float data, bool trustUnity = false) {
+        public bool GetFloat(VFBinding binding, out float data, bool trustUnity = false) {
             // Unity always pulls material properties from the first material, even if it doesn't have the property.
             // We improve on this by pulling from the first material that actually has it.
             if (TryParseMaterialProperty(binding, out var matProp)) {
@@ -64,14 +63,13 @@ namespace VF.Service {
                         // However, in editor, AnimationUtility.GetFloatValue pulls from all slots. We need to replicate
                         // the in-game behaviour here so that FixWriteDefaults knows to record defaults affected by this
                         if (renderer.sharedMaterials.Length < 1 || renderer.sharedMaterials[0] == null ||
-                            !renderer.sharedMaterials[0].HasProperty(matProp)) {
+                            renderer.sharedMaterials[0].GetPropertyType(matProp) == null) {
                             data = 0;
                             return false;
                         }
                     } else {
                         foreach (var mat in renderer.sharedMaterials.NotNull()) {
-                            if (mat.HasProperty(matProp)) {
-                                data = mat.GetFloat(matProp);
+                            if (mat.TryGetFloatFast(matProp, out data)) {
                                 return true;
                             }
                         }
@@ -79,15 +77,9 @@ namespace VF.Service {
                 }
             }
 
-            try {
-                return AnimationUtility.GetFloatValue(avatarObject, binding, out data);
-            } catch (Exception) {
-                // Unity throws a `UnityException: Invalid type` if you request an object that is actually a float or vice versa
-                data = 0;
-                return false;
-            }
+            return binding.TryGetCurrentFloat(avatarObject, out data);
         }
-        public bool GetObject(EditorCurveBinding binding, out Object data, bool trustUnity = false) {
+        public bool GetObject(VFBinding binding, out Object data, bool trustUnity = false) {
             if (!trustUnity) {
                 // Unity incorrectly says that material slots do not exist at all if the material in the slot is unset (null)
                 if (TryParseMaterialSlot(binding, out var renderer, out var slotNum)) {
@@ -97,7 +89,7 @@ namespace VF.Service {
             }
 
             try {
-                return AnimationUtility.GetObjectReferenceValue(avatarObject, binding, out data);
+                return AnimationUtility.GetObjectReferenceValue(avatarObject, binding.ToEditorCurveBinding(avatarObject), out data);
             } catch (Exception) {
                 // Unity throws a `UnityException: Invalid type` if you request an object that is actually a float or vice versa
                 data = null;
@@ -105,7 +97,7 @@ namespace VF.Service {
             }
         }
 
-        public static bool TryParseMaterialProperty(EditorCurveBinding binding, out string propertyName) {
+        public static bool TryParseMaterialProperty(VFBinding binding, out string propertyName) {
             if (binding.propertyName.StartsWith("material.")) {
                 propertyName = binding.propertyName.Substring("material.".Length);
                 return true;
@@ -114,12 +106,12 @@ namespace VF.Service {
             return false;
         }
         
-        private bool TryFindObject(EditorCurveBinding binding, out VFGameObject obj) {
-            obj = avatarObject.Find(binding.path);
+        private bool TryFindObject(VFBinding binding, out VFGameObject obj) {
+            obj = binding.target;
             return obj != null;
         }
 
-        private bool TryFindComponent<T>(EditorCurveBinding binding, out T component) where T : UnityEngine.Component {
+        private bool TryFindComponent<T>(VFBinding binding, out T component) where T : UnityEngine.Component {
             component = null;
             if (!TryFindObject(binding, out var obj)) return false;
             if (binding.type == null || !typeof(UnityEngine.Component).IsAssignableFrom(binding.type)) return false;
@@ -127,7 +119,7 @@ namespace VF.Service {
             return component != null;
         }
 
-        public bool TryParseMaterialSlot(EditorCurveBinding binding, out Renderer renderer, out int slotNum) {
+        public bool TryParseMaterialSlot(VFBinding binding, out Renderer renderer, out int slotNum) {
             renderer = null;
             if (!binding.TryParseArraySlot(out var prefix, out slotNum, out var suffix)) return false;
             if (prefix != "m_Materials") return false;
@@ -137,7 +129,7 @@ namespace VF.Service {
             return true;
         }
 
-        private void HandleMaterialSwaps(EditorCurveBinding binding, FloatOrObject val) {
+        private void HandleMaterialSwaps(VFBinding binding, FloatOrObject val) {
             if (val.IsFloat()) return;
             var newMat = val.GetObject() as Material;
             if (newMat == null) return;
@@ -161,7 +153,7 @@ namespace VF.Service {
         private readonly Dictionary<(VFGameObject, string), (float,string)> forcedMaterialProperties =
             new Dictionary<(VFGameObject, string), (float,string)>();
 
-        private void HandleMaterialProperties(EditorCurveBinding binding, FloatOrObject val_, string reason) {
+        private void HandleMaterialProperties(VFBinding binding, FloatOrObject val_, string reason) {
             if (!val_.IsFloat()) return;
             var val = val_.GetFloat();
             if (!TryParseMaterialProperty(binding, out var propName)) return;
@@ -178,77 +170,12 @@ namespace VF.Service {
                 if (renderer == null) continue;
                 renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
                     foreach (var pair in rendererGroup) {
-                        mat = ApplyModifiedMaterialProperty(mat, pair.Key.Item2, pair.Value.Item1, pair.Value.Item2);
+                        mat = mat.ApplyProperty(pair.Key.Item2, pair.Value.Item1, pair.Value.Item2);
                     }
                     return mat;
                 }).ToArray();
                 renderer.Dirty();
             }
-        }
-
-        private Material ApplyModifiedMaterialProperty([CanBeNull] Material mat, String propName, float val, string reason) {
-            if (mat == null) return mat;
-
-            var type = mat.GetPropertyType(propName);
-            if (type == ShaderPropertyType.Float || type == ShaderPropertyType.Range) {
-                var oldValue = mat.GetFloat(propName);
-                var newValue = val;
-                if (oldValue == newValue) return mat;
-                mat = mat.Clone($"{reason} changed {propName} from {oldValue} to {newValue}");
-                mat.SetFloat(propName, newValue);
-                return mat;
-            }
-
-            if (propName.Length < 2 || propName[propName.Length-2] != '.') return mat;
-
-            var bundleName = propName.Substring(0, propName.Length - 2);
-            var bundleSuffix = propName.Substring(propName.Length - 1);
-            var bundleType = mat.GetPropertyType(bundleName);
-            // This is /technically/ incorrect, since if a property is missing, the proper (matching unity)
-            // behaviour is that it should be set to 0. However, unit really tries to not allow you to be missing
-            // one component in your animator (by deleting them all at once), so it's probably not a big deal.
-            if (bundleType == ShaderPropertyType.Color) {
-                var oldValue = mat.GetColor(bundleName);
-                var newValue = oldValue;
-                if (bundleSuffix == "r") newValue.r = val;
-                if (bundleSuffix == "g") newValue.g = val;
-                if (bundleSuffix == "b") newValue.b = val;
-                if (bundleSuffix == "a") newValue.a = val;
-                if (oldValue == newValue) return mat;
-                mat = mat.Clone($"{reason} changed {bundleName} from {oldValue} to {newValue}");
-                mat.SetColor(bundleName, newValue);
-                return mat;
-            }
-            if (bundleType == ShaderPropertyType.Vector) {
-                var oldValue = mat.GetVector(bundleName);
-                var newValue = oldValue;
-                if (bundleSuffix == "x") newValue.x = val;
-                if (bundleSuffix == "y") newValue.y = val;
-                if (bundleSuffix == "z") newValue.z = val;
-                if (bundleSuffix == "w") newValue.w = val;
-                if (oldValue == newValue) return mat;
-                mat = mat.Clone($"{reason} changed {bundleName} from {oldValue} to {newValue}");
-                mat.SetVector(bundleName, newValue);
-                return mat;
-            }
-            if (bundleType == MaterialExtensions.StPropertyType && bundleName.EndsWith("_ST")) {
-                var textureName = bundleName.Substring(0, bundleName.Length - 3);
-                var oldScale = mat.GetTextureScale(textureName);
-                var oldOffset = mat.GetTextureOffset(textureName);
-                var newScale = oldScale;
-                var newOffset = oldOffset;
-                if (bundleSuffix == "x") newScale.x = val;
-                if (bundleSuffix == "y") newScale.y = val;
-                if (bundleSuffix == "z") newOffset.x = val;
-                if (bundleSuffix == "w") newOffset.y = val;
-                if (oldScale == newScale && oldOffset == newOffset) return mat;
-                mat = mat.Clone($"{reason} changed {textureName} offset/scale from {oldScale},{oldOffset} to {newScale},{newOffset}");
-                mat.SetTextureScale(textureName, newScale);
-                mat.SetTextureOffset(textureName, newOffset);
-                return mat;
-            }
-
-            return mat;
         }
     }
 }

@@ -2,7 +2,7 @@ name: 'Deploy'
 on: push
 
 env:
-  GAMECI_VERSION: 3.2.1
+  GAMECI_VERSION: 3.2.2
 
 jobs:
   test:
@@ -12,28 +12,29 @@ jobs:
       fail-fast: false
       matrix:
         vrcsdkUnityVersion:
-          - [ 3.10.1, 2022.3.22f1 ]
+          - [ 3.10.4, 6000.4.12f1 ]
+          - [ 3.10.4, 6000.0.80f1 ]
+          - [ 3.10.4, 2022.3.22f1 ]
           - [ 3.7.0, 2022.3.6f1 ]
           - [ 3.6.1, 2022.3.6f1 ]
           - [ 3.5.2, 2022.3.6f1 ]
           - [ 3.5.0, 2022.3.6f1 ]
-          - [ 3.3.0, 2019.4.31f1 ]
-          - [ 3.0.9, 2019.4.31f1 ]
-          - [ 3.10.1, 6000.3.1f1 ]
         platform:
           - windows
-          - android
         sdkKind:
           - avatars
         include:
-          - vrcsdkUnityVersion: [ 3.10.1, 2022.3.22f1 ]
+          - vrcsdkUnityVersion: [ 3.10.4, 2022.3.22f1 ]
+            platform: android
+            sdkKind: avatars
+          - vrcsdkUnityVersion: [ 3.10.4, 2022.3.22f1 ]
             platform: windows
             sdkKind: worlds
-          - vrcsdkUnityVersion: [ 3.10.1, 2022.3.22f1 ]
-            platform: android
-            sdkKind: worlds
+#          - vrcsdkUnityVersion: [ 3.10.4, 2022.3.22f1 ]
+#            platform: android
+#            sdkKind: worlds
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Github's "ubuntu-latest" comes with a ton of unused stuff that pushes us over the disk limit
       - name: Clean up node
@@ -60,7 +61,8 @@ jobs:
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Verify Compile
-        uses: game-ci/unity-test-runner@v4
+        id: tests
+        uses: game-ci/unity-test-runner@08fd329f00a18efa297140b14ac28ebce742759e
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
@@ -73,6 +75,19 @@ jobs:
           customParameters: -testCategory VRCFury
           githubToken: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload Unity failure logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unity-logs-${{ matrix.sdkKind }}-${{ matrix.platform }}-${{ matrix.vrcsdkUnityVersion[0] }}-${{ matrix.vrcsdkUnityVersion[1] }}-attempt-${{ github.run_attempt }}
+          path: |
+            ${{ steps.tests.outputs.artifactsPath }}
+            ${{ runner.temp }}/_github_home/.config/unity3d/Editor.log
+            ${{ runner.temp }}/_github_home/.config/unity3d/Crashes
+            .github/test_project/Logs
+            .github/test_project/Library/Bee/bee_backend.log
+          if-no-files-found: warn
+
   deploy:
     needs: test
     if: github.ref_name == github.event.repository.default_branch || github.ref_name == 'beta'
@@ -82,7 +97,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: repo
       - name: Copy license
@@ -93,12 +108,12 @@ jobs:
           cp CONTRIBUTING.md com.vrcfury.vrcfury/CONTRIBUTING.md
           cp .github/files/CONTRIBUTING.md.meta com.vrcfury.vrcfury/CONTRIBUTING.md.meta
       - name: Checkout version manifest
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: versions
           repository: VRCFury/vrcfury-updater-manifest
           ssh-key: ${{ secrets.VERSION_DEPLOY_KEY }}
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: repo/.github/scripts/package.json
           standalone: true

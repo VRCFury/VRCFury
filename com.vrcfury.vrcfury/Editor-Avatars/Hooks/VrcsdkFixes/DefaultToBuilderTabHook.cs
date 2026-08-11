@@ -1,4 +1,4 @@
-﻿using JetBrains.Annotations;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine.UIElements;
 using VF.Utils;
@@ -9,7 +9,7 @@ namespace VF.Hooks.VrcsdkFixes {
         private static double whenSdkPanelLoaded;
         private static EditorWindow sdkPanel = null;
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             VRCSdkControlPanel.OnSdkPanelEnable += (panel, e) => {
                 sdkPanel = panel as EditorWindow;

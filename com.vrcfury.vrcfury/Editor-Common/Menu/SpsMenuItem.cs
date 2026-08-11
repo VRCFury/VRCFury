@@ -11,7 +11,7 @@ namespace VF.Menu {
         [MenuItem("GameObject/VRCFury/Create SPS Socket", priority = 40)]
         [MenuItem(MenuItems.createSocket, priority = MenuItems.createSocketPriority)]
         public static void RunSocket() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+            VRCFuryBuildContext.Run(() => {
                 Create(false);
             });
         }
@@ -19,7 +19,7 @@ namespace VF.Menu {
         [MenuItem("GameObject/VRCFury/Create SPS Plug", priority = 41)]
         [MenuItem(MenuItems.createPlug, priority = MenuItems.createPlugPriority)]
         public static void RunPlug() {
-            VRCFExceptionUtils.ErrorDialogBoundary(() => {
+            VRCFuryBuildContext.Run(() => {
                 Create(true);
             });
         }

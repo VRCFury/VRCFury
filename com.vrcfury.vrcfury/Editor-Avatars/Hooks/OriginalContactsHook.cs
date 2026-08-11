@@ -68,7 +68,7 @@ namespace VF.Hooks {
 
                 foreach (var f in Reflection.ColliderFields) {
                     var collider = (VRCAvatarDescriptor.ColliderConfig)f.GetValue(avatar);
-                    if (collider.isMirrored && f.Name.EndsWith("L") && Reflection.MirrorCollider != null) {
+                    if (collider.isMirrored && f.Name.EndsWith("L") && Reflection.MirrorCollider != null && Reflection.MirrorCollider.GetParameters().Length == 2) {
                         var so = new SerializedObject(avatar);
                         var leftProp = so.FindProperty(f.Name);
                         var rightProp = so.FindProperty(f.Name.Substring(0, f.Name.Length - 1) + "R");

@@ -19,7 +19,7 @@ namespace VF.Hooks.Av3EmuFixes {
             );
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Av3EmuReflection>()) return;
             Av3EmuReflection.Patch.apply();

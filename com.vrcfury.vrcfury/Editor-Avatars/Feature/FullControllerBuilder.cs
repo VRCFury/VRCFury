@@ -8,6 +8,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Builder;
+using VF.Component;
 using VF.Exceptions;
 using VF.Feature.Base;
 using VF.Injector;
@@ -40,10 +41,8 @@ namespace VF.Feature {
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager avatarMenu => menuService.GetMenu();
         [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly ClipRewritersService clipRewritersService;
-
-        public string injectSpsDepthParam = null;
-        public string injectSpsVelocityParam = null;
+        [VFAutowired] private readonly ParameterInjectService parameterInjectService;
+        [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
@@ -70,15 +69,28 @@ namespace VF.Feature {
             }
 
             var fromControllers = new List<VFControllerWithVrcType>();
+            var baseObject = GetBaseObject(model, featureBaseObject);
             foreach (var c in model.controllers) {
                 var source = c.controller.Get();
                 if (source == null) {
                     missingAssets.Add(c.controller);
                     continue;
                 }
-                var copy = VFControllerWithVrcType.CopyAndLoadController(source, c.type);
+                Debug.Log($"Merging controller from {source.GetPathAndName()}");
+                var copy = VFControllerWithVrcType.Load(
+                    source,
+                    c.type,
+                    new VFLoadContext {
+                        OwnerObject = baseObject,
+                        AnimatorObject = globals.avatarObject,
+                        RootBindingsApplyToAvatar = model.rootBindingsApplyToAvatar,
+                        AdjustRootScale = true,
+                        ObjectPaths = objectPaths,
+                        RewritePath = path => AnimationBindingUtils.RewriteRelativePath(path, model.rewriteBindings)
+                    }
+                );
                 if (copy != null) {
-                    fromControllers.Add(copy);
+                    fromControllers.Add(new VFControllerWithVrcType(copy, c.type));
                 }
             }
 
@@ -89,8 +101,10 @@ namespace VF.Feature {
                 var to = controllers.GetController(from.vrcType);
 
                 // Fail if trying to merge a controller that is on the avatar descriptor
-                if (VrcfObjectCloner.GetOriginal(to.GetRaw()) != null && to.GetRaw().GetCloneSource() == from.GetRaw().GetCloneSource()) {
-                    if (AssetDatabase.GetAssetPath(to.GetRaw().GetCloneSource())?.ToLower().Contains("goloco") ?? false) {
+                var toSource = to.GetSourceAsset();
+                var fromSource = from.GetSourceAsset();
+                if (toSource != null && toSource == fromSource) {
+                    if (AssetDatabase.GetAssetPath(toSource)?.ToLower().Contains("goloco") ?? false) {
                         throw new Exception(
                             "You've installed GogoLoco using VRCFury, but your avatar descriptor also contains GogoLoco controllers." +
                             " Make sure your Avatar Descriptor does not contain any gogoloco files."
@@ -132,6 +146,15 @@ namespace VF.Feature {
                     receiver.parameter = RewriteParamName(receiver.parameter);
                 }
             }
+#if VRCSDK_HAS_VRCRAYCAST
+            foreach (var raycast in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCRaycast>()) {
+                if (rewrittenParams.ContainsKey(raycast.Parameter + "_Hit") 
+                    || rewrittenParams.ContainsKey(raycast.Parameter + "_Ratio")
+                    || rewrittenParams.ContainsKey(raycast.Parameter + "_Distance")) {
+                    raycast.Parameter = RewriteParamName(raycast.Parameter);
+                }
+            }
+#endif
             foreach (var physbone in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCPhysBone>()) {
                 if (rewrittenParams.ContainsKey(physbone.parameter + "_IsGrabbed")
                     || rewrittenParams.ContainsKey(physbone.parameter + "_Angle")
@@ -141,6 +164,44 @@ namespace VF.Feature {
                 ) {
                     physbone.parameter = RewriteParamName(physbone.parameter);
                 }
+            }
+
+            foreach (var inject in model.injectParams) {
+                if (inject == null) continue;
+                if (inject.sourceObject == null) continue;
+                if (string.IsNullOrWhiteSpace(inject.sourceParam)) continue;
+                if (string.IsNullOrWhiteSpace(inject.targetParam)) continue;
+                var resolvedParam = RewriteParamName(inject.targetParam);
+                if (string.IsNullOrWhiteSpace(resolvedParam)) continue;
+                parameterInjectService.Register(new ParameterInjectService.Request {
+                    sourceObject = inject.sourceObject,
+                    sourceParam = inject.sourceParam,
+                    resolvedParam = resolvedParam
+                });
+            }
+
+            foreach (var socket in featureBaseObject.GetComponentsInSelfAndParents<VRCFuryHapticSocket>()) {
+                if (!string.IsNullOrWhiteSpace(model.injectSpsDepthParam)) {
+                    var resolvedParam = RewriteParamName(model.injectSpsDepthParam);
+                    if (resolvedParam != null) {
+                        parameterInjectService.Register(new ParameterInjectService.Request {
+                            sourceObject = socket.owner(),
+                            sourceParam = VRCFuryHapticPlugEditor.SpsDepthPlugLengths,
+                            resolvedParam = resolvedParam
+                        });
+                    }
+                }
+                if (!string.IsNullOrWhiteSpace(model.injectSpsVelocityParam)) {
+                    var resolvedParam = RewriteParamName(model.injectSpsVelocityParam);
+                    if (resolvedParam != null) {
+                        parameterInjectService.Register(new ParameterInjectService.Request {
+                            sourceObject = socket.owner(),
+                            sourceParam = VRCFuryHapticPlugEditor.SpsVelocityMeters,
+                            resolvedParam = resolvedParam
+                        });
+                    }
+                }
+                break;
             }
 
             if (missingAssets.Count > 0) {
@@ -216,18 +277,6 @@ namespace VF.Feature {
         private string RewriteParamNameUncached(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (VRChatGlobalParams.Contains(name)) return name;
-            if (!string.IsNullOrEmpty(model.injectSpsDepthParam) && name == model.injectSpsDepthParam) {
-                if (injectSpsDepthParam == null) {
-                    injectSpsDepthParam = controllers.MakeUniqueParamName(name);
-                }
-                return injectSpsDepthParam;
-            }
-            if (!string.IsNullOrEmpty(model.injectSpsVelocityParam) && name == model.injectSpsVelocityParam) {
-                if (injectSpsVelocityParam == null) {
-                    injectSpsVelocityParam = controllers.MakeUniqueParamName(name);
-                }
-                return injectSpsVelocityParam;
-            }
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
                     var prms = p.parameters.Get();
@@ -280,31 +329,6 @@ namespace VF.Feature {
             }
         }
 
-        private static string RewritePath(FullController model, string path) {
-            foreach (var rewrite in model.rewriteBindings) {
-                var from = rewrite.from;
-                if (from == null) from = "";
-                while (from.EndsWith("/")) from = from.Substring(0, from.Length - 1);
-                var to = rewrite.to;
-                if (to == null) to = "";
-                while (to.EndsWith("/")) to = to.Substring(0, to.Length - 1);
-
-                if (from == "") {
-                    path = ClipRewritersService.Join(to, path);
-                    if (rewrite.delete) return null;
-                } else if (path.StartsWith(from + "/")) {
-                    path = path.Substring(from.Length + 1);
-                    path = ClipRewritersService.Join(to, path);
-                    if (rewrite.delete) return null;
-                } else if (path == from) {
-                    path = to;
-                    if (rewrite.delete) return null;
-                }
-            }
-
-            return path;
-        }
-
         private void Merge(VFController from, ControllerManager to) {
             var type = to.GetType();
 
@@ -314,17 +338,6 @@ namespace VF.Feature {
                     avatar.autoLocomotion = false;
                 }
             }
-
-            // Rewrite clips
-            from.Rewrite(AnimationRewriter.Combine(
-                AnimationRewriter.RewritePath(path => RewritePath(model, path)),
-                clipRewritersService.CreateNearestMatchPathRewriter(
-                    GetBaseObject(model, featureBaseObject),
-                    rootBindingsApplyToAvatar: model.rootBindingsApplyToAvatar
-                ),
-                clipRewritersService.AdjustRootScale(),
-                clipRewritersService.AnimatorBindingsAlwaysTargetRoot()
-            ));
 
             // Rewrite params
             // (we do this after rewriting paths to ensure animator bindings all hit "")
@@ -420,7 +433,7 @@ namespace VF.Feature {
                     smoothedDict[rewritten] = smoothed;
                 }
 
-                VFControllerAvatarExtensions.doNotRewriteCopyDriverSources(() => {
+                VFParameterRewriteSettings.WithoutCopyDriverSourceRewrites(() => {
                     to.RewriteParameters(name => {
                         if (smoothedDict.TryGetValue(name, out var smoothed)) {
                             return smoothed;
@@ -553,6 +566,43 @@ namespace VF.Feature {
             }
         }
 
+        [CustomPropertyDrawer(typeof(FullController.InjectParamEntry))]
+        public class InjectParamDrawer : PropertyDrawer {
+            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
+                var content = new VisualElement();
+                var sourceObjectProp = prop.FindPropertyRelative("sourceObject");
+                var sourceParamProp = prop.FindPropertyRelative("sourceParam");
+                void OnSourceObjectChange() {
+                    var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
+                    if (sourceObject == null) return;
+                    if (sourceObject.GetComponent<VRCFuryHapticPlug>() == null
+                        && sourceObject.GetComponent<VRCFuryHapticSocket>() == null) return;
+                    if (VRCFuryHapticPlugEditor.ParseSpsMagicParam(sourceParamProp.stringValue) != null) return;
+                    sourceParamProp.stringValue = VRCFuryHapticPlugEditor.SpsDepthMeters;
+                    sourceParamProp.serializedObject.ApplyModifiedProperties();
+                }
+                content.Add(VRCFuryEditorUtils.Prop(sourceObjectProp, "Source Object"));
+                content.Add(VRCFuryEditorUtils.OnChange(sourceObjectProp, OnSourceObjectChange));
+                content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                    var wrapper = new VisualElement();
+                    var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
+                    if (sourceObject != null) {
+                        if (sourceObject.GetComponent<VRCFuryHapticPlug>() != null
+                            || sourceObject.GetComponent<VRCFuryHapticSocket>() != null) {
+                            wrapper.Add(VRCFuryHapticPlugEditor.RenderSpsInjectParamEditor(prop));
+                        } else {
+                            wrapper.Add(VRCFuryEditorUtils.Warn("This object doesn't contain any injectable parameters"));
+                        }
+                    } else {
+                        wrapper.Add(VRCFuryEditorUtils.Prop(sourceParamProp, "Source Param"));
+                    }
+                    return wrapper;
+                }, sourceObjectProp));
+                content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("targetParam"), "Target Param"));
+                return content;
+            }
+        }
+
         [FeatureEditor]
         public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject, VFGameObject componentObject, FullController model) {
             var content = new VisualElement();
@@ -619,14 +669,24 @@ namespace VF.Feature {
                 adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("rewriteBindings")));
             }
 
+            {
+                var (a, b) = VRCFuryEditorUtils.CreateTooltip(
+                    "Inject Parameters",
+                    "Inject values from other VRCFury components into this controller (or global if it's also marked as a global param)"
+                );
+                adv.Add(a);
+                adv.Add(b);
+                adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("injectParams")));
+            }
+
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam"), "(Deprecated) Toggle using param"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootObjOverride"), "(Deprecated) Root object override"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "(Deprecated) Make all unsynced params global"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allowMissingAssets"), "(Deprecated) Don't fail if assets are missing"));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsDepthParam"), "Inject nearest SPS depth (in plug lengths) as a parameter"));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsVelocityParam"), "Inject nearest SPS velocity (in plug lengths / sec) as a parameter"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsDepthParam"), "(Deprecated) Inject nearest SPS depth (use Inject Parameters instead)"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsVelocityParam"), "(Deprecated) Inject nearest SPS velocity (use Inject Parameters instead)"));
             adv.Add(VRCFuryEditorUtils.Prop(
               prop.FindPropertyRelative("priority"),
               "Priority",
@@ -637,45 +697,50 @@ namespace VF.Feature {
             ));
 
             content.Add(adv);
-
-            content.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-                var debug = new VisualElement();
-                if (avatarObject == null) return debug;
-
-                var baseObject = GetBaseObject(model, componentObject);
-                var controllers = model.controllers
-                    .Select(c => c?.controller?.Get() as AnimatorController)
-                    .NotNull()
-                    .ToList();
-                var usesWdOff = controllers
-                    .SelectMany(c => new AnimatorIterator.States().From(new VFController(c)))
-                    .Any(state => !state.writeDefaultValues);
+            if (avatarObject != null) {
                 var rewrites = prop.FindPropertyRelative("rewriteBindings");
-                var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
-                    controllers,
-                    baseObject,
-                    path => RewritePath(model, path),
-                    addPathRewrite: path => {
-                        VRCFuryEditorUtils.AddToList(rewrites, entry => {
-                            entry.FindPropertyRelative("from").stringValue = path;
-                            entry.FindPropertyRelative("to").stringValue = "";
-                        });
+                IVisualElementScheduledItem scheduledRefresh = null;
+                System.Action refreshWarnings = null;
+                void ScheduleRefreshWarnings() {
+                    scheduledRefresh?.Pause();
+                    scheduledRefresh = content.schedule.Execute(() => {
+                        scheduledRefresh = null;
+                        refreshWarnings?.Invoke();
+                    }).StartingIn(2000);
+                }
+                VisualElement BuildWarnings() {
+                    var warningsContainer = new VisualElement();
+                    warningsContainer.Clear();
+                    var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
+                        model.controllers
+                            .Select(c => c?.controller?.Get() as AnimatorController)
+                            .NotNull(),
+                        GetBaseObject(model, componentObject),
+                        path => AnimationBindingUtils.RewriteRelativePath(path, model.rewriteBindings),
+                        addPathRewrite: path => {
+                            VRCFuryEditorUtils.AddToList(rewrites, entry => {
+                                entry.FindPropertyRelative("from").stringValue = path;
+                                entry.FindPropertyRelative("to").stringValue = "";
+                            });
+                            ScheduleRefreshWarnings();
+                        }
+                    );
+                    foreach (var warning in warnings) {
+                        warningsContainer.Add(warning);
                     }
-                ).ToList();
-                if (usesWdOff) {
-                    warnings.Add(VRCFuryEditorUtils.Warn(
-                        "This controller uses WD off!" +
-                        " If you want this prop to be reusable, you should use WD on." +
-                        " VRCFury will automatically convert the WD on or off to match the client's avatar," +
-                        " however if WD is converted from 'off' to 'on', the 'stickiness' of properties will be lost."
-                    ));
-                }
-                foreach (var c in warnings) {
-                    debug.Add(c);
-                }
+                    warningsContainer.TrackSerializedObjectValue(
+                        prop.serializedObject,
+                        _ => ScheduleRefreshWarnings()
+                    );
 
-                return debug;
-            }));
+                    return warningsContainer;
+                }
+                content.Add(VRCFuryEditorUtils.RefreshOnTrigger(
+                    BuildWarnings,
+                    prop.serializedObject,
+                    out refreshWarnings
+                ));
+            }
 
             return content;
         }

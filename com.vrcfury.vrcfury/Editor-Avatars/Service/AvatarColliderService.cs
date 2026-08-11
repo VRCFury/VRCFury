@@ -25,6 +25,8 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
+        [VFAutowired] private readonly VrcsdkGlobalColliders vrcsdkGlobalColliders;
 
         private readonly Lazy<IDictionary<String, FoundCollider>> all;
 
@@ -112,7 +114,13 @@ namespace VF.Service {
             return all.Value.TryGetValue(colliderName, out var c) ? c : null;
         }
 
-        public void CustomizeCollider(string colliderName, VFGameObject transform, float radius, float height) {
+        public void CustomizeCollider(
+            string colliderName,
+            VFGameObject transform,
+            float radius,
+            float height,
+            bool allowGlobalCollider
+        ) {
             var found = GetColliderOrNull(colliderName);
             if (found == null) {
                 throw new Exception("Collider does not exist on avatar: " + colliderName);
@@ -121,6 +129,12 @@ namespace VF.Service {
                 throw new Exception("Collider was already customized by another VRCF component: " + colliderName);
             }
             found.customizedByVrcf = true;
+
+            if (allowGlobalCollider
+                && found.isFinger
+                && vrcsdkGlobalColliders.Create(transform, radius, height, IsOnHead(transform))) {
+                return;
+            }
 
             // Disable mirroring, we don't need to do any mirror math, since OriginalContactsHook would have ensured that that already happened
             // Note, this doesn't actually impact in-game, it just keeps the gui editor from trying to mirror the values
@@ -188,6 +202,11 @@ namespace VF.Service {
 
                 return collider;
             });
+        }
+
+        private bool IsOnHead(VFGameObject transform) {
+            var head = armatureCache.FindBoneOnArmatureOrNull(HumanBodyBones.Head);
+            return head != null && transform.IsSameOrChildOf(head);
         }
         
         private static void RemoveFromContactList(List<string> collisionTags, string fingerColliderName) {

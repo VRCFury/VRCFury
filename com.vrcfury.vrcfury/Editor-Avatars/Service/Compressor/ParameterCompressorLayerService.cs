@@ -8,21 +8,19 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Service.Compressor {
     /**
-     * Builds the FX layer responsible for actually handling the parameter compression.
+     * Builds the layer responsible for actually handling the parameter compression.
      */
     [VFService]
     internal class ParameterCompressorLayerService {
         [VFAutowired] private readonly CompressorLayerUtilsService layerUtilsService;
-        [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
 
-        public void BuildLayer(OptimizationDecision decision) {
+        public void BuildLayer(OptimizationDecision decision, ControllerManager controller) {
             var (numberBatches, boolBatches) = decision.GetBatches();
 
             var batchCount = Math.Max(numberBatches.Count, boolBatches.Count);
             var indexBitCount = decision.GetIndexBitCount();
             var syncIndex = Enumerable.Range(0, indexBitCount)
-                .Select(i => fx.NewBool($"SyncIndex{i}", synced: true))
+                .Select(i => controller.NewBool($"SyncIndex{i}", synced: true))
                 .ToArray();
             var syncInts = Enumerable.Range(0, decision.numberSlots)
                 .Select(i => layerUtilsService.MakeParam("SyncDataNum" + i, VRCExpressionParameters.ValueType.Int, true))
@@ -31,14 +29,14 @@ namespace VF.Service.Compressor {
                 .Select(i => layerUtilsService.MakeParam("SyncDataBool" + i, VRCExpressionParameters.ValueType.Bool, true))
                 .ToList();
 
-            var layer = fx.NewLayer("Parameter Compressor");
+            var layer = controller.NewLayer("Parameter Compressor");
             layer.weight = 0;
             var entry = layer.NewState("Entry").Move(0, 2);
-            //entry.TransitionsFromAny().When(fx.IsAnimatorEnabled().IsFalse());
+            //entry.TransitionsFromAny().When(controller.IsAnimatorEnabled().IsFalse());
             var remoteLost = layer.NewState("Receive (Lost)").Move(entry, 0, 1);
-            entry.TransitionsTo(remoteLost).When(fx.IsLocal().IsFalse());
+            entry.TransitionsTo(remoteLost).When(controller.IsLocal().IsFalse());
             var local = layer.NewState("Local").Move(entry, -2, 1);
-            entry.TransitionsTo(local).When(fx.Always());
+            entry.TransitionsTo(local).When(controller.Always());
 
             Action applyLatchDrivers = () => { };
             Action applyCopyDrivers = () => { };
@@ -81,7 +79,7 @@ namespace VF.Service.Compressor {
                 var sendStateExtraFrame = layer.NewState("Extra Frame").Move(entry, -2, yOffset);
 
                 if (batchNum == 0) {
-                    local.TransitionsTo(sendState).When(fx.Always());
+                    local.TransitionsTo(sendState).When(controller.Always());
                     remoteLost.TransitionsTo(receiveState).When(receiveCondition);
                     applyLoopTransition += () => {
                         whenNextStateReady?.Invoke(sendStateExtraFrame, receiveState, receiveCondition);
@@ -98,7 +96,7 @@ namespace VF.Service.Compressor {
                 if (unlatchNow) unlatchState = receiveState;
 
                 sendIdDriver.Invoke(sendState);
-                sendStateExtraFrame.TransitionsTo(sendState).When(fx.Always());
+                sendStateExtraFrame.TransitionsTo(sendState).When(controller.Always());
 
                 void SyncParam(VRCExpressionParameters.Parameter original, VRCExpressionParameters.Parameter slot) {
                     VRCExpressionParameters.Parameter sendFrom;
@@ -144,7 +142,7 @@ namespace VF.Service.Compressor {
             applyLatchDrivers.Invoke();
             applyCopyDrivers.Invoke();
             applyUnlatchDrivers.Invoke();
-            layerUtilsService.FixWd(layer);
+            layerUtilsService.FixWd(layer, controller);
         }
     }
 }

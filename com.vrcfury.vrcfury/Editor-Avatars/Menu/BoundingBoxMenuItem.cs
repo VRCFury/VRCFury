@@ -5,16 +5,8 @@ namespace VF.Menu {
     internal static class BoundingBoxMenuItem {
         private const string EditorPref = "com.vrcfury.boundingBoxFix";
 
-        [InitializeOnLoadMethod]
-        private static void Init() {
-            EditorApplication.delayCall += UpdateMenu;
-        }
-
         public static bool Get() {
             return EditorPrefs.GetBool(EditorPref, true);
-        }
-        private static void UpdateMenu() {
-            UnityEditor.Menu.SetChecked(MenuItems.boundingBoxFix, Get());
         }
 
         [MenuItem(MenuItems.boundingBoxFix, priority = MenuItems.boundingBoxFixPriority)]
@@ -31,7 +23,12 @@ namespace VF.Menu {
                 if (!ok) return;
             }
             EditorPrefs.SetBool(EditorPref, !Get());
-            UpdateMenu();
+        }
+
+        [MenuItem(MenuItems.boundingBoxFix, true)]
+        private static bool Validate() {
+            UnityEditor.Menu.SetChecked(MenuItems.boundingBoxFix, Get());
+            return true;
         }
     }
 }

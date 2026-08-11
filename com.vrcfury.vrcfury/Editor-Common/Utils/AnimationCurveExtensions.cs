@@ -13,7 +13,7 @@ namespace VF.Utils {
             var keyCount = curve.keys.Length;
             
             var copy = new AnimationCurve();
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2022_3_OR_NEWER
             copy.CopyFrom(curve);
 #else
             copy.keys = curve.keys.ToArray();

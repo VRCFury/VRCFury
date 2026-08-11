@@ -23,7 +23,8 @@
         "VRC.SDK3.Dynamics.Contact.dll",
         "VRC.SDK3.Dynamics.Constraint.dll",
         "VRCSDKBase-Editor.dll",
-        "VRCCore-Editor.dll"
+        "VRCCore-Editor.dll",
+        "0Harmony.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [
@@ -61,9 +62,24 @@
             "define": "VRCSDK_HAS_VRCCONSTRAINTS"
         },
         {
+            "name": "com.vrchat.base",
+            "expression": "3.10.4",
+            "define": "VRCSDK_HAS_GLOBAL_PHYSBONE_COLLIDERS"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.10.5-0",
+            "define": "VRCSDK_HAS_GLOBAL_PHYSBONE_COLLIDER_OTHER"
+        },
+        {
             "name": "com.vrchat.avatars",
             "expression": "",
             "define": "VRCF_AVATARS"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.10.3",
+            "define": "VRCSDK_HAS_VRCRAYCAST"
         }
     ],
     "noEngineReferences": false

@@ -18,7 +18,7 @@ namespace VF.Hooks {
     internal static class PrefabFixHook {
 
 #if VRC_NEW_PUBLIC_SDK
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             VRCSdkControlPanel.OnSdkPanelEnable += (sender, e) => {
                 if (VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder)) {
@@ -39,7 +39,7 @@ namespace VF.Hooks {
             public static readonly FieldInfo RunExportAndUploadAvatarBlueprint = SdkBuilder?.VFStaticField("RunExportAndUploadAvatarBlueprint");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             try {
@@ -70,7 +70,7 @@ namespace VF.Hooks {
             VRCFPrefabFixer.Fix(new VFGameObject[] { obj });
         }
         
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void InitPlayMode() {
             EditorApplication.playModeStateChanged += state => {
                 if (state == PlayModeStateChange.ExitingEditMode) {

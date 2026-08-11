@@ -263,7 +263,6 @@ namespace VF.Feature {
                 Debug.LogWarning("Failed to find base skin on avatar");
                 return;
             }
-            var baseSkinPath = baseSkin.owner().GetPath(avatarObject);
             var linkSkins = GetLinkSkins(model);
 
             foreach (var linked in linkSkins) {
@@ -277,24 +276,24 @@ namespace VF.Feature {
                 }
 
                 foreach (var c in controllers.GetAllUsedControllers()) {
-                    c.ForEachClip(clip => {
+                    foreach (var clip in c.GetClips()) {
                         foreach (var binding in clip.GetFloatBindings()) {
                             if (binding.type != typeof(SkinnedMeshRenderer)) continue;
-                            if (binding.path != baseSkinPath) continue;
+                            if (!binding.Targets(baseSkin.owner())) continue;
                             if (!binding.propertyName.StartsWith("blendShape.")) continue;
                             var baseName = binding.propertyName.Substring(11);
 
                             foreach (var linkedName in baseToLinkedMapping.Get(baseName)) {
                                 var linkedI = linked.GetBlendShapeIndex(linkedName);
                                 if (linkedI < 0) continue;
-                                var newBinding = binding;
-                                newBinding.path = linked.owner().GetPath(avatarObject);
-                                newBinding.propertyName = "blendShape." + linkedName;
+                                var newBinding = binding
+                                    .WithTarget(linked.owner())
+                                    .WithPropertyName("blendShape." + linkedName);
 
                                 clip.SetCurve(newBinding, clip.GetFloatCurve(binding));
                             }
                         }
-                    });
+                    }
                 }
             }
         }

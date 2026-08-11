@@ -2,6 +2,7 @@
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     [VFService]
@@ -9,13 +10,11 @@ namespace VF.Service {
     internal class ClipFactoryService {
         [VFAutowired] private readonly VFInjectorParent parent;
 
-        public AnimationClip GetEmptyClip() {
+        public VFClip GetEmptyClip() {
             return NewClip("Empty");
         }
-        public AnimationClip NewClip(string name, bool usePrefix = true) {
-            var clip = VrcfObjectFactory.Create<AnimationClip>();
-            clip.name = usePrefix ? $"{GetPrefix()}/{name}" : name;
-            return clip;
+        public VFClip NewClip(string name, bool usePrefix = true) {
+            return VFClip.Create(usePrefix ? $"{GetPrefix()}/{name}" : name);
         }
 
         public string GetPrefix() {

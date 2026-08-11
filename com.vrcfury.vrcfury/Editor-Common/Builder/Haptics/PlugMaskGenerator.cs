@@ -32,13 +32,13 @@ namespace VF.Builder.Haptics {
 
             float[] output = new float[vertices.Length];
             for (var i = 0; i < vertices.Length; i++) {
-                var activeByWeight = 1f;
-                if (boneWeights.Length > 0) {
-                    activeByWeight = GetWeight(boneWeights[i], includedBoneIds);
-                }
+                var activeByWeight = boneWeights.Length == 0
+                    ? 1f
+                    : GetWeight(boneWeights.GetOrDefault(i), includedBoneIds);
                 var activeByTexture = 1f;
+                var uv = uvs.GetOrDefault(i, Vector2.zero);
                 if (textureMask != null) {
-                    var p = textureMask.GetPixelBilinear(uvs[i].x, uvs[i].y);
+                    var p = textureMask.GetPixelBilinear(uv.x, uv.y);
                     activeByTexture = 1 - Math.Min(p.maxColorComponent, p.a);
                 }
 

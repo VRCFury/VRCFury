@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using VF.Feature.Base;
 using VF.Utils;
+using VF.Utils.Controller;
 using Action = VF.Model.StateAction.Action;
 
 namespace VF.Actions {
@@ -8,8 +9,8 @@ namespace VF.Actions {
     }
 
     internal abstract class ActionBuilder {
-        protected static AnimationClip NewClip() {
-            return VrcfObjectFactory.Create<AnimationClip>();
+        protected static VFClip NewClip() {
+            return VFClip.Create();
         }
     }
 }

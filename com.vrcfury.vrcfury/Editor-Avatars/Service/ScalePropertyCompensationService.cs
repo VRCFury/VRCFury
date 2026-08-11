@@ -10,20 +10,18 @@ namespace VF.Service {
      */
     [VFService]
     internal class ScalePropertyCompensationService {
-        [VFAutowired] private readonly ScaleFactorService scaleFactorService;
+        [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         public void AddScaledProp(VFGameObject scaleReference, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
-            var worldSpace = GameObjects.Create("WorldSpace", scaleReference);
-            ConstraintUtils.MakeWorldSpace(worldSpace);
-            var scaleFactor = scaleFactorService.Get(scaleReference, worldSpace);
-            if (scaleFactor == null) return;
-            AddScaledProp(scaleFactor, properties);
+            var worldScale = worldScaleService.GetWorldScale(scaleReference, "tps scale fix");
+            if (worldScale == null) return;
+            AddScaledProp(worldScale, properties);
         }
 
-        public void AddScaledProp(VFAFloat scaleFactor, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
-            if (scaleFactor == null) return;
+        public void AddScaledProp(VFAFloat worldScale, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
+            if (worldScale == null) return;
 
             var directTree = dbtLayerService.Create();
             
@@ -31,7 +29,7 @@ namespace VF.Service {
             directTree.Add(zeroClip);
 
             var scaleClip = clipFactory.NewClip($"scaleComp_one");
-            directTree.Add(scaleFactor, scaleClip);
+            directTree.Add(worldScale, scaleClip);
 
             foreach (var prop in properties) {
                 scaleClip.SetCurve(

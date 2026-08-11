@@ -27,7 +27,6 @@ namespace VF.Service {
             } else {
                 prms = VrcfObjectFactory.Create<VRCExpressionParameters>();
                 prms.parameters = new VRCExpressionParameters.Parameter[] { };
-                prms.WorkLog("Created new expression parameters asset");
             }
             VRCAvatarUtils.SetAvatarParams(avatar, prms);
             prms.RemoveDuplicates();

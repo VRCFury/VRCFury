@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
@@ -34,7 +34,7 @@ namespace VF.Service {
                     // States using motion time don't need "fixed" because the length of the state doesn't matter!
                     continue;
                 }
-                if (!(state.motion is BlendTree tree)) {
+                if (!(state.motion is VFTree tree)) {
                     continue;
                 }
 
@@ -47,16 +47,16 @@ namespace VF.Service {
                     var maxLen = nonZeroClipLengths.Max();
                     foreach (var subtree in new AnimatorIterator.Trees().From(tree)) {
                         subtree.RewriteChildren(child => {
-                            if (child.motion is AnimationClip) child.timeScale = 1_000_000_000;
+                            if (child.motion is VFClip) child.timeScale = 1_000_000_000;
                             return child;
                         });
                     }
-                    var wrapper = VFBlendTreeDirect.Create($"{tree.name} (Length Fixed)");
+                    var directTree = VFBlendTreeDirect.Create($"{tree.name} (Length Fixed)");
                     var lenClip = clipFactory.NewClip($"{tree.name} Length", false);
-                    lenClip.SetLengthHolder(maxLen);
-                    wrapper.Add(lenClip);
-                    wrapper.Add(tree);
-                    state.motion = wrapper;
+                    lenClip.UpdateLengthIfLonger(maxLen);
+                    directTree.Add(lenClip);
+                    directTree.Add(tree);
+                    state.motion = directTree;
                 }
             }
         }

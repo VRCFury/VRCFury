@@ -6,8 +6,8 @@ using UnityEngine.Experimental.Rendering;
 namespace VF.Utils {
     internal static class Texture2DExtensions {
         public static void ForceReadable(this Texture2D texture, bool on = true) {
+            if (texture.isReadable == on) return;
             var so = new SerializedObject(texture);
-            so.Update();
             var sp = so.FindProperty("m_IsReadable");
             sp.boolValue = on;
             so.ApplyModifiedPropertiesWithoutUndo();
@@ -16,7 +16,7 @@ namespace VF.Utils {
         public static Texture2D Optimize(this Texture2D original, bool forceCompression = true, int maxSize = 256) {
             var needsCompressed = false;
             if (forceCompression) {
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2022_2_OR_NEWER
                 var isCompressed = GraphicsFormatUtility.IsCompressedFormat(original.format);
 #else
                 var isCompressed = GraphicsFormatUtility.IsCompressedFormat(GraphicsFormatUtility.GetGraphicsFormat(original.format, true));

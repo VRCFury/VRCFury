@@ -39,10 +39,9 @@ namespace VF.Service.Compressor {
             var useBadPriorityMethod = false;
 
             // Avoid making this clone controllers
-            foreach (var drivenParam in controllers.GetAllReadOnlyControllers()
+            foreach (var drivenParam in controllers.GetAllUsedControllers()
                          .SelectMany(controller => controller.layers)
-                         .SelectMany(layer => layer.allBehaviours)
-                         .OfType<VRCAvatarParameterDriver>()
+                         .SelectMany(layer => layer.GetBehaviours<VRCAvatarParameterDriver>())
                          .SelectMany(driver => driver.parameters)) {
                 drivenParams.Add(drivenParam.name);
                 if (drivenParam.type == VRC_AvatarParameterDriver.ChangeType.Add) addDrivenParams.Add(drivenParam.name);
@@ -94,7 +93,7 @@ namespace VF.Service.Compressor {
             }
 
             var controllerUsedParams = new HashSet<string>();
-            foreach (var c in controllers.GetAllReadOnlyControllers()) {
+            foreach (var c in controllers.GetAllUsedControllers()) {
                 c.RewriteParameters(p => {
                     controllerUsedParams.Add(p);
                     return p;
@@ -105,6 +104,13 @@ namespace VF.Service.Compressor {
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                 contactParams.Add(c.parameter);
             }
+#if VRCSDK_HAS_VRCRAYCAST
+            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCRaycast>()) {
+                contactParams.Add(c.Parameter + "_Hit");
+                contactParams.Add(c.Parameter + "_Ratio");
+                contactParams.Add(c.Parameter + "_Distance");
+            }
+#endif
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()) {
                 contactParams.Add(c.parameter + "_IsGrabbed");
                 contactParams.Add(c.parameter + "_Angle");

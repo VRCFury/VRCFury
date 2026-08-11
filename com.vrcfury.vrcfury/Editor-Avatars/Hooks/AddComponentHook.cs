@@ -29,7 +29,7 @@ namespace VF.Hooks {
 
         private static bool addedThisFrame = false;
         
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             EditorApplication.delayCall += AddToMenu;
             if (Reflection.MenuChangedAddHandler != null) {

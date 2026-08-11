@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -12,7 +12,7 @@ namespace VF.Utils {
     internal static class EditorWindowFinder {
         private static readonly HashSet<EditorWindow> activeWindows = new HashSet<EditorWindow>();
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             activeWindows.UnionWith(Resources.FindObjectsOfTypeAll<EditorWindow>());
             Scheduler.Schedule(() => {

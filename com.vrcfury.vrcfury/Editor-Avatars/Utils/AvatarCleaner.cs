@@ -83,39 +83,44 @@ namespace VF.Utils {
                 foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
                     var controller_ = c.controller as AnimatorController;
                     if (controller_ == null) continue;
-                    var controller = new VFController(controller_);
+                    var controller = VFController.Load(controller_, new VFLoadContext());
                     var typeName = VRCFEnumUtils.GetName(c.type);
                     if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller_)) {
                         removeItems.Add("Avatar Controller: " + typeName);
                         if (perform) c.setToDefault();
                     } else {
-                        var removedLayers = new HashSet<VFLayer>();
+                        var removedLayerNames = new HashSet<string>();
                         if (ShouldRemoveLayer != null) {
-                            foreach (var layer in controller.GetLayers()) {
+                            foreach (var layer in controller_.layers) {
                                 if (!ShouldRemoveLayer(layer.name)) continue;
                                 removeItems.Add(typeName + " Layer: " + layer.name);
-                                removedLayers.Add(layer);
-                                if (perform) {
-                                    layer.Remove();
-                                }
+                                removedLayerNames.Add(layer.name);
+                            }
+                            if (perform) {
+                                controller_.layers = controller_.layers
+                                    .Where(layer => !removedLayerNames.Contains(layer.name))
+                                    .ToArray();
                             }
                         }
 
                         if (ShouldRemoveParam != null) {
-                            for (var i = 0; i < controller.parameters.Length; i++) {
-                                var prm = controller.parameters[i].name;
+                            var removedParams = new HashSet<string>();
+                            foreach (var parameter in controller_.parameters) {
+                                var prm = parameter.name;
                                 if (!ShouldRemoveParam(prm)) continue;
 
                                 var prmUsed = controller.GetLayers()
-                                    .Where(layer => !removedLayers.Contains(layer))
+                                    .Where(layer => !removedLayerNames.Contains(layer.name))
                                     .Any(layer => IsParamUsed(layer, prm));
                                 if (prmUsed) continue;
 
                                 removeItems.Add(typeName + " Parameter: " + prm);
-                                if (perform) {
-                                    controller.RemoveParameter(i);
-                                    i--;
-                                }
+                                removedParams.Add(prm);
+                            }
+                            if (perform) {
+                                controller_.parameters = controller_.parameters
+                                    .Where(parameter => !removedParams.Contains(parameter.name))
+                                    .ToArray();
                             }
                         }
 
@@ -220,7 +225,7 @@ namespace VF.Utils {
                 state.timeParameter == param
             );
             isUsed |= new AnimatorIterator.Trees().From(layer)
-                .Any(tree => tree.blendParameter == param || tree.blendParameterY == param);
+                .Any(tree => tree.BlendParameter == param || tree.BlendParameterY == param);
             return isUsed;
         }
     }

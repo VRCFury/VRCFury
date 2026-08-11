@@ -8,7 +8,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Service.Compressor {
     /**
-     * Builds the FX layer responsible for actually handling the parameter compression.
+     * Builds the layer responsible for actually handling the parameter compression.
      * This one uses the legacy "priority" method, which is really expensive on transitions,
      * doesn't work properly with interlinked params, costs a ton of extra fx param slots,
      * uses more synced bits for indexing, and is overall just bad. The only benefit
@@ -17,13 +17,11 @@ namespace VF.Service.Compressor {
     [VFService]
     internal class ParameterCompressorLegacyLayerService {
         [VFAutowired] private readonly CompressorLayerUtilsService layerUtilsService;
-        [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
 
-        public void BuildLayer(OptimizationDecision decision) {
+        public void BuildLayer(OptimizationDecision decision, ControllerManager controller) {
             var (numberBatches, boolBatches) = decision.GetBatches();
 
-            var syncPointer = fx.NewInt("SyncPointer", synced: true);
+            var syncPointer = controller.NewInt("SyncPointer", synced: true);
             var syncInts = Enumerable.Range(0, decision.numberSlots)
                 .Select(i => layerUtilsService.MakeParam("SyncDataNum" + i, VRCExpressionParameters.ValueType.Int, true))
                 .ToList();
@@ -31,17 +29,17 @@ namespace VF.Service.Compressor {
                 .Select(i => layerUtilsService.MakeParam("SyncDataBool" + i, VRCExpressionParameters.ValueType.Bool, true))
                 .ToList();
 
-            var layer = fx.NewLayer("Legacy Parameter Compressor");
+            var layer = controller.NewLayer("Legacy Parameter Compressor");
             layer.weight = 0;
             var entry = layer.NewState("Entry").Move(-3, -1);
             var local = layer.NewState("Local").Move(0, 2);
-            entry.TransitionsTo(local).When(fx.IsLocal().IsTrue());
-            entry.TransitionsToExit().When(fx.Always());
+            entry.TransitionsTo(local).When(controller.IsLocal().IsTrue());
+            entry.TransitionsToExit().When(controller.Always());
 
-            var directLayer = fx.NewLayer("Legacy Parameter Compressor (Math)");
+            var directLayer = controller.NewLayer("Legacy Parameter Compressor (Math)");
             var tree = VFBlendTreeDirect.Create("DBT");
             directLayer.NewState("DBT").WithAnimation(tree);
-            var math = new BlendtreeMath(fx, tree);
+            var math = new BlendtreeMath(controller, tree);
 
             Action addRoundRobins = () => { };
             Action addDefault = () => { };
@@ -63,9 +61,9 @@ namespace VF.Service.Compressor {
                     .Drives(syncPointer, syncIndex)
                     .TransitionsTo(local)
                     .WithTransitionExitTime(ParameterCompressorService.BATCH_TIME)
-                    .When(fx.Always());
+                    .When(controller.Always());
                 receiveState.TransitionsFromEntry().When(syncPointer.IsEqualTo(syncIndex));
-                receiveState.TransitionsToExit().When(fx.Always());
+                receiveState.TransitionsToExit().When(controller.Always());
                 if (i == 0) {
                     sendState.Move(local, 1, 0);
                     receiveState.Move(local, 3, 0);
@@ -78,18 +76,19 @@ namespace VF.Service.Compressor {
                 nextStateSpacing = (int)Math.Ceiling((title.Split('\n').Length+1) / 5f);
 
                 for (var slotNum = 0; slotNum < numberBatch.Count(); slotNum++) {
-                    var originalParam = numberBatch[slotNum].name;
-                    var type = numberBatch[slotNum].valueType;
-                    var lastSynced = fx.NewFloat($"{originalParam}/LastSynced", def: -100);
+                    var original = numberBatch[slotNum];
+                    var originalParam = original.name;
+                    var type = original.valueType;
+                    var lastSynced = controller.NewFloat($"{originalParam}/LastSynced", def: -100);
                     sendState.DrivesCopy(originalParam, lastSynced);
 
                     VFAFloat currentValue;
                     if (type == VRCExpressionParameters.ValueType.Float) {
-                        currentValue = fx.NewFloat(originalParam, usePrefix: false);
+                        currentValue = (VFAFloat)layerUtilsService.AddToController(controller, original);
                         sendState.DrivesCopy(originalParam, syncInts[slotNum].name, -1, 1, 0, 254);
                         receiveState.DrivesCopy(syncInts[slotNum].name, originalParam, 0, 254, -1, 1);
                     } else if (type == VRCExpressionParameters.ValueType.Int) {
-                        currentValue = fx.NewFloat($"{originalParam}/Current");
+                        currentValue = controller.NewFloat($"{originalParam}/Current");
                         local.DrivesCopy(originalParam, currentValue);
                         sendState.DrivesCopy(originalParam, syncInts[slotNum].name);
                         receiveState.DrivesCopy(syncInts[slotNum].name, originalParam);
@@ -102,19 +101,21 @@ namespace VF.Service.Compressor {
                     local.TransitionsTo(sendState).When(shortcutCondition);
                 }
                 for (var slotNum = 0; slotNum < boolBatch.Count(); slotNum++) {
-                    var originalParam = boolBatch[slotNum].name;
-                    var lastSynced = fx.NewInt($"{originalParam}/LastSynced", def: -100);
+                    var original = boolBatch[slotNum];
+                    var originalAction = (VFABool)layerUtilsService.AddToController(controller, original);
+                    var originalParam = original.name;
+                    var lastSynced = controller.NewInt($"{originalParam}/LastSynced", def: -100);
                     sendState.DrivesCopy(originalParam, lastSynced);
                     sendState.DrivesCopy(originalParam, syncBools[slotNum].name);
                     receiveState.DrivesCopy(syncBools[slotNum].name, originalParam);
-                    var shortcutCondition = new VFABool(originalParam, false).IsTrue().And(lastSynced.IsLessThan(1));
-                    shortcutCondition = shortcutCondition.Or(new VFABool(originalParam, false).IsFalse().And(lastSynced.IsGreaterThan(0)));
+                    var shortcutCondition = originalAction.IsTrue().And(lastSynced.IsLessThan(1));
+                    shortcutCondition = shortcutCondition.Or(originalAction.IsFalse().And(lastSynced.IsGreaterThan(0)));
                     local.TransitionsTo(sendState).When(shortcutCondition);
                 }
 
                 if (i == 0) {
                     addDefault = () => {
-                        local.TransitionsTo(sendState).When(fx.Always());
+                        local.TransitionsTo(sendState).When(controller.Always());
                     };
                 } else {
                     var fromI = syncIndex - 1; // Needs to be set outside the lambda
@@ -125,7 +126,7 @@ namespace VF.Service.Compressor {
             }
             addRoundRobins();
             addDefault();
-            layerUtilsService.FixWd(layer);
+            layerUtilsService.FixWd(layer, controller);
         }
     }
 }

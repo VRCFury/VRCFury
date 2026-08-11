@@ -1,21 +1,26 @@
 namespace VF.Feature.Base {
     internal enum FeatureOrder {
-        
+
+        CleanTmpDir,
         CollectExistingComponents,
-        CleanupLegacy,
-        BackupBefore,
+
+        // Needs to happen before controllers load
+        CaptureInitialState,
+        ArmatureLinkForceMergedNames,
 
         // Needs to happen before everything
         FixDoubleFx,
         RemoveDefaultControllers,
         RemoveExtraDescriptors,
+        FixInvalidAnimator,
 
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore,
         
-        CloneAllControllers,
+        LoadAllControllers,
+        BackupBefore,
         
-        FixAmbiguousObjectNames,
+        EnsureAnimationSafeNames,
         
         // Needs to happen before toggles begin getting processed
         ApplyDuringUpload,
@@ -23,8 +28,8 @@ namespace VF.Feature.Base {
         // Needs to be the first thing to instantiate the ControllerManagers
         AnimatorLayerControlRecordBase,
         
-        // Needs to happen before any objects are moved, so otherwise the imported
-        // animations would not be adjusted to point to the new moved object paths
+        // Needs to happen before any objects are moved, so imported controller data
+        // resolves against the hierarchy it was authored for
         FullController,
         
         UpgradeLegacyHaptics,
@@ -33,7 +38,7 @@ namespace VF.Feature.Base {
         // Needs to run after all haptic components are in place
         // Needs to run before Toggles, because of its "After Bake" action
         BakeHapticPlugs,
-        
+
         ApplyImplicitRestingStates,
 
         Default,
@@ -51,9 +56,6 @@ namespace VF.Feature.Base {
         // Needs to happen after all controller params (and their types) are in place
         DriveNonFloatTypes,
         
-        // Needs to happen after animations are done but before objects start to move
-        FixAmbiguousAnimations,
-
         // Needs to happen after builders have scanned their prop children objects for any purpose (since this action
         // may move objects out of the props and onto the avatar base). One example is the FullController which
         // scans the prop children for contact receivers.
@@ -65,6 +67,9 @@ namespace VF.Feature.Base {
         // Needs to happen after any new skinned meshes have been added
         BoundingBoxFix,
         AnchorOverrideFix,
+
+        // Needs to happen after object moves, once final object hierarchy is known
+        IsObjectEnabled,
 
         // Needs to happen after toggles
         HapticsAnimationRewrites,
@@ -84,7 +89,6 @@ namespace VF.Feature.Base {
         DisableSyncForAaps,
         MakeAllSyncedDriversLocal,
         RemoveVrcGlobalsFromExpressionParams,
-        ParameterCompressor,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         ApplyModifiedMaterialProperties, // Needs to run before RecordAllDefaults
@@ -102,30 +106,28 @@ namespace VF.Feature.Base {
         AnimatorLayerControlFix,
         ReorderLayersByPriority,
         RemoveNonQuestMaterials,
+        FixMipmapStreaming,
         FixTreeLength,
         TreeFlattening,
         AdjustWriteDefaults, // Needs to be after TreeFlattening, since it can change whether or not a layer has a DBT
         FixEmptyMotions, // Needs to be after AdjustWriteDefaults, since it changes behaviour if a state is WD on or off
         UpgradeWrongParamTypes,
         MakeControllerNamesUnique,
-        FinalizeController,
 
         // Finalize Menus
         MoveSpsMenus,
         MoveMenuItems,
         FinalizeMenu,
-        FixMipmapStreaming,
         FixAudio,
         FixMenuIconTextures,
-        
+
         AddDebugVrcParameter,
 
-        MarkThingsAsDirtyJustInCase,
-        
         // Needs to happen after everything is done using the animator, and before SaveAssets
         ResetAnimatorAfter,
-
         SaveAssets,
+        FinalizeAvatarDescriptor,
+
         Validation,
         HideAddedComponents,
         BackupAfter,

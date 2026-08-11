@@ -22,5 +22,9 @@ namespace VF.Utils.Controller {
         public VFAFloat AsFloat() {
             return new VFAFloat(name, def ? 1 : 0);
         }
+
+        public bool GetDefault() {
+            return def;
+        }
     }
 }

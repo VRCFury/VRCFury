@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
@@ -27,12 +26,16 @@ namespace VF.Utils {
             Func<string> currentFeatureClipPrefixProvider,
             Func<string, string> makeUniqueParamName,
             LayerSourceService layerSourceService
-        ) : base(ctrl.GetRaw(), type) {
+        ) : base(ctrl, type) {
             this.paramManager = paramManager;
             this.currentFeatureNumProvider = currentFeatureNumProvider;
             this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
             this.makeUniqueParamName = makeUniqueParamName;
             this.layerSourceService = layerSourceService;
+
+            foreach (var pair in ctrl.GetLayers().Zip(GetLayers(), (from, to) => (from, to))) {
+                layerSourceService.CopySource(pair.from, pair.to);
+            }
         }
 
         public VFLayer EnsureEmptyBaseLayer() {
@@ -166,14 +169,10 @@ namespace VF.Utils {
             return layerSourceService.GetSource(layer);
         }
 
-        public void ForEachClip(Action<AnimationClip> action) {
-            foreach (var clip in new AnimatorIterator.Clips().From(this)) {
+        public void ForEachClip(Action<VFClip> action) {
+            foreach (var clip in GetClips()) {
                 action(clip);
             }
-        }
-
-        public IImmutableSet<AnimationClip> GetClips() {
-            return new AnimatorIterator.Clips().From(this);
         }
     }
 }

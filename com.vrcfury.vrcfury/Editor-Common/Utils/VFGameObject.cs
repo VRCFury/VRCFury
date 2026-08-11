@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Hooks.UnityFixes;
 using VF.Utils;
 using VRC.Dynamics;
 using Object = UnityEngine.Object;
@@ -139,7 +140,9 @@ namespace VF.Utils {
         public T GetComponent<T>() {
             return GetComponents<T>().FirstOrDefault();
         }
-
+        public UnityEngine.Component[] GetComponents() {
+            return GetComponents<UnityEngine.Component>();
+        }
         public UnityEngine.Component[] GetComponents(Type t) {
             // Components can sometimes be null for some reason. Perhaps when they're corrupt?
             // The OfType is required because unity can be tricked into blindly returning things that are NOT components
@@ -149,19 +152,20 @@ namespace VF.Utils {
         public T[] GetComponents<T>() {
             return gameObject.GetComponents<T>().NotNull().OfType<T>().ToArray();
         }
-        
-        public T GetComponentInSelfOrParent<T>() {
-            return GetComponentsInSelfAndParents<T>().FirstOrDefault();
+
+        public UnityEngine.Component[] GetComponentsInSelfAndChildren() {
+            return GetComponentsInSelfAndChildren<UnityEngine.Component>();
         }
-        
         public UnityEngine.Component[] GetComponentsInSelfAndChildren(Type type) {
             return gameObject.GetComponentsInChildren(type, true).NotNull().OfType<UnityEngine.Component>().ToArray();
         }
-
         public T[] GetComponentsInSelfAndChildren<T>() {
             return gameObject.GetComponentsInChildren<T>(true).NotNull().OfType<T>().ToArray();
         }
-        
+
+        public T GetComponentInSelfOrParent<T>() {
+            return GetComponentsInSelfAndParents<T>().FirstOrDefault();
+        }
         public T[] GetComponentsInSelfAndParents<T>() {
             return gameObject.GetComponentsInParent<T>(true).NotNull().OfType<T>().ToArray();
         }
@@ -178,20 +182,24 @@ namespace VF.Utils {
             return transform.Find(search);
         }
 
-        public bool IsChildOf(VFGameObject other) {
+        public bool IsSameOrChildOf(VFGameObject other) {
             return transform.IsChildOf(other);
         }
 
-        public string GetPath(VFGameObject root = null, bool prettyRoot = false) {
+        public string GetPath(VFGameObject root = null, bool prettyRoot = false, bool removeCloneFromRoot = false) {
             if (root == null) {
                 root = transform.root;
-                if (this == root) {
-                    return root.name;
+                var rootName = root.name;
+                if (removeCloneFromRoot && rootName.EndsWith("(Clone)")) {
+                    rootName = rootName.Substring(0, rootName.Length - "(Clone)".Length).TrimEnd();
                 }
-                return root.name + "/" + AnimationUtility.CalculateTransformPath(this, root);
+                if (this == root) {
+                    return rootName;
+                }
+                return rootName + "/" + AnimationUtility.CalculateTransformPath(this, root);
             }
-            if (!IsChildOf(root)) {
-                throw new Exception($"{GetPath()} is not a child of {root.GetPath()}");
+            if (!IsSameOrChildOf(root)) {
+                throw new Exception($"{GetDebugPath()} is not a child of {root.GetDebugPath()}");
             }
             if (this == root && prettyRoot) {
                 return "Avatar Root";
@@ -199,22 +207,19 @@ namespace VF.Utils {
             return AnimationUtility.CalculateTransformPath(this, root);
         }
 
-        public VFGameObject Clone() {
-            return Object.Instantiate(gameObject);
+        public string GetDebugPath() {
+            return GetPath(removeCloneFromRoot: true);
         }
 
-        public static VFGameObject[] GetRoots(Scene scene) {
-            return scene
-                .GetRootGameObjects()
-                .Select(Cast)
-                .ToArray();
+        public VFGameObject Clone() {
+            return Object.Instantiate(gameObject);
         }
 
         public static VFGameObject[] GetRoots() {
             return Enumerable.Range(0, SceneManager.sceneCount)
                 .Select(SceneManager.GetSceneAt)
                 .Where(scene => scene.isLoaded)
-                .SelectMany(GetRoots)
+                .SelectMany(scene => scene.Roots())
                 .ToArray();
         }
 
@@ -256,10 +261,6 @@ namespace VF.Utils {
             this.name = name;
         }
 
-        public int GetInstanceID() {
-            return _gameObject.GetInstanceID();
-        }
-
         public bool HasTag(string tag) {
             return gameObject.CompareTag(tag);
         }
@@ -289,15 +290,12 @@ namespace VF.Utils {
         }
 
         public VFConstraint[] GetConstraints(bool includeParents = false, bool includeChildren = false) {
-            return uploadRoots
-                .SelectMany(root => root.GetComponentsInSelfAndChildren<UnityEngine.Component>())
-                .Select(c => c.AsConstraint())
-                .NotNull()
+            return VFConstraint.GetConstraintsInSelfAndChildren(uploadRoots)
                 .Where(c => {
                     var affectedObject = c.GetAffectedObject();
                     if (affectedObject == null) return false;
-                    if (includeParents) return IsChildOf(affectedObject);
-                    if (includeChildren) return affectedObject.IsChildOf(this);
+                    if (includeParents) return IsSameOrChildOf(affectedObject);
+                    if (includeChildren) return affectedObject.IsSameOrChildOf(this);
                     return affectedObject == this;
                 })
                 .ToArray();
@@ -315,6 +313,18 @@ namespace VF.Utils {
 
         public T[] GetComponentsInUploadRoot<T>() {
             return uploadRoots.SelectMany(r => r.GetComponentsInSelfAndChildren<T>()).ToArray();
+        }
+
+        public static T[] GetComponentsInAllOpenScenes<T>() {
+            return GetRoots().SelectMany(r => r.GetComponentsInSelfAndChildren<T>()).ToArray();
+        }
+
+        public static UnityEngine.Component[] GetComponentsInAllOpenScenes(Type type) {
+            return GetRoots().SelectMany(r => r.GetComponentsInSelfAndChildren(type)).ToArray();
+        }
+
+        public bool IsSelected() {
+            return Selection.gameObjects.Contains(gameObject);
         }
     }
 }

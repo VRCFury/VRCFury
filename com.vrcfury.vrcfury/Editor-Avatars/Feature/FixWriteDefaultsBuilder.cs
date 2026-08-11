@@ -45,7 +45,9 @@ namespace VF.Feature {
                         var ctrl = c.controller;
                         while (ctrl is AnimatorOverrideController ov) ctrl = ov.runtimeAnimatorController;
                         if (ctrl == null) return null;
-                        return new VFControllerWithVrcType(ctrl as AnimatorController, c.type);
+                        var loaded = ctrl as AnimatorController;
+                        if (loaded == null) return null;
+                        return new VFControllerWithVrcType(VFController.Load(loaded, new VFLoadContext()), c.type);
                     })
                     .NotNull()
                     .ToArray();

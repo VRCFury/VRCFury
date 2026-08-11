@@ -19,22 +19,24 @@ namespace VF.Feature {
     internal class AnchorOverrideFixBuilder : FeatureBuilder<AnchorOverrideFix2> {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
 
         [FeatureBuilderAction(FeatureOrder.AnchorOverrideFix)]
         public void Apply() {
             VFGameObject root;
             try {
-                root = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Chest);
+                root = armatureCache.FindBoneOnArmatureOrException(HumanBodyBones.Chest);
             } catch (Exception) {
-                root = VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Hips);
+                root = armatureCache.FindBoneOnArmatureOrException(HumanBodyBones.Hips);
             }
 
             var worldAnimatedObjs = controllers.GetAllUsedControllers()
                 .SelectMany(c => c.GetClips())
+                .Distinct()
                 .SelectMany(clip => clip.GetAllBindings())
                 .Where(b => b.propertyName == "FreezeToWorld")
-                .Select(b => b.path)
-                .Select(path => avatarObject.Find(path))
+                .Select(b => b.target)
+                .NotNull()
                 .ToImmutableHashSet();
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
                 if (skin.owner().GetComponentInSelfOrParent<Rigidbody>() != null) {

@@ -1,5 +1,8 @@
-﻿using VF.Builder;
+using VF.Builder;
+using VF.Injector;
+using VF.Service;
 using VF.Utils;
+using VRC.SDK3.Avatars.Components;
 
 namespace VF.Hooks {
     /**
@@ -11,13 +14,8 @@ namespace VF.Hooks {
         protected override int order => int.MinValue + 100;
 
         protected override void Process(VFGameObject avatarObject) {
-            // We need to warm up the bone cache before ndmf runs because it might do some
-            // gimmicks that change humanoid bones to proxies
-            VRCFArmatureUtils.ClearCache();
-            VRCFArmatureUtils.WarmupCache(avatarObject);
-            ClosestBoneUtils.ClearCache();
-            VRCFObjectPathCache.ClearCache();
-            VRCFObjectPathCache.WarmupCache(avatarObject);
+            var injector = VRCFuryInjectorBuilder.GetInjector(avatarObject.GetComponent<VRCAvatarDescriptor>());
+            injector.GetService<VRCFObjectPathCache>().Capture();
         }
     }
 }

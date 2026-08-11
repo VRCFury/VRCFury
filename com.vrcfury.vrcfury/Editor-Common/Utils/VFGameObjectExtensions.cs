@@ -20,6 +20,9 @@ namespace VF.Utils {
             return transform;
         }
 
+        public static IEnumerable<VFGameObject> AsVf(this IEnumerable<GameObject> source) {
+            return source.Select(t => t.asVf());
+        }
         public static IEnumerable<VFGameObject> AsVf(this IEnumerable<Transform> source) {
             return source.Select(t => t.asVf());
         }

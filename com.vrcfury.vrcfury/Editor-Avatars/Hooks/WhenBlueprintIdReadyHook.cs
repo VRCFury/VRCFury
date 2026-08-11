@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using VF.Exceptions;
@@ -12,16 +12,18 @@ namespace VF.Hooks {
         private static readonly List<Action> callbacks = new List<Action>();
 
 #if VRC_NEW_PUBLIC_SDK
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             VRCSdkControlPanel.OnSdkPanelEnable += (_, _2) => {
                 if (VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder)) {
                     builder.OnSdkBuildStart += (_3, _4) => callbacks.Clear();
                     builder.OnSdkUploadFinish += (_3, _4) => callbacks.Clear();
                     builder.OnSdkUploadSuccess += (_3, _4) => {
-                        foreach (var c in callbacks) {
-                            VRCFExceptionUtils.ErrorDialogBoundary(c);
-                        }
+                        VRCFuryBuildContext.Run(() => {
+                            foreach (var c in callbacks) {
+                                c();
+                            }
+                        });
                         callbacks.Clear();
                     };
                 }

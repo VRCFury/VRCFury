@@ -8,11 +8,12 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Material Swap")]
     internal class MaterialSwapActionBuilder : ActionBuilder<MaterialAction> {
-        public AnimationClip Build(MaterialAction model) {
+        public VFClip Build(MaterialAction model) {
             var onClip = NewClip();
             var renderer = model.renderer;
             if (renderer == null) return onClip;

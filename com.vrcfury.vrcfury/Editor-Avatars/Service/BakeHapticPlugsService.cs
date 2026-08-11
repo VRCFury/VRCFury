@@ -31,12 +31,29 @@ namespace VF.Service {
         [VFAutowired] private readonly AllClipsService allClipsService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly AvatarBindingStateService avatarBindingStateService;
-        [VFAutowired] private readonly ScaleFactorService scaleFactorService;
+        [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
+        [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
+        [VFAutowired] private readonly SpsPlayerIdService spsPlayerIdService;
+        [VFAutowired] private readonly VRCFuryHapticPlugBaker plugBaker;
+        [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
+        private readonly Lazy<VFClip> materialPropertiesClip;
+
+        public BakeHapticPlugsService() {
+            materialPropertiesClip = new Lazy<VFClip>(() => {
+                var clip = clipFactory.NewClip("SpsPlugMarkerProperties");
+                directTreeService.Create("SPS Plug Marker Properties").Add(clip);
+                return clip;
+            });
+        }
+
+        private void RegisterMaterialProperties(IEnumerable<SpsConfigurer.MaterialProperty> properties) {
+            SpsConfigurer.AddMaterialPropertyCurves(materialPropertiesClip.Value, properties);
+        }
 
         private readonly Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
             new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
@@ -52,16 +69,15 @@ namespace VF.Service {
                 try {
                     PhysboneUtils.RemoveFromPhysbones(plug.owner());
                     if (!BuildTargetUtils.IsDesktop()) continue;
-                    var bakeInfo = VRCFuryHapticPlugEditor.Bake(
-                        plug,
-                        usedRenderers,
-                        deferMaterialConfig: true
-                    );
+                    var bakeInfo = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true);
                     if (bakeInfo == null) continue;
                     bakeResults[plug] = bakeInfo;
 
                     var postBakeClip = actionClipService.LoadStateAdv("sps_postbake", plug.postBakeActions, plug.owner());
-                    restingState.ApplyClipToRestingState(postBakeClip.onClip.FlattenAll(), owner: "Post-bake clip for plug on " + plug.owner().GetPath(avatarObject));
+                    restingState.ApplyClipToRestingState(
+                        postBakeClip.onClip.EvaluateMotion(1).FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips),
+                        owner: "Post-bake clip for plug on " + plug.owner().GetPath(avatarObject)
+                    );
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
@@ -70,11 +86,38 @@ namespace VF.Service {
 
         [FeatureBuilderAction]
         public void Apply() {
-            AnimationClip tipLightOnClip = null;
-            AnimationClip enableSpsPlugClip = null;
+            VFClip tipLightOnClip = null;
             var usedNames = new HashSet<string>();
 
             var plugs = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>();
+            VFClip disableDepthClip = null;
+            VFClip disableRealtimeShadowsClip = null;
+            if (plugs.Any(plug => plug.enableSps)) {
+                var disableDepth = fx.NewBool(
+                    "disableDepth",
+                    synced: true,
+                    saved: true
+                );
+                menu.NewMenuToggle(
+                    $"{spsOptions.GetOptionsPath()}/<b>Disable Depth Pass<\\/b>\n<size=20>(May fix 'ghost' plugs in some worlds)",
+                    disableDepth
+                );
+                disableDepthClip = clipFactory.NewClip("SPS Disable Depth Pass");
+                var directTree = directTreeService.Create("SPS Disable Depth Pass");
+                directTree.Add(BlendtreeMath.GreaterThan(disableDepth.AsFloat(), 0).create(disableDepthClip, null));
+                var disableRealtimeShadows = fx.NewBool(
+                    "disableRealtimeShadows",
+                    synced: true,
+                    saved: true
+                );
+                menu.NewMenuToggle(
+                    $"{spsOptions.GetOptionsPath()}/<b>Disable Realtime Shadows<\\/b>\n<size=20>(May fix 'ghost' plugs in some worlds)",
+                    disableRealtimeShadows
+                );
+                disableRealtimeShadowsClip = clipFactory.NewClip("SPS Disable Realtime Shadows");
+                directTree = directTreeService.Create("SPS Disable Realtime Shadows");
+                directTree.Add(BlendtreeMath.GreaterThan(disableRealtimeShadows.AsFloat(), 0).create(disableRealtimeShadowsClip, null));
+            }
 
             if (plugs.Any(plug => plug.addDpsTipLight)) {
                 var param = fx.NewBool("tipLight", synced: true);
@@ -93,14 +136,24 @@ namespace VF.Service {
             foreach (var plug in plugs) {
                 try {
                     if (!bakeResults.TryGetValue(plug, out var bakeInfo)) continue;
-                    ApplyPlug(plug, bakeInfo, ref enableSpsPlugClip, tipLightOnClip, usedNames);
+                    ApplyPlug(plug, bakeInfo, tipLightOnClip, disableDepthClip, disableRealtimeShadowsClip, usedNames);
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
             }
         }
         
-        private void ApplyPlug(VRCFuryHapticPlug plug, VRCFuryHapticPlugEditor.BakeResult bakeInfo, ref AnimationClip enableSpsPlugClip, AnimationClip tipLightOnClip, ISet<string> usedNames) {
+        private void ApplyPlug(
+            VRCFuryHapticPlug plug,
+            VRCFuryHapticPlugEditor.BakeResult bakeInfo,
+            VFClip tipLightOnClip,
+            VFClip disableDepthClip,
+            VFClip disableRealtimeShadowsClip,
+            ISet<string> usedNames
+        ) {
+            var name = HapticUtils.MakeUniqueId(usedNames, bakeInfo.oscId);
+            Debug.Log("Baking haptic component in " + plug.owner().GetDebugPath() + " as " + name);
+
             var bakeRoot = bakeInfo.bakeRoot;
             var worldSpace = bakeInfo.worldSpace;
             var renderers = bakeInfo.renderers;
@@ -108,22 +161,19 @@ namespace VF.Service {
             var worldLength = bakeInfo.worldLength;
             var localLength = worldLength / bakeRoot.worldScale.x;
             var propsToScale = new List<(UnityEngine.Component, string, float)>();
-            var scaleFactor = new Lazy<VFAFloat>(() => scaleFactorService.Get(bakeRoot, worldSpace));
+            var worldScale = new Lazy<VFAFloat>(() => worldScaleService.GetWorldScale(bakeRoot, name));
             
             globals.addOtherFeature(new ShowInFirstPerson {
                 useObjOverride = true,
                 objOverride = bakeRoot,
                 onlyIfChildOfHead = true
             });
-
-            var name = HapticUtils.MakeUniqueId(usedNames, bakeInfo.oscId);
-            Debug.Log("Baking haptic component in " + plug.owner().GetPath() + " as " + name);
             
             // Haptics
             if (HapticsToggleMenuItem.Get() && !plug.fromSpsForAll) {
                 // Haptic Receivers
                 var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
-                var haptics = GameObjects.Create("Haptics", bakeRoot);
+                var haptics = GameObjects.Create("Haptics", bakeInfo.oneSpace);
                 var halfWay = Vector3.forward * (worldLength / 2);
                 var extraRadiusForTouch = Math.Min(worldRadius, 0.08f /* 8cm */);
                 // Extra rub radius should always match for everyone, so when two plugs collide, both trigger at the same time
@@ -202,6 +252,7 @@ namespace VF.Service {
                     c.type = ContactReceiver.ReceiverType.Constant;
                     hapticContacts.AddReceiver(c);
                 }
+                ogbEnabledService.Register(haptics);
             }
 
             // TPS
@@ -212,67 +263,36 @@ namespace VF.Service {
                 }
             }
 
+            if (disableDepthClip != null && plug.enableSps) {
+                foreach (var r in renderers) {
+                    disableDepthClip.SetCurve(r.renderer, $"material.{SpsConfigurer.SpsDisableDepth}", 1);
+                }
+            }
+
+            if (disableRealtimeShadowsClip != null) {
+                foreach (var r in renderers) {
+                    disableRealtimeShadowsClip.SetCurve(r.renderer, $"material.{SpsConfigurer.SpsDisableShadows}", 1);
+                    disableRealtimeShadowsClip.SetCurve(r.renderer, "m_ReceiveShadows", 0);
+                }
+            }
+
             // SPS
             if (plug.enableSps) {
                 foreach (var r in renderers) {
                     spsRewritesToDo.Add(new SpsRewriteToDo {
                         plugObject = plug.owner(),
-                        skin = (SkinnedMeshRenderer)r.renderer,
+                        skin = r.renderer,
+                        resolverRenderer = bakeInfo.resolverRenderer,
                         bakeRoot = bakeRoot,
                         configureMaterial = r.configureMaterial,
                         spsBlendshapes = r.spsBlendshapes
                     });
+                    spsPlayerIdService.Register(r.renderer);
                 }
 
-                {
-                    var plusRoot = GameObjects.Create("SpsPlus", worldSpace);
-                    VFAFloat CreateReceiver(string tag, bool self) {
-                        return hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
-                            obj = plusRoot,
-                            paramName = $"spsll_{tag}_{(self ? "self" : "others")}",
-                            objName = $"{tag}{(self ? "Self" : "Others")}",
-                            radius = 3f,
-                            tags = new[] { tag },
-                            party = self ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others,
-                            useHipAvoidance = plug.useHipAvoidance
-                        });
-                    }
-                    var directTree = directTreeService.Create($"{name} - SPS Plus");
-                    void SendParam(string shaderParam, string tag) {
-                        var oneClip = clipFactory.NewClip($"{shaderParam}_one");
-                        foreach (var r in renderers.Select(r => r.renderer)) {
-                            oneClip.SetCurve(r, $"material.{shaderParam}", 1);
-                        }
-
-                        var self = CreateReceiver(tag, true);
-                        var selfBlend = VFBlendTreeDirect.Create("selfBlend");
-                        selfBlend.Add(self, oneClip);
-                        var others = CreateReceiver(tag, false);
-                        var othersBlend = VFBlendTreeDirect.Create("othersBlend");
-                        othersBlend.Add(others, oneClip);
-                        directTree.Add(BlendtreeMath.GreaterThan(self, others).create(selfBlend, othersBlend));
-                    }
-
-                    SendParam("_SPS_Plus_Ring", HapticUtils.TagSpsSocketIsRing);
-                    SendParam("_SPS_Plus_Hole", HapticUtils.TagSpsSocketIsHole);
-                }
-                
-                if (enableSpsPlugClip == null) {
-                    enableSpsPlugClip = clipFactory.NewClip("EnableSpsPlugs");
-                    var directTree = directTreeService.Create($"Enable Plugs");
-                    directTree.Add(enableSpsPlugClip);
-                }
-
-                foreach (var r in renderers) {
-                    enableSpsPlugClip.SetCurve(
-                        r.renderer,
-                        $"material.{SpsConfigurer.SpsPlusEnabled}",
-                        1
-                    );
-                }
-
-                foreach (var r in renderers) {
-                    propsToScale.Add((r.renderer, $"material.{SpsConfigurer.SpsLength}", localLength));
+                if (bakeInfo.resolverRenderer != null) {
+                    RegisterMaterialProperties(bakeInfo.resolverMaterialProperties);
+                    spsPlayerIdService.Register(bakeInfo.resolverRenderer);
                 }
             }
             
@@ -293,39 +313,91 @@ namespace VF.Service {
                 tipLightOnClip.SetEnabled(tip, true);
             }
 
-            // Depth Actions
-            if (plug.depthActions2.Count > 0) {
-                var directTree = directTreeService.Create($"{name} - Depth Calculations");
-                var math = directTreeService.GetMath(directTree);
-                var contacts = new SpsDepthContacts(
+            var injectRequests = parameterInjectService.GetRequests()
+                .Where(r => r.sourceObject == plug.owner())
+                .ToList();
+
+            var directTree = new Lazy<VFBlendTreeDirect>(() => directTreeService.Create($"{name} - Depth Calculations"));
+            var math = new Lazy<BlendtreeMath>(() => directTreeService.GetMath(directTree.Value));
+            var contacts = new Lazy<SpsDepthContacts>(() => new SpsDepthContacts(
                     worldSpace,
                     name,
                     hapticContacts,
-                    directTree,
-                    math,
+                    directTree.Value,
+                    math.Value,
                     fx,
                     frameTimeService,
                     plug.useHipAvoidance,
-                    scaleFactor.Value,
+                    worldScale.Value,
                     localLength
-                );
+                ));
+
+            // Depth Actions / Injected SPS params
+            if (plug.depthActions2.Count > 0) {
                 _hapticAnimContactsService.CreateAnims(
                     $"{name} - Depth Animations",
                     plug.depthActions2,
                     plug.owner(),
                     name,
-                    contacts
+                    contacts.Value
                 );
+            }
+            foreach (var inject in injectRequests) {
+                VFAFloat value = null;
+                switch (inject.sourceParam) {
+                    case VRCFuryHapticPlugEditor.SpsDepthMeters:
+                        value = contacts.Value.closestDistanceMeters.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsDepthLocal:
+                        value = contacts.Value.closestDistanceLocal.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsDepthPlugLengths:
+                        value = contacts.Value.closestDistancePlugLengths.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsVelocityMeters:
+                        value = contacts.Value.velocity.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsVelocityLocal:
+                        value = contacts.Value.velocityLocal.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsVelocityPlugLengths:
+                        value = contacts.Value.velocityPlugLengths.Value;
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugLengthMeters:
+                        value = math.Value.Multiply($"{name}/PlugLengthMeters", worldScale.Value, localLength);
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugLengthLocal:
+                        value = fx.MakeAap($"{name}/PlugLengthLocal", localLength);
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugLengthPlugLengths:
+                        value = fx.One();
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugRadiusMeters:
+                        value = math.Value.Multiply($"{name}/PlugRadiusMeters", worldScale.Value, worldRadius / bakeRoot.worldScale.x);
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugRadiusLocal:
+                        value = fx.MakeAap($"{name}/PlugRadiusLocal", worldRadius / bakeRoot.worldScale.x);
+                        break;
+                    case VRCFuryHapticPlugEditor.SpsPlugRadiusPlugLengths:
+                        value = fx.MakeAap($"{name}/PlugRadiusInPlugLengths", worldRadius / worldLength);
+                        break;
+                }
+
+                if (value != null) {
+                    fx.NewFloat(inject.resolvedParam, usePrefix: false);
+                    math.Value.CopyInPlace(value, inject.resolvedParam);
+                }
             }
 
             if (propsToScale.Count > 0) {
-                scaleCompensationService.AddScaledProp(scaleFactor.Value, propsToScale);
+                scaleCompensationService.AddScaledProp(worldScale.Value, propsToScale);
             }
         }
         
         public class SpsRewriteToDo {
             public VFGameObject plugObject;
-            public SkinnedMeshRenderer skin;
+            public Renderer skin;
+            public MeshRenderer resolverRenderer;
             public VFGameObject bakeRoot;
             public Func<int, Material, Material> configureMaterial;
             public IList<string> spsBlendshapes;
@@ -335,36 +407,45 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
         public void ApplySpsRewrites() {
             foreach (var rewrite in spsRewritesToDo) {
-                var pathToPlug = rewrite.plugObject.GetPath(avatarObject);
-                var pathToRenderer = rewrite.skin.owner().GetPath(avatarObject);
-
-                void RewriteClip(AnimationClip clip) {
+                void RewriteClip(VFClip clip) {
                     foreach (var pair in clip.GetAllCurves()) {
                         var binding = pair.Item1;
                         var curve = pair.Item2;
+                        var isRendererBinding = binding.Targets(rewrite.skin.owner());
+                        var isPlugBinding = binding.Targets(rewrite.plugObject);
+                        var finalBinding = binding;
 
                         if (curve.IsFloat) {
-                            if (binding.path == pathToRenderer) {
+                            if (isRendererBinding) {
                                 if (binding.propertyName == "material._TPS_AnimatedToggle") {
-                                    clip.SetCurve(rewrite.skin, "material._SPS_Enabled", curve);
+                                    if (rewrite.resolverRenderer != null) {
+                                        clip.SetCurve(rewrite.resolverRenderer, $"material.{SpsConfigurer.SpsEnabled}", curve);
+                                    }
                                     clip.SetEnabled(rewrite.bakeRoot, curve);
                                 }
+                                if (rewrite.resolverRenderer != null && SpsConfigurer.PropagateToResolver(binding.propertyName)) {
+                                    clip.SetCurve(rewrite.resolverRenderer, binding.propertyName, curve);
+                                }
                             }
-                            if (binding.path == pathToPlug) {
+                            if (isPlugBinding) {
                                 if (binding.propertyName == "spsAnimatedEnabled") {
-                                    clip.SetCurve(rewrite.skin, "material._SPS_Enabled", curve);
+                                    if (rewrite.resolverRenderer != null) {
+                                        clip.SetCurve(rewrite.resolverRenderer, $"material.{SpsConfigurer.SpsEnabled}", curve);
+                                    }
                                     clip.SetEnabled(rewrite.bakeRoot, curve);
                                 }
                             }
                         }
 
-                        if (binding.path == pathToRenderer && binding.type == typeof(MeshRenderer)) {
+                        if (isRendererBinding
+                            && binding.type == typeof(MeshRenderer)
+                            && rewrite.skin is SkinnedMeshRenderer) {
+                            finalBinding = binding.WithType(typeof(SkinnedMeshRenderer));
                             clip.SetCurve(binding, null);
-                            binding.type = typeof(SkinnedMeshRenderer);
-                            clip.SetCurve(binding, curve);
+                            clip.SetCurve(finalBinding, curve);
                         }
 
-                        if (curve.IsFloat && binding.path == pathToRenderer && binding.type == typeof(SkinnedMeshRenderer) && binding.propertyName.StartsWith("blendShape.")) {
+                        if (curve.IsFloat && isRendererBinding && finalBinding.type == typeof(SkinnedMeshRenderer) && finalBinding.propertyName.StartsWith("blendShape.")) {
                             var blendshapeName = binding.propertyName.Substring(11);
                             var blendshapeMeshIndex = rewrite.spsBlendshapes.IndexOf(blendshapeName);
                             if (blendshapeMeshIndex >= 0) {
@@ -376,12 +457,12 @@ namespace VF.Service {
                             }
                         }
 
-                        if (!curve.IsFloat && binding.path == pathToRenderer && avatarBindingStateService.TryParseMaterialSlot(binding, out _, out var slotNum)) {
+                        if (!curve.IsFloat && isRendererBinding && avatarBindingStateService.TryParseMaterialSlot(finalBinding, out _, out var slotNum)) {
                             var newKeys = curve.ObjectCurve.Select(frame => {
                                 if (frame.value is Material m) frame.value = rewrite.configureMaterial(slotNum, m);
                                 return frame;
                             }).ToArray();
-                            clip.SetCurve(binding, newKeys);
+                            clip.SetCurve(finalBinding, newKeys);
                         }
                     }
                 }

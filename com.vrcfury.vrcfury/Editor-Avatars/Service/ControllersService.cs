@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
-using UnityEditor.Animations;
 using VF.Builder;
 using VF.Injector;
 using VF.Utils;
 using VF.Utils.Controller;
+using UnityEditor.Animations;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Service {
@@ -15,33 +15,44 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ParamsService paramsService;
         [VFAutowired] private readonly ParameterSourceService parameterSourceService;
+        [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
         private ParamManager paramz => paramsService.GetParams();
 
         private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager> _controllers
             = new Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager>();
+        private bool applyBaseMask = true;
+        private bool controllerLoadingAllowed;
+
         public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
             return _controllers.GetOrCreate(type, () => MakeController(type));
         }
 
         private ControllerManager MakeController(VRCAvatarDescriptor.AnimLayerType type) {
-            var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
-            
-            VFController ctrl = null;
-            if (existingController is AnimatorController eac && VrcfObjectFactory.DidCreate(eac)) {
-                // We probably made this in an earlier preprocessor hook, so we can just adopt it
-                // WARNING - THIS DOES NOT CLONE ANIMATION CLIPS PROPERLY BECAUSE THEY WERE ALREADY SET BACK TO THE ORIGINALS
-                // It is unsafe to mess with animation clips after the first preprocessor hook!!
-                ctrl = new VFController(eac);
-            } else {
-                if (existingController != null) ctrl = VFControllerWithVrcType.CopyAndLoadController(existingController, type);
-                if (ctrl == null) ctrl = new VFController(VrcfObjectFactory.Create<AnimatorController>());
-                foreach (var layer in ctrl.GetLayers()) {
-                    layerSourceService.SetSource(layer,
-                        isDefault ? LayerSourceService.VrcDefaultSource : LayerSourceService.AvatarDescriptorSource);
-                }
-                VRCAvatarUtils.SetAvatarController(avatar, type, ctrl.GetRaw());
+            if (applyBaseMask && !controllerLoadingAllowed) {
+                throw new System.InvalidOperationException(
+                    "A playable-layer controller was loaded before the Load All Controllers build phase."
+                );
             }
-            return new ControllerManager(
+
+            var (isDefault, existingController) = VRCAvatarUtils.GetAvatarController(avatar, type);
+
+            VFController ctrl = null;
+            if (existingController != null) {
+                var context = new VFLoadContext {
+                    OwnerObject = globals.avatarObject,
+                    AnimatorObject = globals.avatarObject,
+                    RootBindingsApplyToAvatar = true,
+                    ObjectPaths = objectPaths,
+                    ReverseObjectPaths = true
+                };
+                ctrl = applyBaseMask
+                    ? VFControllerWithVrcType.Load(existingController, type, context)
+                    : VFController.Load(existingController, context);
+            }
+            if (ctrl == null) {
+                ctrl = VFController.Create();
+            }
+            var output = new ControllerManager(
                 ctrl,
                 () => paramz,
                 type,
@@ -50,14 +61,30 @@ namespace VF.Service {
                 MakeUniqueParamName,
                 layerSourceService
             );
+            if (existingController != null) {
+                foreach (var layer in output.GetLayers()) {
+                    layerSourceService.SetSource(layer,
+                        isDefault ? LayerSourceService.VrcDefaultSource : LayerSourceService.AvatarDescriptorSource);
+                }
+            }
+            return output;
         }
 
-        public void ClearCache() {
+        public void ClearCache(bool applyBaseMask = true) {
+            this.applyBaseMask = applyBaseMask;
             _controllers.Clear();
+        }
+
+        public void LoadAllControllers() {
+            controllerLoadingAllowed = true;
+            GetAllUsedControllers();
         }
 
         public ControllerManager GetFx() {
             return GetController(VRCAvatarDescriptor.AnimLayerType.FX);
+        }
+        public ControllerManager GetAction() {
+            return GetController(VRCAvatarDescriptor.AnimLayerType.Action);
         }
         public IList<ControllerManager> GetAllMutatedControllers() {
             return _controllers.Values.ToArray();
@@ -66,19 +93,14 @@ namespace VF.Service {
             return VRCAvatarUtils.GetAllControllers(avatar)
                 .Where(c => c.controller != null)
                 .Select(c => GetController(c.type))
+                .Concat(_controllers.Values)
+                .Distinct()
                 .ToArray();
         }
-        public IList<VFController> GetAllReadOnlyControllers() {
-            return VRCAvatarUtils.GetAllControllers(avatar)
-                .Select(found => found.controller as AnimatorController)
-                .NotNull()
-                .Select(c => new VFController(c))
-                .ToArray();
-        }
-        
+
         private bool IsParamUsed(string name) {
             if (paramsService.GetReadOnlyParams()?.FindParameter(name) != null) return true;
-            foreach (var c in GetAllReadOnlyControllers()) {
+            foreach (var c in GetAllUsedControllers()) {
                 if (c.GetParam(name) != null) return true;
             }
             return false;

@@ -85,12 +85,15 @@ namespace VF.Feature {
 
             if (layersToDisable.Length > 0) {
                 foreach (var l in layersToDisable) {
-                    var driveOff = detected.AddBehaviour<VRCAnimatorLayerControl>();
+                    var driveOff = detected.behaviours.AddBehaviour<VRCAnimatorLayerControl>(driveOff => {
+                        driveOff.goalWeight = 0;
+                    });
                     layerControlService.Register(driveOff, l);
-                    driveOff.goalWeight = 0;
-                    var driveOn = notDetected.AddBehaviour<VRCAnimatorLayerControl>();
+
+                    var driveOn = notDetected.behaviours.AddBehaviour<VRCAnimatorLayerControl>(driveOn => {
+                        driveOn.goalWeight = 1;
+                    });
                     layerControlService.Register(driveOn, l);
-                    driveOn.goalWeight = 1;
                 }
             }
 

@@ -5,18 +5,19 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("SCSS Shader Inventory")]
     internal class ScssShaderInventoryActionBuilder : ActionBuilder<ShaderInventoryAction> {
-        public AnimationClip Build(ShaderInventoryAction model) {
+        public VFClip Build(ShaderInventoryAction model) {
             return MakeClip(model, 1);
         }
-        public AnimationClip BuildOff(ShaderInventoryAction model) {
+        public VFClip BuildOff(ShaderInventoryAction model) {
             return MakeClip(model, 0);
         }
-        
-        private AnimationClip MakeClip(ShaderInventoryAction model, float value) {
+
+        private VFClip MakeClip(ShaderInventoryAction model, float value) {
             var clip = NewClip();
             var renderer = model.renderer;
             if (renderer == null) return clip;

@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.Animations;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils.Controller;
@@ -19,29 +18,21 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.MakeControllerNamesUnique)]
         public void Apply() {
             foreach (var controller in controllers.GetAllUsedControllers()) {
-                var raw = controller.GetRaw();
-                MakeLayerNamesUnique(raw);
+                MakeLayerNamesUnique(controller);
                 foreach (var layer in controller.GetLayers()) {
                     MakeStateNamesUnique(layer);
                 }
             }
         }
 
-        private static void MakeLayerNamesUnique(AnimatorController controller) {
+        private static void MakeLayerNamesUnique(VFController controller) {
             var existingNames = new List<string>();
-            var changed = false;
-            var layers = controller.layers;
-            for (var i = 0; i < layers.Length; i++) {
-                var layer = layers[i];
+            foreach (var layer in controller.GetLayers()) {
                 var uniqueName = ObjectNames.GetUniqueName(existingNames.ToArray(), layer.name);
                 if (layer.name != uniqueName) {
                     layer.name = uniqueName;
-                    changed = true;
                 }
                 existingNames.Add(layer.name);
-            }
-            if (changed) {
-                controller.layers = layers;
             }
         }
 
@@ -53,9 +44,7 @@ namespace VF.Service {
 
         private static void MakeStateNamesUnique(VFStateMachine stateMachine) {
             var existingNames = new List<string>();
-            var rawStates = stateMachine.states.Select(state => state.behaviourContainer as AnimatorState).ToArray();
-            foreach (var state in rawStates) {
-                if (state == null) continue;
+            foreach (var state in stateMachine.states) {
                 var uniqueName = ObjectNames.GetUniqueName(existingNames.ToArray(), state.name);
                 if (state.name != uniqueName) {
                     state.name = uniqueName;

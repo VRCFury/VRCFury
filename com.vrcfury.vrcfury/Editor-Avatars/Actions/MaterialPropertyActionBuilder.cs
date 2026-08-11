@@ -11,6 +11,7 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Material Property")]
@@ -24,7 +25,7 @@ namespace VF.Actions {
             public static readonly GetLoc_ GetLoc = LilLanguageManager?.GetMatchingDelegate<GetLoc_>("GetLoc");
         }
 
-        public AnimationClip Build(MaterialPropertyAction materialPropertyAction) {
+        public VFClip Build(MaterialPropertyAction materialPropertyAction) {
             var onClip = NewClip();
 
             // Prevent people from trying to animate "one part" of a .x .y .z .w bundle which breaks things
@@ -354,7 +355,7 @@ namespace VF.Actions {
                     return MaterialPropertyAction.Type.Color;
                 case ShaderPropertyType.Vector:
                     return MaterialPropertyAction.Type.Vector;
-                case MaterialExtensions.StPropertyType:
+                case ShaderExtensions.StPropertyType:
                     return MaterialPropertyAction.Type.St;
                 case null:
                     return setting == MaterialPropertyAction.Type.LegacyAuto

@@ -6,11 +6,12 @@ using VF.Feature.Base;
 using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Scale")]
     internal class ScaleActionBuilder : ActionBuilder<ScaleAction> {
-        public AnimationClip Build(ScaleAction model) {
+        public VFClip Build(ScaleAction model) {
             var clip = NewClip();
             if (model.obj == null) return clip;
             var localScale = model.obj.asVf().localScale;

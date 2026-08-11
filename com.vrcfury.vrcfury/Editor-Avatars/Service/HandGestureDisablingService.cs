@@ -48,7 +48,7 @@ namespace VF.Service {
                 });
             }
 
-            VFControllerAvatarExtensions.doNotRewriteCopyDriverSources(() => {
+            VFParameterRewriteSettings.WithoutCopyDriverSourceRewrites(() => {
                 fx.RewriteParameters(param => {
                     if (RemoveHandGesturesBuilder.GestureParams.Contains(param)) {
                         return GetBuffered(param);

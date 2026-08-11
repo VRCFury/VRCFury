@@ -14,7 +14,7 @@ namespace VF.Hooks {
                 Debug.LogWarning("Skipping " + GetType().FullName + " preprocessor because preprocessors already ran on this object");
                 return true;
             }
-            return VRCFExceptionUtils.ErrorDialogBoundary(() => Process(obj));
+            return VRCFuryBuildContext.Run(() => Process(obj));
         }
 
         protected abstract int order { get; }

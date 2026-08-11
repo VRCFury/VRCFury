@@ -1,7 +1,7 @@
 using UnityEngine;
 using VF.Utils;
 
-namespace VF.Builder {
+namespace VF.Utils {
     internal static class GameObjects {
         public static VFGameObject Create(
             string name,
@@ -10,7 +10,7 @@ namespace VF.Builder {
             bool removeFromPhysbones = true
         ) {
             var obj = new GameObject(name).asVf();
-            if (useTransformFrom) {
+            if (useTransformFrom != null) {
                 obj.SetParent(useTransformFrom, false);
                 if (parent != null) {
                     obj.SetParent(parent, true);

@@ -12,17 +12,13 @@ namespace VF.Utils {
             p.Dirty();
         }
 
-        private static readonly Lazy<bool> HasDexProtect = new Lazy<bool>(() => {
-            return AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "DexProtectEditor");
-        });
-
         public static int GetMaxCost() {
             var maxBits = VRCExpressionParameters.MAX_PARAMETER_COST;
             if (maxBits > 9999) {
                 // Some modified versions of the VRChat SDK have a broken value for this
                 maxBits = 256;
             }
-            if (HasDexProtect.Value) {
+            if (DexProtectUtils.IsDexProtectPresent()) {
                 maxBits -= 19;
             }
             return maxBits;
@@ -53,8 +49,8 @@ namespace VF.Utils {
 
         public static bool IsSameAs(this VRCExpressionParameters paramz, VRCExpressionParameters other) {
             return paramz.parameters.Length == other.parameters.Length
-                   && Enumerable.Zip(paramz.parameters, other.parameters, (a, b) => (a, b))
-                       .All(pair => pair.a.IsSameAs(pair.b));
+                   && paramz.parameters.Zip(other.parameters)
+                       .All(pair => pair.Item1.IsSameAs(pair.Item2));
         }
     }
 }

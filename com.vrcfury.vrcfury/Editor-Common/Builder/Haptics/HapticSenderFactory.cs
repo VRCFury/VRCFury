@@ -2,12 +2,11 @@
 using JetBrains.Annotations;
 using UnityEngine;
 using VF.Builder;
-using VF.Inspector;
 using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
-namespace VF.Service {
+namespace VF.Builder.Haptics {
     internal static class HapticSenderFactory {
         public class SenderRequest {
             public VFGameObject obj;
@@ -19,6 +18,7 @@ namespace VF.Service {
             public Quaternion rotation = default;
             public bool worldScale = true;
             public bool useHipAvoidance = true;
+            public bool isOnHips = false;
         }
 
         [CanBeNull]
@@ -40,7 +40,7 @@ namespace VF.Service {
             }
 
             var tags = req.tags;
-            if (VRCFuryHapticSocketEditor.getClosestBone?.Invoke(req.obj) != HumanBodyBones.Hips || !req.useHipAvoidance) {
+            if (!req.isOnHips || !req.useHipAvoidance) {
                 tags = AddSuffixes(tags, "", "_SelfNotOnHips");
             }
             sender.collisionTags = tags.ToList();

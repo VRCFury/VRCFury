@@ -6,6 +6,7 @@ using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Feature {
     [FeatureTitle("Apply During Upload")]
@@ -16,7 +17,9 @@ namespace VF.Feature {
         [FeatureBuilderAction(FeatureOrder.ApplyDuringUpload)]
         public void Apply() {
             var clip = actionClipService.LoadStateAdv("applyDuringUpload", model.action);
-            restingState.ApplyClipToRestingState(clip.onClip.FlattenAll());
+            restingState.ApplyClipToRestingState(
+                clip.onClip.EvaluateMotion(1).FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips)
+            );
         }
 
         [FeatureEditor]

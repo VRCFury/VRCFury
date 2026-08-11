@@ -26,14 +26,16 @@ namespace VF.Feature {
         [VFAutowired] private readonly AllClipsService allClipsService;
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
+        private ControllerManager actionController => controllers.GetAction();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly PriorityService priorityService;
 
         private VFCondition isOn;
+        private VFAParam exclusiveParam;
         private Action<VFState, bool> drive;
-        private AnimationClip savedRestingClip;
+        private VFClip savedRestingClip;
         private bool loadedRestingClip = false;
 
         public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
@@ -105,6 +107,7 @@ namespace VF.Feature {
                     usePrefix: usePrefixOnParam
                 );
                 onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
+                exclusiveParam = model.sliderInactiveAtZero ? param : null;
                 if (model.sliderInactiveAtZero) {
                     drive = (state,on) => { if (!on) state.Drives(param, 0); };
                 }
@@ -120,11 +123,13 @@ namespace VF.Feature {
             } else if (model.useInt) {
                 var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
                 onCase = param.IsNotEqualTo(0);
+                exclusiveParam = param;
                 drive = (state,on) => state.Drives(param, on ? 1 : 0);
                 defaultOn = model.defaultOn;
             } else {
                 var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
                 onCase = param.IsTrue();
+                exclusiveParam = param;
                 drive = (state,on) => state.Drives(param, on ? 1 : 0);
                 defaultOn = model.defaultOn;
                 if (addMenuItem) {
@@ -195,32 +200,34 @@ namespace VF.Feature {
             VFState inState;
             VFState onState;
 
-            Motion restingClip = null;
+            VFMotion restingMotion = null;
+            VFClip restingClip = null;
             if (weight != null) {
                 var builtAction = actionClipService.LoadStateAdv(onName, action, motionTime: ActionClipService.MotionTimeMode.Always);
                 inState = onState = layer.NewState(onName);
                 onState.WithAnimation(builtAction.onClip).MotionTime(weight);
                 onState.TransitionsToExit().When(onCase.Not());
-                restingClip = builtAction.onClip.EvaluateMotion(model.defaultSliderValue);
+                restingClip = builtAction.onClip.EvaluateMotion(model.defaultSliderValue)
+                    .FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips);
             } else if (model.hasTransition) {
                 var builtAction = actionClipService.LoadStateAdv(onName, action);
                 var motion = builtAction.onClip;
                 var inClip = actionClipService.LoadState(onName + " In", inAction);
                 // if clip is empty, copy last frame of transition
                 if (!new AnimatorIterator.Clips().From(motion).SelectMany(clip => clip.GetAllBindings()).Any()) {
-                    motion = inClip.GetLastFrame();
+                    motion = inClip.EvaluateMotion(1);
                 }
                 var outClip = model.simpleOutTransition ? inClip.Clone() : actionClipService.LoadState(onName + " Out", outAction);
                 var outSpeed = model.simpleOutTransition ? -1 : 1;
-                
+
                 // Copy "object enabled" and "material" states to in and out clips if they don't already have them
                 // This is a convenience feature, so that people don't need to turn on objects in their transitions
                 // if it's already on in the main clip.
-                Motion ExpandIntoTransition(Motion transitionMotion, bool useLast) {
+                VFMotion ExpandIntoTransition(VFMotion transitionMotion, bool useLast) {
                     var bindingsInTransition = new AnimatorIterator.Clips().From(transitionMotion)
                         .SelectMany(clip => clip.GetAllBindings())
                         .ToArray();
-                    bool ShouldExpand(EditorCurveBinding binding, FloatOrObjectCurve curve) {
+                    bool ShouldExpand(VFBinding binding, FloatOrObjectCurve curve) {
                         if (bindingsInTransition.Contains(binding)) return false;
                         if (!curve.IsFloat) return true;
                         if (binding.type == typeof(GameObject)) {
@@ -242,10 +249,10 @@ namespace VF.Feature {
                         }));
                     }
                     if (keptOne) {
-                        var wrapper = VFBlendTreeDirect.Create($"{motion.name} (with expanded on state)");
-                        wrapper.Add(onCopy.GetLastFrame(useLast));
-                        wrapper.Add(transitionMotion);
-                        return wrapper;
+                        var directTree = VFBlendTreeDirect.Create($"{onName} (with expanded on state)");
+                        directTree.Add(onCopy.EvaluateMotion(useLast ? 1 : 0));
+                        directTree.Add(transitionMotion);
+                        return directTree;
                     }
                     return transitionMotion;
                 }
@@ -253,7 +260,7 @@ namespace VF.Feature {
                     inClip = ExpandIntoTransition(inClip, false);
                     outClip = ExpandIntoTransition(outClip, true);
                 }
-                
+
                 foreach (var clip in new AnimatorIterator.Clips().From(inClip)) {
                     clip.SetLooping(false);
                 }
@@ -268,12 +275,12 @@ namespace VF.Feature {
                 var outState = layer.NewState(onName + " Out").WithAnimation(outClip).Speed(outSpeed);
                 onState.TransitionsTo(outState).When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1).WithTransitionDurationSeconds(outTime);
                 outState.TransitionsToExit().When(fx.Always()).WithTransitionExitTime(outClip.IsEmptyOrZeroLength() ? -1 : 1);
-                restingClip = builtAction.onClip;
+                restingMotion = builtAction.onClip;
             } else {
                 var builtAction = actionClipService.LoadStateAdv(onName, action);
                 inState = onState = layer.NewState(onName).WithAnimation(builtAction.onClip);
                 onState.TransitionsToExit().When(onCase.Not()).WithTransitionExitTime(model.hasExitTime ? 1 : -1);
-                restingClip = builtAction.onClip;
+                restingMotion = builtAction.onClip;
             }
 
             off.TransitionsTo(inState).When(onCase);
@@ -299,10 +306,11 @@ namespace VF.Feature {
 
             if (!loadedRestingClip) {
                 loadedRestingClip = true;
-                var restingMotionLoops = new AnimatorIterator.Clips().From(restingClip)
+                var restingMotionLoops = restingMotion != null && new AnimatorIterator.Clips().From(restingMotion)
                     .Any(clip => clip.IsLooping() && !clip.IsStatic());
                 if (!restingMotionLoops) {
-                    savedRestingClip = restingClip.EvaluateMotion(1);
+                    savedRestingClip = restingClip ?? restingMotion?.EvaluateMotion(1)
+                        .FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips);
                     allClipsService.AddAdditionalManagedClip(savedRestingClip);
                 }
             }
@@ -336,9 +344,10 @@ namespace VF.Feature {
                 }
                 existingGroups.Add(groupToggles);
 
-                var layer = fx.NewLayer($"Exclusive Tag - {tag}");
+                var layer = actionController.NewLayer($"Exclusive Tag - {tag}");
                 layer.NewState("Idle");
                 foreach (var toggle in groupToggles) {
+                    actionController.AddParam(toggle.exclusiveParam);
                     var state = layer.NewState(toggle.model.name);
                     state.TransitionsFromAny().When(toggle.isOn);
                     foreach (var other in groupToggles.Where(o => o != toggle)) {
@@ -348,7 +357,7 @@ namespace VF.Feature {
             }
 
             var exclusiveOffLayer = new Lazy<(VFLayer,VFState)>(() => {
-                var layer = fx.NewLayer("Exclusive Tag - Off States");
+                var layer = actionController.NewLayer("Exclusive Tag - Off States");
                 var idle = layer.NewState("Idle");
                 return (layer,idle);
             });
@@ -358,6 +367,8 @@ namespace VF.Feature {
                     .Where(t => t != toggle)
                     .ToArray();
                 if (conflictsWith.Any()) {
+                    actionController.AddParam(toggle.exclusiveParam);
+                    foreach (var other in conflictsWith) actionController.AddParam(other.exclusiveParam);
                     var triggerWhen = toggle.isOn.Not();
                     foreach (var other in conflictsWith) {
                         triggerWhen = triggerWhen.And(other.isOn.Not());
@@ -368,7 +379,7 @@ namespace VF.Feature {
                 }
             }
             if (exclusiveOffLayer.IsValueCreated) {
-                exclusiveOffLayer.Value.Item2.TransitionsFromAny().When(fx.Always());
+                exclusiveOffLayer.Value.Item2.TransitionsFromAny().When(actionController.Always());
             }
         }
 
@@ -644,6 +655,10 @@ namespace VF.Feature {
                     return output;
                 } else {
                     output.Add(MakeTabbed("When toggle is enabled:", c));
+                    output.Add(MakeTabbed(
+                        "When toggle is disabled:",
+                        VRCFuryEditorUtils.WrappedLabel("Behaviour will return to the default")
+                    ));
                 }
                 return output;
             }, sliderProp, separateLocalProp, hasTransitionProp, simpleOutTransitionProp));

@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 using VF.Builder;
 using VF.Component;
 using VF.Hooks;
-using VF.Service;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
@@ -17,9 +17,19 @@ namespace VF.Utils {
         private static Action restore = null;
 
         private abstract class Reflection : ReflectionHelper {
-            public static readonly Type animStateType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
+            private static readonly Type animStateType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditorInternal.AnimationWindowState");
             public static readonly PropertyInfo selectionField = animStateType?.VFProperty("selection");
-            public static readonly PropertyInfo gameObjectField = selectionField?.PropertyType.VFProperty("gameObject");
+
+#if UNITY_6000_3_OR_NEWER
+            private static readonly Type AnimationWindowSelectionItem =
+                ReflectionUtils.GetTypeFromAnyAssembly(
+                    "UnityEditor.AnimationWindowBuiltin.AnimationWindowSelectionItem");
+#else
+            private static readonly Type AnimationWindowSelectionItem =
+                ReflectionUtils.GetTypeFromAnyAssembly(
+                    "UnityEditorInternal.AnimationWindowSelectionItem");
+#endif
+            public static readonly PropertyInfo gameObjectField = AnimationWindowSelectionItem?.VFProperty("gameObject");
             public static readonly PropertyInfo animationClipField = animStateType?.VFProperty("activeAnimationClip");
 #if ! UNITY_6000_0_OR_NEWER
             public static readonly MethodInfo startRecording = animStateType?.VFMethod("StartRecording");
@@ -29,7 +39,7 @@ namespace VF.Utils {
             public static readonly PropertyInfo AnimationWindowState = AnimationWindow?.VFProperty("state");
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
 
@@ -90,11 +100,11 @@ namespace VF.Utils {
                 SceneManager.MoveGameObjectToScene(clone, avatarObject.scene);
             }
 
-            var expandedIds = CollapseUtils.GetExpandedIds();
-            var wasExpanded = expandedIds.Contains(avatarObject.GetInstanceID());
+            var expanded = CollapseUtils.GetExpanded();
+            var wasExpanded = expanded.Contains(avatarObject);
             CollapseUtils.SetExpanded(avatarObject, false);
             foreach (var child in avatarObject.GetSelfAndAllChildren()) {
-                if (expandedIds.Contains(child.GetInstanceID())) {
+                if (expanded.Contains(child)) {
                     var expandedInClone = clone.Find(child.GetPath(avatarObject));
                     if (expandedInClone != null) CollapseUtils.SetExpanded(expandedInClone, true);
                 }
@@ -132,12 +142,13 @@ namespace VF.Utils {
 
             if (avatarObject == baseObj) rewriteClip = false;
             if (rewriteClip) {
-                var rewriters = new ClipRewritersService(avatarObject);
-                clip.Rewrite(AnimationRewriter.Combine(
-                    rewriters.CreateNearestMatchPathRewriter(baseObj),
-                    rewriters.AnimatorBindingsAlwaysTargetRoot()
-                ));
-                clip.FinalizeAsset(false);
+                var wrapped = VFMotion.Load(clip, new VFLoadContext {
+                    OwnerObject = baseObj,
+                    AnimatorObject = avatarObject,
+                    ObjectPaths = VRCFObjectPathCache.GetPerFrame(avatarObject)
+                }) as VFClip;
+                if (wrapped == null) throw new Exception("Expected recording clip to load as VFClip");
+                OverwriteClip(clip, wrapped.Save(avatarObject) as AnimationClip);
             }
 
             restore = () => {
@@ -147,18 +158,34 @@ namespace VF.Utils {
                     if (wasActive) avatarObject.active = true;
                     if (wasExpanded) CollapseUtils.SetExpanded(avatarObject, true);
                 }
-                if (rewriteClip && clip != null) {
-                    var rewriters = new ClipRewritersService(avatarObject);
-                    clip.Rewrite(AnimationRewriter.Combine(
-                        rewriters.CreateNearestMatchPathRewriter(
-                            baseObj,
-                            invert: true
-                        ),
-                        rewriters.AnimatorBindingsAlwaysTargetRoot()
-                    ));
-                    clip.FinalizeAsset(false);
+                if (clip != null && rewriteClip) {
+                    var wrapped = VFMotion.Load(clip, new VFLoadContext {
+                        OwnerObject = avatarObject,
+                        AnimatorObject = avatarObject,
+                        ObjectPaths = VRCFObjectPathCache.GetPerFrame(avatarObject)
+                    }) as VFClip;
+                    if (wrapped == null) throw new Exception("Expected recording clip to load as VFClip");
+                    ProjectBindingsForRecorder(wrapped, baseObj, avatarObject);
+                    OverwriteClip(clip, wrapped.Save(avatarObject) as AnimationClip);
                 }
             };
+        }
+
+        private static void OverwriteClip(AnimationClip target, AnimationClip source) {
+            if (target == null || source == null) return;
+            EditorUtility.CopySerialized(source, target);
+        }
+
+        private static void ProjectBindingsForRecorder(VFClip clip, VFGameObject baseObj, VFGameObject avatarObject) {
+            clip.Rewrite(AnimationRewriter.RewriteBinding(binding => {
+                if (binding.target == null) return binding;
+                var bindingRoot = baseObj;
+                while (bindingRoot != avatarObject
+                       && !binding.target.IsSameOrChildOf(bindingRoot)) {
+                    bindingRoot = bindingRoot.parent;
+                }
+                return binding.WithPath(binding.target.GetPath(bindingRoot));
+            }));
         }
     }
 }

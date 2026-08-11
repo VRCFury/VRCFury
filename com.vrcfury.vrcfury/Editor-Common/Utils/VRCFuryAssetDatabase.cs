@@ -70,11 +70,6 @@ namespace VF.Utils {
                 " The file path for your Unity project is probably too long.");
         }
 
-        [PreferBinarySerialization]
-        internal class BinaryContainer : ScriptableObject {
-
-        }
-
         public static void SaveAsset(Object obj, string fullPath) {
             CreateFolder(GetDirectoryName(fullPath));
 
@@ -82,7 +77,17 @@ namespace VF.Utils {
             // call this first, or unity will throw an exception
             AssetDatabase.RemoveObjectFromAsset(obj);
             obj.hideFlags &= ~HideFlags.DontSaveInEditor;
+#if UNITY_6000_0_OR_NEWER
+            // Unity 6 just silently... doesn't do anything if you call CreateAsset inside StartAssetEditing
+            WithoutAssetEditing(() => { AssetDatabase.CreateAsset(obj, fullPath); });
+#else
             AssetDatabase.CreateAsset(obj, fullPath);
+#endif
+        }
+
+        public static void MoveAsset(string from, string to) {
+            CreateFolder(GetDirectoryName(to));
+            AssetDatabase.MoveAsset(from, to);
         }
 
         public static void SaveAsset(Object obj, string dir, string filename) {
@@ -111,17 +116,34 @@ namespace VF.Utils {
 
         private static bool assetEditing = false;
 
-        public static void WithAssetEditing(Action go) {
-            if (!assetEditing) {
-                AssetDatabase.StartAssetEditing();
-                assetEditing = true;
+        private class AssetEditingScope : IDisposable {
+            private bool startedAssetEditing;
+
+            public AssetEditingScope(bool startedAssetEditing) {
+                this.startedAssetEditing = startedAssetEditing;
+            }
+
+            public void Dispose() {
+                if (!startedAssetEditing) return;
+                startedAssetEditing = false;
                 try {
-                    go();
-                } finally {
                     AssetDatabase.StopAssetEditing();
+                } finally {
                     assetEditing = false;
                 }
-            } else {
+            }
+        }
+
+        public static IDisposable WithAssetEditing() {
+            if (assetEditing) return new AssetEditingScope(false);
+
+            AssetDatabase.StartAssetEditing();
+            assetEditing = true;
+            return new AssetEditingScope(true);
+        }
+
+        public static void WithAssetEditing(Action go) {
+            using (WithAssetEditing()) {
                 go();
             }
         }
@@ -142,7 +164,7 @@ namespace VF.Utils {
         }
 
         public static void Delete(string path) {
-            Debug.Log("Deleting " + path);
+            //Debug.Log("Deleting " + path);
             AssetDatabase.DeleteAsset(path);
         }
 
@@ -185,19 +207,29 @@ namespace VF.Utils {
                     // All first level paths are not considered part of the asset database ("Assets", "Packages")
                     continue;
                 }
+
                 if (AssetDatabase.IsValidFolder(p)) {
-                    // Already exists in the database, all good
+                    // It already exists in the assetDB
+                    if (Directory.Exists(p)) {
+                        // We're all good here, everything already exists.
+                    } else {
+                        // Database is corrupt, it thinks the dir exists, but it doesn't.
+                        // Create it manually to get the db in-line.
+                        Directory.CreateDirectory(p);
+                    }
                     continue;
                 }
+
                 if (Directory.Exists(p)) {
-                    // The directory exists, but it's not in the asset database
-                    // This usually means the asset database is corrupt and doesn't know the folder exists
-                    // Should be safe to manually delete it and have the asset database make it again
+                    // Database is corrupt, it thinks the dir is missing, but it exists.
+                    // Delete it manually to get the db in line.
                     Directory.Delete(p, true);
                 }
                 if (File.Exists(p + ".meta")) {
+                    // Delete the meta too, because the assetdb is going to try to write a new one when we "create" the new folder
                     File.Delete(p + ".meta");
                 }
+
                 var parent = GetDirectoryName(p);
                 if (string.IsNullOrEmpty(parent)) continue;
                 var basename = Path.GetFileName(p);
@@ -252,6 +284,13 @@ namespace VF.Utils {
             var path = AssetDatabase.GUIDToAssetPath(guid);
             if (path.IsEmpty()) return null;
             return AssetDatabase.LoadAssetAtPath<T>(path);
+        }
+
+        public static void DeleteDirIfEmpty(string path) {
+            if (string.IsNullOrEmpty(path)) return;
+            if (!AssetDatabase.IsValidFolder(path)) return;
+            if (AssetDatabase.FindAssets("", new[] { path }).Length > 0) return;
+            AssetDatabase.DeleteAsset(path);
         }
     }
 }

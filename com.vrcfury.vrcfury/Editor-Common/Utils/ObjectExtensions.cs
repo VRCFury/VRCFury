@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using Object = UnityEngine.Object;
@@ -11,43 +10,22 @@ namespace VF.Utils {
         private static readonly VFMultimapList<Object, string> workLog
             = new VFMultimapList<Object, string>();
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             EditorApplication.update += () => {
                 workLog.Clear();
             };
         }
 
-        public static T GetCloneSource<T>(this T clone) where T : Object {
-            var original = VrcfObjectCloner.GetOriginal(clone);
-            if (original == null) throw new Exception("Failed to find original of a clone");
-            return original;
-        }
-
         public static Func<Object, Type[]> getExtraRecursiveTypes;
 
         public static T Clone<T>(this T original, string reason = null, string addPrefix = "", bool recursive = true) where T : Object {
-
             if (recursive) {
                 if (getExtraRecursiveTypes != null) {
                     var types = getExtraRecursiveTypes(original);
                     if (types != null) {
                         return MutableManager.CopyRecursive(original, reason, types);
                     }
-                }
-                if (original is Motion) {
-                    return MutableManager.CopyRecursive(original, reason, new[] { typeof(Motion) });
-                }
-                if (original is RuntimeAnimatorController || original is AnimatorStateMachine) {
-                    return MutableManager.CopyRecursive(original, reason, new[] {
-                        typeof(RuntimeAnimatorController),
-                        typeof(AnimatorStateMachine),
-                        typeof(AnimatorState),
-                        typeof(AnimatorTransitionBase),
-                        typeof(StateMachineBehaviour),
-                        typeof(AvatarMask),
-                        typeof(Motion),
-                    }, addPrefix);
                 }
             }
 
@@ -97,20 +75,5 @@ namespace VF.Utils {
             return $"{path} ({obj.name})";
         }
 
-        public static T[] FindObjectsByType<T>() where T : Object {
-#if UNITY_2022_1_OR_NEWER
-            return Object.FindObjectsByType<T>(FindObjectsSortMode.None);
-#else
-            return Object.FindObjectsOfType<T>();
-#endif
-        }
-
-        public static Object[] FindObjectsByType(Type type) {
-#if UNITY_2022_1_OR_NEWER
-            return Object.FindObjectsByType(type, FindObjectsSortMode.None);
-#else
-            return Object.FindObjectsOfType(type);
-#endif
-        }
     }
 }

@@ -31,7 +31,6 @@ namespace VF.Feature {
 
         [FeatureEditor]
         public static VisualElement Editor(SerializedProperty prop) {
-            
             var c = new VisualElement();
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("radius"), "Radius"));
             c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("height"), "Height"));
@@ -77,7 +76,8 @@ namespace VF.Feature {
                 "collider_" + model.colliderName,
                 model.rootTransform,
                 model.radius,
-                model.height
+                model.height,
+                allowGlobalCollider: false
             );
         }
     }

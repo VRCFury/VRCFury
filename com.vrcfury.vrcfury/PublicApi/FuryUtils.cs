@@ -11,7 +11,7 @@ namespace com.vrcfury.api {
          * An Exception will be thrown if the bone cannot be found.
          */
         public static GameObject GetBone(GameObject avatarObject, HumanBodyBones bone) {
-            return VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, bone);
+            return VRCFArmatureCache.GetPerFrame(avatarObject).FindBoneOnArmatureOrException(bone);
         }
     }
 }

@@ -9,6 +9,7 @@ using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Reset Physbone")]
@@ -16,7 +17,7 @@ namespace VF.Actions {
     internal class ResetPhysboneActionBuilder : ActionBuilder<ResetPhysboneAction> {
         [VFAutowired] [CanBeNull] private readonly PhysboneResetService physboneResetService;
 
-        public AnimationClip Build(ResetPhysboneAction model, string actionName) {
+        public VFClip Build(ResetPhysboneAction model, string actionName) {
             var onClip = NewClip();
             if (model.physBone != null && physboneResetService != null) {
                 var param = physboneResetService.CreatePhysBoneResetter(model.physBone.owner(), actionName);

@@ -19,6 +19,36 @@ namespace VF.Inspector {
         public static Func<UnityEngine.Component,string> getDebugLine;
         public static Action<VFGameObject, VisualElement> renderWarnings;
 
+        internal static C CreateUpgradedClone<C>(C original, out GameObject cloneObject)
+            where C : VRCFuryComponent {
+            cloneObject = new GameObject();
+            cloneObject.SetActive(false);
+            cloneObject.hideFlags |= HideFlags.HideAndDontSave;
+            // Don't use AddComponent<C>, since C might not be the concrete type.
+            var copy = (C)cloneObject.AddComponent(original.GetType());
+            UnitySerializationUtils.CloneSerializable(original, copy);
+            // Some migrations depend on the component's world transform. Don't use gameObjectOverride until after
+            // upgrading, since an upgrade that adds components must not mutate the original prefab.
+            cloneObject.transform.SetPositionAndRotation(original.transform.position, original.transform.rotation);
+            cloneObject.transform.localScale = original.transform.lossyScale;
+
+            var wasRunningFakeUpgrade = VRCFury.RunningFakeUpgrade;
+            try {
+                VRCFury.RunningFakeUpgrade = true;
+                copy.Upgrade();
+            } catch {
+                DestroyImmediate(cloneObject);
+                cloneObject = null;
+                throw;
+            } finally {
+                VRCFury.RunningFakeUpgrade = wasRunningFakeUpgrade;
+            }
+            foreach (var component in cloneObject.GetComponents<VRCFuryComponent>()) {
+                component.gameObjectOverride = original.owner();
+            }
+            return copy;
+        }
+
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryComponent target) {
             return VRCFuryEditorUtils.Error("This VRCFury component is not available in this type of project");
         }
@@ -28,26 +58,29 @@ namespace VF.Inspector {
         private GameObject dummyObject;
 
         public sealed override VisualElement CreateInspectorGUI() {
-            VisualElement content;
+            VisualElement versionLabel;
+            if (VRCFuryComponentEditor.getDebugLine != null) {
+                versionLabel = new Label(VRCFuryComponentEditor.getDebugLine.Invoke(target as UnityEngine.Component));
+                versionLabel.AddToClassList("vfVersionLabel");
+            } else {
+                versionLabel = new VisualElement();
+            }
+
+            var content = new VisualElement();
+            content.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
+
             try {
-                content = CreateInspectorGUIUnsafe();
+                content.Add(CreateInspectorGUIUnsafe(versionLabel));
             } catch (Exception e) {
                 Debug.LogException(new Exception("Failed to render editor", e));
-                content = VRCFuryEditorUtils.Error("Failed to render editor (see unity console)");
+                content.Add(versionLabel);
+                content.Add(VRCFuryEditorUtils.Error("Failed to render editor (see unity console)"));
             }
-            
-            var contentWithVersion = new VisualElement();
-            contentWithVersion.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
-            if (VRCFuryComponentEditor.getDebugLine != null) {
-                var versionLabel = new Label(VRCFuryComponentEditor.getDebugLine.Invoke(target as UnityEngine.Component));
-                versionLabel.AddToClassList("vfVersionLabel");
-                contentWithVersion.Add(versionLabel);
-            }
-            contentWithVersion.Add(content);
-            return contentWithVersion;
+
+            return content;
         }
 
-        private VisualElement CreateInspectorGUIUnsafe() {
+        private VisualElement CreateInspectorGUIUnsafe(VisualElement versionLabel) {
             if (!(target is UnityEngine.Component c)) {
                 return VRCFuryEditorUtils.Error("This isn't a component?");
             }
@@ -66,8 +99,6 @@ namespace VF.Inspector {
 
             var container = new VisualElement();
 
-            container.Add(CreateOverrideLabel());
-
             if (isInstance) {
                 // We prevent users from adding overrides on prefabs, because it does weird things (at least in unity 2019)
                 // when you apply modifications to an object that lives within a SerializedReference. Some properties not overridden
@@ -75,17 +106,15 @@ namespace VF.Inspector {
                 container.Add(CreatePrefabInstanceLabel(v));
             }
 
+            container.Add(versionLabel);
+
+            container.Add(CreateOverrideLabel());
+
             VisualElement body;
             if (isInstance) {
-                var copy = CopyComponent(v);
-                var copyGameObject = copy.owner();
-                try {
-                    VRCFury.RunningFakeUpgrade = true;
-                    copy.Upgrade();
-                    // Note that copy may be deleted here!
-                } finally {
-                    VRCFury.RunningFakeUpgrade = false;
-                }
+                OnDestroy();
+                VRCFuryComponentEditor.CreateUpgradedClone(v, out dummyObject);
+                var copyGameObject = dummyObject.asVf();
                 // We need to prevent our added children from being bound to
                 // the original component by unity
                 body = new BindingBlock();
@@ -94,7 +123,6 @@ namespace VF.Inspector {
                 var children = copyGameObject.GetComponents<T>();
                 if (children.Length != 1) body.Add(VRCFuryComponentHeader.CreateHeaderOverlay("Legacy Multi-Component"));
                 foreach (var child in children) {
-                    child.gameObjectOverride = v.owner();
                     var childSo = new SerializedObject(child);
                     var childEditor = _CreateEditor(childSo, child);
                     if (children.Length > 1) childEditor.AddToClassList("vrcfMultipleHeaders");
@@ -130,17 +158,6 @@ namespace VF.Inspector {
             }));
 
             return container;
-        }
-
-        private C CopyComponent<C>(C original) where C : UnityEngine.Component {
-            OnDestroy();
-            dummyObject = new GameObject();
-            dummyObject.SetActive(false);
-            dummyObject.hideFlags |= HideFlags.HideAndDontSave;
-            // Don't use AddComponent<C>, since C might not be the concrete type
-            var copy = (C)dummyObject.AddComponent(original.GetType());
-            UnitySerializationUtils.CloneSerializable(original, copy);
-            return copy;
         }
 
         public void OnDestroy() {

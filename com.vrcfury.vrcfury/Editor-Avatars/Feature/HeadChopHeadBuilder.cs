@@ -15,6 +15,7 @@ namespace VF.Feature {
     internal class HeadChopHeadBuilder : FeatureBuilder<HeadChopHead> {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly Func<VFGameObject> componentObject;
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
 
         [FeatureBuilderAction]
         public void Apply() {
@@ -28,7 +29,7 @@ namespace VF.Feature {
             }
 
             chop.targetBones[0].transform =
-                VRCFArmatureUtils.FindBoneOnArmatureOrException(avatarObject, HumanBodyBones.Head);
+                armatureCache.FindBoneOnArmatureOrException(HumanBodyBones.Head);
 #else
             throw new Exception("This version of the VRCSDK does not support head chop");
 #endif

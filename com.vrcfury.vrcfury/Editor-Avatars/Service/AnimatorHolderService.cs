@@ -29,6 +29,9 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly SaveAssetsService saveAssetsService;
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+        [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
 
         private class SavedAnimator {
             public RuntimeAnimatorController controller;
@@ -85,10 +88,15 @@ namespace VF.Service {
                 animator.avatar = saved.avatar;
                 if (obj == avatarObject) {
                     if (saved.controller != null) {
-                        animator.runtimeAnimatorController = fx.GetRaw();
+                        animator.runtimeAnimatorController = VRCAvatarUtils.GetAvatarController(avatar, fx.GetType()).Item2;
                     }
                 } else {
-                    animator.runtimeAnimatorController = saved.controller;
+                    if (saved.clone != null) {
+                        saved.clone.name = $"VRCFury {saved.clone.name} - {obj.name}";
+                        animator.runtimeAnimatorController = saved.clone.Save(obj, saveAssetsService.Session);
+                    } else {
+                        animator.runtimeAnimatorController = saved.controller;
+                    }
                     animator.enabled = saved.enabled;
                 }
             }
@@ -98,17 +106,30 @@ namespace VF.Service {
             var output = new List<(VFGameObject, VFController)>();
             foreach (var pair in savedAnimators) {
                 var owner = pair.Key;
+                if (owner == null) continue;
                 var saved = pair.Value;
                 if (owner == avatarObject) continue;
                 if (saved.controller == null) continue;
                 if (saved.clone == null) {
-                    saved.clone = VFControllerWithVrcType.CopyAndLoadController(saved.controller, VRCAvatarDescriptor.AnimLayerType.Base);
-                    saved.controller = saved.clone?.GetRaw();
+                    saved.clone = VFController.Load(
+                        saved.controller,
+                        new VFLoadContext {
+                            OwnerObject = owner,
+                            AnimatorObject = owner,
+                            ObjectPaths = objectPaths,
+                            ReverseObjectPaths = true
+                        }
+                    );
                 }
                 if (saved.clone == null) continue;
                 output.Add((owner, saved.clone));
             }
             return output;
+        }
+
+        public void RemoveSubAnimator(VFGameObject owner) {
+            if (owner == avatarObject) return;
+            savedAnimators.Remove(owner);
         }
     }
 }

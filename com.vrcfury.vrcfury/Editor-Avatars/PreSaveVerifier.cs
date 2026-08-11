@@ -18,7 +18,7 @@ namespace VF {
                 var brokenComponents = new HashSet<VRCFuryComponent>();
                 
                 void ScanScene(Scene scene) {
-                    brokenComponents.UnionWith(VFGameObject.GetRoots(scene)
+                    brokenComponents.UnionWith(scene.Roots()
                         .SelectMany(obj => obj.GetComponentsInSelfAndChildren<VRCFuryComponent>())
                         .Where(vrcf => vrcf.IsBroken()));
                 }
@@ -30,7 +30,7 @@ namespace VF {
                             ScanScene(scene);
                         }
                     }
-#if UNITY_2022_1_OR_NEWER
+#if UNITY_2021_2_OR_NEWER
                 } else if (PrefabStageUtility.GetCurrentPrefabStage()?.assetPath == path) {
                     var scene = PrefabStageUtility.GetCurrentPrefabStage()?.scene;
                     if (scene != null) ScanScene(scene.Value);
@@ -42,7 +42,7 @@ namespace VF {
                 }
 
                 foreach (var brokenComponent in brokenComponents) {
-                    blocked.Add($"{brokenComponent.owner().GetPath()} in {path} ({brokenComponent.GetBrokenMessage()})");
+                    blocked.Add($"{brokenComponent.owner().GetDebugPath()} in {path} ({brokenComponent.GetBrokenMessage()})");
                     blockedPaths.Add(path);
                 }
             }

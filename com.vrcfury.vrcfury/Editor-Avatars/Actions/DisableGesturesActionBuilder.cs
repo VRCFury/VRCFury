@@ -7,13 +7,14 @@ using VF.Inspector;
 using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 
 namespace VF.Actions {
     [FeatureTitle("Disable Hand Controls")]
     internal class DisableGesturesActionBuilder : ActionBuilder<DisableGesturesAction> {
         [VFAutowired] [CanBeNull] private readonly HandGestureDisablingService handGestureDisablingService;
 
-        public AnimationClip Build(string actionName) {
+        public VFClip Build(string actionName) {
             var onClip = NewClip();
             if (handGestureDisablingService == null) return onClip;
             var disableGestures = handGestureDisablingService.AddInhibitor(actionName);

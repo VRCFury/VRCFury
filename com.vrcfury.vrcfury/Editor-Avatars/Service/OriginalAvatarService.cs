@@ -31,7 +31,7 @@ namespace VF.Service {
             var originalName = GetOriginalName();
             if (originalName == null) return null;
 
-            foreach (var desc in ObjectExtensions.FindObjectsByType<VRCAvatarDescriptor>()) {
+            foreach (var desc in VFGameObject.GetComponentsInAllOpenScenes<VRCAvatarDescriptor>()) {
                 if (desc.owner().name == originalName && desc.owner().activeInHierarchy) {
                     return desc.owner();
                 }

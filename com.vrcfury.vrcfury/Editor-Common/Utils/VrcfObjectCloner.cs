@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using JetBrains.Annotations;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -9,14 +7,9 @@ namespace VF.Utils {
         private static readonly Dictionary<Object, Object> cloneOriginals
             = new Dictionary<Object, Object>();
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             EditorApplication.update += () => cloneOriginals.Clear();
-        }
-
-        [CanBeNull]
-        public static T GetOriginal<T>(T clone) where T : Object {
-            return cloneOriginals.TryGetValue(clone, out var original) ? original as T : null;
         }
 
         public static T Clone<T>(T original) where T : Object {
@@ -35,23 +28,14 @@ namespace VF.Utils {
             }
 
             T copy;
-            if (original is Material || original is Mesh || original is Texture2D || original is AudioClip) {
-                if (original is Texture2D t && !t.isReadable) {
-                    t.ForceReadable();
-                    copy = Object.Instantiate(original);
-                    t.ForceReadable(false);
-                } else {
-                    copy = Object.Instantiate(original);
-                }
-                VrcfObjectFactory.Register(copy, copyWorkLogFrom: original);
+            if (original is Texture2D t && !t.isReadable) {
+                t.ForceReadable();
+                copy = Object.Instantiate(original);
+                t.ForceReadable(false);
             } else {
-                copy = (T)VrcfObjectFactory.Create(original.GetType(), copyWorkLogFrom: original);
-                if (original is AnimationClip originalClip && copy is AnimationClip copyClip) {
-                    AnimationClipExtensions.CopyData(originalClip, copyClip);
-                } else {
-                    EditorUtility.CopySerialized(original, copy);
-                }
+                copy = Object.Instantiate(original);
             }
+            VrcfObjectFactory.Register(copy, copyWorkLogFrom: original);
 
             copy.name = original.name;
 

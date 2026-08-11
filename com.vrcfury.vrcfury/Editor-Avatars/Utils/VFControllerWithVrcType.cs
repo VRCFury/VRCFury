@@ -11,15 +11,21 @@ namespace VF.Utils {
             return vrcType;
         }
 
-        public VFControllerWithVrcType(AnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType vrcType) : base(ctrl) {
+        public VFControllerWithVrcType(VFController ctrl, VRCAvatarDescriptor.AnimLayerType vrcType) : base(ctrl) {
             this.vrcType = vrcType;
         }
 
-        public static VFControllerWithVrcType CopyAndLoadController(RuntimeAnimatorController ctrl, VRCAvatarDescriptor.AnimLayerType type) {
-            var baseCopy = VFController.CopyAndLoadController(ctrl);
-            if (baseCopy == null) return null;
-            var output = new VFControllerWithVrcType(baseCopy.GetRaw(), type);
-            output.ApplyBaseMask(type);
+        public static VFController Load(
+            RuntimeAnimatorController ctrl,
+            VRCAvatarDescriptor.AnimLayerType type,
+            VFLoadContext context
+        ) {
+            if (context == null) throw new System.ArgumentNullException(nameof(context));
+            if (context.OwnerObject == null) throw new System.ArgumentNullException(nameof(context.OwnerObject));
+            if (context.AnimatorObject == null) throw new System.ArgumentNullException(nameof(context.AnimatorObject));
+            var output = VFController.Load(ctrl, context);
+            if (output == null) return null;
+            ApplyBaseMask(output, type);
             return output;
         }
 
@@ -27,14 +33,14 @@ namespace VF.Utils {
          * VRCF's handles masks by "applying" the base mask to every mask in the controller. This makes things like
          * merging controllers and features much easier. Later on, we recalculate a new base mask in FixMasksBuilder.
          */
-        private void ApplyBaseMask(VRCAvatarDescriptor.AnimLayerType type) {
-            var layer0 = GetLayer(0);
+        private static void ApplyBaseMask(VFController controller, VRCAvatarDescriptor.AnimLayerType type) {
+            var layer0 = controller.GetLayer(0);
             if (layer0 == null) return;
 
             var baseMask = layer0.mask;
             if (type == VRCAvatarDescriptor.AnimLayerType.FX) {
                 if (baseMask == null) {
-                    baseMask = AvatarMaskExtensions.DefaultFxMask();
+                    baseMask = VFMask.DefaultFxMask();
                 } else {
                     baseMask = baseMask.Clone();
                 }
@@ -44,7 +50,7 @@ namespace VF.Utils {
                     // until they fix this. But we fix it here for them temporarily so they can use play mode for now.
                     // Gesture controllers merged using Full Controller with no base mask will slip through and be allowed
                     // by this.
-                    baseMask = AvatarMaskExtensions.Empty();
+                    baseMask = VFMask.Empty();
                     baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.LeftFingers, true);
                     baseMask.SetHumanoidBodyPartActive(AvatarMaskBodyPart.RightFingers, true);
                 } else {
@@ -65,7 +71,7 @@ namespace VF.Utils {
             // The transform part of the base mask DOES NOT impact lower layers!!
             baseMask.AllowAllTransforms();
 
-            foreach (var layer in GetLayers()) {
+            foreach (var layer in controller.GetLayers()) {
                 if (layer.mask == null) {
                     layer.mask = baseMask.Clone();
                 } else {

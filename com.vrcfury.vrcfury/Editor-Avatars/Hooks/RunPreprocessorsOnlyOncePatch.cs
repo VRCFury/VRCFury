@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using VF.Model;
@@ -28,10 +28,11 @@ namespace VF.Hooks {
         private static PlayModeState GetPlayModeState(Transform t) =>
             playModeState.TryGetValue(t, out var s) ? s : PlayModeState.Fresh;
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
-            if (!ReflectionHelper.IsReady<Reflection>()) return;
-            Reflection.Patch.apply();
+            if (ReflectionHelper.IsReady<Reflection>()) {
+                Reflection.Patch.apply();
+            }
 
             EditorApplication.playModeStateChanged += state => {
                 if (state == PlayModeStateChange.ExitingPlayMode) {

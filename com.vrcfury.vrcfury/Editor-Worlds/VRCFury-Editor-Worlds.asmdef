@@ -3,10 +3,17 @@
     "rootNamespace": "VF",
     "references": [
         "VRCFury",
+        "com.vrcfury.udon",
+        "com.vrcfury.udonbehaviours",
         "VRCFury-Editor-Common",
         "VRC.SDKBase.Editor.BuildPipeline",
         "VRC.SDKBase.Editor",
-        "VRC.SDK3.Editor"
+        "VRC.SDK3.Editor",
+        "VRC.Udon",
+        "VRC.Udon.Editor",
+        "VRC.Udon.Serialization.OdinSerializer",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor"
     ],
     "includePlatforms": [
         "Editor"
@@ -18,11 +25,13 @@
         "System.Collections.Immutable.dll",
         "VRCSDKBase.dll",
         "VRC.Dynamics.dll",
+        "VRCSDK3.dll",
         "VRC.SDK3.Dynamics.PhysBone.dll",
         "VRC.SDK3.Dynamics.Contact.dll",
         "VRC.SDK3.Dynamics.Constraint.dll",
         "VRCSDKBase-Editor.dll",
-        "VRCCore-Editor.dll"
+        "VRCCore-Editor.dll",
+        "VRC.Udon.Common.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [
@@ -34,6 +43,11 @@
             "name": "com.vrchat.worlds",
             "expression": "",
             "define": "VRCF_WORLDS"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.7.5",
+            "define": "VRCSDK_HAS_ACTIVE_BUILD_TYPE"
         }
     ],
     "noEngineReferences": false

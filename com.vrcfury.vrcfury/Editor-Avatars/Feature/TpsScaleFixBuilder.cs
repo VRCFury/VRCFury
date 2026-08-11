@@ -44,14 +44,13 @@ namespace VF.Feature {
 
             if (allRenderers) {
                 // Remove old fix attempts
-                foreach (var clip in fx.GetClips()) {
-                    foreach (var binding in clip.GetFloatBindings()) {
-                        if (binding.propertyName.Contains("_TPS_PenetratorLength") ||
-                            binding.propertyName.Contains("_TPS_PenetratorScale")) {
-                            clip.SetCurve(binding, null);
-                        }
+                fx.Rewrite(AnimationRewriter.RewriteBinding(binding => {
+                    if (binding.propertyName.Contains("_TPS_PenetratorLength")
+                        || binding.propertyName.Contains("_TPS_PenetratorScale")) {
+                        return null;
                     }
-                }
+                    return binding;
+                }));
             }
 
             foreach (var renderer in renderers) {
@@ -69,7 +68,7 @@ namespace VF.Feature {
                     if (TpsConfigurer.IsLocked(mat)) {
                         throw new VRCFBuilderException(
                             "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
-                            $"Please unlock the material on {renderer.owner().GetPath()}");
+                            $"Please unlock the material on {renderer.owner().GetDebugPath()}");
                     }
                     mat.SetOverrideTag("_TPS_PenetratorLengthAnimated", "1");
                     mat.SetOverrideTag("_TPS_PenetratorScaleAnimated", "1");
@@ -101,15 +100,13 @@ namespace VF.Feature {
                     scaledProps[propName] = val;
                 }
                 void AddVector(string propName) {
-                    if (!mat.HasProperty(propName)) return;
-                    var val = mat.GetVector(propName);
+                    if (!mat.TryGetVectorFast(propName, out var val)) return;
                     Add(propName + ".x", val.x);
                     Add(propName + ".y", val.y);
                     Add(propName + ".z", val.z);
                 }
                 void AddFloat(string propName) {
-                    if (!mat.HasProperty(propName)) return;
-                    var val = mat.GetFloat(propName);
+                    if (!mat.TryGetFloatFast(propName, out var val)) return;
                     Add(propName, val);
                 }
                 

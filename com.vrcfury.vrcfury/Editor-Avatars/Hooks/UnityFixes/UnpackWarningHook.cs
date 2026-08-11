@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using VF.Menu;
 using VF.Utils;
 
@@ -8,18 +8,26 @@ namespace VF.Hooks.UnityFixes {
             public static readonly HarmonyUtils.PatchObj UnpackPrefabPatch = HarmonyUtils.Patch(
                 typeof(UnpackWarningHook),
                 nameof(Prefix),
+#if UNITY_6000_3_OR_NEWER
+                "UnityEditor.PrefabUtility",
+#else
                 "UnityEditor.SceneHierarchy",
+#endif
                 "UnpackPrefab"
             );
             public static readonly HarmonyUtils.PatchObj UnpackPrefabCompletelyPatch = HarmonyUtils.Patch(
                 typeof(UnpackWarningHook),
                 nameof(Prefix),
+#if UNITY_6000_3_OR_NEWER
+                "UnityEditor.PrefabUtility",
+#else
                 "UnityEditor.SceneHierarchy",
+#endif
                 "UnpackPrefabCompletely"
             );
         }
 
-        [InitializeOnLoadMethod]
+        [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Reflection.UnpackPrefabPatch.apply();

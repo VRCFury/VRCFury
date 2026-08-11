@@ -23,11 +23,19 @@ download_manifest_package() {
   rm -rf "$PROJECT_PATH/Packages/$package_name/Samples" "$PROJECT_PATH/Packages/$package_name/Samples.meta"
 }
 
-patch_udonsharp_locator() {
+patch_udonsharp_for_ci() {
   # vrcsdk world sdk crashes during startup in fresh batch mode
   # unless we prevent the udonsharp locator from initializing
   local locator_file="$PROJECT_PATH/Packages/com.vrchat.worlds/Integrations/UdonSharp/Runtime/UdonSharpDataLocator.cs"
   perl -0pi -e 's/foundLocators\.Add\(InitializeUdonSharpData\(\)\);/return "Assets\/UdonSharp";/' "$locator_file"
+
+  # UdonSharp otherwise adds this during the test run, forcing a domain reload that corrupts the test result.
+  local project_settings="$PROJECT_PATH/ProjectSettings/ProjectSettings.asset"
+  perl -0pi -e 's/scriptingDefineSymbols: \{\}/scriptingDefineSymbols:\n    Android: UDONSHARP\n    Standalone: UDONSHARP/' "$project_settings"
+  if ! grep -q 'Standalone: UDONSHARP' "$project_settings"; then
+    echo "Failed to add the UdonSharp project define" >&2
+    exit 1
+  fi
 }
 
 MANIFEST_URL="https://vrchat.github.io/packages/index.json"
@@ -44,5 +52,5 @@ fi
 download_manifest_package "$SDK_PACKAGE" "$VERSION"
 
 if [[ "$SDK_KIND" == "worlds" ]]; then
-  patch_udonsharp_locator
+  patch_udonsharp_for_ci
 fi
