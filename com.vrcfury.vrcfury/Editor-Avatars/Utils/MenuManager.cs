@@ -13,7 +13,7 @@ namespace VF.Utils {
         private readonly Func<int> currentMenuSortPosition;
         private readonly Dictionary<VRCExpressionsMenu.Control, int> sortPositions
             = new Dictionary<VRCExpressionsMenu.Control, int>();
-        private int overrideMenuSortPosition = -1;
+        private int? overrideMenuSortPosition;
 
         public MenuManager(VRCExpressionsMenu menu, Func<int> currentMenuSortPosition) {
             rootMenu = menu;
@@ -23,7 +23,7 @@ namespace VF.Utils {
         public void OverrideSortPosition(int serviceId, Action with) {
             this.overrideMenuSortPosition = serviceId;
             with();
-            this.overrideMenuSortPosition = -1;
+            this.overrideMenuSortPosition = null;
         }
 
         public VRCExpressionsMenu GetRaw() {
@@ -32,7 +32,7 @@ namespace VF.Utils {
 
         private VRCExpressionsMenu.Control NewControl() {
             var control = new VRCExpressionsMenu.Control();
-            sortPositions[control] = overrideMenuSortPosition >= 0 ? overrideMenuSortPosition : currentMenuSortPosition();
+            sortPositions[control] = overrideMenuSortPosition ?? currentMenuSortPosition();
             return control;
         }
 
@@ -333,7 +333,7 @@ namespace VF.Utils {
                 menu.controls = menu.controls.OrderBy(a => a, Comparer<VRCExpressionsMenu.Control>.Create((a,b) => {
                     sortPositions.TryGetValue(a, out var aPos);
                     sortPositions.TryGetValue(b, out var bPos);
-                    return aPos - bPos;
+                    return aPos.CompareTo(bPos);
                 })).ToList();
             });
         }
