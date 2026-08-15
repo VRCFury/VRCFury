@@ -1,5 +1,4 @@
 ﻿using System.Linq;
-using UnityEditor.Animations;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Feature.Base;
@@ -24,7 +23,7 @@ namespace VF.Feature {
                 var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
                 if (avatar != null) {
                     var controllers = VRCAvatarUtils.GetAllControllers(avatar)
-                        .Select(c => c.controller as AnimatorController)
+                        .Select(c => c.controller)
                         .NotNull()
                         .ToList();
                     foreach (var warning in VrcfAnimationDebugInfo.BuildDebugInfo(controllers, avatarObject)) {

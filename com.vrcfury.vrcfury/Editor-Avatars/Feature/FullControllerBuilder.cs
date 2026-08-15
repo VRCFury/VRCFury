@@ -698,7 +698,7 @@ namespace VF.Feature {
                     warningsContainer.Clear();
                     var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
                         model.controllers
-                            .Select(c => c?.controller?.Get() as AnimatorController)
+                            .Select(c => c?.controller?.Get())
                             .NotNull(),
                         GetBaseObject(model, componentObject),
                         path => AnimationBindingUtils.RewriteRelativePath(path, model.rewriteBindings),

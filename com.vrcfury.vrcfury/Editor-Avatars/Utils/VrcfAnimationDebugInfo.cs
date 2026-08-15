@@ -20,11 +20,19 @@ namespace VF.Utils {
             public ISet<AnimationClip> clips;
             public ISet<EditorCurveBinding> bindings;
             public bool usesWdOff;
+            public IList<WriteDefaultsStateInfo> writeDefaultsStates;
+        }
+
+        internal class WriteDefaultsStateInfo {
+            public string name;
+            public bool writeDefaults;
+            public bool isDirect;
+            public bool isAdditive;
         }
 
         private static readonly AssetChangeCache<ControllerDebugInfo> controllerCache =
             new AssetChangeCache<ControllerDebugInfo>(
-                typeof(AnimatorController),
+                typeof(RuntimeAnimatorController),
                 typeof(AnimatorState),
                 typeof(AnimatorStateMachine),
                 typeof(Motion),
@@ -32,7 +40,7 @@ namespace VF.Utils {
             );
 
         public static List<VisualElement> BuildDebugInfo(
-            IEnumerable<AnimatorController> controllers,
+            IEnumerable<RuntimeAnimatorController> controllers,
             VFGameObject componentObject,
             Func<string, string> rewritePath = null,
             Action<string> addPathRewrite = null
@@ -42,8 +50,11 @@ namespace VF.Utils {
             var bindings = new HashSet<VFBinding>();
             var avatarObject = componentObject.GetAvatarRoot();
             var objectPaths = VRCFObjectPathCache.GetPerFrame(avatarObject);
-            foreach (var c in controllers) {
-                var debugInfo = controllerCache.Get(c, () => BuildControllerDebugInfo(c));
+            foreach (var controller in controllers) {
+                var debugInfo = controllerCache.Get(
+                    controller,
+                    () => BuildControllerDebugInfo(controller)
+                );
 
                 usesWdOff |= debugInfo.usesWdOff;
                 var context = new VFLoadContext {
@@ -52,6 +63,7 @@ namespace VF.Utils {
                     ObjectPaths = objectPaths,
                     RewritePath = rewritePath
                 };
+
                 foreach (var binding in debugInfo.bindings) {
                     var resolved = VFResolvedObject.Load(binding.path, context, binding.type);
                     if (!resolved.HasValue) continue;
@@ -74,16 +86,43 @@ namespace VF.Utils {
             return warnings;
         }
 
-        private static ControllerDebugInfo BuildControllerDebugInfo(AnimatorController source) {
+        public static IList<WriteDefaultsStateInfo> GetWriteDefaultsStates(RuntimeAnimatorController controller) {
+            if (controller == null) return Array.Empty<WriteDefaultsStateInfo>();
+            return controllerCache.Get(
+                controller,
+                () => BuildControllerDebugInfo(controller)
+            ).writeDefaultsStates;
+        }
+
+        private static ControllerDebugInfo BuildControllerDebugInfo(RuntimeAnimatorController source) {
+            var overrides = new List<AnimatorOverrideController>();
+            while (source is AnimatorOverrideController ov) {
+                overrides.Add(ov);
+                source = ov.runtimeAnimatorController;
+            }
+            if (!(source is AnimatorController animatorController)) {
+                return new ControllerDebugInfo {
+                    clips = new HashSet<AnimationClip>(),
+                    bindings = new HashSet<EditorCurveBinding>(),
+                    writeDefaultsStates = new List<WriteDefaultsStateInfo>()
+                };
+            }
+
             var bindings = new HashSet<EditorCurveBinding>();
             var usesWdOff = false;
-            var layers = source.layers;
+            var writeDefaultsStates = new List<WriteDefaultsStateInfo>();
+            var layers = animatorController.layers;
+            var seenWriteDefaultsStateMachines = new HashSet<AnimatorStateMachine>();
             for (var layerIndex = 0; layerIndex < layers.Length; layerIndex++) {
                 var layer = layers[layerIndex];
                 var syncedLayerIndex = layer.syncedLayerIndex;
                 if (syncedLayerIndex >= layers.Length) continue;
                 var isSynced = syncedLayerIndex >= 0 && syncedLayerIndex != layerIndex;
                 var sourceLayer = isSynced ? layers[syncedLayerIndex] : layer;
+                var includeInWriteDefaults = isSynced
+                                             || sourceLayer.stateMachine == null
+                                             || seenWriteDefaultsStateMachines.Add(sourceLayer.stateMachine);
+                var seenWriteDefaultsStates = new HashSet<AnimatorState>();
 
                 var stateMachines = new Stack<AnimatorStateMachine>();
                 var seenStateMachines = new HashSet<AnimatorStateMachine>();
@@ -110,6 +149,16 @@ namespace VF.Utils {
                         if (state == null) continue;
                         usesWdOff |= !state.writeDefaultValues;
 
+                        if (includeInWriteDefaults && seenWriteDefaultsStates.Add(state)) {
+                            var motion = isSynced ? layer.GetOverrideMotion(state) : state.motion;
+                            writeDefaultsStates.Add(new WriteDefaultsStateInfo {
+                                name = layer.name + " | " + state.name,
+                                writeDefaults = state.writeDefaultValues,
+                                isDirect = UsesDirectBlendTree(motion),
+                                isAdditive = layer.blendingMode == AnimatorLayerBlendingMode.Additive
+                            });
+                        }
+
                         var behaviours = state.behaviours;
                         if (isSynced) {
                             behaviours = layer.GetOverrideBehaviours(state) ?? behaviours;
@@ -130,7 +179,15 @@ namespace VF.Utils {
                 }
             }
 
-            var clips = new HashSet<AnimationClip>(source.animationClips ?? Array.Empty<AnimationClip>());
+            var clips = new HashSet<AnimationClip>();
+            foreach (var baseClip in animatorController.animationClips ?? Array.Empty<AnimationClip>()) {
+                var clip = baseClip;
+                foreach (var overrideController in overrides) {
+                    if (clip == null) break;
+                    clip = overrideController[clip] ?? clip;
+                }
+                if (clip != null) clips.Add(clip);
+            }
             var clipStack = new Stack<AnimationClip>(clips);
             var seenClips = new HashSet<AnimationClip>();
             while (clipStack.Count > 0) {
@@ -149,10 +206,27 @@ namespace VF.Utils {
             return new ControllerDebugInfo {
                 clips = clips,
                 bindings = bindings,
-                usesWdOff = usesWdOff
+                usesWdOff = usesWdOff,
+                writeDefaultsStates = writeDefaultsStates
             };
         }
-        
+
+        private static bool UsesDirectBlendTree(Motion motion) {
+            var pending = new Stack<Motion>();
+            var seen = new HashSet<Motion>();
+            if (motion != null) pending.Push(motion);
+            while (pending.Count > 0) {
+                var current = pending.Pop();
+                if (current == null || !seen.Add(current)) continue;
+                if (!(current is BlendTree tree)) continue;
+                if (tree.blendType == BlendTreeType.Direct) return true;
+                foreach (var child in tree.children) {
+                    if (child.motion != null) pending.Push(child.motion);
+                }
+            }
+            return false;
+        }
+
         public static List<VisualElement> BuildDebugInfo(
             IEnumerable<AnimationClip> clips,
             IEnumerable<VFBinding> bindings,
