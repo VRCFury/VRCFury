@@ -143,10 +143,8 @@ namespace VF.Utils.Controller {
                 var overrideMotion = rawLayer.GetOverrideMotion(rawState);
                 wrappedState.motion = VFMotion.Load(overrideMotion, context);
 
-                var overrideBehaviours = rawLayer.GetOverrideBehaviours(rawState);
-                if (overrideBehaviours != null) {
-                    wrappedState.behaviours.ReplaceWith(overrideBehaviours.Select(behaviour => VFBehaviour.Load(behaviour, context)));
-                }
+                var overrideBehaviours = VFBehaviourContainer.GetRawOverrideBehaviours(rawLayer, rawState);
+                wrappedState.behaviours.ReplaceWith(overrideBehaviours.Select(behaviour => VFBehaviour.Load(behaviour, context)));
             }
         }
 

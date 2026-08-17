@@ -15,6 +15,14 @@ namespace VF.Utils.Controller {
                 typeof(AnimatorState).VFProperty("behaviours");
             public static readonly PropertyInfo AnimatorStateMachineBehaviours =
                 typeof(AnimatorStateMachine).VFProperty("behaviours");
+            public static readonly FieldInfo AnimatorControllerLayerBehaviours =
+                typeof(AnimatorControllerLayer).VFField("m_Behaviours");
+            private static readonly System.Type StateBehavioursPair =
+                AnimatorControllerLayerBehaviours?.FieldType.GetElementType();
+            public static readonly FieldInfo StateBehavioursPairState =
+                StateBehavioursPair?.VFField("m_State");
+            public static readonly FieldInfo StateBehavioursPairBehaviours =
+                StateBehavioursPair?.VFField("m_Behaviours");
         }
 
         public VFBehaviourContainer() {
@@ -27,27 +35,54 @@ namespace VF.Utils.Controller {
 
         public static VFBehaviourContainer Load(Object obj, VFLoadContext context) {
             if (context == null) throw new System.ArgumentNullException(nameof(context));
-            if (obj == null) {
-                return new VFBehaviourContainer();
-            }
+            return new VFBehaviourContainer(
+                GetRawBehaviours(obj).Select(behaviour => VFBehaviour.Load(behaviour, context))
+            );
+        }
+
+        public static StateMachineBehaviour[] GetRawBehaviours(Object obj) {
+            if (obj == null) return System.Array.Empty<StateMachineBehaviour>();
 
             var field = GetBehavioursInternalProperty(obj);
             if (field != null) {
-                var raw = field.GetValue(obj) as ScriptableObject[];
-                if (raw != null) {
-                    return new VFBehaviourContainer(raw.OfType<StateMachineBehaviour>().Select(behaviour => VFBehaviour.Load(behaviour, context)));
+                if (field.GetValue(obj) is ScriptableObject[] raw) {
+                    return raw.OfType<StateMachineBehaviour>().ToArray();
                 }
             }
 
             var oldField = GetBehavioursProperty(obj);
             if (oldField != null) {
-                var raw = oldField.GetValue(obj) as StateMachineBehaviour[];
-                if (raw != null) {
-                    return new VFBehaviourContainer(raw.Select(behaviour => VFBehaviour.Load(behaviour, context)));
+                if (oldField.GetValue(obj) is StateMachineBehaviour[] raw) {
+                    return raw;
                 }
             }
 
-            return new VFBehaviourContainer();
+            return System.Array.Empty<StateMachineBehaviour>();
+        }
+
+        public static StateMachineBehaviour[] GetRawOverrideBehaviours(
+            AnimatorControllerLayer layer,
+            AnimatorState state
+        ) {
+            if (layer == null || state == null) return System.Array.Empty<StateMachineBehaviour>();
+            var pairsField = Reflection.AnimatorControllerLayerBehaviours;
+            var stateField = Reflection.StateBehavioursPairState;
+            var behavioursField = Reflection.StateBehavioursPairBehaviours;
+            if (pairsField == null || stateField == null || behavioursField == null) {
+                return Fallback();
+            }
+            var pairs = pairsField.GetValue(layer) as System.Array;
+            if (pairs == null) return Fallback();
+            foreach (var pair in pairs) {
+                if (pair == null || stateField.GetValue(pair) as AnimatorState != state) continue;
+                var raw = behavioursField.GetValue(pair) as ScriptableObject[];
+                return raw?.OfType<StateMachineBehaviour>().ToArray()
+                       ?? System.Array.Empty<StateMachineBehaviour>();
+            }
+            return System.Array.Empty<StateMachineBehaviour>();
+
+            StateMachineBehaviour[] Fallback() =>
+                layer.GetOverrideBehaviours(state) ?? System.Array.Empty<StateMachineBehaviour>();
         }
 
         public VFBehaviourContainer Clone() {

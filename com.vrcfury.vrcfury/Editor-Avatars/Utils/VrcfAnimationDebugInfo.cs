@@ -134,7 +134,7 @@ namespace VF.Utils {
                         stateMachines.Push(childStateMachine.stateMachine);
                     }
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-                    foreach (var behaviour in stateMachine.behaviours ?? Array.Empty<StateMachineBehaviour>()) {
+                    foreach (var behaviour in VFBehaviourContainer.GetRawBehaviours(stateMachine)) {
                         if (!(behaviour is VRCAnimatorPlayAudio playAudio)
                             || string.IsNullOrEmpty(playAudio.SourcePath)) continue;
                         bindings.Add(EditorCurveBinding.FloatCurve(
@@ -159,12 +159,10 @@ namespace VF.Utils {
                             });
                         }
 
-                        var behaviours = state.behaviours;
-                        if (isSynced) {
-                            behaviours = layer.GetOverrideBehaviours(state) ?? behaviours;
-                        }
-
-                        foreach (var behaviour in behaviours ?? Array.Empty<StateMachineBehaviour>()) {
+                        var behaviours = isSynced
+                            ? VFBehaviourContainer.GetRawOverrideBehaviours(layer, state)
+                            : VFBehaviourContainer.GetRawBehaviours(state);
+                        foreach (var behaviour in behaviours) {
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
                             if (!(behaviour is VRCAnimatorPlayAudio playAudio)
                                 || string.IsNullOrEmpty(playAudio.SourcePath)) continue;
