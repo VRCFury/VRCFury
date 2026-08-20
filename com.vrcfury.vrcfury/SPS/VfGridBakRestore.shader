@@ -17,33 +17,36 @@ Shader "Hidden/VRCFury/VFGridBakRestore" {
             #pragma target 4.0
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_instancing
             #include "UnityCG.cginc"
-            #include "common/sps_texture.cginc"
-            #include "common/sps_encode.cginc"
 
-            SPS_INIT_TEX(_VFGridBak)
+            UNITY_DECLARE_SCREENSPACE_TEXTURE(_VFGridBak);
+
+            struct appdata {
+                float2 uv : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
 
             struct v2f {
                 float4 vertex : SV_POSITION;
+                float4 grabPos : TEXCOORD0;
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
-            v2f vert(uint vertexId : SV_VertexID) {
+            v2f vert(appdata v) {
+                UNITY_SETUP_INSTANCE_ID(v);
                 v2f o;
-                float2 pos = float2(
-                    vertexId == 2 ? 3.0 : -1.0,
-                    vertexId == 1 ? 3.0 : -1.0
-                );
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
+                float2 pos = v.uv * 4.0 - 1.0;
                 o.vertex = float4(pos, 0, 1);
+                o.grabPos = ComputeGrabScreenPos(o.vertex);
                 return o;
             }
 
             fixed4 frag(v2f i) : SV_Target {
-                SpsTexture tex = SPS_GET_TEX(_VFGridBak);
-                uint2 pixel = uint2(
-                    floor(i.vertex.x),
-                    floor(_ScreenParams.y - i.vertex.y)
-                );
-                fixed4 col = SPS_READ_TEX(tex, pixel);
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
+                float2 uv = i.grabPos.xy / i.grabPos.w;
+                fixed4 col = UNITY_SAMPLE_SCREENSPACE_TEXTURE(_VFGridBak, uv);
                 col.a = 1;
                 return col;
             }
