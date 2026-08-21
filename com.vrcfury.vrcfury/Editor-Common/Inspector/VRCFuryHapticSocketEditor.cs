@@ -362,9 +362,11 @@ namespace VF.Inspector {
 
         internal static VRCFuryHapticSocket.AddLight GetLegacyLightType(VRCFuryHapticSocket socket, VRCFuryHapticSocket.AddLight lightType) {
             if (socket.overrideLegacySocketType) {
-                return socket.legacySocketType == VRCFuryHapticSocket.LegacySocketType.Hole
-                    ? VRCFuryHapticSocket.AddLight.Hole
-                    : VRCFuryHapticSocket.AddLight.Ring;
+                return socket.legacySocketType switch {
+                    VRCFuryHapticSocket.LegacySocketType.Hole => VRCFuryHapticSocket.AddLight.Hole,
+                    VRCFuryHapticSocket.LegacySocketType.RingOneWay => VRCFuryHapticSocket.AddLight.RingOneWay,
+                    _ => VRCFuryHapticSocket.AddLight.Ring
+                };
             }
             return socket.guidedPathStops.Any(stop => stop != null && stop.transform != null)
                 ? VRCFuryHapticSocket.AddLight.Hole
