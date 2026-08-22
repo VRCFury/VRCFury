@@ -39,9 +39,11 @@ namespace VF.Builder.Haptics {
                 }
                 throw new SneakyException(msg);
             } catch (Exception e) {
-                throw new Exception(
-                    "Failed to patch shader with SPS. Report this on the VRCFury discord. Maybe this shader isn't supported yet.\n\n" +
-                    mat.shader.name + "\n\n" + e.Message, e);
+                throw new ExceptionWithCause(
+                    $"Failed to patch shader with SPS. Report this on the VRCFury discord." +
+                    $"Maybe this shader isn't supported yet: {mat.shader.name}",
+                    e
+                );
             }
         }
 
@@ -149,7 +151,7 @@ namespace VF.Builder.Haptics {
                         patchedPrograms += num;
                         return newPass;
                     } catch (Exception e) {
-                        throw new Exception($"Failed to patch pass #{passNum}: " + e.Message, e);
+                        throw new ExceptionWithCause($"Failed to patch pass #{passNum}", e);
                     }
                 },
                 rest => {
@@ -158,7 +160,7 @@ namespace VF.Builder.Haptics {
                         patchedPrograms += num;
                         return newRest;
                     } catch (Exception e) {
-                        throw new Exception($"Failed to patch non-pass segment: " + e.Message, e);
+                        throw new ExceptionWithCause($"Failed to patch non-pass segment", e);
                     }
                 }
             );
@@ -234,7 +236,7 @@ namespace VF.Builder.Haptics {
                 try {
                     return PatchProgram(program, isCgProgram, spsMain, cgIncludes, isSurfaceShader);
                 } catch (Exception e) {
-                    throw new Exception($"Failed to patch program #{patchedPrograms}: " + e.Message, e);
+                    throw new ExceptionWithCause($"Failed to patch program #{patchedPrograms}", e);
                 }
             });
 

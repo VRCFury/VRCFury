@@ -47,8 +47,7 @@ namespace VF.Service {
                         appliedAny = true;
                     }
                 } catch (Exception e) {
-                    var path = builder.featureBaseObject.GetPath(avatarObject);
-                    throw new ExceptionWithCause($"Failed to apply early ArmatureLink root-name move from {path}", e);
+                    throw new ExceptionWithCause($"Failed to build Armature Link: {builder.featureBaseObject.GetDebugPath()}", e);
                 }
             }
             if (appliedAny) objectPaths.Capture();
@@ -93,8 +92,7 @@ namespace VF.Service {
                         armatureCache
                     );
                 } catch (Exception e) {
-                    var path = builder.featureBaseObject.GetPath(avatarObject);
-                    throw new ExceptionWithCause($"Failed to build ArmatureLink from {path}", e);
+                    throw new ExceptionWithCause($"Failed to build Armature Link: {builder.featureBaseObject.GetDebugPath()}", e);
                 }
             }
 

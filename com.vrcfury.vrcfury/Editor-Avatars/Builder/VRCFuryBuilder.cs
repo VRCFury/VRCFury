@@ -116,7 +116,7 @@ namespace VF.Builder {
                     builder = FeatureFinder.GetBuilder(component, configObject, injector);
                 } catch (Exception e) {
                     throw new ExceptionWithCause(
-                        $"Failed to load VRCFury component on object {configObject.GetPath(avatarObject)}",
+                        $"Failed to load VRCFury component: {configObject.GetDebugPath()}",
                         e
                     );
                 }
@@ -224,7 +224,7 @@ namespace VF.Builder {
                 }
 
                 globals.currentMenuSortPosition = globals.currentFeatureNum = currentServiceNumber = action.serviceNum;
-                var objectName = action.configObject.GetPath(avatarObject, prettyRoot: true);
+                var objectName = action.configObject.GetDebugPath();
                 globals.currentFeatureName = currentModelName = $"{service.GetType().Name}.{action.GetName()} on {objectName}";
                 globals.currentFeatureClipPrefix = $"VF{currentServiceNumber} {(service as FeatureBuilder)?.GetClipPrefix() ?? service.GetType().Name}";
                 currentServiceGameObject = action.configObject;

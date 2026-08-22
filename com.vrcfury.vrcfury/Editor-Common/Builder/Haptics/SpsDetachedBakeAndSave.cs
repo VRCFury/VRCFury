@@ -42,7 +42,7 @@ namespace VF.Builder.Haptics {
                     }
                     VRCFuryHideGizmoUnlessSelectedExtensions.Hide(result.bakeRoot);
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetDebugPath()}", e);
+                    throw new ExceptionWithCause($"Failed to build SPS Socket: {socket.owner().GetDebugPath()}", e);
                 } finally {
                     UnityEngine.Object.DestroyImmediate(socket);
                 }
@@ -65,7 +65,7 @@ namespace VF.Builder.Haptics {
                     }
                     VRCFuryHideGizmoUnlessSelectedExtensions.Hide(result.bakeRoot);
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetDebugPath()}", e);
+                    throw new ExceptionWithCause($"Failed to build SPS Plug: {plug.owner().GetDebugPath()}", e);
                 } finally {
                     UnityEngine.Object.DestroyImmediate(plug);
                 }

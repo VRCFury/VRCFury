@@ -79,7 +79,7 @@ namespace VF.Service {
                         owner: "Post-bake clip for plug on " + plug.owner().GetPath(avatarObject)
                     );
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
+                    throw new ExceptionWithCause($"Failed to build SPS Plug: {plug.owner().GetDebugPath()}", e);
                 }
             }
         }
@@ -138,7 +138,7 @@ namespace VF.Service {
                     if (!bakeResults.TryGetValue(plug, out var bakeInfo)) continue;
                     ApplyPlug(plug, bakeInfo, tipLightOnClip, disableDepthClip, disableRealtimeShadowsClip, usedNames);
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
+                    throw new ExceptionWithCause($"Failed to build SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
             }
         }
