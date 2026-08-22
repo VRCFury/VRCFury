@@ -27,6 +27,7 @@ namespace VF.Service {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly VRCFArmatureCache armatureCache;
         [VFAutowired] private readonly VrcsdkGlobalColliders vrcsdkGlobalColliders;
+        [VFAutowired] private readonly ClosestBoneUtils closestBoneUtils;
 
         private readonly Lazy<IDictionary<String, FoundCollider>> all;
 
@@ -121,6 +122,14 @@ namespace VF.Service {
             float height,
             bool allowGlobalCollider
         ) {
+            var closestBone = closestBoneUtils.GetClosestHumanoidBone(transform);
+            var othersOnly = closestBone is HumanBodyBones.Head
+                or HumanBodyBones.Jaw
+                or HumanBodyBones.LeftFoot
+                or HumanBodyBones.LeftToes
+                or HumanBodyBones.RightFoot
+                or HumanBodyBones.RightToes;
+
             var found = GetColliderOrNull(colliderName);
             if (found == null) {
                 throw new Exception("Collider does not exist on avatar: " + colliderName);
@@ -132,7 +141,7 @@ namespace VF.Service {
 
             if (allowGlobalCollider
                 && found.isFinger
-                && vrcsdkGlobalColliders.Create(transform, radius, height, IsOnHead(transform))) {
+                && vrcsdkGlobalColliders.Create(transform, radius, height, othersOnly)) {
                 return;
             }
 
@@ -145,7 +154,7 @@ namespace VF.Service {
             }
 
             // If we're moving a finger to the head, make sure any head receivers exclude this finger so it doesn't trigger itself
-            if (found.isFinger) {
+            if (found.isFinger && othersOnly) {
                 foreach (var receiver in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
                     if (receiver.allowSelf) {
                         RemoveFromContactList(receiver.collisionTags, colliderName);
