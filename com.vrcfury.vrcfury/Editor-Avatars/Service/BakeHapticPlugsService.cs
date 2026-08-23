@@ -68,10 +68,13 @@ namespace VF.Service {
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
                     PhysboneUtils.RemoveFromPhysbones(plug.owner());
-                    if (!BuildTargetUtils.IsDesktop()) continue;
-                    var bakeInfo = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true);
-                    if (bakeInfo == null) continue;
-                    bakeResults[plug] = bakeInfo;
+
+                    if (BuildTargetUtils.IsDesktop()) {
+                        var bakeInfo = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true);
+                        if (bakeInfo != null) {
+                            bakeResults[plug] = bakeInfo;
+                        }
+                    }
 
                     var postBakeClip = actionClipService.LoadStateAdv("sps_postbake", plug.postBakeActions, plug.owner());
                     restingState.ApplyClipToRestingState(
