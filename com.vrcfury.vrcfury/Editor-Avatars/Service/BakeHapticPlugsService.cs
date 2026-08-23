@@ -466,11 +466,23 @@ namespace VF.Service {
                         }
                     }
                 }
-                allClipsService.GetAllClips().ForEach(RewriteClip);
 
-                rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials
-                    .Select((mat,slotNum) => rewrite.configureMaterial(slotNum, mat))
-                    .ToArray();
+                try {
+                    allClipsService.GetAllClips().ForEach(clip => {
+                        try {
+                            RewriteClip(clip);
+                        } catch (Exception e) {
+                            throw new ExceptionWithCause($"Failed to patch clip: {clip.name}", e);
+                        }
+                    });
+
+                    rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials
+                        .Select((mat,slotNum) => rewrite.configureMaterial(slotNum, mat))
+                        .ToArray();
+                } catch (Exception e) {
+                    throw new ExceptionWithCause(
+                        $"Failed to patch materials for SPS Plug: {rewrite.plugObject.GetDebugPath()}", e);
+                }
             }
         }
     }
