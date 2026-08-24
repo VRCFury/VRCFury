@@ -940,6 +940,11 @@ namespace VF.Builder.Haptics {
                 if (!path.Contains("..") && !File.Exists(fullPath)) {
                     fullPath = Path.Combine(EditorApplication.applicationContentsPath, "CGIncludes", path);
                     attempts.Add(fullPath);
+                    if (!File.Exists(fullPath)) {
+                        // Moved to a new folder near unity 6.4
+                        fullPath = Path.Combine(EditorApplication.applicationContentsPath, "Resources", "CGIncludes", path);
+                        attempts.Add(fullPath);
+                    }
                     isLib = true;
                 }
                 if (!File.Exists(fullPath)) {

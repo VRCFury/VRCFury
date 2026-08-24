@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Hooks.UnityFixes;
 using Object = UnityEngine.Object;
 
 namespace VF.Utils {
@@ -128,6 +129,7 @@ namespace VF.Utils {
                 startedAssetEditing = false;
                 try {
                     AssetDatabase.StopAssetEditing();
+                    Unity6RendererFixHook.Process();
                 } finally {
                     assetEditing = false;
                 }
