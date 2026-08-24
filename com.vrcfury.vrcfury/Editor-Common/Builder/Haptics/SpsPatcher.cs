@@ -243,34 +243,34 @@ namespace VF.Builder.Haptics {
             return (pass, patchedPrograms);
         }
 
-        private static string PatchProgram(string originalProgram, bool isCgProgram, string spsMain, string cgIncludes, bool isSurfaceShader) {
+        internal static string PatchProgram(string originalProgram, bool isCgProgram, string spsMain, string cgIncludes, bool isSurfaceShader) {
             var program = originalProgram;
-            var newVertFunction = "spsVert";
+            var newVertFunctionName = "spsVert";
             var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
-            string oldVertFunction = null;
-            var foundPragma = false;
+            string vanillaVertFunctionName = null;
+            var pragmaFound = false;
             program = GetRegex(@"(#pragma[ \t]+" + pragmaKeyword + @"[ \t]+)([^\s]+)([^\n]*)").Replace(program, match => {
                 string newPragma;
                 if (isSurfaceShader) {
-                    var extraParams = match.Groups[3].ToString();
-                    extraParams = GetRegex(@"vertex:(\S+)").Replace(extraParams, vertMatch => {
-                        oldVertFunction = vertMatch.Groups[1].ToString();
-                        return "vertex:" + newVertFunction;
+                    var pragmaSuffix = match.Groups[3].ToString();
+                    pragmaSuffix = GetRegex(@"vertex:(\S+)").Replace(pragmaSuffix, vertMatch => {
+                        vanillaVertFunctionName = vertMatch.Groups[1].ToString();
+                        return "vertex:" + newVertFunctionName;
                     });
-                    if (oldVertFunction == null) {
-                        newPragma = $"{match.Groups[0]} vertex:{newVertFunction}";
+                    if (vanillaVertFunctionName == null) {
+                        newPragma = $"{match.Groups[0]} vertex:{newVertFunctionName}";
                     } else {
-                        newPragma = $"{match.Groups[1]}{match.Groups[2]}{extraParams}";
+                        newPragma = $"{match.Groups[1]}{match.Groups[2]}{pragmaSuffix}";
                     }
                 } else {
-                    oldVertFunction = match.Groups[2].ToString();
-                    newPragma = $"{match.Groups[1]}spsVert{match.Groups[3]}";
+                    vanillaVertFunctionName = match.Groups[2].ToString();
+                    newPragma = $"{match.Groups[1]}{newVertFunctionName}{match.Groups[3]}";
                 }
 
-                foundPragma = true;
+                pragmaFound = true;
                 return $"// {match.Groups[0]}\n{newPragma}\n";
             }, 1);
-            if (!foundPragma) {
+            if (!pragmaFound) {
                 throw new Exception($"Failed to find #pragma {pragmaKeyword}");
             }
 
@@ -287,117 +287,79 @@ namespace VF.Builder.Haptics {
             }
             flattenedProgram = ReadAndFlattenContent(flattenedProgram, includeLibraryFiles: true);
 
-            string oldStructType;
-            string returnType;
-            string newInputParams;
-            string newPassParams;
-            string mainParamName;
-            bool useStructExtends = !isSurfaceShader;
-            if (oldVertFunction != null) {
-                var foundOldVert = GetRegex(
-                        Regex.Escape(oldVertFunction)
-                        + @"\s*" // whitespace before param list
-                        + @"\(" // start param list
-                        + "(" // param list
-                            + "(" // Repeating params or preprocessor directive
-                                + @"([^#\);]*)"
-                                + @"|"
-                                + @"(#[^\n]*\n)"
-                            + ")*"
-                        + ")"
-                        + @"\)\s*\{" // end param list and start function bracket
-                    )
-                    .Matches(flattenedProgram)
-                    .Cast<Match>()
-                    .Select(m => {
-                        // The reason we search backward for the return type instead of just including it in the regex
-                        // is because it makes the regex REALLY SLOW to have wildcards at the start.
-                        var ps = m.Groups[1].ToString();
-                        var i = m.Index - 1;
-                        if (!Char.IsWhiteSpace(flattenedProgram[i])) return null;
-                        while (Char.IsWhiteSpace(flattenedProgram[i])) i--;
-                        var endOfReturnType = i + 1;
-                        while (!Char.IsWhiteSpace(flattenedProgram[i])) i--;
-                        var startOfReturnType = i + 1;
-                        var r = flattenedProgram.Substring(startOfReturnType, endOfReturnType - startOfReturnType);
-                        return Tuple.Create(ps, r);
-                    })
-                    .Where(t => t != null)
-                    .ToArray();
-                if (foundOldVert.Length > 1) {
-                    foundOldVert = foundOldVert.Distinct().ToArray();
+            string returnTypeName;
+            string returnSemantic = null;
+            ParsedParamList parsedParams;
+
+            string GetStructBody(string typeName) {
+                var structMatch = GetRegex(@"struct\s+" + Regex.Escape(typeName) + @"\s*{")
+                    .Match(flattenedProgram);
+                if (!structMatch.Success) return null;
+                var start = structMatch.Index + structMatch.Length;
+                var end = IndexOfEndOfNextContext(flattenedProgram, structMatch.Index);
+                return flattenedProgram.Substring(start, end - start);
+            }
+
+            if (vanillaVertFunctionName != null) {
+                var vanillaVertCandidates = FindFunctionCandidates(flattenedProgram, vanillaVertFunctionName);
+                if (vanillaVertCandidates.Length > 1) {
+                    vanillaVertCandidates = vanillaVertCandidates.Distinct().ToArray();
                 }
                 // Special case for Standard
-                if (foundOldVert.Length > 1) {
-                    foundOldVert = foundOldVert.Where(m => !m.Item2.Contains("Simple")).ToArray();
+                if (vanillaVertCandidates.Length > 1) {
+                    vanillaVertCandidates = vanillaVertCandidates.Where(m => !m.returnTypeName.Contains("Simple")).ToArray();
                 }
                 // Special case for Fast Fur
-                if (foundOldVert.Length > 1) {
+                if (vanillaVertCandidates.Length > 1) {
                     if (flattenedProgram.Contains("FUR_SKIN_LAYER")) {
                         var skinLayerDefined = flattenedProgram.Contains("#define FUR_SKIN_LAYER");
-                        foundOldVert = foundOldVert.Where(m => m.Item2 == (skinLayerDefined ? "fragInput" : "hullGeomInput")).ToArray();
+                        vanillaVertCandidates = vanillaVertCandidates.Where(m => m.returnTypeName == (skinLayerDefined ? "fragInput" : "hullGeomInput")).ToArray();
                     }
                 }
 
-                if (foundOldVert.Length == 0) {
-                    throw new Exception("Failed to find vertex method: " + oldVertFunction);
+                if (vanillaVertCandidates.Length == 0) {
+                    throw new Exception("Failed to find vertex method: " + vanillaVertFunctionName);
                 }
 
-                if (foundOldVert.Length > 1) {
+                if (vanillaVertCandidates.Length > 1) {
                     throw new Exception("Found vertex method multiple times: "
-                                        + oldVertFunction
+                                        + vanillaVertFunctionName
                                         + "\n"
-                                        + foundOldVert.Select(f => f.Item2 + " " + f.Item1).Join('\n')
+                                        + vanillaVertCandidates.Select(f => f.returnTypeName + " " + f.paramList).Join('\n')
                     );
                 }
 
-                var paramList = foundOldVert[0].Item1;
-                returnType = foundOldVert[0].Item2;
+                var vanillaParamList = vanillaVertCandidates[0].paramList;
+                returnTypeName = vanillaVertCandidates[0].returnTypeName;
+                returnSemantic = vanillaVertCandidates[0].returnSemantic;
 
-                if (paramList.Trim().IsEmpty()) {
+                if (vanillaParamList.Trim().IsEmpty()) {
                     // Used occasionally as an "empty" pass. The vertex shader doesn't accept any params, so it's basically impossible
                     // for the pass to render anything, so just return it as is.
                     return originalProgram;
                 }
 
-                var rewrittenInputParams = RewriteParamList(paramList, rewriteFirstParamTypeTo: "SpsInputs");
-                newInputParams = rewrittenInputParams.rewritten;
-                oldStructType = rewrittenInputParams.firstParamType;
-                mainParamName = rewrittenInputParams.firstParamName;
-                var rewrittenPassParams = RewriteParamList(paramList, stripTypes: true,
-                    rewriteFirstParamNameTo: $"({oldStructType}){mainParamName}");
-                newPassParams = rewrittenPassParams.rewritten;
+                parsedParams = ParseParamList(
+                    vanillaParamList,
+                    isSurfaceShader,
+                    GetStructBody
+                );
             } else {
-                oldStructType = "appdata_full";
-                returnType = "void";
-                newInputParams = "inout SpsInputs input";
-                mainParamName = "input";
-                newPassParams = null;
-            }
-
-            var oldStructBody = "";
-            if (oldStructType != null) {
-                var foundOldParam = GetRegex(@"struct\s+" + Regex.Escape(oldStructType) + @"\s*{")
-                    .Match(flattenedProgram);
-                if (foundOldParam.Success) {
-                    var start = foundOldParam.Index + foundOldParam.Length;
-                    var end = IndexOfEndOfNextContext(flattenedProgram, foundOldParam.Index);
-                    oldStructBody = flattenedProgram.Substring(start, end - start);
-                } else {
-                    throw new Exception("Failed to find old struct: " + oldStructType);
-                }
+                returnTypeName = "void";
+                parsedParams = ParseParamList("inout appdata_full input", isSurfaceShader, GetStructBody);
+                parsedParams.vanillaVertArgs = null;
             }
 
             var newStructBody = new List<string>();
-            if (!useStructExtends) newStructBody.Add(oldStructBody);
-            newStructBody.Add(GetKeywordDefinesFromStruct(oldStructBody, "SPS_VANILLA_STRUCT"));
-            newStructBody.Add(GetKeywordDefinesFromStruct(oldStructBody));
+            newStructBody.Add(parsedParams.newInputStructBody);
+            newStructBody.Add(parsedParams.vanillaStructDefines);
+            newStructBody.Add(GetKeywordDefinesFromStruct(parsedParams.newInputStructBody));
 
-            void AddParamIfMissing(string keyword, string defaultName, string defaultType) {
+            void AddParamIfMissing(string keyword, string defaultName, string defaultTypeName) {
                 newStructBody.Add($"#ifndef SPS_STRUCT_{keyword}_NAME");
-                newStructBody.Add($"  {defaultType} {defaultName} : {keyword};");
-                newStructBody.Add($"  #define SPS_STRUCT_{keyword}_TYPE {defaultType}");
-                newStructBody.Add($"  #define SPS_STRUCT_{keyword}_TYPE_{defaultType}");
+                newStructBody.Add($"  {defaultTypeName} {defaultName} : {keyword};");
+                newStructBody.Add($"  #define SPS_STRUCT_{keyword}_TYPE {defaultTypeName}");
+                newStructBody.Add($"  #define SPS_STRUCT_{keyword}_TYPE_{defaultTypeName}");
                 newStructBody.Add($"  #define SPS_STRUCT_{keyword}_NAME {defaultName}");
                 newStructBody.Add($"#endif");
             }
@@ -412,34 +374,44 @@ namespace VF.Builder.Haptics {
             var newBody = new List<string>();
             
             // Silent Crosstone
-            var useEndif = false;
+            var wrapsSilentCrosstoneStages = false;
             if (flattenedProgram.Contains("SCSS_FORWARD_VERTEX_INCLUDED") && !isSurfaceShader) {
-                useEndif = true;
+                wrapsSilentCrosstoneStages = true;
                 newBody.Add("#if (defined(SHADER_STAGE_VERTEX) || defined(SHADER_STAGE_GEOMETRY))");
             }
 
-            var extends = useStructExtends ? $" : {oldStructType}" : "";
-            newBody.Add($"struct SpsInputs{extends} {{");
+            newBody.Add("struct SpsInputs {");
             newBody.AddRange(newStructBody);
             newBody.Add("};");
 
-            newBody.Add("#define SPS_VANILLA_VERT_PARAM_TYPE " + oldStructType);
-
             newBody.Add(spsMain);
 
-            newBody.Add($"{returnType} {newVertFunction}({newInputParams}) {{");
+            var returnSemanticSuffix = returnSemantic.IsEmpty() ? "" : $" : {returnSemantic}";
+            newBody.Add($"{returnTypeName} {newVertFunctionName}({parsedParams.newVertParams}){returnSemanticSuffix} {{");
 
-            newBody.Add($"  sps_apply({mainParamName});");
+            newBody.Add($"  sps_apply({parsedParams.inputName});");
 
-            if (newPassParams != null) {
-                var ret = returnType == "void" ? "" : "return ";
-                newBody.Add($"  {ret}{oldVertFunction}({newPassParams});");
+            if (parsedParams.vanillaVertArgs != null) {
+                if (parsedParams.beforeVanillaCall.IsNotEmpty()) {
+                    newBody.Add(parsedParams.beforeVanillaCall);
+                }
+                if (parsedParams.afterVanillaCall.IsEmpty()) {
+                    var returnPrefix = returnTypeName == "void" ? "" : "return ";
+                    newBody.Add($"  {returnPrefix}{vanillaVertFunctionName}({parsedParams.vanillaVertArgs});");
+                } else if (returnTypeName == "void") {
+                    newBody.Add($"  {vanillaVertFunctionName}({parsedParams.vanillaVertArgs});");
+                    newBody.Add(parsedParams.afterVanillaCall);
+                } else {
+                    newBody.Add($"  {returnTypeName} {parsedParams.returnValueName} = {vanillaVertFunctionName}({parsedParams.vanillaVertArgs});");
+                    newBody.Add(parsedParams.afterVanillaCall);
+                    newBody.Add($"  return {parsedParams.returnValueName};");
+                }
             }
 
             newBody.Add("}");
             
             // Silent Crosstone
-            if (useEndif) {
+            if (wrapsSilentCrosstoneStages) {
                 newBody.Add("#endif");
             }
             
@@ -463,13 +435,14 @@ namespace VF.Builder.Haptics {
                     .Cast<Match>();
                 foreach (var match in matches) {
                     var type = match.Groups[1].ToString();
+                    var typeKeyword = Regex.Replace(type, @"[^a-zA-Z0-9_]", "_");
                     var name = match.Groups[2].ToString();
                     var keyword = match.Groups[3].ToString();
                     if (keyword.EndsWith("0")) {
                         keyword = keyword.Substring(0, keyword.Length - 1);
                     }
                     output.Add($"#define {prefix}_{keyword}_TYPE {type}");
-                    output.Add($"#define {prefix}_{keyword}_TYPE_{type}");
+                    output.Add($"#define {prefix}_{keyword}_TYPE_{typeKeyword}");
                     output.Add($"#define {prefix}_{keyword}_NAME {name}");
                 }
                 sinceLastIf = "";
@@ -486,41 +459,333 @@ namespace VF.Builder.Haptics {
             return output.Join('\n');
         }
 
-        public class RewriteParamListOutput {
-            public string firstParamName;
-            public string firstParamType;
-            public string rewritten;
+        private class ParsedParamList {
+            public string inputName;
+            public string newInputStructBody;
+            public string vanillaStructDefines;
+            public string newVertParams;
+            public string vanillaVertArgs;
+            public string beforeVanillaCall;
+            public string afterVanillaCall;
+            public string returnValueName;
         }
-        private static RewriteParamListOutput RewriteParamList(string paramList, string rewriteFirstParamTypeTo = null, string rewriteFirstParamNameTo = null, bool stripTypes = false) {
-            string firstParamName = null;
-            string firstParamType = null;
-            var rewritten = paramList.Split('\n').Select(line => {
-                if (line.Trim().StartsWith("#")) return line;
-                return line.Split(',').Select(p => {
-                    var trimmed = p.Trim();
-                    if (trimmed.Length == 0) return p;
-                    if (firstParamName == null) {
-                        var m = Regex.Match(trimmed, @"(\S+)\s+(\S+)$");
-                        firstParamType = m.Groups[1].ToString();
-                        firstParamName = m.Groups[2].ToString();
-                        if (rewriteFirstParamTypeTo != null) {
-                            p = Regex.Replace(p, @"(\S+)(\s+\S+\s*)$", rewriteFirstParamTypeTo+"$2");
-                        }
-                        if (rewriteFirstParamNameTo != null) {
-                            p = Regex.Replace(p, @"(\S+)(\s*)$", rewriteFirstParamNameTo+"$2");
-                        }
+
+        private static (string paramList, string returnTypeName, string returnSemantic)[] FindFunctionCandidates(
+            string program,
+            string functionName
+        ) {
+            var output = new List<(string,string,string)>();
+            var nameMatches = GetRegex(@"\b" + Regex.Escape(functionName) + @"\s*\(")
+                .Matches(program)
+                .Cast<Match>();
+            foreach (var nameMatch in nameMatches) {
+                if (nameMatch.Index == 0 || !Char.IsWhiteSpace(program[nameMatch.Index - 1])) continue;
+                var openParen = program.IndexOf('(', nameMatch.Index);
+                var depth = 1;
+                var closeParen = -1;
+                var inLineComment = false;
+                var inBlockComment = false;
+                var inString = false;
+                for (var i = openParen + 1; i < program.Length; i++) {
+                    var c = program[i];
+                    var next = i + 1 < program.Length ? program[i + 1] : '\0';
+                    if (inLineComment) {
+                        if (c == '\n') inLineComment = false;
+                        continue;
                     }
-                    if (stripTypes) {
-                        p = Regex.Replace(p, @":.*", "");
-                        p = Regex.Replace(p, @"\S.*\s(\S+)\s*$", "$1");
+                    if (inBlockComment) {
+                        if (c == '*' && next == '/') {
+                            inBlockComment = false;
+                            i++;
+                        }
+                        continue;
                     }
-                    return p;
-                }).Join(',');
-            }).Join('\n');
-            return new RewriteParamListOutput() {
-                firstParamType = firstParamType,
-                firstParamName = firstParamName,
-                rewritten = rewritten,
+                    if (inString) {
+                        if (c == '\\') {
+                            i++;
+                        } else if (c == '"') {
+                            inString = false;
+                        }
+                        continue;
+                    }
+                    if (c == '/' && next == '/') {
+                        inLineComment = true;
+                        i++;
+                    } else if (c == '/' && next == '*') {
+                        inBlockComment = true;
+                        i++;
+                    } else if (c == '"') {
+                        inString = true;
+                    } else if (c == '(') {
+                        depth++;
+                    } else if (c == ')' && --depth == 0) {
+                        closeParen = i;
+                        break;
+                    }
+                }
+                if (closeParen < 0) continue;
+
+                var afterParams = closeParen + 1;
+                while (afterParams < program.Length && Char.IsWhiteSpace(program[afterParams])) afterParams++;
+                var returnSemantic = "";
+                if (afterParams < program.Length && program[afterParams] == ':') {
+                    afterParams++;
+                    while (afterParams < program.Length && Char.IsWhiteSpace(program[afterParams])) afterParams++;
+                    var semanticStart = afterParams;
+                    while (afterParams < program.Length
+                           && !Char.IsWhiteSpace(program[afterParams])
+                           && program[afterParams] != '{') {
+                        afterParams++;
+                    }
+                    returnSemantic = program.Substring(semanticStart, afterParams - semanticStart);
+                    while (afterParams < program.Length && Char.IsWhiteSpace(program[afterParams])) afterParams++;
+                }
+                if (afterParams >= program.Length || program[afterParams] != '{') continue;
+
+                var typeEnd = nameMatch.Index;
+                while (typeEnd > 0 && Char.IsWhiteSpace(program[typeEnd - 1])) typeEnd--;
+                var typeStart = typeEnd - 1;
+                var templateDepth = 0;
+                for (; typeStart >= 0; typeStart--) {
+                    var c = program[typeStart];
+                    if (c == '>') templateDepth++;
+                    if (c == '<') templateDepth--;
+                    if (templateDepth == 0 && Char.IsWhiteSpace(c)) break;
+                }
+                typeStart++;
+                if (typeStart >= typeEnd) continue;
+                var returnTypeName = program.Substring(typeStart, typeEnd - typeStart);
+                var paramList = program.Substring(openParen + 1, closeParen - openParen - 1);
+                output.Add((paramList, returnTypeName, returnSemantic));
+            }
+            return output.ToArray();
+        }
+
+        private static ParsedParamList ParseParamList(
+            string paramList,
+            bool isSurfaceShader,
+            Func<string, string> getStructBody
+        ) {
+            const string paramPattern = @"^(?<modifier>.*?)(?<type>\S+)\s+(?<name>[^\s:\[=]+)(?<array>(?:\[[^\]]*\])*)"
+                                        + @"(?:\s*:\s*(?<semantic>[^\s=]+))?(?:\s*=\s*(?<default>.*))?$";
+            var withoutComments = Regex.Replace(paramList, @"/\*.*?\*/", "", RegexOptions.Singleline);
+            withoutComments = Regex.Replace(withoutComments, @"//[^\n]*", "");
+            var parts = new List<string>();
+            var pendingParam = "";
+            void FlushParam() {
+                var normalized = Regex.Replace(pendingParam, @"\s+", " ").Trim();
+                normalized = Regex.Replace(normalized, @"\s*([<,\[])\s*", "$1");
+                normalized = Regex.Replace(normalized, @"\s*([>\]])", "$1");
+                if (normalized.IsNotEmpty()) parts.Add(normalized);
+                pendingParam = "";
+            }
+            var nestedDepth = 0;
+            foreach (var line in withoutComments.Split('\n')) {
+                if (line.TrimStart().StartsWith("#")) {
+                    FlushParam();
+                    parts.Add(line.Trim());
+                    continue;
+                }
+                pendingParam += " ";
+                foreach (var c in line) {
+                    if (c == '<' || c == '[' || c == '(' || c == '{') nestedDepth++;
+                    if (c == '>' || c == ']' || c == ')' || c == '}') nestedDepth--;
+                    if (c == ',' && nestedDepth == 0) {
+                        FlushParam();
+                        parts.Add(",");
+                    } else {
+                        pendingParam += c;
+                    }
+                }
+            }
+            FlushParam();
+
+            var parsedParamMatches = new Dictionary<string, Match>();
+            foreach (var part in parts.Where(part => !part.StartsWith("#") && part != ",")) {
+                var match = Regex.Match(part, paramPattern);
+                if (!match.Success) throw new Exception("Failed to parse vertex parameter: " + part);
+                parsedParamMatches[part] = match;
+            }
+            string GetModifier(Match match) {
+                return match.Groups["modifier"].ToString().Trim();
+            }
+            bool IsOutParam(Match match) {
+                return GetRegex(@"\bout\b").IsMatch(GetModifier(match));
+            }
+            bool IsInoutParam(Match match) {
+                return GetRegex(@"\binout\b").IsMatch(GetModifier(match));
+            }
+            string GetBody(Match match) {
+                return getStructBody(match.Groups["type"].ToString());
+            }
+            bool IsStructParam(Match match) {
+                return match.Groups["semantic"].ToString().IsEmpty()
+                       && !IsOutParam(match)
+                       && GetBody(match) != null;
+            }
+
+            var allParamMatches = parsedParamMatches.Values.ToArray();
+            // A raw shader entry point's inout parameters are outputs even when the function also has out
+            // parameters or a return value. Keep those outputs separate from SpsInputs, which also contains
+            // input-only semantics such as SV_VertexID and therefore cannot itself be used as an output.
+            var useSeparateInoutOutputs = !isSurfaceShader;
+            var structParamMatches = allParamMatches
+                .Where(match => match.Groups["semantic"].ToString().IsEmpty())
+                .Where(match => !IsOutParam(match))
+                .Where(match => IsStructParam(match))
+                .ToArray();
+
+            var usedNames = allParamMatches
+                .Select(match => match.Groups["name"].ToString())
+                .ToHashSet();
+            string MakeUniqueName(string desired) {
+                while (!usedNames.Add(desired)) desired += "_";
+                return desired;
+            }
+            var inputName = MakeUniqueName("input");
+            var returnValueName = MakeUniqueName("spsReturnValue");
+            var localNames = new Dictionary<string, string>();
+            var outputNames = new Dictionary<string, string>();
+            string GetLocalName(Match match) {
+                var name = match.Groups["name"].ToString();
+                if (!localNames.TryGetValue(name, out var localName)) {
+                    localName = MakeUniqueName("vanillaInput_" + name);
+                    localNames[name] = localName;
+                }
+                return localName;
+            }
+            string GetOutputName(Match match) {
+                var name = match.Groups["name"].ToString();
+                if (!outputNames.TryGetValue(name, out var outputName)) {
+                    outputName = MakeUniqueName("spsOutput_" + name);
+                    outputNames[name] = outputName;
+                }
+                return outputName;
+            }
+
+            string RenderWithDirectives(Func<Match,string> renderParam, bool preserveCommas, bool requireStatement) {
+                var output = new List<string>();
+                var hasContent = false;
+                foreach (var part in parts) {
+                    if (part.StartsWith("#")) {
+                        output.Add(part);
+                    } else if (part == ",") {
+                        if (preserveCommas) output.Add(part);
+                    } else {
+                        var rendered = renderParam(parsedParamMatches[part]);
+                        if (rendered == null) continue;
+                        output.Add(rendered);
+                        hasContent = true;
+                    }
+                }
+                if (requireStatement && !hasContent) return "";
+                return "\n" + output.Join('\n') + "\n";
+            }
+
+            var newInputStructBody = RenderWithDirectives(match => {
+                if (IsStructParam(match)) return GetBody(match);
+                if (match.Groups["semantic"].ToString().IsEmpty() || IsOutParam(match)) return null;
+                return $"{match.Groups["type"]} {match.Groups["name"]}{match.Groups["array"]} : {match.Groups["semantic"]};";
+            }, preserveCommas: false, requireStatement: false);
+
+            var structParamNames = structParamMatches
+                .Select(match => match.Groups["name"].ToString())
+                .Distinct()
+                .ToArray();
+            var vanillaStructDefines = structParamNames.Length == 1
+                ? RenderWithDirectives(match => {
+                    if (!IsStructParam(match) || match.Groups["name"].ToString() != structParamNames[0]) return null;
+                    var typeName = match.Groups["type"].ToString();
+                    return "#define SPS_VANILLA_STRUCT_EXISTS\n"
+                           + "#define SPS_VANILLA_VERT_PARAM_TYPE " + typeName + "\n"
+                           + GetKeywordDefinesFromStruct(GetBody(match), "SPS_VANILLA_STRUCT");
+                }, preserveCommas: false, requireStatement: true)
+                : "";
+
+            string RenderParamList(string firstParam, Func<Match,string> renderParam) {
+                var output = new List<string>();
+                var hasParam = firstParam != null;
+                var conditionalStack = new Stack<(bool before, bool anyBranch)>();
+                if (hasParam) output.Add(firstParam);
+                foreach (var part in parts) {
+                    if (part.StartsWith("#")) {
+                        output.Add(part);
+                        var directive = Regex.Match(part, @"^#\s*(\w+)").Groups[1].ToString();
+                        if (directive == "if" || directive == "ifdef" || directive == "ifndef") {
+                            conditionalStack.Push((hasParam, false));
+                        } else if ((directive == "else" || directive == "elif") && conditionalStack.Count > 0) {
+                            var conditional = conditionalStack.Pop();
+                            conditional.anyBranch |= hasParam;
+                            hasParam = conditional.before;
+                            conditionalStack.Push(conditional);
+                        } else if (directive == "endif" && conditionalStack.Count > 0) {
+                            var conditional = conditionalStack.Pop();
+                            hasParam |= conditional.anyBranch;
+                        }
+                        continue;
+                    }
+                    if (part == ",") continue;
+                    var paramMatch = parsedParamMatches[part];
+                    var rendered = renderParam(paramMatch);
+                    if (rendered == null) continue;
+                    output.Add((hasParam ? ", " : "") + rendered);
+                    hasParam = true;
+                }
+                return "\n" + output.Join('\n') + "\n";
+            }
+
+            var structModifier = isSurfaceShader
+                                 && structParamMatches.Any(IsInoutParam)
+                ? "inout "
+                : "";
+            var newVertParams = RenderParamList(structModifier + "SpsInputs " + inputName, match => {
+                if (IsOutParam(match)) return match.Value;
+                var embeddedInput = IsStructParam(match) || match.Groups["semantic"].ToString().IsNotEmpty();
+                if (useSeparateInoutOutputs && embeddedInput && IsInoutParam(match)) {
+                    var modifier = Regex.Replace(GetModifier(match), @"\binout\b", "out");
+                    var semantic = match.Groups["semantic"].ToString();
+                    var semanticSuffix = semantic.IsEmpty() ? "" : " : " + semantic;
+                    return $"{modifier} {match.Groups["type"]} {GetOutputName(match)}{match.Groups["array"]}{semanticSuffix}";
+                }
+                if (embeddedInput) return null;
+                return match.Value;
+            });
+
+            var beforeVanillaCall = !useSeparateInoutOutputs ? "" : RenderWithDirectives(match => {
+                var embeddedInput = IsStructParam(match) || match.Groups["semantic"].ToString().IsNotEmpty();
+                if (!embeddedInput || !IsInoutParam(match)) return null;
+                var initialValue = IsStructParam(match)
+                    ? $"({match.Groups["type"]}){inputName}"
+                    : $"{inputName}.{match.Groups["name"]}";
+                return $"  {match.Groups["type"]} {GetLocalName(match)} = {initialValue};";
+            }, preserveCommas: false, requireStatement: true);
+            var afterVanillaCall = !useSeparateInoutOutputs ? "" : RenderWithDirectives(match => {
+                var embeddedInput = IsStructParam(match) || match.Groups["semantic"].ToString().IsNotEmpty();
+                if (!embeddedInput || !IsInoutParam(match)) return null;
+                return $"  {GetOutputName(match)} = {GetLocalName(match)};";
+            }, preserveCommas: false, requireStatement: true);
+
+            var vanillaVertArgs = RenderWithDirectives(match => {
+                var name = match.Groups["name"].ToString();
+                if (IsOutParam(match)) return name;
+                var embeddedInput = IsStructParam(match) || match.Groups["semantic"].ToString().IsNotEmpty();
+                if (useSeparateInoutOutputs && embeddedInput && IsInoutParam(match)) return GetLocalName(match);
+                if (IsStructParam(match)) {
+                    return $"({match.Groups["type"]}){inputName}";
+                }
+                if (match.Groups["semantic"].ToString().IsNotEmpty()) return $"{inputName}.{name}";
+                return name;
+            }, preserveCommas: true, requireStatement: false);
+
+            return new ParsedParamList {
+                inputName = inputName,
+                newInputStructBody = newInputStructBody,
+                vanillaStructDefines = vanillaStructDefines,
+                newVertParams = newVertParams,
+                vanillaVertArgs = vanillaVertArgs,
+                beforeVanillaCall = beforeVanillaCall,
+                afterVanillaCall = afterVanillaCall,
+                returnValueName = returnValueName
             };
         }
         
@@ -544,7 +809,7 @@ namespace VF.Builder.Haptics {
             }
         }
         
-        private static string WithEachProgram(string content, Func<string, bool, string> withProgram) {
+        internal static string WithEachProgram(string content, Func<string, bool, string> withProgram) {
             var output = "";
             var lastProgramEnd = 0;
             while (true) {
