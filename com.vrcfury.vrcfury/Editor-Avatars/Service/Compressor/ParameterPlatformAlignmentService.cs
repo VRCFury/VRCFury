@@ -41,7 +41,7 @@ namespace VF.Service.Compressor {
         }
 
         [CanBeNull]
-        private static string GetSavePath([CanBeNull] string blueprintId) {
+        internal static string GetSavePath([CanBeNull] string blueprintId) {
             if (string.IsNullOrEmpty(blueprintId)) return null;
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if (string.IsNullOrEmpty(localAppData)) return null;
