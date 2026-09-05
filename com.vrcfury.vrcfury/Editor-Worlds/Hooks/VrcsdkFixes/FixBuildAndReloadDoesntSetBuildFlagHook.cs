@@ -1,4 +1,4 @@
-#if VRCSDK_HAS_ACTIVE_BUILD_TYPE
+#if VRCSDK_HAS_ACTIVE_BUILD_TYPE && !VRCSDK_3_10_5_OR_NEWER
 using System.Threading.Tasks;
 using UnityEditor;
 using VF.Utils;

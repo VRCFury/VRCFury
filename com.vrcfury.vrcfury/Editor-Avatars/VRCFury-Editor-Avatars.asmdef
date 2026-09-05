@@ -43,6 +43,11 @@
         },
         {
             "name": "com.vrchat.base",
+            "expression": "3.10.5",
+            "define": "VRCSDK_3_10_5_OR_NEWER"
+        },
+        {
+            "name": "com.vrchat.base",
             "expression": "3.0.8",
             "define": "VRCSDK_HAS_DRIVER_COPY"
         },

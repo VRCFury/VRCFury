@@ -31,7 +31,8 @@
         "VRC.SDK3.Dynamics.Constraint.dll",
         "VRCSDKBase-Editor.dll",
         "VRCCore-Editor.dll",
-        "VRC.Udon.Common.dll"
+        "VRC.Udon.Common.dll",
+        "0Harmony.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [
@@ -48,6 +49,11 @@
             "name": "com.vrchat.base",
             "expression": "3.7.5",
             "define": "VRCSDK_HAS_ACTIVE_BUILD_TYPE"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.10.5",
+            "define": "VRCSDK_3_10_5_OR_NEWER"
         }
     ],
     "noEngineReferences": false

@@ -1,3 +1,4 @@
+#if !VRCSDK_3_10_5_OR_NEWER
 using System.Collections.Generic;
 using UdonSharp;
 using UdonSharpEditor;
@@ -70,3 +71,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

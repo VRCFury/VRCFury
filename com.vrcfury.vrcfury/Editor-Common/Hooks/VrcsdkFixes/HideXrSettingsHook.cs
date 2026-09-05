@@ -1,3 +1,4 @@
+#if !VRCSDK_3_10_5_OR_NEWER
 using System.Linq;
 using UnityEditor;
 using VF.Builder;
@@ -37,3 +38,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif
