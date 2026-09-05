@@ -1,3 +1,4 @@
+#if !VRCSDK_3_10_5_OR_NEWER
 using System;
 using System.Diagnostics;
 using System.Reflection;
@@ -37,4 +38,5 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif
 
