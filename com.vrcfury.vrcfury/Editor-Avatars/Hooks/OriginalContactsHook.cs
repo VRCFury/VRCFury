@@ -75,7 +75,9 @@ namespace VF.Hooks {
                         if (leftProp != null && rightProp != null) {
                             Reflection.MirrorCollider.Invoke(editor, new object[] { leftProp, rightProp });
                             // In case harmony isn't present so this didn't already get fixed
+#if !VRCSDK_3_10_5_OR_NEWER
                             FixColliderMirroringHook.FixPositionOffset(leftProp, rightProp);
+#endif
                             so.ApplyModifiedPropertiesWithoutUndo();
                         }
                     }
@@ -96,4 +98,3 @@ namespace VF.Hooks {
         }
     }
 }
-
