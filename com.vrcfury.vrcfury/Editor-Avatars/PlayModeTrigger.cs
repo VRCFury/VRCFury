@@ -107,7 +107,6 @@ namespace VF {
 
         private static void ProcessAvatar(VFGameObject obj) {
             if (!RunPreprocessorsOnlyOncePatch.ShouldStartPreprocessors(obj)) return;
-            if (!VRCFuryBuilder.ShouldRun(obj)) return;
 
             var orig = obj.Clone();
             orig.name = obj.name;
