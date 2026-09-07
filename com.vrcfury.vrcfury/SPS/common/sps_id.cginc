@@ -5,6 +5,7 @@
 #include "UnityShaderUtilities.cginc"
 #include "UnityInstancing.cginc"
 #include "sps_cell_hash.cginc"
+#include "sps_cell_layout.cginc"
 #include "sps_utils.cginc"
 
 UNITY_INSTANCING_BUFFER_START(SpsInstanceBuf_Id)
@@ -24,6 +25,7 @@ UNITY_INSTANCING_BUFFER_END(SpsInstanceBuf_Id)
 
 inline bool sps_should_abort() {
     if (!sps_to_bool(_SPS_Configured)) return true;
+    if (sps_socket_slot_count() < 20u) return true;
     #if defined(UNITY_SINGLE_PASS_STEREO) || defined(UNITY_STEREO_INSTANCING_ENABLED) || defined(UNITY_STEREO_MULTIVIEW_ENABLED)
         return unity_StereoEyeIndex != 0;
     #else
