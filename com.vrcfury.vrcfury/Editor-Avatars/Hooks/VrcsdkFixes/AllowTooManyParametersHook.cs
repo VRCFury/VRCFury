@@ -1,6 +1,7 @@
 using System;
 using UnityEditor;
 using VF.Builder;
+using VF.Menu;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
@@ -26,8 +27,8 @@ namespace VF.Hooks.VrcsdkFixes {
             try {
                 if (
                     __2.Contains("VRCExpressionParameters has too many parameters")
-                    && __1 is VRCAvatarDescriptor avatar
-                    && VRCFuryBuilder.ShouldRun(avatar.owner())
+                    && __1 is VRCAvatarDescriptor
+                    && CompressorMenuItem.Get() != CompressorMenuItem.Value.Fail
                 ) {
                     return false;
                 }
