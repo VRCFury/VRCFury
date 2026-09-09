@@ -61,6 +61,8 @@ For more information, please refer to <https://unlicense.org>
   * Ensured that gogoloco params are always global
 * cubic^2
   * Special thanks for original concept of how to make SPS work without lights
+* different-name
+  * Added the Save Customizations feature
 * dummics
   * Fixed handling input controllers with corrupt (null) transitions
 * GameGeek720
