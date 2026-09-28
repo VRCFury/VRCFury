@@ -23,6 +23,9 @@ namespace VF.Builder.Haptics {
         }
 
         private const string HashBuster = "17";
+        private static readonly Regex ProgramStartRegex = GetRegex(@"\G(?:^|\n)[ \t]*(CGPROGRAM|HLSLPROGRAM)[ \t]*(?:\n|$)");
+        private static readonly Regex CgProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDCG[ \t]*(?:\n|$)");
+        private static readonly Regex HlslProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDHLSL[ \t]*(?:\n|$)");
         
         public static void Patch(Material mat, bool keepImports, bool hasBlendshapes) {
             if (!mat.shader) return;
@@ -835,7 +838,7 @@ namespace VF.Builder.Haptics {
             return output;
         }
 
-        private static string WithEachPass(string content, Func<string, string> withPass, Func<string, string> withRest) {
+        internal static string WithEachPass(string content, Func<string, string> withPass, Func<string, string> withRest) {
             var output = "";
             var lastPassEnd = 0;
             var processedPasses = new List<string>();
@@ -896,6 +899,11 @@ namespace VF.Builder.Haptics {
                     continue;
                 }
 
+                if ((i == start || c == '\n') && TrySkipProgram(str, i, out var endOfProgram)) {
+                    i = endOfProgram;
+                    continue;
+                }
+
                 if (c == '/' && i != str.Length - 1 && str[i + 1] == '*') {
                     inBlockComment = true;
                     i++;
@@ -912,6 +920,23 @@ namespace VF.Builder.Haptics {
                 }
             }
             throw new Exception("Failed to find matching closing bracket");
+        }
+
+        private static bool TrySkipProgram(string str, int start, out int end) {
+            end = 0;
+            var programStart = ProgramStartRegex.Match(str, start);
+            if (!programStart.Success || programStart.Index != start) return false;
+
+            var isCg = programStart.Groups[1].ToString() == "CGPROGRAM";
+            var programEnd = (isCg ? CgProgramEndRegex : HlslProgramEndRegex).Match(
+                str,
+                programStart.Index + programStart.Length
+            );
+            if (!programEnd.Success) {
+                throw new Exception($"Failed to find {(isCg ? "ENDCG" : "ENDHLSL")} end marker");
+            }
+            end = programEnd.Index + programEnd.Length - 1;
+            return true;
         }
 
         private static string WithEachInclude(string contents, string filePath, Func<string, string> replacer = null, bool replaceWithFullPath = false, bool includeLibraryFiles = false) {

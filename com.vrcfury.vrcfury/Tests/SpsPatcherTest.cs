@@ -947,6 +947,27 @@ after
         Assert.That(output, Does.Contain("after"));
     }
 
+    [Test]
+    public void TraversesPassWithPreprocessorDependentProgramBraces() {
+        var input = @"
+Shader ""Hidden/VRCFury/Tests/SpsPatcher/PreprocessorBraces"" {
+    SubShader {
+        Pass {
+            HLSLPROGRAM
+#if ENABLE_FEATURE
+            if (true) {
+#else
+            {
+#endif
+            }
+            ENDHLSL
+        }
+    }
+}";
+        var output = SpsPatcher.WithEachPass(input, pass => "PATCHED" + pass, rest => rest);
+        Assert.That(output, Does.Contain("PATCHED"));
+    }
+
     private static void AssertShaderCompiles(
         string program,
         string startMarker,
