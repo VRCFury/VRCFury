@@ -22,9 +22,9 @@ namespace VF.Model.Feature {
         public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
         public bool allowMissingAssets = false;
         public List<InjectParamEntry> injectParams = new List<InjectParamEntry>();
-
         public string injectSpsDepthParam;
         public string injectSpsVelocityParam;
+        public int priority = 0;
 
         [Obsolete] public GuidController controller;
         [Obsolete] public GuidMenu menu;

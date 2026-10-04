@@ -29,6 +29,7 @@ namespace VF.Service {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
+        [VFAutowired] private readonly PriorityService priorityService;
         [VFAutowired] private readonly CleanupEmptyLayersService cleanupEmptyLayers;
 
         [FeatureBuilderAction(FeatureOrder.LayerToTree)]
@@ -53,18 +54,45 @@ namespace VF.Service {
             }
 
             var directTree = new Lazy<VFBlendTreeDirect>(() => directTreeService.Create());
-            
+
             var debugLog = new List<string>();
+
+            var optimizedLayerPriorities = new List<(string name, int priority)>();
+
             foreach (var layer in applyToLayers) {
                 try {
+                    // Track priority before optimization (but only record after success)
+                    var hasPriority = priorityService.HasLayerPriority(layer);
+                    var priority = priorityService.GetLayerPriority(layer);
+
                     OptimizeLayer(layer, bindingsByLayer, layersByBinding, directTree);
                     debugLog.Add($"{layer.name} - OPTIMIZED");
+                    if (hasPriority) {
+                        optimizedLayerPriorities.Add((layer.name, priority));
+                    }
                     layer.Remove();
                 } catch (DoNotOptimizeException e) {
                     debugLog.Add($"{layer.name} - Not Optimizing ({e.Message})");
                 }
             }
-            
+
+            // Handle priorities for the merged DBT layer
+            if (directTree.IsValueCreated && optimizedLayerPriorities.Count > 0) {
+                var dbtLayer = fx.GetLayers().FirstOrDefault(l => l.name.EndsWith(nameof(LayerToTreeService))); // the DBT layer is named after service class name
+                if (dbtLayer != null) {
+                    var distinctPriorities = optimizedLayerPriorities.Select(p => p.priority).Distinct().ToList();
+                    var highestPriority = optimizedLayerPriorities.Max(p => p.priority);
+                    // Apply highest priority to the DBT layer
+                    priorityService.SetLayerPriority(dbtLayer, highestPriority);
+                    // Warn if there were conflicting priorities
+                    if (distinctPriorities.Count > 1) {
+                        var conflictingLayers = string.Join(", ", optimizedLayerPriorities.Select(p => $"{p.name} (priority {p.priority})"));
+                        Debug.LogWarning($"[VRCFury] Layer Priority Conflict: Multiple toggles with different priorities were merged into a single optimized blend tree layer. " +
+                            $"Using highest priority ({highestPriority}). Affected toggles: {conflictingLayers}");
+                    }
+                }
+            }
+
             Debug.Log("Optimization report:\n\n" + debugLog.Join('\n'));
         }
 
@@ -95,7 +123,7 @@ namespace VF.Service {
             if (layer.blendingMode == AnimatorLayerBlendingMode.Additive) {
                 throw new DoNotOptimizeException($"Layer is additive");
             }
-            
+
             if (layerControlService.IsLayerTargeted(layer)) {
                 throw new DoNotOptimizeException($"Layer is targeted by an Animator Layer Control");
             }
@@ -143,7 +171,7 @@ namespace VF.Service {
             if (hasEulerRotation) {
                 throw new DoNotOptimizeException($"Animates transform rotations, which work differently within blend trees");
             }
-            
+
             var usedBindings = bindingsByLayer[layer];
             if (!layer.TryGetLayerId(out var layerId)) {
                 throw new DoNotOptimizeException("Layer was removed");
@@ -178,7 +206,7 @@ namespace VF.Service {
             if (states.Length != 2) {
                 throw new DoNotOptimizeException($"Contains {states.Length} states");
             }
-            
+
             var state0 = states[0];
             var state1 = states[1];
 
@@ -190,7 +218,7 @@ namespace VF.Service {
             if (state0Condition.Value.parameter != state1Condition.Value.parameter) {
                 throw new DoNotOptimizeException($"State conditions do not use same parameter");
             }
-            
+
             var param = new VFAFloat(state0Condition.Value.parameter, 0);
             var paramType = fx.parameters
                 .Where(p => p.name == param)
@@ -200,10 +228,10 @@ namespace VF.Service {
             if (FullControllerBuilder.VRChatGlobalParams.Contains(param) && paramType == AnimatorControllerParameterType.Int) {
                 throw new DoNotOptimizeException($"Uses an int VRC built-in, which means >1 is likely");
             }
-            
+
             // TODO: Might want to verify that state1Condition is the opposite of state0Condition
             // But we already verify that they use the same parameter, so it's /extremely/ unlikely for this to not be the case
-            
+
             var state0Clip = Make0LengthClipForState(layer, state0);
             var state1Clip = Make0LengthClipForState(layer, state1);
 
@@ -241,7 +269,7 @@ namespace VF.Service {
         private void Optimize(AnimatorCondition condition, VFMotion on, VFMotion off, Lazy<VFBlendTreeDirect> directTree) {
             if (on == null) on = clipFactory.GetEmptyClip();
             if (off == null) off = clipFactory.GetEmptyClip();
-            
+
             if (condition.mode == AnimatorConditionMode.IfNot) {
                 condition.mode = AnimatorConditionMode.If;
                 (on, off) = (off, on);
