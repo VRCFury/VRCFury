@@ -1,4 +1,4 @@
-#if !VRCSDK_3_10_5_OR_NEWER
+#if !VRCSDK_HAS_FIXED_COLLIDER_UPDATE_IN_PLAY_MODE
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;

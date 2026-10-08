@@ -1,4 +1,4 @@
-#if !VRCSDK_3_10_5_OR_NEWER
+#if !VRCSDK_HAS_FIXED_UDONSHARP_INSPECTOR_FIRST_DRAW
 using System.Collections.Generic;
 using UdonSharp;
 using UdonSharpEditor;

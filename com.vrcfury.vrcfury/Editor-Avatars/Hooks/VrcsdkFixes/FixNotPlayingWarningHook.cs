@@ -1,4 +1,4 @@
-#if !VRCSDK_3_10_5_OR_NEWER
+#if !VRCSDK_HAS_FIXED_ANIMATOR_NOT_PLAYING_WARNING
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;

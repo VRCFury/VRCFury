@@ -1,4 +1,4 @@
-#if !VRCSDK_3_10_5_OR_NEWER
+#if !VRCSDK_HAS_FIXED_PARAMETER_DRIVER_ANIMATOR_WINDOW
 using UnityEditor.Animations;
 using VF.Utils;
 

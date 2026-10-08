@@ -1,4 +1,4 @@
-#if !VRCSDK_3_10_5_OR_NEWER
+#if !VRCSDK_HAS_FIXED_CLIENTSIM_EDITOR_ONLY_CLEANUP
 using UnityEditor;
 using VF.Utils;
 

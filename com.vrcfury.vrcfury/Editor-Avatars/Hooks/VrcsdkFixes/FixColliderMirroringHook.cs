@@ -1,4 +1,4 @@
-#if !VRCSDK_3_10_5_OR_NEWER
+#if !VRCSDK_HAS_FIXED_CONTACT_COLLIDER_MIRRORING
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;

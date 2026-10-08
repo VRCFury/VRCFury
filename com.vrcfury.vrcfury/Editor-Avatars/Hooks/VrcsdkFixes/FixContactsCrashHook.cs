@@ -1,4 +1,4 @@
-#if !VRCSDK_3_10_5_OR_NEWER
+#if !VRCSDK_HAS_FIXED_CONTACTS_RACE
 using System;
 using System.Reflection;
 using UnityEditor;

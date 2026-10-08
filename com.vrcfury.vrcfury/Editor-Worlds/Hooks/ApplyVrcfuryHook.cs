@@ -30,6 +30,10 @@ namespace VF.Hooks {
             if (IsActuallyUploadingHook.Get() && !UseInUploadMenuItem.Get()) return;
 
             var success = VRCFuryBuildContext.Run(() => {
+#if VRCF_AVATARS
+                FailForAvatarSdk();
+#endif
+
                 var progress = VRCFProgressWindow.Create();
                 progress.Progress(0, "Applying VRCFury to world ...");
                 try {
@@ -50,5 +54,15 @@ namespace VF.Hooks {
                 }
             }
         }
+
+#if VRCF_AVATARS
+        private static void FailForAvatarSdk() {
+            throw new BuildFailedException(
+                "Both the VRChat Worlds and Avatars SDKs are installed." +
+                " VRChat does not allow having both in a single project." +
+                " Remove one of them in the VCC before building."
+            );
+        }
+#endif
     }
 }

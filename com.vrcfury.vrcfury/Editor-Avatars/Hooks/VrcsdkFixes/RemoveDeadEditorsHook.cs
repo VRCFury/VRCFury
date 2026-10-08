@@ -1,4 +1,4 @@
-#if !VRCSDK_3_10_5_OR_NEWER
+#if !VRCSDK_HAS_FIXED_ANIMATOR_PLAY_AUDIO_DEAD_EDITORS
 using UnityEditor;
 using VF.Utils;
 

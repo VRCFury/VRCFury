@@ -52,12 +52,12 @@ namespace VF.Utils {
             public static implicit operator MethodOrLookup(MethodInfo method) => new MethodOrLookup { _method = method };
             public MethodBase FindAsOriginal(MethodInfo patch) {
                 if (_method != null) return _method;
-                if (_type.type == null) return null;
+                if (_type?.type == null) return null;
                 return FindOriginal(patch, _type.type, _name);
             }
             public MethodInfo FindAsPatch() {
                 if (_method != null) return _method;
-                return _type.type?.VFStaticMethod(_name);
+                return _type?.type?.VFStaticMethod(_name);
             }
             public string Id() {
                 if (_method != null) return _method.DeclaringType + " " + _method.Name;

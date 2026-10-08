@@ -46,14 +46,59 @@
             "define": "VRCF_WORLDS"
         },
         {
+            "name": "com.vrchat.avatars",
+            "expression": "",
+            "define": "VRCF_AVATARS"
+        },
+        {
             "name": "com.vrchat.base",
             "expression": "3.7.5",
             "define": "VRCSDK_HAS_ACTIVE_BUILD_TYPE"
         },
         {
-            "name": "com.vrchat.base",
+            "name": "com.vrchat.worlds",
             "expression": "3.10.5",
-            "define": "VRCSDK_3_10_5_OR_NEWER"
+            "define": "VRCSDK_HAS_UDONSHARP_CREATE_SCRIPT_WITH_PATH"
+        },
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_UDONSHARP_SERIALIZATION_NRE"
+        },
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_UDONSHARP_INSPECTOR_FIRST_DRAW"
+        },
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_UDONSHARP_UPGRADE_PERFORMANCE"
+        },
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_WORLD_BUILD_RELOAD_BUILD_FLAG"
+        },
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_UDON_ON_DISABLE_IN_EDITOR"
+        },
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_CLIENTSIM_PERSISTENCE_RACE"
+        },
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_CLIENTSIM_NETWORKING_UTILITIES_RESET"
+        },
+        {
+            "name": "com.vrchat.worlds",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_CLIENTSIM_EDITOR_ONLY_CLEANUP"
         }
     ],
     "noEngineReferences": false

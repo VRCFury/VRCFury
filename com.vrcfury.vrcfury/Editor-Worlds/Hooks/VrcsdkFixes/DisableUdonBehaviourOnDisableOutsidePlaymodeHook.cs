@@ -1,4 +1,4 @@
-#if !VRCSDK_3_10_5_OR_NEWER
+#if !VRCSDK_HAS_FIXED_UDON_ON_DISABLE_IN_EDITOR
 using UnityEditor;
 using VF.Utils;
 

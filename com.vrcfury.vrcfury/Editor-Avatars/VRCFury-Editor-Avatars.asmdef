@@ -42,9 +42,44 @@
             "define": "VRC_NEW_PUBLIC_SDK"
         },
         {
+            "name": "com.vrchat.avatars",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_CONTACT_COLLIDER_MIRRORING"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_COLLIDER_UPDATE_IN_PLAY_MODE"
+        },
+        {
             "name": "com.vrchat.base",
             "expression": "3.10.5",
-            "define": "VRCSDK_3_10_5_OR_NEWER"
+            "define": "VRCSDK_HAS_FIXED_CONTACTS_RACE"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_CONTACT_MANAGER_STOPWATCH"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_ANIMATOR_NOT_PLAYING_WARNING"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_PARAMETER_DRIVER_ANIMATOR_WINDOW"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_ANIMATOR_PLAY_AUDIO_DEAD_EDITORS"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.10.5",
+            "define": "VRCSDK_HAS_FIXED_BLUEPRINT_WARNING"
         },
         {
             "name": "com.vrchat.base",

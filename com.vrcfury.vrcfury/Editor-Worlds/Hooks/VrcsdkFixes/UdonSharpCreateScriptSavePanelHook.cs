@@ -1,4 +1,4 @@
-#if VRCSDK_3_10_5_OR_NEWER
+#if VRCSDK_HAS_UDONSHARP_CREATE_SCRIPT_WITH_PATH
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,7 +17,7 @@ namespace VF.Hooks.VrcsdkFixes {
     internal static class UdonSharpCreateScriptSavePanelHook {
         [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
-#if !VRCSDK_3_10_5_OR_NEWER
+#if !VRCSDK_HAS_UDONSHARP_CREATE_SCRIPT_WITH_PATH
             public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(UdonSharpCreateScriptSavePanelHook),
                 nameof(Prefix),
@@ -51,13 +51,14 @@ namespace VF.Hooks.VrcsdkFixes {
             Reflection.Patch.apply();
         }
 
-#if !VRCSDK_3_10_5_OR_NEWER
+#if !VRCSDK_HAS_UDONSHARP_CREATE_SCRIPT_WITH_PATH
         private static void Prefix(ref string __0) {
             if (string.IsNullOrWhiteSpace(__0)) return;
 #if UNITY_2021_2_OR_NEWER
             __0 = FileUtil.GetLogicalPath(__0);
 #endif
         }
+
 #else
         private static IEnumerable<CodeInstruction> ModernTranspiler(IEnumerable<CodeInstruction> instructions) {
             foreach (var instruction in instructions) {
