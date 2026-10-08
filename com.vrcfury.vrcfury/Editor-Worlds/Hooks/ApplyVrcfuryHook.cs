@@ -58,9 +58,9 @@ namespace VF.Hooks {
 #if VRCF_AVATARS
         private static void FailForAvatarSdk() {
             throw new BuildFailedException(
-                "Both the VRChat Worlds and Avatars SDKs are installed." +
+                "com.vrchat.avatars and com.vrchat.worlds are BOTH installed." +
                 " VRChat does not allow having both in a single project." +
-                " Remove one of them in the VCC before building."
+                " Delete one of them from the project's Packages folder."
             );
         }
 #endif
