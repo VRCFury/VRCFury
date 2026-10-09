@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
@@ -966,6 +967,62 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/PreprocessorBraces"" {
 }";
         var output = SpsPatcher.WithEachPass(input, pass => "PATCHED" + pass, rest => rest);
         Assert.That(output, Does.Contain("PATCHED"));
+    }
+
+    [Test]
+    public void PatchesBuiltInSubShaderWithoutPatchingUrpSubShader() {
+        var source = @"
+Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
+    Properties {}
+    SubShader {
+        Tags { ""RenderPipeline"" = ""UniversalPipeline"" }
+        Pass {
+            HLSLPROGRAM
+            // Unity ignores this inactive pragma, but SPS's pragma scanner does not. This
+            // reproduces the preprocessor-guarded URP pragma in the reported shader.
+            #if 0
+            #pragma vertex vert
+            #endif
+            #pragma vertex validVert
+            #pragma fragment frag
+            float4 validVert(float4 vertex : POSITION) : SV_POSITION { return vertex; }
+            float4 frag() : SV_Target { return 0; }
+            ENDHLSL
+        }
+    }
+    SubShader {
+        Pass {
+            HLSLPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            " + Common + @"
+            VertexOutput vert(AppData data) {
+                VertexOutput output;
+                output.position = data.vertex;
+                return output;
+            }
+            ENDHLSL
+        }
+    }
+}";
+        var sourcePath = $"Assets/{Guid.NewGuid()}.shader";
+        var patchedPath = "";
+        Material material = null;
+        try {
+            File.WriteAllText(sourcePath, source);
+            AssetDatabase.ImportAsset(sourcePath, ImportAssetOptions.ForceSynchronousImport);
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>(sourcePath);
+            material = new Material(shader);
+
+            SpsPatcher.Patch(material, keepImports: false, hasBlendshapes: false);
+
+            patchedPath = AssetDatabase.GetAssetPath(material.shader);
+            Assert.That(patchedPath, Does.Contain("SPS/"));
+        } finally {
+            if (material != null) UnityEngine.Object.DestroyImmediate(material);
+            AssetDatabase.DeleteAsset(sourcePath);
+            if (!string.IsNullOrEmpty(patchedPath)) AssetDatabase.DeleteAsset(patchedPath);
+        }
     }
 
     private static void AssertShaderCompiles(

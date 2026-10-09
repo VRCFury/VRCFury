@@ -117,6 +117,9 @@ namespace VF.Builder.Haptics {
 
             if (parentHash == null) {
                 var propertiesContent = ReadAndFlattenPath($"{pathToSps}/deform/sps_deform_props.cginc");
+                if (GetRegex(@"(?:^|\n)\s*Properties\s*{\s*}").IsMatch(contents)) {
+                    propertiesContent = propertiesContent.Replace("[Header(Original Shader Follows)]\n", "");
+                }
                 Replace(
                     @"((?:^|\n)\s*Properties\s*{)",
                     $"$1\n{propertiesContent}\n",
@@ -146,27 +149,30 @@ namespace VF.Builder.Haptics {
 
             var patchedPrograms = 0;
             var passNum = 0;
-            contents = WithEachPass(contents,
-                pass => {
-                    passNum++;
-                    try {
-                        var (newPass, num) = PatchPass(pass, spsMain, cgIncludes, false);
-                        patchedPrograms += num;
-                        return newPass;
-                    } catch (Exception e) {
-                        throw new ExceptionWithCause($"Failed to patch pass #{passNum}", e);
+            contents = WithEachSubShader(contents, subShader => {
+                if (IsUrpSubShader(subShader)) return subShader;
+                return WithEachPass(subShader,
+                    pass => {
+                        passNum++;
+                        try {
+                            var (newPass, num) = PatchPass(pass, spsMain, cgIncludes, false);
+                            patchedPrograms += num;
+                            return newPass;
+                        } catch (Exception e) {
+                            throw new ExceptionWithCause($"Failed to patch pass #{passNum}", e);
+                        }
+                    },
+                    rest => {
+                        try {
+                            var (newRest, num) = PatchPass(rest, spsMain, cgIncludes, true);
+                            patchedPrograms += num;
+                            return newRest;
+                        } catch (Exception e) {
+                            throw new ExceptionWithCause($"Failed to patch non-pass segment", e);
+                        }
                     }
-                },
-                rest => {
-                    try {
-                        var (newRest, num) = PatchPass(rest, spsMain, cgIncludes, true);
-                        patchedPrograms += num;
-                        return newRest;
-                    } catch (Exception e) {
-                        throw new ExceptionWithCause($"Failed to patch non-pass segment", e);
-                    }
-                }
-            );
+                );
+            });
             var childShaders = new Dictionary<Shader, Shader>();
             contents = GetRegex(@"(?:^|\n)[ \t]*UsePass[ \t]+""([^""]+)/([^""/]+)""").Replace(contents, match => {
                 var shaderName = match.Groups[1].ToString();
@@ -839,29 +845,48 @@ namespace VF.Builder.Haptics {
         }
 
         internal static string WithEachPass(string content, Func<string, string> withPass, Func<string, string> withRest) {
+            return WithEachBlock(content, "Pass", withPass, withRest);
+        }
+
+        internal static bool IsUrpSubShader(string subShader) {
+            return GetRegex(@"""RenderPipeline""\s*=\s*""UniversalPipeline""").IsMatch(subShader);
+        }
+
+        internal static string WithEachSubShader(string content, Func<string, string> withSubShader) {
+            return WithEachBlock(content, "SubShader", withSubShader);
+        }
+
+        private static string WithEachBlock(
+            string content,
+            string blockName,
+            Func<string, string> withBlock,
+            Func<string, string> withRest = null
+        ) {
             var output = "";
-            var lastPassEnd = 0;
-            var processedPasses = new List<string>();
+            var lastBlockEnd = 0;
+            var processedBlocks = new List<string>();
             while (true) {
-                var nextPassStart = GetRegex(@"(?:^|\n)[ \t]*Pass(?:[ \t]|{)*[ \t]*(?:\n|$)").Match(content, lastPassEnd);
-                if (nextPassStart.Success) {
-                    var start = nextPassStart.Index + nextPassStart.Length;
-                    output += content.Substring(lastPassEnd, start - lastPassEnd);
-                    var end = IndexOfEndOfNextContext(content, nextPassStart.Index);
-                    var oldPass = content.Substring(start, end - start);
-                    var newPass = withPass(oldPass);
-                    output += $"\n__PASS_{processedPasses.Count}__\n";
-                    processedPasses.Add(newPass);
-                    lastPassEnd = end;
+                var nextBlockStart = GetRegex(
+                    @"(?:^|\n)[ \t]*" + Regex.Escape(blockName) + @"(?:[ \t]|{)*[ \t]*(?:\n|$)"
+                ).Match(content, lastBlockEnd);
+                if (nextBlockStart.Success) {
+                    var start = nextBlockStart.Index + nextBlockStart.Length;
+                    output += content.Substring(lastBlockEnd, start - lastBlockEnd);
+                    var end = IndexOfEndOfNextContext(content, nextBlockStart.Index);
+                    var oldBlock = content.Substring(start, end - start);
+                    var newBlock = withBlock(oldBlock);
+                    output += $"\n__BLOCK_{processedBlocks.Count}__\n";
+                    processedBlocks.Add(newBlock);
+                    lastBlockEnd = end;
                 } else {
-                    output += content.Substring(lastPassEnd);
+                    output += content.Substring(lastBlockEnd);
                     break;
                 }
             }
 
-            output = withRest(output);
-            for (var i = 0; i < processedPasses.Count; i++) {
-                output = output.Replace($"__PASS_{i}__", processedPasses[i]);
+            if (withRest != null) output = withRest(output);
+            for (var i = 0; i < processedBlocks.Count; i++) {
+                output = output.Replace($"__BLOCK_{i}__", processedBlocks[i]);
             }
 
             return output;
