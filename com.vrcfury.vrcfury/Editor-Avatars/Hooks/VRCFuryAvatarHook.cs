@@ -25,6 +25,18 @@ namespace VF.Hooks {
      * Wires up VRCFury-common for avatar work
      */
     internal static class VRCFuryAvatarHook {
+        // Per-frame caches shared across all VRCFury inspectors on the same avatar.
+        // Clears every editor frame so results stay correct while avoiding O(components × avatar size) work.
+        private static readonly Dictionary<VFGameObject, string> debugLinePerFrame
+            = new Dictionary<VFGameObject, string>();
+        private static readonly Dictionary<VFGameObject, DescriptorCacheEntry> descriptorCachePerFrame
+            = new Dictionary<VFGameObject, DescriptorCacheEntry>();
+
+        private class DescriptorCacheEntry {
+            public ImmutableHashSet<VRCAvatarDescriptor> descriptors;
+            public bool hasAnimators;
+        }
+
         public static VFGameObject GetAvatarRoot(this VFGameObject obj) {
             if (obj == null) return null;
             var avatars = obj.GetComponentsInSelfAndParents<VRCAvatarDescriptor>();
@@ -52,6 +64,12 @@ namespace VF.Hooks {
 
         [VFInit]
         private static void Init() {
+            // Clear shared inspector caches every frame (same pattern as VRCFObjectPathCache / VRCFArmatureCache)
+            Scheduler.Schedule(() => {
+                debugLinePerFrame.Clear();
+                descriptorCachePerFrame.Clear();
+            }, 0);
+
             VRCFuryHapticPlugEditor.getHapticsEnabled = HapticsToggleMenuItem.Get;
 
             VFGameObject.getUploadRoots = obj => {
@@ -60,9 +78,14 @@ namespace VF.Hooks {
 
             DialogUtils.debugLineGetter = () => VrcfDebugLine.GetOutputString();
 
+            // Version line: compute once per avatar per frame, reuse for every component inspector
             VRCFuryComponentEditor.getDebugLine = component => {
                 var avatarObject = component.GetAvatarRoot();
-                return VrcfDebugLine.GetOutputString(avatarObject);
+                if (avatarObject == null) {
+                    return VrcfDebugLine.GetOutputString(null);
+                }
+                return debugLinePerFrame.GetOrCreate(avatarObject, () =>
+                    VrcfDebugLine.GetOutputString(avatarObject));
             };
 
             FeatureFinder.onInjectEditor = (gameObject, builderType, injector) => {
@@ -84,6 +107,8 @@ namespace VF.Hooks {
                 }
             };
 
+            // Action-set debug box (main lag source): reuse the existing per-frame path/armature caches
+            // instead of scanning the entire avatar hierarchy once per action set.
             VRCFuryActionSetDrawer.renderDebugInfo = (gameObject, actionSet) => {
                 var debugInfo = new VisualElement();
 
@@ -92,13 +117,12 @@ namespace VF.Hooks {
                 var injector = new VRCFuryInjector();
                 injector.ImportOne(typeof(ActionClipService));
                 injector.ImportOne(typeof(ClipFactoryService));
-                injector.ImportOne(typeof(VRCFObjectPathCache));
-                injector.ImportOne(typeof(VRCFArmatureCache));
+                // Inject the shared per-frame caches (already captured) instead of creating + Capture() per action set
+                injector.Set(VRCFObjectPathCache.GetPerFrame(avatarObject));
+                injector.Set(VRCFArmatureCache.GetPerFrame(avatarObject));
                 injector.ImportScan(typeof(ActionBuilder));
                 injector.Set("avatarObject", avatarObject);
                 injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
-                injector.GetService<VRCFObjectPathCache>().Capture();
-                injector.GetService<VRCFArmatureCache>().Capture();
                 var mainBuilder = injector.GetService<ActionClipService>();
                 var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject, debugMode: true);
                 var bindings = new AnimatorIterator.Clips().From(test.onClip)
@@ -120,14 +144,27 @@ namespace VF.Hooks {
                 return debugInfo;
             };
 
+            // Descriptor / "missing avatar descriptor" warning: scan once per avatar per frame
             VRCFuryComponentEditor.renderWarnings = (owner, warnings) => {
-                var descriptors = owner.GetComponentsInSelfAndParents<VRCAvatarDescriptor>()
-                    .SelectMany(descriptor => descriptor.owner().GetComponentsInSelfAndChildren<VRCAvatarDescriptor>())
-                    .ToImmutableHashSet();
+                var avatarRoot = owner.GetAvatarRoot() ?? owner;
+                var entry = descriptorCachePerFrame.GetOrCreate(avatarRoot, () => {
+                    // Prefer scanning from avatar root so the result is independent of which component
+                    // requested the cache first.
+                    var searchRoot = avatarRoot != null ? avatarRoot : owner;
+                    var descriptors = searchRoot.GetComponentsInSelfAndParents<VRCAvatarDescriptor>()
+                        .SelectMany(descriptor => descriptor.owner().GetComponentsInSelfAndChildren<VRCAvatarDescriptor>())
+                        .ToImmutableHashSet();
+                    var hasAnimators = searchRoot.GetComponentsInSelfAndParents<Animator>().Any();
+                    return new DescriptorCacheEntry {
+                        descriptors = descriptors,
+                        hasAnimators = hasAnimators
+                    };
+                });
+
+                var descriptors = entry.descriptors;
                 var editingPrefab = UnityCompatUtils.IsEditingPrefab();
                 if (!editingPrefab && !descriptors.Any()) {
-                    var animators = owner.GetComponentsInSelfAndParents<Animator>();
-                    if (animators.Any()) {
+                    if (entry.hasAnimators) {
                         warnings.Add(VRCFuryEditorUtils.Error(
                             "Your avatar does not have a VRC Avatar Descriptor, and thus this component will not do anything! " +
                             "Make sure that your avatar can actually be uploaded using the VRCSDK before attempting to add VRCFury things to it."));
