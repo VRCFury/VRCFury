@@ -48,47 +48,42 @@ namespace VF.Inspector {
 
             var normalLabelColor = new Color(0.05f, 0.05f, 0.05f);
              
-            var triangleLeft = new VisualElement {
+            // The tag background is drawn as one shape, so the slanted edges are antialiased and don't
+            // leave seams against the label at fractional display scales (125%, 150%...)
+            const float slant = 10;
+            var tag = new VisualElement {
                 style = {
-                    borderRightColor = normalLabelColor,
-                    borderBottomColor = normalLabelColor,
-                    borderLeftWidth = 5,
-                    borderTopWidth = 10,
-                    borderRightWidth = 5,
-                    borderBottomWidth = 10,
+                    flexDirection = FlexDirection.Row,
+                    paddingLeft = slant,
+                    paddingRight = slant,
                 },
                 pickingMode = PickingMode.Ignore
             }.FlexShrink(0);
-            row.Add(triangleLeft);
-            
+            tag.generateVisualContent += ctx => {
+                var size = ctx.visualElement.layout.size;
+                var painter = ctx.painter2D;
+                painter.fillColor = normalLabelColor;
+                painter.BeginPath();
+                painter.MoveTo(new Vector2(0, size.y));
+                painter.LineTo(new Vector2(slant, 0));
+                painter.LineTo(new Vector2(size.x, 0));
+                painter.LineTo(new Vector2(size.x - slant, size.y));
+                painter.ClosePath();
+                painter.Fill();
+            };
+            row.Add(tag);
+
             var label = new Label("VRCFury") {
                 style = {
                     color = new Color(0.8f, 0.4f, 0f),
-                    borderTopRightRadius = 0,
-                    borderBottomRightRadius = 0,
                     paddingLeft = 3,
                     paddingRight = 3,
-                    backgroundColor = normalLabelColor,
                     unityTextAlign = TextAnchor.MiddleCenter,
                     unityFontStyleAndWeight = FontStyle.Bold,
-                    flexShrink = 1,
                 },
                 pickingMode = PickingMode.Ignore
             }.FlexShrink(0);
-            row.Add(label);
-
-            var triangleRight = new VisualElement {
-                style = {
-                    borderLeftColor = normalLabelColor,
-                    borderTopColor = normalLabelColor,
-                    borderLeftWidth = 5,
-                    borderTopWidth = 10,
-                    borderRightWidth = 5,
-                    borderBottomWidth = 10,
-                },
-                pickingMode = PickingMode.Ignore
-            }.FlexShrink(0);
-            row.Add(triangleRight);
+            tag.Add(label);
 
             var name = new Label(title) {
                 style = {
