@@ -117,9 +117,15 @@ namespace VF.Hooks {
                 var injector = new VRCFuryInjector();
                 injector.ImportOne(typeof(ActionClipService));
                 injector.ImportOne(typeof(ClipFactoryService));
-                // Inject the shared per-frame caches (already captured) instead of creating + Capture() per action set
-                injector.Set(VRCFObjectPathCache.GetPerFrame(avatarObject));
-                injector.Set(VRCFArmatureCache.GetPerFrame(avatarObject));
+                if (avatarObject != null) {
+                    // Inject the shared per-frame caches (already captured) instead of creating + Capture() per action set
+                    injector.Set(VRCFObjectPathCache.GetPerFrame(avatarObject));
+                    injector.Set(VRCFArmatureCache.GetPerFrame(avatarObject));
+                } else {
+                    // The per-frame caches are keyed by avatar object and can't take null, so keep the old behavior
+                    injector.ImportOne(typeof(VRCFObjectPathCache));
+                    injector.ImportOne(typeof(VRCFArmatureCache));
+                }
                 injector.ImportScan(typeof(ActionBuilder));
                 injector.Set("avatarObject", avatarObject);
                 injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
@@ -148,15 +154,14 @@ namespace VF.Hooks {
             VRCFuryComponentEditor.renderWarnings = (owner, warnings) => {
                 var avatarRoot = owner.GetAvatarRoot() ?? owner;
                 var entry = descriptorCachePerFrame.GetOrCreate(avatarRoot, () => {
-                    // Prefer scanning from avatar root so the result is independent of which component
-                    // requested the cache first.
-                    var searchRoot = avatarRoot != null ? avatarRoot : owner;
-                    var descriptors = searchRoot.GetComponentsInSelfAndParents<VRCAvatarDescriptor>()
+                    // Scan from the avatar root (not the requesting component) so the result only depends on the
+                    // cache key, and is the same no matter which component requested it first.
+                    var foundDescriptors = avatarRoot.GetComponentsInSelfAndParents<VRCAvatarDescriptor>()
                         .SelectMany(descriptor => descriptor.owner().GetComponentsInSelfAndChildren<VRCAvatarDescriptor>())
                         .ToImmutableHashSet();
-                    var hasAnimators = searchRoot.GetComponentsInSelfAndParents<Animator>().Any();
+                    var hasAnimators = avatarRoot.GetComponentsInSelfAndParents<Animator>().Any();
                     return new DescriptorCacheEntry {
-                        descriptors = descriptors,
+                        descriptors = foundDescriptors,
                         hasAnimators = hasAnimators
                     };
                 });
