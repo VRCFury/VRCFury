@@ -120,6 +120,11 @@
             "name": "com.vrchat.avatars",
             "expression": "3.10.3",
             "define": "VRCSDK_HAS_VRCRAYCAST"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.10.6-0",
+            "define": "VRCSDK_HAS_FACE_TRACKING"
         }
     ],
     "noEngineReferences": false

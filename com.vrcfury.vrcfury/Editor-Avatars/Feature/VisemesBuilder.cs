@@ -1,12 +1,16 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
+using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
@@ -29,8 +33,10 @@ namespace VF.Feature {
         [VFAutowired] private readonly SmoothingService smooth;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+        [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
+        [VFAutowired] private readonly GlobalsService globals;
         private ControllerManager fx => controllers.GetFx();
 
         private static readonly string[] visemeNames = {
@@ -39,7 +45,15 @@ namespace VF.Feature {
         
         [FeatureBuilderAction]
         public void Apply() {
-            if (avatar.lipSync != VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape) {
+#if VRCSDK_HAS_FACE_TRACKING
+            if (!MigrateBlendshapeVisemesToFaceTracking()) return;
+#endif
+            var isFaceTrackingVisemes = false;
+#if VRCSDK_HAS_FACE_TRACKING
+            isFaceTrackingVisemes = avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShapeFaceTracking;
+#endif
+            if (avatar.lipSync != VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape
+                && !isFaceTrackingVisemes) {
                 avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
             }
 
@@ -108,6 +122,70 @@ namespace VF.Feature {
                 ));
             });
         }
+
+#if VRCSDK_HAS_FACE_TRACKING
+        private bool MigrateBlendshapeVisemesToFaceTracking() {
+            var blendshapeLinks = globals.allFeaturesInRun
+                .OfType<BlendShapeLink>()
+                .ToArray();
+            var migrated = new List<(int viseme, SkinnedMeshRenderer skin, BlendShapeAction action)>();
+
+            for (var viseme = 0; viseme < visemeNames.Length; viseme++) {
+                var state = (State)Reflection.StateFields[viseme].GetValue(model);
+                var remainingActions = new List<Action>();
+                foreach (var action in state.actions) {
+                    if (!(action is BlendShapeAction blendshapeAction)) {
+                        remainingActions.Add(action);
+                        continue;
+                    }
+
+                    var targets = avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()
+                        .Where(skin => blendshapeAction.allRenderers || blendshapeAction.renderer == skin)
+                        .Where(skin => skin.HasBlendshape(blendshapeAction.blendShape))
+                        .ToArray();
+                    if (targets.Length == 0) {
+                        remainingActions.Add(action);
+                        continue;
+                    }
+
+                    foreach (var target in targets) {
+                        if (BlendShapeLinkBuilder.HandlesBlendshape(
+                            avatarObject,
+                            blendshapeLinks,
+                            target,
+                            blendshapeAction.blendShape
+                        )) continue;
+                        migrated.Add((viseme, target, blendshapeAction));
+                    }
+                }
+                state.actions = remainingActions;
+            }
+
+            if (migrated.Count > 0) {
+                FaceTrackingUtils.EnsureVisemesEnabled(avatar);
+                var sets = new List<(VRCAvatarDescriptor.FaceTrackingBlendshapesSet set, HashSet<int> visemes)>();
+                foreach (var (viseme, skin, action) in migrated) {
+                    var set = sets.FirstOrDefault(entry => !entry.visemes.Contains(viseme));
+                    if (set.set == null) {
+                        set = (FaceTrackingUtils.AddBlendshapeSet(avatar, "_vrcf_advanced_visemes"), new HashSet<int>());
+                        sets.Add(set);
+                    }
+                    set.visemes.Add(viseme);
+                    FaceTrackingUtils.EnsureMesh(avatar, skin);
+                    FaceTrackingUtils.SetVisemeMapping(
+                        set.set,
+                        viseme,
+                        action.blendShape,
+                        action.blendShapeValue / 100f
+                    );
+                }
+            }
+
+            return Reflection.StateFields
+                .Select(field => (State)field.GetValue(model))
+                .Any(state => state.actions.Any());
+        }
+#endif
 
         [FeatureEditor]
         public static VisualElement Editor(SerializedProperty prop) {

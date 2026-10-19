@@ -9,17 +9,26 @@ using UnityEngine.UIElements;
 using VF.Actions;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Exceptions;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+#if VRCSDK_HAS_FACE_TRACKING
+using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase;
+#endif
 
 namespace VF.Feature {
     [FeatureTitle("BlendShape Link")]
     internal class BlendShapeLinkBuilder : FeatureBuilder<BlendShapeLink> {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly GlobalsService globals;
+#if VRCSDK_HAS_FACE_TRACKING
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+#endif
 
         [CustomPropertyDrawer(typeof(BlendShapeLink.Exclude))]
         public class ExcludeDrawer : PropertyDrawer {
@@ -256,6 +265,27 @@ namespace VF.Feature {
             return outputMap;
         }
 
+        internal static bool HandlesBlendshape(
+            VFGameObject avatarObject,
+            IEnumerable<BlendShapeLink> models,
+            SkinnedMeshRenderer skin,
+            string blendshape
+        ) {
+            foreach (var model in models) {
+                var baseSkin = GetBaseSkin(avatarObject, model);
+                if (baseSkin == null) continue;
+
+                foreach (var linkedSkin in GetLinkSkins(model)) {
+                    if (linkedSkin != skin) continue;
+                    if (GetMappings(model, baseSkin, linkedSkin, model.exactMatch)
+                        .Any(mapping => mapping.Value == blendshape)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         [FeatureBuilderAction(FeatureOrder.BlendShapeLinkFixAnimations)]
         public void Apply() {
             var baseSkin = GetBaseSkin(avatarObject, model);
@@ -267,6 +297,11 @@ namespace VF.Feature {
 
             foreach (var linked in linkSkins) {
                 var baseToLinkedMapping = GetMappings(model, baseSkin, linked, model.exactMatch);
+#if VRCSDK_HAS_FACE_TRACKING
+                var linkedBlendshapes = baseToLinkedMapping.Select(pair => pair.Key).ToArray();
+                UpgradeLegacyVisemesIfNeeded(baseSkin, linkedBlendshapes);
+                UpgradeLegacyEyelidsIfNeeded(baseSkin, linkedBlendshapes);
+#endif
                 foreach (var (baseName,linkedName) in baseToLinkedMapping.Select(x => (x.Key, x.Value))) {
                     var baseI = baseSkin.GetBlendShapeIndex(baseName);
                     var linkedI = linked.GetBlendShapeIndex(linkedName);
@@ -297,5 +332,206 @@ namespace VF.Feature {
                 }
             }
         }
+
+#if VRCSDK_HAS_FACE_TRACKING
+        [FeatureBuilderAction(FeatureOrder.BlendShapeLinkFixAnimations, 1)]
+        public void LinkFaceTrackingBlendshapes() {
+            if (!globals.IsFirst(this)) return;
+
+            var models = globals.allFeaturesInRun
+                .OfType<BlendShapeLink>()
+                .ToArray();
+            if (!avatar.enableFaceTracking) return;
+
+            var trackedBlendshapes = GetFaceTrackingBlendshapeNames().ToImmutableHashSet();
+            if (trackedBlendshapes.Count == 0) return;
+
+            var linksBySkin = models
+                .SelectMany(link => {
+                    var baseSkin = GetBaseSkin(avatarObject, link);
+                    if (baseSkin == null) return Enumerable.Empty<(SkinnedMeshRenderer baseSkin, SkinnedMeshRenderer linkedSkin, string baseName, string linkedName)>();
+                    return GetLinkSkins(link).SelectMany(linkedSkin => GetMappings(link, baseSkin, linkedSkin, link.exactMatch)
+                        .Select(mapping => (baseSkin, linkedSkin, baseName: mapping.Key, linkedName: mapping.Value)));
+                })
+                .GroupBy(link => link.linkedSkin);
+            foreach (var target in linksBySkin) {
+                var links = target.ToArray();
+                var mappings = links.Select(link => (link.baseName, link.linkedName));
+                if (!mappings.Any(mapping => trackedBlendshapes.Contains(mapping.Item1))) continue;
+
+                var renamedBlendshapes = RenameFaceTrackingBlendshapes(target.Key, mappings, trackedBlendshapes);
+                RenameBlendshapeCurves(target.Key, renamedBlendshapes);
+                foreach (var baseSkin in links
+                             .Where(link => trackedBlendshapes.Contains(link.baseName))
+                             .Select(link => link.baseSkin)
+                             .Distinct()) {
+                    FaceTrackingUtils.EnsureMesh(avatar, baseSkin);
+                }
+                FaceTrackingUtils.EnsureMesh(avatar, target.Key);
+            }
+
+            avatar.Dirty();
+        }
+
+        private IEnumerable<string> GetFaceTrackingBlendshapeNames() {
+            foreach (var set in avatar.faceTrackingBlendshapesSetList ?? Enumerable.Empty<VRCAvatarDescriptor.FaceTrackingBlendshapesSet>()) {
+                if (set == null) continue;
+                foreach (var name in set.faceTrackingBlendshapeNames ?? Enumerable.Empty<string>())
+                    if (!string.IsNullOrEmpty(name)) yield return name;
+                foreach (var name in set.visemeBlendshapeNames ?? Enumerable.Empty<string>())
+                    if (!string.IsNullOrEmpty(name)) yield return name;
+            }
+
+            foreach (var behavior in avatar.faceTrackingParameterBehaviors
+                         ?? Enumerable.Empty<VRCAvatarDescriptor.FaceTrackingParameterBehavior>()) {
+                if (behavior == null) continue;
+                if (behavior.targetMode != VRCAvatarDescriptor.ParameterBehaviorTargetMode.ApplyToBlendshape
+                    && behavior.targetMode != VRCAvatarDescriptor.ParameterBehaviorTargetMode.LimitBlendshapeMax
+                    && behavior.targetMode != VRCAvatarDescriptor.ParameterBehaviorTargetMode.LimitBlendshapeMin) continue;
+                if (!string.IsNullOrEmpty(behavior.targetBlendshapeName)) yield return behavior.targetBlendshapeName;
+            }
+        }
+
+        private static IDictionary<string, string> RenameFaceTrackingBlendshapes(
+            SkinnedMeshRenderer linkedSkin,
+            IEnumerable<(string baseName, string linkedName)> mappings,
+            ISet<string> trackedBlendshapes
+        ) {
+            var desiredNames = new Dictionary<string, string>();
+            foreach (var (baseName, linkedName) in mappings.Where(mapping => trackedBlendshapes.Contains(mapping.baseName))) {
+                if (!desiredNames.TryGetValue(linkedName, out var previousName)) {
+                    desiredNames[linkedName] = baseName;
+                } else if (previousName != baseName) {
+                    throw new VRCFBuilderException(
+                        $"Face Tracking cannot link both '{previousName}' and '{baseName}' to " +
+                        $"'{linkedName}' on {linkedSkin.owner().GetDebugPath()}."
+                    );
+                }
+            }
+
+            var duplicateName = desiredNames
+                .GroupBy(pair => pair.Value)
+                .FirstOrDefault(group => group.Count() > 1);
+            if (duplicateName != null) {
+                throw new VRCFBuilderException(
+                    $"Face Tracking cannot link '{duplicateName.Key}' to multiple blendshapes on " +
+                    $"{linkedSkin.owner().GetDebugPath()}."
+                );
+            }
+
+            var linkedNames = linkedSkin.GetBlendshapeNames();
+            foreach (var linkedName in linkedNames) {
+                if (!trackedBlendshapes.Contains(linkedName) || desiredNames.ContainsKey(linkedName)) continue;
+                desiredNames[linkedName] = GetUnusedBlendshapeName(linkedName, linkedNames, trackedBlendshapes);
+            }
+
+            var renames = desiredNames
+                .Where(pair => pair.Key != pair.Value)
+                .ToDictionary(pair => pair.Key, pair => pair.Value);
+            RenameBlendshapes(linkedSkin, renames);
+            return renames;
+        }
+
+        private static string GetUnusedBlendshapeName(string name, ISet<string> linkedNames, ISet<string> trackedBlendshapes) {
+            var unusedName = name + "_vrcf_unlinked";
+            for (var suffix = 2; linkedNames.Contains(unusedName) || trackedBlendshapes.Contains(unusedName); suffix++)
+                unusedName = name + "_vrcf_unlinked" + suffix;
+            return unusedName;
+        }
+
+        private void RenameBlendshapeCurves(SkinnedMeshRenderer skin, IDictionary<string, string> renames) {
+            if (renames.Count == 0) return;
+            foreach (var controller in controllers.GetAllUsedControllers()) {
+                foreach (var clip in controller.GetClips()) {
+                    var changedBindings = new List<(VFBinding binding, VFBinding newBinding, AnimationCurve curve)>();
+                    foreach (var binding in clip.GetFloatBindings()) {
+                        if (binding.type != typeof(SkinnedMeshRenderer)) continue;
+                        if (!binding.Targets(skin.owner())) continue;
+                        if (!binding.propertyName.StartsWith("blendShape.")) continue;
+                        var oldName = binding.propertyName.Substring(11);
+                        if (!renames.TryGetValue(oldName, out var newName)) continue;
+                        changedBindings.Add((
+                            binding,
+                            binding.WithPropertyName("blendShape." + newName),
+                            clip.GetFloatCurve(binding)
+                        ));
+                    }
+                    foreach (var (binding, _, _) in changedBindings)
+                        clip.SetCurve(binding, null);
+                    foreach (var (_, newBinding, curve) in changedBindings)
+                        clip.SetCurve(newBinding, curve);
+                }
+            }
+        }
+
+        private static void RenameBlendshapes(SkinnedMeshRenderer skin, IDictionary<string, string> renames) {
+            if (renames.Count == 0) return;
+            var originalMesh = skin.GetMesh();
+            if (originalMesh == null) return;
+            var blendshapeCount = originalMesh.blendShapeCount;
+            var blendshapeNames = Enumerable.Range(0, blendshapeCount)
+                .Select(index => originalMesh.GetBlendShapeName(index))
+                .ToArray();
+            var weights = Enumerable.Range(0, blendshapeCount)
+                .Select(skin.GetBlendShapeWeight)
+                .ToArray();
+            var frames = Enumerable.Range(0, blendshapeCount)
+                .Select(index => new BlendshapeFrames(originalMesh, index))
+                .ToArray();
+
+            var mesh = skin.GetMutableMesh("Needed to rename blendshapes for face tracking");
+            mesh.ClearBlendShapes();
+            for (var index = 0; index < blendshapeCount; index++) {
+                var name = renames.TryGetValue(blendshapeNames[index], out var renamed) ? renamed : blendshapeNames[index];
+                frames[index].SaveTo(mesh, name);
+                skin.SetBlendShapeWeight(index, weights[index]);
+            }
+            mesh.Dirty();
+        }
+
+        private class BlendshapeFrames {
+            private readonly List<(float weight, Vector3[] vertices, Vector3[] normals, Vector3[] tangents)> frames = new();
+
+            public BlendshapeFrames(Mesh mesh, int index) {
+                for (var frame = 0; frame < mesh.GetBlendShapeFrameCount(index); frame++) {
+                    var vertices = new Vector3[mesh.vertexCount];
+                    var normals = new Vector3[mesh.vertexCount];
+                    var tangents = new Vector3[mesh.vertexCount];
+                    mesh.GetBlendShapeFrameVertices(index, frame, vertices, normals, tangents);
+                    frames.Add((mesh.GetBlendShapeFrameWeight(index, frame), vertices, normals, tangents));
+                }
+            }
+
+            public void SaveTo(Mesh mesh, string name) {
+                foreach (var (weight, vertices, normals, tangents) in frames)
+                    mesh.AddBlendShapeFrame(name, weight, vertices, normals, tangents);
+            }
+        }
+
+        private void UpgradeLegacyVisemesIfNeeded(SkinnedMeshRenderer baseSkin, IEnumerable<string> linkedBlendshapes) {
+            if (avatar.lipSync != VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape) return;
+            if (avatar.VisemeSkinnedMesh != baseSkin) return;
+            if (avatar.VisemeBlendShapes == null || !linkedBlendshapes.Intersect(avatar.VisemeBlendShapes).Any()) return;
+
+            FaceTrackingUtils.EnsureVisemesEnabled(avatar);
+        }
+
+        private void UpgradeLegacyEyelidsIfNeeded(SkinnedMeshRenderer baseSkin, IEnumerable<string> linkedBlendshapes) {
+            if (!avatar.enableEyeLook) return;
+            var eyeSettings = avatar.customEyeLookSettings;
+            if (eyeSettings.eyelidType != VRCAvatarDescriptor.EyelidType.Blendshapes) return;
+            if (eyeSettings.eyelidsSkinnedMesh != baseSkin || eyeSettings.eyelidsBlendshapes == null) return;
+
+            var activeEyelidBlendshapeCount = eyeSettings.eyeGazeMode
+                == VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.BoneRotation ? 3 : 1;
+            var activeEyelidBlendshapes = Enumerable.Range(0, activeEyelidBlendshapeCount)
+                .Where(index => index < eyeSettings.eyelidsBlendshapes.Length)
+                .Select(index => baseSkin.GetBlendshapeName(eyeSettings.eyelidsBlendshapes[index]))
+                .Where(name => name != null);
+            if (!linkedBlendshapes.Intersect(activeEyelidBlendshapes).Any()) return;
+
+            FaceTrackingUtils.EnsureEyelidsEnabled(avatar);
+        }
+#endif
     }
 }
