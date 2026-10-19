@@ -29,6 +29,7 @@ namespace VF.Feature {
 
     [FeatureTitle("Full Controller")]
     internal class FullControllerBuilder : FeatureBuilder<FullController> {
+        private const string InhibitHandControlsParam = "_VRCF_InhibitHandControls";
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
@@ -42,16 +43,25 @@ namespace VF.Feature {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
+        [VFAutowired] private readonly HandGestureDisablingService handGestureDisablingService;
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
             var missingAssets = new List<GuidWrapper>();
+            var hasInhibitHandControlsParam = false;
+            var inhibitHandControlsDefault = 0f;
 
             foreach (var p in model.prms) {
                 var prms = p.parameters.Get();
                 if (prms == null) {
                     missingAssets.Add(p.parameters);
                     continue;
+                }
+                var inhibitHandControlsParam = prms.parameters
+                    .FirstOrDefault(param => param.name == InhibitHandControlsParam);
+                if (inhibitHandControlsParam != null) {
+                    hasInhibitHandControlsParam = true;
+                    inhibitHandControlsDefault = inhibitHandControlsParam.defaultValue;
                 }
                 var copy = prms.Clone();
                 copy.RewriteParameters(RewriteParamName);
@@ -98,6 +108,13 @@ namespace VF.Feature {
 
             foreach (var from in fromControllers) {
                 var to = controllers.GetController(from.vrcType);
+                var inhibitHandControlsParam = from.vrcType == VRCAvatarDescriptor.AnimLayerType.FX
+                    ? from.GetParam(InhibitHandControlsParam)
+                    : null;
+                if (inhibitHandControlsParam != null) {
+                    hasInhibitHandControlsParam = true;
+                    inhibitHandControlsDefault = inhibitHandControlsParam.defaultFloat;
+                }
 
                 // Fail if trying to merge a controller that is on the avatar descriptor
                 var toSource = to.GetSourceAsset();
@@ -117,6 +134,15 @@ namespace VF.Feature {
                 }
 
                 Merge(from, to);
+            }
+
+            if (hasInhibitHandControlsParam) {
+                var rewritten = RewriteParamName(InhibitHandControlsParam);
+                var fx = controllers.GetFx();
+                var fxParam = fx.GetParam(rewritten);
+                var defaultValue = fxParam?.defaultFloat ?? inhibitHandControlsDefault;
+                if (fxParam == null) fx.NewFloat(rewritten, def: defaultValue, usePrefix: false);
+                handGestureDisablingService.AddInhibitor(new VFAFloat(rewritten, defaultValue));
             }
 
             foreach (var m in model.menus) {
@@ -270,6 +296,7 @@ namespace VF.Feature {
         private string RewriteParamNameUncached(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (VRChatGlobalParams.Contains(name)) return name;
+            if (name == InhibitHandControlsParam) return controllers.MakeUniqueParamName(name);
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
                     var prms = p.parameters.Get();
