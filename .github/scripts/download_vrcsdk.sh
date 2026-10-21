@@ -31,8 +31,8 @@ patch_udonsharp_for_ci() {
 
   # UdonSharp otherwise adds this during the test run, forcing a domain reload that corrupts the test result.
   local project_settings="$PROJECT_PATH/ProjectSettings/ProjectSettings.asset"
-  perl -0pi -e 's/^    (Android|Standalone): VRCF_TEST(\r?)$/    $1: VRCF_TEST;UDONSHARP$2/gm' "$project_settings"
-  if ! grep -q 'Standalone: VRCF_TEST;UDONSHARP' "$project_settings"; then
+  perl -0pi -e 's/^(    (?:Android|Standalone): (?![^\r\n]*\bUDONSHARP\b)[^\r\n]*\bVRCF_TEST\b[^\r\n]*)(\r?)$/$1;UDONSHARP$2/gm' "$project_settings"
+  if ! grep -Eq 'Standalone: .*VRCF_TEST.*;UDONSHARP' "$project_settings"; then
     echo "Failed to add the UdonSharp project define" >&2
     exit 1
   fi
