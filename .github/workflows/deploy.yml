@@ -12,6 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         vrcsdkUnityVersion:
+          - [ 3.10.6-beta.2, 2022.3.22f1 ]
           - [ 3.10.5, 6000.4.12f1 ]
           - [ 3.10.5, 6000.0.80f1 ]
           - [ 3.10.5, 2022.3.22f1 ]

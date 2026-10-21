@@ -21,7 +21,7 @@
     ],
     "autoReferenced": false,
     "defineConstraints": [
-        "UNITY_TEST_FRAMEWORK_PRESENT",
+        "VRCF_TEST",
         "VRCF_AVATARS"
     ],
     "versionDefines": [
@@ -29,11 +29,6 @@
             "name": "com.vrchat.avatars",
             "expression": "",
             "define": "VRCF_AVATARS"
-        },
-        {
-            "name": "com.unity.test-framework",
-            "expression": "",
-            "define": "UNITY_TEST_FRAMEWORK_PRESENT"
         }
     ],
     "noEngineReferences": false

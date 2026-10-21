@@ -572,7 +572,9 @@ PlayerSettings:
   webGLLinkerTarget: 1
   webGLThreadsSupport: 0
   webGLWasmStreaming: 0
-  scriptingDefineSymbols: {}
+  scriptingDefineSymbols:
+    Android: VRCF_TEST
+    Standalone: VRCF_TEST
   platformArchitecture: {}
   scriptingBackend: {}
   il2cppCompilerConfiguration: {}
