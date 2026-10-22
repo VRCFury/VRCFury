@@ -17,7 +17,8 @@ namespace VF.Inspector {
         public static VisualElement List(
             SerializedProperty list,
             Action onPlus = null,
-            Func<VisualElement> onEmpty = null
+            Func<VisualElement> onEmpty = null,
+            Func<SerializedProperty, VisualElement> renderItem = null
         ) {
             var output = new VisualElement();
             output.AddToClassList("vfList");
@@ -98,12 +99,17 @@ namespace VF.Inspector {
             listView.showAlternatingRowBackgrounds = AlternatingRowBackground.All;
 
             listView.makeItem = () => {
-                var field = new PropertyField();
+                VisualElement field = renderItem == null ? new PropertyField() : new VisualElement();
                 CreateRightClickMenu(field);
                 return field;
             };
             listView.bindItem = (element, i) => {
-                ((PropertyField)element).bindingPath = list.GetArrayElementAtIndex(i).propertyPath;
+                var item = list.GetArrayElementAtIndex(i);
+                if (renderItem == null) ((PropertyField)element).bindingPath = item.propertyPath;
+                else {
+                    element.Clear();
+                    element.Add(renderItem(item));
+                }
                 element.Bind(list.serializedObject);
                 element.userData = i;
             };
@@ -153,7 +159,7 @@ namespace VF.Inspector {
                     row.style.alignItems = Align.FlexStart;
                     entries.Add(row);
 
-                    VisualElement data = Prop(el).Padding(5);
+                    VisualElement data = (renderItem == null ? Prop(el) : renderItem(el)).Padding(5);
                     data.AddToClassList("vfListRowData");
                     data.style.flexGrow = 1;
                     row.Add(data);

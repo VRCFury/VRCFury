@@ -52,7 +52,7 @@ namespace VF.Utils {
             return obj;
         }
 
-        public static T CopyRecursive<T>(T obj, string reason, Type[] typesToMakeMutable, string addPrefix = "") where T : Object {
+        public static T CopyRecursive<T>(T obj, string reason, Type[] typesToMakeMutable, string addPrefix = "", bool forceCloneRoot = false) where T : Object {
             var originalToMutable = new Dictionary<Object, Object>();
             var mutableToOriginal = new Dictionary<Object, Object>();
 
@@ -65,7 +65,7 @@ namespace VF.Utils {
                     if (!IsType(original, typesToMakeMutable)) return false;
                 } 
 
-                var copy = original.Clone(reason: reason, recursive: false);
+                var copy = original.Clone(reason: reason, recursive: false, forceClone: forceCloneRoot && obj == original);
                 if (obj == original) rootCopy = copy as T;
 
                 if (copy is AnimatorState || copy is AnimatorStateMachine) {

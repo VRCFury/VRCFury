@@ -648,8 +648,9 @@ namespace VF.Builder.Haptics {
                 .Select(match => match.Groups["name"].ToString())
                 .ToHashSet();
             string MakeUniqueName(string desired) {
-                while (!usedNames.Add(desired)) desired += "_";
-                return desired;
+                var name = desired.MakeUnique(usedNames);
+                usedNames.Add(name);
+                return name;
             }
             var inputName = MakeUniqueName("input");
             var returnValueName = MakeUniqueName("spsReturnValue");

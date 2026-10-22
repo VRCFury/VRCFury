@@ -102,7 +102,7 @@ namespace VF.Service.Compressor {
 
             var contactParams = new HashSet<string>();
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                contactParams.Add(c.parameter);
+                contactParams.UnionWith(ContactReceiverUtils.GetParameterNames(c));
             }
 #if VRCSDK_HAS_VRCRAYCAST
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCRaycast>()) {

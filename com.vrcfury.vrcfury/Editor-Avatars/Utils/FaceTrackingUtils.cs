@@ -1,230 +1,107 @@
 #if VRCSDK_HAS_FACE_TRACKING
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
+using UnityEngine;
 using VF.Exceptions;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
+using FtSet = VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.FaceTrackingBlendshapesSet;
+using FtBehavior = VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.FaceTrackingParameterBehavior;
+using FtBehaviourControl = VRC.SDKBase.VRC_AnimatorFaceTrackingBlendshapesSet.BlendSet;
 
 namespace VF.Utils {
     internal static class FaceTrackingUtils {
-        private const int FaceTrackingCount = (int)VRCAvatarDescriptor.FaceTrackingKey.Max;
-        private const int VisemeCount = (int)VRC_AvatarDescriptor.Viseme.Count;
-        private const int MaxFaceTrackingMeshes = 16;
+        public const int FaceTrackingCount = (int)VRCAvatarDescriptor.FaceTrackingKey.Max;
+        public const int VisemeCount = (int)VRC_AvatarDescriptor.Viseme.Count;
+        // SDK editor limits are private/internal or inline literals in the referenced drawers.
+        public const int MaxFaceTrackingMeshes = 16; // FaceTrackingMappingValidator.MaxFaceTrackingMeshes
+        public const int MaxParameterBehaviorInputs = 32; // FaceTrackingMappingValidator.MaxParameterBehaviorInputs
+        public const int MaxBlendshapeSets = 128; // AvatarDescriptorEditor3.MaxBlendshapesSets
+        public const int MaxParameterBehaviors = 128; // FaceTrackingDrawerUtility.MaxParameterBehaviors
+        public const int MaxSetControls = 64; // VRCAnimatorFaceTrackingBlendshapesSetEditor.MaxBlendSetsPerBehavior
+        public const int MaxSetNameLength = 100; // FaceTrackingBlendshapesSetDrawer
+        private static readonly HashSet<string> VisemeInputs = Enumerable.Range(0, VisemeCount)
+            .Select(i => VRCAvatarDescriptor.GetFaceTrackingVisemeInputName((VRC_AvatarDescriptor.Viseme)i)).ToHashSet();
+        private static readonly HashSet<string> HardwareInputs = Enumerable.Range(0, FaceTrackingCount)
+            .Where(i => !VRCAvatarDescriptor.IsBasicFaceTrackingKey(i))
+            .Select(i => ((VRCAvatarDescriptor.FaceTrackingKey)i).ToString()).ToHashSet();
 
-        public static void EnsureEnabled(VRCAvatarDescriptor avatar) {
-            if (avatar.enableFaceTracking) return;
+        private static IEnumerable<string> Inputs(FtBehavior settings) =>
+            settings.combineMode == VRCAvatarDescriptor.ParameterBehaviorCombineMode.Custom
+                ? Regex.Split(settings.customExpression ?? "", @"\W+")
+                : (settings.inputTrackingKeyNames ?? Array.Empty<string>()).Take(MaxParameterBehaviorInputs);
 
-            avatar.enableFaceTracking = true;
-            avatar.useAllTrackingKeys = false;
-            avatar.faceTrackingMeshes = new List<UnityEngine.SkinnedMeshRenderer>();
-            avatar.faceTrackingBlendshapesSetList = new List<VRCAvatarDescriptor.FaceTrackingBlendshapesSet>();
-            avatar.faceTrackingParameterBehaviors = new List<VRCAvatarDescriptor.FaceTrackingParameterBehavior>();
-        }
+        public static bool UsesVisemeInputs(FtBehavior settings) => Inputs(settings).Any(VisemeInputs.Contains);
+        public static bool UsesHardwareInputs(FtBehavior settings) => Inputs(settings).Any(HardwareInputs.Contains);
 
-        public static void EnsureMesh(VRCAvatarDescriptor avatar, UnityEngine.SkinnedMeshRenderer mesh) {
-            if (mesh == null) return;
-            if (avatar.faceTrackingMeshes == null)
-                avatar.faceTrackingMeshes = new List<UnityEngine.SkinnedMeshRenderer>();
-            if (avatar.faceTrackingMeshes.Count > MaxFaceTrackingMeshes)
-                throw new VRCFBuilderException($"Face Tracking supports at most {MaxFaceTrackingMeshes} meshes.");
-            if (avatar.faceTrackingMeshes.Contains(mesh)) return;
-            if (avatar.faceTrackingMeshes.Count == MaxFaceTrackingMeshes)
-                throw new VRCFBuilderException($"Face Tracking supports at most {MaxFaceTrackingMeshes} meshes.");
-            avatar.faceTrackingMeshes.Add(mesh);
-        }
-
-        public static void EnsureVisemesEnabled(VRCAvatarDescriptor avatar) {
-            EnsureEnabled(avatar);
-
-            var shouldImportLegacyVisemes = avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape;
-            if (avatar.lipSync != VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShapeFaceTracking) {
-                foreach (var set in GetBlendshapeSets(avatar).Where(set => set != null))
-                    ClearMappings(set, true, 0, VisemeCount);
-                avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShapeFaceTracking;
-            }
-
-            var visemeMesh = avatar.VisemeSkinnedMesh;
-            if (shouldImportLegacyVisemes && visemeMesh != null) {
-                EnsureMesh(avatar, visemeMesh);
-                var visemeNames = (avatar.VisemeBlendShapes ?? Enumerable.Empty<string>())
-                    .Select(name => name ?? "")
-                    .Concat(Enumerable.Repeat("", VisemeCount))
-                    .Take(VisemeCount)
-                    .ToArray();
-                var set = AddBlendshapeSet(avatar, "_vrcf_upgraded_visemes");
-                for (var i = 0; i < VisemeCount; i++)
-                    SetMapping(set, i, true, visemeNames[i]);
-            }
-
-            avatar.Dirty();
-        }
-
-        public static void EnsureEyelidsEnabled(VRCAvatarDescriptor avatar) {
-            EnsureEnabled(avatar);
-
-            var wasEyeLookEnabled = avatar.enableEyeLook;
-            var shouldImportLegacyEyelids = wasEyeLookEnabled
-                && avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes;
-            var shouldImportLegacyEyelidGaze = shouldImportLegacyEyelids
-                && avatar.customEyeLookSettings.eyeGazeMode == VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.BoneRotation;
-            if (!wasEyeLookEnabled) {
-                avatar.customEyeLookSettings.eyeGazeMode = VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.BoneRotation;
-                avatar.customEyeLookSettings.leftEye = null;
-                avatar.customEyeLookSettings.rightEye = null;
-                avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.None;
-            } else if (shouldImportLegacyEyelidGaze) {
-                var firstGazeKey = (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookOutRight;
-                var gazeKeyCount = (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookDownLeft - firstGazeKey + 1;
-                foreach (var set in GetBlendshapeSets(avatar).Where(set => set != null))
-                    ClearMappings(set, false, firstGazeKey, gazeKeyCount);
-                avatar.customEyeLookSettings.eyeGazeMode = VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.Both;
-            }
-            avatar.enableEyeLook = true;
-            if (avatar.customEyeLookSettings.eyelidType != VRCAvatarDescriptor.EyelidType.FaceTracking) {
-                foreach (var set in GetBlendshapeSets(avatar).Where(set => set != null)) {
-                    ClearMappings(set, false, (int)VRCAvatarDescriptor.FaceTrackingKey.EyeClosedRight, 1);
-                    ClearMappings(set, false, (int)VRCAvatarDescriptor.FaceTrackingKey.EyeClosedLeft, 1);
-                }
-                avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.FaceTracking;
-            }
-
-            var eyelidMesh = avatar.customEyeLookSettings.eyelidsSkinnedMesh;
-            var eyelidBlendshapes = avatar.customEyeLookSettings.eyelidsBlendshapes;
-            string GetLegacyEyelidBlendshapeName(int state) {
-                if (!shouldImportLegacyEyelids || eyelidMesh == null || eyelidBlendshapes == null || eyelidBlendshapes.Length <= state)
-                    return null;
-                return eyelidMesh.GetBlendshapeName(eyelidBlendshapes[state]);
-            }
-
-            var blinkName = GetLegacyEyelidBlendshapeName(0);
-            var lookingUpName = shouldImportLegacyEyelidGaze ? GetLegacyEyelidBlendshapeName(1) : null;
-            var lookingDownName = shouldImportLegacyEyelidGaze ? GetLegacyEyelidBlendshapeName(2) : null;
-            if (blinkName != null || lookingUpName != null || lookingDownName != null) {
-                EnsureMesh(avatar, eyelidMesh);
-                var set = AddBlendshapeSet(avatar, "_vrcf_upgraded_eyelids");
-                if (blinkName != null) {
-                    SetMapping(set, (int)VRCAvatarDescriptor.FaceTrackingKey.EyeClosedRight, false, blinkName);
-                    SetMapping(set, (int)VRCAvatarDescriptor.FaceTrackingKey.EyeClosedLeft, false, blinkName);
-                }
-                if (lookingUpName != null) {
-                    SetMapping(set, (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookUpRight, false, lookingUpName);
-                    SetMapping(set, (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookUpLeft, false, lookingUpName);
-                }
-                if (lookingDownName != null) {
-                    SetMapping(set, (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookDownRight, false, lookingDownName);
-                    SetMapping(set, (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookDownLeft, false, lookingDownName);
-                }
-            }
-            avatar.Dirty();
-        }
-
-        private static void SetMapping(
-            VRCAvatarDescriptor.FaceTrackingBlendshapesSet set,
-            int index,
-            bool visemes,
-            string blendshapeName = "",
-            float multiplier = 1f
-        ) {
-            EnsureMappingArrays(set, visemes);
-            if (visemes) {
-                set.visemeBlendshapeNames[index] = blendshapeName ?? "";
-                set.visemeBlendshapeMultipliers[index] = multiplier;
-            } else {
-                set.faceTrackingBlendshapeNames[index] = blendshapeName ?? "";
-                set.faceTrackingBlendshapeMultipliers[index] = multiplier;
-            }
-        }
-
-        private static void EnsureMappingArrays(
-            VRCAvatarDescriptor.FaceTrackingBlendshapesSet set,
-            bool visemes
-        ) {
-            var count = visemes ? VisemeCount : FaceTrackingCount;
-            if (visemes) {
-                set.visemeBlendshapeNames = EnsureNames(set.visemeBlendshapeNames, count);
-                set.visemeBlendshapeMultipliers = EnsureMultipliers(set.visemeBlendshapeMultipliers, count);
-            } else {
-                set.faceTrackingBlendshapeNames = EnsureNames(set.faceTrackingBlendshapeNames, count);
-                set.faceTrackingBlendshapeMultipliers = EnsureMultipliers(set.faceTrackingBlendshapeMultipliers, count);
-            }
-        }
-
-        private static string[] EnsureNames(string[] names, int count) {
-            if (names?.Length == count && names.All(name => name != null)) return names;
-            return (names ?? Enumerable.Empty<string>())
+        public static (SkinnedMeshRenderer mesh, string[] names) GetLegacyVisemes(VRCAvatarDescriptor avatar) {
+            if (avatar.lipSync != VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape || avatar.VisemeSkinnedMesh == null)
+                return (null, Array.Empty<string>());
+            var names = (avatar.VisemeBlendShapes ?? Enumerable.Empty<string>())
                 .Select(name => name ?? "")
-                .Concat(Enumerable.Repeat("", count))
-                .Take(count)
-                .ToArray();
+                .Concat(Enumerable.Repeat("", VisemeCount)).Take(VisemeCount).ToArray();
+            return (avatar.VisemeSkinnedMesh, names);
         }
 
-        private static float[] EnsureMultipliers(float[] multipliers, int count) {
-            if (multipliers?.Length == count) return multipliers;
-            return (multipliers ?? Enumerable.Empty<float>())
-                .Concat(Enumerable.Repeat(1f, count))
-                .Take(count)
-                .ToArray();
+        public static (SkinnedMeshRenderer mesh, string[] names) GetLegacyEyelids(VRCAvatarDescriptor avatar) {
+            var settings = avatar.customEyeLookSettings;
+            var mesh = avatar.enableEyeLook && settings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes
+                ? settings.eyelidsSkinnedMesh : null;
+            var names = Enumerable.Range(0, 3).Select(state => {
+                if (mesh == null
+                    || settings.eyelidsBlendshapes == null || state >= settings.eyelidsBlendshapes.Length
+                    || (state != 0 && settings.eyeGazeMode != VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.BoneRotation))
+                    return "";
+                return mesh.GetBlendshapeName(settings.eyelidsBlendshapes[state]) ?? "";
+            }).ToArray();
+            return (mesh, names);
         }
 
-        public static void SetVisemeMapping(
-            VRCAvatarDescriptor.FaceTrackingBlendshapesSet set,
-            int viseme,
-            string blendshapeName,
-            float multiplier = 1f
-        ) {
-            SetMapping(set, viseme, true, blendshapeName, multiplier);
+        public static void EnsureMesh(IList<SkinnedMeshRenderer> meshes, SkinnedMeshRenderer mesh) {
+            if (mesh == null) return;
+            var seen = new HashSet<SkinnedMeshRenderer>();
+            for (var i = 0; i < meshes.Count; i++) {
+                if (meshes[i] == null || !seen.Add(meshes[i])) meshes.RemoveAt(i--);
+            }
+            if (meshes.Count > MaxFaceTrackingMeshes)
+                throw new VRCFBuilderException($"Face Tracking supports at most {MaxFaceTrackingMeshes} meshes.");
+            if (meshes.Contains(mesh)) return;
+            if (meshes.Count == MaxFaceTrackingMeshes)
+                throw new VRCFBuilderException($"Face Tracking supports at most {MaxFaceTrackingMeshes} meshes.");
+            meshes.Add(mesh);
         }
 
-        public static void SetFaceTrackingMapping(
-            VRCAvatarDescriptor.FaceTrackingBlendshapesSet set,
-            int key,
-            string blendshapeName,
-            float multiplier = 1f
-        ) {
-            SetMapping(set, key, false, blendshapeName, multiplier);
+        // Shared by import renaming and final one-to-many expansion. Never mutate the input controls.
+        public static List<FtBehaviourControl> RewriteSetReferences(List<FtBehaviourControl> controls, Func<string, IEnumerable<string>> rewrite) {
+            if (controls == null) return null;
+            var output = new List<FtBehaviourControl>();
+            foreach (var control in controls) {
+                if (control == null) {
+                    output.Add(null);
+                    continue;
+                }
+                foreach (var name in rewrite(control.blendshapesSetName ?? "") ?? new[] { control.blendshapesSetName }) {
+                    var copy = UnitySerializationUtils.CloneSerializable(control);
+                    copy.blendshapesSetName = name;
+                    output.Add(copy);
+                }
+            }
+            if (output.Count > MaxSetControls)
+                throw new VRCFBuilderException($"Face Tracking supports at most {MaxSetControls} set controls per animator behavior.");
+            return output;
         }
 
-        private static void ClearMappings(
-            VRCAvatarDescriptor.FaceTrackingBlendshapesSet set,
-            bool visemes,
-            int first,
-            int count
-        ) {
-            for (var i = first; i < first + count; i++)
-                SetMapping(set, i, visemes);
-        }
 
-        private static List<VRCAvatarDescriptor.FaceTrackingBlendshapesSet> GetBlendshapeSets(VRCAvatarDescriptor avatar) {
-            if (avatar.faceTrackingBlendshapesSetList == null)
-                avatar.faceTrackingBlendshapesSetList = new List<VRCAvatarDescriptor.FaceTrackingBlendshapesSet>();
-            return avatar.faceTrackingBlendshapesSetList;
-        }
-
-        public static VRCAvatarDescriptor.FaceTrackingBlendshapesSet AddBlendshapeSet(
-            VRCAvatarDescriptor avatar,
-            string setName = ""
-        ) {
-            var existingNames = GetBlendshapeSets(avatar)
-                .Where(existingSet => existingSet != null)
-                .Select(existingSet => existingSet.setName ?? "")
-                .ToHashSet();
-            setName = setName ?? "";
-            var originalName = setName;
-            for (var suffix = 1; existingNames.Contains(setName); suffix++)
-                setName = originalName + " " + suffix;
-
-            var set = new VRCAvatarDescriptor.FaceTrackingBlendshapesSet {
-                setName = setName,
-                setWeight = 1,
-                faceTrackingBlendshapeNames = Enumerable.Repeat("", FaceTrackingCount).ToArray(),
-                faceTrackingBlendshapeMultipliers = Enumerable.Repeat(1f, FaceTrackingCount).ToArray(),
-                visemeBlendshapeNames = Enumerable.Repeat("", VisemeCount).ToArray(),
-                visemeBlendshapeMultipliers = Enumerable.Repeat(1f, VisemeCount).ToArray()
-            };
-            GetBlendshapeSets(avatar).Add(set);
-            avatar.Dirty();
-            return set;
-        }
+        public static FtSet CreateBlendshapeSet(string name) => new FtSet {
+            setName = name,
+            setWeight = 1,
+            faceTrackingBlendshapeNames = Enumerable.Repeat("", FaceTrackingCount).ToArray(),
+            faceTrackingBlendshapeMultipliers = Enumerable.Repeat(1f, FaceTrackingCount).ToArray(),
+            visemeBlendshapeNames = Enumerable.Repeat("", VisemeCount).ToArray(),
+            visemeBlendshapeMultipliers = Enumerable.Repeat(1f, VisemeCount).ToArray()
+        };
     }
 }
 #endif

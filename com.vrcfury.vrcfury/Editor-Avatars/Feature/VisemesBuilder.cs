@@ -37,6 +37,9 @@ namespace VF.Feature {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly GlobalsService globals;
+#if VRCSDK_HAS_FACE_TRACKING
+        [VFAutowired] private readonly FaceTrackingService faceTracking;
+#endif
         private ControllerManager fx => controllers.GetFx();
 
         private static readonly string[] visemeNames = {
@@ -129,11 +132,15 @@ namespace VF.Feature {
                 .OfType<BlendShapeLink>()
                 .ToArray();
             var migrated = new List<(int viseme, SkinnedMeshRenderer skin, BlendShapeAction action)>();
+            var states = Reflection.StateFields.Select(field => (State)field.GetValue(model)).ToArray();
+            // Read original actions before removing them; multiple slots may share a State.
+            var actions = states.Select(state => state.actions.ToArray()).ToArray();
 
-            for (var viseme = 0; viseme < visemeNames.Length; viseme++) {
-                var state = (State)Reflection.StateFields[viseme].GetValue(model);
+            // Do not copy the legacy animator's implicit state_aa alias into FT silence.
+            for (var viseme = 1; viseme < visemeNames.Length; viseme++) {
+                var state = states[viseme];
                 var remainingActions = new List<Action>();
-                foreach (var action in state.actions) {
+                foreach (var action in actions[viseme]) {
                     if (!(action is BlendShapeAction blendshapeAction)) {
                         remainingActions.Add(action);
                         continue;
@@ -162,28 +169,26 @@ namespace VF.Feature {
             }
 
             if (migrated.Count > 0) {
-                FaceTrackingUtils.EnsureVisemesEnabled(avatar);
-                var sets = new List<(VRCAvatarDescriptor.FaceTrackingBlendshapesSet set, HashSet<int> visemes)>();
+                faceTracking.EnsureVisemesEnabled();
+                var sets = new List<(FaceTrackingService.PendingFtBlendshapeSet set, HashSet<int> visemes)>();
                 foreach (var (viseme, skin, action) in migrated) {
                     var set = sets.FirstOrDefault(entry => !entry.visemes.Contains(viseme));
                     if (set.set == null) {
-                        set = (FaceTrackingUtils.AddBlendshapeSet(avatar, "_vrcf_advanced_visemes"), new HashSet<int>());
+                        set = (faceTracking.AddSet("_vrcf_advanced_visemes"), new HashSet<int>());
                         sets.Add(set);
                     }
                     set.visemes.Add(viseme);
-                    FaceTrackingUtils.EnsureMesh(avatar, skin);
-                    FaceTrackingUtils.SetVisemeMapping(
+                    faceTracking.SetVisemeMapping(
                         set.set,
                         viseme,
+                        skin,
                         action.blendShape,
                         action.blendShapeValue / 100f
                     );
                 }
             }
 
-            return Reflection.StateFields
-                .Select(field => (State)field.GetValue(model))
-                .Any(state => state.actions.Any());
+            return states.Any(state => state.actions.Any());
         }
 #endif
 
