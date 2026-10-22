@@ -50,6 +50,25 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void RawComponentImplicitlyConvertsToAReference() {
+            var obj = new GameObject("Renderer");
+            try {
+                var skin = obj.AddComponent<SkinnedMeshRenderer>();
+                ComponentOrPath<SkinnedMeshRenderer> reference = skin;
+                Assert.That(reference.usePath, Is.False);
+                Assert.That(reference.path, Is.Empty);
+                Assert.That(reference.component, Is.SameAs(skin));
+                Assert.That(reference.Resolve(null), Is.SameAs(skin));
+                ComponentOrPath<SkinnedMeshRenderer> empty = (SkinnedMeshRenderer)null;
+                Assert.That(empty, Is.Not.Null);
+                Assert.That(empty.component, Is.Null);
+                Assert.That(empty.Resolve(null), Is.Null);
+            } finally {
+                Object.DestroyImmediate(obj);
+            }
+        }
+
+        [Test]
         public void ComponentAndPathResolveOnlyTheSpecifiedObject() {
             var root = new GameObject("Avatar");
             var child = new GameObject("Body");

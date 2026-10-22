@@ -45,6 +45,20 @@ namespace com.vrcfury.api.Components {
             c.globalParams.Add(name);
         }
 
+#if VRCSDK_HAS_FACE_TRACKING
+        public void AddFaceTrackingRenderer(SkinnedMeshRenderer renderer) {
+            c.faceTrackingMeshes.Add(renderer);
+        }
+
+        public void AddFaceTrackingBlendshapeSet(VRCAvatarDescriptor.FaceTrackingBlendshapesSet set) {
+            c.faceTrackingBlendshapeSets.Add(set);
+        }
+
+        public void AddFaceTrackingBehavior(VRCAvatarDescriptor.FaceTrackingParameterBehavior behavior) {
+            c.faceTrackingParameterBehaviors.Add(behavior);
+        }
+#endif
+
         public void AddInjectedParam(GameObject sourceObject, string sourceParam, string targetParam) {
             c.injectParams.Add(new FullController.InjectParamEntry {
                 sourceObject = sourceObject,

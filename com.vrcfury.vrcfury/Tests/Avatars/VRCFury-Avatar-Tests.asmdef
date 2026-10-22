@@ -7,7 +7,8 @@
         "VRCFury",
         "VRCFury-Editor-Common",
         "VRCFury-Editor-Avatars",
-        "VRC.SDK3A.Editor"
+        "VRC.SDK3A.Editor",
+        "com.vrcfury.api"
     ],
     "includePlatforms": [
         "Editor"

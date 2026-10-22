@@ -15,6 +15,9 @@ namespace VF.Model {
         public T component;
         public override Type ComponentType => typeof(T);
 
+        public static implicit operator ComponentOrPath<T>(T component) =>
+            new ComponentOrPath<T> { component = component };
+
         public override UnityEngine.Component Resolve(GameObject avatarRoot) {
             if (!usePath) return component;
             var target = avatarRoot == null ? null : string.IsNullOrEmpty(path)

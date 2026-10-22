@@ -21,6 +21,27 @@ using FtBehaviourControl = VRC.SDKBase.VRC_AnimatorFaceTrackingBlendshapesSet.Bl
 namespace VF.Tests {
     [Category("VRCFury")]
     public class FullControllerFaceTrackingTest {
+        [Test]
+        public void PublicApiAddsFaceTrackingConfiguration() {
+            var obj = new GameObject("FullControllerApi");
+            try {
+                var skin = obj.AddComponent<SkinnedMeshRenderer>();
+                var set = FaceTrackingUtils.CreateBlendshapeSet("Face");
+                var behavior = new VRCAvatarDescriptor.FaceTrackingParameterBehavior();
+                var api = com.vrcfury.api.FuryComponents.CreateFullController(obj);
+                api.AddFaceTrackingRenderer(skin);
+                api.AddFaceTrackingBlendshapeSet(set);
+                api.AddFaceTrackingBehavior(behavior);
+                var model = (FullController)obj.GetComponent<VRCFury>().content;
+                Assert.That(model.faceTrackingMeshes.Single().usePath, Is.False);
+                Assert.That(model.faceTrackingMeshes.Single().component, Is.SameAs(skin));
+                Assert.That(model.faceTrackingBlendshapeSets.Single(), Is.SameAs(set));
+                Assert.That(model.faceTrackingParameterBehaviors.Single(), Is.SameAs(behavior));
+            } finally {
+                Object.DestroyImmediate(obj);
+            }
+        }
+
         private static void SetMapping(VRCAvatarDescriptor.FaceTrackingBlendshapesSet set, int index, string name, bool visemes = false, float multiplier = 1) {
             var count = visemes ? (int)VRC.SDKBase.VRC_AvatarDescriptor.Viseme.Count : (int)VRCAvatarDescriptor.FaceTrackingKey.Max;
             var originalNames = visemes ? set.visemeBlendshapeNames : set.faceTrackingBlendshapeNames;
