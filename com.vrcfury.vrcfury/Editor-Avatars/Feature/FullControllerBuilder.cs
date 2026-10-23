@@ -51,6 +51,7 @@ namespace VF.Feature {
 
 #if VRCSDK_HAS_FACE_TRACKING
         [VFAutowired] private readonly FaceTrackingService faceTracking;
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
 #endif
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
@@ -254,18 +255,15 @@ namespace VF.Feature {
 #if VRCSDK_HAS_FACE_TRACKING
         private Dictionary<string, string> RegisterFaceTrackingSets() {
             var rewrites = new Dictionary<string, string>();
-            var skins = (model.faceTrackingMeshes ?? Enumerable.Empty<ComponentOrPath<SkinnedMeshRenderer>>())
+            var skins = (model.faceTrackingMeshes ?? new())
                 .Select(entry => {
-                    if (entry == null)
-                        throw new VRCFBuilderException("Face Tracking mesh entry is missing a SkinnedMeshRenderer reference.");
-                    var skin = entry.Resolve(avatar.gameObject) as SkinnedMeshRenderer;
-                    if (skin == null)
-                        throw new VRCFBuilderException(entry.usePath
-                            ? $"Face Tracking mesh path '{entry.path}' was not found or has no SkinnedMeshRenderer."
-                            : "Face Tracking mesh entry is missing a SkinnedMeshRenderer reference.");
-                    return skin;
+                    try {
+                        return entry.Resolve(avatar.gameObject, objectPaths, armatureCache);
+                    } catch (Exception e) {
+                        throw new VRCFBuilderException("Face Tracking mesh could not be resolved: " + e.Message);
+                    }
                 }).Distinct().ToArray();
-            foreach (var source in model.faceTrackingBlendshapeSets ?? Enumerable.Empty<VRCAvatarDescriptor.FaceTrackingBlendshapesSet>()) {
+            foreach (var source in model.faceTrackingBlendshapeSets ?? new()) {
                 if (source == null) continue;
                 var sourceName = source.setName ?? "";
                 if (rewrites.ContainsKey(sourceName))
@@ -275,7 +273,7 @@ namespace VF.Feature {
                 faceTracking.RegisterImportedSet(copy, skins);
                 rewrites[sourceName] = copy.setName;
             }
-            foreach (var source in model.faceTrackingParameterBehaviors ?? Enumerable.Empty<VRCAvatarDescriptor.FaceTrackingParameterBehavior>()) {
+            foreach (var source in model.faceTrackingParameterBehaviors ?? new()) {
                 if (source == null) continue;
                 var copy = UnitySerializationUtils.CloneSerializable(source);
                 if (rewrites.TryGetValue(copy.targetBlendSetName ?? "", out var target)) copy.targetBlendSetName = target;
@@ -293,9 +291,9 @@ namespace VF.Feature {
             var field = property.Copy();
             var meshList = meshes.Copy();
             SkinnedMeshRenderer[] ReadMeshes() {
-                var avatarRoot = ComponentOrPathDrawer.GetAvatarRoot(field);
+                var avatarRoot = ObjectReferenceDrawer.GetAvatarRoot(field);
                 return Enumerable.Range(0, meshList.arraySize)
-                    .Select(i => ComponentOrPathDrawer.Resolve(meshList.GetArrayElementAtIndex(i), avatarRoot))
+                    .Select(i => ObjectReferenceDrawer.Resolve(meshList.GetArrayElementAtIndex(i), avatarRoot)?.GetComponent<SkinnedMeshRenderer>())
                     .OfType<SkinnedMeshRenderer>().Distinct().ToArray();
             }
             var context = FaceTrackingEditorContext.ForProperty(field);
@@ -759,13 +757,17 @@ namespace VF.Feature {
                 "Do NOT add face tracking for the accessory in this section."));
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Face Tracking Meshes"));
             var ftMeshes = prop.FindPropertyRelative("faceTrackingMeshes");
-            adv.Add(VRCFuryEditorUtils.List(ftMeshes));
+            adv.Add(ObjectReferenceDrawer.List(ftMeshes, new ObjectReferenceDrawer.Options {
+                defaultMode = ObjectReference.Mode.ObjectReference,
+                allowBone = false,
+                componentType = typeof(SkinnedMeshRenderer)
+            }));
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Face Tracking Blendshape Sets"));
             adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("faceTrackingBlendshapeSets"),
-                renderItem: item => FaceTrackingEditor(item, new FaceTrackingBlendshapesSetDrawer(), ftMeshes)));
+                renderItem: (item, index) => FaceTrackingEditor(item, new FaceTrackingBlendshapesSetDrawer(), ftMeshes)));
             adv.Add(VRCFuryEditorUtils.WrappedLabel("Face Tracking Parameter Behaviours"));
             adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("faceTrackingParameterBehaviors"),
-                renderItem: item => FaceTrackingEditor(item, new FaceTrackingParameterBehaviorDrawer(), ftMeshes)));
+                renderItem: (item, index) => FaceTrackingEditor(item, new FaceTrackingParameterBehaviorDrawer(), ftMeshes)));
 #endif
             
             {

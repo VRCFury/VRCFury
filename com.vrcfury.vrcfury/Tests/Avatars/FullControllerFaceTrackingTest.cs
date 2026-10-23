@@ -33,8 +33,8 @@ namespace VF.Tests {
                 api.AddFaceTrackingBlendshapeSet(set);
                 api.AddFaceTrackingBehavior(behavior);
                 var model = (FullController)obj.GetComponent<VRCFury>().content;
-                Assert.That(model.faceTrackingMeshes.Single().usePath, Is.False);
-                Assert.That(model.faceTrackingMeshes.Single().component, Is.SameAs(skin));
+                Assert.That(model.faceTrackingMeshes.Single().useBone, Is.False);
+                Assert.That(model.faceTrackingMeshes.Single().componentOverride, Is.SameAs(skin));
                 Assert.That(model.faceTrackingBlendshapeSets.Single(), Is.SameAs(set));
                 Assert.That(model.faceTrackingParameterBehaviors.Single(), Is.SameAs(behavior));
             } finally {
@@ -125,9 +125,9 @@ namespace VF.Tests {
                     featureBaseObject = owner,
                     model = new FullController {
                         faceTrackingMeshes = path != null
-                            ? new List<ComponentOrPath<SkinnedMeshRenderer>> { new ComponentOrPath<SkinnedMeshRenderer> { usePath = true, path = path } }
+                            ? new List<ObjectReference<SkinnedMeshRenderer>> { new ObjectReference<SkinnedMeshRenderer> { useBone = false, offset = path } }
                             : (skins ?? new[] { owner.GetComponent<SkinnedMeshRenderer>() })
-                                .Select(skin => new ComponentOrPath<SkinnedMeshRenderer> { component = skin }).ToList(),
+                                .Select(skin => (ObjectReference<SkinnedMeshRenderer>)skin).ToList(),
                         faceTrackingBlendshapeSets = { set },
                         faceTrackingParameterBehaviors = behaviors.ToList()
                     }
@@ -210,7 +210,7 @@ namespace VF.Tests {
         }
 
         private sealed class AuthoringFields : ScriptableObject {
-            public List<ComponentOrPath<SkinnedMeshRenderer>> meshes = new List<ComponentOrPath<SkinnedMeshRenderer>>();
+            public List<ObjectReference<SkinnedMeshRenderer>> meshes = new List<ObjectReference<SkinnedMeshRenderer>>();
             public VRCAvatarDescriptor.FaceTrackingBlendshapesSet set = new VRCAvatarDescriptor.FaceTrackingBlendshapesSet();
             public VRCAvatarDescriptor.FaceTrackingParameterBehavior behavior = new VRCAvatarDescriptor.FaceTrackingParameterBehavior();
         }
@@ -248,7 +248,7 @@ namespace VF.Tests {
                 sourceBehavior.blendSets = new List<FtBehaviourControl> { new FtBehaviourControl { blendshapesSetName = "Face", weight = 0.6f } };
                 body.gameObject.AddComponent<VRCFury>().content = new FullController {
                     controllers = { new FullController.ControllerEntry { controller = sourceController } },
-                    faceTrackingMeshes = { new ComponentOrPath<SkinnedMeshRenderer> { component = body } },
+                    faceTrackingMeshes = { (ObjectReference<SkinnedMeshRenderer>)body },
                     faceTrackingBlendshapeSets = { set }
                 };
                 root.AddComponent<VRCFury>().content = new BlendShapeLink {
@@ -784,7 +784,7 @@ namespace VF.Tests {
             using (var build = new Build()) {
                 var skin = build.Skin("Source");
                 var owner = ScriptableObject.CreateInstance<AuthoringFields>();
-                owner.meshes.Add(new ComponentOrPath<SkinnedMeshRenderer> { component = skin });
+                owner.meshes.Add((ObjectReference<SkinnedMeshRenderer>)skin);
                 try {
                     using (var serialized = new SerializedObject(owner)) {
                         var property = serialized.FindProperty(field);
@@ -882,7 +882,7 @@ namespace VF.Tests {
             using (var build = new Build()) {
                 var error = Assert.Throws<VF.Exceptions.VRCFBuilderException>(() =>
                     build.Full(build.root, skins: new SkinnedMeshRenderer[] { null }));
-                Assert.That(error.Message, Does.Contain("missing a SkinnedMeshRenderer reference"));
+                Assert.That(error.Message, Does.Contain("Face Tracking mesh could not be resolved: Object reference is missing."));
             }
         }
 
@@ -1734,7 +1734,7 @@ namespace VF.Tests {
                     featureBaseObject = asset,
                     model = new FullController {
                         faceTrackingMeshes = (targetInsideAsset ? new[] { source, target } : new[] { source })
-                            .Select(skin => new ComponentOrPath<SkinnedMeshRenderer> { component = skin }).ToList(),
+                            .Select(skin => (ObjectReference<SkinnedMeshRenderer>)skin).ToList(),
                         faceTrackingBlendshapeSets = { set }
                     }
                 };

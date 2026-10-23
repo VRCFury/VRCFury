@@ -18,7 +18,7 @@ namespace VF.Inspector {
             SerializedProperty list,
             Action onPlus = null,
             Func<VisualElement> onEmpty = null,
-            Func<SerializedProperty, VisualElement> renderItem = null
+            Func<SerializedProperty, int, VisualElement> renderItem = null
         ) {
             var output = new VisualElement();
             output.AddToClassList("vfList");
@@ -108,7 +108,7 @@ namespace VF.Inspector {
                 if (renderItem == null) ((PropertyField)element).bindingPath = item.propertyPath;
                 else {
                     element.Clear();
-                    element.Add(renderItem(item));
+                    element.Add(renderItem(item, i));
                 }
                 element.Bind(list.serializedObject);
                 element.userData = i;
@@ -159,7 +159,7 @@ namespace VF.Inspector {
                     row.style.alignItems = Align.FlexStart;
                     entries.Add(row);
 
-                    VisualElement data = (renderItem == null ? Prop(el) : renderItem(el)).Padding(5);
+                    VisualElement data = (renderItem == null ? Prop(el) : renderItem(el, i)).Padding(5);
                     data.AddToClassList("vfListRowData");
                     data.style.flexGrow = 1;
                     row.Add(data);
@@ -453,67 +453,14 @@ namespace VF.Inspector {
         }
 
         public static VisualElement OnChange(SerializedProperty prop, Action changed) {
-
-            var c = changed;
-            changed = () => {
-                // Unity sometimes calls onchange when the SerializedProperty is no longer valid.
-                // Unfortunately the only way to detect this is to try to access it and catch an error, since isValid is internal
-                try {
-                    var name = prop.name;
-                } catch (Exception) {
-                    return;
-                }
-                c();
-            };
-
-            switch(prop.propertyType) {
-                case SerializedPropertyType.Boolean:
-                    return _OnChange(prop, () => prop.boolValue, changed, (a,b) => a==b);
-                case SerializedPropertyType.Integer:
-                    return _OnChange(prop, () => prop.intValue, changed, (a,b) => a==b);
-                case SerializedPropertyType.String:
-                    return _OnChange(prop, () => prop.stringValue, changed, (a,b) => a==b);
-                case SerializedPropertyType.ObjectReference:
-                    return _OnChange(prop, () => prop.objectReferenceValue, changed, (a,b) => a==b);
-                case SerializedPropertyType.Enum:
-                    return _OnChange(prop, () => prop.enumValueIndex, changed, (a,b) => a==b);
-            }
-
-            if (prop.isArray) {
-                var fakeField = new IntegerField();
-                fakeField.bindingPath = prop.propertyPath+".Array.size";
-                fakeField.SetVisible(false);
-                var oldValue = prop.arraySize;
-                fakeField.RegisterValueChangedCallback(e => {
-                    if (prop.arraySize == oldValue) return;
-                    oldValue = prop.arraySize;
-                    //Debug.Log("Detected change in " + prop.propertyPath);
-                    changed();
-                });
-                return fakeField;
-            }
-            throw new Exception("Type " + prop.propertyType + " not supported (yet) by OnChange");
-        }
-        private static VisualElement _OnChange<T>(SerializedProperty prop, Func<T> getValue, Action changed, Func<T,T,bool> equals) {
-            // The register events can sometimes randomly fire when binding / unbinding happens,
-            // with the oldValue being "null", so we have to do our own change detection by caching the old value.
-            var fakeField = new PropertyField(prop).SetVisible(false);
-        
-            var oldValue = getValue();
-            void Check() {
-                var newValue = getValue();
-                if (equals(oldValue, newValue)) return;
-                oldValue = newValue;
-                //Debug.Log("Detected change in " + prop.propertyPath);
-                changed();
-            }
-            if (prop.propertyType == SerializedPropertyType.Enum) {
-                fakeField.RegisterCallback<ChangeEvent<string>>(e => changed());
-            } else {
-                fakeField.RegisterCallback<ChangeEvent<T>>(e => Check());
-            }
-
-            return fakeField;
+            // Lists intentionally track only their size, not edits to their children.
+            var watched = prop.isArray && prop.propertyType != SerializedPropertyType.String
+                ? prop.FindPropertyRelative("Array.size") : prop;
+            var watcher = new VisualElement();
+            watcher.RegisterCallback<AttachToPanelEvent>(evt =>
+                watcher.TrackPropertyValue(watched, property => changed()));
+            watcher.RegisterCallback<DetachFromPanelEvent>(_ => watcher.Unbind());
+            return watcher;
         }
         
         public static VisualElement RefreshOnTrigger(Func<VisualElement> content, SerializedObject obj, out Action triggerRefresh) {
@@ -538,10 +485,7 @@ namespace VF.Inspector {
                 throw new Exception("RefreshOnChange received null prop");
             container.Add(RefreshOnTrigger(content, props[0].serializedObject, out var triggerRefresh));
             foreach (var prop in props) {
-                if (prop != null) {
-                    var onChangeField = OnChange(prop, triggerRefresh);
-                    container.Add(onChangeField);
-                }
+                container.Add(OnChange(prop, triggerRefresh));
             }
             return container;
         }

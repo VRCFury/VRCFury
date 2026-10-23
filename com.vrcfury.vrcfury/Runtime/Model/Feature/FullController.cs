@@ -24,7 +24,7 @@ namespace VF.Model.Feature {
         public bool allowMissingAssets = false;
         public List<InjectParamEntry> injectParams = new List<InjectParamEntry>();
 #if VRCSDK_HAS_FACE_TRACKING
-        public List<ComponentOrPath<SkinnedMeshRenderer>> faceTrackingMeshes = new List<ComponentOrPath<SkinnedMeshRenderer>>();
+        public List<ObjectReference<SkinnedMeshRenderer>> faceTrackingMeshes = new();
         public List<VRCAvatarDescriptor.FaceTrackingBlendshapesSet> faceTrackingBlendshapeSets = new List<VRCAvatarDescriptor.FaceTrackingBlendshapesSet>();
         public List<VRCAvatarDescriptor.FaceTrackingParameterBehavior> faceTrackingParameterBehaviors = new List<VRCAvatarDescriptor.FaceTrackingParameterBehavior>();
 #endif

@@ -18,6 +18,24 @@ namespace VF.Feature {
     [FeatureTitle("Armature Link")]
     internal class ArmatureLinkBuilder : FeatureBuilder<ArmatureLink> {
 
+        internal static VisualElement LinkTargetsEditor(SerializedProperty list, bool showOffsetPath = false) {
+            var options = new ObjectReferenceDrawer.Options {
+                showOffsetPath = showOffsetPath || Enumerable.Range(0, list.arraySize)
+                    .Any(i => !string.IsNullOrEmpty(list.GetArrayElementAtIndex(i).FindPropertyRelative("offset").stringValue))
+            };
+            VisualElement RenderTarget(SerializedProperty entry, int index) {
+                var target = new VisualElement();
+                if (index > 0) target.Add(VRCFuryEditorUtils.WrappedLabel($"Fallback #{index}"));
+                target.Add(ObjectReferenceDrawer.CreateEditor(entry, options));
+                return target;
+            }
+            return VRCFuryEditorUtils.RefreshOnChange(() => list.arraySize == 1
+                ? RenderTarget(list.GetArrayElementAtIndex(0), 0)
+                : VRCFuryEditorUtils.List(list,
+                    onPlus: () => ObjectReferenceDrawer.AddEntry(list, options),
+                    renderItem: RenderTarget), list);
+        }
+
         [FeatureEditor]
         public static VisualElement Editor(SerializedProperty prop, ArmatureLink model, VFGameObject avatarObject) {
             var container = new VisualElement();
@@ -45,60 +63,11 @@ namespace VF.Feature {
                 }
             }));
 
-            container.Add(VRCFuryEditorUtils.WrappedLabel("Link To (Avatar):"));
+            container.Add(VRCFuryEditorUtils.WrappedLabel("Link To:"));
             var linkToList = prop.FindPropertyRelative("linkTo");
-            var linkToContainer = new VisualElement().MarginBottom(10);
-            container.Add(linkToContainer);
-            var simpleLinkToMode =
-                linkToList.arraySize == 1
-                && linkToList.GetArrayElementAtIndex(0).FindPropertyRelative("useBone").boolValue
-                && !linkToList.GetArrayElementAtIndex(0).FindPropertyRelative("useObj").boolValue
-                && string.IsNullOrWhiteSpace(linkToList.GetArrayElementAtIndex(0).FindPropertyRelative("offset").stringValue);
-            VisualElement RenderLinkToList() {
-                var output = new VisualElement();
-                output.Add(VRCFuryEditorUtils.Info("If multiple targets are provided, the first valid target found on the avatar will be used."));
-                var header = new VisualElement().Row();
-                header.Add(VRCFuryEditorUtils.WrappedLabel("Target Object").FlexGrow(1));
-                header.Add(VRCFuryEditorUtils.WrappedLabel("Offset Path").FlexGrow(1));
-                output.Add(header);
-                output.Add(new VisualElement().Row());
-                void OnPlus() {
-                    var menu = new GenericMenu();
-
-                    void Reset(SerializedProperty newEntry) {
-                        newEntry.FindPropertyRelative("useObj").boolValue = false;
-                        newEntry.FindPropertyRelative("obj").objectReferenceValue = null;
-                        newEntry.FindPropertyRelative("useBone").boolValue = false;
-                        newEntry.FindPropertyRelative("bone").enumValueIndex = 0;
-                        newEntry.FindPropertyRelative("offset").stringValue = "";
-                    }
-                    menu.AddItem(new GUIContent("Bone"), false, () => {
-                        VRCFuryEditorUtils.AddToList(linkToList, entry => {
-                            Reset(entry);
-                            entry.FindPropertyRelative("useBone").boolValue = true;
-                        });
-                    });
-                    menu.AddItem(new GUIContent("GameObject"), false, () => {
-                        VRCFuryEditorUtils.AddToList(linkToList, entry => {
-                            Reset(entry);
-                            entry.FindPropertyRelative("useObj").boolValue = true;
-                        });
-                    });
-                    menu.AddItem(new GUIContent("Avatar Root"), false, () => {
-                        VRCFuryEditorUtils.AddToList(linkToList, entry => {
-                            Reset(entry);
-                        });
-                    });
-                    menu.ShowAsContext();
-                }
-                output.Add(VRCFuryEditorUtils.List(linkToList, onPlus: OnPlus));
-                return output;
-            }
-            if (simpleLinkToMode) {
-                linkToContainer.Add(VRCFuryEditorUtils.Prop(linkToList.GetArrayElementAtIndex(0).FindPropertyRelative("bone")));
-            } else {
-                linkToContainer.Add(RenderLinkToList());
-            }
+            var showOffsetPath = model.linkTo.Any(entry => !string.IsNullOrEmpty(entry.offset));
+            container.Add(VRCFuryEditorUtils.RefreshOnTrigger(() => LinkTargetsEditor(linkToList, showOffsetPath),
+                prop.serializedObject, out var refreshTargets).MarginBottom(10));
 
             var adv = new Foldout {
                 text = "Advanced Options",
@@ -106,17 +75,21 @@ namespace VF.Feature {
             }.AddTo(container);
 
             var matching = VRCFuryEditorUtils.Section("Search / Matching").AddTo(adv);
-            
-            if (simpleLinkToMode) {
-                var advancedLinkToButtonContainer = new VisualElement();
-                matching.Add(advancedLinkToButtonContainer);
-                advancedLinkToButtonContainer.Add(new Button(() => {
-                    linkToContainer.Clear();
-                    linkToContainer.Add(RenderLinkToList());
-                    linkToContainer.Bind(prop.serializedObject);
-                    advancedLinkToButtonContainer.Clear();
-                }) { text = "Enable Advanced Link Target Mode"}.MarginBottom(5));
-            }
+            var fallbackOption = new VisualElement().AddTo(matching);
+            fallbackOption.Add(new Button(() => ObjectReferenceDrawer.AddEntry(linkToList, new ObjectReferenceDrawer.Options())) {
+                text = "Add Fallback Link To"
+            });
+            fallbackOption.Add(VRCFuryEditorUtils.Info("Adds another target to try if earlier targets aren't found. Bone targets already automatically fall back to similar bones if the exact bone isn't found."));
+            var offsetOption = new VisualElement().AddTo(matching);
+            var addOffsetPath = new Button { text = "Add Offset Path" };
+            offsetOption.Add(addOffsetPath);
+            offsetOption.SetVisible(!showOffsetPath);
+            addOffsetPath.clicked += () => {
+                showOffsetPath = true;
+                refreshTargets();
+                offsetOption.SetVisible(false);
+            };
+            offsetOption.Add(VRCFuryEditorUtils.Info("Shows an Offset Path field for each target, letting you select a child relative to the chosen bone or object. Most setups don't need an offset."));
 
             var recursiveProp = prop.FindPropertyRelative("recursive");
             matching.Add(VRCFuryEditorUtils.Prop(
@@ -283,25 +256,6 @@ namespace VF.Feature {
             return container;
         }
         
-        [CustomPropertyDrawer(typeof(ArmatureLink.LinkTo))]
-        public class LinkToDrawer : PropertyDrawer {
-            public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
-                var output = new VisualElement().Row();
-                VisualElement left;
-                if (prop.FindPropertyRelative("useObj").boolValue) {
-                    left = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("obj"));
-                } else if (prop.FindPropertyRelative("useBone").boolValue) {
-                    left = VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bone"));
-                } else {
-                    left = VRCFuryEditorUtils.WrappedLabel("Avatar Root");
-                }
-
-                left.FlexBasis(0).FlexGrow(1);
-                output.Add(left);
-                output.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("offset")).FlexBasis(0).FlexGrow(1));
-                return output;
-            }
-        }
 
         [CanBeNull]
         public static VFGameObject GuessLinkFrom(VFGameObject componentObject) {
