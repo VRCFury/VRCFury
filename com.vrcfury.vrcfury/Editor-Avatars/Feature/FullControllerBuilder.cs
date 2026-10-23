@@ -25,7 +25,6 @@ using VRC.SDK3.Dynamics.Contact.Components;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 #if VRCSDK_HAS_FACE_TRACKING
 using VRC.SDKBase;
-using VRC.SDK3A.Editor;
 #endif
 using Toggle = VF.Model.Feature.Toggle;
 
@@ -285,44 +284,6 @@ namespace VF.Feature {
                 faceTracking.RegisterImportedBehavior(copy, skins);
             }
             return rewrites;
-        }
-
-        private static VisualElement FaceTrackingEditor(SerializedProperty property, PropertyDrawer drawer, SerializedProperty meshes) {
-            var field = property.Copy();
-            var meshList = meshes.Copy();
-            SkinnedMeshRenderer[] ReadMeshes() {
-                var avatarRoot = ObjectReferenceDrawer.GetAvatarRoot(field);
-                return Enumerable.Range(0, meshList.arraySize)
-                    .Select(i => ObjectReferenceDrawer.Resolve(meshList.GetArrayElementAtIndex(i), avatarRoot)?.GetComponent<SkinnedMeshRenderer>())
-                    .OfType<SkinnedMeshRenderer>().Distinct().ToArray();
-            }
-            var context = FaceTrackingEditorContext.ForProperty(field);
-            // Override automatic parent-avatar inference as well as any saved authoring avatar.
-            context.SourceAvatar = null;
-            var currentMeshes = ReadMeshes();
-            context.SetMeshes(currentMeshes);
-            void UpdateMeshes() {
-                field.serializedObject.UpdateIfRequiredOrScript();
-                var nextMeshes = ReadMeshes();
-                if (!currentMeshes.SequenceEqual(nextMeshes)) {
-                    currentMeshes = nextMeshes;
-                    context.SetMeshes(currentMeshes);
-                }
-            }
-            var container = new IMGUIContainer(() => {
-                field.serializedObject.UpdateIfRequiredOrScript();
-                if (context.SourceAvatar != null) context.SourceAvatar = null;
-                var rect = EditorGUILayout.GetControlRect(false, drawer.GetPropertyHeight(field, GUIContent.none));
-                drawer.OnGUI(rect, field, GUIContent.none);
-                field.serializedObject.ApplyModifiedProperties();
-            });
-            container.TrackPropertyValue(meshList, _ => UpdateMeshes());
-            container.RegisterCallback<AttachToPanelEvent>(_ => {
-                UpdateMeshes();
-                EditorApplication.hierarchyChanged += UpdateMeshes;
-            });
-            container.RegisterCallback<DetachFromPanelEvent>(_ => EditorApplication.hierarchyChanged -= UpdateMeshes);
-            return container;
         }
 
         private static void RewriteFaceTrackingSetNames(VFController controller, IReadOnlyDictionary<string, string> rewrites) {
@@ -737,38 +698,26 @@ namespace VF.Feature {
                 "This feature will merge the given controller / menu / parameters into the avatar" +
                 " during the upload process."));
             
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Controller"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers")));
+            var controllerSection = VRCFuryEditorUtils.Section("Controller").AddTo(content);
+            controllerSection.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers")));
             
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Menu"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus")));
+            var menuSection = VRCFuryEditorUtils.Section("Menu").AddTo(content);
+            menuSection.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus")));
             
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms")));
+            var parametersSection = VRCFuryEditorUtils.Section("Parameters").AddTo(content);
+            parametersSection.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms")));
+
+#if VRCSDK_HAS_FACE_TRACKING
+            content.Add(FaceTrackingEditor.Create(
+                prop.FindPropertyRelative("faceTrackingMeshes"),
+                prop.FindPropertyRelative("faceTrackingBlendshapeSets"),
+                prop.FindPropertyRelative("faceTrackingParameterBehaviors")));
+#endif
 
             var adv = new Foldout {
                 text = "Advanced Options",
                 value = false
             };
-
-#if VRCSDK_HAS_FACE_TRACKING
-            adv.Add(VRCFuryEditorUtils.Warn(
-                "If you're adding an accessory to the avatar's face, use Blendshape Link instead. " +
-                "Do NOT add face tracking for the accessory in this section."));
-            adv.Add(VRCFuryEditorUtils.WrappedLabel("Face Tracking Meshes"));
-            var ftMeshes = prop.FindPropertyRelative("faceTrackingMeshes");
-            adv.Add(ObjectReferenceDrawer.List(ftMeshes, new ObjectReferenceDrawer.Options {
-                defaultMode = ObjectReference.Mode.ObjectReference,
-                allowBone = false,
-                componentType = typeof(SkinnedMeshRenderer)
-            }));
-            adv.Add(VRCFuryEditorUtils.WrappedLabel("Face Tracking Blendshape Sets"));
-            adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("faceTrackingBlendshapeSets"),
-                renderItem: (item, index) => FaceTrackingEditor(item, new FaceTrackingBlendshapesSetDrawer(), ftMeshes)));
-            adv.Add(VRCFuryEditorUtils.WrappedLabel("Face Tracking Parameter Behaviours"));
-            adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("faceTrackingParameterBehaviors"),
-                renderItem: (item, index) => FaceTrackingEditor(item, new FaceTrackingParameterBehaviorDrawer(), ftMeshes)));
-#endif
             
             {
                 var (a, b) = VRCFuryEditorUtils.CreateTooltip(
