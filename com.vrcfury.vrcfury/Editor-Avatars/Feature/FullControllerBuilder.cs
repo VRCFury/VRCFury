@@ -449,6 +449,8 @@ namespace VF.Feature {
             }
         }
 
+        private readonly HashSet<VFLayer> appendedLocomotionLayers = new HashSet<VFLayer>();
+
         private void Merge(VFController from, ControllerManager to) {
             var type = to.GetType();
 
@@ -490,13 +492,18 @@ namespace VF.Feature {
                 }
             }
 
-            // Rip out the base controller if it's locomotion
-            if (type == VRCAvatarDescriptor.AnimLayerType.Base || type == VRCAvatarDescriptor.AnimLayerType.TPose ||
-                type == VRCAvatarDescriptor.AnimLayerType.IKPose || type == VRCAvatarDescriptor.AnimLayerType.Sitting) {
+            var isLocomotion = type == VRCAvatarDescriptor.AnimLayerType.Base || type == VRCAvatarDescriptor.AnimLayerType.TPose
+                || type == VRCAvatarDescriptor.AnimLayerType.IKPose || type == VRCAvatarDescriptor.AnimLayerType.Sitting;
+            var overwriteLocomotion = isLocomotion && model.overwriteLocomotion;
+            // Replace descriptor locomotion, but retain layers explicitly added in append mode.
+            if (overwriteLocomotion) {
                 foreach (var layer in to.GetLayers()) {
                     var owner = to.GetLayerOwner(layer);
                     if (owner == LayerSourceService.AvatarDescriptorSource || owner == LayerSourceService.VrcDefaultSource) {
                         layer.Remove();
+                    } else if (globals.allBuildersInRun.OfType<FullControllerBuilder>()
+                                   .Any(builder => builder.appendedLocomotionLayers.Contains(layer))) {
+                        continue;
                     } else {
                         throw new VRCFBuilderException(
                             $"Your avatar contains multiple locomotion implementations ({VRCFEnumUtils.GetName(type)}).\n\n" +
@@ -512,7 +519,9 @@ namespace VF.Feature {
             foreach (var layer in from.GetLayers()) {
                 layerSourceService.SetSourceToCurrent(layer);
             }
-            to.TakeOwnershipOf(from);
+            if (isLocomotion && !overwriteLocomotion)
+                appendedLocomotionLayers.UnionWith(myLayers);
+            to.TakeOwnershipOf(from, putOnTop: overwriteLocomotion);
 
             // Parameter smoothing
             if (type == VRCAvatarDescriptor.AnimLayerType.FX && model.smoothedPrms.Count > 0) {
@@ -814,6 +823,11 @@ namespace VF.Feature {
             }
 
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("overwriteLocomotion"),
+                "Overwrite Locomotion", tooltip:
+                "For Base, TPose, IKPose, and Sitting controllers, replace the avatar descriptor's existing controller " +
+                "of the same type instead of appending to it. Its layers will be placed above layers added by other " +
+                "Full Controllers in append mode. Uncheck to keep the existing controllers and append this controller's layers."));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam"), "(Deprecated) Toggle using param"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootObjOverride"), "(Deprecated) Root object override"));

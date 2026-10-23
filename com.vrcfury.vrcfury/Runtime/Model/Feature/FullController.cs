@@ -19,6 +19,7 @@ namespace VF.Model.Feature {
         public string toggleParam;
         public GameObject rootObjOverride;
         public bool rootBindingsApplyToAvatar;
+        public bool overwriteLocomotion = true;
         public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
         public bool allowMissingAssets = false;
         public List<InjectParamEntry> injectParams = new List<InjectParamEntry>();
