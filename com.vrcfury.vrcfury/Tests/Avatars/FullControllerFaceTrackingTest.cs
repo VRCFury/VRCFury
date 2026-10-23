@@ -120,6 +120,7 @@ namespace VF.Tests {
                 SkinnedMeshRenderer[] skins = null,
                 string path = null,
                 string blendshape = "Smile",
+                bool includeSet = true,
                 params VRCAvatarDescriptor.FaceTrackingParameterBehavior[] behaviors) {
                 var set = new VRCAvatarDescriptor.FaceTrackingBlendshapesSet { setName = setName, setWeight = setWeight };
                 if (visemes) SetMapping(set, 1, blendshape, visemes: true);
@@ -131,7 +132,7 @@ namespace VF.Tests {
                             ? new List<ObjectReference<SkinnedMeshRenderer>> { new ObjectReference<SkinnedMeshRenderer> { useBone = false, offset = path } }
                             : (skins ?? new[] { owner.GetComponent<SkinnedMeshRenderer>() })
                                 .Select(skin => (ObjectReference<SkinnedMeshRenderer>)skin).ToList(),
-                        faceTrackingBlendshapeSets = { set },
+                        faceTrackingBlendshapeSets = includeSet ? new() { set } : new(),
                         faceTrackingParameterBehaviors = behaviors.ToList()
                     }
                 };
@@ -1248,6 +1249,68 @@ namespace VF.Tests {
             }
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void FullControllerRejectsNullOrUnsetFaceTrackingMeshEntries(bool unset) {
+            using (var build = new Build()) {
+                var builder = build.Full(build.root, skins: System.Array.Empty<SkinnedMeshRenderer>(), includeSet: false);
+                builder.model.faceTrackingMeshes.Add(unset ? new ObjectReference<SkinnedMeshRenderer> { useBone = false, useObj = true } : null);
+                var error = Assert.Throws<VF.Exceptions.VRCFBuilderException>(() => builder.Apply());
+                Assert.That(error.Message, Does.Contain("Object reference is missing"));
+            }
+        }
+
+        [Test]
+        public void FullControllerRejectsDestroyedFaceTrackingMesh() {
+            using (var build = new Build()) {
+                var skin = build.Skin("Destroyed");
+                Object.DestroyImmediate(skin);
+                Assert.Throws<VF.Exceptions.VRCFBuilderException>(() => build.Full(build.root, skins: new[] { skin }));
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void FullControllerRejectsFaceTrackingMeshesConfiguredOnDescriptor(bool enabled) {
+            using (var build = new Build()) {
+                var skin = build.Skin("BaseMesh");
+                build.avatar.enableFaceTracking = enabled;
+                build.NativeMesh(skin);
+                var error = Assert.Throws<VF.Exceptions.VRCFBuilderException>(() => build.Full(skin.gameObject));
+                Assert.That(error.Message, Does.Contain("BaseMesh").And.Contain("already configured on the avatar descriptor"));
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void FullControllerReservesFaceTrackingMeshesEvenWithoutSetsOrBehaviors(bool usePath) {
+            using (var build = new Build()) {
+                var skin = build.Skin("Reserved");
+                build.Full(skin.gameObject, includeSet: false);
+                Assert.That(build.avatar.enableFaceTracking, Is.False);
+                var error = Assert.Throws<VF.Exceptions.VRCFBuilderException>(() => {
+                    if (usePath) build.Full(build.root, path: "Reserved");
+                    else build.Full(skin.gameObject);
+                });
+                Assert.That(error.Message, Does.Contain("Reserved").And.Contain("already configured in another Full Controller"));
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void FailedFullControllerMeshReservationDoesNotClaimOtherMeshes(bool conflictFirst) {
+            using (var build = new Build()) {
+                var claimed = build.Skin("Claimed");
+                var available = build.Skin("Available");
+                build.Full(claimed.gameObject);
+                Assert.Throws<VF.Exceptions.VRCFBuilderException>(() => build.Full(build.root,
+                    skins: conflictFirst ? new[] { claimed, available } : new[] { available, claimed }));
+                Assert.DoesNotThrow(() => build.Full(available.gameObject));
+                build.Run();
+                Assert.That(build.avatar.faceTrackingMeshes, Is.EquivalentTo(new[] { claimed, available }));
+            }
+        }
+
         [Test]
         public void ImportedBehaviorsRewriteSetAndParameterNamesAndFollowLinks() {
             using (var build = new Build()) {
@@ -1760,20 +1823,20 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void OverlappingFullControllersPreserveTheirScopesWhenAParentJoinsThem() {
+        public void FullControllerRejectsMeshesAlreadyClaimedByOtherFullControllers() {
             using (var build = new Build()) {
                 var left = build.Skin("Left");
                 var right = build.Skin("Right");
                 build.avatar.enableFaceTracking = true;
                 build.Full(left.gameObject);
                 build.Full(right.gameObject);
-                build.Full(build.root, setWeight: 0.35f, skins: new[] { left, right }, behaviors: new[] {
+                var error = Assert.Throws<VF.Exceptions.VRCFBuilderException>(() => build.Full(build.root, setWeight: 0.35f, skins: new[] { left, right }, behaviors: new[] {
                     new VRCAvatarDescriptor.FaceTrackingParameterBehavior {
                         targetMode = VRCAvatarDescriptor.ParameterBehaviorTargetMode.ApplyBlendSetWeight,
                         targetBlendSetName = "Face"
                     }
-                });
-                var control = build.ControlSet("VF3_Face");
+                }));
+                Assert.That(error.Message, Does.Contain("Left").And.Contain("already configured in another Full Controller"));
                 build.Run();
                 var sets = build.avatar.faceTrackingBlendshapesSetList;
                 var leftName = sets.Single(set => set.setName == "VF1_Face").faceTrackingBlendshapeNames[(int)VRCAvatarDescriptor.FaceTrackingKey.JawOpen];
@@ -1782,17 +1845,8 @@ namespace VF.Tests {
                 Assert.That(right.HasBlendshape(leftName), Is.False);
                 Assert.That(right.HasBlendshape(rightName), Is.True);
                 Assert.That(left.HasBlendshape(rightName), Is.False);
-                Assert.That(sets.Where(set => set.setName.StartsWith("VF3_Face")).Select(set =>
-                    set.faceTrackingBlendshapeNames[(int)VRCAvatarDescriptor.FaceTrackingKey.JawOpen]),
-                    Is.EquivalentTo(new[] { leftName, rightName }));
-                Assert.That(sets.Select(set => set.setName).Distinct().Count(), Is.EqualTo(4));
-                var expanded = control.Read<VRCAnimatorFaceTrackingBlendshapesSet>().blendSets;
-                Assert.That(expanded.Select(entry => entry.blendshapesSetName),
-                    Is.EquivalentTo(sets.Where(set => set.setName.StartsWith("VF3_Face")).Select(set => set.setName)));
-                Assert.That(expanded.All(entry => entry.sourceParameter == "VF_Weight" && entry.weight == 0.4f && entry.lerpSpeed == 0.25f), Is.True);
-                Assert.That(sets.Where(set => set.setName.StartsWith("VF3_Face")).All(set => set.setWeight == 0.35f), Is.True);
-                Assert.That(build.avatar.faceTrackingParameterBehaviors.Select(behavior => behavior.targetBlendSetName),
-                    Is.EquivalentTo(expanded.Select(entry => entry.blendshapesSetName)));
+                Assert.That(sets, Has.Count.EqualTo(2));
+                Assert.That(build.avatar.faceTrackingParameterBehaviors, Is.Empty);
             }
         }
 
@@ -1936,7 +1990,7 @@ namespace VF.Tests {
                 build.avatar.visemeDampenMode = mode;
                 build.avatar.visemeDampenAmount = 0.37f;
                 build.Full(source.gameObject, visemes: !hardwareFirst);
-                build.Full(source.gameObject, visemes: hardwareFirst);
+                build.Full(build.Skin("OtherSource").gameObject, visemes: hardwareFirst);
                 build.Run();
                 Assert.That(build.avatar.enableFaceTracking, Is.True);
                 Assert.That(build.avatar.useAllTrackingKeys, Is.True);
@@ -2252,7 +2306,7 @@ namespace VF.Tests {
                 target.sharedMesh.AddBlendShapeFrame("Second", 100, new[] { Vector3.right }, null, null);
                 if (limit == "meshes") {
                     build.avatar.enableFaceTracking = true;
-                    build.NativeMesh(source);
+                    build.NativeMesh(build.Skin("Native"));
                     for (var i = 1; i < FaceTrackingUtils.MaxFaceTrackingMeshes; i++)
                         build.NativeMesh(build.Skin("Extra" + i));
                 }

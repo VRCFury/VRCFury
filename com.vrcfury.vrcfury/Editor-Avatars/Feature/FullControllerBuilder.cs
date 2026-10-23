@@ -262,6 +262,7 @@ namespace VF.Feature {
                         throw new VRCFBuilderException("Face Tracking mesh could not be resolved: " + e.Message);
                     }
                 }).Distinct().ToArray();
+            faceTracking.RegisterFullControllerMeshes(skins);
             foreach (var source in model.faceTrackingBlendshapeSets ?? new()) {
                 if (source == null) continue;
                 var sourceName = source.setName ?? "";

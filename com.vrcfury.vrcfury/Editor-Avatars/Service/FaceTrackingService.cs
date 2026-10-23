@@ -62,6 +62,7 @@ namespace VF.Service {
         private readonly List<(FtBehavior settings, FtBlendshapeMapping targets)> behaviors = new List<(FtBehavior, FtBlendshapeMapping)>();
         private readonly List<(FtBlendshapeRef source, FtBlendshapeRef target)> links = new List<(FtBlendshapeRef, FtBlendshapeRef)>();
         private readonly List<SkinnedMeshRenderer> meshes = new List<SkinnedMeshRenderer>();
+        private readonly Dictionary<SkinnedMeshRenderer, string> meshOwners = new();
         private bool captured;
 
         private static string NameAt(string[] names, int index) => names != null && index < names.Length ? names[index] ?? "" : "";
@@ -93,9 +94,11 @@ namespace VF.Service {
         public void CaptureInitialState() {
             if (captured) return;
             captured = true;
+            var nativeMeshes = (avatar.faceTrackingMeshes ?? Enumerable.Empty<SkinnedMeshRenderer>())
+                .Where(skin => skin != null).Distinct().ToArray();
+            foreach (var skin in nativeMeshes) meshOwners[skin] = "on the avatar descriptor";
             if (!avatar.enableFaceTracking) return;
-            meshes.AddRange((avatar.faceTrackingMeshes ?? Enumerable.Empty<SkinnedMeshRenderer>())
-                .Where(skin => skin != null).Distinct());
+            meshes.AddRange(nativeMeshes);
             var scope = meshes.ToArray();
             foreach (var set in avatar.faceTrackingBlendshapesSetList ?? Enumerable.Empty<FtSet>()) {
                 if (set != null) CaptureSet(set, scope, true);
@@ -228,6 +231,17 @@ namespace VF.Service {
             ClearInactiveInputs(false);
             avatar.visemeDampenMode = VRCAvatarDescriptor.VisemeDampenMode.None;
             avatar.useAllTrackingKeys = true;
+        }
+
+        public void RegisterFullControllerMeshes(SkinnedMeshRenderer[] skins) {
+            CaptureInitialState();
+            foreach (var skin in skins) {
+                if (skin == null) throw new VRCFBuilderException("Full Controller Face Tracking mesh is missing or unset.");
+                if (meshOwners.TryGetValue(skin, out var owner))
+                    throw new VRCFBuilderException($"Face Tracking mesh '{skin.owner().GetDebugPath()}' is already configured {owner}. " +
+                        "Each mesh may only be configured on the avatar descriptor or in one Full Controller.");
+            }
+            foreach (var skin in skins) meshOwners[skin] = "in another Full Controller";
         }
 
         public PendingFtBlendshapeSet RegisterImportedSet(FtSet settings, SkinnedMeshRenderer[] skins) {
