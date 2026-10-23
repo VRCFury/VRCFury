@@ -65,10 +65,13 @@ namespace VF.Tests {
             }
             public void Pump() {
                 var update = panel.GetType().GetMethod("UpdateBindings", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var updateData = panel.GetType().GetMethod("UpdateDataBinding", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 // Editor binding updates are throttled, including in synchronous tests.
                 for (var i = 0; i < 3; i++) {
                     Thread.Sleep(110);
                     update.Invoke(panel, null);
+                    // Unity 6 advances the binding frame in a separate data-binding phase.
+                    updateData?.Invoke(panel, null);
                 }
             }
             public void Dispose() => ((IDisposable)panel).Dispose();
