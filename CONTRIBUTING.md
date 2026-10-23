@@ -79,6 +79,8 @@ For more information, please refer to <https://unlicense.org>
 * KaelanDuck
   * Removed default vrchat additive layer, which resolves many cases of the 3x blendshape unity bug
   * Made colliders merge properly within Armature Link (unused)
+* KairaCode
+  * Fixed heavy inspector lag when many VRCFury components are on the same object
 * lyuma
   * Improvements to VRCFury/Av3Emu compatibility
 * Morghus
