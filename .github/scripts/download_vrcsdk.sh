@@ -29,9 +29,16 @@ patch_udonsharp_for_ci() {
   local locator_file="$PROJECT_PATH/Packages/com.vrchat.worlds/Integrations/UdonSharp/Runtime/UdonSharpDataLocator.cs"
   perl -0pi -e 's/foundLocators\.Add\(InitializeUdonSharpData\(\)\);/return "Assets\/UdonSharp";/' "$locator_file"
 
-  # UdonSharp otherwise adds this during the test run, forcing a domain reload that corrupts the test result.
+  # Seed SDK/world defines before the first compile instead of forcing a reload during tests.
   local project_settings="$PROJECT_PATH/ProjectSettings/ProjectSettings.asset"
-  perl -0pi -e 's/^(    (?:Android|Standalone): (?![^\r\n]*\bUDONSHARP\b)[^\r\n]*\bVRCF_TEST\b[^\r\n]*)(\r?)$/$1;UDONSHARP$2/gm' "$project_settings"
+  local define
+  local world_defines=(UDON UDONSHARP)
+  if [[ -n "$(find "$PROJECT_PATH/Packages/com.vrchat.worlds" -name ClientSimPlayerDataStorage.cs -print -quit)" ]]; then
+    world_defines+=(VRC_ENABLE_PLAYER_PERSISTENCE)
+  fi
+  for define in "${world_defines[@]}"; do
+    SDK_DEFINE="$define" perl -0pi -e 's/^(    (?:Android|Standalone): (?![^\r\n]*\b\Q$ENV{SDK_DEFINE}\E\b)[^\r\n]*\bVRCF_TEST\b[^\r\n]*)(\r?)$/$1;$ENV{SDK_DEFINE}$2/gm' "$project_settings"
+  done
   if ! grep -Eq 'Standalone: .*VRCF_TEST.*;UDONSHARP' "$project_settings"; then
     echo "Failed to add the UdonSharp project define" >&2
     exit 1

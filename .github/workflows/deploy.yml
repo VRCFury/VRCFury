@@ -37,14 +37,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Github's "ubuntu-latest" comes with a ton of unused stuff that pushes us over the disk limit
-      - name: Clean up node
-        run: |
-          rm -R .git
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          docker image prune --all --force
-          docker builder prune -a
-
       - name: Download VRCSDK
         run: |
           PROJECT_PATH=.github/test_project .github/scripts/download_vrcsdk.sh "${{ matrix.vrcsdkUnityVersion[0] }}" "${{ matrix.sdkKind }}"
@@ -55,11 +47,39 @@ jobs:
           IMAGE="unityci/editor:ubuntu-${{ matrix.vrcsdkUnityVersion[1] }}"
           if [ "${{ matrix.platform }}" = "android" ]; then
             IMAGE="$IMAGE-android"
+            echo "build-target=Android" >> "$GITHUB_OUTPUT"
           else
             IMAGE="$IMAGE-windows-mono"
+            echo "build-target=StandaloneWindows64" >> "$GITHUB_OUTPUT"
           fi
           IMAGE="$IMAGE-${{ env.GAMECI_VERSION }}"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Configure Unity caches
+        id: cache-config
+        run: |
+          # GameCI mounts this directory as /root. Do not cache it: it also contains licenses.
+          mkdir -p "$RUNNER_TEMP/_github_home"
+          printf 'cacheRoot = "/github/workspace/.github/unity-package-cache"\n' > "$RUNNER_TEMP/_github_home/.upmconfig.toml"
+          echo "prefix=unity-test-v1-${{ runner.os }}-${{ matrix.vrcsdkUnityVersion[1] }}-${{ matrix.vrcsdkUnityVersion[0] }}-${{ matrix.sdkKind }}-${{ matrix.platform }}-${{ env.GAMECI_VERSION }}-${{ hashFiles('.github/test_project/Packages/manifest.json', '.github/test_project/ProjectSettings/**', '.github/test_project/Packages/com.vrchat.*/package.json', 'com.vrcfury.vrcfury/package.json', '.github/scripts/download_vrcsdk.sh') }}" >> "$GITHUB_OUTPUT"
+          # Cache the blank activation project's imports too, but never its license or user config.
+          echo "activation-library=$RUNNER_WORKSPACE/../_actions/game-ci/unity-test-runner/fa6ced25861c16ef56187828c43f76d00df43a23/dist/BlankProject/Library" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Unity caches
+        uses: actions/cache@v5
+        with:
+          path: |
+            .github/test_project/Library
+            .github/unity-package-cache
+            ${{ steps.cache-config.outputs.activation-library }}
+          key: ${{ steps.cache-config.outputs.prefix }}-${{ github.sha }}
+          restore-keys: |
+            ${{ steps.cache-config.outputs.prefix }}-
+
+      - name: Prepare Unity runner
+        env:
+          UNITY_TEST_IMAGE: ${{ steps.image.outputs.image }}
+        run: bash .github/scripts/prepare_test_runner.sh
 
       - name: Verify Compile
         id: tests
@@ -73,7 +93,7 @@ jobs:
           unityVersion: ${{ matrix.vrcsdkUnityVersion[1] }}
           testMode: EditMode
           customImage: ${{ steps.image.outputs.image }}
-          customParameters: -testCategory VRCFury
+          customParameters: -testCategory VRCFury -buildTarget ${{ steps.image.outputs.build-target }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Unity failure logs
