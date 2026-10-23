@@ -52,9 +52,16 @@ namespace VF.Tests {
                 Inject(controllers, "paramsService", parameters);
                 Inject(controllers, "parameterSourceService", new ParameterSourceService());
                 var builder = new FullControllerBuilder { featureBaseObject = root, model = new FullController() };
+                Inject(builder, "avatar", avatar);
                 Inject(builder, "globals", globals);
                 Inject(builder, "controllers", controllers);
                 Inject(builder, "animatorLayerControlManager", new AnimatorLayerControlOffsetService());
+#if VRCSDK_HAS_FACE_TRACKING
+                var faceTracking = new FaceTrackingService();
+                Inject(faceTracking, "avatar", avatar);
+                Inject(faceTracking, "controllers", controllers);
+                Inject(builder, "faceTracking", faceTracking);
+#endif
                 var rewrite = builder.GetType().VFMethod("RewriteParamName");
                 var output = (string)rewrite.Invoke(builder, new object[] { "Contact" + suffix });
                 builder.Apply();
