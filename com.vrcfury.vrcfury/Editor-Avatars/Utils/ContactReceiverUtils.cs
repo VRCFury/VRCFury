@@ -16,7 +16,11 @@ namespace VF.Utils {
             if (string.IsNullOrWhiteSpace(receiver.parameter)) yield break;
             yield return receiver.parameter;
 #if VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS
+#if VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS_OLDNAME
             if (!receiver.advancedProximityParameters) yield break;
+#else
+            if (!receiver.advancedParameters) yield break;
+#endif
             foreach (var suffix in AdvancedSuffixes) yield return receiver.parameter + suffix;
             if (receiver.collisionTags == null) yield break;
             foreach (var tag in receiver.collisionTags) {

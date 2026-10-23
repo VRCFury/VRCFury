@@ -33,6 +33,11 @@
     "versionDefines": [
         {
             "name": "com.vrchat.base",
+            "expression": "[3.10.6-beta,3.10.6-beta.2)",
+            "define": "VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS_OLDNAME"
+        },
+        {
+            "name": "com.vrchat.base",
             "expression": "[3.10.6-beta,3.10.6-beta-)",
             "define": "VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS"
         },

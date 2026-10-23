@@ -61,21 +61,41 @@ jobs:
           # GameCI mounts this directory as /root. Do not cache it: it also contains licenses.
           mkdir -p "$RUNNER_TEMP/_github_home"
           printf 'cacheRoot = "/github/workspace/.github/unity-package-cache"\n' > "$RUNNER_TEMP/_github_home/.upmconfig.toml"
-          echo "prefix=unity-test-v1-${{ runner.os }}-${{ matrix.vrcsdkUnityVersion[1] }}-${{ matrix.vrcsdkUnityVersion[0] }}-${{ matrix.sdkKind }}-${{ matrix.platform }}-${{ env.GAMECI_VERSION }}-${{ hashFiles('.github/test_project/Packages/manifest.json', '.github/test_project/ProjectSettings/**', '.github/test_project/Packages/com.vrchat.*/package.json', 'com.vrcfury.vrcfury/package.json', '.github/scripts/download_vrcsdk.sh') }}" >> "$GITHUB_OUTPUT"
+          # Package versions are content-addressed by UPM. Share them across SDKs/platforms
+          # with the same dependency declarations, without including SDK package versions.
+          UPM_HASH="$(jq -S -s 'map(.dependencies // {})' .github/test_project/Packages/manifest.json .github/test_project/Packages/com.vrchat.*/package.json com.vrcfury.vrcfury/package.json | sha256sum | cut -d ' ' -f 1)"
+          echo "upm-key=unity-upm-v2-${{ runner.os }}-$UPM_HASH" >> "$GITHUB_OUTPUT"
+          echo "project-key=unity-project-v2-${{ runner.os }}-${{ matrix.vrcsdkUnityVersion[1] }}-${{ matrix.vrcsdkUnityVersion[0] }}-${{ matrix.sdkKind }}-${{ matrix.platform }}-${{ env.GAMECI_VERSION }}-${{ hashFiles('.github/test_project/Packages/manifest.json', '.github/test_project/ProjectSettings/**', '.github/test_project/Packages/com.vrchat.*/package.json', 'com.vrcfury.vrcfury/package.json', '.github/scripts/download_vrcsdk.sh') }}" >> "$GITHUB_OUTPUT"
+          echo "activation-key=unity-activation-v2-${{ runner.os }}-${{ matrix.vrcsdkUnityVersion[1] }}-${{ env.GAMECI_VERSION }}" >> "$GITHUB_OUTPUT"
           # Cache the blank activation project's imports too, but never its license or user config.
           ACTIVATION_LIBRARY="$(realpath -m "$RUNNER_WORKSPACE/../_actions/game-ci/unity-test-runner/fa6ced25861c16ef56187828c43f76d00df43a23/dist/BlankProject/Library")"
           echo "activation-library=$ACTIVATION_LIBRARY" >> "$GITHUB_OUTPUT"
 
-      - name: Restore Unity caches
+      - name: Cache Unity packages
+        uses: actions/cache@v5
+        with:
+          path: .github/unity-package-cache
+          key: ${{ steps.cache-config.outputs.upm-key }}
+
+      - name: Cache Unity activation imports
         uses: actions/cache@v5
         with:
           path: |
-            .github/test_project/Library
-            .github/unity-package-cache
-            ${{ steps.cache-config.outputs.activation-library }}
-          key: ${{ steps.cache-config.outputs.prefix }}-${{ github.sha }}
-          restore-keys: |
-            ${{ steps.cache-config.outputs.prefix }}-
+            ${{ steps.cache-config.outputs.activation-library }}/*
+            !${{ steps.cache-config.outputs.activation-library }}/PackageCache
+          key: ${{ steps.cache-config.outputs.activation-key }}
+
+      - name: Cache Unity project imports
+        uses: actions/cache@v5
+        with:
+          # Match Library's children, not Library itself: tar would otherwise recurse
+          # into PackageCache despite the exclusion. UPM recreates it from its cache.
+          path: |
+            .github/test_project/Library/*
+            !.github/test_project/Library/PackageCache
+          # Unity checks source content against these imports; source changes do not
+          # require a new immutable cache snapshot for every commit.
+          key: ${{ steps.cache-config.outputs.project-key }}
 
       - name: Prepare Unity runner
         env:
