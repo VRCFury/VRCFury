@@ -67,7 +67,8 @@ namespace VF.Tests {
                     .Invoke(null, new object[] { owner });
                 clock = type.GetProperty("TimeSinceStartup", BindingFlags.Static | BindingFlags.NonPublic);
                 previousClock = clock.GetValue(null);
-                time = (long)type.GetMethod("TimeSinceStartupMs").Invoke(null, null);
+                var getTime = type.GetMethod("TimeSinceStartupMs");
+                time = (long)getTime.Invoke(getTime.IsStatic ? null : panel, null);
                 clock.SetValue(null, Delegate.CreateDelegate(clock.PropertyType, this,
                     GetType().GetMethod(nameof(GetTime), BindingFlags.Instance | BindingFlags.NonPublic)));
             }
