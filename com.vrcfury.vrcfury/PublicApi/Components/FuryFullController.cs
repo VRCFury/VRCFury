@@ -73,5 +73,9 @@ namespace com.vrcfury.api.Components {
                 to = to
             });
         }
+
+        public void AppendLocomotion() {
+            c.overwriteLocomotion = false;
+        }
     }
 }
