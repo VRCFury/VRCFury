@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Threading;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -57,24 +56,36 @@ namespace VF.Tests {
         // A detached editor panel exercises real bindings without opening a window.
         private sealed class Panel : IDisposable {
             public readonly IPanel panel;
+            private readonly PropertyInfo clock;
+            private readonly object previousClock;
+            private long time;
+            private long GetTime() => time;
             public VisualElement root => panel.visualTree;
             public Panel(ScriptableObject owner) {
                 var type = typeof(VisualElement).Assembly.GetType("UnityEngine.UIElements.Panel");
                 panel = (IPanel)type.GetMethod("CreateEditorPanel", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
                     .Invoke(null, new object[] { owner });
+                clock = type.GetProperty("TimeSinceStartup", BindingFlags.Static | BindingFlags.NonPublic);
+                previousClock = clock.GetValue(null);
+                time = (long)type.GetMethod("TimeSinceStartupMs").Invoke(null, null);
+                clock.SetValue(null, Delegate.CreateDelegate(clock.PropertyType, this,
+                    GetType().GetMethod(nameof(GetTime), BindingFlags.Instance | BindingFlags.NonPublic)));
             }
             public void Pump() {
                 var update = panel.GetType().GetMethod("UpdateBindings", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 var updateData = panel.GetType().GetMethod("UpdateDataBinding", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                // Editor binding updates are throttled, including in synchronous tests.
+                // Advance Unity's UI test clock instead of sleeping through binding throttles.
                 for (var i = 0; i < 3; i++) {
-                    Thread.Sleep(110);
+                    time += 110;
                     update.Invoke(panel, null);
                     // Unity 6 advances the binding frame in a separate data-binding phase.
                     updateData?.Invoke(panel, null);
                 }
             }
-            public void Dispose() => ((IDisposable)panel).Dispose();
+            public void Dispose() {
+                try { ((IDisposable)panel).Dispose(); }
+                finally { clock.SetValue(null, previousClock); }
+            }
         }
 
         [Test]

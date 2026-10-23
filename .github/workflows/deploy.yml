@@ -63,7 +63,8 @@ jobs:
           printf 'cacheRoot = "/github/workspace/.github/unity-package-cache"\n' > "$RUNNER_TEMP/_github_home/.upmconfig.toml"
           echo "prefix=unity-test-v1-${{ runner.os }}-${{ matrix.vrcsdkUnityVersion[1] }}-${{ matrix.vrcsdkUnityVersion[0] }}-${{ matrix.sdkKind }}-${{ matrix.platform }}-${{ env.GAMECI_VERSION }}-${{ hashFiles('.github/test_project/Packages/manifest.json', '.github/test_project/ProjectSettings/**', '.github/test_project/Packages/com.vrchat.*/package.json', 'com.vrcfury.vrcfury/package.json', '.github/scripts/download_vrcsdk.sh') }}" >> "$GITHUB_OUTPUT"
           # Cache the blank activation project's imports too, but never its license or user config.
-          echo "activation-library=$RUNNER_WORKSPACE/../_actions/game-ci/unity-test-runner/fa6ced25861c16ef56187828c43f76d00df43a23/dist/BlankProject/Library" >> "$GITHUB_OUTPUT"
+          ACTIVATION_LIBRARY="$(realpath -m "$RUNNER_WORKSPACE/../_actions/game-ci/unity-test-runner/fa6ced25861c16ef56187828c43f76d00df43a23/dist/BlankProject/Library")"
+          echo "activation-library=$ACTIVATION_LIBRARY" >> "$GITHUB_OUTPUT"
 
       - name: Restore Unity caches
         uses: actions/cache@v5
@@ -93,7 +94,7 @@ jobs:
           unityVersion: ${{ matrix.vrcsdkUnityVersion[1] }}
           testMode: EditMode
           customImage: ${{ steps.image.outputs.image }}
-          customParameters: -testCategory VRCFury -buildTarget ${{ steps.image.outputs.build-target }}
+          customParameters: -testCategory VRCFury -buildTarget ${{ steps.image.outputs.build-target }} -disable-assembly-updater
           githubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Unity failure logs
