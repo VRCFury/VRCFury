@@ -9,6 +9,9 @@ using VF.Service;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+using AdvancedParameter = VRC.Dynamics.ContactReceiver.AdvancedParameter;
+#endif
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
@@ -18,6 +21,9 @@ namespace VF.Tests {
             "", "_SenderType", "_SenderLocalPositionX", "_SenderLocalPositionY", "_SenderLocalPositionZ",
             "_SenderVelocityX", "_SenderVelocityY", "_SenderVelocityZ", "_SenderVelocityMagnitude",
             "_ProximitySpeed", "_CollisionTag_Test_Tag"
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            , "_SenderLossyScaleX", "_SenderLossyScaleY", "_SenderLossyScaleZ", "_PointSeparation"
+#endif
         };
 
         private static void Inject(object target, string field, object value) =>
@@ -25,7 +31,13 @@ namespace VF.Tests {
 
         private static void EnableAdvanced(VRCContactReceiver receiver) {
 #if VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            receiver.advancedParameters = VRC.Dynamics.ContactReceiver.AdvancedParameter.All;
+#elif VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS_OLDNAME
             receiver.advancedProximityParameters = true;
+#else
+            receiver.advancedParameters = true;
+#endif
 #else
             Assert.Ignore("This SDK predates advanced contact parameters.");
 #endif
@@ -84,12 +96,37 @@ namespace VF.Tests {
                 Assert.That(ContactReceiverUtils.GetParameterNames(receiver),
                     Is.EquivalentTo(Outputs.Select(suffix => "Contact" + suffix)));
                 receiver.collisionTags = null;
-                Assert.That(ContactReceiverUtils.GetParameterNames(receiver).Count(), Is.EqualTo(10));
+                Assert.That(ContactReceiverUtils.GetParameterNames(receiver).Count(), Is.EqualTo(Outputs.Length - 1));
                 receiver.parameter = "";
                 Assert.That(ContactReceiverUtils.GetParameterNames(receiver), Is.Empty);
             } finally {
                 Object.DestroyImmediate(obj);
             }
         }
+
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+        [TestCase(AdvancedParameter.None, "")]
+        [TestCase(AdvancedParameter.SenderType, "_SenderType")]
+        [TestCase(AdvancedParameter.SenderLocalPosition, "_SenderLocalPositionX,_SenderLocalPositionY,_SenderLocalPositionZ")]
+        [TestCase(AdvancedParameter.SenderLossyScale, "_SenderLossyScaleX,_SenderLossyScaleY,_SenderLossyScaleZ")]
+        [TestCase(AdvancedParameter.SenderVelocity, "_SenderVelocityX,_SenderVelocityY,_SenderVelocityZ,_SenderVelocityMagnitude")]
+        [TestCase(AdvancedParameter.PointSeparation, "_PointSeparation")]
+        [TestCase(AdvancedParameter.ProximitySpeed, "_ProximitySpeed")]
+        [TestCase(AdvancedParameter.CollisionTags, "_CollisionTag_Test_Tag")]
+        public void OnlySelectedAdvancedOutputsAreIncluded(AdvancedParameter flags, string suffixes) {
+            var obj = new GameObject("Contact");
+            try {
+                var receiver = obj.AddComponent<VRCContactReceiver>();
+                receiver.parameter = "Contact";
+                receiver.collisionTags = new List<string> { "Test_Tag" };
+                receiver.advancedParameters = flags;
+                Assert.That(ContactReceiverUtils.GetParameterNames(receiver), Is.EquivalentTo(
+                    new[] { "Contact" }.Concat(suffixes.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(suffix => "Contact" + suffix))));
+            } finally {
+                Object.DestroyImmediate(obj);
+            }
+        }
+#endif
     }
 }

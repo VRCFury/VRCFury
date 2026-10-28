@@ -40,7 +40,11 @@ namespace VF.Utils {
         }
 
         public static int TypeCost(this VRCExpressionParameters.Parameter param) {
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+            return param.GetBitWidthByType();
+#else
             return VRCExpressionParameters.TypeCost(param.valueType);
+#endif
         }
     }
 }
