@@ -56,6 +56,12 @@ namespace VF {
             }
         }
 
+        public static T CloneSerializable<T>(T from) where T : new() {
+            var copy = new T();
+            CloneSerializable(from, copy);
+            return copy;
+        }
+
         public static void CloneSerializable(object from, object to) {
             if (from == null) throw new Exception("From cannot be null");
             if (to == null) throw new Exception("To cannot be null");

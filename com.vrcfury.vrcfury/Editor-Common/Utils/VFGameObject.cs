@@ -249,13 +249,10 @@ namespace VF.Utils {
             if (string.IsNullOrEmpty(name)) name = "_";
 
             if (parent != null) {
-                for (var i = 0; ; i++) {
-                    var finalName = name + (i == 0 ? "" : $" ({i})");
+                name = name.MakeUnique(finalName => {
                     var exists = parent.Find(finalName);
-                    if (exists != null && exists != this) continue; // Already used by something else
-                    name = finalName;
-                    break;
-                }
+                    return exists != null && exists != this;
+                });
             }
 
             this.name = name;

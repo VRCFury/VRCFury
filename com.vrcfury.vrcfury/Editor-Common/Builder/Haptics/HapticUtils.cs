@@ -134,12 +134,9 @@ namespace VF.Builder.Haptics {
         }
 
         public static string MakeUniqueId(ISet<string> usedIds, string prefix) {
-            for (var i = 0; ; i++) {
-                var next = prefix + (i == 0 ? "" : i + "");
-                if (usedIds.Contains(next)) continue;
-                usedIds.Add(next);
-                return next;
-            }
+            var id = prefix.MakeUnique(usedIds);
+            usedIds.Add(id);
+            return id;
         }
 
         public static string GetPreferredId<T>(

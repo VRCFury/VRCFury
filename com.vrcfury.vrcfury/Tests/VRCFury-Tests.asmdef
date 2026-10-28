@@ -19,20 +19,8 @@
     ],
     "autoReferenced": false,
     "defineConstraints": [
-        "UNITY_TEST_FRAMEWORK_PRESENT",
-        "CECIL_PRESENT"
+        "VRCF_TEST"
     ],
-    "versionDefines": [
-        {
-            "name": "com.unity.test-framework",
-            "expression": "",
-            "define": "UNITY_TEST_FRAMEWORK_PRESENT"
-        },
-        {
-            "name": "com.unity.nuget.mono-cecil",
-            "expression": "",
-            "define": "CECIL_PRESENT"
-        }
-    ],
+    "versionDefines": [],
     "noEngineReferences": false
 }

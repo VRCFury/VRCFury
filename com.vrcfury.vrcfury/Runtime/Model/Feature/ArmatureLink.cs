@@ -23,17 +23,8 @@ namespace VF.Model.Feature {
             No
         }
 
-        [Serializable]
-        public class LinkTo {
-            public bool useBone = true;
-            public HumanBodyBones bone = HumanBodyBones.Hips;
-            public bool useObj = false;
-            public GameObject obj = null;
-            public string offset = "";
-        }
-
         public GameObject propBone;
-        public List<LinkTo> linkTo = new List<LinkTo>() { new LinkTo() };
+        public List<ObjectReference> linkTo = new List<ObjectReference>() { new ObjectReference() };
         public string removeBoneSuffix;
         public bool removeParentConstraints = true;
         public string forceMergedName = "";
@@ -91,12 +82,12 @@ namespace VF.Model.Feature {
             if (fromVersion < 6) {
                 linkTo.Clear();
                 if (string.IsNullOrWhiteSpace(bonePathOnAvatar)) {
-                    linkTo.Add(new LinkTo { bone = boneOnAvatar });
+                    linkTo.Add(new ObjectReference { bone = boneOnAvatar });
                     foreach (var fallback in fallbackBones) {
-                        linkTo.Add(new LinkTo { bone = fallback });
+                        linkTo.Add(new ObjectReference { bone = fallback });
                     }
                 } else {
-                    linkTo.Add(new LinkTo { useBone = false, useObj = false, offset = bonePathOnAvatar });
+                    linkTo.Add(new ObjectReference { useBone = false, useObj = false, offset = bonePathOnAvatar });
                 }
             }
             if (fromVersion < 7) {

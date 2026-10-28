@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Feature.Base;
 using VF.Injector;
@@ -32,6 +33,18 @@ namespace VF.Service {
                 }
                 if (cache.TryGetValue(original, out var cached)) return cached;
                 var newTexture = original.Optimize(forceCompression: true, maxSize: 256);
+                if (newTexture == original) {
+                    var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(original)) as TextureImporter;
+                    if (importer != null) {
+                        // The SDK validates default importer settings, even when a platform override
+                        // already produces a correctly sized and compressed texture.
+                        var settings = importer.GetDefaultPlatformTextureSettings();
+                        if (settings.textureCompression == TextureImporterCompression.Uncompressed
+                            || ((original.width > 256 || original.height > 256) && settings.maxTextureSize > 256)) {
+                            newTexture = original.Clone("Detached menu icon to satisfy VRCSDK default importer validation");
+                        }
+                    }
+                }
                 return cache[original] = newTexture;
             }
             

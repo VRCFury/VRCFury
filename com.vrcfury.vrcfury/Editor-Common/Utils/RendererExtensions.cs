@@ -62,10 +62,10 @@ namespace VF.Utils {
         }
         
         [CanBeNull]
-        public static Mesh GetMutableMesh(this Renderer renderer, string reason) {
+        public static Mesh GetMutableMesh(this Renderer renderer, string reason, bool forceClone = false) {
             var mesh = renderer.GetMesh();
             if (mesh == null) return null;
-            var copy = mesh.Clone(reason);
+            var copy = mesh.Clone(reason, forceClone: forceClone);
             renderer.SetMesh(copy);
             copy.ForceReadable();
             return copy;

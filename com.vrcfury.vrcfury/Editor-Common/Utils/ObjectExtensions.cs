@@ -19,17 +19,17 @@ namespace VF.Utils {
 
         public static Func<Object, Type[]> getExtraRecursiveTypes;
 
-        public static T Clone<T>(this T original, string reason = null, string addPrefix = "", bool recursive = true) where T : Object {
+        public static T Clone<T>(this T original, string reason = null, string addPrefix = "", bool recursive = true, bool forceClone = false) where T : Object {
             if (recursive) {
                 if (getExtraRecursiveTypes != null) {
                     var types = getExtraRecursiveTypes(original);
                     if (types != null) {
-                        return MutableManager.CopyRecursive(original, reason, types);
+                        return MutableManager.CopyRecursive(original, reason, types, forceCloneRoot: forceClone);
                     }
                 }
             }
 
-            var clone = VrcfObjectCloner.Clone(original);
+            var clone = VrcfObjectCloner.Clone(original, forceClone: forceClone);
             if (reason != null) {
                 clone.WorkLog(reason);
             }

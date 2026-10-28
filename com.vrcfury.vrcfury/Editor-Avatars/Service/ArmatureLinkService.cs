@@ -479,42 +479,21 @@ namespace VF.Service {
                 throw new Exception("'Link To' field is empty");
             }
 
-            IEnumerable<ArmatureLink.LinkTo> attempts = model.linkTo;
+            IEnumerable<ObjectReference> attempts = model.linkTo;
             var firstHumanoidTarget = model.linkTo.FirstOrDefault(
                 to => to.useBone && string.IsNullOrWhiteSpace(to.offset)
             );
             if (firstHumanoidTarget != null) {
                 attempts = attempts.Concat(
                     FallbackBoneUtils.GetFallbacks(firstHumanoidTarget.bone)
-                        .Select(bone => new ArmatureLink.LinkTo { bone = bone })
+                        .Select(bone => new ObjectReference { bone = bone })
                 );
             }
 
             Exception firstException = null;
             var avatarBone = attempts.Select(to => {
                 try {
-                    VFGameObject obj;
-                    if (to.useBone) {
-                        obj = armatureCache.FindBoneOnArmatureOrException(to.bone);
-                    } else if (to.useObj) {
-                        obj = to.obj;
-                        if (obj == null) throw new Exception("'Link to' object does not exist");
-                    } else {
-                        obj = avatarObject;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(to.offset)) {
-                        var offsetObj = objectPaths.Find(obj, to.offset);
-                        if (offsetObj == null) {
-                            throw new Exception($"Failed to find object at path '{AnimationBindingUtils.ResolveRelativePath(obj.GetPath(avatarObject), to.offset)}'");
-                        }
-                        obj = offsetObj;
-                    }
-                    
-                    // This is just here to ensure that the target is inside the avatar
-                    obj.GetPath(avatarObject);
-
-                    return obj;
+                    return to.Resolve(avatarObject, objectPaths, armatureCache);
                 } catch (Exception e) {
                     firstException ??= e;
                     return null;

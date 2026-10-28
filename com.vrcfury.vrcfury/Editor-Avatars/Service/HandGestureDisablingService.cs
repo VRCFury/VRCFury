@@ -22,6 +22,10 @@ namespace VF.Service {
             return param;
         }
 
+        public void AddInhibitor(VFAFloat param) {
+            inhibitors.Add(param);
+        }
+
         [FeatureBuilderAction(FeatureOrder.DisableGesturesService)]
         public void Apply() {
             if (!inhibitors.Any()) return;

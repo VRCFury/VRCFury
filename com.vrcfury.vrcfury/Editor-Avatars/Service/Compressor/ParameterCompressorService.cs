@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Linq;
+using VF.Exceptions;
 using VF.Injector;
 using VF.Model;
 using VF.Utils;
@@ -48,6 +49,12 @@ namespace VF.Service.Compressor {
             }
 
             var decision = decisionWithInfo.decision;
+            var unsupported = decision.compress.FirstOrDefault(p => !p.HasStandardNetworkEncoding());
+            if (unsupported != null) {
+                throw new SneakyException(
+                    $"Parameter compression cannot preserve the network bit width or signedness of {unsupported.name}."
+                    + " If this came from desktop sync data, rebuild and upload the desktop avatar first.");
+            }
             if (!decision.compress.Any()) {
                 saveAssetsService.Run(Enumerable.Empty<ControllerManager>());
                 return;
