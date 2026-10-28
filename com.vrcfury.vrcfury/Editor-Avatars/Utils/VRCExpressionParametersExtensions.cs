@@ -37,6 +37,11 @@ namespace VF.Utils {
                         $"VRCF tried to create expression parameter {param.name} with type {param.valueType}," +
                         $" but parameter already exists with type {exists.valueType}");
                 }
+                if (!param.HasSameNetworkEncoding(exists)) {
+                    throw new Exception(
+                        $"VRCF tried to merge expression parameter {param.name}, but its network bit width or signedness"
+                        + " conflicts with the existing parameter");
+                }
                 return;
             }
             paramz.parameters = paramz.parameters.Concat(new [] {param}).ToArray();

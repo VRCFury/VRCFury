@@ -251,6 +251,7 @@ namespace VF.Service.Compressor {
 
             foreach (var param in paramz.parameters) {
                 if (!param.IsNetworkSynced()) continue;
+                if (!param.HasStandardNetworkEncoding()) continue;
                 if (!usedInMenu.Contains(param.name)) continue;
                 if (addDriven.Contains(param.name) && !allowedMenuTypes.Contains(VRCExpressionsMenu.Control.ControlType.FourAxisPuppet)) continue;
                 eligible.Add(param);
