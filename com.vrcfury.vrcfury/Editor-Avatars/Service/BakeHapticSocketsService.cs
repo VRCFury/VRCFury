@@ -186,8 +186,7 @@ namespace VF.Service {
                         var baseReq = new HapticContactsService.ReceiverRequest() {
                             obj = haptics,
                             usePrefix = false,
-                            localOnly = true,
-                            useHipAvoidance = true
+                            localOnly = true
                         };
 
                         if (handTouchZoneSize != null) {
@@ -254,20 +253,23 @@ namespace VF.Service {
                         req.radius = 1f;
                         req.paramName = paramPrefix + "/PenSelfNewRoot";
                         req.objName = "PenSelfNewRoot";
-                        req.tags = new[] { HapticUtils.CONTACT_PEN_ROOT };
+                        var selfTagSuffix = hapticContacts.GetSelfTagSuffix(haptics);
+                        req.tags = new[] { HapticUtils.CONTACT_PEN_ROOT + selfTagSuffix };
                         req.party = HapticUtils.ReceiverParty.Self;
                         hapticContacts.AddReceiver(req);
                         req.paramName = paramPrefix + "/PenOthersNewRoot";
                         req.objName = "PenOthersNewRoot";
+                        req.tags = new[] { HapticUtils.CONTACT_PEN_ROOT };
                         req.party = HapticUtils.ReceiverParty.Others;
                         hapticContacts.AddReceiver(req);
                         req.paramName = paramPrefix + "/PenSelfNewTip";
                         req.objName = "PenSelfNewTip";
-                        req.tags = new[] { HapticUtils.CONTACT_PEN_MAIN };
+                        req.tags = new[] { HapticUtils.CONTACT_PEN_MAIN + selfTagSuffix };
                         req.party = HapticUtils.ReceiverParty.Self;
                         hapticContacts.AddReceiver(req);
                         req.paramName = paramPrefix + "/PenOthersNewTip";
                         req.objName = "PenOthersNewTip";
+                        req.tags = new[] { HapticUtils.CONTACT_PEN_MAIN };
                         req.party = HapticUtils.ReceiverParty.Others;
                         hapticContacts.AddReceiver(req);
                         ogbEnabledService.Register(haptics);

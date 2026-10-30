@@ -187,7 +187,6 @@ namespace VF.Service {
                 var req = new HapticContactsService.ReceiverRequest() {
                     obj = haptics,
                     localOnly = true,
-                    useHipAvoidance = plug.useHipAvoidance,
                     usePrefix = false
                 };
                 {
@@ -225,11 +224,13 @@ namespace VF.Service {
                     c.paramName = paramPrefix + "/PenSelf";
                     c.objName = "PenSelf";
                     c.radius = worldLength;
-                    c.tags = new []{HapticUtils.TagTpsOrfRoot};
+                    var suffix = plug.useHipAvoidance ? hapticContacts.GetSelfTagSuffix(haptics) : "";
+                    c.tags = new[] { HapticUtils.TagTpsOrfRoot + suffix };
                     c.party = HapticUtils.ReceiverParty.Self;
                     hapticContacts.AddReceiver(c);
                     c.paramName = paramPrefix + "/PenOthers";
                     c.objName = "PenOthers";
+                    c.tags = new[] { HapticUtils.TagTpsOrfRoot };
                     c.party = HapticUtils.ReceiverParty.Others;
                     hapticContacts.AddReceiver(c);
                 }

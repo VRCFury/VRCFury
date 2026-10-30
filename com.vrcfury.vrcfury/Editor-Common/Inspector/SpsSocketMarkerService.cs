@@ -23,7 +23,7 @@ namespace VF.Inspector {
             bool useTangentOut = false,
             Vector3 tangentOut = default,
             uint nextSocketId = 0,
-            bool includeTags = true,
+            bool includeChannels = true,
             string objectName = "SpsScreenMarker"
         ) {
             if (!BuildTargetUtils.IsDesktop()) return null;
@@ -40,7 +40,7 @@ namespace VF.Inspector {
                 renderer = meshRenderer,
                 materialProperties = spsConfigurer.GetSocketProperties(
                     meshRenderer, socket, socketScale, lightType, socketId, useTangentIn, tangentIn,
-                    useTangentOut, tangentOut, useRadiusOffset, nextSocketId, includeTags
+                    useTangentOut, tangentOut, useRadiusOffset, nextSocketId, includeChannels
                 )
             };
         }

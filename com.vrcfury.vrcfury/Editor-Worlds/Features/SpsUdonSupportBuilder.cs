@@ -61,7 +61,7 @@ namespace VF.Features {
                 udonObject,
                 udonSupport,
                 "socketRoot",
-                HapticUtils.TagSpsSocketRoot,
+                HapticUtils.TagTpsOrfRoot,
                 nameof(SpsPlugUdonSupport.contactEnterInfo),
                 nameof(SpsPlugUdonSupport.contactExitInfo),
                 nameof(SpsPlugUdonSupport._OnEnter),

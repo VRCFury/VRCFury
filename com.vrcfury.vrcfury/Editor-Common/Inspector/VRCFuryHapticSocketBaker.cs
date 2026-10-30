@@ -8,6 +8,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Injector;
 using VF.Utils;
+using VRC.SDK3.Dynamics.Contact.Components;
 using static VF.Inspector.VRCFuryHapticSocketEditor;
 using BakeResult = VF.Inspector.VRCFuryHapticSocketEditor.BakeResult;
 using ScreenMarkerResult = VF.Inspector.VRCFuryHapticSocketEditor.ScreenMarkerResult;
@@ -16,13 +17,15 @@ namespace VF.Inspector {
     [VFService]
     internal class VRCFuryHapticSocketBaker {
         [VFAutowired] private readonly SpsMarkersService spsMarkers;
-        [VFAutowired] [CanBeNull] private readonly SpsAutoTagGenerator autoTagGenerator;
+        [VFAutowired] [CanBeNull] private readonly SpsAutoChannelGenerator autoChannelGenerator;
         [VFAutowired] private readonly SpsSocketMarkerService socketMarkers;
+        [VFAutowired] private readonly SpsConfigurer spsConfigurer;
+        private int nextGroupId = 1;
 
         [CanBeNull]
         public BakeResult Bake(VRCFuryHapticSocket socket) {
-            var closestBone = autoTagGenerator?.GetClosestBone(socket.owner());
-            var isOnHips = closestBone == HumanBodyBones.Hips;
+            var closestBone = autoChannelGenerator?.GetClosestBone(socket.owner());
+            var channels = spsConfigurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender);
             var transform = socket.owner();
             if (!HapticUtils.AssertValidScale(transform, "socket", shouldThrow: !socket.fromSpsForAll)) {
                 return null;
@@ -44,42 +47,21 @@ namespace VF.Inspector {
             var senders = GameObjects.Create("Senders", worldSpace);
 
             var legacyLightType = GetLegacyLightType(socket, lightType);
+            VFGameObject rootSender;
 
             // Senders
             {
+                var legacySuffixes = new List<string>();
+                if (channels.Contains(SpsTags.PublicChannel)) legacySuffixes.Add("");
+                if (channels.Contains(SpsTags.NotHipsChannel)) legacySuffixes.Add("_SelfNotOnHips");
                 var rootTags = new List<string>();
-                rootTags.Add(HapticUtils.TagTpsOrfRoot);
-                rootTags.Add(HapticUtils.TagSpsSocketRoot);
-                if (legacyLightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
-                    switch (legacyLightType) {
-                        case VRCFuryHapticSocket.AddLight.Ring:
-                            rootTags.Add(HapticUtils.TagSpsSocketIsRing);
-                            break;
-                        case VRCFuryHapticSocket.AddLight.RingOneWay:
-                            rootTags.Add(HapticUtils.TagSpsSocketIsRing);
-                            rootTags.Add(HapticUtils.TagSpsSocketIsHole);
-                            break;
-                        default:
-                            rootTags.Add(HapticUtils.TagSpsSocketIsHole);
-                            break;
-                    }
-                }
-                HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+                rootTags.AddRange(legacySuffixes.Select(suffix => SpsTags.LegacySocket2 + suffix));
+                rootTags.AddRange(legacySuffixes.Select(suffix => SpsTags.LegacySocket + suffix));
+                rootSender = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                     obj = senders,
                     objName = "Root",
-                    radius = 0.001f,
-                    tags = rootTags.ToArray(),
-                    useHipAvoidance = true,
-                    isOnHips = isOnHips
-                });
-                HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                    obj = senders,
-                    pos = Vector3.forward * 0.01f,
-                    objName = "Front",
-                    radius = 0.001f,
-                    tags = new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront },
-                    useHipAvoidance = true,
-                    isOnHips = isOnHips
+                    radius = 0,
+                    tags = rootTags.ToArray()
                 });
             }
 
@@ -156,7 +138,7 @@ namespace VF.Inspector {
                             useTangentOut,
                             tangentOut,
                             nextSocketId,
-                            includeTags: false,
+                            includeChannels: false,
                             objectName: "SPS Socket Path"
                         );
                     }
@@ -262,6 +244,8 @@ namespace VF.Inspector {
                 }
             }
             
+            ConfigureSpsSenders(socket, lightType, channels, rootSender, screenMarkers.Skip(1).ToArray());
+
             if (EditorApplication.isPlaying && !socket.fromSpsForAll) {
                 var gizmo = socket.owner().AddComponent<VRCFurySocketGizmo>();
                 gizmo.data = GetGizmoData(socket);
@@ -279,7 +263,7 @@ namespace VF.Inspector {
         }
 
         public VRCFurySocketGizmo.SocketGizmoData GetGizmoData(VRCFuryHapticSocket socket) {
-            var closestBone = autoTagGenerator?.GetClosestBone(socket.owner());
+            var closestBone = autoChannelGenerator?.GetClosestBone(socket.owner());
             var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket, closestBone);
             return VRCFuryHapticSocketGizmo.BuildGizmoData(
                 socket,
@@ -305,13 +289,13 @@ namespace VF.Inspector {
                 || (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.Auto
                     && ShouldProbablyHaveTouchZone(
                         socket,
-                        autoTagGenerator?.GetClosestBone(socket.owner())
+                        autoChannelGenerator?.GetClosestBone(socket.owner())
                     ));
             if (!enableHandTouchZone) return null;
 
             var length = socket.length * (socket.unitsInMeters ? 1f : socket.owner().worldScale.z);
             if (length <= 0) {
-                var viewPosition = autoTagGenerator?.GetAvatarViewPosition(socket.owner());
+                var viewPosition = autoChannelGenerator?.GetAvatarViewPosition(socket.owner());
                 if (viewPosition == null || viewPosition.Value.y <= 0) return null;
                 length = viewPosition.Value.y * 0.05f;
             }
@@ -326,6 +310,65 @@ namespace VF.Inspector {
             return ShouldProbablyHaveTouchZone(socket, closestBone);
         }
 
+        internal void ConfigureSpsSenders(VRCFuryHapticSocket socket,
+            VRCFuryHapticSocket.AddLight type, IReadOnlyCollection<string> channels, VFGameObject rootSender,
+            IReadOnlyList<VFGameObject> guideMarkers) {
+            if (rootSender == null || type == VRCFuryHapticSocket.AddLight.None) return;
+            if (channels.Count == 0) return;
+            var rootTags = channels.Select(SpsTags.FormatSocket).ToArray();
+            var pathTags = channels.Select(SpsTags.FormatSocketPath).ToArray();
+
+            var group = nextGroupId++;
+            if (group > HapticUtils.GroupCount) throw new Exception($"SPS3 supports at most {HapticUtils.GroupCount} sockets per build.");
+
+            var stops = socket.guidedPathStops;
+            // Advertise the same prefix SPS2 can render without rejecting longer existing paths.
+            var stopCount = Math.Min(guideMarkers.Count, HapticUtils.MaxPathNodes - 1);
+            var rootType = stopCount == 0 ? type : stops[0].shrink
+                ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay;
+            AddNode(rootSender, rootType, 0);
+
+            for (var i = 0; i < stopCount; i++) {
+                var sender = GameObjects.Create($"SPS3 Stop #{i + 1}", rootSender.parent);
+                var target = stops[i].transform.asVf();
+                sender.worldPosition = target.worldPosition;
+                sender.worldRotation = target.worldRotation;
+                VFConstraint.CreateParent(sender).AddSource(target, 1);
+                sender.AddComponent<VRCContactSender>();
+                var nodeType = i == stops.Count - 1
+                    ? VRCFuryHapticSocketEditor.GetGuidedPathTerminalType(type)
+                    : stops[i + 1].shrink ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay;
+                AddNode(sender, nodeType, i + 1);
+            }
+
+            void AddNode(VFGameObject sender, VRCFuryHapticSocket.AddLight nodeType, int pathIndex) {
+                var tags = (pathIndex == 0 ? rootTags : pathTags).ToList();
+                tags.Add(SpsTags.ScaleV1);
+                var flags = HapticUtils.SocketScaleFlags.None;
+                if (pathIndex == 0 && socket.useRadiusOffset) {
+                    tags.Add(SpsTags.SocketRadiusOffset);
+                    flags |= HapticUtils.SocketScaleFlags.RadiusOffset;
+                }
+                if (nodeType == VRCFuryHapticSocket.AddLight.Hole) {
+                    tags.Add(SpsTags.SocketCollapse);
+                    flags |= HapticUtils.SocketScaleFlags.Collapse;
+                } else if (nodeType == VRCFuryHapticSocket.AddLight.Ring) {
+                    tags.Add(SpsTags.SocketTwoway);
+                    flags |= HapticUtils.SocketScaleFlags.Twoway;
+                }
+                AddTags(sender, tags);
+                // WorldSpace keeps metadata scale independent of avatar/stop scaling and atlas marker animations.
+                sender.worldScale = HapticUtils.EncodeSocketScale(group, pathIndex, flags);
+                sender.GetComponent<VRCContactSender>().radius = 0;
+            }
+        }
+
+        private static void AddTags(VFGameObject obj, IEnumerable<string> tags) {
+            var sender = obj.GetComponent<VRCContactSender>();
+            var combined = sender.collisionTags.Concat(tags).Distinct().ToList();
+            if (combined.Count > 16) throw new Exception("SPS3 sender exceeds the 16 contact tag limit.");
+            sender.collisionTags = combined;
+        }
         private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(
             VRCFuryHapticSocket socket,
             HumanBodyBones? closestBone

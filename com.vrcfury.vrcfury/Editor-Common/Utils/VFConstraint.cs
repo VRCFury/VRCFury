@@ -150,15 +150,22 @@ namespace VF.Utils {
 #endif
         }
 
-        public static VFConstraint CreateScale(VFGameObject owner) {
+        public static VFConstraint CreateScale(VFGameObject owner, Vector3? scaleOffset = null,
+            Axis axes = Axis.X | Axis.Y | Axis.Z) {
 #if VRCSDK_HAS_VRCCONSTRAINTS
             var c = owner.AddComponent<VRCScaleConstraint>();
+            c.AffectsScaleX = (axes & Axis.X) != 0;
+            c.AffectsScaleY = (axes & Axis.Y) != 0;
+            c.AffectsScaleZ = (axes & Axis.Z) != 0;
+            if (scaleOffset.HasValue) c.ScaleOffset = scaleOffset.Value;
             c.GlobalWeight = 1;
             c.IsActive = true;
             c.Locked = true;
             return new VFConstraint(c);
 #else
             var c = owner.AddComponent<ScaleConstraint>();
+            c.scalingAxis = axes;
+            if (scaleOffset.HasValue) c.scaleOffset = scaleOffset.Value;
             c.weight = 1;
             c.constraintActive = true;
             c.locked = true;

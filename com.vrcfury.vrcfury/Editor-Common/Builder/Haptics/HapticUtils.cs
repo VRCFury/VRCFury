@@ -17,7 +17,6 @@ namespace VF.Builder.Haptics {
         public const string TagTpsOrfRoot = "TPS_Orf_Root";
         public const string TagTpsOrfFront = "TPS_Orf_Norm";
 
-        public const string TagSpsSocketRoot = "SPSLL_Socket_Root";
         public const string TagSpsSocketFront = "SPSLL_Socket_Front";
         public const string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
         public const string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
@@ -38,6 +37,40 @@ namespace VF.Builder.Haptics {
 
         public static string RandomTag() {
             return "TPSVF_" + rand.Next(100_000_000, 999_999_999);
+        }
+
+        public const int GroupCount = 127;
+        public const int MaxPathNodes = 5; // Matches SPS2's SPS_CHAIN_MAX_SOCKETS, including the entrance.
+        public const float ScaleVersion = 0.0021f;
+
+        [Flags]
+        public enum SocketScaleFlags {
+            None = 0,
+            UnlockAll = 1 << 10,
+            UnlockLocalX = 1 << 11,
+            RadiusOffset = 1 << 12,
+            Twoway = 1 << 13,
+            Collapse = 1 << 14
+        }
+
+        public static Vector3 EncodeSocketScale(int group, int pathIndex, SocketScaleFlags flags = SocketScaleFlags.None) {
+            if (group < 1 || group > GroupCount) throw new ArgumentOutOfRangeException(nameof(group));
+            if (pathIndex < 0 || pathIndex >= 8) throw new ArgumentOutOfRangeException(nameof(pathIndex));
+            if (((int)flags & ~0x7C00) != 0) throw new ArgumentOutOfRangeException(nameof(flags));
+            // X: group ID 0-6 (nonzero), path index 7-9, flags 10-14.
+            // Y identifies the scale format/version; emitted flags are also collision tags.
+            return new Vector3(group | (pathIndex << 7) | (int)flags, ScaleVersion, 1);
+        }
+
+        public static Vector3 EncodePlugScale(float worldLength, float worldRadius) {
+            if (!(worldLength > 0) || float.IsInfinity(worldLength)) {
+                throw new ArgumentOutOfRangeException(nameof(worldLength), "Plug length must be finite and positive.");
+            }
+            if (!(worldRadius > 0) || float.IsInfinity(worldRadius)) {
+                throw new ArgumentOutOfRangeException(nameof(worldRadius), "Encoded plug radius must be finite and positive.");
+            }
+            // A Y-only world-scale constraint keeps the version sentinel fixed while X/Z follow resizing.
+            return new Vector3(Mathf.Min(worldRadius, worldLength), ScaleVersion, worldLength);
         }
 
         public enum ReceiverParty {

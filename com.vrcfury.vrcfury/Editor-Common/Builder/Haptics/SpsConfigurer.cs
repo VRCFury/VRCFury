@@ -15,7 +15,7 @@ using VF.Utils.Controller;
 namespace VF.Builder.Haptics {
     [VFService]
     internal class SpsConfigurer {
-        public const uint SharedTag = 1337;
+        public const uint SharedChannelId = 1337;
         public const string SpsEnabled = "_SPS_Enabled";
         public const string SpsBakedLength = "_SPS_BakedLength";
         public const string SpsBakedRadius = "_SPS_BakedRadius";
@@ -29,7 +29,7 @@ namespace VF.Builder.Haptics {
         private const uint IncludeSelf = 1;
         private const uint IncludeOthers = 2;
 
-        [VFAutowired] [CanBeNull] private readonly SpsAutoTagGenerator autoTagGenerator;
+        [VFAutowired] [CanBeNull] private readonly SpsAutoChannelGenerator autoChannelGenerator;
 
         public class MaterialProperty {
             public UnityEngine.Component component;
@@ -141,10 +141,10 @@ namespace VF.Builder.Haptics {
             Add(SpsEnabled, plug.spsAnimatedEnabled);
             Add(SpsOverrun, plug.spsOverrun ? 1 : 0);
             Add(SpsLegacy, plug.useLights ? 1 : 0);
-            ConfigureResolverTagRules(
+            ConfigureResolverChannelRules(
                 Add,
                 plug,
-                plug.useHipAvoidance && autoTagGenerator?.GetClosestBone(plug.owner()) == HumanBodyBones.Hips
+                plug.useHipAvoidance && autoChannelGenerator?.GetClosestBone(plug.owner()) == HumanBodyBones.Hips
             );
             Add(SpsMarkersService.Configured, 1);
             SetSplitId(Add, SpsMarkersService.IdLow, SpsMarkersService.IdHigh, resolverHash);
@@ -175,7 +175,7 @@ namespace VF.Builder.Haptics {
             Vector3 tangentOut,
             bool useRadiusOffset,
             uint nextSocketId = 0,
-            bool includeTags = true
+            bool includeChannels = true
         ) {
             Transform transform = renderer.owner();
             renderer.owner().localScale = Vector3.one * 0.001f;
@@ -206,12 +206,7 @@ namespace VF.Builder.Haptics {
             Add(SpsMarkersService.SocketTangentOut + ".y", tangentOut.y);
             Add(SpsMarkersService.SocketTangentOut + ".z", tangentOut.z);
             Add(SpsMarkersService.SocketScale, socketScale);
-            ConfigureSocketTags(
-                Add,
-                socket,
-                includeTags,
-                includeTags && socket.useSharedTag ? GetAutoSocketTagNames(socket) : null
-            );
+            ConfigureSocketChannels(Add, includeChannels ? GetSocketChannels(socket, ChannelMode.Sender) : Enumerable.Empty<string>());
             return properties;
         }
 
@@ -264,37 +259,66 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        private static void ConfigureSocketTags(
-            Action<string, float> set,
-            VRCFuryHapticSocket socket,
-            bool includeTags,
-            [CanBeNull] IList<string> autoTags
-        ) {
-            if (!includeTags) {
-                for (var i = 0; i < 8; i++) {
-                    SetSplitId(set, $"_SPS_SocketTag{i + 1}Low", $"_SPS_SocketTag{i + 1}High", 0);
-                }
-                return;
-            }
+        internal enum ChannelMode {
+            Sender,
+            ReceiverSelf,
+            ReceiverOthers
+        }
 
-            var tags = new uint[8];
-            for (var i = 0; i < socket.tags.Count && i < VRCFuryHapticSocketEditor.SpsTagCount; i++) {
-                SetTag(tags, i, HashTag(socket.tags[i]));
+        internal HashSet<string> GetPlugChannels(VRCFuryHapticPlug plug, ChannelMode mode) {
+            var channels = plug.includeTags.Take(VRCFuryHapticPlugEditor.SpsChannelRuleCount)
+                .Where(rule => rule != null && (mode == ChannelMode.ReceiverSelf ? rule.allowSelf
+                    : mode == ChannelMode.ReceiverOthers ? rule.allowOthers : rule.allowSelf || rule.allowOthers))
+                .Select(rule => NormalizeUserChannel(rule.tag))
+                .Where(channel => !string.IsNullOrWhiteSpace(channel)).ToHashSet();
+            if (plug.useSharedTag) channels.Add(SpsTags.PublicChannel);
+            var isOnHips = autoChannelGenerator?.GetClosestBone(plug.owner()) == HumanBodyBones.Hips;
+            if (mode == ChannelMode.ReceiverSelf && isOnHips && plug.useHipAvoidance && channels.Remove(SpsTags.PublicChannel)) {
+                channels.Add(SpsTags.NotHipsChannel);
             }
+            if (mode == ChannelMode.Sender && channels.Contains(SpsTags.PublicChannel) && (!isOnHips || !plug.useHipAvoidance)) {
+                channels.Add(SpsTags.NotHipsChannel);
+            }
+            return channels;
+        }
+
+        internal HashSet<string> GetSocketChannels(VRCFuryHapticSocket socket, ChannelMode mode) {
+            var channels = new HashSet<string>();
+            channels.UnionWith(socket.tags.Take(VRCFuryHapticSocketEditor.SpsChannelCount)
+                .Select(NormalizeUserChannel)
+                .Where(channel => !string.IsNullOrWhiteSpace(channel)));
             if (socket.useSharedTag) {
-                if (autoTags?.Count >= 1) SetTag(tags, 5, HashTag(autoTags[0]));
-                if (autoTags?.Count >= 2) SetTag(tags, 6, HashTag(autoTags[1]));
-                SetTag(tags, 7, SharedTag);
+                channels.UnionWith(GetAutoSocketChannels(socket));
+                channels.Add(SpsTags.PublicChannel);
             }
-            for (var i = 0; i < tags.Length; i++) {
-                SetSplitId(set, $"_SPS_SocketTag{i + 1}Low", $"_SPS_SocketTag{i + 1}High", tags[i]);
+            var isOnHips = autoChannelGenerator?.GetClosestBone(socket.owner()) == HumanBodyBones.Hips;
+            if (mode == ChannelMode.ReceiverSelf && isOnHips && channels.Remove(SpsTags.PublicChannel)) {
+                channels.Add(SpsTags.NotHipsChannel);
+            }
+            if (mode == ChannelMode.Sender && !isOnHips && channels.Contains(SpsTags.PublicChannel)) {
+                channels.Add(SpsTags.NotHipsChannel);
+            }
+            return channels;
+        }
+
+        private static string NormalizeUserChannel(string channel) {
+            channel = channel?.Trim().ToLowerInvariant() ?? "";
+            while (channel.StartsWith("_")) channel = channel.TrimStart('_').TrimStart();
+            return channel;
+        }
+
+        private static void ConfigureSocketChannels(Action<string, float> set, IEnumerable<string> channels) {
+            var ids = channels.Select(channel => channel == SpsTags.PublicChannel ? SharedChannelId : HashChannel(channel)).ToArray();
+            for (var i = 0; i < 8; i++) {
+                var id = i < ids.Length ? ids[i] : 0;
+                SetSplitId(set, $"_SPS_SocketTag{i + 1}Low", $"_SPS_SocketTag{i + 1}High", id);
             }
         }
 
-        public static uint HashTag(string tag) {
-            if (string.IsNullOrWhiteSpace(tag)) return 0;
+        public static uint HashChannel(string channel) {
+            if (string.IsNullOrWhiteSpace(channel)) return 0;
 
-            var normalized = tag.Trim().ToLowerInvariant();
+            var normalized = channel.Trim().ToLowerInvariant();
             uint hash = 2166136261;
             foreach (var c in normalized) {
                 hash ^= c;
@@ -304,70 +328,70 @@ namespace VF.Builder.Haptics {
             return hash == 0 ? 1u : hash;
         }
 
-        private static void ConfigureResolverTagRules(
+        private static void ConfigureResolverChannelRules(
             Action<string, float> set,
             VRCFuryHapticPlug plug,
             bool excludeOwnHips
         ) {
-            var includeTags = new uint[4];
+            var includeChannels = new uint[4];
             var includeFlags = new uint[4];
-            var excludeTags = new uint[4];
+            var excludeChannels = new uint[4];
             var excludeFlags = new uint[4];
-            for (var i = 0; i < plug.includeTags.Count && i < VRCFuryHapticPlugEditor.SpsTagRuleCount; i++) {
-                SetTag(includeTags, includeFlags, i, plug.includeTags[i]);
+            for (var i = 0; i < plug.includeTags.Count && i < VRCFuryHapticPlugEditor.SpsChannelRuleCount; i++) {
+                SetChannel(includeChannels, includeFlags, i, plug.includeTags[i]);
             }
             if (plug.useSharedTag) {
-                SetTag(includeTags, 3, SharedTag, IncludeSelf | IncludeOthers, includeFlags);
+                SetChannel(includeChannels, 3, SharedChannelId, IncludeSelf | IncludeOthers, includeFlags);
             }
 
-            for (var i = 0; i < plug.excludeTags.Count && i < VRCFuryHapticPlugEditor.SpsTagRuleCount; i++) {
-                SetTag(excludeTags, excludeFlags, i, plug.excludeTags[i]);
+            for (var i = 0; i < plug.excludeTags.Count && i < VRCFuryHapticPlugEditor.SpsChannelRuleCount; i++) {
+                SetChannel(excludeChannels, excludeFlags, i, plug.excludeTags[i]);
             }
             if (excludeOwnHips) {
-                SetTag(excludeTags, 3, HashTag("hips"), IncludeSelf, excludeFlags);
+                SetChannel(excludeChannels, 3, HashChannel("hips"), IncludeSelf, excludeFlags);
             }
 
             for (var i = 0; i < 4; i++) {
                 var slot = i + 1;
-                SetSplitId(set, $"_SPS_TagInclude{slot}Low", $"_SPS_TagInclude{slot}High", includeTags[i]);
+                SetSplitId(set, $"_SPS_TagInclude{slot}Low", $"_SPS_TagInclude{slot}High", includeChannels[i]);
                 set($"_SPS_TagInclude{slot}Self", (includeFlags[i] & IncludeSelf) != 0 ? 1 : 0);
                 set($"_SPS_TagInclude{slot}Others", (includeFlags[i] & IncludeOthers) != 0 ? 1 : 0);
-                SetSplitId(set, $"_SPS_TagExclude{slot}Low", $"_SPS_TagExclude{slot}High", excludeTags[i]);
+                SetSplitId(set, $"_SPS_TagExclude{slot}Low", $"_SPS_TagExclude{slot}High", excludeChannels[i]);
                 set($"_SPS_TagExclude{slot}Self", (excludeFlags[i] & IncludeSelf) != 0 ? 1 : 0);
                 set($"_SPS_TagExclude{slot}Others", (excludeFlags[i] & IncludeOthers) != 0 ? 1 : 0);
             }
         }
 
-        private static void SetTag(uint[] tags, int index, uint tag) {
-            if (index < 0 || index >= tags.Length) return;
-            tags[index] = tag;
+        private static void SetChannel(uint[] channels, int index, uint channel) {
+            if (index < 0 || index >= channels.Length) return;
+            channels[index] = channel;
         }
 
-        private static void SetTag(uint[] tags, int index, uint tag, uint ruleFlags, uint[] flags) {
-            if (index < 0 || index >= tags.Length) return;
-            SetTag(tags, index, tag);
-            flags[index] = tag == 0 ? 0 : ruleFlags;
+        private static void SetChannel(uint[] channels, int index, uint channel, uint ruleFlags, uint[] flags) {
+            if (index < 0 || index >= channels.Length) return;
+            SetChannel(channels, index, channel);
+            flags[index] = channel == 0 ? 0 : ruleFlags;
         }
 
-        private static void SetTag(uint[] tags, uint[] flags, int index, VRCFuryHapticPlug.TagRule rule) {
-            if (index < 0 || index >= tags.Length) return;
+        private static void SetChannel(uint[] channels, uint[] flags, int index, VRCFuryHapticPlug.TagRule rule) {
+            if (index < 0 || index >= channels.Length) return;
             if (rule == null) return;
             var ruleFlags = 0u;
             if (rule.allowSelf) ruleFlags |= IncludeSelf;
             if (rule.allowOthers) ruleFlags |= IncludeOthers;
-            SetTag(tags, index, HashTag(rule.tag), ruleFlags, flags);
+            SetChannel(channels, index, HashChannel(NormalizeUserChannel(rule.tag)), ruleFlags, flags);
         }
 
-        private string GetAutoHipFrontBackTagName(
+        private string GetAutoHipFrontBackChannel(
             VRCFuryHapticSocket socket,
             HumanBodyBones? closestBone
         ) {
             if (closestBone != HumanBodyBones.Hips) return null;
-            if (autoTagGenerator == null) return null;
+            if (autoChannelGenerator == null) return null;
 
             var root = socket.owner().root;
-            var hips = autoTagGenerator.GetBone(socket.owner(), HumanBodyBones.Hips);
-            var rightHand = autoTagGenerator.GetBone(socket.owner(), HumanBodyBones.RightHand);
+            var hips = autoChannelGenerator.GetBone(socket.owner(), HumanBodyBones.Hips);
+            var rightHand = autoChannelGenerator.GetBone(socket.owner(), HumanBodyBones.RightHand);
             if (hips == null || rightHand == null) return null;
 
             var right = rightHand.worldPosition - hips.worldPosition;
@@ -379,7 +403,7 @@ namespace VF.Builder.Haptics {
 
             var hipSockets = root.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
                 .Where(other => other != null
-                    && autoTagGenerator.GetClosestBone(other.owner()) == HumanBodyBones.Hips)
+                    && autoChannelGenerator.GetClosestBone(other.owner()) == HumanBodyBones.Hips)
                 .OrderBy(other => {
                     var offset = other.owner().worldPosition - hips.worldPosition;
                     return Mathf.Abs(Vector3.Dot(offset, forward));
@@ -410,30 +434,19 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        internal IList<string> GetAutoSocketTagNames(VRCFuryHapticSocket socket) {
-            var bone = autoTagGenerator?.GetClosestBone(socket.owner());
-            switch (bone) {
-                case HumanBodyBones.Hips:
-                    return new[] { "hips", GetAutoHipFrontBackTagName(socket, bone), }.Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
-                case HumanBodyBones.Head:
-                case HumanBodyBones.Jaw:
-                    return new[] { "head", };
-                case HumanBodyBones.Chest:
-                case HumanBodyBones.UpperChest:
-                    return new[] { "chest", };
-                case HumanBodyBones.LeftHand:
-                    return new[] { "hand", "handleft", };
-                case HumanBodyBones.RightHand:
-                    return new[] { "hand", "handright", };
-                case HumanBodyBones.LeftFoot:
-                case HumanBodyBones.LeftToes:
-                    return new[] { "foot", "footleft", };
-                case HumanBodyBones.RightFoot:
-                case HumanBodyBones.RightToes:
-                    return new[] { "foot", "footright", };
-            }
-
-            return new string[] { };
+        internal HashSet<string> GetAutoSocketChannels(VRCFuryHapticSocket socket) {
+            var bone = autoChannelGenerator?.GetClosestBone(socket.owner());
+            var channels = bone switch {
+                HumanBodyBones.Hips => new[] { "hips", GetAutoHipFrontBackChannel(socket, bone) },
+                HumanBodyBones.Head or HumanBodyBones.Jaw => new[] { "head" },
+                HumanBodyBones.Chest or HumanBodyBones.UpperChest => new[] { "chest" },
+                HumanBodyBones.LeftHand => new[] { "hand", "handleft" },
+                HumanBodyBones.RightHand => new[] { "hand", "handright" },
+                HumanBodyBones.LeftFoot or HumanBodyBones.LeftToes => new[] { "foot", "footleft" },
+                HumanBodyBones.RightFoot or HumanBodyBones.RightToes => new[] { "foot", "footright" },
+                _ => Array.Empty<string>()
+            };
+            return channels.Where(channel => !string.IsNullOrWhiteSpace(channel)).ToHashSet();
         }
     }
 }

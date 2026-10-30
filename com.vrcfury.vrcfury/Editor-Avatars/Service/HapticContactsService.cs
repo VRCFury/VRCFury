@@ -31,7 +31,6 @@ namespace VF.Service {
             public Quaternion rotation = default;
             public ContactReceiver.ReceiverType type = ContactReceiver.ReceiverType.Proximity;
             public bool worldScale = true;
-            public bool useHipAvoidance = true;
 
             public ReceiverRequest Clone() {
                 return (ReceiverRequest)MemberwiseClone();
@@ -66,13 +65,12 @@ namespace VF.Service {
                 receiver.height /= child.worldScale.x;
             }
 
-            var tags = req.tags;
-            if (req.party == HapticUtils.ReceiverParty.Self && req.useHipAvoidance && closestBoneUtils.GetClosestHumanoidBone(req.obj) == HumanBodyBones.Hips) {
-                tags = HapticSenderFactory.AddSuffixes(tags, "_SelfNotOnHips");
-            }
-            receiver.collisionTags = tags.ToList();
-
             return param;
+        }
+
+        public string GetSelfTagSuffix(VFGameObject obj) {
+            return closestBoneUtils.GetClosestHumanoidBone(obj) == HumanBodyBones.Hips
+                ? "_SelfNotOnHips" : "";
         }
     }
 }

@@ -18,7 +18,7 @@ using VF.Utils;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
     internal class VRCFuryHapticPlugEditor : VRCFuryComponentEditor<VRCFuryHapticPlug> {
-        internal const int SpsTagRuleCount = 2;
+        internal const int SpsChannelRuleCount = 2;
         public const string SpsParamDepth = "Depth";
         public const string SpsParamVelocity = "Velocity";
         public const string SpsParamPlugLength = "Plug Length";
@@ -108,13 +108,13 @@ namespace VF.Inspector {
             return content;
         }
 
-        public static VisualElement SpsTagProp(SerializedProperty prop, string label) {
+        public static VisualElement SpsChannelProp(SerializedProperty prop, string label) {
             var field = new TextField {
                 isDelayed = true
             };
-            field.SetValueWithoutNotify(SanitizeSpsTag(prop.stringValue));
+            field.SetValueWithoutNotify(SanitizeSpsChannel(prop.stringValue));
             field.RegisterValueChangedCallback(cb => {
-                var sanitized = SanitizeSpsTag(cb.newValue);
+                var sanitized = SanitizeSpsChannel(cb.newValue);
                 if (field.value != sanitized) {
                     field.SetValueWithoutNotify(sanitized);
                 }
@@ -124,7 +124,7 @@ namespace VF.Inspector {
             return VRCFuryEditorUtils.Prop(prop, label, fieldOverride: field);
         }
 
-        public static string SanitizeSpsTag(string input) {
+        public static string SanitizeSpsChannel(string input) {
             if (string.IsNullOrEmpty(input)) return "";
 
             var chars = input
@@ -135,8 +135,8 @@ namespace VF.Inspector {
             return new string(chars);
         }
 
-        private static SerializedProperty AddSpsTagRule(SerializedProperty listProp) {
-            if (listProp.arraySize >= SpsTagRuleCount) return null;
+        private static SerializedProperty AddSpsChannelRule(SerializedProperty listProp) {
+            if (listProp.arraySize >= SpsChannelRuleCount) return null;
             var index = listProp.arraySize;
             listProp.InsertArrayElementAtIndex(index);
             var item = listProp.GetArrayElementAtIndex(index);
@@ -147,10 +147,10 @@ namespace VF.Inspector {
             return item;
         }
 
-        private static VisualElement SpsTagRuleProp(SerializedProperty listProp, int index, string label) {
+        private static VisualElement SpsChannelRuleProp(SerializedProperty listProp, int index, string label) {
             var prop = listProp.GetArrayElementAtIndex(index);
             var row = new VisualElement();
-            row.Add(SpsTagProp(prop.FindPropertyRelative("tag"), label));
+            row.Add(SpsChannelProp(prop.FindPropertyRelative("tag"), label));
             row.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("allowSelf"), "Self"));
             row.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("allowOthers"), "Others"));
             var remove = new Button(() => {
@@ -163,14 +163,14 @@ namespace VF.Inspector {
             return row;
         }
 
-        private static VisualElement SpsTagRuleList(SerializedProperty listProp, string labelPrefix) {
+        private static VisualElement SpsChannelRuleList(SerializedProperty listProp, string labelPrefix) {
             return VRCFuryEditorUtils.RefreshOnChange(() => {
                 var container = new VisualElement();
-                for (var i = 0; i < Math.Min(listProp.arraySize, SpsTagRuleCount); i++) {
-                    container.Add(SpsTagRuleProp(listProp, i, $"{labelPrefix} #{i + 1}"));
+                for (var i = 0; i < Math.Min(listProp.arraySize, SpsChannelRuleCount); i++) {
+                    container.Add(SpsChannelRuleProp(listProp, i, $"{labelPrefix} #{i + 1}"));
                 }
-                if (listProp.arraySize < SpsTagRuleCount) {
-                    container.Add(new Button(() => AddSpsTagRule(listProp)) {
+                if (listProp.arraySize < SpsChannelRuleCount) {
+                    container.Add(new Button(() => AddSpsChannelRule(listProp)) {
                         text = $"Add {labelPrefix}"
                     });
                 }
@@ -369,37 +369,37 @@ namespace VF.Inspector {
                 ));
             }));
 
-            var tags = VRCFuryEditorUtils.Section("Tags", "Filter which sockets this plug will target");
-            var includeTags = serializedObject.FindProperty("includeTags");
-            var excludeTags = serializedObject.FindProperty("excludeTags");
-            tags.Add(SpsTagRuleList(includeTags, "Include"));
-            tags.Add(SpsTagRuleList(excludeTags, "Exclude"));
+            var channels = VRCFuryEditorUtils.Section("Channels", "Filter which sockets this plug will target");
+            var includeChannels = serializedObject.FindProperty("includeTags");
+            var excludeChannels = serializedObject.FindProperty("excludeTags");
+            channels.Add(SpsChannelRuleList(includeChannels, "Include"));
+            channels.Add(SpsChannelRuleList(excludeChannels, "Exclude"));
             var useSharedTag = serializedObject.FindProperty("useSharedTag");
-            tags.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Include 'Global' SPS2 Tag",
-                tooltip: "Adds the global SPS tag so this plug can target most normal sockets."));
-            tags.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            channels.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Include Public SPS Channel",
+                tooltip: "Adds the public SPS channel so this plug can target most normal sockets."));
+            channels.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (useSharedTag.boolValue) return new VisualElement();
-                return VRCFuryEditorUtils.Warn("This plug does not include the global SPS2 tag, so it will not target most sockets!");
+                return VRCFuryEditorUtils.Warn("This plug does not include the public SPS channel, so it will not target most sockets!");
             }, useSharedTag));
-            tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLights"), "Include 'Global' SPS1/DPS/TPS Tag",
+            channels.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLights"), "Accept Legacy SPS1/DPS/TPS Lights",
                 tooltip: "Allows this plug to target SPS1/DPS/TPS sockets (looking for lights)."));
             var useHipAvoidance = serializedObject.FindProperty("useHipAvoidance");
-            tags.Add(VRCFuryEditorUtils.BetterProp(
+            channels.Add(VRCFuryEditorUtils.BetterProp(
                 useHipAvoidance,
                 "Exclude sockets on own Hips",
                 tooltip: "If this plug is on your hips, it will not target sockets on your hips."
             ));
-            tags.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            channels.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (!useHipAvoidance.boolValue) return new VisualElement();
-                var autoTagGenerator = VRCFuryPerFrameInjector.GetPerFrameInjector(target.owner())
-                    .GetServices<SpsAutoTagGenerator>()
+                var autoChannelGenerator = VRCFuryPerFrameInjector.GetPerFrameInjector(target.owner())
+                    .GetServices<SpsAutoChannelGenerator>()
                     .FirstOrDefault();
-                if (autoTagGenerator?.GetClosestBone(target.owner()) != HumanBodyBones.Hips) {
+                if (autoChannelGenerator?.GetClosestBone(target.owner()) != HumanBodyBones.Hips) {
                     return new VisualElement();
                 }
                 return VRCFuryEditorUtils.Info("This plug will exclude sockets on your hips.");
             }, useHipAvoidance));
-            container.Add(tags);
+            container.Add(channels);
 
             var adv = new Foldout {
                 text = "Advanced Plug Options",

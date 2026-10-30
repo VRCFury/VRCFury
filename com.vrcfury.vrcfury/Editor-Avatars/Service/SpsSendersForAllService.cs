@@ -38,10 +38,11 @@ namespace VF.Service {
         }
 
         private static bool IsTPSSender(VRCContactSender c) {
-            if (c.collisionTags.Any(t => t == HapticUtils.CONTACT_PEN_MAIN)) return true;
-            if (c.collisionTags.Any(t => t == HapticUtils.CONTACT_PEN_WIDTH)) return true;
-            if (c.collisionTags.Any(t => t == HapticUtils.TagTpsOrfRoot)) return true;
-            if (c.collisionTags.Any(t => t == HapticUtils.TagTpsOrfFront)) return true;
+            if (c.collisionTags.Any(t => t == SpsTags.LegacyPlugSphere)) return true;
+            if (c.collisionTags.Any(t => t == SpsTags.LegacyPlugWidth)) return true;
+            if (c.collisionTags.Any(t => t == SpsTags.LegacySocket)) return true;
+            // Still recognize old Front senders when replacing legacy setups
+            if (c.collisionTags.Any(t => t == "TPS_Orf_Norm")) return true;
             return false;
         }
     }

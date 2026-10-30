@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEngine;
+using UnityEngine.Animations;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
@@ -16,7 +17,6 @@ namespace VF.Inspector {
     [VFService]
     internal class VRCFuryHapticPlugBaker {
         [VFAutowired] private readonly SpsMarkersService spsMarkers;
-        [VFAutowired] [CanBeNull] private readonly SpsAutoTagGenerator autoTagGenerator;
         [VFAutowired] private readonly SpsConfigurer spsConfigurer;
 
         [CanBeNull]
@@ -25,7 +25,6 @@ namespace VF.Inspector {
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
             bool deferMaterialConfig = false
         ) {
-            var isOnHips = autoTagGenerator?.GetClosestBone(plug.owner()) == HumanBodyBones.Hips;
             var transform = plug.owner();
             if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.fromSpsForAll)) {
                 return null;
@@ -71,40 +70,45 @@ namespace VF.Inspector {
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
             var senders = GameObjects.Create("Senders", localSpace);
-            HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+            var channels = spsConfigurer.GetPlugChannels(plug, SpsConfigurer.ChannelMode.Sender);
+            var legacySuffixes = new List<string>();
+            if (channels.Contains(SpsTags.PublicChannel)) legacySuffixes.Add("");
+            if (channels.Contains(SpsTags.NotHipsChannel)) legacySuffixes.Add("_SelfNotOnHips");
+            var mainSender = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                 obj = senders,
                 objName = "Length",
                 radius = worldLength,
-                tags = new [] { HapticUtils.CONTACT_PEN_MAIN },
-                useHipAvoidance = plug.useHipAvoidance,
-                isOnHips = isOnHips
+                worldScale = HapticUtils.EncodePlugScale(worldLength, worldRadius),
+                tags = channels.Select(SpsTags.FormatPlug)
+                    .Append(SpsTags.ScaleV1)
+                    .Concat(legacySuffixes.Select(suffix => SpsTags.LegacyPlugSphere + suffix)).ToArray()
             });
-            HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                obj = senders,
-                objName = "WidthHelper",
-                radius = Mathf.Max(0.01f, worldLength - worldRadius*2),
-                tags = new [] { HapticUtils.CONTACT_PEN_WIDTH },
-                useHipAvoidance = plug.useHipAvoidance,
-                isOnHips = isOnHips
-            });
+            if (mainSender != null) {
+                VFConstraint.CreateScale(mainSender, new Vector3(1, HapticUtils.ScaleVersion, 1), Axis.Y)
+                    .AddSource(worldSpace, 1);
+            }
+            if (legacySuffixes.Count > 0) {
+                HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+                    obj = senders,
+                    objName = "WidthHelper",
+                    radius = Mathf.Max(0.01f, worldLength - worldRadius*2),
+                    tags = legacySuffixes.Select(suffix => SpsTags.LegacyPlugWidth + suffix).ToArray()
+                });
+                HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+                    obj = worldSpace,
+                    objName = "Sender - Root",
+                    radius = 0.01f,
+                    tags = legacySuffixes.Select(suffix => SpsTags.LegacyPlugRoot + suffix).ToArray()
+                });
+            }
             HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                 obj = senders,
                 pos = halfWay,
                 objName = "Envelope",
                 radius = worldRadius,
-                tags = new [] { HapticUtils.CONTACT_PEN_CLOSE },
+                tags = new[] { SpsTags.PlugClose },
                 rotation = capsuleRotation,
-                height = worldLength,
-                useHipAvoidance = plug.useHipAvoidance,
-                isOnHips = isOnHips
-            });
-            HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                obj = worldSpace,
-                objName = "Sender - Root",
-                radius = 0.01f,
-                tags = new [] { HapticUtils.CONTACT_PEN_ROOT },
-                useHipAvoidance = plug.useHipAvoidance,
-                isOnHips = isOnHips
+                height = worldLength
             });
 
             // TODO: Check if there are 0 renderers,

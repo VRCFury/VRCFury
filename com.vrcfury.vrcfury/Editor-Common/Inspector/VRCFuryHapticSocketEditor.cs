@@ -14,7 +14,7 @@ using VF.Utils;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
     internal class VRCFuryHapticSocketEditor : VRCFuryComponentEditor<VRCFuryHapticSocket> {
-        internal const int SpsTagCount = 2;
+        internal const int SpsChannelCount = 2;
         internal const float GizmoRadiusOffset = 0.04f;
         internal const float LegacyRadiusOffset = 0.03f;
         private const int GuidedPathCount = 3;
@@ -42,8 +42,8 @@ namespace VF.Inspector {
             );
         }
 
-        private static SerializedProperty AddSpsTag(SerializedProperty listProp) {
-            if (listProp.arraySize >= SpsTagCount) return null;
+        private static SerializedProperty AddSpsChannel(SerializedProperty listProp) {
+            if (listProp.arraySize >= SpsChannelCount) return null;
             var index = listProp.arraySize;
             listProp.InsertArrayElementAtIndex(index);
             var item = listProp.GetArrayElementAtIndex(index);
@@ -52,13 +52,13 @@ namespace VF.Inspector {
             return item;
         }
 
-        private static VisualElement SpsTagList(SerializedProperty listProp) {
+        private static VisualElement SpsChannelList(SerializedProperty listProp) {
             return VRCFuryEditorUtils.RefreshOnChange(() => {
                 var container = new VisualElement();
-                for (var i = 0; i < Math.Min(listProp.arraySize, SpsTagCount); i++) {
+                for (var i = 0; i < Math.Min(listProp.arraySize, SpsChannelCount); i++) {
                     var index = i;
                     var row = new VisualElement();
-                    row.Add(VRCFuryHapticPlugEditor.SpsTagProp(listProp.GetArrayElementAtIndex(index), $"Tag #{index + 1}"));
+                    row.Add(VRCFuryHapticPlugEditor.SpsChannelProp(listProp.GetArrayElementAtIndex(index), $"Channel #{index + 1}"));
                     row.Add(new Button(() => {
                         listProp.DeleteArrayElementAtIndex(index);
                         listProp.serializedObject.ApplyModifiedProperties();
@@ -67,9 +67,9 @@ namespace VF.Inspector {
                     });
                     container.Add(row);
                 }
-                if (listProp.arraySize < SpsTagCount) {
-                    container.Add(new Button(() => AddSpsTag(listProp)) {
-                        text = "Add Tag"
+                if (listProp.arraySize < SpsChannelCount) {
+                    container.Add(new Button(() => AddSpsChannel(listProp)) {
+                        text = "Add Channel"
                     });
                 }
                 return container;
@@ -269,24 +269,24 @@ namespace VF.Inspector {
                 ));
             }));
 
-            var tags = VRCFuryEditorUtils.Section("Tags", "Filter which plugs can target this socket");
-            tags.Add(SpsTagList(serializedObject.FindProperty("tags")));
+            var channels = VRCFuryEditorUtils.Section("Channels", "Filter which plugs can target this socket");
+            channels.Add(SpsChannelList(serializedObject.FindProperty("tags")));
             var useSharedTag = serializedObject.FindProperty("useSharedTag");
-            tags.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "'Global' SPS2 Tag",
+            channels.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Public SPS Channel",
                 tooltip: "Allows all SPS2 plugs (which are configured using the defaults) to target this socket."));
-            tags.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+            channels.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (!useSharedTag.boolValue) {
-                    return VRCFuryEditorUtils.Warn("This socket does not have the global SPS2 tag, so most plugs will not target it.");
+                    return VRCFuryEditorUtils.Warn("This socket does not have the public SPS channel, so most plugs will not target it.");
                 }
-                var autoTags = VRCFuryPerFrameInjector.GetPerFrameInjector(target.owner())
+                var autoChannels = VRCFuryPerFrameInjector.GetPerFrameInjector(target.owner())
                     .GetService<SpsConfigurer>()
-                    .GetAutoSocketTagNames(target);
-                if (autoTags.Count > 0) {
-                    return VRCFuryEditorUtils.Info("Additional automatic tags included: " + autoTags.Join(", "));
+                    .GetAutoSocketChannels(target);
+                if (autoChannels.Count > 0) {
+                    return VRCFuryEditorUtils.Info("Additional automatic channels included: " + autoChannels.Join(", "));
                 }
                 return new VisualElement();
             }, useSharedTag));
-            container.Add(tags);
+            container.Add(channels);
             
             var adv = new Foldout {
                 text = "Advanced",

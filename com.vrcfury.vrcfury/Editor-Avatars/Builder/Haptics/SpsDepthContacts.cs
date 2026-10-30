@@ -124,6 +124,8 @@ namespace VF.Builder.Haptics {
                 float localPlugLength
             ) {
                 var contactRadius = 3f;
+                var suffix = party == HapticUtils.ReceiverParty.Self && useHipAvoidance
+                    ? hapticContactsService.GetSelfTagSuffix(parent) : "";
                 if (localPlugLength >= 0) {
                     // These are contacts for a plug, find the nearest socket
                     var contact = new Lazy<VFAFloat>(() => {
@@ -132,8 +134,7 @@ namespace VF.Builder.Haptics {
                             paramName = $"{paramPrefix}/Contact",
                             objName = $"{objPrefix}",
                             radius = contactRadius,
-                            tags = new[] { HapticUtils.TagSpsSocketRoot },
-                            useHipAvoidance = useHipAvoidance,
+                            tags = new[] { HapticUtils.TagTpsOrfRoot + suffix },
                             party = party
                         });
                     });
@@ -159,8 +160,7 @@ namespace VF.Builder.Haptics {
                             paramName = $"{paramPrefix}/Contact/Tip",
                             objName = $"{objPrefix}Tip",
                             radius = contactRadius,
-                            tags = new[] { HapticUtils.CONTACT_PEN_MAIN },
-                            useHipAvoidance = useHipAvoidance,
+                            tags = new[] { HapticUtils.CONTACT_PEN_MAIN + suffix },
                             party = party
                         });
                     });
@@ -170,8 +170,7 @@ namespace VF.Builder.Haptics {
                             paramName = $"{paramPrefix}/Contact/Root",
                             objName = $"{objPrefix}Root",
                             radius = contactRadius,
-                            tags = new[] { HapticUtils.CONTACT_PEN_ROOT },
-                            useHipAvoidance = useHipAvoidance,
+                            tags = new[] { HapticUtils.CONTACT_PEN_ROOT + suffix },
                             party = party
                         });
                     });
@@ -181,8 +180,7 @@ namespace VF.Builder.Haptics {
                             paramName = $"{paramPrefix}/Contact/Width",
                             objName = $"{objPrefix}Width",
                             radius = contactRadius,
-                            tags = new[] { HapticUtils.CONTACT_PEN_WIDTH },
-                            useHipAvoidance = useHipAvoidance,
+                            tags = new[] { HapticUtils.CONTACT_PEN_WIDTH + suffix },
                             party = party
                         });
                     });

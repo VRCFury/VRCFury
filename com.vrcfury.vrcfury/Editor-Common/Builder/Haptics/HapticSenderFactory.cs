@@ -16,15 +16,15 @@ namespace VF.Builder.Haptics {
             public string[] tags;
             public float height = 0;
             public Quaternion rotation = default;
-            public bool worldScale = true;
-            public bool useHipAvoidance = true;
-            public bool isOnHips = false;
+            public bool useWorldUnits = true;
+            public Vector3? worldScale;
         }
 
         [CanBeNull]
         public static VFGameObject AddSender(SenderRequest req) {
             var child = GameObjects.Create(req.objName, req.obj);
             if (!BuildTargetUtils.IsDesktop()) return null;
+            if (req.worldScale.HasValue) child.worldScale = req.worldScale.Value;
             var sender = child.AddComponent<VRCContactSender>();
             sender.position = req.pos;
             sender.radius = req.radius;
@@ -33,25 +33,18 @@ namespace VF.Builder.Haptics {
                 sender.height = req.height;
                 sender.rotation = req.rotation;
             }
-            if (req.worldScale) {
-                sender.position /= child.worldScale.x;
-                sender.radius /= child.worldScale.x;
-                sender.height /= child.worldScale.x;
+            if (req.useWorldUnits) {
+                var scale = child.worldScale;
+                sender.position = new Vector3(sender.position.x / scale.x,
+                    sender.position.y / scale.y, sender.position.z / scale.z);
+                var shapeScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+                sender.radius /= shapeScale;
+                sender.height /= shapeScale;
             }
 
-            var tags = req.tags;
-            if (!req.isOnHips || !req.useHipAvoidance) {
-                tags = AddSuffixes(tags, "", "_SelfNotOnHips");
-            }
-            sender.collisionTags = tags.ToList();
+            sender.collisionTags = req.tags.ToList();
             return child;
         }
 
-        public static string[] AddSuffixes(string[] tags, params string[] suffixes) {
-            return tags.SelectMany(tag => {
-                if (!tag.StartsWith("SPSLL_") && !tag.StartsWith("SPS_") && !tag.StartsWith("TPS_")) return new [] { tag };
-                return suffixes.Select(suffix => tag + suffix);
-            }).ToArray();
-        }
     }
 }

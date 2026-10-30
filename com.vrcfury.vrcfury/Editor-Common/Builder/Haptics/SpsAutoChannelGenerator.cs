@@ -4,7 +4,7 @@ using VF.Component;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {
-    internal interface SpsAutoTagGenerator {
+    internal interface SpsAutoChannelGenerator {
         HumanBodyBones? GetClosestBone(VFGameObject obj);
         [CanBeNull] VFGameObject GetBone(VFGameObject obj, HumanBodyBones bone);
         Vector3? GetAvatarViewPosition(VFGameObject obj);

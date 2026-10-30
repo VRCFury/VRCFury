@@ -15,7 +15,6 @@ namespace VF.Feature {
     internal class VRCFuryHapticTouchSenderBuilder {
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly VFGameObject avatarObject;
-        [VFAutowired] private readonly ClosestBoneUtils closestBoneUtils;
 
         [FeatureBuilderAction]
         public void Apply() {
@@ -25,8 +24,7 @@ namespace VF.Feature {
                     objName = "Sender",
                     radius = sender.radius,
                     tags = new string[] { "Finger", "FingerR", "FingerIndex", "FingerIndexR" },
-                    worldScale = false,
-                    isOnHips = closestBoneUtils.GetClosestHumanoidBone(sender.owner()) == HumanBodyBones.Hips
+                    useWorldUnits = false
                 });
             }
         }
