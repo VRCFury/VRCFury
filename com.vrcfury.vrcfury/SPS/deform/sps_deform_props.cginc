@@ -1,10 +1,3 @@
-[Header(SPS Resolver ID)]
-_SPS_Configured("ID Configured", Float) = 0
-_SPS_IdLow("ID Low", Float) = 0
-_SPS_IdHigh("ID High", Float) = 0
-_SPS_PlayerIdLow("Player ID Low", Float) = 0
-_SPS_PlayerIdHigh("Player ID High", Float) = 0
-
 [Header(SPS Blendshapes)]
 _SPS_BlendshapeVertCount("Vertex count", Float) = 0
 _SPS_BlendshapeCount("Count", Float) = 0
@@ -26,6 +19,8 @@ _SPS_Blendshape14("14", Float) = 0
 _SPS_Blendshape15("15", Float) = 0
 
 [Header(SPS Bake)]
+_SPS_Enabled("Enabled", Float) = 1
+_SPS_BakedLength("Baked length", Float) = 0
 _SPS_Bake("Baked data", 2D) = "white" {}
 [Toggle] _SPS_Overrun("Allow hole overrun", Float) = 1
 _SPS_DisableShadows("Disable shadows", Float) = 0

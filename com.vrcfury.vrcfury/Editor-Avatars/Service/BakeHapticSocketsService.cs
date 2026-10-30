@@ -34,27 +34,14 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
         [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
-        [VFAutowired] private readonly SpsPlayerIdService spsPlayerIdService;
         [VFAutowired] private readonly VRCFuryHapticSocketBaker socketBaker;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private ControllerManager fx => controllers.GetFx();
         private ControllerManager actionController => controllers.GetAction();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
-        private readonly Lazy<VFClip> materialPropertiesClip;
         private readonly List<VFGameObject> forceEnable = new List<VFGameObject>();
 
-        public BakeHapticSocketsService() {
-            materialPropertiesClip = new Lazy<VFClip>(() => {
-                var clip = clipFactory.NewClip("SpsSocketMarkerProperties");
-                directTreeService.Create("SPS Socket Marker Properties").Add(clip);
-                return clip;
-            });
-        }
-
-        private void RegisterMaterialProperties(IEnumerable<SpsConfigurer.MaterialProperty> properties) {
-            SpsConfigurer.AddMaterialPropertyCurves(materialPropertiesClip.Value, properties);
-        }
 
         [FeatureBuilderAction(FeatureOrder.ForceStateInAnimator)]
         public void ForceSocketsOn() {
@@ -154,16 +141,6 @@ namespace VF.Service {
 
                     var bakeResult = socketBaker.Bake(socket);
                     if (bakeResult == null) continue;
-                    var screenMarkers = bakeResult.screenMarkers ?? new List<VFGameObject>();
-                    var screenMarkerResults = bakeResult.screenMarkerResults ?? new List<VRCFuryHapticSocketEditor.ScreenMarkerResult>();
-                    foreach (var screenMarkerResult in screenMarkerResults) {
-                        var renderer = screenMarkerResult.renderer;
-                        if (renderer != null) {
-                            RegisterMaterialProperties(screenMarkerResult.materialProperties);
-                            spsPlayerIdService.Register(renderer);
-                        }
-                    }
-
                     globals.addOtherFeature(new ShowInFirstPerson {
                         useObjOverride = true,
                         objOverride = bakeResult.bakeRoot,
@@ -375,7 +352,6 @@ namespace VF.Service {
                     if (stealthClip != null) {
                         foreach (var child in new[] { bakeResult.lights, bakeResult.senders }
                                      .Concat(animObjects)
-                                     .Concat(screenMarkers)
                                      .NotNull()
                         ) {
                             stealthClip.SetEnabled(child, false);

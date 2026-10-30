@@ -31,15 +31,8 @@ namespace VF.Builder.Haptics {
                     var result = socketBaker.Bake(socket);
                     if (result == null) continue;
                     onSocketBaked?.Invoke(socket, result);
-                    SpsConfigurer.AddMaterialPropertyAnimator(
-                        result.screenMarkerResults.Select(marker => marker.materialProperties).SelectMany(properties => properties),
-                        saveSession
-                    );
                     Unity6RendererFixHook.Register(result.bakeRoot);
                     foreach (var component in result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                        saveSession.SaveAssetAndChildren(component);
-                    }
-                    foreach (var component in result.screenMarkers.SelectMany(marker => marker.GetComponentsInSelfAndChildren<UnityEngine.Component>())) {
                         saveSession.SaveAssetAndChildren(component);
                     }
                     VRCFuryHideGizmoUnlessSelectedExtensions.Hide(result.bakeRoot);
@@ -56,9 +49,6 @@ namespace VF.Builder.Haptics {
                     var result = plugBaker.Bake(plug);
                     if (result == null) continue;
                     onPlugBaked?.Invoke(plug, result);
-                    if (result.resolverMaterialProperties != null) {
-                        SpsConfigurer.AddMaterialPropertyAnimator(result.resolverMaterialProperties, saveSession);
-                    }
                     Unity6RendererFixHook.Register(result.bakeRoot);
                     foreach (var component in result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                         saveSession.SaveAssetAndChildren(component);

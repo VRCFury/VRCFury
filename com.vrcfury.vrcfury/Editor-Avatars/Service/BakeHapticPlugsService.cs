@@ -35,25 +35,12 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
         [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
-        [VFAutowired] private readonly SpsPlayerIdService spsPlayerIdService;
         [VFAutowired] private readonly VRCFuryHapticPlugBaker plugBaker;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
-        private readonly Lazy<VFClip> materialPropertiesClip;
 
-        public BakeHapticPlugsService() {
-            materialPropertiesClip = new Lazy<VFClip>(() => {
-                var clip = clipFactory.NewClip("SpsPlugMarkerProperties");
-                directTreeService.Create("SPS Plug Marker Properties").Add(clip);
-                return clip;
-            });
-        }
-
-        private void RegisterMaterialProperties(IEnumerable<SpsConfigurer.MaterialProperty> properties) {
-            SpsConfigurer.AddMaterialPropertyCurves(materialPropertiesClip.Value, properties);
-        }
 
         private readonly Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
             new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
@@ -286,17 +273,10 @@ namespace VF.Service {
                     spsRewritesToDo.Add(new SpsRewriteToDo {
                         plugObject = plug.owner(),
                         skin = r.renderer,
-                        resolverRenderer = bakeInfo.resolverRenderer,
                         bakeRoot = bakeRoot,
                         configureMaterial = r.configureMaterial,
                         spsBlendshapes = r.spsBlendshapes
                     });
-                    spsPlayerIdService.Register(r.renderer);
-                }
-
-                if (bakeInfo.resolverRenderer != null) {
-                    RegisterMaterialProperties(bakeInfo.resolverMaterialProperties);
-                    spsPlayerIdService.Register(bakeInfo.resolverRenderer);
                 }
             }
             
@@ -401,7 +381,6 @@ namespace VF.Service {
         public class SpsRewriteToDo {
             public VFGameObject plugObject;
             public Renderer skin;
-            public MeshRenderer resolverRenderer;
             public VFGameObject bakeRoot;
             public Func<int, Material, Material> configureMaterial;
             public IList<string> spsBlendshapes;
@@ -419,26 +398,12 @@ namespace VF.Service {
                         var isPlugBinding = binding.Targets(rewrite.plugObject);
                         var finalBinding = binding;
 
-                        if (curve.IsFloat) {
-                            if (isRendererBinding) {
-                                if (binding.propertyName == "material._TPS_AnimatedToggle") {
-                                    if (rewrite.resolverRenderer != null) {
-                                        clip.SetCurve(rewrite.resolverRenderer, $"material.{SpsConfigurer.SpsEnabled}", curve);
-                                    }
-                                    clip.SetEnabled(rewrite.bakeRoot, curve);
-                                }
-                                if (rewrite.resolverRenderer != null && SpsConfigurer.PropagateToResolver(binding.propertyName)) {
-                                    clip.SetCurve(rewrite.resolverRenderer, binding.propertyName, curve);
-                                }
-                            }
-                            if (isPlugBinding) {
-                                if (binding.propertyName == "spsAnimatedEnabled") {
-                                    if (rewrite.resolverRenderer != null) {
-                                        clip.SetCurve(rewrite.resolverRenderer, $"material.{SpsConfigurer.SpsEnabled}", curve);
-                                    }
-                                    clip.SetEnabled(rewrite.bakeRoot, curve);
-                                }
-                            }
+                        if (curve.IsFloat && (
+                            isRendererBinding && binding.propertyName == "material._TPS_AnimatedToggle"
+                            || isPlugBinding && binding.propertyName == "spsAnimatedEnabled"
+                        )) {
+                            clip.SetCurve(rewrite.skin, $"material.{SpsConfigurer.SpsEnabled}", curve);
+                            clip.SetEnabled(rewrite.bakeRoot, curve);
                         }
 
                         if (isRendererBinding

@@ -7,7 +7,10 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Injector;
 using VF.Inspector;
+using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
 using Flags = VF.Component.VRCFuryHapticSocket.AddLight;
@@ -169,7 +172,7 @@ namespace VF.Tests {
         [TestCase((int)VRCFuryHapticSocket.AddLight.Hole, (int)Flags.Hole)]
         [TestCase((int)VRCFuryHapticSocket.AddLight.Ring, (int)Flags.Ring)]
         [TestCase((int)VRCFuryHapticSocket.AddLight.RingOneWay, (int)Flags.RingOneWay)]
-        public void SocketBakerKeepsAtlasLightsAndLegacyContacts(int typeValue, int flagValue) {
+        public void SocketBakerKeepsLightsAndLegacyContactsWithoutMarkers(int typeValue, int flagValue) {
             var type = (VRCFuryHapticSocket.AddLight)typeValue;
             var flags = (Flags)flagValue;
             var socket = root.AddComponent<VRCFuryHapticSocket>();
@@ -181,7 +184,8 @@ namespace VF.Tests {
                 return;
             }
 
-            Assert.That(result.screenMarkerResults.Count, Is.EqualTo(1));
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Animator>(), Is.Empty);
             var lights = result.lights.GetComponentsInSelfAndChildren<Light>();
             Assert.That(lights.Select(l => l.range), Is.EquivalentTo(new[] {
                 type == VRCFuryHapticSocket.AddLight.Hole ? 0.4106f : 0.4206f, 0.4506f
@@ -228,7 +232,7 @@ namespace VF.Tests {
             }
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             if (!BuildTargetUtils.IsDesktop()) return;
-            Assert.That(result.screenMarkerResults.Count, Is.EqualTo(4));
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
             var contacts = NativeSocketSenders(result.bakeRoot);
             Assert.That(contacts.Length, Is.EqualTo(4));
             CheckNode(contacts[0], 1, 0, Flags.Hole);
@@ -244,15 +248,14 @@ namespace VF.Tests {
                 Assert.That(contacts[i].transform.parent.asVf(), Is.EqualTo(result.senders));
                 var constraints = VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot })
                     .Where(c => c.GetSources().Single() == target.asVf()).ToArray();
-                Assert.That(constraints.Length, Is.EqualTo(3));
+                Assert.That(constraints.Length, Is.EqualTo(1));
                 Assert.That(constraints.All(c => c.GetSources().Single() == target.asVf()), Is.True);
                 Assert.That(contacts[i].collisionTags, Does.Contain("SPS/SocketPath/custom"));
                 Assert.That(contacts[i].collisionTags, Does.Contain("SPS/SocketPath/_nothips"));
             }
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>().Length, Is.EqualTo(4));
-            Assert.That(VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot }).Count(), Is.EqualTo(10));
+            Assert.That(VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot }).Count(), Is.EqualTo(4));
             result.senders.active = false;
-            foreach (var marker in result.screenMarkers) marker.active = false;
             Assert.That(contacts.All(c => !c.gameObject.activeInHierarchy), Is.True);
         }
 
@@ -270,7 +273,7 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void GuideMetadataScaleIsIndependentOfAtlasMarkerAndAuthoredStopScale() {
+        public void GuideMetadataScaleIsIndependentOfAuthoredStopScale() {
             if (!BuildTargetUtils.IsDesktop()) return;
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
@@ -282,14 +285,11 @@ namespace VF.Tests {
             var guide = NativeSocketSenders(result.bakeRoot).Last();
             var expected = new Vector3(129 | (1 << 14), 0.0021f, 1);
             CheckVector(guide.transform.lossyScale, expected);
-            // SPS2 animates its marker from 0.001 to 1; this must not touch contact metadata.
-            result.screenMarkers[1].localScale = Vector3.one;
             stop.localScale *= 10;
             CheckVector(guide.transform.lossyScale, expected);
             Assert.That(guide.transform.lossyScale.y, Is.GreaterThan(0.002f).And.LessThan(0.003f));
             var constraint = VFConstraint.GetConstraintsInSelfAndChildren(new[] { guide.owner() }).Single();
             Assert.That(constraint.GetSources().Single(), Is.EqualTo(stop.asVf()));
-            Assert.That(result.screenMarkers[1].GetComponentsInSelfAndChildren<VRCContactSender>(), Is.Empty);
             result.senders.active = false;
             Assert.That(guide.gameObject.activeInHierarchy, Is.False);
         }
@@ -311,7 +311,7 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void ContactTagsAndAtlasUseTheSameChannels() {
+        public void ContactTagsUseConfiguredChannels() {
             if (!BuildTargetUtils.IsDesktop()) return;
             injector.Set("autoChannelGenerator", new AutoChannels(HumanBodyBones.LeftHand));
             var socket = root.AddComponent<VRCFuryHapticSocket>();
@@ -331,15 +331,6 @@ namespace VF.Tests {
                 "SPS/Socket/_public", "SPS/Socket/_nothips"
             }));
             Assert.That(configurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender), Is.EquivalentTo(expected));
-            var properties = result.screenMarkerResults.Single().materialProperties;
-            var atlasTags = Enumerable.Range(1, 8).Select(i => {
-                var low = properties.Single(p => p.propertyName == $"material._SPS_SocketTag{i}Low").value;
-                var high = properties.Single(p => p.propertyName == $"material._SPS_SocketTag{i}High").value;
-                return (uint)low | ((uint)high << 16);
-            }).ToArray();
-            Assert.That(atlasTags.Take(expected.Length), Is.EquivalentTo(
-                expected.Select(tag => tag == SpsTags.PublicChannel ? SpsConfigurer.SharedChannelId : SpsConfigurer.HashChannel(tag))));
-            Assert.That(atlasTags.Skip(expected.Length), Is.All.EqualTo(0u));
             socket.tags[0] = "Changed Later";
             Assert.That(tags, Does.Contain("SPS/Socket/my channel"));
             Assert.That(tags, Does.Not.Contain("SPS/Socket/changed later"));
@@ -538,13 +529,6 @@ namespace VF.Tests {
             Assert.That(plugTags.Where(tag => tag.StartsWith("TPS_")), Is.EquivalentTo(new[] { SpsTags.PlugClose }));
             Assert.That(plugTags.Where(tag => tag.StartsWith("SPS/Plug/")),
                 Is.EquivalentTo(expectedChannels.Select(SpsTags.FormatPlug)));
-            var resolverValues = new Dictionary<string, float>();
-            typeof(SpsConfigurer).GetMethod("ConfigureResolverChannelRules",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
-                .Invoke(null, new object[] { new Action<string, float>((key, value) => resolverValues[key] = value), plug, false });
-            var resolverId = (uint)resolverValues["_SPS_TagInclude1Low"] | ((uint)resolverValues["_SPS_TagInclude1High"] << 16);
-            Assert.That(resolverId, Is.EqualTo(SpsConfigurer.HashChannel(expected)));
-
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             socket.useSharedTag = false;
@@ -558,10 +542,6 @@ namespace VF.Tests {
             Assert.That(socketTags.Where(tag => tag.StartsWith("TPS_") || tag.StartsWith("SPSLL_")), Is.Empty);
             Assert.That(socketTags.Where(tag => tag.StartsWith("SPS/Socket/")),
                 Is.EquivalentTo(expectedChannels.Select(SpsTags.FormatSocket)));
-            var properties = socketResult.screenMarkerResults.Single().materialProperties;
-            var socketId = (uint)properties.Single(prop => prop.propertyName == "material._SPS_SocketTag1Low").value
-                | ((uint)properties.Single(prop => prop.propertyName == "material._SPS_SocketTag1High").value << 16);
-            Assert.That(socketId, Is.EqualTo(resolverId));
         }
 
         [TestCase(false, false)]
@@ -689,8 +669,55 @@ namespace VF.Tests {
             Assert.That(legacy.radius, Is.Zero);
         }
 
-        [Test]
-        public void DeformingPlugKeepsItsResolverAndBakeWithReusedSender() {
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void EnableAnimationsReachPlugRendererAndBakeRoot(bool componentBinding, bool skinned) {
+            var avatar = root.AddComponent<VRCAvatarDescriptor>();
+            avatar.baseAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+            avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+            injector.Set("avatarObject", root.asVf());
+            injector.Set("componentObject", null);
+            injector.Set(typeof(VRCAvatarDescriptor), avatar);
+            injector.Set(typeof(GlobalsService), null);
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            var rendererObject = GameObjects.Create("Renderer", root);
+            Renderer renderer = skinned
+                ? (Renderer)rendererObject.AddComponent<SkinnedMeshRenderer>()
+                : rendererObject.AddComponent<MeshRenderer>();
+            var bakeRoot = GameObjects.Create("Baked", root);
+            var sourceCurve = AnimationCurve.Linear(0, 0, 1, 1);
+            var clip = VFClip.Create("SPS Enable Test");
+            clip.SetCurve(componentBinding ? (UnityEngine.Object)plug : renderer,
+                componentBinding ? "spsAnimatedEnabled" : "material._TPS_AnimatedToggle", sourceCurve);
+            injector.GetService<AllClipsService>().AddAdditionalManagedClip(clip);
+            var service = injector.GetService<BakeHapticPlugsService>();
+            var rewrites = (List<BakeHapticPlugsService.SpsRewriteToDo>)typeof(BakeHapticPlugsService)
+                .GetField("spsRewritesToDo", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .GetValue(service);
+            rewrites.Add(new BakeHapticPlugsService.SpsRewriteToDo {
+                plugObject = root,
+                skin = renderer,
+                bakeRoot = bakeRoot,
+                spsBlendshapes = Array.Empty<string>(),
+                configureMaterial = (_, material) => material
+            });
+            service.ApplySpsRewrites();
+            var curves = clip.GetFloatCurves();
+            var enabledCurve = curves.Single(pair => pair.Item1.Targets(rendererObject)
+                && pair.Item1.type == renderer.GetType() && pair.Item1.propertyName == "material._SPS_Enabled").Item2;
+            var activeCurve = curves.Single(pair => pair.Item1.Targets(bakeRoot)
+                && pair.Item1.propertyName == "m_IsActive").Item2;
+            foreach (var time in new[] { 0f, 0.5f, 1f }) {
+                Assert.That(enabledCurve.Evaluate(time), Is.EqualTo(sourceCurve.Evaluate(time)));
+                Assert.That(activeCurve.Evaluate(time), Is.EqualTo(sourceCurve.Evaluate(time)));
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void DeformingPlugKeepsItsBakeWithoutCreatingMarkers(bool withMaterial) {
             var mesh = new Mesh {
                 vertices = new[] {
                     new Vector3(-0.015f, 0, 0), new Vector3(0.015f, 0, 0),
@@ -700,34 +727,41 @@ namespace VF.Tests {
                 uv = new[] { Vector2.zero, Vector2.right, Vector2.up, Vector2.one }
             };
             mesh.RecalculateNormals();
+            Material originalMaterial = null;
             try {
                 root.AddComponent<MeshFilter>().sharedMesh = mesh;
                 var renderer = root.AddComponent<MeshRenderer>();
-                // No material: keep this lifecycle test independent of GPU-only color preview.
-                renderer.sharedMaterials = Array.Empty<Material>();
+                if (withMaterial) originalMaterial = new Material(Shader.Find("Unlit/Color"));
+                renderer.sharedMaterials = withMaterial ? new[] { originalMaterial } : Array.Empty<Material>();
                 var plug = root.AddComponent<VRCFuryHapticPlug>();
                 plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.spsAutorig = false;
                 plug.configureTpsMesh.Add(renderer);
                 plug.unitsInMeters = true;
                 plug.length = 0.4f;
                 plug.radius = 0.03f;
-                var result = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug, deferMaterialConfig: true);
-                Assert.That(result.resolverRenderer, Is.Not.Null);
-                Assert.That(result.resolverRenderer.sharedMaterials.Select(m => m.shader.name), Does.Contain(SpsMarkersService.DataGrabPassShaderName));
-                Assert.That(result.resolverMaterialProperties.Any(p => p.propertyName == "material._SPS_BakedLength"), Is.True);
-                Assert.That(renderer.sharedMaterials, Is.Empty);
+                var result = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug, deferMaterialConfig: !withMaterial);
+                Assert.That(root.GetComponentsInChildren<Renderer>(true), Is.EquivalentTo(new[] { renderer }));
+                Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Animator>(), Is.Empty);
+                if (!withMaterial) Assert.That(renderer.sharedMaterials, Is.Empty);
                 if (BuildTargetUtils.IsDesktop()) {
+                    if (withMaterial) {
+                        Assert.That(renderer.sharedMaterial, Is.Not.SameAs(originalMaterial));
+                        Assert.That(renderer.sharedMaterial.GetTexture("_SPS_Bake"), Is.Not.Null);
+                        Assert.That(renderer.sharedMaterial.GetFloat("_SPS_BakedLength"), Is.EqualTo(0.4f));
+                        Assert.That(renderer.sharedMaterial.HasProperty("_SPS_IdLow"), Is.False);
+                    }
                     var sender = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
                         .Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugSphere));
                     CheckVector(sender.transform.lossyScale, new Vector3(0.03f, 0.0021f, 0.4f));
                 }
             } finally {
+                if (originalMaterial != null) Object.DestroyImmediate(originalMaterial);
                 Object.DestroyImmediate(mesh);
             }
         }
 
         [Test]
-        public void LongPathsAdvertiseBoundedPrefixWithoutRemovingAtlasStops() {
+        public void LongPathsAdvertiseBoundedPrefixWithoutChangingAuthoredStops() {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             for (var i = 0; i < 7; i++) {
@@ -738,10 +772,11 @@ namespace VF.Tests {
             }
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             if (!BuildTargetUtils.IsDesktop()) return;
-            Assert.That(result.screenMarkerResults.Count, Is.EqualTo(8));
+            Assert.That(socket.guidedPathStops.All(stop => stop.transform != null), Is.True);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
             var contacts = NativeSocketSenders(result.bakeRoot);
-            Assert.That(contacts.Length, Is.EqualTo(HapticUtils.MaxPathNodes));
-            CheckNode(contacts.Last(), 1, 4, Flags.RingOneWay);
+            Assert.That(contacts.Length, Is.EqualTo(SpsTags.MaxUserPathStops + 1));
+            CheckNode(contacts.Last(), 1, SpsTags.MaxUserPathStops, Flags.RingOneWay);
         }
 
         [Test]
@@ -786,8 +821,6 @@ namespace VF.Tests {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.None;
             socket.fromSpsForAll = true;
-            // Automatic legacy upgrades do not create guided frames, even if stale stop data exists.
-            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop());
             var main = new GameObject("Existing DPS Root").AddComponent<Light>();
             main.transform.SetParent(root.transform, false);
             main.color = Color.black;
@@ -801,7 +834,7 @@ namespace VF.Tests {
             Assert.That(main == null || front == null, Is.False);
             Assert.That(main.range, Is.EqualTo(0.41f));
             Assert.That(front.range, Is.EqualTo(0.45f));
-            Assert.That(result.screenMarkerResults, Is.Empty);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
             if (!BuildTargetUtils.IsDesktop()) return;
             var native = NativeSocketSenders(result.bakeRoot).Single();
             CheckNode(native, 1, 0, Flags.Hole);
@@ -863,7 +896,7 @@ namespace VF.Tests {
             var channels = injector.GetService<SpsConfigurer>().GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender);
             if (isOnHips) channels.Remove("_nothips");
             service.ConfigureSpsSenders(socket, VRCFuryHapticSocket.AddLight.Hole,
-                channels, sender, Array.Empty<VFGameObject>());
+                channels, sender);
             return contact;
         }
 

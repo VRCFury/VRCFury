@@ -40,7 +40,6 @@ namespace VF.Builder.Haptics {
         }
 
         public const int GroupCount = 127;
-        public const int MaxPathNodes = 5; // Matches SPS2's SPS_CHAIN_MAX_SOCKETS, including the entrance.
         public const float ScaleVersion = 0.0021f;
 
         [Flags]

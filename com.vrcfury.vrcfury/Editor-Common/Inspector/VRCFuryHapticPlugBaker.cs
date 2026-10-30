@@ -16,7 +16,6 @@ using RendererResult = VF.Inspector.VRCFuryHapticPlugEditor.RendererResult;
 namespace VF.Inspector {
     [VFService]
     internal class VRCFuryHapticPlugBaker {
-        [VFAutowired] private readonly SpsMarkersService spsMarkers;
         [VFAutowired] private readonly SpsConfigurer spsConfigurer;
 
         [CanBeNull]
@@ -29,8 +28,6 @@ namespace VF.Inspector {
             if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.fromSpsForAll)) {
                 return null;
             }
-
-            var resolverHash = spsMarkers.NewMarkerId();
 
             var size = PlugSizeDetector.GetWorldSize(plug);
             var renderers = size.renderers;
@@ -115,8 +112,6 @@ namespace VF.Inspector {
             // or if there are 0 materials on any of the renderers
 
             RendererResult[] rendererResults;
-            MeshRenderer resolverRenderer = null;
-            List<SpsConfigurer.MaterialProperty> resolverMaterialProperties = null;
 
             if (plug.configureTps || plug.enableSps) {
                 var checkboxName = plug.enableSps ? "Enable Deformation" : "Auto-Configure TPS";
@@ -159,7 +154,7 @@ namespace VF.Inspector {
                                     finishedCopies.Add(copy);
                                     SpsConfigurer.ConfigureSpsMaterial(renderer, copy, worldLength,
                                         spsBaked,
-                                        plug, localSpace, spsBlendshapes, resolverHash);
+                                        plug, localSpace, spsBlendshapes);
                                     return copy;
                                 }
                                 if (plug.configureTps && TpsConfigurer.IsTps(mat)) {
@@ -200,34 +195,6 @@ namespace VF.Inspector {
                 }
             }
 
-            if (plug.enableSps) {
-                var bakedRadiusSamples = SpsBaker.GetPackedResolverRadiusSamples(
-                    rendererResults.Select(r => new SpsBaker.RendererBakeInput {
-                        renderer = r.renderer,
-                        activeFromMask = r.activeFromMask
-                    }),
-                    localSpace,
-                    worldLength
-                );
-                var metadataColor = SpsColorSampler.GetColor(rendererResults.Select(r => r.renderer));
-                var resolverObj = GameObjects.Create("SpsResolver", oneSpace);
-                resolverObj.AddComponent<MeshFilter>();
-                var meshRenderer = resolverObj.AddComponent<MeshRenderer>();
-                spsMarkers.ConfigureResolverRenderer(meshRenderer);
-                resolverMaterialProperties = spsConfigurer.GetResolverProperties(
-                    meshRenderer,
-                    worldLength,
-                    worldRadius,
-                    bakedRadiusSamples,
-                    metadataColor,
-                    resolverHash,
-                    plug
-                );
-                resolverObj.AddComponent<VRCFuryHideGizmoUnlessSelected>();
-                resolverObj.AddComponent<VRCFurySpsGreenScreenFix>();
-                resolverRenderer = meshRenderer;
-            }
-
             var oscId = VRCFuryHapticPlugEditor.GetOscId(plug);
 
             return new BakeResult {
@@ -235,10 +202,8 @@ namespace VF.Inspector {
                 oneSpace = oneSpace,
                 worldSpace = worldSpace,
                 renderers = rendererResults,
-                resolverRenderer = resolverRenderer,
                 worldLength = worldLength,
                 worldRadius = worldRadius,
-                resolverMaterialProperties = resolverMaterialProperties,
                 oscId = oscId,
             };
         }

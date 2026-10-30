@@ -3,7 +3,7 @@ void sps_apply(inout SpsInputs o){}
 #else
 
 #include "sps_deform_globals.cginc"
-#include "../resolver/sps_resolver_payload.cginc"
+#include "sps_deform_path.cginc"
 #include "../common/sps_utils.cginc"
 #include "sps_deform_bake.cginc"
 #include "sps_deform_control_points.cginc"
@@ -19,6 +19,7 @@ void sps_apply_real(
 	inout SPS_STRUCT_TANGENT_TYPE tangent,
 	uint vertexId
 ) {
+	if (!sps_to_bool(_SPS_Enabled)) return;
 	const float3 origVertex = vertex.xyz;
 	const float3 origNormal = normal.xyz;
 	const float3 origTangent = tangent.xyz;
@@ -30,23 +31,10 @@ void sps_apply_real(
 
 	if (active == 0) return;
 
-	uint resolverId = sps_id();
-	uint resolverPlayerId = sps_player_id();
-
-	int resolverSlotIndex;
-	SpsTexture resolverTex = SPS_GET_TEX(_VFGridFinal);
-	bool hasResolvedPath = sps_try_find_cell(
-		resolverTex,
-		sps_hash_id(resolverId, resolverPlayerId),
-		resolverId,
-		resolverPlayerId,
-		SPS_PRODUCT_PLUG,
-		resolverSlotIndex
-	);
-	if (!hasResolvedPath) return;
-	SpsCell resolvedCell = sps_get_cell(resolverTex, resolverSlotIndex);
-	float worldLength = resolvedCell.read_float(sps_cell_pixel_index_from_payload_index(SPS_RESOLVER_METADATA_LENGTH_INDEX));
-	float bakeScale = sps_cell_header_scale(resolvedCell);
+	SpsDeformPath path;
+	if (!sps_try_get_path(path)) return;
+	float worldLength = path.worldLength;
+	float bakeScale = path.bakeScale;
 	bakedVertex *= bakeScale;
 	bakedNormal *= bakeScale;
 	bakedTangent *= bakeScale;
@@ -56,15 +44,15 @@ void sps_apply_real(
 			#error SPS_MODIFY_BAKE requires a vertex function with a struct input
 		#endif
 
-		float3 bakedWorldOrigin = sps_cell_header_world(resolvedCell);
-		float3 bakedWorldForward = sps_normalize(sps_cell_header_forward(resolvedCell));
-		float3 bakedWorldUp = sps_nearest_normal(bakedWorldForward, sps_cell_header_up(resolvedCell));
+		float3 bakedWorldOrigin = path.nodes[0].world;
+		float3 bakedWorldForward = sps_normalize(path.nodes[0].forward);
+		float3 bakedWorldUp = sps_nearest_normal(bakedWorldForward, path.nodes[0].up);
 		float3 bakedWorldRight = sps_normalize(cross(bakedWorldUp, bakedWorldForward));
 
 		float socketDist = 0;
-		float3 stop1Forward = sps_read_resolver_chain_forward(resolvedCell, 1);
+		float3 stop1Forward = path.nodes[1].forward;
 		if (!sps_is_zero(stop1Forward)) {
-			float3 stop1Pos = sps_read_resolver_chain_world(resolvedCell, 1);
+			float3 stop1Pos = path.nodes[1].world;
 			socketDist = length(stop1Pos - bakedWorldOrigin);
 		}
 
@@ -95,7 +83,7 @@ void sps_apply_real(
 			,stop1Forward
 #endif
 #ifdef SPS_MODIFY_BAKE_INCLUDE_SOCKET_UP
-			,sps_read_resolver_chain_up(resolvedCell, 1)
+			,path.nodes[1].up
 #endif
 		);
 
@@ -136,7 +124,7 @@ void sps_apply_real(
 	float3 sampledWorldUp;
 	float pathDistance = max(bakedVertex.z, 0);
 	sps_deform_walk_chain(
-		resolvedCell,
+		path,
 		worldLength,
 		pathDistance,
 		firstSegmentLerp,

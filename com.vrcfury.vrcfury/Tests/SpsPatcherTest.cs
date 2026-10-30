@@ -969,8 +969,11 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/PreprocessorBraces"" {
         Assert.That(output, Does.Contain("PATCHED"));
     }
 
-    [Test]
-    public void PatchesBuiltInSubShaderWithoutPatchingUrpSubShader() {
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public void PatchesBuiltInSubShaderWithoutPatchingUrpSubShader(bool keepImports, bool hasBlendshapes) {
         var source = @"
 Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
     Properties {}
@@ -1014,10 +1017,14 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
             var shader = AssetDatabase.LoadAssetAtPath<Shader>(sourcePath);
             material = new Material(shader);
 
-            SpsPatcher.Patch(material, keepImports: false, hasBlendshapes: false);
+            SpsPatcher.Patch(material, keepImports: keepImports, hasBlendshapes: hasBlendshapes);
 
             patchedPath = AssetDatabase.GetAssetPath(material.shader);
             Assert.That(patchedPath, Does.Contain("SPS/"));
+            var patchedSource = File.ReadAllText(patchedPath);
+            Assert.That(patchedSource, Does.Not.Contain("_VFGrid"));
+            Assert.That(patchedSource, Does.Not.Contain("GrabPass"));
+            Assert.That(patchedSource, Does.Not.Contain("_SPS_PlayerId"));
         } finally {
             if (material != null) UnityEngine.Object.DestroyImmediate(material);
             AssetDatabase.DeleteAsset(sourcePath);

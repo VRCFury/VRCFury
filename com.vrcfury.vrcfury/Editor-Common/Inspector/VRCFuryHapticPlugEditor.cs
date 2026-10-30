@@ -18,7 +18,6 @@ using VF.Utils;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
     internal class VRCFuryHapticPlugEditor : VRCFuryComponentEditor<VRCFuryHapticPlug> {
-        internal const int SpsChannelRuleCount = 2;
         public const string SpsParamDepth = "Depth";
         public const string SpsParamVelocity = "Velocity";
         public const string SpsParamPlugLength = "Plug Length";
@@ -136,7 +135,7 @@ namespace VF.Inspector {
         }
 
         private static SerializedProperty AddSpsChannelRule(SerializedProperty listProp) {
-            if (listProp.arraySize >= SpsChannelRuleCount) return null;
+            if (listProp.arraySize >= SpsTags.MaxUserChannels) return null;
             var index = listProp.arraySize;
             listProp.InsertArrayElementAtIndex(index);
             var item = listProp.GetArrayElementAtIndex(index);
@@ -166,10 +165,10 @@ namespace VF.Inspector {
         private static VisualElement SpsChannelRuleList(SerializedProperty listProp, string labelPrefix) {
             return VRCFuryEditorUtils.RefreshOnChange(() => {
                 var container = new VisualElement();
-                for (var i = 0; i < Math.Min(listProp.arraySize, SpsChannelRuleCount); i++) {
+                for (var i = 0; i < Math.Min(listProp.arraySize, SpsTags.MaxUserChannels); i++) {
                     container.Add(SpsChannelRuleProp(listProp, i, $"{labelPrefix} #{i + 1}"));
                 }
-                if (listProp.arraySize < SpsChannelRuleCount) {
+                if (listProp.arraySize < SpsTags.MaxUserChannels) {
                     container.Add(new Button(() => AddSpsChannelRule(listProp)) {
                         text = $"Add {labelPrefix}"
                     });
@@ -534,7 +533,6 @@ namespace VF.Inspector {
         private class GizmoCache {
             public double time = 0;
             public PlugSizeDetector.SizeResult size;
-            public float[] radiusSamples;
             public string error;
             public Vector3 position;
             public Quaternion rotation;
@@ -554,23 +552,9 @@ namespace VF.Inspector {
                 cache.position = transform.worldPosition;
                 cache.rotation = transform.worldRotation;
                 cache.size = null;
-                cache.radiusSamples = null;
                 cache.error = null;
                 try {
                     cache.size = PlugSizeDetector.GetWorldSize(plug);
-                    if (cache.size != null) {
-                        var worldPosition = transform.TransformPoint(cache.size.localPosition);
-                        var worldRotation = transform.worldRotation * cache.size.localRotation;
-                        cache.radiusSamples = SpsBaker.GetResolverRadiusSamples(
-                            cache.size.renderers.Select(renderer => new SpsBaker.RendererBakeInput {
-                                renderer = renderer,
-                                activeFromMask = PlugMaskGenerator.GetMask(renderer, plug)
-                            }),
-                            worldPosition,
-                            worldRotation,
-                            cache.size.worldLength
-                        );
-                    }
                 } catch (Exception e) {
                     cache.error = e.Message;
                 }
@@ -602,14 +586,6 @@ namespace VF.Inspector {
 
             var worldEnd = worldRoot + worldForward * worldLength;
             VRCFuryGizmoUtils.DrawCappedCylinder(worldRoot, worldEnd, worldRadius, color);
-            if (isSelected && size != null && cache.radiusSamples != null) {
-                var sampleCount = cache.radiusSamples.Length;
-                for (var i = 0; i < sampleCount; i++) {
-                    var distance = worldLength * ((i + 0.5f) / sampleCount);
-                    var sampleWorld = worldRoot + worldForward * distance;
-                    VRCFuryGizmoUtils.DrawDisc(sampleWorld, worldForward, cache.radiusSamples[i], new Color(0.5f,0.5f,0.5f,0.4f));
-                }
-            }
 
             if (isSelected) {
                 VRCFuryGizmoUtils.DrawText(
@@ -644,10 +620,8 @@ namespace VF.Inspector {
             public VFGameObject oneSpace;
             public VFGameObject worldSpace;
             public ICollection<RendererResult> renderers;
-            public MeshRenderer resolverRenderer;
             public float worldLength;
             public float worldRadius;
-            public List<SpsConfigurer.MaterialProperty> resolverMaterialProperties;
             public string oscId;
         }
 

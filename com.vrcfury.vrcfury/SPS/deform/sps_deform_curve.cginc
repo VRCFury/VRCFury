@@ -1,43 +1,15 @@
 #ifndef SPS_INC_DEFORM_CURVE
 #define SPS_INC_DEFORM_CURVE
 
-#include "../resolver/sps_resolver_payload.cginc"
-#include "../common/sps_cell_layout.cginc"
+#include "sps_deform_path.cginc"
 #include "../common/sps_types.cginc"
 #include "../common/sps_utils.cginc"
 #include "sps_deform_bezier.cginc"
 #include "sps_deform_control_points.cginc"
 #include "sps_deform_globals.cginc"
 
-inline void sps_deform_apply_portal_transfer(
-    float3 entryPoint,
-    float3 entryForwardInput,
-    float3 entryUpInput,
-    float3 exitPoint,
-    float3 exitForwardInput,
-    float3 exitUpInput,
-    float3 incomingUp,
-    out float3 sampleWorld,
-    out float3 sampleForward,
-    out float3 sampleUp
-) {
-    sampleWorld = exitPoint;
-    float3 normalizedExitForward = sps_normalize(exitForwardInput);
-    float3 normalizedEntryForward = sps_normalize(entryForwardInput);
-    sampleForward = sps_is_zero(exitForwardInput) ? normalizedEntryForward : normalizedExitForward;
-
-    float3 entryForward = sps_is_zero(entryForwardInput) ? sampleForward : normalizedEntryForward;
-    float3 entryUpBase = sps_nearest_normal(entryForward, entryUpInput);
-    float3 entryRightBase = sps_normalize(cross(entryUpBase, entryForward));
-    float3 incomingUpProjected = sps_nearest_normal(entryForward, incomingUp);
-    float entryRoll = atan2(dot(incomingUpProjected, entryRightBase), dot(incomingUpProjected, entryUpBase));
-
-    float3 exitUpBase = sps_nearest_normal(sampleForward, exitUpInput);
-    sampleUp = sps_nearest_normal(sampleForward, sps_rotate_around_axis(exitUpBase, sampleForward, -entryRoll));
-}
-
 inline void sps_deform_walk_chain(
-    SpsCell resolverCell,
+    SpsDeformPath path,
     float worldLength,
     float targetDistance,
     out float outFirstSegmentLerp,
@@ -51,11 +23,11 @@ inline void sps_deform_walk_chain(
     uint terminalFlags = 0u;
     outFirstSegmentLerp = 0;
     outRadiusMult = 1;
-    outPosition = sps_read_resolver_chain_world(resolverCell, 0);
-    outForward = sps_read_resolver_chain_forward(resolverCell, 0);
+    outPosition = path.nodes[0].world;
+    outForward = path.nodes[0].forward;
     if (sps_is_zero(outForward)) outForward = float3(0, 0, 1);
     outForward = sps_normalize(outForward);
-    outUp = sps_nearest_normal(outForward, sps_read_resolver_chain_up(resolverCell, 0));
+    outUp = sps_nearest_normal(outForward, path.nodes[0].up);
     float3 startPoint = outPosition;
     float3 startForward = outForward;
     float3 startUp = outUp;
@@ -65,33 +37,17 @@ inline void sps_deform_walk_chain(
 
     [loop]
     for (uint sampleIndex = 1; sampleIndex <= SPS_CHAIN_MAX_SOCKETS; sampleIndex++) {
-        float3 endPoint = sps_read_resolver_chain_world(resolverCell, sampleIndex);
-        float3 endForward = sps_read_resolver_chain_forward(resolverCell, sampleIndex);
+        float3 endPoint = path.nodes[sampleIndex].world;
+        float3 endForward = path.nodes[sampleIndex].forward;
         if (sps_is_zero(endForward)) break;
-        float3 endUp = sps_read_resolver_chain_up(resolverCell, sampleIndex);
-        uint socketFlags = sps_read_resolver_chain_flags(resolverCell, sampleIndex);
-        bool isGuidedSegment = sps_read_resolver_is_guide_target(resolverCell, sampleIndex);
-        float3 endTangentIn = sps_read_resolver_chain_tangent_in(resolverCell, sampleIndex);
-        float3 endTangentOut = sps_read_resolver_chain_tangent_out(resolverCell, sampleIndex);
+        float3 endUp = path.nodes[sampleIndex].up;
+        uint socketFlags = path.nodes[sampleIndex].flags;
+        bool isGuidedSegment = path.nodes[sampleIndex].guided;
+        float3 endTangentIn = path.nodes[sampleIndex].tangentIn;
+        float3 endTangentOut = path.nodes[sampleIndex].tangentOut;
         float segmentPulloutLerp;
 
         terminalFlags = socketFlags;
-        // bool isPortal = sps_has_flag(previousFlags, SPS_SOCKET_FLAG_PORTAL);
-        // if (isPortal) {
-        //     sps_deform_apply_portal_transfer(
-        //         startPoint, startForward, startUp,
-        //         endPoint, endForward, endUp,
-        //         currentUp,
-        //         outPosition, outForward, outUp
-        //     );
-        //     currentUp = outUp;
-        //     previousFlags = socketFlags;
-        //     startPoint = endPoint;
-        //     startForward = endForward;
-        //     startUp = endUp;
-        //     continue;
-        // }
-
         float3 p0;
         float3 p1;
         float3 p2;

@@ -11,14 +11,11 @@ using VF.Utils;
 using VRC.SDK3.Dynamics.Contact.Components;
 using static VF.Inspector.VRCFuryHapticSocketEditor;
 using BakeResult = VF.Inspector.VRCFuryHapticSocketEditor.BakeResult;
-using ScreenMarkerResult = VF.Inspector.VRCFuryHapticSocketEditor.ScreenMarkerResult;
 
 namespace VF.Inspector {
     [VFService]
     internal class VRCFuryHapticSocketBaker {
-        [VFAutowired] private readonly SpsMarkersService spsMarkers;
         [VFAutowired] [CanBeNull] private readonly SpsAutoChannelGenerator autoChannelGenerator;
-        [VFAutowired] private readonly SpsSocketMarkerService socketMarkers;
         [VFAutowired] private readonly SpsConfigurer spsConfigurer;
         private int nextGroupId = 1;
 
@@ -37,7 +34,6 @@ namespace VF.Inspector {
             bakeRoot.localPosition = localPosition;
             bakeRoot.localRotation = localRotation;
 
-            var socketScale = bakeRoot.worldScale.x;
             var oneSpace = GameObjects.Create("OneSpace", bakeRoot);
             oneSpace.worldScale = Vector3.one;
 
@@ -66,8 +62,6 @@ namespace VF.Inspector {
             }
 
             VFGameObject lights = null;
-            var screenMarkers = new List<VFGameObject>();
-            var screenMarkerResults = new List<ScreenMarkerResult>();
             if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
                 ForEachPossibleLight(transform, false, light => {
                     light.Destroy();
@@ -89,60 +83,6 @@ namespace VF.Inspector {
                                 + stopObj.GetDebugPath());
                         }
                     }
-                    var guidedPath = guidedPathStops
-                        .Select(stop => stop.transform.asVf())
-                        .ToList();
-                    var hasGuidedPath = guidedPath.Count > 0;
-
-                    void AddScreenMarker(ScreenMarkerResult result) {
-                        if (result == null) return;
-                        screenMarkerResults.Add(result);
-                        screenMarkers.Add(result.obj);
-                    }
-
-                    void ConstrainToStop(VFGameObject obj, VFGameObject target) {
-                        obj.worldPosition = target.worldPosition;
-                        obj.worldRotation = target.worldRotation;
-                        obj.worldScale = target.worldScale;
-                        var scaleConstraint = VFConstraint.CreateScale(obj);
-                        scaleConstraint.AddSource(target, 1);
-                        var parentConstraint = VFConstraint.CreateParent(obj);
-                        parentConstraint.AddSource(target, 1);
-                    }
-
-                    ScreenMarkerResult CreateGuidedPathScreenMarker(
-                        int stopIndex,
-                        VFGameObject target,
-                        VRCFuryHapticSocket.AddLight markerType,
-                        uint socketId,
-                        bool useTangentIn,
-                        Vector3 tangentIn,
-                        bool useTangentOut,
-                        Vector3 tangentOut,
-                        uint nextSocketId
-                    ) {
-                        var markerTransform = GameObjects.Create($"Stop #{stopIndex + 1}", bakeRoot);
-                        ConstrainToStop(markerTransform, target);
-                        var markerScale = markerTransform.worldScale.x;
-                        var markerOneSpace = GameObjects.Create("OneSpace", markerTransform);
-                        markerOneSpace.worldScale = Vector3.one;
-                        return socketMarkers.Create(
-                            markerOneSpace,
-                            socket,
-                            markerScale,
-                            markerType,
-                            socketId,
-                            false,
-                            useTangentIn,
-                            tangentIn,
-                            useTangentOut,
-                            tangentOut,
-                            nextSocketId,
-                            includeChannels: false,
-                            objectName: "SPS Socket Path"
-                        );
-                    }
-
                     if (socket.useLights) {
                         Vector3 legacyOffset;
                         if (socket.overrideLegacyOffset) {
@@ -183,68 +123,10 @@ namespace VF.Inspector {
                         frontLight.renderMode = LightRenderMode.ForceVertex;
                     }
 
-                    if (hasGuidedPath) {
-                        var pathIds = guidedPath
-                            .Select(_ => spsMarkers.NewMarkerId())
-                            .ToList();
-                        var firstStop = guidedPathStops[0];
-                        var rootMarker = socketMarkers.Create(
-                            oneSpace,
-                            socket,
-                            socketScale,
-                            firstStop.shrink ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay,
-                            spsMarkers.NewMarkerId(),
-                            socket.useRadiusOffset,
-                            false,
-                            Vector3.zero,
-                            firstStop.customizeTangentOut,
-                            firstStop.tangentOutLocal,
-                            pathIds[0]
-                        );
-                        AddScreenMarker(rootMarker);
-                        for (var i = 0; i < guidedPath.Count; i++) {
-                            var isLast = i == guidedPath.Count - 1;
-                            var nextStop = isLast ? null : guidedPathStops[i + 1];
-                            var pathType = isLast
-                                ? GetGuidedPathTerminalType(lightType)
-                                : nextStop.shrink
-                                    ? VRCFuryHapticSocket.AddLight.Hole
-                                    : VRCFuryHapticSocket.AddLight.RingOneWay;
-                            var nextSocketId = isLast ? 0 : pathIds[i + 1];
-                            var stop = guidedPathStops[i];
-
-                            AddScreenMarker(CreateGuidedPathScreenMarker(
-                                i,
-                                guidedPath[i],
-                                pathType,
-                                pathIds[i],
-                                stop.customizeTangentIn,
-                                stop.tangentInLocal,
-                                nextStop?.customizeTangentOut ?? false,
-                                nextStop == null
-                                    ? Vector3.zero
-                                    : nextStop.tangentOutLocal,
-                                nextSocketId
-                            ));
-                        }
-                    } else {
-                        AddScreenMarker(socketMarkers.Create(
-                            oneSpace,
-                            socket,
-                            socketScale,
-                            lightType,
-                            spsMarkers.NewMarkerId(),
-                            socket.useRadiusOffset,
-                            false,
-                            Vector3.zero,
-                            false,
-                            Vector3.zero
-                        ));
-                    }
                 }
             }
-            
-            ConfigureSpsSenders(socket, lightType, channels, rootSender, screenMarkers.Skip(1).ToArray());
+
+            ConfigureSpsSenders(socket, lightType, channels, rootSender);
 
             if (EditorApplication.isPlaying && !socket.fromSpsForAll) {
                 var gizmo = socket.owner().AddComponent<VRCFurySocketGizmo>();
@@ -255,8 +137,6 @@ namespace VF.Inspector {
                 bakeRoot = bakeRoot,
                 oneSpace = oneSpace,
                 worldSpace = worldSpace,
-                screenMarkers = screenMarkers,
-                screenMarkerResults = screenMarkerResults,
                 lights = lights,
                 senders = senders
             };
@@ -311,8 +191,7 @@ namespace VF.Inspector {
         }
 
         internal void ConfigureSpsSenders(VRCFuryHapticSocket socket,
-            VRCFuryHapticSocket.AddLight type, IReadOnlyCollection<string> channels, VFGameObject rootSender,
-            IReadOnlyList<VFGameObject> guideMarkers) {
+            VRCFuryHapticSocket.AddLight type, IReadOnlyCollection<string> channels, VFGameObject rootSender) {
             if (rootSender == null || type == VRCFuryHapticSocket.AddLight.None) return;
             if (channels.Count == 0) return;
             var rootTags = channels.Select(SpsTags.FormatSocket).ToArray();
@@ -322,8 +201,7 @@ namespace VF.Inspector {
             if (group > HapticUtils.GroupCount) throw new Exception($"SPS3 supports at most {HapticUtils.GroupCount} sockets per build.");
 
             var stops = socket.guidedPathStops;
-            // Advertise the same prefix SPS2 can render without rejecting longer existing paths.
-            var stopCount = Math.Min(guideMarkers.Count, HapticUtils.MaxPathNodes - 1);
+            var stopCount = Math.Min(stops.Count, SpsTags.MaxUserPathStops);
             var rootType = stopCount == 0 ? type : stops[0].shrink
                 ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay;
             AddNode(rootSender, rootType, 0);
@@ -357,7 +235,7 @@ namespace VF.Inspector {
                     flags |= HapticUtils.SocketScaleFlags.Twoway;
                 }
                 AddTags(sender, tags);
-                // WorldSpace keeps metadata scale independent of avatar/stop scaling and atlas marker animations.
+                // WorldSpace keeps metadata scale independent of avatar/stop scaling.
                 sender.worldScale = HapticUtils.EncodeSocketScale(group, pathIndex, flags);
                 sender.GetComponent<VRCContactSender>().radius = 0;
             }

@@ -53,7 +53,6 @@ namespace VF.Injector {
                 injector.GetService<SpsConfigurer>();
                 injector.GetService<VRCFuryHapticPlugBaker>();
                 injector.GetService<VRCFuryHapticSocketBaker>();
-                injector.GetService<SpsSocketMarkerService>();
             });
         }
 

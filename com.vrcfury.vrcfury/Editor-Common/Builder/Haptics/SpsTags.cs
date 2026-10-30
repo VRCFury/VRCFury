@@ -1,5 +1,8 @@
 namespace VF.Builder.Haptics {
     internal static class SpsTags {
+        public const int MaxUserChannels = 2;
+        public const int MaxUserPathStops = 4;
+
         public const string Prefix = "SPS/";
         public const string PublicChannel = "_public";
         public const string NotHipsChannel = "_nothips";

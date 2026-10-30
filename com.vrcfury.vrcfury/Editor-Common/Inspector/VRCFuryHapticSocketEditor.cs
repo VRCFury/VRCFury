@@ -14,10 +14,8 @@ using VF.Utils;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
     internal class VRCFuryHapticSocketEditor : VRCFuryComponentEditor<VRCFuryHapticSocket> {
-        internal const int SpsChannelCount = 2;
         internal const float GizmoRadiusOffset = 0.04f;
         internal const float LegacyRadiusOffset = 0.03f;
-        private const int GuidedPathCount = 3;
 
         private void OnSceneGUI() {
             if (!(target is VRCFuryHapticSocket socket)) return;
@@ -43,7 +41,7 @@ namespace VF.Inspector {
         }
 
         private static SerializedProperty AddSpsChannel(SerializedProperty listProp) {
-            if (listProp.arraySize >= SpsChannelCount) return null;
+            if (listProp.arraySize >= SpsTags.MaxUserChannels) return null;
             var index = listProp.arraySize;
             listProp.InsertArrayElementAtIndex(index);
             var item = listProp.GetArrayElementAtIndex(index);
@@ -55,7 +53,7 @@ namespace VF.Inspector {
         private static VisualElement SpsChannelList(SerializedProperty listProp) {
             return VRCFuryEditorUtils.RefreshOnChange(() => {
                 var container = new VisualElement();
-                for (var i = 0; i < Math.Min(listProp.arraySize, SpsChannelCount); i++) {
+                for (var i = 0; i < Math.Min(listProp.arraySize, SpsTags.MaxUserChannels); i++) {
                     var index = i;
                     var row = new VisualElement();
                     row.Add(VRCFuryHapticPlugEditor.SpsChannelProp(listProp.GetArrayElementAtIndex(index), $"Channel #{index + 1}"));
@@ -67,7 +65,7 @@ namespace VF.Inspector {
                     });
                     container.Add(row);
                 }
-                if (listProp.arraySize < SpsChannelCount) {
+                if (listProp.arraySize < SpsTags.MaxUserChannels) {
                     container.Add(new Button(() => AddSpsChannel(listProp)) {
                         text = "Add Channel"
                     });
@@ -77,13 +75,13 @@ namespace VF.Inspector {
         }
 
         private static SerializedProperty AddGuidedPath(SerializedProperty listProp) {
-            if (listProp.arraySize >= GuidedPathCount) return null;
+            if (listProp.arraySize >= SpsTags.MaxUserPathStops) return null;
             return VRCFuryEditorUtils.AddToList(listProp);
         }
 
         private static VisualElement GuidedPathList(SerializedProperty listProp) {
             var refreshProps = new List<SerializedProperty> { listProp };
-            for (var i = 0; i < Math.Min(listProp.arraySize, GuidedPathCount); i++) {
+            for (var i = 0; i < Math.Min(listProp.arraySize, SpsTags.MaxUserPathStops); i++) {
                 var item = listProp.GetArrayElementAtIndex(i);
                 refreshProps.Add(item.FindPropertyRelative("customizeTangentOut"));
                 refreshProps.Add(item.FindPropertyRelative("customizeTangentIn"));
@@ -96,7 +94,7 @@ namespace VF.Inspector {
                     return $"Stop {slot+1}";
                 }
 
-                for (var i = 0; i < Math.Min(listProp.arraySize, GuidedPathCount); i++) {
+                for (var i = 0; i < Math.Min(listProp.arraySize, SpsTags.MaxUserPathStops); i++) {
                     var index = i;
                     var row = new VisualElement();
                     var item = listProp.GetArrayElementAtIndex(index);
@@ -123,7 +121,7 @@ namespace VF.Inspector {
                     });
                     container.Add(row);
                 }
-                if (listProp.arraySize < GuidedPathCount) {
+                if (listProp.arraySize < SpsTags.MaxUserPathStops) {
                     container.Add(new Button(() => AddGuidedPath(listProp)) {
                         text = "Add Stop to Path"
                     });
@@ -452,16 +450,9 @@ namespace VF.Inspector {
             public VFGameObject bakeRoot;
             public VFGameObject oneSpace;
             public VFGameObject worldSpace;
-            public List<VFGameObject> screenMarkers;
-            public List<ScreenMarkerResult> screenMarkerResults;
             public VFGameObject lights;
             public VFGameObject senders;
         }
 
-        public class ScreenMarkerResult {
-            public VFGameObject obj;
-            public MeshRenderer renderer;
-            public List<SpsConfigurer.MaterialProperty> materialProperties;
-        }
     }
 }
