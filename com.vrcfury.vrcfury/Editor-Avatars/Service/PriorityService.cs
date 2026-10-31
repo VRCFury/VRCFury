@@ -11,6 +11,8 @@ namespace VF.Service {
     [VFService]
     internal class PriorityService {
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly FixWriteDefaultsService fixWriteDefaults;
+        private const int MaxMenuPriority = 1 << 29;
 
         private readonly Dictionary<VFLayer, int> layerPriorities = new Dictionary<VFLayer, int>();
 
@@ -29,9 +31,10 @@ namespace VF.Service {
         }
 
         public int GetMenuSortPosition(int priority) {
-            // We have to add a safe margin (split the int range in half) to avoid colliding with the "uniqueModelNum" sort positions used by the menu manager
-            if (priority < 0) return (int.MinValue / 2) + priority;
-            return (int.MaxValue / 2) + priority;
+            // Add safe margin (split the int range in half) to avoid colliding with the "uniqueModelNum" sort positions used by the menu manager
+            var clamped = Mathf.Clamp(priority, -MaxMenuPriority, MaxMenuPriority);
+            if (clamped < 0) return (int.MinValue / 2) + clamped;
+            return (int.MaxValue / 2) + clamped;
         }
 
         [FeatureBuilderAction(FeatureOrder.ReorderLayersByPriority)]
@@ -56,11 +59,20 @@ namespace VF.Service {
             if (!hasAnyPriority) return;
 
             // Create list with layer index and sort by priority (preserving original order for same priority)
-            var sortedLayers = layers
-                .Select((layer, index) => (layer, index, priority: GetLayerPriority(layer)))
-                .OrderBy(l => l.priority)
-                .ThenBy(l => l.index)
-                .Select(l => l.layer)
+            // The base layer and the vrcfury defaults layer always stay at the very top since VRChat and VRCFury rely on them being first
+            var pinnedCount = 1;
+            var defaultLayer = fixWriteDefaults.GetDefaultLayer();
+            while (defaultLayer != null && pinnedCount < layers.Count && layers[pinnedCount] == defaultLayer) {
+                pinnedCount++;
+            }
+
+            var sortedLayers = layers.Take(pinnedCount)
+                .Concat(layers
+                    .Select((layer, index) => (layer, index, priority: GetLayerPriority(layer)))
+                    .Skip(pinnedCount)
+                    .OrderBy(l => l.priority)
+                    .ThenBy(l => l.index)
+                    .Select(l => l.layer))
                 .ToList();
 
             // If layers are already in desired order return early
