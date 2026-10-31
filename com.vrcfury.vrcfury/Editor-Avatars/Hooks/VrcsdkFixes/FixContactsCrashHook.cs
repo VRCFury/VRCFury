@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_CONTACTS_RACE
 using System;
 using System.Reflection;
 using UnityEditor;
@@ -46,4 +47,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
-
+#endif

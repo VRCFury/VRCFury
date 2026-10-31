@@ -22,7 +22,8 @@ namespace VF.Component {
 
         public enum LegacySocketType {
             Hole,
-            Ring
+            Ring,
+            RingOneWay
         }
 
         public AddLight addLight = AddLight.Auto;

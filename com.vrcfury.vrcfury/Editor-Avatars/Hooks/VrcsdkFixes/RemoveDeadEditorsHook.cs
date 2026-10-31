@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_ANIMATOR_PLAY_AUDIO_DEAD_EDITORS
 using UnityEditor;
 using VF.Utils;
 
@@ -31,3 +32,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

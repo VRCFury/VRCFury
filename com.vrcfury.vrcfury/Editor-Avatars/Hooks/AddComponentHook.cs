@@ -81,6 +81,9 @@ namespace VF.Hooks {
                 foreach (var path in List("Component/Physics 2D")) {
                     Remove(path);
                 }
+                foreach (var path in List("Component").Where(path => path.EndsWith("/Signal Receiver", StringComparison.Ordinal))) {
+                    Remove(path);
+                }
             }
 
             if (UpdateMenuItem.ShouldShow()) {

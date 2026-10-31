@@ -244,7 +244,55 @@ namespace VF.Feature {
                 }
             }
 
+#if VRCSDK_HAS_FACE_TRACKING
+            foreach (var blendshape in GetFaceTrackingBlendshapeNames(skin)) {
+                animatedBlendshapes.Add(blendshape);
+            }
+#endif
+
             return animatedBlendshapes;
         }
+
+#if VRCSDK_HAS_FACE_TRACKING
+        private IEnumerable<string> GetFaceTrackingBlendshapeNames(SkinnedMeshRenderer skin) {
+            if (!avatar.enableFaceTracking
+                || avatar.faceTrackingMeshes == null
+                || !avatar.faceTrackingMeshes.Contains(skin)) yield break;
+
+            foreach (var set in (avatar.faceTrackingBlendshapesSetList
+                                 ?? Enumerable.Empty<VRCAvatarDescriptor.FaceTrackingBlendshapesSet>())
+                         .Where(set => set != null)) {
+                foreach (var blendshape in GetFaceTrackingBlendshapeNames(
+                             set.faceTrackingBlendshapeNames
+                         )) {
+                    yield return blendshape;
+                }
+                foreach (var blendshape in GetFaceTrackingBlendshapeNames(
+                             set.visemeBlendshapeNames
+                         )) {
+                    yield return blendshape;
+                }
+            }
+
+            foreach (var behavior in (avatar.faceTrackingParameterBehaviors
+                                      ?? Enumerable.Empty<VRCAvatarDescriptor.FaceTrackingParameterBehavior>())
+                         .Where(behavior => behavior != null)) {
+                if (behavior.targetMode != VRCAvatarDescriptor.ParameterBehaviorTargetMode.ApplyToBlendshape
+                    && behavior.targetMode != VRCAvatarDescriptor.ParameterBehaviorTargetMode.LimitBlendshapeMax
+                    && behavior.targetMode != VRCAvatarDescriptor.ParameterBehaviorTargetMode.LimitBlendshapeMin) continue;
+                if (!string.IsNullOrEmpty(behavior.targetBlendshapeName)) yield return behavior.targetBlendshapeName;
+            }
+        }
+
+        private static IEnumerable<string> GetFaceTrackingBlendshapeNames(
+            string[] blendshapeNames
+        ) {
+            if (blendshapeNames == null) yield break;
+
+            for (var i = 0; i < blendshapeNames.Length; i++) {
+                if (!string.IsNullOrEmpty(blendshapeNames[i])) yield return blendshapeNames[i];
+            }
+        }
+#endif
     }
 }

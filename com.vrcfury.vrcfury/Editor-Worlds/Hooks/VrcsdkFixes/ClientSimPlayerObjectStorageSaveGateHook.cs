@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_CLIENTSIM_PERSISTENCE_RACE
 using System;
 using System.Linq;
 using System.Reflection;
@@ -68,3 +69,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_UDONSHARP_SERIALIZATION_NRE
 using UdonSharp;
 using UnityEditor;
 using UnityEngine;
@@ -42,3 +43,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

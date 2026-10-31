@@ -215,6 +215,20 @@ namespace VF.Utils {
             return Object.Instantiate(gameObject);
         }
 
+        public VFGameObject CloneDisabled() {
+            var inactiveParent = new GameObject("VRCFury Inactive Clone Parent");
+            inactiveParent.SetActive(false);
+            try {
+                SceneManager.MoveGameObjectToScene(inactiveParent, scene);
+                VFGameObject clone = Object.Instantiate(gameObject, inactiveParent.transform, true);
+                clone.active = false;
+                clone.SetParent(null, true);
+                return clone;
+            } finally {
+                Object.DestroyImmediate(inactiveParent);
+            }
+        }
+
         public static VFGameObject[] GetRoots() {
             return Enumerable.Range(0, SceneManager.sceneCount)
                 .Select(SceneManager.GetSceneAt)
@@ -249,13 +263,10 @@ namespace VF.Utils {
             if (string.IsNullOrEmpty(name)) name = "_";
 
             if (parent != null) {
-                for (var i = 0; ; i++) {
-                    var finalName = name + (i == 0 ? "" : $" ({i})");
+                name = name.MakeUnique(finalName => {
                     var exists = parent.Find(finalName);
-                    if (exists != null && exists != this) continue; // Already used by something else
-                    name = finalName;
-                    break;
-                }
+                    return exists != null && exists != this;
+                });
             }
 
             this.name = name;

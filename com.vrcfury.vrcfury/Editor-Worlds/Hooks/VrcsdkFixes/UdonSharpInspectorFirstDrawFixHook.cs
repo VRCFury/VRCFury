@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_UDONSHARP_INSPECTOR_FIRST_DRAW
 using System.Collections.Generic;
 using UdonSharp;
 using UdonSharpEditor;
@@ -70,3 +71,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

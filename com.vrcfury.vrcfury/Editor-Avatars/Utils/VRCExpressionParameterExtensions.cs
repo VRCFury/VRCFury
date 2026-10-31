@@ -33,14 +33,39 @@ namespace VF.Utils {
         
         public static bool IsSameAs(this VRCExpressionParameters.Parameter param, VRCExpressionParameters.Parameter other) {
             return param.name == other.name
-                   && param.valueType == other.valueType
+                   && param.HasSameNetworkEncoding(other)
                    && param.saved == other.saved
                    && param.defaultValue == other.defaultValue
                    && param.IsNetworkSynced() == other.IsNetworkSynced();
         }
 
+        public static bool HasSameNetworkEncoding(this VRCExpressionParameters.Parameter param, VRCExpressionParameters.Parameter other) {
+            return param.valueType == other.valueType
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+                   && param.TypeCost() == other.TypeCost()
+                   && (param.valueType == VRCExpressionParameters.ValueType.Bool
+                       || param.flippedRepresentation == other.flippedRepresentation)
+#endif
+                ;
+        }
+
+        public static bool HasStandardNetworkEncoding(this VRCExpressionParameters.Parameter param) {
+            if (param.valueType == VRCExpressionParameters.ValueType.Bool) return true;
+            if (param.valueType != VRCExpressionParameters.ValueType.Int
+                && param.valueType != VRCExpressionParameters.ValueType.Float) return false;
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+            return param.TypeCost() == 8 && !param.flippedRepresentation;
+#else
+            return true;
+#endif
+        }
+
         public static int TypeCost(this VRCExpressionParameters.Parameter param) {
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+            return param.GetBitWidthByType();
+#else
             return VRCExpressionParameters.TypeCost(param.valueType);
+#endif
         }
     }
 }

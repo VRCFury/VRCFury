@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_DOMAIN_RELOAD_ASSET_SAVING
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -38,3 +39,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

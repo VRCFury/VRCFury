@@ -23,14 +23,14 @@ namespace com.vrcfury.api.Components {
         }
 
         public void LinkTo(HumanBodyBones bone, string offset = "") {
-            c.linkTo.Add(new ArmatureLink.LinkTo() {
+            c.linkTo.Add(new ObjectReference() {
                 bone = bone,
                 offset = offset
             });
         }
         
         public void LinkTo(GameObject obj, string offset = "") {
-            c.linkTo.Add(new ArmatureLink.LinkTo() {
+            c.linkTo.Add(new ObjectReference() {
                 useBone = false,
                 useObj = true,
                 obj = obj,
@@ -39,7 +39,7 @@ namespace com.vrcfury.api.Components {
         }
         
         public void LinkTo(string path) {
-            c.linkTo.Add(new ArmatureLink.LinkTo() {
+            c.linkTo.Add(new ObjectReference() {
                 useBone = false,
                 useObj = false,
                 offset = path

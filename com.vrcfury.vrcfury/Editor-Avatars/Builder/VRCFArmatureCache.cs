@@ -109,6 +109,11 @@ namespace VF.Builder {
                     path);
             }
             if (!snapshots.Any(snapshot => snapshot.bonePaths.ContainsKey(HumanBodyBones.Hips))) {
+                var animator = avatarObject == null ? null : avatarObject.GetComponent<Animator>();
+                if (animator == null)
+                    throw new Exception($"{findBone} bone could not be found because the avatar's Animator is missing");
+                if (animator.avatar == null)
+                    throw new Exception($"{findBone} bone could not be found because the Animator doesn't have an Avatar set");
                 throw new Exception($"{findBone} bone could not be found because avatar's rig is not set to humanoid");
             }
             throw new VRCFBuilderException($"{findBone} bone isn't set in this avatar's rig");

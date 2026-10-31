@@ -6,6 +6,7 @@ using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
+using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
@@ -29,8 +30,8 @@ namespace VF.Feature {
 
             globals.addOtherFeature(new ArmatureLink {
                 propBone = obj,
-                linkTo = new List<ArmatureLink.LinkTo> {
-                    new ArmatureLink.LinkTo {
+                linkTo = new List<ObjectReference> {
+                    new ObjectReference {
 #if VRCSDK_HAS_HEAD_CHOP
                         obj = head,
 #else

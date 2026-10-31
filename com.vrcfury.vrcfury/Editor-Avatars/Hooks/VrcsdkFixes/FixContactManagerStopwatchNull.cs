@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_CONTACT_MANAGER_STOPWATCH
 using System;
 using System.Diagnostics;
 using System.Reflection;
@@ -37,4 +38,5 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif
 

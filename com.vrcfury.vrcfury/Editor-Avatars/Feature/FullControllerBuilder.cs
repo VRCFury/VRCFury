@@ -23,12 +23,16 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Dynamics.Contact.Components;
 using VRC.SDK3.Dynamics.PhysBone.Components;
+#if VRCSDK_HAS_FACE_TRACKING
+using VRC.SDKBase;
+#endif
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
 
     [FeatureTitle("Full Controller")]
     internal class FullControllerBuilder : FeatureBuilder<FullController> {
+        private const string InhibitHandControlsParam = "_VRCF_InhibitHandControls";
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
@@ -43,16 +47,30 @@ namespace VF.Feature {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
+        [VFAutowired] private readonly HandGestureDisablingService handGestureDisablingService;
+
+#if VRCSDK_HAS_FACE_TRACKING
+        [VFAutowired] private readonly FaceTrackingService faceTracking;
+        [VFAutowired] private readonly VRCFArmatureCache armatureCache;
+#endif
 
         [FeatureBuilderAction(FeatureOrder.FullController)]
         public void Apply() {
             var missingAssets = new List<GuidWrapper>();
+            var hasInhibitHandControlsParam = false;
+            var inhibitHandControlsDefault = 0f;
 
             foreach (var p in model.prms) {
                 var prms = p.parameters.Get();
                 if (prms == null) {
                     missingAssets.Add(p.parameters);
                     continue;
+                }
+                var inhibitHandControlsParam = prms.parameters
+                    .FirstOrDefault(param => param.name == InhibitHandControlsParam);
+                if (inhibitHandControlsParam != null) {
+                    hasInhibitHandControlsParam = true;
+                    inhibitHandControlsDefault = inhibitHandControlsParam.defaultValue;
                 }
                 var copy = prms.Clone();
                 copy.RewriteParameters(RewriteParamName);
@@ -94,11 +112,24 @@ namespace VF.Feature {
                 }
             }
 
+#if VRCSDK_HAS_FACE_TRACKING
+            var faceTrackingSetNames = RegisterFaceTrackingSets();
+            foreach (var from in fromControllers)
+                RewriteFaceTrackingSetNames(from, faceTrackingSetNames);
+#endif
+
             // Record the offsets so we can fix them later
             animatorLayerControlManager.RegisterControllerSet(fromControllers);
 
             foreach (var from in fromControllers) {
                 var to = controllers.GetController(from.vrcType);
+                var inhibitHandControlsParam = from.vrcType == VRCAvatarDescriptor.AnimLayerType.FX
+                    ? from.GetParam(InhibitHandControlsParam)
+                    : null;
+                if (inhibitHandControlsParam != null) {
+                    hasInhibitHandControlsParam = true;
+                    inhibitHandControlsDefault = inhibitHandControlsParam.defaultFloat;
+                }
 
                 // Fail if trying to merge a controller that is on the avatar descriptor
                 var toSource = to.GetSourceAsset();
@@ -118,6 +149,15 @@ namespace VF.Feature {
                 }
 
                 Merge(from, to);
+            }
+
+            if (hasInhibitHandControlsParam) {
+                var rewritten = RewriteParamName(InhibitHandControlsParam);
+                var fx = controllers.GetFx();
+                var fxParam = fx.GetParam(rewritten);
+                var defaultValue = fxParam?.defaultFloat ?? inhibitHandControlsDefault;
+                if (fxParam == null) fx.NewFloat(rewritten, def: defaultValue, usePrefix: false);
+                handGestureDisablingService.AddInhibitor(new VFAFloat(rewritten, defaultValue));
             }
 
             foreach (var m in model.menus) {
@@ -142,7 +182,7 @@ namespace VF.Feature {
             }
 
             foreach (var receiver in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                if (rewrittenParams.ContainsKey(receiver.parameter)) {
+                if (ContactReceiverUtils.GetParameterNames(receiver).Any(rewrittenParams.ContainsKey)) {
                     receiver.parameter = RewriteParamName(receiver.parameter);
                 }
             }
@@ -218,6 +258,52 @@ namespace VF.Feature {
             }
         }
 
+#if VRCSDK_HAS_FACE_TRACKING
+        private Dictionary<string, string> RegisterFaceTrackingSets() {
+            var rewrites = new Dictionary<string, string>();
+            var skins = (model.faceTrackingMeshes ?? new())
+                .Select(entry => {
+                    try {
+                        return entry.Resolve(avatar.gameObject, objectPaths, armatureCache);
+                    } catch (Exception e) {
+                        throw new VRCFBuilderException("Face Tracking mesh could not be resolved: " + e.Message);
+                    }
+                }).Distinct().ToArray();
+            faceTracking.RegisterFullControllerMeshes(skins);
+            foreach (var source in model.faceTrackingBlendshapeSets ?? new()) {
+                if (source == null) continue;
+                var sourceName = source.setName ?? "";
+                if (rewrites.ContainsKey(sourceName))
+                    throw new VRCFBuilderException($"Full Controller contains multiple Face Tracking blendshape sets named '{sourceName}'.");
+                var copy = UnitySerializationUtils.CloneSerializable(source);
+                copy.setName = $"VF{globals.currentFeatureNum}_{(string.IsNullOrEmpty(sourceName) ? "FaceTracking" : sourceName)}";
+                faceTracking.RegisterImportedSet(copy, skins);
+                rewrites[sourceName] = copy.setName;
+            }
+            foreach (var source in model.faceTrackingParameterBehaviors ?? new()) {
+                if (source == null) continue;
+                var copy = UnitySerializationUtils.CloneSerializable(source);
+                if (rewrites.TryGetValue(copy.targetBlendSetName ?? "", out var target)) copy.targetBlendSetName = target;
+                if (!string.IsNullOrEmpty(copy.weightBlendSetName)
+                    && rewrites.TryGetValue(copy.weightBlendSetName, out var weight)) copy.weightBlendSetName = weight;
+                if (copy.targetMode == VRCAvatarDescriptor.ParameterBehaviorTargetMode.ForwardToAnimator
+                    && !string.IsNullOrEmpty(copy.outputParameterName))
+                    copy.outputParameterName = RewriteParamName(copy.outputParameterName);
+                faceTracking.RegisterImportedBehavior(copy, skins);
+            }
+            return rewrites;
+        }
+
+        private static void RewriteFaceTrackingSetNames(VFController controller, IReadOnlyDictionary<string, string> rewrites) {
+            foreach (var behavior in controller.GetLayers().SelectMany(layer => layer.allBehaviours)) {
+                var raw = behavior.Read<VRC_AnimatorFaceTrackingBlendshapesSet>();
+                if (raw?.blendSets == null) continue;
+                raw.blendSets = FaceTrackingUtils.RewriteSetReferences(raw.blendSets,
+                    name => rewrites.TryGetValue(name, out var rewritten) ? new[] { rewritten } : null);
+            }
+        }
+#endif
+
         private void CheckMenuParams(VRCExpressionsMenu menu) {
             var failedParams = new List<string>();
             void CheckParam(string param, IList<string> path) {
@@ -277,6 +363,7 @@ namespace VF.Feature {
         private string RewriteParamNameUncached(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (VRChatGlobalParams.Contains(name)) return name;
+            if (name == InhibitHandControlsParam) return controllers.MakeUniqueParamName(name);
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
                     var prms = p.parameters.Get();
@@ -329,6 +416,8 @@ namespace VF.Feature {
             }
         }
 
+        private readonly HashSet<VFLayer> appendedLocomotionLayers = new HashSet<VFLayer>();
+
         private void Merge(VFController from, ControllerManager to) {
             var type = to.GetType();
 
@@ -370,13 +459,18 @@ namespace VF.Feature {
                 }
             }
 
-            // Rip out the base controller if it's locomotion
-            if (type == VRCAvatarDescriptor.AnimLayerType.Base || type == VRCAvatarDescriptor.AnimLayerType.TPose ||
-                type == VRCAvatarDescriptor.AnimLayerType.IKPose || type == VRCAvatarDescriptor.AnimLayerType.Sitting) {
+            var isLocomotion = type == VRCAvatarDescriptor.AnimLayerType.Base || type == VRCAvatarDescriptor.AnimLayerType.TPose
+                || type == VRCAvatarDescriptor.AnimLayerType.IKPose || type == VRCAvatarDescriptor.AnimLayerType.Sitting;
+            var overwriteLocomotion = isLocomotion && model.overwriteLocomotion;
+            // Replace descriptor locomotion, but retain layers explicitly added in append mode.
+            if (overwriteLocomotion) {
                 foreach (var layer in to.GetLayers()) {
                     var owner = to.GetLayerOwner(layer);
                     if (owner == LayerSourceService.AvatarDescriptorSource || owner == LayerSourceService.VrcDefaultSource) {
                         layer.Remove();
+                    } else if (globals.allBuildersInRun.OfType<FullControllerBuilder>()
+                                   .Any(builder => builder.appendedLocomotionLayers.Contains(layer))) {
+                        continue;
                     } else {
                         throw new VRCFBuilderException(
                             $"Your avatar contains multiple locomotion implementations ({VRCFEnumUtils.GetName(type)}).\n\n" +
@@ -393,7 +487,9 @@ namespace VF.Feature {
                 layerSourceService.SetSourceToCurrent(layer);
                 priorityService.SetLayerPriority(layer, model.priority);
             }
-            to.TakeOwnershipOf(from);
+            if (isLocomotion && !overwriteLocomotion)
+                appendedLocomotionLayers.UnionWith(myLayers);
+            to.TakeOwnershipOf(from, putOnTop: overwriteLocomotion);
 
             // Parameter smoothing
             if (type == VRCAvatarDescriptor.AnimLayerType.FX && model.smoothedPrms.Count > 0) {
@@ -610,15 +706,22 @@ namespace VF.Feature {
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will merge the given controller / menu / parameters into the avatar" +
                 " during the upload process."));
+            
+            var controllerSection = VRCFuryEditorUtils.Section("Controller").AddTo(content);
+            controllerSection.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers")));
+            
+            var menuSection = VRCFuryEditorUtils.Section("Menu").AddTo(content);
+            menuSection.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus")));
+            
+            var parametersSection = VRCFuryEditorUtils.Section("Parameters").AddTo(content);
+            parametersSection.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms")));
 
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Controller"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("controllers")));
-
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Menu"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("menus")));
-
-            content.Add(VRCFuryEditorUtils.WrappedLabel("Parameters"));
-            content.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("prms")));
+#if VRCSDK_HAS_FACE_TRACKING
+            content.Add(FaceTrackingEditor.Create(
+                prop.FindPropertyRelative("faceTrackingMeshes"),
+                prop.FindPropertyRelative("faceTrackingBlendshapeSets"),
+                prop.FindPropertyRelative("faceTrackingParameterBehaviors")));
+#endif
 
             var adv = new Foldout {
                 text = "Advanced Options",
@@ -680,6 +783,11 @@ namespace VF.Feature {
             }
 
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("ignoreSaved"), "Force all synced parameters to be un-saved"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("overwriteLocomotion"),
+                "Overwrite Locomotion", tooltip:
+                "For Base, TPose, IKPose, and Sitting controllers, replace the avatar descriptor's existing controller " +
+                "of the same type instead of appending to it. Its layers will be placed above layers added by other " +
+                "Full Controllers in append mode. Uncheck to keep the existing controllers and append this controller's layers."));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam"), "(Deprecated) Toggle using param"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootObjOverride"), "(Deprecated) Root object override"));
@@ -713,7 +821,7 @@ namespace VF.Feature {
                     warningsContainer.Clear();
                     var warnings = VrcfAnimationDebugInfo.BuildDebugInfo(
                         model.controllers
-                            .Select(c => c?.controller?.Get() as AnimatorController)
+                            .Select(c => c?.controller?.Get())
                             .NotNull(),
                         GetBaseObject(model, componentObject),
                         path => AnimationBindingUtils.RewriteRelativePath(path, model.rewriteBindings),

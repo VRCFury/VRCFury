@@ -5,6 +5,7 @@ namespace com.vrcfury.udon.Components {
     [AddComponentMenu("VRCFury/UdonDI - Inject Field (VRCFury)")]
     internal class UdonDiInjectField : VRCFuryComponent {
         public string targetField;
+        public bool matchAll;
         public string registeredName;
     }
 }

@@ -106,21 +106,9 @@ namespace VF.Service {
             return false;
         }
         public string MakeUniqueParamName(string originalName) {
-            var name = "VF" + globals.currentFeatureNum + "_" + originalName;
-
-            int offset = 1;
-            while (true) {
-                var attempt = name + ((offset == 1) ? "" : offset+"");
-                if (!IsParamUsed(attempt)) {
-                    parameterSourceService.RecordParamSource(
-                        attempt,
-                        globals.currentFeatureObjectPath,
-                        originalName
-                    );
-                    return attempt;
-                }
-                offset++;
-            }
+            var name = ("VF" + globals.currentFeatureNum + "_" + originalName).MakeUnique(IsParamUsed);
+            parameterSourceService.RecordParamSource(name, globals.currentFeatureObjectPath, originalName);
+            return name;
         }
     }
 }

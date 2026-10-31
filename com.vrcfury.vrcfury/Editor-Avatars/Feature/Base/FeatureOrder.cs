@@ -14,6 +14,9 @@ namespace VF.Feature.Base {
         RemoveExtraDescriptors,
         FixInvalidAnimator,
 
+        // Needs to inspect the repaired avatar descriptor before its controllers are loaded
+        DetermineWriteDefaultsStrategy,
+
         // Needs to happen before anything starts using the Animator
         ResetAnimatorBefore,
         

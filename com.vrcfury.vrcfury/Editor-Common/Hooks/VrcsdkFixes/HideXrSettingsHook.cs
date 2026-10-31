@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_XR_SETTINGS_VISIBILITY
 using System.Linq;
 using UnityEditor;
 using VF.Builder;
@@ -37,3 +38,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

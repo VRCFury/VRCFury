@@ -7,6 +7,43 @@ using VF.Utils;
 
 namespace VF.Inspector {
     internal static class VRCFuryComponentHeader {
+        private class Triangle : VisualElement {
+            private readonly bool pointLeft;
+            private readonly Color color;
+
+            public Triangle(bool pointLeft, Color color) {
+                this.pointLeft = pointLeft;
+                this.color = color;
+                style.width = 10;
+                style.height = 20;
+                pickingMode = PickingMode.Ignore;
+                generateVisualContent += Draw;
+            }
+
+            private void Draw(MeshGenerationContext context) {
+                var rect = contentRect;
+                var mesh = context.Allocate(3, 3);
+                void AddVertex(float x, float y) {
+                    mesh.SetNextVertex(new Vertex {
+                        position = new Vector3(x, y, Vertex.nearZ),
+                        tint = color
+                    });
+                }
+                if (pointLeft) {
+                    AddVertex(rect.xMax, rect.yMin);
+                    AddVertex(rect.xMax, rect.yMax);
+                    AddVertex(rect.xMin, rect.yMax);
+                } else {
+                    AddVertex(rect.xMin, rect.yMin);
+                    AddVertex(rect.xMax, rect.yMin);
+                    AddVertex(rect.xMin, rect.yMax);
+                }
+                mesh.SetNextIndex(0);
+                mesh.SetNextIndex(1);
+                mesh.SetNextIndex(2);
+            }
+        }
+
         private static VisualElement FindEditor(VisualElement el) {
             if (el == null) return null;
             if (el is InspectorElement) return el.parent;
@@ -48,17 +85,7 @@ namespace VF.Inspector {
 
             var normalLabelColor = new Color(0.05f, 0.05f, 0.05f);
              
-            var triangleLeft = new VisualElement {
-                style = {
-                    borderRightColor = normalLabelColor,
-                    borderBottomColor = normalLabelColor,
-                    borderLeftWidth = 5,
-                    borderTopWidth = 10,
-                    borderRightWidth = 5,
-                    borderBottomWidth = 10,
-                },
-                pickingMode = PickingMode.Ignore
-            }.FlexShrink(0);
+            var triangleLeft = new Triangle(true, normalLabelColor).FlexShrink(0);
             row.Add(triangleLeft);
             
             var label = new Label("VRCFury") {
@@ -77,17 +104,7 @@ namespace VF.Inspector {
             }.FlexShrink(0);
             row.Add(label);
 
-            var triangleRight = new VisualElement {
-                style = {
-                    borderLeftColor = normalLabelColor,
-                    borderTopColor = normalLabelColor,
-                    borderLeftWidth = 5,
-                    borderTopWidth = 10,
-                    borderRightWidth = 5,
-                    borderBottomWidth = 10,
-                },
-                pickingMode = PickingMode.Ignore
-            }.FlexShrink(0);
+            var triangleRight = new Triangle(false, normalLabelColor).FlexShrink(0);
             row.Add(triangleRight);
 
             var name = new Label(title) {

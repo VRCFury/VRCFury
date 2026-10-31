@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Hooks.UnityFixes;
 using Object = UnityEngine.Object;
 
 namespace VF.Utils {
@@ -50,15 +51,9 @@ namespace VF.Utils {
             for (var maxLen = startMaxLen; maxLen > 4; maxLen--) {
                 var safeFilename = MakeFilenameSafe(filename, maxLen);
 
-                string fullPath;
-                for (var i = 0;; i++) {
-                    fullPath = dir
-                               + "/"
-                               + safeFilename + (i > 0 ? "_" + i : "")
-                               + importantSuffix
-                               + (ext != "" ? "." + ext : "");
-                    if (!File.Exists(fullPath) && !Directory.Exists(fullPath)) break;
-                }
+                string FullPath(string name) => dir + "/" + name + importantSuffix + (ext != "" ? "." + ext : "");
+                var uniqueName = safeFilename.MakeUnique(name => File.Exists(FullPath(name)) || Directory.Exists(FullPath(name)));
+                var fullPath = FullPath(uniqueName);
 
                 if (Path.GetFullPath(fullPath).Length < 250) {
                     return fullPath;
@@ -128,6 +123,7 @@ namespace VF.Utils {
                 startedAssetEditing = false;
                 try {
                     AssetDatabase.StopAssetEditing();
+                    Unity6RendererFixHook.Process();
                 } finally {
                     assetEditing = false;
                 }

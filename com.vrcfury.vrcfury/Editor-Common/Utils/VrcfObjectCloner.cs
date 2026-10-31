@@ -12,10 +12,10 @@ namespace VF.Utils {
             EditorApplication.update += () => cloneOriginals.Clear();
         }
 
-        public static T Clone<T>(T original) where T : Object {
+        public static T Clone<T>(T original, bool forceClone = false) where T : Object {
             // For materials and mats, we only make a clone once, and then reuse that clone for the rest of the build
             // to avoid making copies over and over
-            if (original is Material || original is Mesh) {
+            if (!forceClone && (original is Material || original is Mesh)) {
                 if (VrcfObjectFactory.DidCreate(original) && !VrcfObjectFactory.IsMarkedAsDoNotReuse(original)) {
                     return original;
                 }

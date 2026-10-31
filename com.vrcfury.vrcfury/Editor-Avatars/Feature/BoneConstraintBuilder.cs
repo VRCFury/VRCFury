@@ -3,6 +3,7 @@ using UnityEngine.UIElements;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
+using VF.Model;
 using VF.Model.Feature;
 using VF.Service;
 
@@ -17,7 +18,7 @@ namespace VF.Feature {
         public void Link() {
             globals.addOtherFeature(new ArmatureLink {
                 propBone = model.obj,
-                linkTo = { new ArmatureLink.LinkTo { bone = model.bone }},
+                linkTo = { new ObjectReference { bone = model.bone }},
                 alignPosition = true,
                 alignRotation = true,
                 alignScale = true,

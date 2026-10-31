@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_COLLIDER_UPDATE_IN_PLAY_MODE
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;
@@ -32,3 +33,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
@@ -20,6 +19,7 @@ namespace VF.Service {
     internal class FixWriteDefaultsService {
 
         [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly OriginalAvatarService originalAvatar;
         [VFAutowired] private readonly AvatarBindingStateService bindingStateService;
@@ -147,20 +147,10 @@ namespace VF.Service {
             public bool ignoredBroken;
         }
         private BuildSettings _buildSettings;
-        private BuildSettings GetBuildSettings() {
-            if (_buildSettings != null) {
-                return _buildSettings;
-            }
-            
-            var allManagedLayers = controllers.GetAllUsedControllers()
-                .SelectMany(controller => controller.GetManagedLayers())
-                .ToImmutableHashSet();
 
-            var analysis = DetectExistingWriteDefaults(
-                controllers.GetAllUsedControllers(),
-                allManagedLayers
-            );
-
+        [FeatureBuilderAction(FeatureOrder.DetermineWriteDefaultsStrategy)]
+        public void DetermineWriteDefaultsStrategy() {
+            var analysis = DetectExistingWriteDefaults(avatar);
             var fixSetting = globals.allFeaturesInRun.OfType<FixWriteDefaults>().FirstOrDefault();
             var mode = FixWriteDefaults.FixWriteDefaultsMode.Disabled;
 
@@ -222,6 +212,12 @@ namespace VF.Service {
                 useWriteDefaults = useWriteDefaults,
                 ignoredBroken = analysis.isBroken && mode == FixWriteDefaults.FixWriteDefaultsMode.Disabled
             };
+        }
+
+        private BuildSettings GetBuildSettings() {
+            if (_buildSettings == null) {
+                throw new InvalidOperationException("Write Defaults strategy was requested before it was determined");
+            }
             return _buildSettings;
         }
 
@@ -247,36 +243,27 @@ namespace VF.Service {
             public string debugInfo;
             public IList<string> weirdStates;
         }
-        
-        // Returns: Broken, Should Use Write Defaults, Reason, Bad States
-        public static DetectionResults DetectExistingWriteDefaults<T>(
-            ICollection<T> avatarControllers,
-            ISet<VFLayer> layersToIgnore = null
-        ) where T : VFControllerWithVrcType {
-            var controllerInfos = avatarControllers.Select(controller => {
-                var type = controller.vrcType;
-                var info = new ControllerInfo();
-                info.type = type;
-                foreach (var layer in controller.GetLayers()) {
-                    var ignore = layersToIgnore != null && layersToIgnore.Contains(layer);
-                    if (!ignore) {
-                        foreach (var state in new AnimatorIterator.States().From(layer)) {
-                            List<string> list;
-                            if (layer.blendingMode == AnimatorLayerBlendingMode.Additive || type == VRCAvatarDescriptor.AnimLayerType.Additive) {
-                                list = state.writeDefaultValues ? info.additiveOnStates : info.additiveOffStates;
-                            } else if (new AnimatorIterator.Trees().From(state).Any(tree => tree.blendType == BlendTreeType.Direct)) {
-                                list = state.writeDefaultValues ? info.directOnStates : info.directOffStates;
-                            } else {
-                                list = state.writeDefaultValues ? info.onStates : info.offStates;
-                            }
-                            list.Add(layer.name + " | " + state.name);
-                        }
-                    }
-                }
 
-                return info;
-            }).ToList();
-            
+        public static DetectionResults DetectExistingWriteDefaults(VRCAvatarDescriptor avatar) {
+            var controllerInfos = VRCAvatarUtils.GetAllControllers(avatar)
+                .Select(found => {
+                    if (found.controller == null) return null;
+                    var info = new ControllerInfo { type = found.type };
+                    var isAdditiveController = found.type == VRCAvatarDescriptor.AnimLayerType.Additive;
+                    foreach (var state in VrcfAnimationDebugInfo.GetWriteDefaultsStates(found.controller)) {
+                        List<string> list;
+                        if (state.isAdditive || isAdditiveController) {
+                            list = state.writeDefaults ? info.additiveOnStates : info.additiveOffStates;
+                        } else if (state.isDirect) {
+                            list = state.writeDefaults ? info.directOnStates : info.directOffStates;
+                        } else {
+                            list = state.writeDefaults ? info.onStates : info.offStates;
+                        }
+                        list.Add(state.name);
+                    }
+                    return info;
+                }).NotNull().ToList();
+
             var debugList = new List<string>();
             foreach (var info in controllerInfos) {
                 var entries = new List<string>();
@@ -309,12 +296,13 @@ namespace VF.Service {
             }
 
             var shouldBeOnIfWeAreInControl = shouldBeOnIfWeAreNotInControl;
-            
-            var weirdStates = (shouldBeOnIfWeAreNotInControl ? offStates : onStates).Concat(directOffStates).Concat(additiveOffStates).ToList();
-            var broken = weirdStates.Count > 0;
+            var weirdStates = (shouldBeOnIfWeAreNotInControl ? offStates : onStates)
+                .Concat(directOffStates)
+                .Concat(additiveOffStates)
+                .ToList();
 
             return new DetectionResults {
-                isBroken = broken,
+                isBroken = weirdStates.Count > 0,
                 shouldBeOnIfWeAreInControl = shouldBeOnIfWeAreInControl,
                 shouldBeOnIfWeAreNotInControl = shouldBeOnIfWeAreNotInControl,
                 debugInfo = debugInfo,

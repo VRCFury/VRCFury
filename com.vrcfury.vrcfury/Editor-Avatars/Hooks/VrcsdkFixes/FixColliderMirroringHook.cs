@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_CONTACT_COLLIDER_MIRRORING
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
@@ -46,3 +47,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

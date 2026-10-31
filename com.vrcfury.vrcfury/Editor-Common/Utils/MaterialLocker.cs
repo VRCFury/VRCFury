@@ -4,6 +4,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder;
+using VF.Exceptions;
 
 namespace VF.Utils {
     internal static class MaterialLocker {
@@ -23,8 +24,11 @@ namespace VF.Utils {
             try {
                 LockUnsafe(mat);
             } catch (Exception e) {
-                throw new Exception(
-                    "Failed to lock material " + mat.name + ". This usually means your Poiyomi is out of date. You can update it from https://poiyomi.github.io/vpm\n\n" + e.Message, e);
+                throw new ExceptionWithCause(
+                    $"Failed to lock material {mat.name}. This usually means your Poiyomi is out of date. " +
+                    $"You can update it from https://poiyomi.github.io/vpm",
+                    e
+                );
             }
         }
 

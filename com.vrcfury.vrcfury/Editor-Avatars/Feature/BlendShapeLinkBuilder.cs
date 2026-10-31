@@ -9,17 +9,27 @@ using UnityEngine.UIElements;
 using VF.Actions;
 using VF.Builder;
 using VF.Feature.Base;
+using VF.Exceptions;
 using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+#if VRCSDK_HAS_FACE_TRACKING
+using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase;
+#endif
 
 namespace VF.Feature {
     [FeatureTitle("BlendShape Link")]
     internal class BlendShapeLinkBuilder : FeatureBuilder<BlendShapeLink> {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly GlobalsService globals;
+#if VRCSDK_HAS_FACE_TRACKING
+        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+        [VFAutowired] private readonly FaceTrackingService faceTracking;
+#endif
 
         [CustomPropertyDrawer(typeof(BlendShapeLink.Exclude))]
         public class ExcludeDrawer : PropertyDrawer {
@@ -256,6 +266,27 @@ namespace VF.Feature {
             return outputMap;
         }
 
+        internal static bool HandlesBlendshape(
+            VFGameObject avatarObject,
+            IEnumerable<BlendShapeLink> models,
+            SkinnedMeshRenderer skin,
+            string blendshape
+        ) {
+            foreach (var model in models) {
+                var baseSkin = GetBaseSkin(avatarObject, model);
+                if (baseSkin == null) continue;
+
+                foreach (var linkedSkin in GetLinkSkins(model)) {
+                    if (linkedSkin != skin) continue;
+                    if (GetMappings(model, baseSkin, linkedSkin, model.exactMatch)
+                        .Any(mapping => mapping.Value == blendshape)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         [FeatureBuilderAction(FeatureOrder.BlendShapeLinkFixAnimations)]
         public void Apply() {
             var baseSkin = GetBaseSkin(avatarObject, model);
@@ -267,6 +298,13 @@ namespace VF.Feature {
 
             foreach (var linked in linkSkins) {
                 var baseToLinkedMapping = GetMappings(model, baseSkin, linked, model.exactMatch);
+#if VRCSDK_HAS_FACE_TRACKING
+                foreach (var mapping in baseToLinkedMapping)
+                    faceTracking.Link(baseSkin, mapping.Key, linked, mapping.Value);
+                var linkedBlendshapes = baseToLinkedMapping.Select(pair => pair.Key).ToArray();
+                UpgradeLegacyVisemesIfNeeded(baseSkin, linkedBlendshapes);
+                UpgradeLegacyEyelidsIfNeeded(baseSkin, linkedBlendshapes);
+#endif
                 foreach (var (baseName,linkedName) in baseToLinkedMapping.Select(x => (x.Key, x.Value))) {
                     var baseI = baseSkin.GetBlendShapeIndex(baseName);
                     var linkedI = linked.GetBlendShapeIndex(linkedName);
@@ -297,5 +335,26 @@ namespace VF.Feature {
                 }
             }
         }
+
+#if VRCSDK_HAS_FACE_TRACKING
+
+        private void UpgradeLegacyVisemesIfNeeded(SkinnedMeshRenderer baseSkin, IEnumerable<string> linkedBlendshapes) {
+            var (mesh, names) = FaceTrackingUtils.GetLegacyVisemes(avatar);
+            if (mesh != baseSkin) return;
+            if (!linkedBlendshapes.Intersect(names
+                    .Where(name => !string.IsNullOrEmpty(name))).Any()) return;
+
+            faceTracking.EnsureVisemesEnabled();
+        }
+
+        private void UpgradeLegacyEyelidsIfNeeded(SkinnedMeshRenderer baseSkin, IEnumerable<string> linkedBlendshapes) {
+            var (mesh, names) = FaceTrackingUtils.GetLegacyEyelids(avatar);
+            if (mesh != baseSkin) return;
+            if (!linkedBlendshapes.Intersect(names
+                    .Where(name => !string.IsNullOrEmpty(name))).Any()) return;
+
+            faceTracking.EnsureEyelidsEnabled();
+        }
+#endif
     }
 }

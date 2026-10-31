@@ -143,10 +143,8 @@ namespace VF.Utils.Controller {
                 var overrideMotion = rawLayer.GetOverrideMotion(rawState);
                 wrappedState.motion = VFMotion.Load(overrideMotion, context);
 
-                var overrideBehaviours = rawLayer.GetOverrideBehaviours(rawState);
-                if (overrideBehaviours != null) {
-                    wrappedState.behaviours.ReplaceWith(overrideBehaviours.Select(behaviour => VFBehaviour.Load(behaviour, context)));
-                }
+                var overrideBehaviours = VFBehaviourContainer.GetRawOverrideBehaviours(rawLayer, rawState);
+                wrappedState.behaviours.ReplaceWith(overrideBehaviours.Select(behaviour => VFBehaviour.Load(behaviour, context)));
             }
         }
 
@@ -563,6 +561,10 @@ namespace VF.Utils.Controller {
         }
 
         public void RemoveWrongParamTypes() {
+            // Unity resolves duplicate names using the first parameter's type and default value.
+            // Drop later entries before type repair or merging can give them any effect.
+            _parameters = _parameters.GroupBy(p => p.name).Select(group => group.First()).ToList();
+
             var badBool = new Lazy<string>(() => _NewBool("InvalidParam"));
             var badFloat = new Lazy<string>(() => _NewFloat("InvalidParamFloat"));
             var badThreshold = new Lazy<string>(() => _NewBool("BadIntThreshold", def: true));

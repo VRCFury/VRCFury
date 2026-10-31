@@ -1,16 +1,10 @@
-using System;
-using System.Linq;
-using System.Reflection;
-using UnityEditor;
+#if !VRCSDK_HAS_FIXED_PARAMETER_DRIVER_ANIMATOR_WINDOW
 using UnityEditor.Animations;
 using VF.Utils;
 
 namespace VF.Hooks.VrcsdkFixes {
     internal static class FixDupAnimatorWindowHook {
         private abstract class Reflection : ReflectionHelper {
-            public static readonly Type AnimatorControllerTool = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.AnimatorControllerTool");
-            public static readonly PropertyInfo AnimatorControllerTool_animatorController = AnimatorControllerTool?
-                .VFProperty("animatorController");
             public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(FixDupAnimatorWindowHook),
                 nameof(Prefix),
@@ -24,17 +18,12 @@ namespace VF.Hooks.VrcsdkFixes {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Reflection.Patch.apply();
         }
-        
-        public static AnimatorController GetPreviewedAnimatorController() {
-            var tool = EditorWindowFinder.GetWindows(Reflection.AnimatorControllerTool).FirstOrDefault();
-            if (tool == null) return null;
-            return Reflection.AnimatorControllerTool_animatorController.GetValue(tool) as AnimatorController;
-        }
-    
+
         private static bool Prefix(ref AnimatorController __result) {
-            __result = GetPreviewedAnimatorController();
+            __result = AnimatorControllerToolHelper.GetPreviewedAnimatorController();
             return false;
         }
     }
 }
+#endif
 

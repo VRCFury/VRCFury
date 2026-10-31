@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_CLIENTSIM_EDITOR_ONLY_CLEANUP
 using UnityEditor;
 using VF.Utils;
 
@@ -56,3 +57,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

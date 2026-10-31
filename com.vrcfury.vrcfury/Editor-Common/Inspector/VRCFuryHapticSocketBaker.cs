@@ -43,13 +43,15 @@ namespace VF.Inspector {
 
             var senders = GameObjects.Create("Senders", worldSpace);
 
+            var legacyLightType = GetLegacyLightType(socket, lightType);
+
             // Senders
             {
                 var rootTags = new List<string>();
                 rootTags.Add(HapticUtils.TagTpsOrfRoot);
                 rootTags.Add(HapticUtils.TagSpsSocketRoot);
-                if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
-                    switch (lightType) {
+                if (legacyLightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
+                    switch (legacyLightType) {
                         case VRCFuryHapticSocket.AddLight.Ring:
                             rootTags.Add(HapticUtils.TagSpsSocketIsRing);
                             break;
@@ -109,7 +111,6 @@ namespace VF.Inspector {
                         .Select(stop => stop.transform.asVf())
                         .ToList();
                     var hasGuidedPath = guidedPath.Count > 0;
-                    var legacyLightType = GetLegacyLightType(socket, lightType);
 
                     void AddScreenMarker(ScreenMarkerResult result) {
                         if (result == null) return;

@@ -6,7 +6,9 @@
         "UnityEditor.TestRunner",
         "VRCFury",
         "VRCFury-Editor-Common",
-        "VRCFury-Editor-Avatars"
+        "VRCFury-Editor-Avatars",
+        "VRC.SDK3A.Editor",
+        "com.vrcfury.api"
     ],
     "includePlatforms": [
         "Editor"
@@ -17,23 +19,46 @@
     "precompiledReferences": [
         "nunit.framework.dll",
         "System.Collections.Immutable.dll",
-        "VRCSDK3A.dll"
+        "VRCSDKBase.dll",
+        "VRCSDK3A.dll",
+        "VRC.Dynamics.dll",
+        "VRC.SDK3.Dynamics.Contact.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [
-        "UNITY_TEST_FRAMEWORK_PRESENT",
+        "VRCF_TEST",
         "VRCF_AVATARS"
     ],
     "versionDefines": [
         {
+            "name": "com.vrchat.base",
+            "expression": "[3.10.6-beta,3.10.6-beta.2]",
+            "define": "VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS_OLDNAME"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.10.6-beta.4",
+            "define": "VRCSDK_HAS_CONTACT_PARAMETER_FLAGS"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.10.6-beta.4",
+            "define": "VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.10.6-0",
+            "define": "VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.10.6-0",
+            "define": "VRCSDK_HAS_FACE_TRACKING"
+        },
+        {
             "name": "com.vrchat.avatars",
             "expression": "",
             "define": "VRCF_AVATARS"
-        },
-        {
-            "name": "com.unity.test-framework",
-            "expression": "",
-            "define": "UNITY_TEST_FRAMEWORK_PRESENT"
         }
     ],
     "noEngineReferences": false

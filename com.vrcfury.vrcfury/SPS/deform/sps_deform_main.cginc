@@ -11,7 +11,9 @@ void sps_apply(inout SpsInputs o){}
 
 // SPS Penetration Shader
 void sps_apply_real(
+	#ifdef SPS_VANILLA_STRUCT_EXISTS
 	inout SPS_VANILLA_VERT_PARAM_TYPE input,
+	#endif
 	inout SPS_STRUCT_POSITION_TYPE vertex,
 	inout SPS_STRUCT_NORMAL_TYPE normal,
 	inout SPS_STRUCT_TANGENT_TYPE tangent,
@@ -50,6 +52,10 @@ void sps_apply_real(
 	bakedTangent *= bakeScale;
 
 	#ifdef SPS_MODIFY_BAKE
+		#ifndef SPS_VANILLA_STRUCT_EXISTS
+			#error SPS_MODIFY_BAKE requires a vertex function with a struct input
+		#endif
+
 		float3 bakedWorldOrigin = sps_cell_header_world(resolvedCell);
 		float3 bakedWorldForward = sps_normalize(sps_cell_header_forward(resolvedCell));
 		float3 bakedWorldUp = sps_nearest_normal(bakedWorldForward, sps_cell_header_up(resolvedCell));
@@ -170,9 +176,13 @@ void sps_apply(inout SpsInputs o) {
 			}
 		}
 	#else
-		SPS_VANILLA_VERT_PARAM_TYPE input = (SPS_VANILLA_VERT_PARAM_TYPE)o;
+		#ifdef SPS_VANILLA_STRUCT_EXISTS
+			SPS_VANILLA_VERT_PARAM_TYPE input = (SPS_VANILLA_VERT_PARAM_TYPE)o;
+		#endif
 		sps_apply_real(
+			#ifdef SPS_VANILLA_STRUCT_EXISTS
 			input,
+			#endif
 			o.SPS_STRUCT_POSITION_NAME,
 			o.SPS_STRUCT_NORMAL_NAME,
 			o.SPS_STRUCT_TANGENT_NAME,

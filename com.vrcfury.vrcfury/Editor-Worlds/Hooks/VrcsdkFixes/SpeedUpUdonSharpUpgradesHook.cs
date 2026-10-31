@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_UDONSHARP_UPGRADE_PERFORMANCE
 using VF.Utils;
 
 namespace VF.Hooks.VrcsdkFixes {
@@ -43,4 +44,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
-
+#endif

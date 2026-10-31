@@ -27,6 +27,11 @@
   "defineConstraints": [],
   "versionDefines": [
     {
+      "name": "com.vrchat.avatars",
+      "expression": "3.10.6-0",
+      "define": "VRCSDK_HAS_FACE_TRACKING"
+    },
+    {
       "name": "com.vrchat.base",
       "expression": "3.1.12",
       "define": "VRC_NEW_HOOK_API"
@@ -35,6 +40,16 @@
       "name": "com.vrchat.base",
       "expression": "3.3.0",
       "define": "VRC_NEW_PUBLIC_SDK"
+    },
+    {
+      "name": "com.vrchat.base",
+      "expression": "3.10.5",
+      "define": "VRCSDK_HAS_FIXED_XR_SETTINGS_VISIBILITY"
+    },
+    {
+      "name": "com.vrchat.base",
+      "expression": "3.10.5",
+      "define": "VRCSDK_HAS_FIXED_DOMAIN_RELOAD_ASSET_SAVING"
     },
     {
       "name": "com.vrchat.base",

@@ -101,6 +101,15 @@ namespace VF.Utils.Controller {
 
             RewriteDriverParameters(rewriteParamName, includeWrites);
             RewriteAudioParameter(rewriteParamName);
+#if VRCSDK_HAS_FACE_TRACKING
+            if (raw is VRC.SDKBase.VRC_AnimatorFaceTrackingBlendshapesSet faceTracking && faceTracking.blendSets != null) {
+                foreach (var set in faceTracking.blendSets) {
+                    if (set == null || set.type != VRC.SDKBase.VRC_AnimatorFaceTrackingBlendshapesSet.SourceType.Parameter) continue;
+                    if (!string.IsNullOrEmpty(set.sourceParameter))
+                        set.sourceParameter = rewriteParamName(set.sourceParameter);
+                }
+            }
+#endif
         }
 
         internal IEnumerable<VFBehaviour> Rewrite<T>(Func<VFBehaviour, T, OneOrMany<VFBehaviour>> action) where T : StateMachineBehaviour {

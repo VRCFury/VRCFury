@@ -19,9 +19,15 @@ namespace VF.Model.Feature {
         public string toggleParam;
         public GameObject rootObjOverride;
         public bool rootBindingsApplyToAvatar;
+        public bool overwriteLocomotion = true;
         public List<BindingRewrite> rewriteBindings = new List<BindingRewrite>();
         public bool allowMissingAssets = false;
         public List<InjectParamEntry> injectParams = new List<InjectParamEntry>();
+#if VRCSDK_HAS_FACE_TRACKING
+        public List<ObjectReference<SkinnedMeshRenderer>> faceTrackingMeshes = new();
+        public List<VRCAvatarDescriptor.FaceTrackingBlendshapesSet> faceTrackingBlendshapeSets = new List<VRCAvatarDescriptor.FaceTrackingBlendshapesSet>();
+        public List<VRCAvatarDescriptor.FaceTrackingParameterBehavior> faceTrackingParameterBehaviors = new List<VRCAvatarDescriptor.FaceTrackingParameterBehavior>();
+#endif
         public string injectSpsDepthParam;
         public string injectSpsVelocityParam;
         public int priority = 0;

@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_BLUEPRINT_WARNING
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;
@@ -34,3 +35,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

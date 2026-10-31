@@ -1,6 +1,5 @@
 using System.Collections.Generic;
-using System.Linq;
-using UnityEditor;
+using VF.Utils;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils.Controller;
@@ -28,7 +27,7 @@ namespace VF.Service {
         private static void MakeLayerNamesUnique(VFController controller) {
             var existingNames = new List<string>();
             foreach (var layer in controller.GetLayers()) {
-                var uniqueName = ObjectNames.GetUniqueName(existingNames.ToArray(), layer.name);
+                var uniqueName = layer.name.MakeUnique(existingNames);
                 if (layer.name != uniqueName) {
                     layer.name = uniqueName;
                 }
@@ -45,7 +44,7 @@ namespace VF.Service {
         private static void MakeStateNamesUnique(VFStateMachine stateMachine) {
             var existingNames = new List<string>();
             foreach (var state in stateMachine.states) {
-                var uniqueName = ObjectNames.GetUniqueName(existingNames.ToArray(), state.name);
+                var uniqueName = state.name.MakeUnique(existingNames);
                 if (state.name != uniqueName) {
                     state.name = uniqueName;
                 }

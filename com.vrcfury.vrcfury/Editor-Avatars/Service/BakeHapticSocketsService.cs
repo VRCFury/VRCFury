@@ -425,7 +425,7 @@ namespace VF.Service {
                         }
                     }
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetPath(avatarObject)}", e);
+                    throw new ExceptionWithCause($"Failed to build SPS Socket: {socket.owner().GetDebugPath()}", e);
                 }
             }
 

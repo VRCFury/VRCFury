@@ -68,10 +68,13 @@ namespace VF.Service {
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
                     PhysboneUtils.RemoveFromPhysbones(plug.owner());
-                    if (!BuildTargetUtils.IsDesktop()) continue;
-                    var bakeInfo = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true);
-                    if (bakeInfo == null) continue;
-                    bakeResults[plug] = bakeInfo;
+
+                    if (BuildTargetUtils.IsDesktop()) {
+                        var bakeInfo = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true);
+                        if (bakeInfo != null) {
+                            bakeResults[plug] = bakeInfo;
+                        }
+                    }
 
                     var postBakeClip = actionClipService.LoadStateAdv("sps_postbake", plug.postBakeActions, plug.owner());
                     restingState.ApplyClipToRestingState(
@@ -79,7 +82,7 @@ namespace VF.Service {
                         owner: "Post-bake clip for plug on " + plug.owner().GetPath(avatarObject)
                     );
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
+                    throw new ExceptionWithCause($"Failed to build SPS Plug: {plug.owner().GetDebugPath()}", e);
                 }
             }
         }
@@ -138,7 +141,7 @@ namespace VF.Service {
                     if (!bakeResults.TryGetValue(plug, out var bakeInfo)) continue;
                     ApplyPlug(plug, bakeInfo, tipLightOnClip, disableDepthClip, disableRealtimeShadowsClip, usedNames);
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
+                    throw new ExceptionWithCause($"Failed to build SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
             }
         }
@@ -466,11 +469,23 @@ namespace VF.Service {
                         }
                     }
                 }
-                allClipsService.GetAllClips().ForEach(RewriteClip);
 
-                rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials
-                    .Select((mat,slotNum) => rewrite.configureMaterial(slotNum, mat))
-                    .ToArray();
+                try {
+                    allClipsService.GetAllClips().ForEach(clip => {
+                        try {
+                            RewriteClip(clip);
+                        } catch (Exception e) {
+                            throw new ExceptionWithCause($"Failed to patch clip: {clip.name}", e);
+                        }
+                    });
+
+                    rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials
+                        .Select((mat,slotNum) => rewrite.configureMaterial(slotNum, mat))
+                        .ToArray();
+                } catch (Exception e) {
+                    throw new ExceptionWithCause(
+                        $"Failed to patch materials for SPS Plug: {rewrite.plugObject.GetDebugPath()}", e);
+                }
             }
         }
     }

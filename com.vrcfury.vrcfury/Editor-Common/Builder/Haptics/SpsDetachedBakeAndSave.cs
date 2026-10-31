@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using VF.Component;
 using VF.Exceptions;
+using VF.Hooks.UnityFixes;
 using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
@@ -34,6 +35,7 @@ namespace VF.Builder.Haptics {
                         result.screenMarkerResults.Select(marker => marker.materialProperties).SelectMany(properties => properties),
                         saveSession
                     );
+                    Unity6RendererFixHook.Register(result.bakeRoot);
                     foreach (var component in result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                         saveSession.SaveAssetAndChildren(component);
                     }
@@ -42,7 +44,7 @@ namespace VF.Builder.Haptics {
                     }
                     VRCFuryHideGizmoUnlessSelectedExtensions.Hide(result.bakeRoot);
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake SPS Socket: {socket.owner().GetDebugPath()}", e);
+                    throw new ExceptionWithCause($"Failed to build SPS Socket: {socket.owner().GetDebugPath()}", e);
                 } finally {
                     UnityEngine.Object.DestroyImmediate(socket);
                 }
@@ -57,6 +59,7 @@ namespace VF.Builder.Haptics {
                     if (result.resolverMaterialProperties != null) {
                         SpsConfigurer.AddMaterialPropertyAnimator(result.resolverMaterialProperties, saveSession);
                     }
+                    Unity6RendererFixHook.Register(result.bakeRoot);
                     foreach (var component in result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                         saveSession.SaveAssetAndChildren(component);
                     }
@@ -65,7 +68,7 @@ namespace VF.Builder.Haptics {
                     }
                     VRCFuryHideGizmoUnlessSelectedExtensions.Hide(result.bakeRoot);
                 } catch (Exception e) {
-                    throw new ExceptionWithCause($"Failed to bake SPS Plug: {plug.owner().GetDebugPath()}", e);
+                    throw new ExceptionWithCause($"Failed to build SPS Plug: {plug.owner().GetDebugPath()}", e);
                 } finally {
                     UnityEngine.Object.DestroyImmediate(plug);
                 }

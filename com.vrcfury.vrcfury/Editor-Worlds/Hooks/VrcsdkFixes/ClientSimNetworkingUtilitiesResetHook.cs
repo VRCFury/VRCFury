@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_FIXED_CLIENTSIM_NETWORKING_UTILITIES_RESET
 using System;
 using System.Reflection;
 using UnityEditor;
@@ -30,3 +31,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

@@ -18,27 +18,34 @@ namespace VF.Features {
             //Debug.LogWarning("SenkyAutowire is wiring ...");
 
             var registry = new List<(string, UnityEngine.Component)>();
+            var sceneComponents = scene.Roots()
+                .SelectMany(root => root.GetComponentsInSelfAndChildren<UnityEngine.Component>())
+                .Where(IsRuntimeComponent)
+                .ToList();
 
             foreach (var register in scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren<UdonDiRegister>())) {
+                if (IsOnEditorOnlyObject(register)) continue;
                 foreach (var component in register.owner().GetComponents()) {
-                    if (component is IEditorOnly) continue;
+                    if (!IsRuntimeComponent(component)) continue;
                     //Debug.Log($"Found {component.GetType().Name} on " + SenkyUtils.GetPath(register.transform));
                     registry.Add((register.registeredName, component));
                 }
             }
 
-            foreach (var inject in scene.Roots().SelectMany(root => root.GetComponentsInSelfAndChildren<UdonDiInjectField>())) {
+            foreach (var inject in scene.Roots()
+                         .SelectMany(root => root.GetComponentsInSelfAndChildren<UdonDiInjectField>())
+                         .Where(inject => !IsOnEditorOnlyObject(inject))) {
                 var foundOneField = false;
                 var foundUsharp = false;
                 foreach (var component in inject.owner().GetComponents<UdonSharpBehaviour>()) {
                     foundUsharp = true;
-                    if (AttemptInject(component, inject, registry)) {
+                    if (AttemptInject(component, inject, registry, sceneComponents)) {
                         foundOneField = true;
                     }
                 }
                 if (!foundUsharp) {
                     foreach (var component in inject.owner().GetComponents<UdonBehaviour>()) {
-                        if (AttemptInject(component, inject, registry)) {
+                        if (AttemptInject(component, inject, registry, sceneComponents)) {
                             foundOneField = true;
                         }
                     }
@@ -52,10 +59,23 @@ namespace VF.Features {
             //Debug.LogWarning($"SenkyAutowire wired {count} fields using {registry.Count} services");
         }
 
-        private static bool AttemptInject(UnityEngine.Component component, UdonDiInjectField inject, List<(string, UnityEngine.Component)> registry) {
+        private static bool IsRuntimeComponent(UnityEngine.Component component) {
+            return component is not IEditorOnly && !IsOnEditorOnlyObject(component);
+        }
+
+        private static bool IsOnEditorOnlyObject(UnityEngine.Component component) {
+            return component.owner().GetSelfAndAllParents().Any(parent => parent.HasTag("EditorOnly"));
+        }
+
+        private static bool AttemptInject(
+            UnityEngine.Component component,
+            UdonDiInjectField inject,
+            List<(string, UnityEngine.Component)> registry,
+            List<UnityEngine.Component> sceneComponents
+        ) {
             if (component is UdonBehaviour ub) {
                 if (!ub.publicVariables.TryGetVariableType(inject.targetField, out var type)) return false;
-                var value = GetValue(type, inject, registry);
+                var value = GetValue(type, inject, registry, sceneComponents);
                 ub.publicVariables.TrySetVariableValue(inject.targetField, value);
                 return true;
             } else {
@@ -63,7 +83,7 @@ namespace VF.Features {
                 if (field == null) return false;
                 var fieldType = field.FieldType;
 
-                var value = GetValue(fieldType, inject, registry);
+                var value = GetValue(fieldType, inject, registry, sceneComponents);
 
                 var so = new SerializedObject(component);
                 var prop = so.FindProperty(inject.targetField);
@@ -85,7 +105,12 @@ namespace VF.Features {
             }
         }
 
-        private static object GetValue(Type fieldType, UdonDiInjectField inject, List<(string, UnityEngine.Component)> registry) {
+        private static object GetValue(
+            Type fieldType,
+            UdonDiInjectField inject,
+            List<(string, UnityEngine.Component)> registry,
+            List<UnityEngine.Component> sceneComponents
+        ) {
             var isArray = fieldType.IsArray;
             var serviceType = isArray ? fieldType.GetElementType() : fieldType;
 
@@ -95,9 +120,11 @@ namespace VF.Features {
                 isGameObject = true;
             }
 
-            var matches = registry.Where(r =>
-                    r.Item1 == inject.registeredName && serviceType.IsInstanceOfType(r.Item2))
-                .Select(r => r.Item2)
+            var candidates = inject.matchAll
+                ? sceneComponents
+                : registry.Where(r => r.Item1 == inject.registeredName).Select(r => r.Item2);
+            var matches = candidates
+                .Where(serviceType.IsInstanceOfType)
                 .ToList();
             if (matches.Count == 0) {
                 throw new Exception("SenkyAutowire failed to find " + serviceType.Name + " service to autowire for " + inject.owner().GetDebugPath());

@@ -165,7 +165,7 @@ namespace VF.Hooks.UnityFixes {
         }
         private static AnimatorControllerPlayable? GetPreviewedPlayableUncached(Animator animator) {
             var playables = GetPlayablesForAnimator(animator);
-            var previewingController = FixDupAnimatorWindowHook.GetPreviewedAnimatorController();
+            var previewingController = AnimatorControllerToolHelper.GetPreviewedAnimatorController();
             var matching = playables.Where(p => GetControllerForPlayable(p) == previewingController).ToArray();
             if (matching.Any()) return matching.First();
             return null;
