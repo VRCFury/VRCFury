@@ -28,8 +28,8 @@ SpsSocketCandidate sps_read_light(uint index, float3 plugWorld, float3 plugUp) {
     socket.world = sps_light_world(index);
     socket.normal = sps_normalize(plugWorld - socket.world);
     socket.up = plugUp;
-    socket.flags = kind == 1 ? SPS_SOCKET_FLAG_HOLE : SPS_SOCKET_FLAG_DOUBLE_SIDED;
-    socket.valid = true;
+    socket.control = kind == 1 ? SPS_SOCKET_FLAG_HOLE : SPS_SOCKET_FLAG_DOUBLE_SIDED;
+    socket.control |= SPS_SOCKET_VALID;
     float nearest = 0.01; // Front lights are 1 cm away; don't pair across distant sockets.
     [fastopt]
     for (uint front = 0; front < 4; front++) {

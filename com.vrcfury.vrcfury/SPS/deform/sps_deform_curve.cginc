@@ -9,9 +9,6 @@
 #include "sps_deform_globals.cginc"
 
 inline void sps_deform_walk_chain(
-    float3 nodeWorlds[SPS_CHAIN_MAX_SOCKETS + 1],
-    float3 nodeForwards[SPS_CHAIN_MAX_SOCKETS + 1],
-    uint nodeFlags[SPS_CHAIN_MAX_SOCKETS + 1],
     SpsDeformPathInfo path,
     float targetDistance,
     out float outFirstSegmentLerp,
@@ -25,8 +22,8 @@ inline void sps_deform_walk_chain(
     uint terminalFlags = 0u;
     outFirstSegmentLerp = 0;
     outRadiusMult = 1;
-    outPosition = nodeWorlds[0];
-    outForward = nodeForwards[0];
+    outPosition = sps_path_worlds[0];
+    outForward = sps_path_forwards[0];
     if (sps_is_zero(outForward)) outForward = float3(0, 0, 1);
     outForward = sps_normalize(outForward);
     outUp = sps_nearest_normal(outForward, path.plugUp);
@@ -37,10 +34,10 @@ inline void sps_deform_walk_chain(
 
     [fastopt]
     for (uint sampleIndex = 1; sampleIndex <= SPS_CHAIN_MAX_SOCKETS; sampleIndex++) {
-        float3 endPoint = nodeWorlds[sampleIndex];
-        float3 endForward = nodeForwards[sampleIndex];
+        float3 endPoint = sps_path_worlds[sampleIndex];
+        float3 endForward = sps_path_forwards[sampleIndex];
         if (sps_is_zero(endForward)) break;
-        uint socketFlags = nodeFlags[sampleIndex];
+        uint socketFlags = sps_path_flags[sampleIndex];
         bool isGuidedSegment = sps_has_flag(socketFlags, SPS_SOCKET_FLAG_GUIDED);
         float segmentPulloutLerp;
 

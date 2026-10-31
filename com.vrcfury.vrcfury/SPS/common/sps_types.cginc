@@ -10,7 +10,8 @@
 #define SPS_SOCKET_FLAG_RADIUS_OFFSET (1u << 12)
 #define SPS_SOCKET_FLAG_UNLOCK_LOCAL_X (1u << 11)
 #define SPS_SOCKET_FLAG_UNLOCK_ALL (1u << 10)
-// Traversal-only flag, not a transmitted sender-scale bit.
-#define SPS_SOCKET_FLAG_GUIDED 64u
+// Shader-only flags, not transmitted sender-scale bits.
+#define SPS_SOCKET_FLAG_GUIDED (1u << 15)
+#define SPS_SOCKET_VALID (1u << 16)
 
 #endif

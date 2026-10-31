@@ -53,11 +53,18 @@ struct SpsSocketCandidate {
     float3 world;
     float3 normal;
     float3 up;
-    uint flags;
+    uint control; // Sender word in bits 0-14, plus shader-only traversal/validity bits.
     int owner;
-    uint pathKey; // Group in bits 0-6, path index in bits 7-9
-    bool valid;
 };
+
+bool sps_socket_valid(SpsSocketCandidate socket) {
+    return (socket.control & SPS_SOCKET_VALID) != 0;
+}
+
+uint sps_socket_key(SpsSocketCandidate socket) {
+    // Group in bits 0-6, path index in bits 7-9.
+    return socket.control & 1023u;
+}
 
 float3 sps_matrix_scale(float4x4 transform) {
     return float3(length(transform._m00_m10_m20), length(transform._m01_m11_m21), length(transform._m02_m12_m22));
@@ -80,11 +87,9 @@ SpsSocketCandidate sps_read_contact(uint index) {
     if (native) {
         uint packed = (uint)round(scale.x);
         if (packed > 32767 || packed == 0) return socket;
-        socket.pathKey = packed & 1023u;
-        socket.flags = packed & (SPS_SOCKET_FLAG_HOLE | SPS_SOCKET_FLAG_DOUBLE_SIDED
-            | SPS_SOCKET_FLAG_RADIUS_OFFSET | SPS_SOCKET_FLAG_UNLOCK_LOCAL_X | SPS_SOCKET_FLAG_UNLOCK_ALL);
-        socket.flags |= path ? SPS_SOCKET_FLAG_GUIDED : 0u;
-        socket.valid = (socket.pathKey & 127u) != 0 && (path ? socket.pathKey >= 128u : socket.pathKey < 128u);
+        socket.control = packed | (path ? SPS_SOCKET_FLAG_GUIDED : 0u);
+        uint pathKey = packed & 1023u;
+        socket.control |= (pathKey & 127u) != 0 && (path ? pathKey >= 128u : pathKey < 128u) ? SPS_SOCKET_VALID : 0u;
     } else {
         // Legacy Hole/Ring tags identify SPS1/2 sockets
         // If they don't have the hole/ring tag, they're either old sps4all or TPS, which means they don't have
@@ -92,11 +97,11 @@ SpsSocketCandidate sps_read_contact(uint index) {
         if (!sps_to_bool(_SPS_OthersLegacyTags)) return socket;
         bool hole = (tags & (1u << channelCount)) != 0;
         bool ring = (tags & (1u << (channelCount + 1))) != 0;
-        socket.valid = hole || ring;
-        socket.flags = hole && !ring ? SPS_SOCKET_FLAG_HOLE : 0u;
-        if (ring && !hole) socket.flags |= SPS_SOCKET_FLAG_DOUBLE_SIDED;
+        socket.control = (hole || ring) ? SPS_SOCKET_VALID : 0u;
+        if (hole && !ring) socket.control |= SPS_SOCKET_FLAG_HOLE;
+        if (ring && !hole) socket.control |= SPS_SOCKET_FLAG_DOUBLE_SIDED;
     }
-    socket.valid = socket.valid && all(scale > 0) && all(isfinite(socket.world));
+    if (!all(scale > 0) || !all(isfinite(socket.world))) socket.control &= ~SPS_SOCKET_VALID;
     return socket;
 }
 

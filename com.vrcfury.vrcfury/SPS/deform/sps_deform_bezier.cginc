@@ -33,51 +33,41 @@ inline void sps_bezierSolve(
 	out float3 up
 ) {
 	#define SPS_BEZIER_SAMPLES 50
-	remainingLength = 0;
-	position = p0;
-	forward = 0;
-	up = initialUp;
-	if (lookingForLength <= 0) {
-		remainingLength = 0;
-		position = p0;
-		forward = sps_normalize(sps_bezierDerivative(p0, p1, p2, p3, 0));
-		up = sps_nearest_normal(forward, initialUp);
-		return;
-	}
-
+	float sampleT = 0;
+	float3 approximateUp = initialUp;
 	float totalLength = 0;
-	float3 lastPoint = p0;
-	float lastT = 0;
-	float lastLength = 0;
-	float3 lastUp = initialUp;
-
-	[fastopt]
-	for(int i = 1; i <= SPS_BEZIER_SAMPLES; i++) {
-		const float t = float(i) / SPS_BEZIER_SAMPLES;
-		const float3 currentPoint = sps_bezier(p0, p1, p2, p3, t);
-		const float3 currentForward = sps_normalize(sps_bezierDerivative(p0, p1, p2, p3, t));
-		const float3 currentUp = sps_nearest_normal(currentForward, lastUp);
-		totalLength += length(currentPoint - lastPoint);
-		if (lookingForLength <= totalLength)
-		{
-			const float fraction = sps_map(lookingForLength, lastLength, totalLength, 0, 1);
-			const float adjustedT = lerp(lastT, t, fraction);
-			const float3 approximateUp = lerp(lastUp, currentUp, fraction);
-			remainingLength = 0;
-			position = sps_bezier(p0, p1, p2, p3, adjustedT);
-			forward = sps_normalize(sps_bezierDerivative(p0, p1, p2, p3, adjustedT));
-			up = sps_nearest_normal(forward, approximateUp);
-			return;
+	bool exhausted = false;
+	// Preserve the original <= 0 early-out, but share the final evaluation.
+	if (lookingForLength > 0) {
+		sampleT = 1;
+		exhausted = true;
+		float3 lastPoint = p0;
+		float lastT = 0;
+		float lastLength = 0;
+		float3 lastUp = initialUp;
+		[fastopt]
+		for (int i = 1; i <= SPS_BEZIER_SAMPLES; i++) {
+			float t = float(i) / SPS_BEZIER_SAMPLES;
+			float3 currentPoint = sps_bezier(p0, p1, p2, p3, t);
+			float3 currentForward = sps_normalize(sps_bezierDerivative(p0, p1, p2, p3, t));
+			float3 currentUp = sps_nearest_normal(currentForward, lastUp);
+			totalLength += length(currentPoint - lastPoint);
+			if (lookingForLength <= totalLength) {
+				float fraction = sps_map(lookingForLength, lastLength, totalLength, 0, 1);
+				sampleT = lerp(lastT, t, fraction);
+				approximateUp = lerp(lastUp, currentUp, fraction);
+				exhausted = false;
+				break;
+			}
+			lastT = t;
+			lastLength = totalLength;
+			lastUp = currentUp;
+			approximateUp = currentUp;
+			lastPoint = currentPoint;
 		}
-
-		lastT = t;
-		lastLength = totalLength;
-		lastUp = currentUp;
-		lastPoint = currentPoint;
 	}
-
-	remainingLength = max(lookingForLength - totalLength, 0);
-	position = p3;
-	forward = sps_normalize(sps_bezierDerivative(p0, p1, p2, p3, 1));
-	up = sps_nearest_normal(forward, lastUp);
+	remainingLength = exhausted ? max(lookingForLength - totalLength, 0) : 0;
+	position = sampleT == 0 ? p0 : sampleT == 1 ? p3 : sps_bezier(p0, p1, p2, p3, sampleT);
+	forward = sps_normalize(sps_bezierDerivative(p0, p1, p2, p3, sampleT));
+	up = sps_nearest_normal(forward, approximateUp);
 }

@@ -20,7 +20,7 @@ namespace VF.Builder.Haptics {
 
             // version
             if (!tpsCompatibility) {
-                baked.WriteColor(0, 0, 0, 0);
+                baked.WriteFloat(0);
             }
 
             float GetActive(int i) {

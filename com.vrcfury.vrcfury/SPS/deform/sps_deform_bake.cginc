@@ -3,18 +3,9 @@
 
 #define SPS_MAX_BLENDSHAPES 16
 
-inline float4 sps_bake_read_rgba(uint index) {
-    const uint width = (uint)round(abs(1.0 / _SPS_Bake_TexelSize.x));
-    return _SPS_Bake.Load(int3(index % width, index / width, 0));
-}
-
-inline uint sps_bake_decode_uint(float4 rgba) {
-    uint4 bytes = (uint4)round(saturate(rgba) * 255.0);
-    return bytes.x | (bytes.y << 8) | (bytes.z << 16) | (bytes.w << 24);
-}
-
 inline float sps_bake_read_float(uint index) {
-    return asfloat(sps_bake_decode_uint(sps_bake_read_rgba(index)));
+    const uint width = (uint)round(abs(1.0 / _SPS_Bake_TexelSize.x));
+    return _SPS_Bake.Load(int3(index % width, index / width, 0)).r;
 }
 
 inline float3 sps_bake_read_float3(uint index) {
