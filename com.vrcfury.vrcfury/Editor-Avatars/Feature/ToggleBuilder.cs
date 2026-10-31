@@ -50,11 +50,17 @@ namespace VF.Feature {
                 .ToImmutableHashSet();
         }
 
+
         private ISet<string> GetExclusiveTags() {
             if (model.enableExclusiveTag) {
                 return SeparateList(model.exclusiveTag);
             }
             return new HashSet<string>(); 
+        }
+
+        private string GetSetTag() {
+            if (!model.enableSetTag || string.IsNullOrWhiteSpace(model.setTag)) return null;
+            return model.setTag.Trim();
         }
 
         private ISet<string> GetDriveGlobalParams() {
@@ -311,6 +317,36 @@ namespace VF.Feature {
                 .Where(toggle => toggle.isOn != null && toggle.drive != null)
                 .ToArray();
 
+            var taggedToggles = allToggles
+                .Select(toggle => new { Toggle = toggle, Tag = toggle.GetSetTag() })
+                .Where(tagged => tagged.Tag != null)
+                .ToArray();
+            if (taggedToggles.Length > 0) {
+                var setTagInput = actionController.NewInt("SetTagInput", synced: true, networkSynced: false);
+                var layer = actionController.NewLayer("Set Tags");
+                var idle = layer.NewState("Idle");
+                foreach (var tagged in taggedToggles) {
+                    actionController.AddParam(tagged.Toggle.exclusiveParam);
+                }
+
+                var groups = taggedToggles
+                    .GroupBy(tagged => tagged.Tag)
+                    .OrderBy(group => group.Key, StringComparer.Ordinal)
+                    .ToArray();
+                for (var i = 0; i < groups.Length; i++) {
+                    var group = groups[i];
+                    var value = i + 1;
+                    menu.NewMenuButton("Set/" + group.Key.Replace("/", "\\/"), setTagInput, value);
+
+                    var state = layer.NewState("Set " + group.Key);
+                    state.TransitionsFromAny().When(setTagInput.IsEqualTo(value));
+                    foreach (var tagged in taggedToggles) {
+                        tagged.Toggle.drive(state, tagged.Tag == group.Key);
+                    }
+                    state.TransitionsTo(idle).When(setTagInput.IsEqualTo(0));
+                }
+            }
+
             var tagToToggles = new VFMultimapSet<string, ToggleBuilder>();
             foreach (var toggle in allToggles) {
                 foreach (var tag in toggle.GetExclusiveTags()) {
@@ -406,6 +442,7 @@ namespace VF.Feature {
             var invertRestLogicProp = prop.FindPropertyRelative("invertRestLogic");
             var exclusiveOffStateProp = prop.FindPropertyRelative("exclusiveOffState");
             var enableExclusiveTagProp = prop.FindPropertyRelative("enableExclusiveTag");
+            var enableSetTagProp = prop.FindPropertyRelative("enableSetTag");
             var enableIconProp = prop.FindPropertyRelative("enableIcon");
             var enableDriveGlobalParamProp = prop.FindPropertyRelative("enableDriveGlobalParam");
             var separateLocalProp = prop.FindPropertyRelative("separateLocal");
@@ -484,6 +521,11 @@ namespace VF.Feature {
                         prop.serializedObject.ApplyModifiedProperties();
                     });
 
+                    advMenu.AddItem(new GUIContent("Enable Set Tag"), enableSetTagProp.boolValue, () => {
+                        enableSetTagProp.boolValue = !enableSetTagProp.boolValue;
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+
                     advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
                         exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
                         prop.serializedObject.ApplyModifiedProperties();
@@ -525,6 +567,14 @@ namespace VF.Feature {
                 }
                 return c;
             }, enableExclusiveTagProp));
+
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var c = new VisualElement();
+                if (enableSetTagProp.boolValue) {
+                    c.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("setTag"), "Set Tag"));
+                }
+                return c;
+            }, enableSetTagProp));
 
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
