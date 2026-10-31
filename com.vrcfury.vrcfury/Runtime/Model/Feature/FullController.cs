@@ -28,9 +28,9 @@ namespace VF.Model.Feature {
         public List<VRCAvatarDescriptor.FaceTrackingBlendshapesSet> faceTrackingBlendshapeSets = new List<VRCAvatarDescriptor.FaceTrackingBlendshapesSet>();
         public List<VRCAvatarDescriptor.FaceTrackingParameterBehavior> faceTrackingParameterBehaviors = new List<VRCAvatarDescriptor.FaceTrackingParameterBehavior>();
 #endif
-
         public string injectSpsDepthParam;
         public string injectSpsVelocityParam;
+        public int priority = 0;
 
         [Obsolete] public GuidController controller;
         [Obsolete] public GuidMenu menu;

@@ -37,6 +37,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
+        [VFAutowired] private readonly PriorityService priorityService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ParamsService paramsService;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
@@ -171,7 +172,13 @@ namespace VF.Feature {
                 var copy = menu.Clone();
                 copy.RewriteParameters(RewriteParamName);
                 var prefix = MenuManager.SplitPath(m.prefix);
-                avatarMenu.MergeMenu(prefix, copy);
+                if (model.priority != 0) {
+                    avatarMenu.OverrideSortPosition(priorityService.GetMenuSortPosition(model.priority), () => {
+                        avatarMenu.MergeMenu(prefix, copy);
+                    });
+                } else {
+                    avatarMenu.MergeMenu(prefix, copy);
+                }
             }
 
             foreach (var receiver in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
@@ -325,7 +332,7 @@ namespace VF.Feature {
             if (string.IsNullOrWhiteSpace(model.toggleParam)) {
                 return;
             }
-            
+
             var toggleIsInt = model.prms
                 .Select(entry => entry.parameters.Get())
                 .Where(paramFile => paramFile != null)
@@ -337,14 +344,14 @@ namespace VF.Feature {
             globals.addOtherFeature(new Toggle {
                 name = toggleParam,
                 state = new State {
-                    actions = { new ObjectToggleAction { obj = GetBaseObject(model, featureBaseObject), mode = ObjectToggleAction.Mode.TurnOn} }
+                    actions = { new ObjectToggleAction { obj = GetBaseObject(model, featureBaseObject), mode = ObjectToggleAction.Mode.TurnOn } }
                 },
                 addMenuItem = false,
                 paramOverride = toggleParam,
                 useInt = toggleIsInt
             });
         }
-        
+
         private readonly Dictionary<string, string> rewrittenParams = new Dictionary<string, string>();
 
         string RewriteParamName(string name) {
@@ -364,7 +371,7 @@ namespace VF.Feature {
                 });
                 if (!synced) return name;
             }
-            
+
             var hasGogoParam = model.prms
                 .Select(p => p?.parameters?.Get())
                 .Where(p => p != null)
@@ -426,11 +433,11 @@ namespace VF.Feature {
             from.RewriteParameters(RewriteParamName);
 
             var myLayers = from.GetLayers();
-            
+
             // Rip out default Action if this controller handles everything
             if (type == VRCAvatarDescriptor.AnimLayerType.Action) {
                 var menuUsesVrcEmote = false;
-                avatarMenu.GetRaw().ForEachMenu(ForEachItem: (item,path) => {
+                avatarMenu.GetRaw().ForEachMenu(ForEachItem: (item, path) => {
                     if (item?.parameter?.name == "VRCEmote") {
                         menuUsesVrcEmote = true;
                     }
@@ -478,6 +485,7 @@ namespace VF.Feature {
             // Merge Layers
             foreach (var layer in from.GetLayers()) {
                 layerSourceService.SetSourceToCurrent(layer);
+                priorityService.SetLayerPriority(layer, model.priority);
             }
             if (isLocomotion && !overwriteLocomotion)
                 appendedLocomotionLayers.UnionWith(myLayers);
@@ -536,7 +544,7 @@ namespace VF.Feature {
             if (model.rootObjOverride) return model.rootObjOverride;
             return componentObject;
         }
-        
+
         [CustomPropertyDrawer(typeof(FullController.ControllerEntry))]
         public class ControllerEntryDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
@@ -546,7 +554,7 @@ namespace VF.Feature {
                 return row;
             }
         }
-        
+
         [CustomPropertyDrawer(typeof(FullController.MenuEntry))]
         public class MenuEntryDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
@@ -560,14 +568,14 @@ namespace VF.Feature {
                 return row;
             }
         }
-        
+
         [CustomPropertyDrawer(typeof(FullController.ParamsEntry))]
         public class ParamsEntryDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
                 return VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("parameters"));
             }
         }
-        
+
         [CustomPropertyDrawer(typeof(FullController.BindingRewrite))]
         public class BindingRewriteDrawer : PropertyDrawer {
             public override VisualElement CreatePropertyGUI(SerializedProperty rewrite) {
@@ -577,7 +585,7 @@ namespace VF.Feature {
                 row.Add(VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("from")).PaddingLeft(15));
                 row.Add(VRCFuryEditorUtils.WrappedLabel("Then:"));
                 var deleteProp = rewrite.FindPropertyRelative("delete");
-                var selector = new PopupField<string>(new List<string>{ "Rewrite the prefix to", "Delete it" }, deleteProp.boolValue ? 1 : 0);
+                var selector = new PopupField<string>(new List<string> { "Rewrite the prefix to", "Delete it" }, deleteProp.boolValue ? 1 : 0);
                 selector.style.paddingLeft = 15;
                 row.Add(selector);
                 var to = VRCFuryEditorUtils.Prop(rewrite.FindPropertyRelative("to")).PaddingLeft(15);
@@ -590,7 +598,7 @@ namespace VF.Feature {
                 }
                 selector.RegisterValueChangedCallback(str => Update());
                 Update();
-                
+
                 return row;
             }
         }
@@ -694,7 +702,7 @@ namespace VF.Feature {
         [FeatureEditor]
         public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject, VFGameObject componentObject, FullController model) {
             var content = new VisualElement();
-            
+
             content.Add(VRCFuryEditorUtils.Info(
                 "This feature will merge the given controller / menu / parameters into the avatar" +
                 " during the upload process."));
@@ -719,7 +727,7 @@ namespace VF.Feature {
                 text = "Advanced Options",
                 value = false
             };
-            
+
             {
                 var (a, b) = VRCFuryEditorUtils.CreateTooltip(
                     "Global Parameters",
@@ -751,7 +759,7 @@ namespace VF.Feature {
                 adv.Add(b);
                 adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("smoothedPrms")));
             }
-            
+
             {
                 var (a, b) = VRCFuryEditorUtils.CreateTooltip(
                     "Path Rewrite Rules",
@@ -787,9 +795,16 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allowMissingAssets"), "(Deprecated) Don't fail if assets are missing"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsDepthParam"), "(Deprecated) Inject nearest SPS depth (use Inject Parameters instead)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsVelocityParam"), "(Deprecated) Inject nearest SPS velocity (use Inject Parameters instead)"));
+            adv.Add(VRCFuryEditorUtils.Prop(
+              prop.FindPropertyRelative("priority"),
+              "Priority",
+              tooltip:
+                "Override position of merged controller layers and menu items.\n\n" +
+                "Controller: Higher numbers place the layer further down in the controller (layers lower in the stack override layers above them).\n" +
+                "Menu: Higher numbers place the menu item further down in the menu (negative numbers = before descriptor items, positive numbers = after)."
+            ));
 
             content.Add(adv);
-
             if (avatarObject != null) {
                 var rewrites = prop.FindPropertyRelative("rewriteBindings");
                 IVisualElementScheduledItem scheduledRefresh = null;
@@ -865,7 +880,6 @@ namespace VF.Feature {
             "IsOnFriendsList",
             "AvatarVersion",
             "IsAnimatorEnabled",
-
             "ScaleModified",
             "ScaleFactor",
             "ScaleFactorInverse",
