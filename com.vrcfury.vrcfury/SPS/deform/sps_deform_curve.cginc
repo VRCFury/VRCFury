@@ -9,7 +9,7 @@
 #include "sps_deform_globals.cginc"
 
 inline void sps_deform_walk_chain(
-    SpsDeformPath path,
+    SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1],
     float worldLength,
     float targetDistance,
     out float outFirstSegmentLerp,
@@ -23,28 +23,23 @@ inline void sps_deform_walk_chain(
     uint terminalFlags = 0u;
     outFirstSegmentLerp = 0;
     outRadiusMult = 1;
-    outPosition = path.nodes[0].world;
-    outForward = path.nodes[0].forward;
+    outPosition = nodes[0].world;
+    outForward = nodes[0].forward;
     if (sps_is_zero(outForward)) outForward = float3(0, 0, 1);
     outForward = sps_normalize(outForward);
-    outUp = sps_nearest_normal(outForward, path.nodes[0].up);
+    outUp = sps_nearest_normal(outForward, nodes[0].up);
     float3 startPoint = outPosition;
     float3 startForward = outForward;
-    float3 startUp = outUp;
-    float3 startTangentOut = 0;
     float3 currentUp = outUp;
     uint previousFlags = 0u;
 
     [loop]
     for (uint sampleIndex = 1; sampleIndex <= SPS_CHAIN_MAX_SOCKETS; sampleIndex++) {
-        float3 endPoint = path.nodes[sampleIndex].world;
-        float3 endForward = path.nodes[sampleIndex].forward;
+        float3 endPoint = nodes[sampleIndex].world;
+        float3 endForward = nodes[sampleIndex].forward;
         if (sps_is_zero(endForward)) break;
-        float3 endUp = path.nodes[sampleIndex].up;
-        uint socketFlags = path.nodes[sampleIndex].flags;
-        bool isGuidedSegment = path.nodes[sampleIndex].guided;
-        float3 endTangentIn = path.nodes[sampleIndex].tangentIn;
-        float3 endTangentOut = path.nodes[sampleIndex].tangentOut;
+        uint socketFlags = nodes[sampleIndex].flags;
+        bool isGuidedSegment = nodes[sampleIndex].guided;
         float segmentPulloutLerp;
 
         terminalFlags = socketFlags;
@@ -55,10 +50,8 @@ inline void sps_deform_walk_chain(
         sps_deform_segment_control_points(
             startPoint,
             startForward,
-            startTangentOut,
             endPoint,
             endForward,
-            endTangentIn,
             isGuidedSegment,
             worldLength,
             max(worldLength - walkedLength, 0),
@@ -96,16 +89,10 @@ inline void sps_deform_walk_chain(
             return;
         }
 
-        if (!sps_is_zero(endTangentOut)) {
-            outForward = sps_normalize(endTangentOut);
-        }
-
         currentUp = sampleUp;
         previousFlags = socketFlags;
         startPoint = endPoint;
         startForward = endForward;
-        startUp = endUp;
-        startTangentOut = endTangentOut;
     }
 
     if (sps_has_flag(terminalFlags, SPS_SOCKET_FLAG_HOLE)) {

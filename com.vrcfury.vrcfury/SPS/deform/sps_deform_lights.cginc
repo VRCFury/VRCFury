@@ -31,7 +31,7 @@ SpsSocketCandidate sps_read_light(uint index, float3 plugWorld, float3 plugUp) {
     socket.flags = kind == 1 ? SPS_SOCKET_FLAG_HOLE : SPS_SOCKET_FLAG_DOUBLE_SIDED;
     socket.valid = true;
     float nearest = 0.01; // Front lights are 1 cm away; don't pair across distant sockets.
-    [unroll]
+    [loop]
     for (uint front = 0; front < 4; front++) {
         float3 delta = sps_light_world(front) - socket.world;
         float distanceSq = dot(delta, delta);

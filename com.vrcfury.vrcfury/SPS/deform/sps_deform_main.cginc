@@ -31,10 +31,10 @@ void sps_apply_real(
 
 	if (active == 0) return;
 
-	SpsDeformPath path;
-	if (!sps_try_get_path(path)) return;
-	float worldLength = path.worldLength;
-	float bakeScale = path.bakeScale;
+	SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1];
+	float worldLength;
+	float bakeScale;
+	if (!sps_try_get_path(nodes, worldLength, bakeScale)) return;
 	bakedVertex *= bakeScale;
 	bakedNormal *= bakeScale;
 	bakedTangent *= bakeScale;
@@ -44,14 +44,14 @@ void sps_apply_real(
 			#error SPS_MODIFY_BAKE requires a vertex function with a struct input
 		#endif
 
-		float3 bakedWorldOrigin = path.nodes[0].world;
-		float3 bakedWorldForward = sps_normalize(path.nodes[0].forward);
-		float3 bakedWorldUp = sps_nearest_normal(bakedWorldForward, path.nodes[0].up);
+		float3 bakedWorldOrigin = nodes[0].world;
+		float3 bakedWorldForward = sps_normalize(nodes[0].forward);
+		float3 bakedWorldUp = sps_nearest_normal(bakedWorldForward, nodes[0].up);
 		float3 bakedWorldRight = sps_normalize(cross(bakedWorldUp, bakedWorldForward));
 
 		float socketDist = 0;
-		float3 stop1Pos = path.nodes[1].world;
-		float3 stop1Forward = path.nodes[1].forward;
+		float3 stop1Pos = nodes[1].world;
+		float3 stop1Forward = nodes[1].forward;
 		if (!sps_is_zero(stop1Forward)) {
 			socketDist = length(stop1Pos - bakedWorldOrigin);
 		}
@@ -83,7 +83,7 @@ void sps_apply_real(
 			,stop1Forward
 #endif
 #ifdef SPS_MODIFY_BAKE_INCLUDE_SOCKET_UP
-			,path.nodes[1].up
+			,nodes[1].up
 #endif
 		);
 
@@ -124,7 +124,7 @@ void sps_apply_real(
 	float3 sampledWorldUp;
 	float pathDistance = max(bakedVertex.z, 0);
 	sps_deform_walk_chain(
-		path,
+		nodes,
 		worldLength,
 		pathDistance,
 		firstSegmentLerp,

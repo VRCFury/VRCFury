@@ -7,10 +7,8 @@
 inline void sps_deform_segment_control_points(
     float3 startPoint,
     float3 startForwardInput,
-    float3 startTangentOut,
     float3 endPoint,
     float3 endForwardInput,
-    float3 endTangentIn,
     bool isGuidedSegment,
     float worldLength,
     float remainingLength,
@@ -43,12 +41,8 @@ inline void sps_deform_segment_control_points(
     float bezierLerp = sps_saturated_map(applyLerp, 0, 1);
     float handleDistance = segmentDistance * 0.5;
     float handleDistanceWithPullout = sps_map(bezierLerp, 0, 1, worldLength * 5, handleDistance);
-    p1 = !sps_is_zero(startTangentOut)
-        ? startTangentOut
-        : p0 + startForward * handleDistanceWithPullout;
-    p2 = !sps_is_zero(endTangentIn)
-        ? endTangentIn
-        : p3 - endForward * handleDistance;
+    p1 = p0 + startForward * handleDistanceWithPullout;
+    p2 = p3 - endForward * handleDistance;
 }
 
 #endif
