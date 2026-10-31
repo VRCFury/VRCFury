@@ -282,49 +282,6 @@ namespace VF.Inspector {
             }
         }
 
-        internal static void DrawEditableTangents(VRCFuryHapticSocket socket) {
-            if (socket == null) return;
-            var guidedPathStops = socket.guidedPathStops ?? new List<VRCFuryHapticSocket.GuidedPathStop>();
-            var owner = socket.owner();
-            var socketTransformWorld = new TransformData(owner)
-                                       * VRCFuryHapticSocketEditor.GetSocketTransformLocal(socket).Item2;
-            var previousTransformWorld = socketTransformWorld.WithPosition(
-                socketTransformWorld.position
-                + (socket.useRadiusOffset
-                    ? socketTransformWorld.TransformDirection(
-                        Vector3.up * VRCFuryHapticSocketEditor.GizmoRadiusOffset
-                    )
-                    : Vector3.zero)
-            );
-            for (var i = 0; i < guidedPathStops.Count; i++) {
-                var stop = guidedPathStops[i];
-                if (stop == null || stop.transform == null) continue;
-                if (stop.customizeTangentOut) {
-                    EditorGUI.BeginChangeCheck();
-                    var tangentOutWorld = previousTransformWorld.TransformPoint(stop.tangentOutLocal);
-                    var newTangentOutWorld = DrawColoredHandle(tangentOutWorld, new Color(0.7f, 0.3f, 1f));
-                    if (EditorGUI.EndChangeCheck()) {
-                        Undo.RecordObject(socket, "Move SPS Tangent Out");
-                        stop.tangentOutLocal = previousTransformWorld.InverseTransformPoint(newTangentOutWorld);
-                        EditorUtility.SetDirty(socket);
-                    }
-                }
-
-                if (stop.customizeTangentIn) {
-                    EditorGUI.BeginChangeCheck();
-                    var tangentInWorld = stop.transform.TransformPoint(stop.tangentInLocal);
-                    var newTangentInWorld = DrawColoredHandle(tangentInWorld, new Color(0.7f, 0.3f, 1f));
-                    if (EditorGUI.EndChangeCheck()) {
-                        Undo.RecordObject(socket, "Move SPS Tangent In");
-                        stop.tangentInLocal = stop.transform.InverseTransformPoint(newTangentInWorld);
-                        EditorUtility.SetDirty(socket);
-                    }
-                }
-
-                previousTransformWorld = stop.transform;
-            }
-        }
-
         internal static void DrawEditableLegacyOffset(VRCFuryHapticSocket socket) {
             if (socket == null) return;
             if (!socket.useLights) return;

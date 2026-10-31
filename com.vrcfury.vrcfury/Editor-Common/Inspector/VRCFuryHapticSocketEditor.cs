@@ -20,7 +20,6 @@ namespace VF.Inspector {
         private void OnSceneGUI() {
             if (!(target is VRCFuryHapticSocket socket)) return;
             if (PrefabUtility.IsPartOfPrefabInstance(socket)) return;
-            VRCFuryHapticSocketGizmo.DrawEditableTangents(socket);
             VRCFuryHapticSocketGizmo.DrawEditableLegacyOffset(socket);
         }
 
@@ -80,12 +79,6 @@ namespace VF.Inspector {
         }
 
         private static VisualElement GuidedPathList(SerializedProperty listProp) {
-            var refreshProps = new List<SerializedProperty> { listProp };
-            for (var i = 0; i < Math.Min(listProp.arraySize, SpsTags.MaxUserPathStops); i++) {
-                var item = listProp.GetArrayElementAtIndex(i);
-                refreshProps.Add(item.FindPropertyRelative("customizeTangentOut"));
-                refreshProps.Add(item.FindPropertyRelative("customizeTangentIn"));
-            }
             return VRCFuryEditorUtils.RefreshOnChange(() => {
                 var container = new VisualElement();
 
@@ -98,18 +91,7 @@ namespace VF.Inspector {
                     var index = i;
                     var row = new VisualElement();
                     var item = listProp.GetArrayElementAtIndex(index);
-                    var customizeTangentOut = item.FindPropertyRelative("customizeTangentOut");
-                    var customizeTangentIn = item.FindPropertyRelative("customizeTangentIn");
-
-                    row.Add(VRCFuryEditorUtils.Prop(customizeTangentOut, $"Customize Tangent exiting {FormatSlot(index-1)}"));
-                    if (customizeTangentOut.boolValue) {
-                        row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("tangentOutLocal")));
-                    }
                     row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("shrink"), $"Collapse plug between {FormatSlot(index-1)} and {FormatSlot(index)}"));
-                    row.Add(VRCFuryEditorUtils.Prop(customizeTangentIn, $"Customize Tangent entering {FormatSlot(index)}"));
-                    if (customizeTangentIn.boolValue) {
-                        row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("tangentInLocal")));
-                    }
 
                     row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("transform"), FormatSlot(index)));
 
@@ -128,7 +110,7 @@ namespace VF.Inspector {
                 }
 
                 return container;
-            }, refreshProps.ToArray());
+            }, listProp);
         }
 
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
