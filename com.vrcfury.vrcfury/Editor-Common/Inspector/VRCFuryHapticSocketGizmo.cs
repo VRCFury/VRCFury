@@ -11,6 +11,12 @@ using VF.Utils;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFurySocketGizmo), true)]
     internal class VRCFuryHapticPlaySocketEditor : UnityEditor.Editor {
+        private void OnSceneGUI() {
+            if (!(target is VRCFurySocketGizmo gizmo) || !gizmo.show || gizmo.data?.guidedPathStops == null) return;
+            VRCFuryHapticSocketGizmo.DrawEditableStops(gizmo.data.guidedPathStops
+                .Where(stop => stop != null).Select(stop => stop.transform));
+        }
+
         [VFInit]
         private static void Init() {
             VRCFurySocketGizmo.EnableSceneLighting = () => {
@@ -31,31 +37,10 @@ namespace VF.Inspector {
     }
 
     internal static class VRCFuryHapticSocketGizmo {
-        private const float PickRadius = 0.04f;
-        private static HashSet<Transform> stopPickTargets;
-
-        [VFInit]
-        private static void Init() {
-            Scheduler.Schedule(() => stopPickTargets = null, 0);
-        }
-
-        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
-        private static void DrawStopPicking(Transform stop, GizmoType gizmoType) {
-            if (stopPickTargets == null) {
-                var authored = VFGameObject.GetComponentsInAllOpenScenes<VRCFuryHapticSocket>()
-                    .Where(s => VRCFuryHapticSocketEditor.GetSocketTransformLocal(s).Item1 != VRCFuryHapticSocket.AddLight.None)
-                    .SelectMany(s => s.guidedPathStops)
-                    .Where(s => s?.transform != null).Select(s => s.transform);
-                var playing = VFGameObject.GetComponentsInAllOpenScenes<VRCFurySocketGizmo>()
-                    .Where(g => g.show && g.data != null && g.data.type != VRCFuryHapticSocket.AddLight.None)
-                    .SelectMany(g => g.data.guidedPathStops ?? new List<VRCFurySocketGizmo.GuidedPathStopData>())
-                    .Where(s => s?.transform != null).Select(s => s.transform);
-                stopPickTargets = new HashSet<Transform>(authored.Concat(playing));
+        internal static void DrawEditableStops(IEnumerable<Transform> stops) {
+            foreach (var stop in stops.Where(stop => stop != null).Distinct()) {
+                VRCFuryGizmoUtils.DrawTransformHandle(stop, "Transform SPS Path Stop");
             }
-            if (!stopPickTargets.Contains(stop)) return;
-            // Drawing in the stop's own callback makes Unity select the stop naturally.
-            Gizmos.color = Color.clear;
-            Gizmos.DrawSphere(stop.position, PickRadius);
         }
 
         static Vector3 DrawColoredHandle(Vector3 position, Color color) {
@@ -114,7 +99,7 @@ namespace VF.Inspector {
             return text;
         }
 
-        static void DrawSocketGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, Color primaryColor, Color secondaryColor, bool pickable = true) {
+        static void DrawSocketGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, Color primaryColor, Color secondaryColor) {
             var orange = new Color(1f, 0.5f, 0);
             var discColor = primaryColor;
             if (!BuildTargetUtils.IsDesktop() || type == VRCFuryHapticSocket.AddLight.None) {
@@ -149,21 +134,19 @@ namespace VF.Inspector {
                 );
             }
 
-            if (pickable) {
-                Gizmos.color = Color.clear;
-                Gizmos.DrawSphere(worldPos, PickRadius);
-            }
+            Gizmos.color = Color.clear;
+            Gizmos.DrawSphere(worldPos, 0.04f);
         }
 
-        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, bool radiusOffset, Color primaryColor, Color secondaryColor, bool pickable = true) {
+        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, bool radiusOffset, Color primaryColor, Color secondaryColor) {
             if (!radiusOffset) {
-                DrawSocketGizmo(worldPos, worldRot, type, primaryColor, secondaryColor, pickable);
+                DrawSocketGizmo(worldPos, worldRot, type, primaryColor, secondaryColor);
                 return;
             }
 
             var offsetPos = worldPos + worldRot * (Vector3.up * VRCFuryHapticSocketEditor.GizmoRadiusOffset);
             DrawRadiusOffsetPlane(worldPos, worldRot);
-            DrawSocketGizmo(offsetPos, worldRot, type, primaryColor, secondaryColor, pickable);
+            DrawSocketGizmo(offsetPos, worldRot, type, primaryColor, secondaryColor);
         }
 
         internal static VRCFurySocketGizmo.SocketGizmoData BuildGizmoData(
@@ -279,8 +262,7 @@ namespace VF.Inspector {
                         stopType,
                         false,
                         new Color(1f, 0.5f, 0),
-                        Color.white,
-                        pickable: false
+                        Color.white
                     );
                     previousTransformWorld = stopTransformWorld;
                 }

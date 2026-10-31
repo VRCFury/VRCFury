@@ -19,6 +19,8 @@ namespace VF.Inspector {
 
         private void OnSceneGUI() {
             if (!(target is VRCFuryHapticSocket socket)) return;
+            VRCFuryHapticSocketGizmo.DrawEditableStops(socket.guidedPathStops
+                .Where(stop => stop != null).Select(stop => stop.transform));
             if (PrefabUtility.IsPartOfPrefabInstance(socket)) return;
             VRCFuryHapticSocketGizmo.DrawEditableLegacyOffset(socket);
         }
