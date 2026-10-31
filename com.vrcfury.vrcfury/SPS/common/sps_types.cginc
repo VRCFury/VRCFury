@@ -9,5 +9,7 @@
 #define SPS_SOCKET_FLAG_RADIUS_OFFSET 8u
 #define SPS_SOCKET_FLAG_UNLOCK_LOCAL_X 16u
 #define SPS_SOCKET_FLAG_UNLOCK_ALL 32u
+// Traversal-only flag, not a transmitted sender-scale bit.
+#define SPS_SOCKET_FLAG_GUIDED 64u
 
 #endif

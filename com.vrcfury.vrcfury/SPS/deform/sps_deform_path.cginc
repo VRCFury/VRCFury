@@ -13,7 +13,6 @@ struct SpsDeformNode {
     float3 forward;
     float3 up;
     uint flags;
-    bool guided;
 };
 
 bool sps_prepare_socket(SpsSocketCandidate socket, SpsDeformNode previous, float worldLength,
@@ -38,7 +37,6 @@ bool sps_prepare_socket(SpsSocketCandidate socket, SpsDeformNode previous, float
     node.forward = -normal;
     node.up = up;
     node.flags = socket.flags;
-    node.guided = guided;
     if (guided) return true;
     bool hilted = first && sps_has_flag(socket.flags, SPS_SOCKET_FLAG_HOLE)
         && distanceSq <= worldLength * worldLength * 0.25;
@@ -57,6 +55,7 @@ bool sps_prepare_socket(SpsSocketCandidate socket, SpsDeformNode previous, float
 
 // A direct array output lets FXC write nodes dynamically without unrolling the search.
 // Node zero is the plug frame; the remaining nodes are socket entrances/stops.
+// fastopt keeps FXC from spending excessive compile time optimizing the nested loops.
 bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out float worldLength, out float bakeScale) {
     nodes = (SpsDeformNode[SPS_CHAIN_MAX_SOCKETS + 1])0;
     worldLength = 0;
@@ -72,11 +71,11 @@ bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out fl
     if (!(worldLength > 0)) return false;
 
     SpsSocketCandidate sockets[SPS_CONTACT_COUNT + 4];
-    [loop]
+    [fastopt]
     for (uint i = 0; i < SPS_CONTACT_COUNT; i++) {
         sockets[i] = sps_read_contact(i);
     }
-    [loop]
+    [fastopt]
     for (uint lightIndex = 0; lightIndex < 4; lightIndex++) {
         sockets[SPS_CONTACT_COUNT + lightIndex] = sps_read_light(lightIndex, nodes[0].world, nodes[0].up);
     }
@@ -84,14 +83,14 @@ bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out fl
     uint used = 0;
     SpsSocketCandidate previous = (SpsSocketCandidate)0;
     SpsDeformNode previousNode = nodes[0];
-    [loop]
+    [fastopt]
     for (uint step = 1; step <= SPS_CHAIN_MAX_SOCKETS; step++) {
         int chosen = -1;
         SpsDeformNode chosenNode = (SpsDeformNode)0;
         float nearest = 1e30;
         // Look for path stops first
         if (previous.group != 0) {
-            [loop]
+            [fastopt]
             for (int candidate = 2 * VRC_CONTACT_MAX_TARGETS; candidate < SPS_CONTACT_COUNT; candidate++) {
                 SpsSocketCandidate socket = sockets[candidate];
                 if (!socket.valid || (used & (1u << candidate)) != 0) continue;
@@ -108,7 +107,7 @@ bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out fl
         }
         // If no path stop, look for a new socket entrance (unless it just entered a hole)
         if (chosen < 0 && (step == 1 || !sps_has_flag(previousNode.flags, SPS_SOCKET_FLAG_HOLE))) {
-            [loop]
+            [fastopt]
             for (int slot = 0; slot < 2 * VRC_CONTACT_MAX_TARGETS + 4; slot++) {
                 int candidate = slot < 2 * VRC_CONTACT_MAX_TARGETS ? slot : slot + VRC_CONTACT_MAX_TARGETS;
                 SpsSocketCandidate socket = sockets[candidate];

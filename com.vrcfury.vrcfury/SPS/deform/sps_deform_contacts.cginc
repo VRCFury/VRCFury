@@ -88,6 +88,7 @@ SpsSocketCandidate sps_read_contact(uint index) {
             | ((packed >> 12) & 1u) * SPS_SOCKET_FLAG_RADIUS_OFFSET
             | ((packed >> 11) & 1u) * SPS_SOCKET_FLAG_UNLOCK_LOCAL_X
             | ((packed >> 10) & 1u) * SPS_SOCKET_FLAG_UNLOCK_ALL;
+        socket.flags |= path ? SPS_SOCKET_FLAG_GUIDED : 0u;
         socket.valid = socket.group != 0 && (path ? socket.pathIndex > 0 : socket.pathIndex == 0);
     } else {
         // Legacy Hole/Ring tags identify SPS1/2 sockets

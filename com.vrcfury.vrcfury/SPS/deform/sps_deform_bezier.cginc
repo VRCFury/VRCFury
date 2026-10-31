@@ -51,7 +51,7 @@ inline void sps_bezierSolve(
 	float lastLength = 0;
 	float3 lastUp = initialUp;
 
-	[loop]
+	[fastopt]
 	for(int i = 1; i <= SPS_BEZIER_SAMPLES; i++) {
 		const float t = float(i) / SPS_BEZIER_SAMPLES;
 		const float3 currentPoint = sps_bezier(p0, p1, p2, p3, t);

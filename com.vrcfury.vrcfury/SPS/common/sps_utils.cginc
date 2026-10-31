@@ -19,9 +19,10 @@ inline bool sps_is_zero(float4 v) {
     return !any(v != 0);
 }
 
-// normalize fails fatally and discards the vert if length == 0
+// Guard the squared length used by rsqrt, including vectors whose length underflows to zero.
 inline float3 sps_normalize(float3 a) {
-    return sps_is_zero(a) ? float3(0,0,1) : normalize(a);
+    float lengthSquared = dot(a, a);
+    return lengthSquared == 0 ? float3(0,0,1) : a * rsqrt(lengthSquared);
 }
 
 inline float3 sps_nearest_normal(float3 forward, float3 approximate) {

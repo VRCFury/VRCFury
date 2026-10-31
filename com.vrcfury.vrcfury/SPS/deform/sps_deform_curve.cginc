@@ -33,13 +33,13 @@ inline void sps_deform_walk_chain(
     float3 currentUp = outUp;
     uint previousFlags = 0u;
 
-    [loop]
+    [fastopt]
     for (uint sampleIndex = 1; sampleIndex <= SPS_CHAIN_MAX_SOCKETS; sampleIndex++) {
         float3 endPoint = nodes[sampleIndex].world;
         float3 endForward = nodes[sampleIndex].forward;
         if (sps_is_zero(endForward)) break;
         uint socketFlags = nodes[sampleIndex].flags;
-        bool isGuidedSegment = nodes[sampleIndex].guided;
+        bool isGuidedSegment = sps_has_flag(socketFlags, SPS_SOCKET_FLAG_GUIDED);
         float segmentPulloutLerp;
 
         terminalFlags = socketFlags;
