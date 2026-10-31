@@ -9,12 +9,12 @@ namespace VF.Builder.Haptics {
 
         // SPS3 Plug
         // At the plug base, +Z toward the tip, radius = plug length
-        // If ScaleV1: X = world radius at socket entrance, Z = world length
+        // World scale: X = average radius, Y = radius at the nearest socket, Z = length (meters).
         public static string FormatPlug(string channel) => $"{Prefix}Plug/{channel}";
 
         // SPS3 Socket
         // At the entrance, +Z outward, radius = 0
-        // If ScaleV1: X =
+        // World scale: Y = 1, Z = 1, X = packed word:
         //   Bits 0-6: group ID (1-127)
         //   Bits 7-9: path index
         //   Bit 10: UnlockAll
@@ -27,9 +27,6 @@ namespace VF.Builder.Haptics {
         // For path stops after entrance:
         public static string FormatSocketPath(string channel) => $"{Prefix}SocketPath/{channel}";
 
-        // This tag means that socket/plug scale data v1 is available
-        // It can also be detected by 0.002 < scale Y < 0.003; version = round(Y * 10000) - 20
-        public const string ScaleV1 = "SPS/Flag/ScaleV1";
         // Socket triggers plug to collapse (hole)
         public const string SocketCollapse = "SPS/Flag/Collapse";
         // Socket can be entered from both sides
@@ -53,7 +50,7 @@ namespace VF.Builder.Haptics {
 
         // SPS3 legacy discovery, SPS1/2 proximity/depth/haptics, and Poiyomi TPS orientation/depth use the socket entrance
         // SPS1/2/3 use +Z outward; Poiyomi TPS orientation and very old pre-SPS offset-light entrance positions may differ
-        // Scale has no encoding guarantee without SPS3 tags or the scale sentinel
+        // Scale has no encoding guarantee without SPS3 channel tags
         public const string LegacySocket = "TPS_Orf_Root";
         // Already-built SPS2/later SPS1 plug depth/velocity receivers require this SPS-aligned socket entrance tag
         // Entrance and +Z outward are reliable; imported light pairs determine forward, but baking chooses roll; scale may be unencoded

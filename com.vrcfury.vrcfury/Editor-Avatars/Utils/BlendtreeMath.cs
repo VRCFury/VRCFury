@@ -341,7 +341,8 @@ namespace VF.Utils {
             var tmp = Add($"{name}/Tmp", (input, 10000), (-1, 1));
             var tree = VFBlendTreeDirect.Create(name);
             tree.SetNormalizedBlendValues(true);
-            tree.Add(tmp, VFClip.Create());
+            // Cover the remainder with an explicit zero, rather than Unity's parameter default.
+            tree.Add(tmp, output.MakeSetter(0));
             tree.Add(output.MakeSetter(10000));
             directTree.Add(tree);
             return output;

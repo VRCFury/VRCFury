@@ -40,7 +40,6 @@ namespace VF.Builder.Haptics {
         }
 
         public const int GroupCount = 127;
-        public const float ScaleVersion = 0.0021f;
 
         [Flags]
         public enum SocketScaleFlags {
@@ -57,8 +56,8 @@ namespace VF.Builder.Haptics {
             if (pathIndex < 0 || pathIndex >= 8) throw new ArgumentOutOfRangeException(nameof(pathIndex));
             if (((int)flags & ~0x7C00) != 0) throw new ArgumentOutOfRangeException(nameof(flags));
             // X: group ID 0-6 (nonzero), path index 7-9, flags 10-14.
-            // Y identifies the scale format/version; emitted flags are also collision tags.
-            return new Vector3(group | (pathIndex << 7) | (int)flags, ScaleVersion, 1);
+            // Y/Z are unit scale; emitted flags are also collision tags.
+            return new Vector3(group | (pathIndex << 7) | (int)flags, 1, 1);
         }
 
         public static Vector3 EncodePlugScale(float worldLength, float worldRadius) {
@@ -68,8 +67,9 @@ namespace VF.Builder.Haptics {
             if (!(worldRadius > 0) || float.IsInfinity(worldRadius)) {
                 throw new ArgumentOutOfRangeException(nameof(worldRadius), "Encoded plug radius must be finite and positive.");
             }
-            // A Y-only world-scale constraint keeps the version sentinel fixed while X/Z follow resizing.
-            return new Vector3(Mathf.Min(worldRadius, worldLength), ScaleVersion, worldLength);
+            // Y starts at the overall radius, then follows the radius curve at the nearest socket.
+            var radius = Mathf.Min(worldRadius, worldLength);
+            return new Vector3(radius, radius, worldLength);
         }
 
         public enum ReceiverParty {

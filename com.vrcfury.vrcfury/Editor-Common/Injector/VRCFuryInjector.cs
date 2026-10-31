@@ -19,6 +19,7 @@ namespace VF.Injector {
 
         public void ImportScan(Type type) {
             foreach (var serviceType in ReflectionUtils.GetTypes(type)) {
+                if (serviceType.GetCustomAttribute<VFServiceAttribute>()?.autoRegister == false) continue;
                 ImportOne(serviceType);
             }
         }

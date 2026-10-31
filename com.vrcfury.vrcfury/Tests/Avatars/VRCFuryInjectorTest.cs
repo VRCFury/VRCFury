@@ -17,6 +17,50 @@ namespace VF.Injector {
     [Category("VRCFury")]
     public class VRCFuryInjectorTest {
         [Test]
+        public void DetachedBakeReceiversDoNotResolveAnimatorSupport() {
+            var root = new UnityEngine.GameObject("Detached bake receivers");
+            try {
+                var injector = new VRCFuryInjector();
+                injector.ImportScan(typeof(VFServiceAttribute));
+                var receivers = injector.GetService<SelfAndOthersReceiverService>().Create(
+                    new SelfAndOthersReceiverService.Request { frame = root, name = "Detached", worldRadius = 1 });
+                Assert.That(() => receivers.GetMergedParameter(), Throws.InvalidOperationException
+                    .With.Message.EqualTo("Animator receiver parameters require avatar support."));
+                Assert.That(receivers.IsCreated, Is.False);
+            } finally {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void AvatarBuildReceiversUseAutowiredAnimatorServices() {
+            var root = new UnityEngine.GameObject("Build receivers");
+            try {
+                var avatar = root.AddComponent<VRCAvatarDescriptor>();
+                avatar.baseAnimationLayers = new[] { new VRCAvatarDescriptor.CustomAnimLayer {
+                    type = VRCAvatarDescriptor.AnimLayerType.FX
+                } };
+                avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+                var controllers = injector.GetService<ControllersService>();
+                controllers.ClearCache(applyBaseMask: false);
+                var receivers = injector.GetService<SelfAndOthersReceiverService>().Create(
+                    new SelfAndOthersReceiverService.Request {
+                        frame = root, name = "Build", worldRadius = 1
+                    });
+                var parameter = receivers.GetMergedParameter();
+                Assert.That(controllers.GetFx().GetParam(parameter.Name()), Is.Not.Null);
+                Assert.That(root.GetComponentsInChildren<VRC.SDK3.Dynamics.Contact.Components.VRCContactReceiver>(true),
+                    Has.Length.EqualTo(4));
+                var layers = controllers.GetFx().GetLayers().Count();
+                Assert.That(receivers.GetMergedParameter().Name(), Is.EqualTo(parameter.Name()));
+                Assert.That(controllers.GetFx().GetLayers().Count(), Is.EqualTo(layers));
+            } finally {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void MainComponentBuildContextResolves() {
             Verify("main component build context", () => {
                 var injector = new VRCFuryInjector();

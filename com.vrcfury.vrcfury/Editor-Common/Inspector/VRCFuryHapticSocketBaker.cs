@@ -223,7 +223,6 @@ namespace VF.Inspector {
 
             void AddNode(VFGameObject sender, VRCFuryHapticSocket.AddLight nodeType, int pathIndex) {
                 var tags = (pathIndex == 0 ? rootTags : pathTags).ToList();
-                tags.Add(SpsTags.ScaleV1);
                 var flags = HapticUtils.SocketScaleFlags.None;
                 if (pathIndex == 0 && socket.useRadiusOffset) {
                     tags.Add(SpsTags.SocketRadiusOffset);

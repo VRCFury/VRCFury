@@ -36,6 +36,7 @@ namespace VF.Service {
         [VFAutowired] private readonly FrameTimeService frameTimeService;
         [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
         [VFAutowired] private readonly VRCFuryHapticPlugBaker plugBaker;
+        [VFAutowired] private readonly SpsPlugRadiusService plugRadiusService;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private ControllerManager fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
@@ -152,6 +153,9 @@ namespace VF.Service {
             var localLength = worldLength / bakeRoot.worldScale.x;
             var propsToScale = new List<(UnityEngine.Component, string, float)>();
             var worldScale = new Lazy<VFAFloat>(() => worldScaleService.GetWorldScale(bakeRoot, name));
+            if (bakeInfo.mainSender != null) {
+                plugRadiusService.Create(plug, bakeInfo, name);
+            }
             
             globals.addOtherFeature(new ShowInFirstPerson {
                 useObjOverride = true,

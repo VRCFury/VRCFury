@@ -61,7 +61,7 @@ namespace VF.Tests {
                             Assert.That(packed & 127, Is.EqualTo(group));
                             Assert.That((packed >> 7) & 7, Is.EqualTo(pathIndex));
                             Assert.That((packed >> 10) & 31, Is.EqualTo(flagBits));
-                            Assert.That(encoded.y / encoded.z, Is.EqualTo(0.0021f).Within(0.0000001));
+                            Assert.That(encoded.y / encoded.z, Is.EqualTo(1f).Within(0.000001));
                         }
                     }
                 }
@@ -76,11 +76,11 @@ namespace VF.Tests {
             Assert.That((int)ScaleFlags.Twoway, Is.EqualTo(1 << 13));
             Assert.That((int)ScaleFlags.Collapse, Is.EqualTo(1 << 14));
             Assert.Throws<ArgumentOutOfRangeException>(() => HapticUtils.EncodeSocketScale(1, 0, (ScaleFlags)1));
-            Assert.That(HapticUtils.EncodeSocketScale(1, 0), Is.EqualTo(new Vector3(1, 0.0021f, 1)));
-            Assert.That(HapticUtils.EncodeSocketScale(37, 2), Is.EqualTo(new Vector3(293, 0.0021f, 1)));
-            Assert.That(HapticUtils.EncodeSocketScale(127, 7), Is.EqualTo(new Vector3(1023, 0.0021f, 1)));
+            Assert.That(HapticUtils.EncodeSocketScale(1, 0), Is.EqualTo(new Vector3(1, 1f, 1)));
+            Assert.That(HapticUtils.EncodeSocketScale(37, 2), Is.EqualTo(new Vector3(293, 1f, 1)));
+            Assert.That(HapticUtils.EncodeSocketScale(127, 7), Is.EqualTo(new Vector3(1023, 1f, 1)));
             var allFlags = ScaleFlags.Collapse | ScaleFlags.Twoway | ScaleFlags.RadiusOffset | ScaleFlags.UnlockLocalX | ScaleFlags.UnlockAll;
-            Assert.That(HapticUtils.EncodeSocketScale(127, 7, allFlags), Is.EqualTo(new Vector3(32767, 0.0021f, 1)));
+            Assert.That(HapticUtils.EncodeSocketScale(127, 7, allFlags), Is.EqualTo(new Vector3(32767, 1f, 1)));
             var sender = GameObjects.Create("Encoded", root);
             sender.worldScale = HapticUtils.EncodeSocketScale(127, 7, allFlags);
             root.transform.localScale *= 3;
@@ -90,7 +90,7 @@ namespace VF.Tests {
             CheckVector(matrix.GetColumn(2).normalized, root.transform.forward);
             var normalization = matrix.GetColumn(2).magnitude;
             Assert.That(Mathf.RoundToInt(matrix.GetColumn(0).magnitude / normalization), Is.EqualTo(32767));
-            Assert.That(matrix.GetColumn(1).magnitude / normalization, Is.EqualTo(0.0021f).Within(0.0000001));
+            Assert.That(matrix.GetColumn(1).magnitude / normalization, Is.EqualTo(1f).Within(0.000001));
         }
 
         [TestCase(-1, 0)]
@@ -123,14 +123,14 @@ namespace VF.Tests {
             var envelope = contacts.Single(c => c.collisionTags.Contains(SpsTags.PlugClose));
             var legacyRoot = contacts.Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugRoot));
             Assert.That(main.collisionTags, Does.Contain(SpsTags.FormatPlug("_public")));
-            Assert.That(main.collisionTags, Does.Contain("SPS/Flag/ScaleV1"));
+            Assert.That(main.collisionTags, Does.Not.Contain("SPS/Flag/ScaleV1"));
             Assert.That(envelope.collisionTags, Is.EqualTo(new[] { SpsTags.PlugClose }));
             foreach (var tag in new[] { SpsTags.LegacyPlugWidth,
                          SpsTags.LegacyPlugRoot }) {
                 Assert.That(contacts.Single(c => c.collisionTags.Contains(tag)).collisionTags,
                     Is.EquivalentTo(new[] { tag, tag + "_SelfNotOnHips" }));
                 Assert.That(contacts.Single(c => c.collisionTags.Contains(tag)).collisionTags,
-                    Does.Not.Contain(SpsTags.ScaleV1));
+                    Does.Not.Contain("SPS/Flag/ScaleV1"));
             }
             Assert.That(contacts.SelectMany(c => c.collisionTags).Any(t => t.StartsWith("SPSN1/Legacy")), Is.False);
             Assert.That(main.radius * MaxScale(main.transform), Is.EqualTo(0.4f).Within(0.00001));
@@ -144,26 +144,13 @@ namespace VF.Tests {
             Assert.That(native.collisionTags, Does.Contain(SpsTags.LegacyPlugSphere + "_SelfNotOnHips"));
             Assert.That(native.collisionTags.Any(t => t.StartsWith("SPSN1/Plug/")), Is.False);
             Assert.That(native.position, Is.EqualTo(Vector3.zero));
-            CheckVector(native.transform.lossyScale, new Vector3(0.03f, 0.0021f, 0.4f));
-            var yConstraint = VFConstraint.GetConstraintsInSelfAndChildren(new[] { native.owner() }).Single();
-            Assert.That(yConstraint.IsScale(), Is.True);
-            Assert.That(yConstraint.GetFirstSource().name, Is.EqualTo("WorldSpace"));
-            Assert.That(yConstraint.GetWeight(0), Is.EqualTo(1));
-            var component = yConstraint.GetComponent();
-            if (component is UnityEngine.Animations.ScaleConstraint unityConstraint) {
-                Assert.That(unityConstraint.scalingAxis, Is.EqualTo(UnityEngine.Animations.Axis.Y));
-                Assert.That(unityConstraint.scaleOffset.y, Is.EqualTo(0.0021f));
-            } else {
-                Assert.That(component.GetType().VFField("AffectsScaleX").GetValue(component), Is.False);
-                Assert.That(component.GetType().VFField("AffectsScaleY").GetValue(component), Is.True);
-                Assert.That(component.GetType().VFField("AffectsScaleZ").GetValue(component), Is.False);
-                Assert.That(((Vector3)component.GetType().VFField("ScaleOffset").GetValue(component)).y, Is.EqualTo(0.0021f));
-            }
+            CheckVector(native.transform.lossyScale, new Vector3(0.03f, 0.03f, 0.4f));
+            Assert.That(VFConstraint.GetConstraintsInSelfAndChildren(new[] { native.owner() }), Is.Empty);
             CheckVector(native.transform.position, root.transform.position);
             CheckVector(native.transform.forward, root.transform.forward);
             root.transform.localScale *= 3;
-            // Native constraints are not evaluated by a synchronous EditMode transform assignment.
             Assert.That(native.transform.lossyScale.x, Is.EqualTo(0.09f).Within(0.00001));
+            Assert.That(native.transform.lossyScale.y, Is.EqualTo(0.09f).Within(0.00001));
             Assert.That(native.transform.lossyScale.z, Is.EqualTo(1.2f).Within(0.00001));
             Assert.That(main.radius * MaxScale(main.transform), Is.EqualTo(1.2f).Within(0.00001));
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
@@ -283,11 +270,11 @@ namespace VF.Tests {
             socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             var guide = NativeSocketSenders(result.bakeRoot).Last();
-            var expected = new Vector3(129 | (1 << 14), 0.0021f, 1);
+            var expected = new Vector3(129 | (1 << 14), 1f, 1);
             CheckVector(guide.transform.lossyScale, expected);
             stop.localScale *= 10;
             CheckVector(guide.transform.lossyScale, expected);
-            Assert.That(guide.transform.lossyScale.y, Is.GreaterThan(0.002f).And.LessThan(0.003f));
+            Assert.That(guide.transform.lossyScale.y, Is.EqualTo(1).Within(0.000001));
             var constraint = VFConstraint.GetConstraintsInSelfAndChildren(new[] { guide.owner() }).Single();
             Assert.That(constraint.GetSources().Single(), Is.EqualTo(stop.asVf()));
             result.senders.active = false;
@@ -413,7 +400,7 @@ namespace VF.Tests {
                 !onHips || !avoidHips
                     ? new[] { "SPS/Plug/_public", "SPS/Plug/_nothips" }
                     : new[] { "SPS/Plug/_public" }));
-            CheckVector(sender.transform.lossyScale, new Vector3(0.03f, 0.0021f, 0.4f));
+            CheckVector(sender.transform.lossyScale, new Vector3(0.03f, 0.03f, 0.4f));
         }
 
         [Test]
@@ -425,7 +412,7 @@ namespace VF.Tests {
             socket.tags.AddRange(new[] { "custom1", "custom2" });
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             var sender = NativeSocketSenders(result.bakeRoot).Single();
-            Assert.That(sender.collisionTags.Count, Is.EqualTo(11));
+            Assert.That(sender.collisionTags.Count, Is.EqualTo(10));
             foreach (var legacyTag in new[] { SpsTags.LegacySocket, SpsTags.LegacySocket2 }) {
                 Assert.That(sender.collisionTags, Does.Contain(legacyTag));
                 Assert.That(sender.collisionTags, Does.Contain(legacyTag + "_SelfNotOnHips"));
@@ -454,7 +441,7 @@ namespace VF.Tests {
             plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "OTHER", allowSelf = false, allowOthers = true });
             injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
             var main = root.GetComponentsInChildren<VRCContactSender>()
-                .Single(c => c.collisionTags.Contains(SpsTags.ScaleV1));
+                .Single(c => c.name == "Length");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             socket.useSharedTag = shared;
@@ -487,7 +474,7 @@ namespace VF.Tests {
             plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "  " + channel.ToUpperInvariant() + "  " });
             plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = channel });
             injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
-            var main = root.GetComponentsInChildren<VRCContactSender>().Single(c => c.collisionTags.Contains(SpsTags.ScaleV1));
+            var main = root.GetComponentsInChildren<VRCContactSender>().Single(c => c.name == "Length");
             Assert.That(main.collisionTags, Is.Unique);
             Assert.That(main.collisionTags.Count(t => t == SpsTags.FormatPlug(channel)), Is.EqualTo(1));
             var socket = root.AddComponent<VRCFuryHapticSocket>();
@@ -566,7 +553,7 @@ namespace VF.Tests {
                 allowSelf || allowOthers ? new[] { "custom" } : Array.Empty<string>()));
             injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
             var main = root.GetComponentsInChildren<VRCContactSender>()
-                .Single(c => c.collisionTags.Contains(SpsTags.ScaleV1));
+                .Single(c => c.name == "Length");
             Assert.That(main.collisionTags.Where(t => t.StartsWith("SPS/Plug/")), Is.EquivalentTo(
                 allowSelf || allowOthers ? new[] { "SPS/Plug/custom" } : Array.Empty<string>()));
             Assert.That(root.GetComponentsInChildren<VRCContactSender>(), Has.Length.EqualTo(2));
@@ -576,7 +563,7 @@ namespace VF.Tests {
             Assert.That(close.radius * MaxScale(close.transform), Is.EqualTo(0.03f).Within(0.000001));
             Assert.That(close.height * MaxScale(close.transform), Is.EqualTo(0.4f).Within(0.000001));
             Assert.That(main.collisionTags.Any(t => t.StartsWith("TPS_")), Is.False);
-            Assert.That(main.collisionTags, Does.Contain(SpsTags.ScaleV1));
+            Assert.That(main.collisionTags, Does.Not.Contain("SPS/Flag/ScaleV1"));
         }
 
         [TestCase(HumanBodyBones.Hips, true)]
@@ -761,7 +748,7 @@ namespace VF.Tests {
                     }
                     var sender = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
                         .Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugSphere));
-                    CheckVector(sender.transform.lossyScale, new Vector3(0.03f, 0.0021f, 0.4f));
+                    CheckVector(sender.transform.lossyScale, new Vector3(0.03f, 0.03f, 0.4f));
                     var receivers = result.oneSpace.GetComponentsInSelfAndChildren<VRCContactReceiver>();
                     Assert.That(receivers.Length, Is.EqualTo(3));
                     foreach (var receiver in receivers) {
@@ -883,7 +870,7 @@ namespace VF.Tests {
         [TestCase(0.5f, 0.4f)]
         public void EncodedPlugClampsRadiusToLength(float radius, float expectedRadius) {
             Assert.That(HapticUtils.EncodePlugScale(0.4f, radius),
-                Is.EqualTo(new Vector3(expectedRadius, HapticUtils.ScaleVersion, 0.4f)));
+                Is.EqualTo(new Vector3(expectedRadius, expectedRadius, 0.4f)));
         }
 
         [TestCase(true)]
@@ -952,13 +939,13 @@ namespace VF.Tests {
             var packed = Mathf.RoundToInt(scale.x / scale.z);
             Assert.That(packed & 127, Is.EqualTo(group));
             Assert.That((packed >> 7) & 7, Is.EqualTo(pathIndex));
-            Assert.That(scale.y / scale.z, Is.EqualTo(0.0021f).Within(0.0000001));
+            Assert.That(scale.y / scale.z, Is.EqualTo(1f).Within(0.000001));
             var expectedFlags = flags == Flags.Hole
                 ? new[] { SpsTags.SocketCollapse }
                 : flags == Flags.Ring
                     ? new[] { SpsTags.SocketTwoway }
                     : Array.Empty<string>();
-            var expectedTags = expectedFlags.Append("SPS/Flag/ScaleV1");
+            var expectedTags = expectedFlags.AsEnumerable();
             if (radiusOffset) expectedTags = expectedTags.Append("SPS/Flag/RadiusOffset");
             Assert.That(sender.collisionTags.Where(tag => tag.Contains("/Flag/")), Is.EquivalentTo(expectedTags));
             var expectedBits = flags == Flags.Hole ? 1 << 14 : flags == Flags.Ring ? 1 << 13 : 0;

@@ -30,6 +30,7 @@ namespace VF.Builder {
         private static VRCFuryInjector MakeInjector(VRCAvatarDescriptor avatar) {
             var injector = new VRCFuryInjector();
             injector.ImportScan(typeof(VFServiceAttribute));
+            injector.ImportOne(typeof(SelfAndOthersReceiverAnimatorService));
             injector.ImportScan(typeof(ActionBuilder));
             injector.Set(avatar);
             injector.Set("avatarObject", avatar.owner());

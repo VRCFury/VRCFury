@@ -616,6 +616,9 @@ namespace VF.Inspector {
         }
 
         public class BakeResult {
+            public VFGameObject mainSender;
+            public AnimationCurve radiusCurve;
+            public SelfAndOthersReceiverService.Receivers socketReceivers;
             public VFGameObject bakeRoot;
             public VFGameObject oneSpace;
             public VFGameObject worldSpace;

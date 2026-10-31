@@ -18,6 +18,8 @@ namespace VF.Inspector {
     internal class VRCFuryHapticPlugBaker {
         [VFAutowired] private readonly SpsConfigurer spsConfigurer;
         [VFAutowired] private readonly SpsPlugReceiverService spsPlugReceiverService;
+        [VFAutowired] private readonly PlugSizeService plugSizes;
+        [VFAutowired] private readonly PlugFrameService plugFrames;
 
         [CanBeNull]
         public BakeResult Bake(
@@ -30,12 +32,14 @@ namespace VF.Inspector {
                 return null;
             }
 
-            var size = PlugSizeDetector.GetWorldSize(plug);
+            var size = plugSizes.GetWorldSize(plug);
             var renderers = size.renderers;
             var worldLength = size.worldLength;
             var worldRadius = size.worldRadius;
-            var localRotation = size.localRotation;
-            var localPosition = size.localPosition;
+            // Measure before auto-rigging or post-bake actions change the renderer.
+            var radiusCurve = renderers.Count > 0
+                ? PlugRadiusCurve.GetRadiusCurve(plug, size)
+                : AnimationCurve.Constant(0, worldLength, worldRadius);
 
             if (usedRenderers != null) {
                 foreach (var r in renderers) {
@@ -55,15 +59,11 @@ namespace VF.Inspector {
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
-            var localSpace = GameObjects.Create("BakedSpsPlug", transform);
-            localSpace.localPosition = localPosition;
-            localSpace.localRotation = localRotation;
-
-            var oneSpace = GameObjects.Create("OneSpace", localSpace);
-            oneSpace.worldScale = Vector3.one;
-
-            var worldSpace = GameObjects.Create("WorldSpace", localSpace);
-            ConstraintUtils.MakeWorldSpace(worldSpace);
+            var frames = plugFrames.Get(plug);
+            var localSpace = frames.bakeRoot;
+            var oneSpace = frames.oneSpace;
+            var worldSpace = frames.worldSpace;
+            var socketReceivers = spsPlugReceiverService.GetReceivers(plug);
 
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
@@ -78,13 +78,8 @@ namespace VF.Inspector {
                 radius = worldLength,
                 worldScale = HapticUtils.EncodePlugScale(worldLength, worldRadius),
                 tags = channels.Select(SpsTags.FormatPlug)
-                    .Append(SpsTags.ScaleV1)
                     .Concat(legacySuffixes.Select(suffix => SpsTags.LegacyPlugSphere + suffix)).ToArray()
             });
-            if (mainSender != null) {
-                VFConstraint.CreateScale(mainSender, new Vector3(1, HapticUtils.ScaleVersion, 1), Axis.Y)
-                    .AddSource(worldSpace, 1);
-            }
             if (legacySuffixes.Count > 0) {
                 HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                     obj = senders,
@@ -195,7 +190,7 @@ namespace VF.Inspector {
             }
 
             if (plug.enableSps && BuildTargetUtils.IsDesktop()) {
-                spsPlugReceiverService.Create(plug, oneSpace, worldLength, rendererResults.Select(r => r.renderer));
+                spsPlugReceiverService.Create(plug, rendererResults.Select(r => r.renderer));
             }
 
             if (!deferMaterialConfig) {
@@ -213,6 +208,9 @@ namespace VF.Inspector {
                 renderers = rendererResults,
                 worldLength = worldLength,
                 worldRadius = worldRadius,
+                mainSender = mainSender,
+                radiusCurve = radiusCurve,
+                socketReceivers = socketReceivers,
                 oscId = oscId,
             };
         }

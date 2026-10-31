@@ -27,6 +27,10 @@ namespace VF.Tests {
             root.transform.SetPositionAndRotation(new Vector3(12, -7, 4), Quaternion.Euler(31, 47, 13));
             root.transform.localScale = Vector3.one * 2;
             plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.01f;
             injector = new VRCFuryInjector();
             injector.ImportScan(typeof(VFServiceAttribute));
             injector.Set("autoChannelGenerator", new HipsChannels());
@@ -40,6 +44,35 @@ namespace VF.Tests {
             public HumanBodyBones? GetClosestBone(VFGameObject obj) => HumanBodyBones.Hips;
             public VFGameObject GetBone(VFGameObject obj, HumanBodyBones bone) => null;
             public Vector3? GetAvatarViewPosition(VFGameObject obj) => null;
+        }
+
+        [Test]
+        public void ReceiverAndBakerShareCachedSizeAndFramesRegardlessOfRequestOrder() {
+            plug.enableSps = false;
+            var sizes = injector.GetService<PlugSizeService>();
+            var size = sizes.GetWorldSize(plug);
+            var receivers = service.GetReceivers(plug);
+            var frames = injector.GetService<PlugFrameService>().Get(plug);
+            plug.length = 0.8f;
+            plug.radius = 0.02f;
+            Assert.That(sizes.GetWorldSize(plug), Is.SameAs(size));
+            Assert.That(receivers.IsCreated, Is.False);
+            var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            Assert.That(bake.worldLength, Is.EqualTo(0.4f));
+            Assert.That(bake.worldRadius, Is.EqualTo(0.01f));
+            Assert.That(bake.socketReceivers, Is.SameAs(receivers));
+            Assert.That(bake.bakeRoot, Is.EqualTo(frames.bakeRoot));
+            Assert.That(bake.oneSpace, Is.EqualTo(frames.oneSpace));
+            Assert.That(bake.worldSpace, Is.EqualTo(frames.worldSpace));
+            Assert.That(root.GetComponentsInChildren<Transform>().Count(t => t.name == "BakedSpsPlug"), Is.EqualTo(1));
+            Assert.That(receivers.IsCreated, Is.False);
+            var another = GameObjects.Create("Other plug", root).AddComponent<VRCFuryHapticPlug>();
+            another.autoRenderer = another.autoLength = another.autoRadius = false;
+            another.unitsInMeters = true;
+            another.length = 0.7f;
+            another.radius = 0.03f;
+            Assert.That(sizes.GetWorldSize(another).worldLength, Is.EqualTo(0.7f));
+            Assert.That(sizes.GetWorldSize(another), Is.Not.SameAs(size));
         }
 
         [Test]
@@ -70,16 +103,47 @@ namespace VF.Tests {
         }
 
 #if VRCSDK_HAS_MATERIAL_CONTACTS
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void MaterialRequestsMatchShaderParameterAndRespectExplicitPartyAndTags(bool self, bool needsTags) {
+            var receivers = service.GetReceivers(plug);
+            receivers.SetMaterials(Array.Empty<Renderer>(), self, needsTags, "Requested");
+            Assert.That(receivers.IsCreated, Is.False);
+            var renderer = GameObjects.Create("Material target", root).AddComponent<MeshRenderer>();
+            receivers.SetMaterials(new[] { renderer }, self, false, "Reserved");
+            var reserved = root.GetComponentInChildren<VRCContactReceiver>();
+            // Even an inactive material output with room must not lose its assigned shader parameter.
+            reserved.writeToMaterials = false;
+            receivers.SetMaterials(new[] { renderer, renderer }, self, needsTags, "Requested");
+            var all = root.GetComponentsInChildren<VRCContactReceiver>(true);
+            Assert.That(all, Has.Length.EqualTo(2));
+            var writer = all.Single(r => r.separateShaderParameter == "Requested");
+            Assert.That(reserved.separateShaderParameter, Is.EqualTo("Reserved"));
+            Assert.That(writer.allowSelf, Is.EqualTo(self));
+            Assert.That(writer.allowOthers, Is.EqualTo(!self));
+            Assert.That(writer.writeToMaterialsContactTags, Is.EqualTo(needsTags));
+            Assert.That(writer.shaderTargetRenderers, Is.EqualTo(new[] { renderer }));
+            receivers.SetMaterials(new[] { renderer }, self, true, "Requested");
+            receivers.SetMaterials(new[] { renderer }, self, false, "Requested");
+            Assert.That(writer.writeToMaterialsContactTags, Is.True);
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(2));
+            receivers.SetMaterials(new[] { renderer }, self, needsTags, "Another");
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(3));
+            Assert.That(writer.separateShaderParameter, Is.EqualTo("Requested"));
+        }
+
         [Test]
         public void SdkWritesCanonicalFrameToSeparateMaterialParameterEvenWithNoSenders() {
             Assert.That(ContactReceiver.SHADER_MAX_TARGET_CONTACTS, Is.EqualTo(8));
-            var frame = GameObjects.Create("Frame", root);
-            frame.localPosition = new Vector3(0.3f, 0.5f, -0.1f);
-            frame.localRotation = Quaternion.Euler(17, 29, 41);
-            frame.worldScale = Vector3.one;
+            var reference = GameObjects.Create("OGBTestBase", root);
+            reference.localPosition = new Vector3(0.3f, 0.5f, -0.1f);
+            reference.localRotation = Quaternion.Euler(17, 29, 41);
+            var frame = injector.GetService<PlugFrameService>().Get(plug).oneSpace;
             var renderer = GameObjects.Create("Renderer", root).AddComponent<MeshRenderer>();
-            service.Create(plug, frame, 0.4f, new[] { renderer });
-            var receivers = root.GetComponentsInChildren<VRCContactReceiver>();
+            service.Create(plug, new[] { renderer });
+            var receivers = root.GetComponentsInChildren<VRCContactReceiver>().Where(r => r.writeToMaterials).ToArray();
             var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
             var type = typeof(ContactReceiver);
             foreach (var receiver in receivers) {
@@ -115,13 +179,13 @@ namespace VF.Tests {
         [TestCase(5, 6, 2f)]
         [TestCase(9, 9, 0.4f)]
         public void MaterialReceiversBatchActualRenderersWithoutAnimatorParameters(int rendererCount, int receiverCount, float worldLength) {
-            var frame = GameObjects.Create("Frame", root);
-            frame.worldScale = Vector3.one;
+            plug.length = worldLength;
+            var frame = injector.GetService<PlugFrameService>().Get(plug).oneSpace;
             var renderers = Enumerable.Range(0, rendererCount)
                 .Select(i => (Renderer)GameObjects.Create("Renderer " + i, root).AddComponent<MeshRenderer>()).ToArray();
-            service.Create(plug, frame, worldLength, renderers.Concat(renderers));
-            var receivers = root.GetComponentsInChildren<VRCContactReceiver>();
-            Assert.That(receivers.Length, Is.EqualTo(receiverCount));
+            service.Create(plug, renderers.Concat(renderers));
+            var receivers = root.GetComponentsInChildren<VRCContactReceiver>().Where(r => r.writeToMaterials).ToArray();
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true).Length, Is.EqualTo(receiverCount));
             foreach (var group in receivers.GroupBy(r => r.separateShaderParameter)) {
                 Assert.That(group.SelectMany(r => r.shaderTargetRenderers), Is.EquivalentTo(renderers));
             }
@@ -146,7 +210,7 @@ namespace VF.Tests {
 #else
         [Test]
         public void RejectsSdksWithoutMaterialContacts() {
-            var error = Assert.Throws<Exception>(() => service.Create(plug, root, 0.4f, Array.Empty<Renderer>()));
+            var error = Assert.Throws<Exception>(() => service.Create(plug, Array.Empty<Renderer>()));
             Assert.That(error.Message, Does.Contain("Update the VRCSDK"));
         }
 #endif

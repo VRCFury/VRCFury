@@ -12,6 +12,24 @@ namespace VF.Builder.Haptics {
     [VFService]
     internal class SpsPlugReceiverService {
         [VFAutowired] private readonly SpsConfigurer spsConfigurer;
+        [VFAutowired] private readonly SelfAndOthersReceiverService selfAndOthers;
+        [VFAutowired] private readonly PlugSizeService sizes;
+        [VFAutowired] private readonly PlugFrameService frames;
+        private readonly Dictionary<VRCFuryHapticPlug, SelfAndOthersReceiverService.Receivers> entrances = new();
+
+        public SelfAndOthersReceiverService.Receivers GetReceivers(VRCFuryHapticPlug plug) {
+            if (!entrances.TryGetValue(plug, out var receivers)) {
+                var size = sizes.GetWorldSize(plug);
+                receivers = selfAndOthers.Create(new SelfAndOthersReceiverService.Request {
+                    frame = frames.Get(plug).oneSpace, name = "SPS_",
+                    worldRadius = size.worldLength * 1.6f,
+                    selfTags = GetSocketTags(plug, true).ToArray(),
+                    othersTags = GetSocketTags(plug, false).ToArray()
+                });
+                entrances[plug] = receivers;
+            }
+            return receivers;
+        }
 
         private HashSet<string> GetChannels(VRCFuryHapticPlug plug, bool self) =>
             spsConfigurer.GetPlugChannels(plug, self
@@ -38,13 +56,14 @@ namespace VF.Builder.Haptics {
 #endif
         }
 
-        public void Create(VRCFuryHapticPlug plug, VFGameObject frame, float worldLength, IEnumerable<Renderer> renderers) {
+        public void Create(VRCFuryHapticPlug plug, IEnumerable<Renderer> renderers) {
             RequireMaterialContacts();
 #if VRCSDK_HAS_MATERIAL_CONTACTS
             var targets = renderers.Where(r => r != null).Distinct().ToArray();
-            var entranceRadius = worldLength * 1.6f;
-            Add("SPS_Self", GetSocketTags(plug, true), true, false, entranceRadius);
-            Add("SPS_Others", GetSocketTags(plug, false), false, true, entranceRadius);
+            var receivers = GetReceivers(plug);
+            var frame = frames.Get(plug).oneSpace;
+            receivers.SetMaterials(targets, self: true, needsContactTags: false, shaderParameter: "SPS_Self");
+            receivers.SetMaterials(targets, self: false, needsContactTags: true, shaderParameter: "SPS_Others");
             // Guides can extend beyond the entrance-selection range.
             Add("SPS_Path", GetPathTags(plug), true, true, 3);
 
