@@ -31,6 +31,33 @@ namespace VF.Inspector {
     }
 
     internal static class VRCFuryHapticSocketGizmo {
+        private const float PickRadius = 0.04f;
+        private static HashSet<Transform> stopPickTargets;
+
+        [VFInit]
+        private static void Init() {
+            Scheduler.Schedule(() => stopPickTargets = null, 0);
+        }
+
+        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
+        private static void DrawStopPicking(Transform stop, GizmoType gizmoType) {
+            if (stopPickTargets == null) {
+                var authored = VFGameObject.GetComponentsInAllOpenScenes<VRCFuryHapticSocket>()
+                    .Where(s => VRCFuryHapticSocketEditor.GetSocketTransformLocal(s).Item1 != VRCFuryHapticSocket.AddLight.None)
+                    .SelectMany(s => s.guidedPathStops)
+                    .Where(s => s?.transform != null).Select(s => s.transform);
+                var playing = VFGameObject.GetComponentsInAllOpenScenes<VRCFurySocketGizmo>()
+                    .Where(g => g.show && g.data != null && g.data.type != VRCFuryHapticSocket.AddLight.None)
+                    .SelectMany(g => g.data.guidedPathStops ?? new List<VRCFurySocketGizmo.GuidedPathStopData>())
+                    .Where(s => s?.transform != null).Select(s => s.transform);
+                stopPickTargets = new HashSet<Transform>(authored.Concat(playing));
+            }
+            if (!stopPickTargets.Contains(stop)) return;
+            // Drawing in the stop's own callback makes Unity select the stop naturally.
+            Gizmos.color = Color.clear;
+            Gizmos.DrawSphere(stop.position, PickRadius);
+        }
+
         static Vector3 DrawColoredHandle(Vector3 position, Color color) {
             var oldColor = Handles.color;
             Handles.color = color;
@@ -87,7 +114,7 @@ namespace VF.Inspector {
             return text;
         }
 
-        static void DrawSocketGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, Color primaryColor, Color secondaryColor) {
+        static void DrawSocketGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, Color primaryColor, Color secondaryColor, bool pickable = true) {
             var orange = new Color(1f, 0.5f, 0);
             var discColor = primaryColor;
             if (!BuildTargetUtils.IsDesktop() || type == VRCFuryHapticSocket.AddLight.None) {
@@ -122,19 +149,21 @@ namespace VF.Inspector {
                 );
             }
 
-            Gizmos.color = Color.clear;
-            Gizmos.DrawSphere(worldPos, 0.04f);
+            if (pickable) {
+                Gizmos.color = Color.clear;
+                Gizmos.DrawSphere(worldPos, PickRadius);
+            }
         }
 
-        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, bool radiusOffset, Color primaryColor, Color secondaryColor) {
+        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, bool radiusOffset, Color primaryColor, Color secondaryColor, bool pickable = true) {
             if (!radiusOffset) {
-                DrawSocketGizmo(worldPos, worldRot, type, primaryColor, secondaryColor);
+                DrawSocketGizmo(worldPos, worldRot, type, primaryColor, secondaryColor, pickable);
                 return;
             }
 
             var offsetPos = worldPos + worldRot * (Vector3.up * VRCFuryHapticSocketEditor.GizmoRadiusOffset);
             DrawRadiusOffsetPlane(worldPos, worldRot);
-            DrawSocketGizmo(offsetPos, worldRot, type, primaryColor, secondaryColor);
+            DrawSocketGizmo(offsetPos, worldRot, type, primaryColor, secondaryColor, pickable);
         }
 
         internal static VRCFurySocketGizmo.SocketGizmoData BuildGizmoData(
@@ -250,7 +279,8 @@ namespace VF.Inspector {
                         stopType,
                         false,
                         new Color(1f, 0.5f, 0),
-                        Color.white
+                        Color.white,
+                        pickable: false
                     );
                     previousTransformWorld = stopTransformWorld;
                 }

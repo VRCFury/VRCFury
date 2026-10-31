@@ -119,15 +119,57 @@ namespace VF.Tests {
         [TestCase(true, false)]
         [TestCase(false, true)]
         [TestCase(false, false)]
+        public void NamedOgbParameterIsReusedByDepthAndShaderConsumers(bool self, bool shaderFirst) {
+            var receivers = bake.socketReceivers;
+            var parameterName = "OGB/Pen/Test/" + (self ? "PenSelf" : "PenOthers");
+            var renderer = plug.configureTpsMesh.Single();
+            void Materials() => receivers.SetMaterials(new[] { renderer }, self, false, "ShaderOutput");
+            if (shaderFirst) Materials();
+            var ogb = receivers.GetParameter(self, parameterName, ContactReceiver.AdvancedParameter.SenderType);
+            if (!shaderFirst) Materials();
+            var depth = receivers.GetParameter(self, advancedParameters: ContactReceiver.AdvancedParameter.PointSeparation);
+            Assert.That(ogb.Name(), Is.EqualTo(parameterName));
+            Assert.That(depth.Name(), Is.EqualTo(parameterName));
+            Assert.That(fx.GetParam(parameterName), Is.Not.Null);
+            var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).Single();
+            Assert.That(receiver.parameter, Is.EqualTo(parameterName));
+            Assert.That(receiver.writeToMaterials, Is.True);
+            Assert.That(receiver.shaderTargetRenderers, Is.EqualTo(new[] { renderer }));
+            Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderType
+                | ContactReceiver.AdvancedParameter.PointSeparation));
+            Assert.That(fx.GetParam(parameterName + "_PointSeparation"), Is.Not.Null);
+            Assert.That(receivers.GetParameter(self, parameterName).Name(), Is.EqualTo(parameterName));
+            receivers.GetMergedParameter();
+            Assert.That(SourceReceiver(self), Is.SameAs(receiver));
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(4));
+        }
+
+        [Test]
+        public void DifferentExplicitParameterNamesDoNotRenameExistingReceivers() {
+            var receivers = bake.socketReceivers;
+            var first = receivers.GetParameter(true, "OGB/First");
+            var second = receivers.GetParameter(true, "OGB/Second");
+            Assert.That(first.Name(), Is.EqualTo("OGB/First"));
+            Assert.That(second.Name(), Is.EqualTo("OGB/Second"));
+            Assert.That(receivers.GetParameter(true).Name(), Is.EqualTo(first.Name()));
+            Assert.That(receivers.GetParameter(true, "OGB/Second").Name(), Is.EqualTo(second.Name()));
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true).Select(r => r.parameter),
+                Is.EquivalentTo(new[] { "OGB/First", "OGB/Second" }));
+        }
+
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
         public void ParameterRequestsReuseShaderReceiversAndUnionAdvancedOutputs(bool self, bool shaderFirst) {
             var receivers = bake.socketReceivers;
             var targets = Enumerable.Range(0, 9)
                 .Select(i => (Renderer)GameObjects.Create("Target " + i, root).AddComponent<MeshRenderer>()).ToArray();
             void Materials() => receivers.SetMaterials(targets, self, true, "ShaderOutput");
             if (shaderFirst) Materials();
-            var parameter = receivers.GetParameter(self, ContactReceiver.AdvancedParameter.SenderLocalPosition);
+            var parameter = receivers.GetParameter(self, advancedParameters: ContactReceiver.AdvancedParameter.SenderLocalPosition);
             if (!shaderFirst) Materials();
-            var again = receivers.GetParameter(self, ContactReceiver.AdvancedParameter.SenderLossyScale);
+            var again = receivers.GetParameter(self, advancedParameters: ContactReceiver.AdvancedParameter.SenderLossyScale);
             Assert.That(again.Name(), Is.EqualTo(parameter.Name()));
             var all = root.GetComponentsInChildren<VRCContactReceiver>(true);
             Assert.That(all, Has.Length.EqualTo(3));

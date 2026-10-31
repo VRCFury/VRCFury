@@ -54,21 +54,25 @@ namespace VF.Builder.Haptics {
                 };
             }
 
-            private VRCContactReceiver Find(bool self, bool merged, bool preferParameter = false) {
+            private VRCContactReceiver Find(bool self, bool merged, bool preferParameter = false, string parameterName = null) {
                 var receivers = merged ? mergeReceivers : alwaysOnReceivers;
-                bool Matches(VRCContactReceiver r) => r.allowSelf == self && r.allowOthers != self;
+                bool Matches(VRCContactReceiver r) => r.allowSelf == self && r.allowOthers != self
+                    && (parameterName == null || string.IsNullOrEmpty(r.parameter) || r.parameter == parameterName);
                 return (preferParameter ? receivers.FirstOrDefault(r => Matches(r) && !string.IsNullOrEmpty(r.parameter)) : null)
                     ?? receivers.FirstOrDefault(Matches)
                     ?? Make(self, merged);
             }
 
-            public VFAFloat GetParameter(bool self
+            public VFAFloat GetParameter(bool self, string parameterName = null
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
                 , AdvancedParameter advancedParameters = 0
 #endif
             ) {
                 if (animator == null) throw new InvalidOperationException("Animator receiver parameters require avatar support.");
-                var receiver = Find(self, false, preferParameter: true);
+                var receiver = Find(self, false, preferParameter: true, parameterName: parameterName);
+                // Explicit names are public outputs (for example OGB)
+                // Never rename an existing output already used by another consumer
+                if (parameterName != null) receiver.parameter = parameterName;
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
                 receiver.advancedParameters |= advancedParameters;
 #endif
@@ -139,8 +143,8 @@ namespace VF.Builder.Haptics {
                     return mergedParameter;
                 }
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-                var self = GetParameter(true, AdvancedParameter.PointSeparation);
-                var others = GetParameter(false, AdvancedParameter.PointSeparation);
+                var self = GetParameter(true, advancedParameters: AdvancedParameter.PointSeparation);
+                var others = GetParameter(false, advancedParameters: AdvancedParameter.PointSeparation);
 #else
                 var self = GetParameter(true);
                 var others = GetParameter(false);
