@@ -24,7 +24,7 @@
     "versionDefines": [
         {
             "name": "com.vrchat.base",
-            "expression": "3.10.6-beta.4",
+            "expression": "3.10.6",
             "define": "VRCSDK_HAS_MATERIAL_CONTACTS"
         }
     ],

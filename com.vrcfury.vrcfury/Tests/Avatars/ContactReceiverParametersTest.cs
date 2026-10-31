@@ -30,14 +30,8 @@ namespace VF.Tests {
             target.GetType().VFField(field).SetValue(target, value);
 
         private static void EnableAdvanced(VRCContactReceiver receiver) {
-#if VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             receiver.advancedParameters = VRC.Dynamics.ContactReceiver.AdvancedParameter.All;
-#elif VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS_OLDNAME
-            receiver.advancedProximityParameters = true;
-#else
-            receiver.advancedParameters = true;
-#endif
 #else
             Assert.Ignore("This SDK predates advanced contact parameters.");
 #endif

@@ -184,7 +184,7 @@ namespace VF.Tests {
                 root.transform.localScale = Vector3.one * (2 * scale);
                 for (var i = 0; i < 20; i++) graph.Evaluate(1f / 60);
                 var actual = bake.mainSender.worldScale;
-                var expected = Mathf.Max(SpsPlugRadiusService.MinimumRadius, 0.06f * Mathf.Clamp01(1 - distance)) * scale;
+                var expected = Mathf.Lerp(0.06f, SpsPlugRadiusService.MinimumRadius, Mathf.Clamp01(distance)) * scale;
                 Assert.That(actual.y, Is.EqualTo(expected).Within(0.00002f));
                 Assert.That(actual.y, Is.GreaterThan(0));
                 Assert.That(actual.x, Is.EqualTo(0.06f * scale).Within(0.00002f));
@@ -202,7 +202,8 @@ namespace VF.Tests {
             var other = SourceReceiver(false);
             Assert.That(self.collisionTags, Is.EqualTo(new[] { "SPS/Socket/first" }));
             Assert.That(other.collisionTags, Is.EqualTo(new[] { "SPS/Socket/second" }));
-            foreach (var values in new[] { (0.75f, 0.25f, 0.045f), (0.25f, 0.75f, 0.045f), (2f, 2f, 0f) }) {
+            var quarterRadius = Mathf.Lerp(0.06f, SpsPlugRadiusService.MinimumRadius, 0.25f);
+            foreach (var values in new[] { (0.75f, 0.25f, quarterRadius), (0.25f, 0.75f, quarterRadius), (2f, 2f, 0f) }) {
                 playable.SetFloat(self.parameter, Mathf.Clamp01(1 - values.Item1 / SpsPlugRadiusService.RangeInPlugLengths));
                 playable.SetFloat(other.parameter, Mathf.Clamp01(1 - values.Item2 / SpsPlugRadiusService.RangeInPlugLengths));
                 playable.SetFloat(MergedReceiver(true).parameter,
@@ -264,6 +265,7 @@ namespace VF.Tests {
                 Assert.That(bake.radiusCurve.Evaluate(depth), Is.EqualTo(0.06f).Within(0.00001f));
         }
 
+#if VRCSDK_HAS_MATERIAL_CONTACTS
         [TestCase(false)]
         [TestCase(true)]
         public void ShaderAndAnimatorReuseOneLazyReceiverRequest(bool shaderFirst) {
@@ -290,6 +292,7 @@ namespace VF.Tests {
             var again = r.GetMergedParameter();
             Assert.That(again.Name(), Is.EqualTo(MergedReceiver(true).parameter));
         }
+#endif
 
         [Test]
         public void SelectsOneMergedReceiverWithoutBufferingItsParameter() {
@@ -310,7 +313,7 @@ namespace VF.Tests {
                 Assert.That(MergedReceiver(true).gameObject.activeSelf, Is.EqualTo(values.Item3));
                 Assert.That(MergedReceiver(false).gameObject.activeSelf, Is.EqualTo(!values.Item3));
                 Assert.That(playable.IsParameterControlledByCurve(MergedReceiver(true).parameter), Is.False);
-                Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(0.0216f).Within(0.00002f));
+                Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(0.0216f + SpsPlugRadiusService.MinimumRadius * 0.64f).Within(0.00002f));
             }
         }
 
@@ -340,11 +343,12 @@ namespace VF.Tests {
                 graph.Evaluate(1f / 60);
                 Assert.That(MergedReceiver(true).gameObject.activeSelf, Is.EqualTo(values.Item5), values.ToString());
                 Assert.That(MergedReceiver(false).gameObject.activeSelf, Is.EqualTo(!values.Item5), values.ToString());
-                Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(0.0216f).Within(0.00002f));
+                Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(0.0216f + SpsPlugRadiusService.MinimumRadius * 0.64f).Within(0.00002f));
             }
         }
 #endif
 
+#if VRCSDK_HAS_MATERIAL_CONTACTS
         [Test]
         public void ExtraMaterialReceiversHaveNoParametersOrMergedCopies() {
             Start();
@@ -362,7 +366,10 @@ namespace VF.Tests {
                     .SelectMany(r => r.shaderTargetRenderers), Is.EquivalentTo(renderers));
             }
         }
+#endif
 
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+        // This integration probe calls the SDK 3.10.6 collision-job internals directly.
         private sealed class ParameterAccess : IAnimParameterAccess {
             private readonly AnimatorControllerPlayable playable;
             private readonly string name;
@@ -460,7 +467,7 @@ namespace VF.Tests {
                         "self active=" + MergedReceiver(true).gameObject.activeSelf + " others active=" + MergedReceiver(false).gameObject.activeSelf);
                     graph.Evaluate(1f / 60);
                     Assert.That(bake.mainSender.worldScale.y,
-                        Is.EqualTo(0.06f * (1 - Mathf.Min(distances.Item1, distances.Item2))).Within(0.0001f));
+                        Is.EqualTo(Mathf.Lerp(0.06f, SpsPlugRadiusService.MinimumRadius, Mathf.Min(distances.Item1, distances.Item2))).Within(0.0001f));
                 }
             } finally {
                 // Contact destruction must happen while its manager and parameter accesses are valid.
@@ -470,5 +477,6 @@ namespace VF.Tests {
                 Field(typeof(ContactManager), "Inst").SetValue(null, previousManager);
             }
         }
+#endif
     }
 }
