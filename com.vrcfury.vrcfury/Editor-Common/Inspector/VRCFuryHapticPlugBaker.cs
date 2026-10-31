@@ -17,6 +17,7 @@ namespace VF.Inspector {
     [VFService]
     internal class VRCFuryHapticPlugBaker {
         [VFAutowired] private readonly SpsConfigurer spsConfigurer;
+        [VFAutowired] private readonly SpsPlugReceiverService spsPlugReceiverService;
 
         [CanBeNull]
         public BakeResult Bake(
@@ -139,7 +140,8 @@ namespace VF.Inspector {
 
                         var spsBaked = plug.enableSps ? SpsBaker.Bake(renderer, localSpace, activeFromMask, false, spsBlendshapes) : null;
 
-                        var finishedCopies = new HashSet<Material>();
+                        var finishedTpsCopies = new HashSet<Material>();
+                        var spsCopies = new Dictionary<Material, Material>();
                         Material ConfigureMaterial(int slotNum, Material mat) {
                             var shouldPatch = size.matSlots.Get(renderer.owner()).Contains(slotNum);
                             if (!shouldPatch) return mat;
@@ -149,18 +151,21 @@ namespace VF.Inspector {
                                 if (!BuildTargetUtils.IsDesktop()) return mat;
 
                                 if (plug.enableSps) {
-                                    var copy = mat.Clone("Needed to swap shader to SPS");
-                                    if (finishedCopies.Contains(copy)) return copy;
-                                    finishedCopies.Add(copy);
+                                    if (spsCopies.TryGetValue(mat, out var configured)) return configured;
+                                    // Bake data belongs to this renderer, even if another
+                                    // feature already made the source material mutable.
+                                    var copy = mat.Clone("Needed to swap shader to SPS", forceClone: true);
                                     SpsConfigurer.ConfigureSpsMaterial(renderer, copy, worldLength,
                                         spsBaked,
                                         plug, localSpace, spsBlendshapes);
+                                    spsPlugReceiverService.ConfigureMaterial(copy, plug);
+                                    spsCopies[mat] = copy;
                                     return copy;
                                 }
                                 if (plug.configureTps && TpsConfigurer.IsTps(mat)) {
                                     var copy = mat.Clone("Needed to change properties for TPS autoconfiguration");
-                                    if (finishedCopies.Contains(copy)) return copy;
-                                    finishedCopies.Add(copy);
+                                    if (finishedTpsCopies.Contains(copy)) return copy;
+                                    finishedTpsCopies.Add(copy);
                                     TpsConfigurer.ConfigureTpsMaterial(renderer, localSpace, copy, worldLength, activeFromMask);
                                     return copy;
                                 }
@@ -187,6 +192,10 @@ namespace VF.Inspector {
                     configureMaterial = (slotNum,m) => m,
                     activeFromMask = null
                 }).ToArray();
+            }
+
+            if (plug.enableSps && BuildTargetUtils.IsDesktop()) {
+                spsPlugReceiverService.Create(plug, oneSpace, worldLength, rendererResults.Select(r => r.renderer));
             }
 
             if (!deferMaterialConfig) {

@@ -188,7 +188,7 @@ namespace VF.Tests {
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Animator>(), Is.Empty);
             var lights = result.lights.GetComponentsInSelfAndChildren<Light>();
             Assert.That(lights.Select(l => l.range), Is.EquivalentTo(new[] {
-                type == VRCFuryHapticSocket.AddLight.Hole ? 0.4106f : 0.4206f, 0.4506f
+                type == VRCFuryHapticSocket.AddLight.Hole ? 0.4102f : 0.4202f, 0.4502f
             }));
             var legacy = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>();
             Assert.That(legacy.Length, Is.EqualTo(1));
@@ -739,6 +739,14 @@ namespace VF.Tests {
                 plug.unitsInMeters = true;
                 plug.length = 0.4f;
                 plug.radius = 0.03f;
+#if !VRCSDK_HAS_MATERIAL_CONTACTS
+                if (BuildTargetUtils.IsDesktop()) {
+                    var error = Assert.Throws<Exception>(() => injector.GetService<VRCFuryHapticPlugBaker>()
+                        .Bake(plug, deferMaterialConfig: !withMaterial));
+                    Assert.That(error.Message, Does.Contain("Update the VRCSDK"));
+                    return;
+                }
+#endif
                 var result = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug, deferMaterialConfig: !withMaterial);
                 Assert.That(root.GetComponentsInChildren<Renderer>(true), Is.EquivalentTo(new[] { renderer }));
                 Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Animator>(), Is.Empty);
@@ -753,6 +761,17 @@ namespace VF.Tests {
                     var sender = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
                         .Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugSphere));
                     CheckVector(sender.transform.lossyScale, new Vector3(0.03f, 0.0021f, 0.4f));
+                    var receivers = result.oneSpace.GetComponentsInSelfAndChildren<VRCContactReceiver>();
+                    Assert.That(receivers.Length, Is.EqualTo(3));
+                    foreach (var receiver in receivers) {
+                        Assert.That(receiver.transform.parent, Is.EqualTo((Transform)result.oneSpace));
+                        CheckVector(receiver.transform.lossyScale, Vector3.one);
+                        CheckVector(receiver.transform.position, result.bakeRoot.worldPosition);
+                    }
+                    root.transform.localScale *= 3;
+                    foreach (var receiver in receivers) {
+                        CheckVector(receiver.transform.lossyScale, Vector3.one * 3);
+                    }
                 }
             } finally {
                 if (originalMaterial != null) Object.DestroyImmediate(originalMaterial);
@@ -792,7 +811,7 @@ namespace VF.Tests {
             CheckNode(native, 1, 0, Flags.Ring);
             CheckVector(native.transform.position, result.bakeRoot.worldPosition);
             Assert.That(result.lights.GetComponentsInSelfAndChildren<Light>().Select(l => l.range),
-                Does.Contain(0.4106f));
+                Does.Contain(0.4102f));
         }
 
         [Test]
@@ -816,15 +835,16 @@ namespace VF.Tests {
             Assert.That(native.transform.lossyScale.x, Is.EqualTo((129 | (1 << 14)) * 2).Within(0.01));
         }
 
-        [Test]
-        public void AutomaticLegacyUpgradePreservesLightsAndAdvertisesNativePose() {
+        [TestCase(0.41f)]
+        [TestCase(0.42f)]
+        public void AutomaticLegacyUpgradePreservesLightsAndOnlyPublishesLegacyContacts(float rootRange) {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.None;
             socket.fromSpsForAll = true;
             var main = new GameObject("Existing DPS Root").AddComponent<Light>();
             main.transform.SetParent(root.transform, false);
             main.color = Color.black;
-            main.range = 0.41f;
+            main.range = rootRange;
             var front = new GameObject("Existing DPS Front").AddComponent<Light>();
             front.transform.SetParent(root.transform, false);
             front.transform.localPosition = Vector3.forward * 0.005f;
@@ -832,14 +852,18 @@ namespace VF.Tests {
             front.range = 0.45f;
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             Assert.That(main == null || front == null, Is.False);
-            Assert.That(main.range, Is.EqualTo(0.41f));
+            Assert.That(main.range, Is.EqualTo(rootRange));
             Assert.That(front.range, Is.EqualTo(0.45f));
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
             if (!BuildTargetUtils.IsDesktop()) return;
-            var native = NativeSocketSenders(result.bakeRoot).Single();
-            CheckNode(native, 1, 0, Flags.Hole);
-            CheckVector(native.transform.position, main.transform.position);
-            CheckVector(native.transform.forward, (front.transform.position - main.transform.position).normalized);
+            Assert.That(NativeSocketSenders(result.bakeRoot), Is.Empty);
+            var legacy = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>().Single();
+            Assert.That(legacy.collisionTags, Does.Contain(SpsTags.LegacySocket));
+            Assert.That(legacy.collisionTags, Does.Contain(SpsTags.LegacySocket2));
+            Assert.That(legacy.collisionTags.Any(tag => tag.StartsWith(SpsTags.Prefix)
+                || tag.StartsWith(SpsTags.LegacySocketHole) || tag.StartsWith(SpsTags.LegacySocketRing)), Is.False);
+            CheckVector(legacy.transform.position, main.transform.position);
+            CheckVector(legacy.transform.forward, (front.transform.position - main.transform.position).normalized);
         }
 
         [TestCase(0f, 0.03f)]

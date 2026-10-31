@@ -8,6 +8,10 @@
 
 Texture2D _SPS_Bake;
 float4 _SPS_Bake_TexelSize;
+float _SPS_BakedLength;
+float _SPS_OthersChannelTagCount;
+float _SPS_OthersLegacyTags;
+float _SPS_UseLegacyLights;
 
 UNITY_INSTANCING_BUFFER_START(SpsDeformProps)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_Enabled)

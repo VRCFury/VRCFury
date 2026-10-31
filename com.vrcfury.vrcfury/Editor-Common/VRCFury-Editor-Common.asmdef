@@ -27,6 +27,11 @@
   "defineConstraints": [],
   "versionDefines": [
     {
+      "name": "com.vrchat.base",
+      "expression": "3.10.6-beta.4",
+      "define": "VRCSDK_HAS_MATERIAL_CONTACTS"
+    },
+    {
       "name": "com.vrchat.avatars",
       "expression": "3.10.6-0",
       "define": "VRCSDK_HAS_FACE_TRACKING"

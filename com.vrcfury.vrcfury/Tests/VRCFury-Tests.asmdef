@@ -21,6 +21,12 @@
     "defineConstraints": [
         "VRCF_TEST"
     ],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.10.6-beta.4",
+            "define": "VRCSDK_HAS_MATERIAL_CONTACTS"
+        }
+    ],
     "noEngineReferences": false
 }

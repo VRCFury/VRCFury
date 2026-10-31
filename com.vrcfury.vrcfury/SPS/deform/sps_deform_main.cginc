@@ -50,9 +50,9 @@ void sps_apply_real(
 		float3 bakedWorldRight = sps_normalize(cross(bakedWorldUp, bakedWorldForward));
 
 		float socketDist = 0;
+		float3 stop1Pos = path.nodes[1].world;
 		float3 stop1Forward = path.nodes[1].forward;
 		if (!sps_is_zero(stop1Forward)) {
-			float3 stop1Pos = path.nodes[1].world;
 			socketDist = length(stop1Pos - bakedWorldOrigin);
 		}
 

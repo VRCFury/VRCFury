@@ -15,8 +15,8 @@ namespace VF.Builder.Haptics {
         // SPS3 Socket
         // At the entrance, +Z outward, radius = 0
         // If ScaleV1: X =
-        //   Bits 0–6: group ID (1–127)
-        //   Bits 7–9: path index
+        //   Bits 0-6: group ID (1-127)
+        //   Bits 7-9: path index
         //   Bit 10: UnlockAll
         //   Bit 11: UnlockLocalX
         //   Bit 12: RadiusOffset
@@ -63,9 +63,8 @@ namespace VF.Builder.Haptics {
         // public const string LegacySocketFront = "TPS_Orf_Norm";
         // Removed: only the retired experimental SPS1 triangulation consumed this front marker
         // public const string TagSpsSocketFront = "SPSLL_Socket_Front";
-        // Removed: SPS1 Plus/triangulation used ring classification; retained .4106/.4206 lights bypass that decoder
-        // public const string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
-        // Removed: SPS1 Plus/triangulation used hole classification; retained .4106/.4206 lights bypass that decoder
-        // public const string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
+        // Read-only SPS1/2 classification for SPS3 plugs; new sockets encode this in scale instead
+        public const string LegacySocketRing = "SPSLL_Socket_Ring";
+        public const string LegacySocketHole = "SPSLL_Socket_Hole";
     }
 }

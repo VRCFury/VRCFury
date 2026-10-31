@@ -28,6 +28,18 @@ float4 frag() : SV_Target {
 
     private const string SpsStub = "void sps_apply(inout SpsInputs input) {}";
 
+    [TestCase("", "4.5")]
+    [TestCase("#pragma target 2.0", "4.5")]
+    [TestCase("#pragma target 4.0", "4.5")]
+    [TestCase("#pragma target 5.0", "5.0")]
+    public void RaisesShaderTargetForNativeContactPathWithoutLoweringHigherTargets(string pragma, string expected) {
+        var patched = SpsPatcher.PatchProgram(pragma + @"
+#pragma vertex vert
+float4 vert(float4 vertex : POSITION) : SV_POSITION { return vertex; }
+", false, SpsStub, "", false);
+        Assert.That(patched, Does.Contain("#pragma target " + expected));
+    }
+
     private static IEnumerable<TestCaseData> VertexPrograms() {
         yield return Case("StructOnly", @"
 #pragma vertex vert
@@ -1017,7 +1029,13 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
             var shader = AssetDatabase.LoadAssetAtPath<Shader>(sourcePath);
             material = new Material(shader);
 
+#if !VRCSDK_HAS_MATERIAL_CONTACTS
+            Assert.That(Assert.Throws<Exception>(() => SpsPatcher.Patch(material, keepImports, hasBlendshapes)).Message,
+                Does.Contain("Update the VRCSDK"));
+#else
             SpsPatcher.Patch(material, keepImports: keepImports, hasBlendshapes: hasBlendshapes);
+            for (var pass = 0; pass < material.passCount; pass++) ShaderUtil.CompilePass(material, pass, true);
+            Assert.That(ShaderUtil.ShaderHasError(material.shader), Is.False);
 
             patchedPath = AssetDatabase.GetAssetPath(material.shader);
             Assert.That(patchedPath, Does.Contain("SPS/"));
@@ -1025,10 +1043,34 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
             Assert.That(patchedSource, Does.Not.Contain("_VFGrid"));
             Assert.That(patchedSource, Does.Not.Contain("GrabPass"));
             Assert.That(patchedSource, Does.Not.Contain("_SPS_PlayerId"));
+#endif
         } finally {
             if (material != null) UnityEngine.Object.DestroyImmediate(material);
             AssetDatabase.DeleteAsset(sourcePath);
             if (!string.IsNullOrEmpty(patchedPath)) AssetDatabase.DeleteAsset(patchedPath);
+        }
+    }
+
+    [TestCase("Unlit/Color", false)]
+    [TestCase("Unlit/Color", true)]
+    [TestCase("Standard", false)]
+    [TestCase("Standard", true)]
+    public void NativeContactPathCompilesInBuiltinShaders(string shaderName, bool keepImports) {
+        var material = new Material(Shader.Find(shaderName));
+        try {
+#if !VRCSDK_HAS_MATERIAL_CONTACTS
+            Assert.That(Assert.Throws<Exception>(() => SpsPatcher.Patch(material, keepImports, true)).Message,
+                Does.Contain("Update the VRCSDK"));
+#else
+            SpsPatcher.Patch(material, keepImports, hasBlendshapes: true);
+            for (var pass = 0; pass < material.passCount; pass++) ShaderUtil.CompilePass(material, pass, true);
+            var errors = ShaderUtil.GetShaderMessages(material.shader)
+                .Where(message => message.severity == ShaderCompilerMessageSeverity.Error)
+                .Select(message => message.message).ToArray();
+            Assert.That(errors, Is.Empty, string.Join("\n", errors));
+#endif
+        } finally {
+            UnityEngine.Object.DestroyImmediate(material);
         }
     }
 

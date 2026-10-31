@@ -26,7 +26,7 @@ namespace VF.Hooks {
      */
     internal static class VRCFuryAvatarHook {
         // Per-frame caches shared across all VRCFury inspectors on the same avatar.
-        // Clears every editor frame so results stay correct while avoiding O(components × avatar size) work.
+        // Clears every editor frame so results stay correct while avoiding O(components * avatar size) work.
         private static readonly Dictionary<VFGameObject, string> debugLinePerFrame
             = new Dictionary<VFGameObject, string>();
         private static readonly Dictionary<VFGameObject, DescriptorCacheEntry> descriptorCachePerFrame

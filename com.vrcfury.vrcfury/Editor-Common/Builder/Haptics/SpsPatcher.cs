@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -30,6 +31,7 @@ namespace VF.Builder.Haptics {
         public static void Patch(Material mat, bool keepImports, bool hasBlendshapes) {
             if (!mat.shader) return;
             if (mat.shader.name == "VRChat/Mobile/Particles/Additive") return;
+            SpsPlugReceiverService.RequireMaterialContacts();
             try {
                 var renderQueue = mat.renderQueue;
                 PatchUnsafe(mat, keepImports, hasBlendshapes);
@@ -117,15 +119,11 @@ namespace VF.Builder.Haptics {
 
             if (parentHash == null) {
                 var propertiesContent = ReadAndFlattenPath($"{pathToSps}/deform/sps_deform_props.cginc");
-                if (GetRegex(@"(?:^|\n)\s*Properties\s*{\s*}").IsMatch(contents)) {
-                    propertiesContent = propertiesContent.Replace("[Header(Original Shader Follows)]\n", "");
-                }
                 Replace(
                     @"((?:^|\n)\s*Properties\s*{)",
                     $"$1\n{propertiesContent}\n",
                     1
                 );
-                contents = GetRegex(@"(?:^|\n)[ \t]*CustomEditor[ \t]+[^\n]+").Replace(contents, "");
             }
 
             string spsMain;
@@ -253,7 +251,13 @@ namespace VF.Builder.Haptics {
         }
 
         internal static string PatchProgram(string originalProgram, bool isCgProgram, string spsMain, string cgIncludes, bool isSurfaceShader) {
-            var program = originalProgram;
+            // The native contact path uses dynamic indexing/loops and integer bit fields.
+            // Low-target shaders otherwise try to unroll the entire path builder.
+            var target = GetRegex(@"(#pragma[ \t]+target[ \t]+)([0-9.]+)");
+            var program = target.Replace(originalProgram, match =>
+                float.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture) < 4.5f
+                    ? match.Groups[1].Value + "4.5" : match.Value);
+            if (!target.IsMatch(program)) program = "#pragma target 4.5\n" + program;
             var newVertFunctionName = "spsVert";
             var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
             string vanillaVertFunctionName = null;

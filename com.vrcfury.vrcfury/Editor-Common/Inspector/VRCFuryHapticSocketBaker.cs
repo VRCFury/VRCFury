@@ -108,8 +108,8 @@ namespace VF.Inspector {
                         mainLight.color = Color.black;
                         mainLight.range =
                             (legacyLightType == VRCFuryHapticSocket.AddLight.Ring || legacyLightType == VRCFuryHapticSocket.AddLight.RingOneWay)
-                                ? 0.4206f
-                                : 0.4106f;
+                                ? 0.4202f
+                                : 0.4102f;
                         mainLight.shadows = LightShadows.None;
                         mainLight.renderMode = LightRenderMode.ForceVertex;
 
@@ -118,7 +118,7 @@ namespace VF.Inspector {
                         var frontLight = front.AddComponent<Light>();
                         frontLight.type = LightType.Point;
                         frontLight.color = Color.black;
-                        frontLight.range = 0.4506f;
+                        frontLight.range = 0.4502f;
                         frontLight.shadows = LightShadows.None;
                         frontLight.renderMode = LightRenderMode.ForceVertex;
                     }
@@ -192,6 +192,8 @@ namespace VF.Inspector {
 
         internal void ConfigureSpsSenders(VRCFuryHapticSocket socket,
             VRCFuryHapticSocket.AddLight type, IReadOnlyCollection<string> channels, VFGameObject rootSender) {
+            // Automatic legacy sockets keep their original lights; don't also advertise a native visual target.
+            if (socket.fromSpsForAll) return;
             if (rootSender == null || type == VRCFuryHapticSocket.AddLight.None) return;
             if (channels.Count == 0) return;
             var rootTags = channels.Select(SpsTags.FormatSocket).ToArray();
