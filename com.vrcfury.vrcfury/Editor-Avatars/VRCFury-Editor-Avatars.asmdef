@@ -33,22 +33,12 @@
     "versionDefines": [
         {
             "name": "com.vrchat.base",
-            "expression": "[3.10.6-beta.4,3.10.6-beta-)",
-            "define": "VRCSDK_HAS_CONTACT_PARAMETER_FLAGS"
-        },
-        {
-            "name": "com.vrchat.base",
-            "expression": "3.10.7",
+            "expression": "3.10.6-beta.4",
             "define": "VRCSDK_HAS_CONTACT_PARAMETER_FLAGS"
         },
         {
             "name": "com.vrchat.avatars",
-            "expression": "[3.10.6-beta.4,3.10.6-beta-)",
-            "define": "VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH"
-        },
-        {
-            "name": "com.vrchat.avatars",
-            "expression": "3.10.7",
+            "expression": "3.10.6-beta.4",
             "define": "VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH"
         },
         {
@@ -58,12 +48,7 @@
         },
         {
             "name": "com.vrchat.base",
-            "expression": "[3.10.6-beta,3.10.6-beta-)",
-            "define": "VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS"
-        },
-        {
-            "name": "com.vrchat.base",
-            "expression": "3.10.7",
+            "expression": "3.10.6-0",
             "define": "VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS"
         },
         {
@@ -158,12 +143,7 @@
         },
         {
             "name": "com.vrchat.avatars",
-            "expression": "[3.10.6-beta,3.10.6-beta-)",
-            "define": "VRCSDK_HAS_FACE_TRACKING"
-        },
-        {
-            "name": "com.vrchat.avatars",
-            "expression": "3.10.7",
+            "expression": "3.10.6-0",
             "define": "VRCSDK_HAS_FACE_TRACKING"
         }
     ],

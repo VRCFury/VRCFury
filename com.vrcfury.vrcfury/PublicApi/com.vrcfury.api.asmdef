@@ -22,12 +22,7 @@
   "versionDefines": [
     {
       "name": "com.vrchat.avatars",
-      "expression": "[3.10.6-beta,3.10.6-beta-)",
-      "define": "VRCSDK_HAS_FACE_TRACKING"
-    },
-    {
-      "name": "com.vrchat.avatars",
-      "expression": "3.10.7",
+      "expression": "3.10.6-0",
       "define": "VRCSDK_HAS_FACE_TRACKING"
     },
     {
