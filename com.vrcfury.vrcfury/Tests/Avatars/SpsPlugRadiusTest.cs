@@ -39,6 +39,7 @@ namespace VF.Tests {
 
         [SetUp]
         public void SetUp() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("SPS plug sender animation requires a desktop build target.");
             root = new GameObject("Radius sampling");
             root.transform.SetPositionAndRotation(new Vector3(3, 5, -7), Quaternion.Euler(17, 39, 23));
             root.transform.localScale = Vector3.one * 2;
