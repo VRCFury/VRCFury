@@ -38,7 +38,7 @@ namespace VF.Inspector {
 
     internal static class VRCFuryHapticSocketGizmo {
         internal static void DrawEditableStops(IEnumerable<Transform> stops) {
-            foreach (var stop in stops.Where(stop => stop != null).Distinct()) {
+            foreach (var stop in stops.Take(SpsTags.MaxUserPathStops).Where(stop => stop != null).Distinct()) {
                 VRCFuryGizmoUtils.DrawTransformHandle(stop, "Transform SPS Path Stop");
             }
         }
@@ -176,16 +176,13 @@ namespace VF.Inspector {
             };
 
             var guidedPathStops = socket.guidedPathStops
+                .Take(SpsTags.MaxUserPathStops)
                 .Where(stop => stop != null && stop.transform != null)
                 .ToList();
             for (var i = 0; i < guidedPathStops.Count; i++) {
                 var stop = guidedPathStops[i];
                 data.guidedPathStops.Add(new VRCFurySocketGizmo.GuidedPathStopData {
-                    transform = stop.transform,
-                    customizeTangentIn = stop.customizeTangentIn,
-                    customizeTangentOut = stop.customizeTangentOut,
-                    tangentInLocal = stop.tangentInLocal,
-                    tangentOutLocal = stop.tangentOutLocal
+                    transform = stop.transform
                 });
             }
 
@@ -193,7 +190,8 @@ namespace VF.Inspector {
         }
 
         public static void DrawGizmo(VFGameObject owner, VRCFurySocketGizmo.SocketGizmoData data) {
-            var guidedPathStops = data.guidedPathStops ?? new List<VRCFurySocketGizmo.GuidedPathStopData>();
+            var guidedPathStops = (data.guidedPathStops ?? new List<VRCFurySocketGizmo.GuidedPathStopData>())
+                .Take(SpsTags.MaxUserPathStops).ToList();
             var socketTransformWorld = new TransformData(owner) * new TransformData(data.pos, data.rot);
             var worldStart = socketTransformWorld.position;
             var worldRotation = owner.worldRotation * data.rot;
@@ -241,12 +239,8 @@ namespace VF.Inspector {
                     var stopType = isLast && data.type == VRCFuryHapticSocket.AddLight.Hole
                         ? VRCFuryHapticSocket.AddLight.Hole
                         : VRCFuryHapticSocket.AddLight.RingOneWay;
-                    var previousOut = stop.customizeTangentOut
-                        ? previousTransformWorld.TransformPoint(stop.tangentOutLocal)
-                        : GetDefaultTangentOut(previousTransformWorld, stopTransformWorld);
-                    var currentIn = stop.customizeTangentIn
-                        ? stopTransformWorld.TransformPoint(stop.tangentInLocal)
-                        : GetDefaultTangentIn(previousTransformWorld, stopTransformWorld);
+                    var previousOut = GetDefaultTangentOut(previousTransformWorld, stopTransformWorld);
+                    var currentIn = GetDefaultTangentIn(previousTransformWorld, stopTransformWorld);
                     Handles.DrawBezier(
                         previousTransformWorld.position,
                         stopTransformWorld.position,

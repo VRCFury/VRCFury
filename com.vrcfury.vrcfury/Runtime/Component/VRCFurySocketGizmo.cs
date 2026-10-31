@@ -8,10 +8,6 @@ namespace VF.Component {
         [Serializable]
         public class GuidedPathStopData {
             public Transform transform;
-            public bool customizeTangentIn;
-            public bool customizeTangentOut;
-            public Vector3 tangentInLocal;
-            public Vector3 tangentOutLocal;
         }
 
         [Serializable]
