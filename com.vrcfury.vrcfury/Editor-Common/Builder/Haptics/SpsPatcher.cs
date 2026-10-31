@@ -23,6 +23,15 @@ namespace VF.Builder.Haptics {
             public static readonly FieldInfo ShaderLibsPath = LilShaderContainer?.VFStaticField("shaderLibsPath");
         }
 
+        [ReflectionHelperOptional]
+        private abstract class ShaderGraphReflection : ReflectionHelper {
+            public static readonly MethodInfo GetShaderText = ReflectionUtils
+                .GetTypeFromAnyAssembly("UnityEditor.ShaderGraph.ShaderGraphImporter")
+                ?.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .FirstOrDefault(m => m.Name == "GetShaderText" && m.GetParameters().Length == 4
+                    && m.GetParameters()[3].IsOut);
+        }
+
         private const string HashBuster = "17";
         private static readonly Regex ProgramStartRegex = GetRegex(@"\G(?:^|\n)[ \t]*(CGPROGRAM|HLSLPROGRAM)[ \t]*(?:\n|$)");
         private static readonly Regex CgProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDCG[ \t]*(?:\n|$)");
@@ -1118,6 +1127,11 @@ namespace VF.Builder.Haptics {
                 var sourceAsset = AssetDatabase.LoadAllAssetsAtPath(path).OfType<TextAsset>().FirstOrDefault();
                 if (sourceAsset != null) {
                     content = sourceAsset.text;
+                } else if (path.EndsWith(".shadergraph", StringComparison.OrdinalIgnoreCase)) {
+                    if (!ReflectionHelper.IsReady<ShaderGraphReflection>()) {
+                        throw new Exception("Failed to access Shader Graph's shader source generator: " + path);
+                    }
+                    content = (string)ShaderGraphReflection.GetShaderText.Invoke(null, new object[] { path, null, null, null });
                 } else if (path.EndsWith(".lilcontainer")) {
                     if (!ReflectionHelper.IsReady<LilReflection>()) {
                         throw new Exception("Failed to access lilToon shader container internals");
