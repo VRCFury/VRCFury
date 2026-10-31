@@ -15,6 +15,7 @@ namespace VF.Builder.Haptics {
     internal class SpsConfigurer {
         public const string SpsEnabled = "_SPS_Enabled";
         public const string SpsBakedLength = "_SPS_BakedLength";
+        public const string SpsBakedRadius = "_SPS_BakedRadius";
         public const string SpsOverrun = "_SPS_Overrun";
         public const string SpsDisableShadows = "_SPS_DisableShadows";
         public const string SpsDisableDepth = "_SPS_DisableDepth";
@@ -44,6 +45,7 @@ namespace VF.Builder.Haptics {
             Renderer skin,
             Material m,
             float worldLength,
+            float worldRadius,
             Texture2D spsBaked,
             VRCFuryHapticPlug plug,
             VFGameObject bakeRoot,
@@ -71,6 +73,7 @@ namespace VF.Builder.Haptics {
             m.SetTextureFast(SpsBake, spsBaked);
             m.SetFloatFast(SpsEnabled, plug.spsAnimatedEnabled);
             m.SetFloatFast(SpsBakedLength, worldLength);
+            m.SetFloatFast(SpsBakedRadius, worldRadius);
             m.SetFloatFast(SpsDisableShadows, 0);
             m.SetFloatFast(SpsDisableDepth, 0);
             m.SetFloatFast(SpsOverrun, plug.spsOverrun ? 1 : 0);

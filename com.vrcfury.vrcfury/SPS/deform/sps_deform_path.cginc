@@ -15,10 +15,15 @@ struct SpsDeformNode {
     uint flags;
 };
 
-bool sps_prepare_socket(SpsSocketCandidate socket, SpsDeformNode previous, float worldLength,
+bool sps_prepare_socket(SpsSocketCandidate socket, SpsDeformNode previous, float worldLength, float worldRadius,
     bool first, bool guided, out SpsDeformNode node, out float distanceSq) {
     node = (SpsDeformNode)0;
     node.world = socket.world;
+    // Offset in the socket's own up direction before distance/approach checks.
+    // Orientation unlocking below must not change which side of the socket we target.
+    if (sps_has_flag(socket.flags, SPS_SOCKET_FLAG_RADIUS_OFFSET)) {
+        node.world += socket.up * worldRadius;
+    }
     float3 delta = node.world - previous.world;
     distanceSq = dot(delta, delta);
     float3 direction = sps_normalize(delta);
@@ -68,6 +73,7 @@ bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out fl
     nodes[0].up = sps_nearest_normal(nodes[0].forward, frame._m01_m11_m21);
     bakeScale = frameScale;
     worldLength = _SPS_BakedLength * bakeScale;
+    float worldRadius = _SPS_BakedRadius * bakeScale;
     if (!(worldLength > 0)) return false;
 
     SpsSocketCandidate sockets[SPS_CONTACT_COUNT + 4];
@@ -89,16 +95,16 @@ bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out fl
         SpsDeformNode chosenNode = (SpsDeformNode)0;
         float nearest = 1e30;
         // Look for path stops first
-        if (previous.group != 0) {
+        if (previous.pathKey != 0) {
             [fastopt]
             for (int candidate = 2 * VRC_CONTACT_MAX_TARGETS; candidate < SPS_CONTACT_COUNT; candidate++) {
                 SpsSocketCandidate socket = sockets[candidate];
                 if (!socket.valid || (used & (1u << candidate)) != 0) continue;
-                if (socket.owner != previous.owner || socket.group != previous.group
-                    || socket.pathIndex != previous.pathIndex + 1) continue;
+                // Adding 128 advances the path index without changing the low 7-bit group.
+                if (socket.owner != previous.owner || socket.pathKey != previous.pathKey + 128u) continue;
                 SpsDeformNode node;
                 float distanceSq;
-                if (!sps_prepare_socket(socket, previousNode, worldLength,
+                if (!sps_prepare_socket(socket, previousNode, worldLength, worldRadius,
                     step == 1, true, node, distanceSq) || distanceSq >= nearest) continue;
                 chosen = candidate;
                 chosenNode = node;
@@ -111,10 +117,10 @@ bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out fl
             for (int slot = 0; slot < 2 * VRC_CONTACT_MAX_TARGETS + 4; slot++) {
                 int candidate = slot < 2 * VRC_CONTACT_MAX_TARGETS ? slot : slot + VRC_CONTACT_MAX_TARGETS;
                 SpsSocketCandidate socket = sockets[candidate];
-                if (!socket.valid || socket.pathIndex != 0 || (used & (1u << candidate)) != 0) continue;
+                if (!socket.valid || socket.pathKey >= 128u || (used & (1u << candidate)) != 0) continue;
                 SpsDeformNode node;
                 float distanceSq;
-                if (!sps_prepare_socket(socket, previousNode, worldLength,
+                if (!sps_prepare_socket(socket, previousNode, worldLength, worldRadius,
                     step == 1, false, node, distanceSq) || distanceSq >= nearest) continue;
                 chosen = candidate;
                 chosenNode = node;

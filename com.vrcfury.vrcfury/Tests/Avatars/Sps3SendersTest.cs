@@ -756,6 +756,7 @@ namespace VF.Tests {
                         Assert.That(renderer.sharedMaterial, Is.Not.SameAs(originalMaterial));
                         Assert.That(renderer.sharedMaterial.GetTexture("_SPS_Bake"), Is.Not.Null);
                         Assert.That(renderer.sharedMaterial.GetFloat("_SPS_BakedLength"), Is.EqualTo(0.4f));
+                        Assert.That(renderer.sharedMaterial.GetFloat("_SPS_BakedRadius"), Is.EqualTo(0.03f));
                         Assert.That(renderer.sharedMaterial.HasProperty("_SPS_IdLow"), Is.False);
                     }
                     var sender = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()

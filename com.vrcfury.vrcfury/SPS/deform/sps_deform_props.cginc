@@ -21,6 +21,7 @@
 [Header(SPS Bake)]
 [HideInInspector] _SPS_Enabled("Enabled", Float) = 1
 [HideInInspector] _SPS_BakedLength("Baked length", Float) = 0
+[HideInInspector] _SPS_BakedRadius("Baked radius", Float) = 0
 [HideInInspector] _SPS_OthersChannelTagCount("Others channel tag count", Float) = 0
 [HideInInspector] _SPS_OthersLegacyTags("Others includes legacy tags", Float) = 0
 [HideInInspector] _SPS_UseLegacyLights("Accept legacy lights", Float) = 1

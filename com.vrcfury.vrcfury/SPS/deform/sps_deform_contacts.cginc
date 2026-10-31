@@ -55,8 +55,7 @@ struct SpsSocketCandidate {
     float3 up;
     uint flags;
     int owner;
-    uint group;
-    uint pathIndex;
+    uint pathKey; // Group in bits 0-6, path index in bits 7-9
     bool valid;
 };
 
@@ -81,15 +80,11 @@ SpsSocketCandidate sps_read_contact(uint index) {
     if (native) {
         uint packed = (uint)round(scale.x);
         if (packed > 32767 || packed == 0) return socket;
-        socket.group = packed & 127u;
-        socket.pathIndex = (packed >> 7) & 7u;
-        socket.flags = ((packed >> 14) & 1u) * SPS_SOCKET_FLAG_HOLE
-            | ((packed >> 13) & 1u) * SPS_SOCKET_FLAG_DOUBLE_SIDED
-            | ((packed >> 12) & 1u) * SPS_SOCKET_FLAG_RADIUS_OFFSET
-            | ((packed >> 11) & 1u) * SPS_SOCKET_FLAG_UNLOCK_LOCAL_X
-            | ((packed >> 10) & 1u) * SPS_SOCKET_FLAG_UNLOCK_ALL;
+        socket.pathKey = packed & 1023u;
+        socket.flags = packed & (SPS_SOCKET_FLAG_HOLE | SPS_SOCKET_FLAG_DOUBLE_SIDED
+            | SPS_SOCKET_FLAG_RADIUS_OFFSET | SPS_SOCKET_FLAG_UNLOCK_LOCAL_X | SPS_SOCKET_FLAG_UNLOCK_ALL);
         socket.flags |= path ? SPS_SOCKET_FLAG_GUIDED : 0u;
-        socket.valid = socket.group != 0 && (path ? socket.pathIndex > 0 : socket.pathIndex == 0);
+        socket.valid = (socket.pathKey & 127u) != 0 && (path ? socket.pathKey >= 128u : socket.pathKey < 128u);
     } else {
         // Legacy Hole/Ring tags identify SPS1/2 sockets
         // If they don't have the hole/ring tag, they're either old sps4all or TPS, which means they don't have
