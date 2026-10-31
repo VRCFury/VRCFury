@@ -1051,6 +1051,15 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
         }
     }
 
+    [Test]
+    public void DeformIncludesDoNotExcludeD3d11() {
+        var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(SpsPatcher).Assembly);
+        Assert.That(package, Is.Not.Null);
+        foreach (var file in Directory.GetFiles(Path.Combine(package.resolvedPath, "SPS"), "*.cginc", SearchOption.AllDirectories)) {
+            Assert.That(File.ReadAllText(file), Does.Not.Match(@"(?m)^\s*#pragma\s+exclude_renderers\b[^\r\n]*\bd3d11\b"), file);
+        }
+    }
+
     [TestCase("Unlit/Color", false)]
     [TestCase("Unlit/Color", true)]
     [TestCase("Standard", false)]
@@ -1063,6 +1072,12 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
                 Does.Contain("Update the VRCSDK"));
 #else
             SpsPatcher.Patch(material, keepImports, hasBlendshapes: true);
+            // Error checks alone can pass when Unity's upgrader has excluded the graphics API.
+            var compiled = ShaderUtil.GetShaderData(material.shader).GetSerializedSubshader(0).GetPass(0)
+                .CompileVariant(ShaderType.Vertex, Array.Empty<string>(), ShaderCompilerPlatform.D3D,
+                    BuildTarget.StandaloneWindows64);
+            Assert.That(compiled.Success, Is.True, string.Join("\n", compiled.Messages.Select(message => message.message)));
+            Assert.That(compiled.ShaderData, Is.Not.Null.And.Not.Empty, "Expected actual DX11 vertex bytecode");
             for (var pass = 0; pass < material.passCount; pass++) ShaderUtil.CompilePass(material, pass, true);
             var errors = ShaderUtil.GetShaderMessages(material.shader)
                 .Where(message => message.severity == ShaderCompilerMessageSeverity.Error)

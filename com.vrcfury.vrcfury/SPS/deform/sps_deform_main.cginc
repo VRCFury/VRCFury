@@ -31,27 +31,28 @@ void sps_apply_real(
 
 	if (active == 0) return;
 
-	SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1];
-	float worldLength;
-	float bakeScale;
-	if (!sps_try_get_path(nodes, worldLength, bakeScale)) return;
-	bakedVertex *= bakeScale;
-	bakedNormal *= bakeScale;
-	bakedTangent *= bakeScale;
+	float3 nodeWorlds[SPS_CHAIN_MAX_SOCKETS + 1];
+	float3 nodeForwards[SPS_CHAIN_MAX_SOCKETS + 1];
+	uint nodeFlags[SPS_CHAIN_MAX_SOCKETS + 1];
+	SpsDeformPathInfo path;
+	if (!sps_try_get_path(nodeWorlds, nodeForwards, nodeFlags, path)) return;
+	bakedVertex *= path.bakeScale;
+	bakedNormal *= path.bakeScale;
+	bakedTangent *= path.bakeScale;
 
 	#ifdef SPS_MODIFY_BAKE
 		#ifndef SPS_VANILLA_STRUCT_EXISTS
 			#error SPS_MODIFY_BAKE requires a vertex function with a struct input
 		#endif
 
-		float3 bakedWorldOrigin = nodes[0].world;
-		float3 bakedWorldForward = sps_normalize(nodes[0].forward);
-		float3 bakedWorldUp = sps_nearest_normal(bakedWorldForward, nodes[0].up);
+		float3 bakedWorldOrigin = nodeWorlds[0];
+		float3 bakedWorldForward = sps_normalize(nodeForwards[0]);
+		float3 bakedWorldUp = sps_nearest_normal(bakedWorldForward, path.plugUp);
 		float3 bakedWorldRight = sps_normalize(cross(bakedWorldUp, bakedWorldForward));
 
 		float socketDist = 0;
-		float3 stop1Pos = nodes[1].world;
-		float3 stop1Forward = nodes[1].forward;
+		float3 stop1Pos = nodeWorlds[1];
+		float3 stop1Forward = nodeForwards[1];
 		if (!sps_is_zero(stop1Forward)) {
 			socketDist = length(stop1Pos - bakedWorldOrigin);
 		}
@@ -75,7 +76,7 @@ void sps_apply_real(
 		SPS_MODIFY_BAKE(
 			input,
 			socketDist,
-			worldLength
+			path.worldLength
 #ifdef SPS_MODIFY_BAKE_INCLUDE_SOCKET_WORLD
 			,stop1Pos
 #endif
@@ -83,7 +84,7 @@ void sps_apply_real(
 			,stop1Forward
 #endif
 #ifdef SPS_MODIFY_BAKE_INCLUDE_SOCKET_UP
-			,nodes[1].up
+			,path.firstSocketUp
 #endif
 		);
 
@@ -124,8 +125,10 @@ void sps_apply_real(
 	float3 sampledWorldUp;
 	float pathDistance = max(bakedVertex.z, 0);
 	sps_deform_walk_chain(
-		nodes,
-		worldLength,
+		nodeWorlds,
+		nodeForwards,
+		nodeFlags,
+		path,
 		pathDistance,
 		firstSegmentLerp,
 		radiusMult,

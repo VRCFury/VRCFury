@@ -15,6 +15,13 @@ struct SpsDeformNode {
     uint flags;
 };
 
+struct SpsDeformPathInfo {
+    float3 plugUp;
+    float3 firstSocketUp;
+    float worldLength;
+    float bakeScale;
+};
+
 bool sps_prepare_socket(SpsSocketCandidate socket, SpsDeformNode previous, float worldLength, float worldRadius,
     bool first, bool guided, out SpsDeformNode node, out float distanceSq) {
     node = (SpsDeformNode)0;
@@ -58,23 +65,33 @@ bool sps_prepare_socket(SpsSocketCandidate socket, SpsDeformNode previous, float
     return true;
 }
 
-// A direct array output lets FXC write nodes dynamically without unrolling the search.
+// Separate arrays avoid FXC's padded struct-array copies; keep them as direct outputs.
 // Node zero is the plug frame; the remaining nodes are socket entrances/stops.
 // fastopt keeps FXC from spending excessive compile time optimizing the nested loops.
-bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out float worldLength, out float bakeScale) {
-    nodes = (SpsDeformNode[SPS_CHAIN_MAX_SOCKETS + 1])0;
-    worldLength = 0;
-    bakeScale = 0;
+bool sps_try_get_path(
+    out float3 nodeWorlds[SPS_CHAIN_MAX_SOCKETS + 1],
+    out float3 nodeForwards[SPS_CHAIN_MAX_SOCKETS + 1],
+    out uint nodeFlags[SPS_CHAIN_MAX_SOCKETS + 1],
+    out SpsDeformPathInfo path
+) {
+    // Unity's shader upgrader mistakes built-in array casts for legacy array declarations.
+    [unroll]
+    for (uint i = 0; i <= SPS_CHAIN_MAX_SOCKETS; i++) {
+        nodeWorlds[i] = 0;
+        nodeForwards[i] = 0;
+        nodeFlags[i] = 0;
+    }
+    path = (SpsDeformPathInfo)0;
     float4x4 frame = sps_contact_frame();
     float frameScale = length(frame._m02_m12_m22);
     if (!(frameScale > 0)) return false;
-    nodes[0].world = frame._m03_m13_m23;
-    nodes[0].forward = sps_normalize(frame._m02_m12_m22);
-    nodes[0].up = sps_nearest_normal(nodes[0].forward, frame._m01_m11_m21);
-    bakeScale = frameScale;
-    worldLength = _SPS_BakedLength * bakeScale;
-    float worldRadius = _SPS_BakedRadius * bakeScale;
-    if (!(worldLength > 0)) return false;
+    nodeWorlds[0] = frame._m03_m13_m23;
+    nodeForwards[0] = sps_normalize(frame._m02_m12_m22);
+    path.plugUp = sps_nearest_normal(nodeForwards[0], frame._m01_m11_m21);
+    path.bakeScale = frameScale;
+    path.worldLength = _SPS_BakedLength * path.bakeScale;
+    float worldRadius = _SPS_BakedRadius * path.bakeScale;
+    if (!(path.worldLength > 0)) return false;
 
     SpsSocketCandidate sockets[SPS_CONTACT_COUNT + 4];
     [fastopt]
@@ -83,12 +100,15 @@ bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out fl
     }
     [fastopt]
     for (uint lightIndex = 0; lightIndex < 4; lightIndex++) {
-        sockets[SPS_CONTACT_COUNT + lightIndex] = sps_read_light(lightIndex, nodes[0].world, nodes[0].up);
+        sockets[SPS_CONTACT_COUNT + lightIndex] = sps_read_light(lightIndex, nodeWorlds[0], path.plugUp);
     }
 
     uint used = 0;
     SpsSocketCandidate previous = (SpsSocketCandidate)0;
-    SpsDeformNode previousNode = nodes[0];
+    SpsDeformNode previousNode = (SpsDeformNode)0;
+    previousNode.world = nodeWorlds[0];
+    previousNode.forward = nodeForwards[0];
+    previousNode.up = path.plugUp;
     [fastopt]
     for (uint step = 1; step <= SPS_CHAIN_MAX_SOCKETS; step++) {
         int chosen = -1;
@@ -104,7 +124,7 @@ bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out fl
                 if (socket.owner != previous.owner || socket.pathKey != previous.pathKey + 128u) continue;
                 SpsDeformNode node;
                 float distanceSq;
-                if (!sps_prepare_socket(socket, previousNode, worldLength, worldRadius,
+                if (!sps_prepare_socket(socket, previousNode, path.worldLength, worldRadius,
                     step == 1, true, node, distanceSq) || distanceSq >= nearest) continue;
                 chosen = candidate;
                 chosenNode = node;
@@ -120,7 +140,7 @@ bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out fl
                 if (!socket.valid || socket.pathKey >= 128u || (used & (1u << candidate)) != 0) continue;
                 SpsDeformNode node;
                 float distanceSq;
-                if (!sps_prepare_socket(socket, previousNode, worldLength, worldRadius,
+                if (!sps_prepare_socket(socket, previousNode, path.worldLength, worldRadius,
                     step == 1, false, node, distanceSq) || distanceSq >= nearest) continue;
                 chosen = candidate;
                 chosenNode = node;
@@ -128,7 +148,10 @@ bool sps_try_get_path(out SpsDeformNode nodes[SPS_CHAIN_MAX_SOCKETS + 1], out fl
             }
         }
         if (chosen < 0) break;
-        nodes[step] = chosenNode;
+        nodeWorlds[step] = chosenNode.world;
+        nodeForwards[step] = chosenNode.forward;
+        nodeFlags[step] = chosenNode.flags;
+        if (step == 1) path.firstSocketUp = chosenNode.up;
         previous = sockets[chosen];
         previousNode = chosenNode;
         used |= 1u << chosen;
