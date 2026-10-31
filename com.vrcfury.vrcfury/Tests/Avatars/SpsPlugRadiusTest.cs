@@ -184,8 +184,9 @@ namespace VF.Tests {
                 root.transform.localScale = Vector3.one * (2 * scale);
                 for (var i = 0; i < 20; i++) graph.Evaluate(1f / 60);
                 var actual = bake.mainSender.worldScale;
-                var expected = 0.06f * Mathf.Clamp01(1 - distance) * scale;
+                var expected = Mathf.Max(SpsPlugRadiusService.MinimumRadius, 0.06f * Mathf.Clamp01(1 - distance)) * scale;
                 Assert.That(actual.y, Is.EqualTo(expected).Within(0.00002f));
+                Assert.That(actual.y, Is.GreaterThan(0));
                 Assert.That(actual.x, Is.EqualTo(0.06f * scale).Within(0.00002f));
                 Assert.That(actual.z, Is.EqualTo(0.4f * scale).Within(0.00002f));
                 var sender = bake.mainSender.GetComponent<VRCContactSender>();
@@ -207,7 +208,36 @@ namespace VF.Tests {
                 playable.SetFloat(MergedReceiver(true).parameter,
                     Mathf.Clamp01(1 - Mathf.Min(values.Item1, values.Item2) / SpsPlugRadiusService.RangeInPlugLengths));
                 for (var i = 0; i < 20; i++) graph.Evaluate(1f / 60);
-                Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(values.Item3).Within(0.00002f));
+                Assert.That(bake.mainSender.worldScale.y,
+                    Is.EqualTo(Mathf.Max(SpsPlugRadiusService.MinimumRadius, values.Item3)).Within(0.00002f));
+                Assert.That(bake.mainSender.worldScale.y, Is.GreaterThan(0));
+            }
+        }
+
+        [TestCase(true, 0f)]
+        [TestCase(true, 0.75f)]
+        [TestCase(true, 2f)]
+        [TestCase(false, 1f)]
+        [TestCase(false, 1.5f)]
+        [TestCase(false, 2f)]
+        public void ZeroRadiusSlicesKeepSenderTransformInvertible(bool emptyProfile, float distance) {
+            if (emptyProfile) bake.radiusCurve = AnimationCurve.Constant(0, bake.worldLength, 0);
+            Start();
+            playable.SetFloat(mergedParameterName, Mathf.Clamp01(1 - distance / SpsPlugRadiusService.RangeInPlugLengths));
+            foreach (var scale in new[] { 0.1f, 1f, 3f }) {
+                root.transform.localScale = Vector3.one * (2 * scale);
+                graph.Evaluate(1f / 60);
+                var senderScale = bake.mainSender.worldScale;
+                Assert.That(senderScale.x, Is.GreaterThan(0));
+                Assert.That(senderScale.y, Is.GreaterThan(0));
+                Assert.That(senderScale.z, Is.GreaterThan(0));
+                Assert.That(senderScale.y, Is.EqualTo(SpsPlugRadiusService.MinimumRadius * scale).Within(0.00000001f));
+                var matrix = bake.mainSender.localToWorldMatrix;
+                Assert.That(matrix.determinant, Is.GreaterThan(0));
+                var inverse = matrix.inverse;
+                for (var i = 0; i < 16; i++) Assert.That(float.IsNaN(inverse[i]) || float.IsInfinity(inverse[i]), Is.False);
+                Assert.That(bake.mainSender.GetComponent<VRCContactSender>().radius
+                    * Mathf.Max(senderScale.x, senderScale.y, senderScale.z), Is.EqualTo(0.4f * scale).Within(0.00001f));
             }
         }
 
