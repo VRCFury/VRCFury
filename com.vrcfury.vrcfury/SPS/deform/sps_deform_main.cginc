@@ -163,20 +163,19 @@ void sps_apply(inout SpsInputs o) {
 				return;
 			}
 		}
-	#else
-		#ifdef SPS_VANILLA_STRUCT_EXISTS
-			SPS_VANILLA_VERT_PARAM_TYPE input = (SPS_VANILLA_VERT_PARAM_TYPE)o;
-		#endif
-		sps_apply_real(
-			#ifdef SPS_VANILLA_STRUCT_EXISTS
-			input,
-			#endif
-			o.SPS_STRUCT_POSITION_NAME,
-			o.SPS_STRUCT_NORMAL_NAME,
-			o.SPS_STRUCT_TANGENT_NAME,
-			o.SPS_STRUCT_SV_VertexID_NAME
-		);
 	#endif
+	#ifdef SPS_VANILLA_STRUCT_EXISTS
+		SPS_VANILLA_VERT_PARAM_TYPE input = (SPS_VANILLA_VERT_PARAM_TYPE)o;
+	#endif
+	sps_apply_real(
+		#ifdef SPS_VANILLA_STRUCT_EXISTS
+		input,
+		#endif
+		o.SPS_STRUCT_POSITION_NAME,
+		o.SPS_STRUCT_NORMAL_NAME,
+		o.SPS_STRUCT_TANGENT_NAME,
+		o.SPS_STRUCT_SV_VertexID_NAME
+	);
 
 }
 
