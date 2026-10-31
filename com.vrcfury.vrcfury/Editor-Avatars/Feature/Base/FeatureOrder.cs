@@ -105,9 +105,9 @@ namespace VF.Feature.Base {
         PositionDefaultsLayer, // Needs to be right before FixMasks so it winds up at the top of FX, right under the base mask
         FixMasks,
         LayerToTree, // Needs to run after animations are done, including everything that makes its own DBT, including TrackingConflictResolver
+        ReorderLayersByPriority, // Needs to be after LayerToTree (which sets the priority of the merged layer), and before AvoidMmdLayers and AnimatorLayerControlFix (which depend on final layer indexes)
         AvoidMmdLayers, // Needs to be after CleanupEmptyLayers (which removes empty layers) and FixMasks and RecordAllDefaults (which may insert layers at the top)
         AnimatorLayerControlFix,
-        ReorderLayersByPriority,
         RemoveNonQuestMaterials,
         FixMipmapStreaming,
         FixTreeLength,
