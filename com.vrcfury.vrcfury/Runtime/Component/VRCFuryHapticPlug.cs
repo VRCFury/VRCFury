@@ -25,6 +25,7 @@ namespace VF.Component {
         public List<Renderer> configureTpsMesh = new List<Renderer>();
         public float spsAnimatedEnabled = 1;
         public bool useLegacyRendererFinder = false;
+        [Obsolete("Configure DPS Tip Light in SPS Options instead."), HideInInspector]
         public bool addDpsTipLight = false;
         [DoNotApplyRestingState]
         public State postBakeActions;
@@ -34,6 +35,7 @@ namespace VF.Component {
         public List<VRCFuryHapticSocket.DepthActionNew> depthActions2 = new List<VRCFuryHapticSocket.DepthActionNew>();
         public bool useHipAvoidance = true;
         public bool useSharedTag = true;
+        [Obsolete("Per-plug Legacy Compatibility is no longer configurable."), HideInInspector]
         public bool useLights = true;
         public List<TagRule> includeTags = new List<TagRule>();
         public List<TagRule> excludeTags = new List<TagRule>();

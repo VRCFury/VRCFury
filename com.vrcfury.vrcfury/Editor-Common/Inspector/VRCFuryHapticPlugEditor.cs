@@ -370,9 +370,7 @@ namespace VF.Inspector {
 
             var channels = VRCFuryEditorUtils.Section("Channels", "Filter which sockets this plug will target");
             var includeChannels = serializedObject.FindProperty("includeTags");
-            var excludeChannels = serializedObject.FindProperty("excludeTags");
             channels.Add(SpsChannelRuleList(includeChannels, "Include"));
-            channels.Add(SpsChannelRuleList(excludeChannels, "Exclude"));
             var useSharedTag = serializedObject.FindProperty("useSharedTag");
             channels.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Include Public SPS Channel",
                 tooltip: "Adds the public SPS channel so this plug can target most normal sockets."));
@@ -380,8 +378,6 @@ namespace VF.Inspector {
                 if (useSharedTag.boolValue) return new VisualElement();
                 return VRCFuryEditorUtils.Warn("This plug does not include the public SPS channel, so it will not target most sockets!");
             }, useSharedTag));
-            channels.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLights"), "Accept Legacy SPS1/DPS/TPS Lights",
-                tooltip: "Allows this plug to target SPS1/DPS/TPS sockets (looking for lights)."));
             var useHipAvoidance = serializedObject.FindProperty("useHipAvoidance");
             channels.Add(VRCFuryEditorUtils.BetterProp(
                 useHipAvoidance,
@@ -408,7 +404,6 @@ namespace VF.Inspector {
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"), "(Deprecated) Units are in world-space"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLegacyRendererFinder"), "(Deprecated) Use legacy renderer search"));
             adv.Add(VRCFuryEditorUtils.BetterProp(configureTps, "(Deprecated) Auto-configure Poiyomi TPS"));
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("addDpsTipLight"), "(Deprecated) Add legacy DPS tip light (must enable in menu)"));
 
             return container;
         }

@@ -23,9 +23,8 @@ namespace com.vrcfury.api.Components {
             s.addLight = (VRCFuryHapticSocket.AddLight) mode;
         }
 
-        public void SetAutoOff() {
-            s.enableAuto = false;
-        }
+        [System.Obsolete("Auto Mode is no longer configured per-socket.")]
+        public void SetAutoOff() { }
 
         public void UseRadiusOffset() {
             s.useRadiusOffset = true;

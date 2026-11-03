@@ -56,8 +56,8 @@ namespace VF.Builder.Haptics {
         // Entrance and +Z outward are reliable; imported light pairs determine forward, but baking chooses roll; scale may be unencoded
         public const string LegacySocket2 = "SPSLL_Socket_Root";
 
-        // Removed: Poiyomi TPS/early VRCFury orientation tests required Root-to-Front; contact-based TPS activation is unsupported
-        // public const string LegacySocketFront = "TPS_Orf_Norm";
+        // Optional socket front marker for TPS depth-animation compatibility.
+        public const string LegacySocketFront = "TPS_Orf_Norm";
         // Removed: only the retired experimental SPS1 triangulation consumed this front marker
         // public const string TagSpsSocketFront = "SPSLL_Socket_Front";
         // Read-only SPS1/2 classification for SPS3 plugs; new sockets encode this in scale instead

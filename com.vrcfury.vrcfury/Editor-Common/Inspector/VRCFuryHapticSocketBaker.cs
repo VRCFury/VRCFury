@@ -20,7 +20,7 @@ namespace VF.Inspector {
         private int nextGroupId = 1;
 
         [CanBeNull]
-        public BakeResult Bake(VRCFuryHapticSocket socket) {
+        public BakeResult Bake(VRCFuryHapticSocket socket, bool legacyAvailable = true, bool tpsDepthAnimationCompatibility = false) {
             var closestBone = autoChannelGenerator?.GetClosestBone(socket.owner());
             var channels = spsConfigurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender);
             var transform = socket.owner();
@@ -59,6 +59,15 @@ namespace VF.Inspector {
                     radius = 0,
                     tags = rootTags.ToArray()
                 });
+                if (legacyAvailable && tpsDepthAnimationCompatibility && legacySuffixes.Count > 0) {
+                    HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest {
+                        obj = senders,
+                        objName = "Front",
+                        pos = Vector3.forward * 0.01f,
+                        radius = 0.001f,
+                        tags = legacySuffixes.Select(suffix => SpsTags.LegacySocketFront + suffix).ToArray()
+                    });
+                }
             }
 
             VFGameObject lights = null;
@@ -83,7 +92,7 @@ namespace VF.Inspector {
                                 + stopObj.GetDebugPath());
                         }
                     }
-                    if (socket.useLights) {
+                    if (legacyAvailable) {
                         Vector3 legacyOffset;
                         if (socket.overrideLegacyOffset) {
                             legacyOffset = socket.legacyOffsetLocal;
@@ -131,6 +140,7 @@ namespace VF.Inspector {
             if (EditorApplication.isPlaying && !socket.fromSpsForAll) {
                 var gizmo = socket.owner().AddComponent<VRCFurySocketGizmo>();
                 gizmo.data = GetGizmoData(socket);
+                gizmo.data.useLegacyLights = lights != null;
             }
 
             return new BakeResult {

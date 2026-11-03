@@ -93,7 +93,7 @@ namespace VF.Builder.Haptics {
         public void ConfigureMaterial(Material material, VRCFuryHapticPlug plug) {
             material.SetFloat("_SPS_OthersChannelTagCount", GetChannels(plug, false).Count);
             material.SetFloat("_SPS_OthersLegacyTags", plug.useSharedTag ? 1 : 0);
-            material.SetFloat("_SPS_UseLegacyLights", plug.useLights && plug.useSharedTag ? 1 : 0);
+            material.SetFloat("_SPS_UseLegacyLights", plug.useSharedTag ? 1 : 0);
         }
     }
 }

@@ -14,7 +14,6 @@ using VF.Model.Feature;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Dynamics;
-using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Service {
     [VFService]
@@ -30,7 +29,6 @@ namespace VF.Service {
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly AllClipsService allClipsService;
-        [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly AvatarBindingStateService avatarBindingStateService;
         [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
         [VFAutowired] private readonly ControllersService controllers;
@@ -40,8 +38,6 @@ namespace VF.Service {
         [VFAutowired] private readonly SpsPlugRadiusService plugRadiusService;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private VFAvatarController fx => controllers.GetFx();
-        [VFAutowired] private readonly MenuService menuService;
-        private MenuManager menu => menuService.GetMenu();
 
 
         private readonly Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
@@ -78,52 +74,16 @@ namespace VF.Service {
 
         [FeatureBuilderAction]
         public void Apply() {
-            VFClip tipLightOnClip = null;
             var usedNames = new HashSet<string>();
 
             var plugs = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>();
-            VFClip disableDepthClip = null;
-            VFClip disableRealtimeShadowsClip = null;
-            if (plugs.Any(plug => plug.enableSps)) {
-                var disableDepth = fx.CreateUniqueBool("disableDepth");
-                disableDepth.MakeExpressionBool(saved: true);
-                menu.NewMenuToggle(
-                    $"{spsOptions.GetOptionsPath()}/<b>Disable Depth Pass<\\/b>\n<size=20>(May fix 'ghost' plugs in some worlds)",
-                    disableDepth
-                );
-                disableDepthClip = clipFactory.NewClip("SPS Disable Depth Pass");
-                var directTree = directTreeService.Create("SPS Disable Depth Pass");
-                directTree.Add(BlendtreeMath.GreaterThan(disableDepth, 0).create(disableDepthClip, null));
-                var disableRealtimeShadows = fx.CreateUniqueBool("disableRealtimeShadows");
-                disableRealtimeShadows.MakeExpressionBool(saved: true);
-                menu.NewMenuToggle(
-                    $"{spsOptions.GetOptionsPath()}/<b>Disable Realtime Shadows<\\/b>\n<size=20>(May fix 'ghost' plugs in some worlds)",
-                    disableRealtimeShadows
-                );
-                disableRealtimeShadowsClip = clipFactory.NewClip("SPS Disable Realtime Shadows");
-                directTree = directTreeService.Create("SPS Disable Realtime Shadows");
-                directTree.Add(BlendtreeMath.GreaterThan(disableRealtimeShadows, 0).create(disableRealtimeShadowsClip, null));
-            }
-
-            if (plugs.Any(plug => plug.addDpsTipLight)) {
-                var param = fx.CreateUniqueBool("tipLight");
-                param.MakeExpressionBool();
-                menu.NewMenuToggle(
-                        $"{spsOptions.GetOptionsPath()}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
-                        param);
-                tipLightOnClip = clipFactory.NewClip("EnableAutoReceivers");
-                var layer = fx.NewLayer("Tip Light");
-                var off = layer.NewState("Off");
-                var on = layer.NewState("On").WithAnimation(tipLightOnClip);
-                var whenOn = param.IsTrue();
-                off.TransitionsTo(on).When(whenOn);
-                on.TransitionsTo(off).When(whenOn.Not());
-            }
+            var options = spsOptions.GetOptions();
+            var addDpsTipLight = options.legacyModeAvailable && options.addDpsTipLight;
 
             foreach (var plug in plugs) {
                 try {
                     if (!bakeResults.TryGetValue(plug, out var bakeInfo)) continue;
-                    ApplyPlug(plug, bakeInfo, tipLightOnClip, disableDepthClip, disableRealtimeShadowsClip, usedNames);
+                    ApplyPlug(plug, bakeInfo, addDpsTipLight, usedNames);
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to build SPS Plug: {plug.owner().GetPath(avatarObject)}", e);
                 }
@@ -133,9 +93,7 @@ namespace VF.Service {
         private void ApplyPlug(
             VRCFuryHapticPlug plug,
             VRCFuryHapticPlugEditor.BakeResult bakeInfo,
-            VFClip tipLightOnClip,
-            VFClip disableDepthClip,
-            VFClip disableRealtimeShadowsClip,
+            bool addDpsTipLight,
             ISet<string> usedNames
         ) {
             var name = HapticUtils.MakeUniqueId(usedNames, bakeInfo.oscId);
@@ -254,19 +212,6 @@ namespace VF.Service {
                 }
             }
 
-            if (disableDepthClip != null && plug.enableSps) {
-                foreach (var r in renderers) {
-                    disableDepthClip.SetCurve(r.renderer, $"material.{SpsConfigurer.SpsDisableDepth}", 1);
-                }
-            }
-
-            if (disableRealtimeShadowsClip != null) {
-                foreach (var r in renderers) {
-                    disableRealtimeShadowsClip.SetCurve(r.renderer, $"material.{SpsConfigurer.SpsDisableShadows}", 1);
-                    disableRealtimeShadowsClip.SetCurve(r.renderer, "m_ReceiveShadows", 0);
-                }
-            }
-
             // SPS
             if (plug.enableSps) {
                 foreach (var r in renderers) {
@@ -281,9 +226,8 @@ namespace VF.Service {
             }
             
             // DPS Tip Light
-            if (tipLightOnClip != null) {
+            if (addDpsTipLight) {
                 var tip = GameObjects.Create("LegacyDpsTip", worldSpace);
-                tip.active = false;
                 var light = tip.AddComponent<Light>();
                 light.type = LightType.Point;
                 light.color = Color.black;
@@ -294,7 +238,6 @@ namespace VF.Service {
 
                 propsToScale.Add((light, "m_Intensity", localLength));
 
-                tipLightOnClip.SetEnabled(tip, true);
             }
 
             var injectRequests = parameterInjectService.GetRequests()

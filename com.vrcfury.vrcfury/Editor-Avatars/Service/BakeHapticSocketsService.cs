@@ -58,18 +58,15 @@ namespace VF.Service {
 
         [FeatureBuilderAction]
         public void Apply() {
-            var saved = spsOptions.GetOptions().saveSockets;
+            var options = spsOptions.GetOptions();
+            var saved = options.saveSockets;
 
-            var enableAuto = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
-                .Where(o => o.addMenuItem && o.enableAuto)
-                .ToArray()
-                .Length >= 2;
+            var enableAuto = options.autoModeAvailable
+                && avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any(socket => socket.addMenuItem);
             VFAParam autoOn = null;
             VFClip autoOnClip = null;
             if (enableAuto) {
-                autoOn = fx.CreateUniqueBool("autoMode");
-                autoOn.MakeExpressionBool(synced: false, saved: saved);
-                menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
+                autoOn = spsOptions.GetAutoParameter();
                 autoOnClip = clipFactory.NewClip("Enable SPS Auto Contacts");
                 var directTree = directTreeService.Create($"Auto Mode Toggle");
                 directTree.Add(
@@ -78,35 +75,9 @@ namespace VF.Service {
                 ).create(autoOnClip, null));
             }
 
-            var enableStealth = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
-                .Where(o => o.addMenuItem)
-                .ToArray()
-                .Length >= 1;
-            VFAParam stealthOn = null;
-            VFClip stealthClip = null;
-            if (enableStealth) {
-                stealthOn = fx.CreateUniqueBool("stealth");
-                stealthOn.MakeExpressionBool(saved: saved);
-                menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
-                stealthClip = clipFactory.NewClip($"SPS (Stealth)");
-                var directTree = directTreeService.Create($"SPS - Stealth");
-                directTree.Add(BlendtreeMath.GreaterThan(stealthOn, 0).create(stealthClip, null));
-            }
-
-            var enableLegacy = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
-                .Where(o => o.addMenuItem && o.useLights)
-                .ToArray()
-                .Length >= 1;
-            VFAParam legacyOn = null;
-            VFClip legacyOffClip = null;
-            if (enableLegacy) {
-                legacyOn = fx.CreateUniqueBool("legacy", def: spsOptions.GetOptions().legacyModeEnabledOnAvatarLoad);
-                legacyOn.MakeExpressionBool(saved: saved);
-                menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Legacy Compatibility<\\/b>\n<size=20>DPS \\/ TPS \\/ SPS1\nOne socket at a time", legacyOn);
-                legacyOffClip = clipFactory.NewClip("Turn off SPS Legacy lights");
-                var directTree = directTreeService.Create($"SPS Legacy");
-                directTree.Add(BlendtreeMath.GreaterThan(legacyOn, 0f).create(null, legacyOffClip));
-            }
+            var hasSockets = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any();
+            var legacyOn = hasSockets ? spsOptions.GetLegacyParameter() : null;
+            var legacyOnClip = hasSockets ? spsOptions.GetLegacyOnClip() : null;
 
             var autoSockets = new List<Tuple<string, VFAParam, VFGameObject>>();
             var exclusiveTriggers = new List<(string,VFAParam)>();
@@ -139,7 +110,8 @@ namespace VF.Service {
                         continue;
                     }
 
-                    var bakeResult = socketBaker.Bake(socket);
+                    var bakeResult = socketBaker.Bake(socket, legacyAvailable: options.legacyModeAvailable,
+                        tpsDepthAnimationCompatibility: options.tpsDepthAnimationCompatibility);
                     if (bakeResult == null) continue;
                     globals.addOtherFeature(new ShowInFirstPerson {
                         useObjOverride = true,
@@ -253,10 +225,8 @@ namespace VF.Service {
                     }
 
                     var worldScale = new Lazy<VFAParam>(() => worldScaleService.GetWorldScale(bakeResult.bakeRoot, menuName));
-                    var animObjects = new List<VFGameObject>();
                     var Contacts = new Lazy<SpsDepthContacts>(() => {
                         var animRoot = GameObjects.Create("Animations", bakeResult.worldSpace);
-                        animObjects.Add(animRoot);
                         var directTree = directTreeService.Create($"{oscId} - Depth Calculations");
                         var math = directTreeService.GetMath(directTree);
                         return new SpsDepthContacts(animRoot, oscId, hapticContacts, directTree, math, fx, frameTimeService, true, worldScale.Value);
@@ -349,18 +319,15 @@ namespace VF.Service {
                         }
                     }
 
-                    if (stealthClip != null) {
-                        foreach (var child in new[] { bakeResult.lights, bakeResult.senders }
-                                     .Concat(animObjects)
-                                     .NotNull()
-                        ) {
-                            stealthClip.SetEnabled(child, false);
-                        }
-                    }
-
-                    if (legacyOffClip != null) {
+                    if (legacyOnClip != null) {
                         foreach (var child in new[] { bakeResult.lights }.NotNull()) {
-                            legacyOffClip.SetEnabled(child, false);
+                            child.active = false;
+                            legacyOnClip.SetEnabled(child, true);
+                        }
+                        var legacyGizmo = obj.GetComponent<VRCFurySocketGizmo>();
+                        if (legacyGizmo != null) {
+                            legacyGizmo.data.useLegacyLights = false;
+                            legacyOnClip.SetCurve(legacyGizmo, "data.useLegacyLights", bakeResult.lights != null ? 1 : 0);
                         }
                     }
 
@@ -398,7 +365,7 @@ namespace VF.Service {
                             onClip.SetCurve(gizmo, "show", 1);
                         }
 
-                        if (socket.enableAuto && autoOnClip != null) {
+                        if (autoOnClip != null) {
                             autoSockets.Add(Tuple.Create(oscId, toggleParam, bakeResult.bakeRoot));
                         }
                     }
@@ -407,11 +374,14 @@ namespace VF.Service {
                 }
             }
 
+            if (legacyOn != null) {
+                menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/<b>Legacy Support<\\/b>\n<size=20>DPS\\/TPS\\/SPS1\\/SPS2\nOne socket at a time", legacyOn);
+            }
+
             if (exclusiveTriggers.Count >= 2) {
                 var exclusiveLayer = actionController.NewLayer("SPS - Socket Exclusivity");
                 exclusiveLayer.NewState("Start");
                 legacyOn?.CopyTo(actionController);
-                stealthOn?.CopyTo(actionController);
                 foreach (var i in Enumerable.Range(0, exclusiveTriggers.Count)) {
                     var (name, on) = exclusiveTriggers[i];
                     on?.CopyTo(actionController);
@@ -419,7 +389,6 @@ namespace VF.Service {
                     var when = on.IsTrue();
                     when = when.And(actionController.IsLocal().IsTrue());
                     if (legacyOn != null) when = when.And(legacyOn.IsTrue());
-                    if (stealthOn != null) when = when.And(stealthOn.IsFalse());
                     state.TransitionsFromAny().When(when);
                     foreach (var j in Enumerable.Range(0, exclusiveTriggers.Count)) {
                         if (i == j) continue;

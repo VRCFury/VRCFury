@@ -9,7 +9,9 @@ using UnityEngine.UIElements;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Injector;
+using VF.Model;
 using VF.Utils;
+using SpsOptions = VF.Model.Feature.SpsOptions;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticSocket), true)]
@@ -161,38 +163,52 @@ namespace VF.Inspector {
                 ));
                 output.Add(section);
 
-                var enableBackwardCompatibility = serializedObject.FindProperty("useLights");
-                output.Add(VRCFuryEditorUtils.BetterProp(enableBackwardCompatibility, "Enable Legacy Compatibility"));
-                output.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                    if (!enableBackwardCompatibility.boolValue) return new VisualElement();
-                    var legacySupport = VRCFuryEditorUtils.Section("Legacy Compatibility",
-                        "SPS1/DPS/TPS plugs will deform toward this socket\nUses Lights");
-                    var overrideLegacySocketType = serializedObject.FindProperty("overrideLegacySocketType");
-                    legacySupport.Add(VRCFuryEditorUtils.BetterProp(
-                        overrideLegacySocketType,
-                        "Override Legacy Type"
-                    ));
-                    legacySupport.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                        if (!overrideLegacySocketType.boolValue) return new VisualElement();
-                        return VRCFuryEditorUtils.BetterProp(
-                            serializedObject.FindProperty("legacySocketType"),
-                            "Legacy Type"
-                        );
-                    }, overrideLegacySocketType));
-                    var overrideLegacyOffset = serializedObject.FindProperty("overrideLegacyOffset");
-                    legacySupport.Add(VRCFuryEditorUtils.BetterProp(
-                        overrideLegacyOffset,
-                        "Override Legacy Offset"
-                    ));
-                    legacySupport.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                        if (!overrideLegacyOffset.boolValue) return new VisualElement();
-                        return VRCFuryEditorUtils.BetterProp(
-                            serializedObject.FindProperty("legacyOffsetLocal"),
-                            "Legacy Entry Offset"
-                        );
-                    }, overrideLegacyOffset));
-                    return legacySupport;
-                }, enableBackwardCompatibility));
+                var legacySupport = VRCFuryEditorUtils.Section("Legacy Compatibility",
+                    "SPS1/DPS/TPS plugs will deform toward this socket\nUses Lights");
+                legacySupport.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
+                    if (target == null) return null;
+                    var options = target.owner().GetComponentsInUploadRoot<VRCFury>()
+                        .SelectMany(component => component.GetAllFeatures())
+                        .OfType<SpsOptions>()
+                        .FirstOrDefault();
+                    return options != null && !options.legacyModeAvailable
+                        ? VRCFuryEditorUtils.Warn("Legacy Mode is excluded from this avatar in SPS Options. These settings will have no effect. Enable 'Include in Avatar' under Legacy Mode in SPS Options to use them.")
+                        : null;
+                }));
+                var overrideLegacySocketType = serializedObject.FindProperty("overrideLegacySocketType");
+                legacySupport.Add(VRCFuryEditorUtils.BetterProp(
+                    overrideLegacySocketType,
+                    "Override Legacy Type"
+                ));
+                legacySupport.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                    if (!overrideLegacySocketType.boolValue) return new VisualElement();
+                    var legacyType = serializedObject.FindProperty("legacySocketType");
+                    // Previously serialized one-way rings behave identically to rings.
+                    var field = new PopupField<string>(new List<string> { "Hole", "Ring" }, legacyType.intValue == 0 ? 0 : 1);
+                    field.TrackPropertyValue(legacyType, p => field.SetValueWithoutNotify(p.intValue == 0 ? "Hole" : "Ring"));
+                    field.RegisterValueChangedCallback(cb => {
+                        legacyType.intValue = cb.newValue == "Hole" ? 0 : 1;
+                        serializedObject.ApplyModifiedProperties();
+                    });
+                    return VRCFuryEditorUtils.BetterProp(
+                        legacyType,
+                        "Legacy Type",
+                        fieldOverride: field
+                    );
+                }, overrideLegacySocketType));
+                var overrideLegacyOffset = serializedObject.FindProperty("overrideLegacyOffset");
+                legacySupport.Add(VRCFuryEditorUtils.BetterProp(
+                    overrideLegacyOffset,
+                    "Override Legacy Offset"
+                ));
+                legacySupport.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                    if (!overrideLegacyOffset.boolValue) return new VisualElement();
+                    return VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("legacyOffsetLocal"),
+                        "Legacy Entry Offset"
+                    );
+                }, overrideLegacyOffset));
+                output.Add(legacySupport);
 
                 return output;
             }, addLightProp));
@@ -210,7 +226,6 @@ namespace VF.Inspector {
                     avatar => avatar.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>(),
                     GetMenuName
                 ));
-                toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?", tooltip: "If checked, this socket will be eligible to be chosen during 'Auto Mode', which is an option in your menu which will automatically enable the socket nearest to a plug."));
                 toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("menuIcon"), "Menu Icon", tooltip: "Override the menu icon used for this socket's individual toggle. Looking to move or change the icon of the main SPS menu? Add a VRCFury 'SPS Options' component to the avatar root."));
                 return toggles;
             }, addMenuItemProp));
@@ -346,7 +361,6 @@ namespace VF.Inspector {
             if (socket.overrideLegacySocketType) {
                 return socket.legacySocketType switch {
                     VRCFuryHapticSocket.LegacySocketType.Hole => VRCFuryHapticSocket.AddLight.Hole,
-                    VRCFuryHapticSocket.LegacySocketType.RingOneWay => VRCFuryHapticSocket.AddLight.RingOneWay,
                     _ => VRCFuryHapticSocket.AddLight.Ring
                 };
             }

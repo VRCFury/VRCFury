@@ -162,7 +162,7 @@ namespace VF.Inspector {
                 pos = localPosition,
                 rot = localRotation,
                 useRadiusOffset = socket.useRadiusOffset,
-                useLegacyLights = socket.useLights,
+                useLegacyLights = true,
                 overrideLegacyOffset = socket.overrideLegacyOffset,
                 legacyOffsetLocal = socket.legacyOffsetLocal,
                 name = HapticUtils.GetPreferredId(
@@ -290,7 +290,6 @@ namespace VF.Inspector {
 
         internal static void DrawEditableLegacyOffset(VRCFuryHapticSocket socket) {
             if (socket == null) return;
-            if (!socket.useLights) return;
             if (!socket.overrideLegacyOffset) return;
 
             var owner = socket.owner();

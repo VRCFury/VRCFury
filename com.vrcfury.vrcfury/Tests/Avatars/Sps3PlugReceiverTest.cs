@@ -232,7 +232,7 @@ namespace VF.Tests {
                 Assert.That(material.HasProperty("_SPS_PlugOrigin"), Is.False);
                 plug.useLights = false;
                 service.ConfigureMaterial(material, plug);
-                Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.Zero);
+                Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(1));
                 plug.useSharedTag = false;
                 plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "self", allowSelf = true, allowOthers = false });
                 plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "both", allowSelf = true, allowOthers = true });

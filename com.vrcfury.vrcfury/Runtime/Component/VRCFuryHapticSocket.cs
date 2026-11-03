@@ -22,8 +22,7 @@ namespace VF.Component {
 
         public enum LegacySocketType {
             Hole,
-            Ring,
-            RingOneWay
+            Ring
         }
 
         public AddLight addLight = AddLight.Auto;
@@ -34,6 +33,7 @@ namespace VF.Component {
         public bool unitsInMeters = true;
         public bool addMenuItem = true;
         public GuidTexture2d menuIcon;
+        [Obsolete("Configure Auto Mode sockets in SPS Options instead."), HideInInspector]
         public bool enableAuto = true;
         public Vector3 position;
         public Vector3 rotation;
@@ -43,6 +43,7 @@ namespace VF.Component {
         public State activeActions = new State();
         public bool useHipAvoidance = true;
         public bool useSharedTag = true;
+        [Obsolete("Configure Legacy Compatibility in SPS Options instead."), HideInInspector]
         public bool useLights = true;
         public bool overrideLegacySocketType = false;
         public LegacySocketType legacySocketType = LegacySocketType.Hole;
