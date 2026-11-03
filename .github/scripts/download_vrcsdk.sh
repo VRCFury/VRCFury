@@ -20,7 +20,18 @@ download_manifest_package() {
   mkdir -p "$PROJECT_PATH/Packages/$package_name"
   unzip -o "$zip_path" -d "$PROJECT_PATH/Packages/$package_name"
   rm "$zip_path"
-  rm -rf "$PROJECT_PATH/Packages/$package_name/Samples" "$PROJECT_PATH/Packages/$package_name/Samples.meta"
+  local samples="$PROJECT_PATH/Packages/$package_name/Samples"
+  if [[ "$package_name" == "com.vrchat.avatars" ]]; then
+    # VRCFury loads the default controllers by GUID. Keep their animation dependencies
+    # and metadata, but avoid importing the robot avatar and other unused samples.
+    test -d "$samples/AV3 Demo Assets/Animation"
+    find "$samples" -mindepth 1 -maxdepth 1 \
+      ! -name 'AV3 Demo Assets' ! -name 'AV3 Demo Assets.meta' -exec rm -rf {} +
+    find "$samples/AV3 Demo Assets" -mindepth 1 -maxdepth 1 \
+      ! -name 'Animation' ! -name 'Animation.meta' -exec rm -rf {} +
+  else
+    rm -rf "$samples" "$samples.meta"
+  fi
 }
 
 patch_udonsharp_for_ci() {
