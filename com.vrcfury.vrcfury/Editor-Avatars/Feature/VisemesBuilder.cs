@@ -40,7 +40,7 @@ namespace VF.Feature {
 #if VRCSDK_HAS_FACE_TRACKING
         [VFAutowired] private readonly FaceTrackingService faceTracking;
 #endif
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
 
         private static readonly string[] visemeNames = {
             "sil", "PP", "FF", "TH", "DD", "kk", "CH", "SS", "nn", "RR", "aa", "E", "I", "O", "U"
@@ -60,13 +60,13 @@ namespace VF.Feature {
                 avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
             }
 
-            var VisemeParam = fx.NewFloat("Viseme", usePrefix: false);
-            var VolumeParam = fx.NewFloat("Voice", usePrefix: false);
+            var VisemeParam = fx.GetOrCreateFloat("Viseme");
+            var VolumeParam = fx.GetOrCreateFloat("Voice");
             
-            var enabled = fx.MakeAap("AdvancedVisemesEnabled", def: 1);
+            var enabled = fx.CreateUniqueFloat("AdvancedVisemesEnabled", def: 1);
             var directTree = dbtLayerService.Create();
             var math = dbtLayerService.GetMath(directTree);
-            VFAFloat volumeToUse;
+            VFAParam volumeToUse;
             if (model.instant) {
                 volumeToUse = math.SetValueWithConditions(
                     $"InstantVolume",
@@ -74,7 +74,7 @@ namespace VF.Feature {
                     (0, null)
                 );
             } else {
-                var scaledVolume = fx.MakeAap("ScaledVolume");
+                var scaledVolume = fx.CreateUniqueFloat("ScaledVolume");
                 directTree.Add(VFBlendTree1D.CreateWithData("ScaledVolume", VolumeParam,
                     (0, scaledVolume.MakeSetter(0)),
                     (0.05f, scaledVolume.MakeSetter(0f)),
@@ -96,7 +96,7 @@ namespace VF.Feature {
                     (1, BlendtreeMath.Equals(VisemeParam, index)),
                     (0, null)
                 );
-                VFAFloat intensityToUse;
+                VFAParam intensityToUse;
                 if (model.instant) {
                     intensityToUse = intensityRaw;
                 } else {

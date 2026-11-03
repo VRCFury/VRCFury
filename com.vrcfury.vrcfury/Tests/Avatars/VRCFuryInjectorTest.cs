@@ -16,6 +16,23 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Injector {
     [Category("VRCFury")]
     public class VRCFuryInjectorTest {
+        private class InjectorConsumer {
+            public readonly VRCFuryInjector injector;
+            public InjectorConsumer(VRCFuryInjector injector) {
+                this.injector = injector;
+            }
+        }
+
+        [Test]
+        public void EachInjectorResolvesAndInjectsItself() {
+            var first = new VRCFuryInjector();
+            var second = new VRCFuryInjector();
+            Assert.That(first.GetService<VRCFuryInjector>(), Is.SameAs(first));
+            Assert.That(second.GetService<VRCFuryInjector>(), Is.SameAs(second));
+            Assert.That(first.CreateAndFillObject<InjectorConsumer>().injector, Is.SameAs(first));
+            Assert.That(second.CreateAndFillObject<InjectorConsumer>().injector, Is.SameAs(second));
+        }
+
         [Test]
         public void MainComponentBuildContextResolves() {
             Verify("main component build context", () => {

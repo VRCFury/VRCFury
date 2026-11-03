@@ -14,6 +14,7 @@ using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.SDK3.Avatars.ScriptableObjects;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -25,8 +26,9 @@ namespace VF.Feature {
         [VFAutowired] private readonly FixWriteDefaultsService writeDefaultsManager;
         [VFAutowired] private readonly AllClipsService allClipsService;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
-        private ControllerManager actionController => controllers.GetAction();
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
+        private VFAvatarController fx => controllers.GetFx();
+        private VFAvatarController actionController => controllers.GetAction();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly GlobalsService globals;
@@ -86,17 +88,28 @@ namespace VF.Feature {
             }
 
             var (paramName, usePrefixOnParam) = GetParamName();
+            FloatOrBool defaultValue = model.slider ? model.defaultSliderValue : model.defaultOn;
+            var isInt = !model.slider && model.useInt;
+            VFAParam param;
+            if (model.slider) {
+                param = usePrefixOnParam ? fx.CreateUniqueFloat(paramName) : fx.GetOrCreateFloat(paramName);
+            } else if (isInt) {
+                param = usePrefixOnParam ? fx.CreateUniqueInt(paramName) : fx.GetOrCreateInt(paramName);
+            } else {
+                param = usePrefixOnParam ? fx.CreateUniqueBool(paramName) : fx.GetOrCreateBool(paramName);
+            }
+            // Override the default even if the parameter already existed in the controller.
+            param.SetDefault(defaultValue);
+            if (synced || isInt) {
+                var expressionParam = param.MakeExpression(model.slider ? VRCExpressionParameters.ValueType.Float
+                    : isInt ? VRCExpressionParameters.ValueType.Int : VRCExpressionParameters.ValueType.Bool,
+                    saved: model.saved);
+                if (isInt) expressionParam.DisableInterpolation();
+            }
             VFCondition onCase;
-            VFAFloat weight = null;
+            VFAParam weight = null;
             bool defaultOn;
             if (model.slider) {
-                var param = fx.NewFloat(
-                    paramName,
-                    synced: synced,
-                    saved: model.saved,
-                    def: model.defaultSliderValue,
-                    usePrefix: usePrefixOnParam
-                );
                 onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
                 exclusiveParam = model.sliderInactiveAtZero ? param : null;
                 if (model.sliderInactiveAtZero) {
@@ -112,16 +125,14 @@ namespace VF.Feature {
                     );
                 }
             } else if (model.useInt) {
-                var param = fx.NewInt(paramName, synced: true, saved: model.saved, def: model.defaultOn ? 1 : 0, usePrefix: usePrefixOnParam);
                 onCase = param.IsNotEqualTo(0);
                 exclusiveParam = param;
-                drive = (state,on) => state.Drives(param, on ? 1 : 0);
+                drive = (state,on) => state.Drives(param, on);
                 defaultOn = model.defaultOn;
             } else {
-                var param = fx.NewBool(paramName, synced: synced, saved: model.saved, def: model.defaultOn, usePrefix: usePrefixOnParam);
                 onCase = param.IsTrue();
                 exclusiveParam = param;
-                drive = (state,on) => state.Drives(param, on ? 1 : 0);
+                drive = (state,on) => state.Drives(param, on);
                 defaultOn = model.defaultOn;
                 if (addMenuItem) {
                     if (model.holdButton) {
@@ -162,7 +173,7 @@ namespace VF.Feature {
             VFLayer layer,
             VFState off,
             VFCondition onCase,
-            VFAFloat weight,
+            VFAParam weight,
             bool defaultOn,
             string onName,
             State action,
@@ -273,15 +284,8 @@ namespace VF.Feature {
 
             if (model.enableDriveGlobalParam) {
                 foreach(var p in GetDriveGlobalParams()) {
-                    var driveGlobal = fx.NewBool(
-                        p,
-                        synced: false,
-                        saved: false,
-                        def: false,
-                        usePrefix: false
-                    );
-                    off.Drives(driveGlobal, false);
-                    inState.Drives(driveGlobal, true);
+                    off.Drives(p, false);
+                    inState.Drives(p, true);
                 }
             }
 
@@ -333,7 +337,7 @@ namespace VF.Feature {
                 var layer = actionController.NewLayer($"Exclusive Tag - {tag}");
                 layer.NewState("Idle");
                 foreach (var toggle in groupToggles) {
-                    actionController.AddParam(toggle.exclusiveParam);
+                    toggle.exclusiveParam?.CopyTo(actionController);
                     var state = layer.NewState(toggle.model.name);
                     state.TransitionsFromAny().When(toggle.isOn);
                     foreach (var other in groupToggles.Where(o => o != toggle)) {
@@ -353,8 +357,8 @@ namespace VF.Feature {
                     .Where(t => t != toggle)
                     .ToArray();
                 if (conflictsWith.Any()) {
-                    actionController.AddParam(toggle.exclusiveParam);
-                    foreach (var other in conflictsWith) actionController.AddParam(other.exclusiveParam);
+                    toggle.exclusiveParam?.CopyTo(actionController);
+                    foreach (var other in conflictsWith) other.exclusiveParam?.CopyTo(actionController);
                     var triggerWhen = toggle.isOn.Not();
                     foreach (var other in conflictsWith) {
                         triggerWhen = triggerWhen.And(other.isOn.Not());

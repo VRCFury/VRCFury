@@ -5,7 +5,7 @@ using UnityEngine;
 namespace VF.Utils {
     internal static class BlendshapeUtils {
         public static void RenameBlendshapeCurves(
-            IEnumerable<ControllerManager> controllers,
+            IEnumerable<VFAvatarController> controllers,
             SkinnedMeshRenderer skin,
             IDictionary<string, string> renames
         ) {

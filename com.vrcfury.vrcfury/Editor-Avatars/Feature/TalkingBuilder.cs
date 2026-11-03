@@ -14,7 +14,7 @@ namespace VF.Feature {
     internal class TalkingBuilder : FeatureBuilder<Talking> {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
 
         [FeatureBuilderAction]
         public void Apply() {

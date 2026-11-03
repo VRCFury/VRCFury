@@ -16,17 +16,28 @@ namespace VF.Service.Compressor {
      */
     [VFService]
     internal class ParameterCompressorLegacyLayerService {
+        [VFAutowired] private readonly UniqueParamService uniqueParams;
         [VFAutowired] private readonly CompressorLayerUtilsService layerUtilsService;
+        [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
 
-        public void BuildLayer(OptimizationDecision decision, ControllerManager controller) {
+        public void BuildLayer(OptimizationDecision decision, VFAvatarController controller) {
             var (numberBatches, boolBatches) = decision.GetBatches();
 
-            var syncPointer = controller.NewInt("SyncPointer", synced: true);
+            var syncPointer = controller.CreateUniqueInt("SyncPointer");
+            expressionParams.GetOrCreate(syncPointer, p => {
+                p.valueType = VRCExpressionParameters.ValueType.Int;
+            }).DisableInterpolation();
             var syncInts = Enumerable.Range(0, decision.numberSlots)
-                .Select(i => layerUtilsService.MakeParam("SyncDataNum" + i, VRCExpressionParameters.ValueType.Int, true))
+                .Select(i => expressionParams.GetOrCreate(uniqueParams.GetUniqueName("SyncDataNum" + i), p => {
+                    p.valueType = VRCExpressionParameters.ValueType.Int;
+                    p.DisableInterpolation();
+                }))
                 .ToList();
             var syncBools = Enumerable.Range(0, decision.boolSlots)
-                .Select(i => layerUtilsService.MakeParam("SyncDataBool" + i, VRCExpressionParameters.ValueType.Bool, true))
+                .Select(i => expressionParams.GetOrCreate(uniqueParams.GetUniqueName("SyncDataBool" + i), p => {
+                    p.valueType = VRCExpressionParameters.ValueType.Bool;
+                }))
                 .ToList();
 
             var layer = controller.NewLayer("Legacy Parameter Compressor");
@@ -79,19 +90,19 @@ namespace VF.Service.Compressor {
                     var original = numberBatch[slotNum];
                     var originalParam = original.name;
                     var type = original.valueType;
-                    var lastSynced = controller.NewFloat($"{originalParam}/LastSynced", def: -100);
+                    var lastSynced = controller.CreateUniqueFloat($"{originalParam}/LastSynced", def: -100);
                     sendState.DrivesCopy(originalParam, lastSynced);
 
-                    VFAFloat currentValue;
+                    VFAParam currentValue;
                     if (type == VRCExpressionParameters.ValueType.Float) {
-                        currentValue = (VFAFloat)layerUtilsService.AddToController(controller, original);
-                        sendState.DrivesCopy(originalParam, syncInts[slotNum].name, -1, 1, 0, 254);
-                        receiveState.DrivesCopy(syncInts[slotNum].name, originalParam, 0, 254, -1, 1);
+                        currentValue = controller.GetOrCreateFloat(original.name, original.defaultValue);
+                        sendState.DrivesCopy(originalParam, syncInts[slotNum], -1, 1, 0, 254);
+                        receiveState.DrivesCopy(syncInts[slotNum].name, original, 0, 254, -1, 1);
                     } else if (type == VRCExpressionParameters.ValueType.Int) {
-                        currentValue = controller.NewFloat($"{originalParam}/Current");
+                        currentValue = controller.CreateUniqueFloat($"{originalParam}/Current");
                         local.DrivesCopy(originalParam, currentValue);
-                        sendState.DrivesCopy(originalParam, syncInts[slotNum].name);
-                        receiveState.DrivesCopy(syncInts[slotNum].name, originalParam);
+                        sendState.DrivesCopy(originalParam, syncInts[slotNum]);
+                        receiveState.DrivesCopy(syncInts[slotNum].name, original);
                     } else {
                         throw new Exception("Unknown type?");
                     }
@@ -102,12 +113,12 @@ namespace VF.Service.Compressor {
                 }
                 for (var slotNum = 0; slotNum < boolBatch.Count(); slotNum++) {
                     var original = boolBatch[slotNum];
-                    var originalAction = (VFABool)layerUtilsService.AddToController(controller, original);
+                    var originalAction = controller.GetOrCreateBool(original.name, original.defaultValue != 0);
                     var originalParam = original.name;
-                    var lastSynced = controller.NewInt($"{originalParam}/LastSynced", def: -100);
+                    var lastSynced = controller.CreateUniqueInt($"{originalParam}/LastSynced", def: -100);
                     sendState.DrivesCopy(originalParam, lastSynced);
-                    sendState.DrivesCopy(originalParam, syncBools[slotNum].name);
-                    receiveState.DrivesCopy(syncBools[slotNum].name, originalParam);
+                    sendState.DrivesCopy(originalParam, syncBools[slotNum]);
+                    receiveState.DrivesCopy(syncBools[slotNum].name, original);
                     var shortcutCondition = originalAction.IsTrue().And(lastSynced.IsLessThan(1));
                     shortcutCondition = shortcutCondition.Or(originalAction.IsFalse().And(lastSynced.IsGreaterThan(0)));
                     local.TransitionsTo(sendState).When(shortcutCondition);

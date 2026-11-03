@@ -9,15 +9,15 @@ namespace VF.Service {
     [VFService]
     internal class PhysboneResetService {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
-        public VFAFloat CreatePhysBoneResetter(VFGameObject physBone, string name) {
+        public VFAParam CreatePhysBoneResetter(VFGameObject physBone, string name) {
             var directTree = dbtLayerService.Create(physBone.name);
             var blendtreeMath = dbtLayerService.GetMath(directTree);
             
-            var param = fx.NewFloat(name + "_PhysBoneReset");
+            var param = fx.CreateUniqueFloat(name + "_PhysBoneReset");
             var buffer1 = blendtreeMath.Buffer(param);
             var buffer2 = blendtreeMath.Buffer(buffer1);
             var buffer3 = blendtreeMath.Buffer(buffer2);

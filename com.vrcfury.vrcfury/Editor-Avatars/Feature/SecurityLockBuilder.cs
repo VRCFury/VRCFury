@@ -10,6 +10,7 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Feature {
 
@@ -18,18 +19,18 @@ namespace VF.Feature {
     [FeatureRootOnly]
     internal class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
-        private ControllerManager actionController => controllers.GetAction();
+        private VFAvatarController fx => controllers.GetFx();
+        private VFAvatarController actionController => controllers.GetAction();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         
-        private VFABool _unlockedParam = null;
-        public VFABool GetEnabled() {
+        private VFAParam _unlockedParam = null;
+        public VFAParam GetEnabled() {
             if (_unlockedParam == null) _unlockedParam = Create();
             return _unlockedParam;
         }
 
-        private VFABool Create() {
+        private VFAParam Create() {
             var unlockCode = model.pinNumber;
             var digits = unlockCode
                 .Select(c => c - '0')
@@ -48,9 +49,11 @@ namespace VF.Feature {
             var numDigits = digits.Length;
             var numDigitSlots = 10;
 
-            var paramSecuritySync = fx.NewBool("SecurityLockSync", synced: true);
-            // This doesn't actually need synced, but vrc gets annoyed that the menu is using an unsynced param
-            var paramInput = actionController.NewInt("SecurityInput", synced: true, networkSynced: false);
+            var paramSecuritySync = fx.CreateUniqueBool("SecurityLockSync");
+            paramSecuritySync.MakeExpressionBool();
+            // Menu parameters need an expression entry, but PIN input must stay local.
+            var paramInput = actionController.CreateUniqueInt("SecurityInput");
+            paramInput.MakeExpressionInt(synced: false);
             
             // Because this is created lazily on demand from some other feature, but we want the position in the menu
             // to be based on where this security lock was placed
@@ -76,9 +79,9 @@ namespace VF.Feature {
 
             remote.TransitionsTo(entry).When(actionController.IsLocal().IsTrue());
             
-            var digitParams = new List<VFAInteger>();
+            var digitParams = new List<VFAParam>();
             for (var i = 0; i < numDigitSlots; i++) {
-                var savedDigit = actionController.NewInt("SecurityDigit" + i);
+                var savedDigit = actionController.CreateUniqueInt("SecurityDigit" + i);
                 digitParams.Add(savedDigit);
                 clear.Drives(savedDigit, 0);
             }

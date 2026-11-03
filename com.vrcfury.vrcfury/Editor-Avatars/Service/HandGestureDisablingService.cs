@@ -11,18 +11,18 @@ namespace VF.Service {
     [VFService]
     internal class HandGestureDisablingService {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
         
-        private readonly List<VFAFloat> inhibitors = new List<VFAFloat>();
+        private readonly List<VFAParam> inhibitors = new List<VFAParam>();
         
-        public VFAFloat AddInhibitor(string owner) {
-            var param = fx.NewFloat($"DG_{owner}");
+        public VFAParam AddInhibitor(string owner) {
+            var param = fx.CreateUniqueFloat($"DG_{owner}");
             inhibitors.Add(param);
             return param;
         }
 
-        public void AddInhibitor(VFAFloat param) {
+        public void AddInhibitor(VFAParam param) {
             inhibitors.Add(param);
         }
 
@@ -33,19 +33,19 @@ namespace VF.Service {
             var math = dbtLayerService.GetMath(dbt);
             var inhibited = math.Add(
                 "Inhibit Gestures",
-                inhibitors.Select(i => ((BlendtreeMath.VFAFloatOrConst)i, 1f)).ToArray()
+                inhibitors.Select(i => ((BlendtreeMath.Value)i, 1f)).ToArray()
             );
             var whenNotInhibitedTree = new Lazy<VFBlendTreeDirect>(() => {
                 var output = VFBlendTreeDirect.Create("When gestures not inhibited");
                 dbt.Add(BlendtreeMath.GreaterThan(inhibited, 0).create(null, output));
                 return output;
             });
-            var cachedBuffered = new Dictionary<string, VFAFloat>();
+            var cachedBuffered = new Dictionary<string, VFAParam>();
             Action doAtEnd = () => { };
 
-            VFAFloat GetBuffered(string paramName) {
+            VFAParam GetBuffered(string paramName) {
                 return cachedBuffered.GetOrCreate(paramName, () => {
-                    var buffered = fx.MakeAap(paramName + " (Buffered)");
+                    var buffered = fx.CreateUniqueFloat(paramName + " (Buffered)");
                     // This is deferred so that the parameter rewrite doesn't rewrite our own usage of the original
                     doAtEnd += () => whenNotInhibitedTree.Value.Add(buffered.MakeCopier(paramName));
                     return buffered;

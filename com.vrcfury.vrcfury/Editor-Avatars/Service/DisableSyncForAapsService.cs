@@ -17,9 +17,8 @@ namespace VF.Service {
     [VFService]
     internal class DisableSyncForAapsService {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
-        [VFAutowired] private readonly ParamsService paramsService;
-        private ParamManager paramz => paramsService.GetParams();
+        private VFAvatarController fx => controllers.GetFx();
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
 
         [FeatureBuilderAction(FeatureOrder.DisableSyncForAaps)]
         public void Apply() {
@@ -29,7 +28,7 @@ namespace VF.Service {
                 .Select(binding => binding.propertyName)
                 .ToImmutableHashSet();
 
-            foreach (var param in paramz.GetRaw().parameters) {
+            foreach (var param in expressionParams) {
                 if (vrcfDrivenAaps.Contains(param.name)) {
                     Debug.LogWarning($"VRCFury is disabling network sync for {param.name} because it is driven by an AAP");
                     param.SetNetworkSynced(false);

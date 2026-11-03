@@ -67,6 +67,7 @@ namespace VF.Tests {
             public readonly GlobalsService globals;
             public readonly FaceTrackingService faceTracking = new FaceTrackingService();
             private readonly ControllersService controllers = new ControllersService();
+            private readonly UniqueParamService uniqueParams = new UniqueParamService();
             private readonly List<Mesh> meshes = new List<Mesh>();
 
             public Build() {
@@ -80,10 +81,14 @@ namespace VF.Tests {
                 };
                 Inject(controllers, "avatar", avatar);
                 Inject(controllers, "globals", globals);
-                var parameters = new ParamsService();
+                var parameters = new ExpressionParamsService();
                 Inject(parameters, "avatar", avatar);
-                Inject(controllers, "paramsService", parameters);
-                Inject(controllers, "parameterSourceService", new ParameterSourceService());
+                Inject(controllers, "uniqueParams", new System.Lazy<UniqueParamService>(() => uniqueParams));
+                Inject(controllers, "expressionParams", parameters);
+                Inject(uniqueParams, "controllers", controllers);
+                Inject(uniqueParams, "expressionParams", parameters);
+                Inject(uniqueParams, "globals", globals);
+                Inject(uniqueParams, "parameterSourceService", new ParameterSourceService());
                 Inject(faceTracking, "avatar", avatar);
                 Inject(faceTracking, "controllers", controllers);
             }
@@ -159,9 +164,9 @@ namespace VF.Tests {
             public VF.Utils.Controller.VFBehaviour ControlSet(string name) {
                 var layerSource = new LayerSourceService();
                 Inject(layerSource, "globals", globals);
-                var controller = new ControllerManager(VF.Utils.Controller.VFController.Create(), null,
-                    VRCAvatarDescriptor.AnimLayerType.FX, () => 0, () => "", value => value, layerSource);
-                var cache = (Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager>)typeof(ControllersService)
+                var controller = new VFAvatarController(VF.Utils.Controller.VFController.Create(),
+                    VRCAvatarDescriptor.AnimLayerType.FX, () => 0, () => "", uniqueParams.GetUniqueName, layerSource);
+                var cache = (Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController>)typeof(ControllersService)
                     .VFField("_controllers").GetValue(controllers);
                 cache[VRCAvatarDescriptor.AnimLayerType.FX] = controller;
                 return controller.NewLayer("Control").NewState("Control").behaviours.AddBehaviour<VRCAnimatorFaceTrackingBlendshapesSet>(behavior => {
@@ -188,6 +193,7 @@ namespace VF.Tests {
             }
 
             private void Add(FeatureBuilder builder, FeatureModel model) {
+                if (builder is FullControllerBuilder) Inject(builder, "uniqueParams", uniqueParams);
                 globals.allBuildersInRun.Add(builder);
                 globals.allFeaturesInRun.Add(model);
                 Inject(builder, "globals", globals);

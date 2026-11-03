@@ -20,7 +20,7 @@ namespace VF.Service {
     internal class WorldScaleDetectorService {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly IsObjectEnabledService isObjectEnabledService;
@@ -33,7 +33,7 @@ namespace VF.Service {
         private readonly Lazy<BlendtreeMath> math;
         private readonly Lazy<Vector3> offset;
         private readonly Lazy<VFGameObject> senderObject;
-        private readonly Dictionary<VFGameObject, VFAFloat> cache = new Dictionary<VFGameObject, VFAFloat>();
+        private readonly Dictionary<VFGameObject, VFAParam> cache = new Dictionary<VFGameObject, VFAParam>();
 
         public WorldScaleDetectorService() {
             directTree = new Lazy<VFBlendTreeDirect>(() => dbtLayerService.Create());
@@ -48,12 +48,12 @@ namespace VF.Service {
 
         [CanBeNull]
         // Returns the live absolute world scale of localSpace.
-        public VFAFloat GetWorldScale(VFGameObject localSpace, string name) {
+        public VFAParam GetWorldScale(VFGameObject localSpace, string name) {
             return cache.GetOrCreate(localSpace, () => Create(localSpace, name));
         }
 
         [CanBeNull]
-        private VFAFloat Create(VFGameObject localSpace, string name) {
+        private VFAParam Create(VFGameObject localSpace, string name) {
             if (!BuildTargetUtils.IsDesktop()) {
                 return null;
             }
@@ -81,7 +81,7 @@ namespace VF.Service {
             localReceiver.receiverType = ContactReceiver.ReceiverType.Proximity;
             localReceiver.collisionTags.Add(Tag);
             localReceiver.radius = ContactRadius;
-            var receiverParam = fx.NewFloat($"WSD - {name} - Rcv", def: 1 / MaxDetectedScale);
+            var receiverParam = fx.CreateUniqueFloat($"WSD - {name} - Rcv", def: 1 / MaxDetectedScale);
             localReceiver.parameter = receiverParam;
 
             var receiverOn = VFClip.Create($"WSD - {name} - On");

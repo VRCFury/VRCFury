@@ -30,14 +30,8 @@ namespace VF.Tests {
             target.GetType().VFField(field).SetValue(target, value);
 
         private static void EnableAdvanced(VRCContactReceiver receiver) {
-#if VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             receiver.advancedParameters = VRC.Dynamics.ContactReceiver.AdvancedParameter.All;
-#elif VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS_OLDNAME
-            receiver.advancedProximityParameters = true;
-#else
-            receiver.advancedParameters = true;
-#endif
 #else
             Assert.Ignore("This SDK predates advanced contact parameters.");
 #endif
@@ -56,17 +50,23 @@ namespace VF.Tests {
                 if (suffix != "") EnableAdvanced(receiver);
 
                 var globals = new GlobalsService { avatarObject = root, currentFeatureNum = 7 };
-                var parameters = new ParamsService();
+                var parameters = new ExpressionParamsService();
                 Inject(parameters, "avatar", avatar);
                 var controllers = new ControllersService();
                 Inject(controllers, "avatar", avatar);
                 Inject(controllers, "globals", globals);
-                Inject(controllers, "paramsService", parameters);
-                Inject(controllers, "parameterSourceService", new ParameterSourceService());
+                var uniqueParams = new UniqueParamService();
+                Inject(controllers, "uniqueParams", new Lazy<UniqueParamService>(() => uniqueParams));
+                Inject(controllers, "expressionParams", parameters);
+                Inject(uniqueParams, "controllers", controllers);
+                Inject(uniqueParams, "expressionParams", parameters);
+                Inject(uniqueParams, "globals", globals);
+                Inject(uniqueParams, "parameterSourceService", new ParameterSourceService());
                 var builder = new FullControllerBuilder { featureBaseObject = root, model = new FullController() };
                 Inject(builder, "avatar", avatar);
                 Inject(builder, "globals", globals);
                 Inject(builder, "controllers", controllers);
+                Inject(builder, "uniqueParams", uniqueParams);
                 Inject(builder, "animatorLayerControlManager", new AnimatorLayerControlOffsetService());
 #if VRCSDK_HAS_FACE_TRACKING
                 var faceTracking = new FaceTrackingService();

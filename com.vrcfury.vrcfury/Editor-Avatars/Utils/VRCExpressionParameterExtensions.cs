@@ -13,9 +13,9 @@ namespace VF.Utils {
             return Reflection.networkSyncedField == null || (bool)Reflection.networkSyncedField.GetValue(param);
         }
 
-        public static void SetNetworkSynced(this VRCExpressionParameters.Parameter param, bool networkSynced, bool optional = false) {
+        public static void SetNetworkSynced(this VRCExpressionParameters.Parameter param, bool networkSynced) {
             if (!SupportsUnsynced()) {
-                if (networkSynced || optional) return;
+                if (networkSynced) return;
                 throw new Exception("Your VRCSDK is too old to support non-synced parameters. Please update the VRCSDK.");
             }
             Reflection.networkSyncedField.SetValue(param, networkSynced);
@@ -23,6 +23,24 @@ namespace VF.Utils {
 
         public static bool SupportsUnsynced() {
             return Reflection.networkSyncedField != null;
+        }
+
+        public static void DisableInterpolation(this VRCExpressionParameters.Parameter param) {
+#if VRCSDK_HAS_PARAMETER_INTERPOLATION
+            if (param.valueType == VRCExpressionParameters.ValueType.Bool) return;
+            param.useCustomLerpDuration = true;
+            param.customLerpDuration = 0;
+#endif
+        }
+
+        public static bool HasSameInterpolation(this VRCExpressionParameters.Parameter param, VRCExpressionParameters.Parameter other) {
+#if VRCSDK_HAS_PARAMETER_INTERPOLATION
+            if (param.valueType == VRCExpressionParameters.ValueType.Bool) return true;
+            return param.useCustomLerpDuration == other.useCustomLerpDuration
+                   && (!param.useCustomLerpDuration || param.customLerpDuration == other.customLerpDuration);
+#else
+            return true;
+#endif
         }
 
         public static VRCExpressionParameters.Parameter Clone(this VRCExpressionParameters.Parameter param) {
@@ -34,6 +52,7 @@ namespace VF.Utils {
         public static bool IsSameAs(this VRCExpressionParameters.Parameter param, VRCExpressionParameters.Parameter other) {
             return param.name == other.name
                    && param.HasSameNetworkEncoding(other)
+                   && param.HasSameInterpolation(other)
                    && param.saved == other.saved
                    && param.defaultValue == other.defaultValue
                    && param.IsNetworkSynced() == other.IsNetworkSynced();

@@ -15,7 +15,7 @@ namespace VF.Service {
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
 

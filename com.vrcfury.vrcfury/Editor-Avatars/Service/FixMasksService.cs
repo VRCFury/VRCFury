@@ -16,7 +16,7 @@ namespace VF.Service {
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
 
         [FeatureBuilderAction(FeatureOrder.FixGestureFxConflict)]
         public void FixGestureFxConflict() {
@@ -145,7 +145,7 @@ namespace VF.Service {
         /**
          * We build the gesture base mask by unioning all the masks from the other layers.
          */
-        private VFMask GetGestureMask(ControllerManager gesture) {
+        private VFMask GetGestureMask(VFAvatarController gesture) {
             VFMask mask = VFMask.Empty();
             foreach (var layer in gesture.GetLayers()) {
                 if (layer.mask == null) throw new Exception("Gesture layer unexpectedly contains no mask");

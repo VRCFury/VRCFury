@@ -38,11 +38,13 @@ namespace VF.Service {
             }
         }
 
-        public VFAFloat AddReceiver(ReceiverRequest req) {
+        public VFAParam AddReceiver(ReceiverRequest req) {
             var fx = controllers.GetFx();
             if (!BuildTargetUtils.IsDesktop()) return fx.Zero();
 
-            var param = fx.NewFloat(req.paramName, usePrefix: req.usePrefix);
+            var param = req.usePrefix
+                ? fx.CreateUniqueFloat(req.paramName)
+                : fx.GetOrCreateFloat(req.paramName);
             var child = GameObjects.Create(req.objName, req.obj);
             
             overlappingService.Activate();

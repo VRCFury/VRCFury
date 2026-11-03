@@ -26,7 +26,7 @@ namespace VF.Service {
         [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
 
         public void RecordDefaultNow(VFBinding binding, bool isFloat, bool force = false) {
             if (binding.IsAnimatorBinding()) return;
@@ -221,7 +221,7 @@ namespace VF.Service {
             return _buildSettings;
         }
 
-        private IList<VFLayer> GetMaintainedLayers(ControllerManager controller) {
+        private IList<VFLayer> GetMaintainedLayers(VFAvatarController controller) {
             var settings = GetBuildSettings();
             return settings.applyToUnmanagedLayers ? controller.GetLayers() : controller.GetManagedLayers();
         }

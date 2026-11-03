@@ -15,8 +15,7 @@ namespace VF.Service {
     [VFService]
     internal class FinalValidationService {
         [VFAutowired] private readonly ExceptionService excService;
-        [VFAutowired] private readonly ParamsService paramsService;
-        private ParamManager paramz => paramsService.GetParams();
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
         [VFAutowired] private readonly VFGameObject avatarObject;
 
         [FeatureBuilderAction(FeatureOrder.Validation)]
@@ -26,9 +25,10 @@ namespace VF.Service {
         }
 
         private void CheckParams() {
-            if (paramz.GetRaw().parameters.Length > 8192) {
+            var count = expressionParams.Count();
+            if (count > 8192) {
                 excService.ThrowIfActuallyUploading(new SneakyException(
-                    $"Your avatar is using too many synced and unsynced expression parameters ({paramz.GetRaw().parameters.Length})!"
+                    $"Your avatar is using too many synced and unsynced expression parameters ({count})!"
                     + " There's a limit of 8192 total expression parameters."));
             }
         }

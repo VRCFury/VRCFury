@@ -16,15 +16,15 @@ namespace VF.Service {
     [VFService]
     internal class WorldDropService {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
 
         private readonly VFMultimapSet<VFGameObject, string> drops = new VFMultimapSet<VFGameObject, string>();
 
-        public VFAFloat Add(VFGameObject obj, string name) {
-            var param = fx.NewFloat(name + "_Drop");
+        public VFAParam Add(VFGameObject obj, string name) {
+            var param = fx.CreateUniqueFloat(name + "_Drop");
             drops.Put(obj, param);
             return param;
         }

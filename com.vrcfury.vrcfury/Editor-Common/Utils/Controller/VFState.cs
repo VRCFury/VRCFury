@@ -173,7 +173,7 @@ namespace VF.Utils.Controller {
             return this;
         }
 
-        public VFState MotionTime(VFAFloat param) {
+        public VFState MotionTime(VFAParam param) {
             timeParameterActive = true;
             timeParameter = param;
             return this;

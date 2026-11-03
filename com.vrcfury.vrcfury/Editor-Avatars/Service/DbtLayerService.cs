@@ -7,7 +7,7 @@ namespace VF.Service {
     internal class DbtLayerService {
         [VFAutowired] private readonly VFInjectorParent parent;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
 
         public VFBlendTreeDirect Create(string name = null) {
             if (name == null) {

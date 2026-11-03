@@ -33,14 +33,14 @@ namespace VF.Feature {
     [FeatureTitle("Full Controller")]
     internal class FullControllerBuilder : FeatureBuilder<FullController> {
         private const string InhibitHandControlsParam = "_VRCF_InhibitHandControls";
+        [VFAutowired] private readonly UniqueParamService uniqueParams;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
-        [VFAutowired] private readonly ParamsService paramsService;
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
-        private ParamManager paramz => paramsService.GetParams();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager avatarMenu => menuService.GetMenu();
         [VFAutowired] private readonly ControllersService controllers;
@@ -71,17 +71,17 @@ namespace VF.Feature {
                     hasInhibitHandControlsParam = true;
                     inhibitHandControlsDefault = inhibitHandControlsParam.defaultValue;
                 }
-                var copy = prms.Clone();
-                copy.RewriteParameters(RewriteParamName);
-                foreach (var param in copy.parameters) {
+                var copy = prms.parameters.Select(param => param.Clone()).ToArray();
+                foreach (var param in copy) {
+                    param.name = RewriteParamName(param.name);
                     if (string.IsNullOrWhiteSpace(param.name)) continue;
                     if (model.ignoreSaved) {
                         param.saved = false;
                     }
-                    paramz.AddSyncedParam(param);
+                    expressionParams.Merge(param);
                 }
-                paramz.GetRaw().WorkLog(
-                    $"Merged in {copy.parameters.Length} expression parameters from {prms.GetPathAndName()}"
+                expressionParams.WorkLog(
+                    $"Merged in {copy.Length} expression parameters from {prms.GetPathAndName()}"
                 );
             }
 
@@ -122,12 +122,10 @@ namespace VF.Feature {
 
             foreach (var from in fromControllers) {
                 var to = controllers.GetController(from.vrcType);
-                var inhibitHandControlsParam = from.vrcType == VRCAvatarDescriptor.AnimLayerType.FX
-                    ? from.GetParam(InhibitHandControlsParam)
-                    : null;
-                if (inhibitHandControlsParam != null) {
+                if (from.vrcType == VRCAvatarDescriptor.AnimLayerType.FX
+                    && from.TryGetParam(InhibitHandControlsParam, out var inhibitHandControlsParam)) {
                     hasInhibitHandControlsParam = true;
-                    inhibitHandControlsDefault = inhibitHandControlsParam.defaultFloat;
+                    inhibitHandControlsDefault = inhibitHandControlsParam.GetDefault();
                 }
 
                 // Fail if trying to merge a controller that is on the avatar descriptor
@@ -153,10 +151,7 @@ namespace VF.Feature {
             if (hasInhibitHandControlsParam) {
                 var rewritten = RewriteParamName(InhibitHandControlsParam);
                 var fx = controllers.GetFx();
-                var fxParam = fx.GetParam(rewritten);
-                var defaultValue = fxParam?.defaultFloat ?? inhibitHandControlsDefault;
-                if (fxParam == null) fx.NewFloat(rewritten, def: defaultValue, usePrefix: false);
-                handGestureDisablingService.AddInhibitor(new VFAFloat(rewritten, defaultValue));
+                handGestureDisablingService.AddInhibitor(fx.GetOrCreateFloat(rewritten, inhibitHandControlsDefault));
             }
 
             foreach (var m in model.menus) {
@@ -301,7 +296,7 @@ namespace VF.Feature {
             var failedParams = new List<string>();
             void CheckParam(string param, IList<string> path) {
                 if (string.IsNullOrEmpty(param)) return;
-                if (paramz.GetParam(RewriteParamName(param)) != null) return;
+                if (expressionParams.Contains(RewriteParamName(param))) return;
                 failedParams.Add($"{param} (used by {path.Join('/')})");
             }
             menu.ForEachMenu(ForEachItem: (item, path) => {
@@ -356,7 +351,7 @@ namespace VF.Feature {
         private string RewriteParamNameUncached(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (VRChatGlobalParams.Contains(name)) return name;
-            if (name == InhibitHandControlsParam) return controllers.MakeUniqueParamName(name);
+            if (name == InhibitHandControlsParam) return uniqueParams.GetUniqueName(name);
             if (model.allNonsyncedAreGlobal) {
                 var synced = model.prms.Any(p => {
                     var prms = p.parameters.Get();
@@ -405,13 +400,13 @@ namespace VF.Feature {
             if (isGlobal) {
                 return name;
             } else {
-                return controllers.MakeUniqueParamName(name);
+                return uniqueParams.GetUniqueName(name);
             }
         }
 
         private readonly HashSet<VFLayer> appendedLocomotionLayers = new HashSet<VFLayer>();
 
-        private void Merge(VFController from, ControllerManager to) {
+        private void Merge(VFController from, VFAvatarController to) {
             var type = to.GetType();
 
             // Check for gogoloco
@@ -489,10 +484,8 @@ namespace VF.Feature {
                 foreach (var smoothedParam in model.smoothedPrms) {
                     var rewritten = RewriteParamName(smoothedParam.name);
                     if (smoothedDict.ContainsKey(rewritten)) continue;
-                    var exists = to.GetParam(rewritten);
-                    if (exists == null) continue;
-                    if (exists.type != AnimatorControllerParameterType.Float) continue;
-                    var target = new VFAFloat(exists.name, exists.defaultFloat);
+                    if (!to.TryGetParam(rewritten, out var target)) continue;
+                    if (target.type != AnimatorControllerParameterType.Float) continue;
 
                     float minSupported, maxSupported;
                     switch (smoothedParam.range) {
@@ -865,6 +858,9 @@ namespace VF.Feature {
             "IsOnFriendsList",
             "AvatarVersion",
             "IsAnimatorEnabled",
+
+            "UserEyeTracking",
+            "UserFaceTracking",
 
             "ScaleModified",
             "ScaleFactor",

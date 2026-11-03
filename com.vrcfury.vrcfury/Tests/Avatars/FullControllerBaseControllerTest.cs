@@ -16,6 +16,14 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Tests {
     [Category("VRCFury")]
     public class FullControllerBaseControllerTest {
+        [TestCase("UserEyeTracking")]
+        [TestCase("UserFaceTracking")]
+        public void TrackingAvailabilityParametersAreNotRenamedWhenImported(string name) {
+            var builder = new FullControllerBuilder { model = new FullController() };
+            var rewritten = typeof(FullControllerBuilder).VFMethod("RewriteParamName").Invoke(builder, new object[] { name });
+            Assert.That(rewritten, Is.EqualTo(name));
+        }
+
         private static readonly VRCAvatarDescriptor.AnimLayerType[] LocomotionTypes = {
             VRCAvatarDescriptor.AnimLayerType.Base, VRCAvatarDescriptor.AnimLayerType.TPose,
             VRCAvatarDescriptor.AnimLayerType.IKPose, VRCAvatarDescriptor.AnimLayerType.Sitting
@@ -25,12 +33,12 @@ namespace VF.Tests {
                 allBuildersInRun = new List<FeatureBuilder>()
             };
             private readonly LayerSourceService sources = new LayerSourceService();
-            public readonly ControllerManager controller;
+            public readonly VFAvatarController controller;
 
             public Build(VRCAvatarDescriptor.AnimLayerType type = VRCAvatarDescriptor.AnimLayerType.Base,
                 string originalOwner = LayerSourceService.AvatarDescriptorSource) {
                 typeof(LayerSourceService).VFField("globals").SetValue(sources, globals);
-                controller = new ControllerManager(VFController.Create(), null, type,
+                controller = new VFAvatarController(VFController.Create(), type,
                     () => 0, () => "", name => name, sources);
                 foreach (var name in new[] { "AvatarA", "AvatarB" }) {
                     var layer = controller.NewLayer(name);

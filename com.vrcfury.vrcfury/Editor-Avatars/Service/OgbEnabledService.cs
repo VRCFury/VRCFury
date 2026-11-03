@@ -1,6 +1,7 @@
 using VF.Injector;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Service {
     [VFService]
@@ -9,18 +10,14 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly DbtLayerService directTreeService;
 
-        private ControllerManager fx => controllers.GetFx();
-        private VFABool ogbEnabled = null;
+        private VFAvatarController fx => controllers.GetFx();
+        private VFAParam ogbEnabled = null;
         private VFClip ogbEnableClip = null;
 
-        private VFABool GetOgbEnabled() {
+        private VFAParam GetOgbEnabled() {
             if (ogbEnabled != null) return ogbEnabled;
-            ogbEnabled = fx.NewBool(
-                "OGB_ENABLED",
-                synced: true,
-                networkSynced: false,
-                usePrefix: false
-            );
+            ogbEnabled = fx.GetOrCreateBool("OGB_ENABLED");
+            ogbEnabled.MakeExpressionBool(synced: false);
             return ogbEnabled;
         }
 
@@ -31,8 +28,8 @@ namespace VF.Service {
                 ogbEnableClip = clipFactory.NewClip("OgbEnabled");
                 var directTree = directTreeService.Create("OGB Enabled");
                 directTree.Add(
-                    BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0, name: "OGB Enabled Local")
-                        .And(BlendtreeMath.GreaterThan(GetOgbEnabled().AsFloat(), 0, name: "OGB Enabled Param"))
+                    BlendtreeMath.GreaterThan(fx.IsLocal(), 0, name: "OGB Enabled Local")
+                        .And(BlendtreeMath.GreaterThan(GetOgbEnabled(), 0, name: "OGB Enabled Param"))
                         .create(ogbEnableClip, null)
                 );
             }

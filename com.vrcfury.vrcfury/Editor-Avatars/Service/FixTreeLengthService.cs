@@ -25,7 +25,7 @@ namespace VF.Service {
     internal class FixTreeLengthService {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         
         [FeatureBuilderAction(FeatureOrder.FixTreeLength)]
         public void Apply() {

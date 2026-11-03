@@ -9,7 +9,7 @@ namespace VF.Service {
     [VFService]
     internal class AddDebugParamService {
         [VFAutowired] private readonly VFGameObject avatarObject;
-        [VFAutowired] private readonly ParamsService paramz;
+        [VFAutowired] private readonly ExpressionParamsService paramz;
         [VFAutowired] private readonly FixWriteDefaultsService fixWriteDefaultsService;
         
         [FeatureBuilderAction(FeatureOrder.AddDebugVrcParameter)]
@@ -29,8 +29,7 @@ namespace VF.Service {
                 return param;
             });
 
-            var raw = paramz.GetParams().GetRaw();
-            raw.parameters = newParams.Concat(raw.parameters).ToArray();
+            paramz.SetParameters(newParams.Concat(paramz));
         }
     }
 }

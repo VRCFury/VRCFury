@@ -23,7 +23,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly GlobalsService globals;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         
         [FeatureBuilderAction(FeatureOrder.TpsScaleFix)]
         public void Apply() {

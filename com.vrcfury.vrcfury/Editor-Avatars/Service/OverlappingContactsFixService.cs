@@ -2,6 +2,7 @@
 using VF.Injector;
 using VF.Utils;
 using VRC.SDK3.Dynamics.Contact.Components;
+using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
@@ -13,7 +14,7 @@ namespace VF.Service {
     [VFService]
     internal class OverlappingContactsFixService {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
@@ -35,7 +36,7 @@ namespace VF.Service {
 
             var directTree = directTreeService.Create();
             var blendtreeMath = directTreeService.GetMath(directTree);
-            var counter = fx.MakeAap("counter");
+            var counter = fx.CreateUniqueFloat("counter");
 
             var counterSetToZero = counter.MakeSetter(0);
             var counterAddOne = VFBlendTreeDirect.Create("addToCounter");
@@ -43,7 +44,7 @@ namespace VF.Service {
             counterAddOne.Add(counterEqualsOne);
             counterAddOne.Add(counter, counterEqualsOne);
 
-            var scaleFactor = fx.NewFloat("ScaleFactor", usePrefix: false);
+            var scaleFactor = fx.GetOrCreateFloat("ScaleFactor");
             var scaleFactorBuffered = blendtreeMath.Buffer(scaleFactor);
             var scaleFactorDiff = blendtreeMath.Add("ScaleFactorDiff", (scaleFactor, 1), (scaleFactorBuffered, -1));
 

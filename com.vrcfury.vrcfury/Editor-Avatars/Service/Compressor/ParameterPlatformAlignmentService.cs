@@ -49,7 +49,7 @@ namespace VF.Service.Compressor {
         }
 
         [CanBeNull]
-        public ParameterCompressorSolverOutput AlignForMobile(VRCExpressionParameters paramz) {
+        public ParameterCompressorSolverOutput AlignForMobile(List<VRCExpressionParameters.Parameter> paramz) {
             if (!AlignMobileParamsMenuItem.Get()) {
                 return null;
             }
@@ -90,7 +90,7 @@ namespace VF.Service.Compressor {
             }
             
             // Align params with desktop copy
-            var mobileParams = paramz.Clone().parameters.ToArray();
+            var mobileParams = paramz.Select(p => p.Clone()).ToArray();
             var mobileParamsBySource = mobileParams.ToDictionary(
                 p => parameterSourceService.GetSource(p.name),
                 p => p
@@ -178,7 +178,8 @@ namespace VF.Service.Compressor {
                 );
             }
 
-            paramz.parameters = reordered.ToArray();
+            paramz.Clear();
+            paramz.AddRange(reordered);
 
             return new ParameterCompressorSolverOutput {
                 decision = new OptimizationDecision {
@@ -190,11 +191,11 @@ namespace VF.Service.Compressor {
             };
         }
 
-        public void SaveToDiskAfterBuild(OptimizationDecision decision, VRCExpressionParameters paramz) {
+        public void SaveToDiskAfterBuild(OptimizationDecision decision, IEnumerable<VRCExpressionParameters.Parameter> paramz) {
             if (!IsActuallyUploadingHook.Get()) return;
 
             var compressNames = decision.compress.Select(p => p.name).ToImmutableHashSet();
-            var paramList = paramz.parameters.Select(p => {
+            var paramList = paramz.Select(p => {
                 var source = parameterSourceService.GetSource(p.name);
                 return new SavedParam() {
                     parameter = p.Clone(),

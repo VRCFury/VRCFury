@@ -82,7 +82,7 @@ namespace VF.Service.Compressor {
             var numberCount = compress.Count(p => p.valueType != VRCExpressionParameters.ValueType.Bool);
             boolSlots = boolCount > 0 ? 1 : 0;
             numberSlots = numberCount > 0 ? 1 : 0;
-            var maxCost = VRCExpressionParametersExtensions.GetMaxCost();
+            var maxCost = ExpressionParamsService.GetMaxCost();
             //maxCost = 50;
             while (true) {
                 if (numberSlots < numberCount

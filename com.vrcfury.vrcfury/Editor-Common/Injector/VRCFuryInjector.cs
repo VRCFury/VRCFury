@@ -17,6 +17,11 @@ namespace VF.Injector {
 
         private readonly Dictionary<Type, ISet<Type>> serviceTypesByParent = new Dictionary<Type, ISet<Type>>();
 
+        public VRCFuryInjector() {
+        	// Inject this VRCFuryInjector itself into the scope so that services can lazily look up other services
+            Set(this);
+        }
+
         public void ImportScan(Type type) {
             foreach (var serviceType in ReflectionUtils.GetTypes(type)) {
                 ImportOne(serviceType);

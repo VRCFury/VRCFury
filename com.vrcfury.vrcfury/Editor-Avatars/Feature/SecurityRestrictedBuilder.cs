@@ -55,7 +55,7 @@ namespace VF.Feature {
             var clip = clipFactory.NewClip("Unlock");
             clip.SetEnabled(wrapper, true);
             var directTree = directTreeService.Create($"Security Restrict {featureBaseObject.name}");
-            directTree.Add(security.GetEnabled().AsFloat(), clip);
+            directTree.Add(security.GetEnabled(), clip);
         }
 
         [FeatureEditor]

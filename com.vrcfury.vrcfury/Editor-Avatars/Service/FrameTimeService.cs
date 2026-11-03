@@ -10,12 +10,12 @@ namespace VF.Service {
     [VFService]
     internal class FrameTimeService {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
 
-        private VFAFloat cachedFrameTime;
-        public VFAFloat GetFrameTime() {
+        private VFAParam cachedFrameTime;
+        public VFAParam GetFrameTime() {
             if (cachedFrameTime != null) return cachedFrameTime;
 
             var timeSinceLoad = GetTimeSinceLoad();
@@ -28,8 +28,8 @@ namespace VF.Service {
             return diff;
         }
 
-        private VFAFloat cachedFps;
-        public VFAFloat GetFps() {
+        private VFAParam cachedFps;
+        public VFAParam GetFps() {
             if (cachedFps != null) return cachedFps;
             var frametime = GetFrameTime();
             var dbt = dbtLayerService.Create();
@@ -37,11 +37,11 @@ namespace VF.Service {
             return cachedFps = math.Invert("fps", frametime);
         }
 
-        private VFAFloat cachedLoadTime;
-        public VFAFloat GetTimeSinceLoad() {
+        private VFAParam cachedLoadTime;
+        public VFAParam GetTimeSinceLoad() {
             if (cachedLoadTime != null) return cachedLoadTime;
 
-            var timeSinceStart = fx.NewFloat("timeSinceLoad");
+            var timeSinceStart = fx.CreateUniqueFloat("timeSinceLoad");
             var layer = fx.NewLayer("FrameTime Counter");
             var clip = clipFactory.NewClip("FrameTime Counter");
             clip.SetAap(

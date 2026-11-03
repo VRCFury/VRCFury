@@ -25,7 +25,7 @@ namespace VF.Service {
     [VFService]
     internal class FixPartiallyWeightedAapsService {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly FixWriteDefaultsService writeDefaultsService;
         
@@ -51,9 +51,8 @@ namespace VF.Service {
                             
                             // VRChat can break the "default value" of AAPs when using a station, so we need to make sure it's
                             // the default when it's not animated (usually 0)
-                            var defaultValue = fx.GetParam(aap);
-                            if (defaultValue != null) {
-                                writeDefaultsService.GetDefaultClip().SetAap(aap, defaultValue.GetDefaultValueAsFloat());
+                            if (fx.TryGetParam(aap, out var parameter)) {
+                                writeDefaultsService.GetDefaultClip().SetAap(aap, parameter.GetDefault());
                             }
                         }
                     }

@@ -16,6 +16,7 @@ using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
+using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Service {
     [VFService]
@@ -37,8 +38,8 @@ namespace VF.Service {
         [VFAutowired] private readonly SpsPlayerIdService spsPlayerIdService;
         [VFAutowired] private readonly VRCFuryHapticSocketBaker socketBaker;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
-        private ControllerManager fx => controllers.GetFx();
-        private ControllerManager actionController => controllers.GetAction();
+        private VFAvatarController fx => controllers.GetFx();
+        private VFAvatarController actionController => controllers.GetAction();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         private readonly Lazy<VFClip> materialPropertiesClip;
@@ -76,16 +77,17 @@ namespace VF.Service {
                 .Where(o => o.addMenuItem && o.enableAuto)
                 .ToArray()
                 .Length >= 2;
-            VFABool autoOn = null;
+            VFAParam autoOn = null;
             VFClip autoOnClip = null;
             if (enableAuto) {
-                autoOn = fx.NewBool("autoMode", synced: true, networkSynced: false, saved: saved);
+                autoOn = fx.CreateUniqueBool("autoMode");
+                autoOn.MakeExpressionBool(synced: false, saved: saved);
                 menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Auto Mode<\\/b>\n<size=20>Activates hole nearest to a VRCFury plug", autoOn);
                 autoOnClip = clipFactory.NewClip("Enable SPS Auto Contacts");
                 var directTree = directTreeService.Create($"Auto Mode Toggle");
                 directTree.Add(
-                    BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0, name: "SPS: Auto Contacts").And(
-                    BlendtreeMath.GreaterThan(autoOn.AsFloat(), 0, name: "When Local")
+                    BlendtreeMath.GreaterThan(fx.IsLocal(), 0, name: "SPS: Auto Contacts").And(
+                    BlendtreeMath.GreaterThan(autoOn, 0, name: "When Local")
                 ).create(autoOnClip, null));
             }
 
@@ -93,37 +95,34 @@ namespace VF.Service {
                 .Where(o => o.addMenuItem)
                 .ToArray()
                 .Length >= 1;
-            VFABool stealthOn = null;
+            VFAParam stealthOn = null;
             VFClip stealthClip = null;
             if (enableStealth) {
-                stealthOn = fx.NewBool("stealth", synced: true, saved: saved);
+                stealthOn = fx.CreateUniqueBool("stealth");
+                stealthOn.MakeExpressionBool(saved: saved);
                 menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Stealth Mode<\\/b>\n<size=20>Only local haptics,\nInvisible to others", stealthOn);
                 stealthClip = clipFactory.NewClip($"SPS (Stealth)");
                 var directTree = directTreeService.Create($"SPS - Stealth");
-                directTree.Add(BlendtreeMath.GreaterThan(stealthOn.AsFloat(), 0).create(stealthClip, null));
+                directTree.Add(BlendtreeMath.GreaterThan(stealthOn, 0).create(stealthClip, null));
             }
 
             var enableLegacy = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()
                 .Where(o => o.addMenuItem && o.useLights)
                 .ToArray()
                 .Length >= 1;
-            VFABool legacyOn = null;
+            VFAParam legacyOn = null;
             VFClip legacyOffClip = null;
             if (enableLegacy) {
-                legacyOn = fx.NewBool(
-                    "legacy",
-                    synced: true,
-                    saved: saved,
-                    def: spsOptions.GetOptions().legacyModeEnabledOnAvatarLoad
-                );
+                legacyOn = fx.CreateUniqueBool("legacy", def: spsOptions.GetOptions().legacyModeEnabledOnAvatarLoad);
+                legacyOn.MakeExpressionBool(saved: saved);
                 menu.NewMenuToggle($"{spsOptions.GetOptionsPath()}/<b>Legacy Compatibility<\\/b>\n<size=20>DPS \\/ TPS \\/ SPS1\nOne socket at a time", legacyOn);
                 legacyOffClip = clipFactory.NewClip("Turn off SPS Legacy lights");
                 var directTree = directTreeService.Create($"SPS Legacy");
-                directTree.Add(BlendtreeMath.GreaterThan(legacyOn.AsFloat(), 0f).create(null, legacyOffClip));
+                directTree.Add(BlendtreeMath.GreaterThan(legacyOn, 0f).create(null, legacyOffClip));
             }
 
-            var autoSockets = new List<Tuple<string, VFABool, VFGameObject>>();
-            var exclusiveTriggers = new List<(string,VFABool)>();
+            var autoSockets = new List<Tuple<string, VFAParam, VFGameObject>>();
+            var exclusiveTriggers = new List<(string,VFAParam)>();
             var usedMenuNames = new HashSet<string>();
             var usedOscIds = new HashSet<string>();
             foreach (var socket in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
@@ -141,9 +140,10 @@ namespace VF.Service {
                     );
                     Debug.Log("Baking haptic component in " + socket.owner().GetDebugPath() + " as " + oscId);
 
-                    VFABool toggleParam = null;
+                    VFAParam toggleParam = null;
                     if (socket.addMenuItem) {
-                        toggleParam = fx.NewBool(oscId, synced: true, saved: saved);
+                        toggleParam = fx.CreateUniqueBool(oscId);
+                        toggleParam.MakeExpressionBool(saved: saved);
                         var icon = socket.menuIcon?.Get();
                         menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/{menuName}", toggleParam, icon: icon);
                     }
@@ -273,7 +273,7 @@ namespace VF.Service {
                         ogbEnabledService.Register(haptics);
                     }
 
-                    var worldScale = new Lazy<VFAFloat>(() => worldScaleService.GetWorldScale(bakeResult.bakeRoot, menuName));
+                    var worldScale = new Lazy<VFAParam>(() => worldScaleService.GetWorldScale(bakeResult.bakeRoot, menuName));
                     var animObjects = new List<VFGameObject>();
                     var Contacts = new Lazy<SpsDepthContacts>(() => {
                         var animRoot = GameObjects.Create("Animations", bakeResult.worldSpace);
@@ -313,7 +313,7 @@ namespace VF.Service {
                     var closestMath = new Lazy<BlendtreeMath>(() => directTreeService.GetMath(Contacts.Value.directTree));
 
                     foreach (var inject in injectRequests) {
-                        VFAFloat value = null;
+                        VFAParam value = null;
                         switch (inject.sourceParam) {
                             case VRCFuryHapticPlugEditor.SpsDepthMeters:
                                 value = Contacts.Value.closestDistanceMeters.Value;
@@ -365,7 +365,7 @@ namespace VF.Service {
                                 break;
                         }
                         if (value != null) {
-                            fx.NewFloat(inject.resolvedParam, usePrefix: false);
+                            fx.GetOrCreateFloat(inject.resolvedParam);
                             closestMath.Value.CopyInPlace(value, inject.resolvedParam);
                         }
                     }
@@ -399,11 +399,11 @@ namespace VF.Service {
                         var onClip = clipFactory.NewClip($"{oscId}");
                         onClip.SetEnabled(bakeResult.bakeRoot, true);
                         var directTree = directTreeService.Create($"{oscId} - Toggle");
-                        directTree.Add(toggleParam.AsFloat(), onClip);
+                        directTree.Add(toggleParam, onClip);
 
                         var activeClip = actionClipService.LoadState($"SPS - Active Animation for {oscId}", socket.activeActions);
                         if (new AnimatorIterator.Clips().From(activeClip).SelectMany(clip => clip.GetAllBindings()).Any()) {
-                            var activeAnimParam = fx.NewFloat($"SPS - Active Animation for {oscId}");
+                            var activeAnimParam = fx.CreateUniqueFloat($"SPS - Active Animation for {oscId}");
                             var activeAnimLayer = fx.NewLayer($"SPS - Active Animation for {oscId}");
                             var off = activeAnimLayer.NewState("Off");
                             var on = activeAnimLayer.NewState("On").WithAnimation(activeClip);
@@ -432,11 +432,11 @@ namespace VF.Service {
             if (exclusiveTriggers.Count >= 2) {
                 var exclusiveLayer = actionController.NewLayer("SPS - Socket Exclusivity");
                 exclusiveLayer.NewState("Start");
-                actionController.AddParam(legacyOn);
-                actionController.AddParam(stealthOn);
+                legacyOn?.CopyTo(actionController);
+                stealthOn?.CopyTo(actionController);
                 foreach (var i in Enumerable.Range(0, exclusiveTriggers.Count)) {
                     var (name, on) = exclusiveTriggers[i];
-                    actionController.AddParam(on);
+                    on?.CopyTo(actionController);
                     var state = exclusiveLayer.NewState(name);
                     var when = on.IsTrue();
                     when = when.And(actionController.IsLocal().IsTrue());
@@ -452,9 +452,9 @@ namespace VF.Service {
             }
 
             if (autoOn != null && autoSockets.Count > 0) {
-                var autoActiveNum = fx.NewInt("AutoSocketNum", def: -1);
-                var autoActiveDist = fx.NewFloat("AutoActiveDist");
-                var autoCurrentDist = fx.NewFloat("AutoCurrentDist");
+                var autoActiveNum = fx.CreateUniqueInt("AutoSocketNum", def: -1);
+                var autoActiveDist = fx.CreateUniqueFloat("AutoActiveDist");
+                var autoCurrentDist = fx.CreateUniqueFloat("AutoCurrentDist");
                 var dbt = directTreeService.Create("SPS - Auto Mode");
                 var math = directTreeService.GetMath(dbt);
                 var diff = math.Subtract(autoCurrentDist, autoActiveDist);

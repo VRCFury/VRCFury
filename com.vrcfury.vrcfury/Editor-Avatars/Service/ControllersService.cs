@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using VF.Builder;
@@ -13,21 +14,26 @@ namespace VF.Service {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
-        [VFAutowired] private readonly ParamsService paramsService;
-        [VFAutowired] private readonly ParameterSourceService parameterSourceService;
         [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
-        private ParamManager paramz => paramsService.GetParams();
+        [VFAutowired] private readonly VRCFuryInjector injector;
+        private readonly Lazy<UniqueParamService> uniqueParams;
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
 
-        private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager> _controllers
-            = new Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager>();
+        private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController> _controllers
+            = new Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController>();
         private bool applyBaseMask = true;
         private bool controllerLoadingAllowed;
 
-        public ControllerManager GetController(VRCAvatarDescriptor.AnimLayerType type) {
+        public ControllersService() {
+            // The allocator also depends on this service, so resolve it only when allocating a name.
+            uniqueParams = new Lazy<UniqueParamService>(() => injector.GetService<UniqueParamService>());
+        }
+
+        public VFAvatarController GetController(VRCAvatarDescriptor.AnimLayerType type) {
             return _controllers.GetOrCreate(type, () => MakeController(type));
         }
 
-        private ControllerManager MakeController(VRCAvatarDescriptor.AnimLayerType type) {
+        private VFAvatarController MakeController(VRCAvatarDescriptor.AnimLayerType type) {
             if (applyBaseMask && !controllerLoadingAllowed) {
                 throw new System.InvalidOperationException(
                     "A playable-layer controller was loaded before the Load All Controllers build phase."
@@ -52,14 +58,14 @@ namespace VF.Service {
             if (ctrl == null) {
                 ctrl = VFController.Create();
             }
-            var output = new ControllerManager(
+            var output = new VFAvatarController(
                 ctrl,
-                () => paramz,
                 type,
                 () => globals.currentFeatureNum,
                 () => globals.currentFeatureClipPrefix,
-                MakeUniqueParamName,
-                layerSourceService
+                name => uniqueParams.Value.GetUniqueName(name),
+                layerSourceService,
+                expressionParams
             );
             if (existingController != null) {
                 foreach (var layer in output.GetLayers()) {
@@ -80,16 +86,16 @@ namespace VF.Service {
             GetAllUsedControllers();
         }
 
-        public ControllerManager GetFx() {
+        public VFAvatarController GetFx() {
             return GetController(VRCAvatarDescriptor.AnimLayerType.FX);
         }
-        public ControllerManager GetAction() {
+        public VFAvatarController GetAction() {
             return GetController(VRCAvatarDescriptor.AnimLayerType.Action);
         }
-        public IList<ControllerManager> GetAllMutatedControllers() {
+        public IList<VFAvatarController> GetAllMutatedControllers() {
             return _controllers.Values.ToArray();
         }
-        public IList<ControllerManager> GetAllUsedControllers() {
+        public IList<VFAvatarController> GetAllUsedControllers() {
             return VRCAvatarUtils.GetAllControllers(avatar)
                 .Where(c => c.controller != null)
                 .Select(c => GetController(c.type))
@@ -98,17 +104,5 @@ namespace VF.Service {
                 .ToArray();
         }
 
-        private bool IsParamUsed(string name) {
-            if (paramsService.GetReadOnlyParams()?.FindParameter(name) != null) return true;
-            foreach (var c in GetAllUsedControllers()) {
-                if (c.GetParam(name) != null) return true;
-            }
-            return false;
-        }
-        public string MakeUniqueParamName(string originalName) {
-            var name = ("VF" + globals.currentFeatureNum + "_" + originalName).MakeUnique(IsParamUsed);
-            parameterSourceService.RecordParamSource(name, globals.currentFeatureObjectPath, originalName);
-            return name;
-        }
     }
 }

@@ -16,15 +16,15 @@ namespace VF.Service {
     [VFService]
     internal class TrackingConflictResolverService {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly FrameTimeService frameTimeService;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
 
-        private readonly VFMultimapList<TrackingControlType, VFAFloat> inhibitors =
-            new VFMultimapList<TrackingControlType, VFAFloat>();
+        private readonly VFMultimapList<TrackingControlType, VFAParam> inhibitors =
+            new VFMultimapList<TrackingControlType, VFAParam>();
 
-        public VFAFloat AddInhibitor(string owner, TrackingControlType type) {
-            var param = fx.NewFloat($"TC_{owner}_{type.fieldName}");
+        public VFAParam AddInhibitor(string owner, TrackingControlType type) {
+            var param = fx.CreateUniqueFloat($"TC_{owner}_{type.fieldName}");
             inhibitors.Put(type, param);
             return param;
         }
@@ -34,14 +34,14 @@ namespace VF.Service {
             whenCollected.Add(a);
         }
 
-        public IList<VFAFloat> GetInhibitors(TrackingControlType type) {
+        public IList<VFAParam> GetInhibitors(TrackingControlType type) {
             return inhibitors.Get(type);
         }
 
         [FeatureBuilderAction(FeatureOrder.TrackingConflictResolver)]
         public void Apply() {
 
-            var trackingParamsCache = new Dictionary<(string, TrackingControlType), VFAFloat>();
+            var trackingParamsCache = new Dictionary<(string, TrackingControlType), VFAParam>();
 
             var usedOwners = new HashSet<string>();
             foreach (var controller in controllers.GetAllUsedControllers()) {
@@ -99,7 +99,7 @@ namespace VF.Service {
                 foreach (var type in typesUsed) {
                     var merged = math.Add(
                         $"TC_merged_{type.fieldName}",
-                        inhibitors.Get(type).Select(input => ((BlendtreeMath.VFAFloatOrConst)input,1f)).ToArray()
+                        inhibitors.Get(type).Select(input => ((BlendtreeMath.Value)input,1f)).ToArray()
                     );
                     whenAnimatedDict[type] = merged.IsGreaterThan(0);
                 }
@@ -109,7 +109,7 @@ namespace VF.Service {
             var idle = layer.NewState("Idle");
 
             var currentSettingDict = typesUsed.ToDictionary(type => type,
-                type => fx.NewInt("TC_current_" + type.fieldName));
+                type => fx.CreateUniqueInt("TC_current_" + type.fieldName));
             
             var refresh = layer.NewState("Refresh");
             // Periodically just re-trigger all the tracking control behaviors
@@ -139,7 +139,7 @@ namespace VF.Service {
                 VRC_AnimatorTrackingControl.TrackingType controlValue,
                 int driveValue,
                 Func<VFCondition, VFCondition> shouldBeActive,
-                Func<VFAInteger, VFCondition> isCurrentlyActive
+                Func<VFAParam, VFCondition> isCurrentlyActive
             ) {
                 void AddState(
                     string stateName,

@@ -19,7 +19,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly AnimatorLayerControlOffsetService layerControlService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
 
         [FeatureEditor]
         public static VisualElement Editor(SerializedProperty prop) {
@@ -71,7 +71,7 @@ namespace VF.Feature {
                 return;
             }
 
-            var mmdDetector = fx.NewFloat("MMDDetector", def: 1);
+            var mmdDetector = fx.CreateUniqueFloat("MMDDetector", def: 1);
             var mmdDetectorClip = clipFactory.NewClip("Detector");
             // MMD worlds will disable this layer, setting HandsActive back to the default of 0
             mmdDetectorClip.SetAap(mmdDetector, 0);

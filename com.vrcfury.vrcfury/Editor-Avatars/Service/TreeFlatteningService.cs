@@ -16,9 +16,8 @@ namespace VF.Service {
     internal class TreeFlatteningService {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
-        [VFAutowired] private readonly ParamsService paramsService;
-        private ParamManager paramz => paramsService.GetParams();
+        private VFAvatarController fx => controllers.GetFx();
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
         
         [FeatureBuilderAction(FeatureOrder.TreeFlattening)]
         public void Optimize() {
@@ -49,7 +48,7 @@ namespace VF.Service {
             var animatedParams = GetAnimatedParams();
             return fx.parameters
                 .Where(p => p.type == AnimatorControllerParameterType.Float)
-                .Where(p => p.defaultFloat == 1)
+                .Where(p => p.GetDefault() == 1)
                 .Where(p => !animatedParams.Contains(p.name))
                 .Where(p => !FullControllerBuilder.VRChatGlobalParams.Contains(p.name))
                 .Select(p => p.name)
@@ -59,7 +58,7 @@ namespace VF.Service {
 
         private ISet<string> GetAnimatedParams() {
             var animatedParams = new HashSet<string>();
-            var vrcControlled = paramz.GetRaw().parameters
+            var vrcControlled = expressionParams
                 .Select(p => p.name);
             animatedParams.UnionWith(vrcControlled);
             var driven = controllers.GetAllUsedControllers()

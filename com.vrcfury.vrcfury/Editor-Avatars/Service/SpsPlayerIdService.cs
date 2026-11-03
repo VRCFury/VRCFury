@@ -12,37 +12,37 @@ namespace VF.Service {
         [VFAutowired] private readonly InitBehavioursService initBehavioursService;
 
         private const int MaxPlayerIdComponent = (1 << 16) - 1;
-        private ControllerManager fx => controllers.GetFx();
-        private VFAInteger playerIdLowRandomInt = null;
-        private VFAInteger playerIdHighRandomInt = null;
-        private VFAFloat playerIdLowFloat = null;
-        private VFAFloat playerIdHighFloat = null;
+        private VFAvatarController fx => controllers.GetFx();
+        private VFAParam playerIdLowRandomInt = null;
+        private VFAParam playerIdHighRandomInt = null;
+        private VFAParam playerIdLowFloat = null;
+        private VFAParam playerIdHighFloat = null;
         private VFClip playerIdLowClip = null;
         private VFClip playerIdHighClip = null;
 
-        private VFAInteger GetPlayerIdLowRandomInt() {
+        private VFAParam GetPlayerIdLowRandomInt() {
             if (playerIdLowRandomInt != null) return playerIdLowRandomInt;
-            playerIdLowRandomInt = fx.NewInt("SPS_PLAYER_ID_LOW_RANDOM");
+            playerIdLowRandomInt = fx.CreateUniqueInt("SPS_PLAYER_ID_LOW_RANDOM");
             return playerIdLowRandomInt;
         }
 
-        private VFAInteger GetPlayerIdHighRandomInt() {
+        private VFAParam GetPlayerIdHighRandomInt() {
             if (playerIdHighRandomInt != null) return playerIdHighRandomInt;
-            // Use fx.NewInt here even though controllers.MakeUniqueParamName would work because
+            // Register the parameter in FX rather than only allocating its name because
             // av3emulator won't drive parameters if they're not in at least one controller
-            playerIdHighRandomInt = fx.NewInt("SPS_PLAYER_ID_HIGH_RANDOM");
+            playerIdHighRandomInt = fx.CreateUniqueInt("SPS_PLAYER_ID_HIGH_RANDOM");
             return playerIdHighRandomInt;
         }
 
-        private VFAFloat GetPlayerIdLowFloat() {
+        private VFAParam GetPlayerIdLowFloat() {
             if (playerIdLowFloat != null) return playerIdLowFloat;
-            playerIdLowFloat = fx.NewFloat("SPS_PLAYER_ID_LOW");
+            playerIdLowFloat = fx.CreateUniqueFloat("SPS_PLAYER_ID_LOW");
             return playerIdLowFloat;
         }
 
-        private VFAFloat GetPlayerIdHighFloat() {
+        private VFAParam GetPlayerIdHighFloat() {
             if (playerIdHighFloat != null) return playerIdHighFloat;
-            playerIdHighFloat = fx.NewFloat("SPS_PLAYER_ID_HIGH");
+            playerIdHighFloat = fx.CreateUniqueFloat("SPS_PLAYER_ID_HIGH");
             return playerIdHighFloat;
         }
 
