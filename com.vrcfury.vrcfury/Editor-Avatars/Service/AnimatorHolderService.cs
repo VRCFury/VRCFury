@@ -27,7 +27,7 @@ namespace VF.Service {
     internal class AnimatorHolderService {
         
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly SaveAssetsService saveAssetsService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;

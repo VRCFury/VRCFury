@@ -16,6 +16,23 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Injector {
     [Category("VRCFury")]
     public class VRCFuryInjectorTest {
+        private class InjectorConsumer {
+            public readonly VRCFuryInjector injector;
+            public InjectorConsumer(VRCFuryInjector injector) {
+                this.injector = injector;
+            }
+        }
+
+        [Test]
+        public void EachInjectorResolvesAndInjectsItself() {
+            var first = new VRCFuryInjector();
+            var second = new VRCFuryInjector();
+            Assert.That(first.GetService<VRCFuryInjector>(), Is.SameAs(first));
+            Assert.That(second.GetService<VRCFuryInjector>(), Is.SameAs(second));
+            Assert.That(first.CreateAndFillObject<InjectorConsumer>().injector, Is.SameAs(first));
+            Assert.That(second.CreateAndFillObject<InjectorConsumer>().injector, Is.SameAs(second));
+        }
+
         [Test]
         public void DetachedBakeReceiversDoNotResolveAnimatorSupport() {
             var root = new UnityEngine.GameObject("Detached bake receivers");
@@ -49,11 +66,11 @@ namespace VF.Injector {
                         frame = root, name = "Build", worldRadius = 1
                     });
                 var parameter = receivers.GetMergedParameter();
-                Assert.That(controllers.GetFx().GetParam(parameter.Name()), Is.Not.Null);
+                Assert.That(controllers.GetFx().parameters.FirstOrDefault(p => p.name == parameter.name), Is.Not.Null);
                 Assert.That(root.GetComponentsInChildren<VRC.SDK3.Dynamics.Contact.Components.VRCContactReceiver>(true),
                     Has.Length.EqualTo(4));
                 var layers = controllers.GetFx().GetLayers().Count();
-                Assert.That(receivers.GetMergedParameter().Name(), Is.EqualTo(parameter.Name()));
+                Assert.That(receivers.GetMergedParameter().name, Is.EqualTo(parameter.name));
                 Assert.That(controllers.GetFx().GetLayers().Count(), Is.EqualTo(layers));
             } finally {
                 UnityEngine.Object.DestroyImmediate(root);

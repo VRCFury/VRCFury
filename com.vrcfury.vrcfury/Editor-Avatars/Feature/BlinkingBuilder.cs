@@ -7,6 +7,7 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Feature {
 
@@ -15,17 +16,18 @@ namespace VF.Feature {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly TrackingConflictResolverService trackingConflictResolverService;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
-        private ControllerManager actionController => controllers.GetAction();
+        private VFAvatarController fx => controllers.GetFx();
+        private VFAvatarController actionController => controllers.GetAction();
 
         [FeatureBuilderAction]
         public void Apply() {
-            var blinkTriggerSynced = fx.NewBool("BlinkTriggerSynced", synced: true);
-            actionController.AddParam(blinkTriggerSynced);
+            var blinkTriggerSynced = fx.CreateUniqueBool("BlinkTriggerSynced");
+            blinkTriggerSynced.MakeExpressionBool();
+            blinkTriggerSynced.CopyTo(actionController);
 
             // Generator
             {
-                var blinkCounter = actionController.NewInt("BlinkCounter");
+                var blinkCounter = actionController.CreateUniqueInt("BlinkCounter");
                 var layer = actionController.NewLayer("Blink - Generator");
                 var remote = layer.NewState("Remote Trap");
                 var entry = layer.NewState("Entry");

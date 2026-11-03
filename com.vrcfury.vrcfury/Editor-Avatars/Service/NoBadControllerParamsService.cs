@@ -7,8 +7,8 @@ using VF.Utils.Controller;
 
 namespace VF.Service {
     /**
-     * Controller transitions using the wrong parameter type will prevent the controller
-     * from loading entirely. Let's just remove those transitions.
+     * Upgrades animator storage types from parameter usages,
+     * rewrites conditions for those types, then repairs any remaining invalid references.
      */
     [VFService]
     internal class NoBadControllerParamsService {
@@ -29,7 +29,7 @@ namespace VF.Service {
                     });
                 }
                 c.UpgradeWrongParamTypes();
-                c.RemoveWrongParamTypes();
+                c.RemoveWrongParamTypes(null);
             }
         }
     }

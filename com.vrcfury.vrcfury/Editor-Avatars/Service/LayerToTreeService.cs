@@ -25,11 +25,16 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly CleanupEmptyLayersService cleanupEmptyLayers;
+
+        private VFAParam GetExistingParameter(string name) {
+            if (!fx.TryGetParam(name, out var parameter)) throw new DoNotOptimizeException($"Uses undeclared parameter {name}");
+            return parameter;
+        }
 
         [FeatureBuilderAction(FeatureOrder.LayerToTree)]
         public void Apply() {
@@ -191,13 +196,8 @@ namespace VF.Service {
                 throw new DoNotOptimizeException($"State conditions do not use same parameter");
             }
             
-            var param = new VFAFloat(state0Condition.Value.parameter, 0);
-            var paramType = fx.parameters
-                .Where(p => p.name == param)
-                .Select(p => p.type)
-                .DefaultIfEmpty(AnimatorControllerParameterType.Float)
-                .First();
-            if (FullControllerBuilder.VRChatGlobalParams.Contains(param) && paramType == AnimatorControllerParameterType.Int) {
+            var param = GetExistingParameter(state0Condition.Value.parameter);
+            if (FullControllerBuilder.VRChatGlobalParams.Contains(param) && param.type == AnimatorControllerParameterType.Int) {
                 throw new DoNotOptimizeException($"Uses an int VRC built-in, which means >1 is likely");
             }
             
@@ -258,7 +258,7 @@ namespace VF.Service {
             var offValid = validateBindingsService.HasValidBinding(off, avatarObject);
             if (!onValid && !offValid) throw new DoNotOptimizeException($"Contains no valid bindings");
 
-            var param = new VFAFloat(condition.parameter, 0);
+            var param = GetExistingParameter(condition.parameter);
             if (condition.mode == AnimatorConditionMode.If) {
                 if (!offValid) {
                     directTree.Value.Add(param, on);

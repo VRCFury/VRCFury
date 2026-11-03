@@ -20,7 +20,7 @@ namespace VF.Service {
             AddScaledProp(worldScale, properties);
         }
 
-        public void AddScaledProp(VFAFloat worldScale, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
+        public void AddScaledProp(VFAParam worldScale, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
             if (worldScale == null) return;
 
             var directTree = dbtLayerService.Create();

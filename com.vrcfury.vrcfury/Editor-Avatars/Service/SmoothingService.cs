@@ -14,9 +14,9 @@ namespace VF.Service {
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly FrameTimeService frameTimeService;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         
-        public VFAFloat Smooth(VFBlendTreeDirect directTree, string name, VFAFloat target, float smoothingSeconds, bool useAcceleration = true, float minSupported = 0, float maxSupported = float.MaxValue) {
+        public VFAParam Smooth(VFBlendTreeDirect directTree, string name, VFAParam target, float smoothingSeconds, bool useAcceleration = true, float minSupported = 0, float maxSupported = float.MaxValue) {
             if (smoothingSeconds <= 0) {
                 return target;
             }
@@ -31,8 +31,8 @@ namespace VF.Service {
             return Smooth_(directTree, pass1, $"{name}/Pass2", speed, minSupported, maxSupported);
         }
 
-        private readonly Dictionary<string, VFAFloat> cachedSpeeds = new Dictionary<string, VFAFloat>();
-        private VFAFloat GetSpeed(float seconds, bool useAcceleration) {
+        private readonly Dictionary<string, VFAParam> cachedSpeeds = new Dictionary<string, VFAParam>();
+        private VFAParam GetSpeed(float seconds, bool useAcceleration) {
             var name = $"smoothingSpeed/{seconds}{(useAcceleration ? "/withAccel" : "")}";
             if (cachedSpeeds.TryGetValue(name, out var output)) {
                 return output;
@@ -59,8 +59,8 @@ namespace VF.Service {
             return output;
         }
 
-        private VFAFloat Smooth_(VFBlendTreeDirect directTree, VFAFloat target, string name, VFAFloat speedParam, float minSupported, float maxSupported) {
-            var output = fx.MakeAap(name, def: target.GetDefault());
+        private VFAParam Smooth_(VFBlendTreeDirect directTree, VFAParam target, string name, VFAParam speedParam, float minSupported, float maxSupported) {
+            var output = fx.CreateUniqueFloat(name, def: target.GetDefault());
             
             // Maintain tree - keeps the current value
             var maintainTree = output.MakeCopier(output, minSupported, maxSupported);
@@ -71,7 +71,7 @@ namespace VF.Service {
             //The following two trees merge the update and the maintain tree together. The smoothParam controls 
             //how much from either tree should be applied during each tick
             var smoothTree = VFBlendTree1D.CreateWithData(
-                $"{output.Name()} smoothto {target.Name()}",
+                $"{output.name} smoothto {target.name}",
                 speedParam,
                 (0, maintainTree),
                 (1, targetTree)

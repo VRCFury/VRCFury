@@ -27,7 +27,7 @@ namespace VF.Tests {
         private GameObject root;
         private VRCFuryHapticPlug plug;
         private VRCFuryHapticPlugEditor.BakeResult bake;
-        private ControllerManager fx;
+        private VFAvatarController fx;
         private SpsPlugRadiusService service;
         private VRCFuryInjector injector;
         private PlayableGraph graph;
@@ -66,11 +66,11 @@ namespace VF.Tests {
 
             var globals = new GlobalsService { avatarObject = root, allBuildersInRun = new List<FeatureBuilder>() };
             var sources = new LayerSourceService(); Inject(sources, "globals", globals);
-            fx = new ControllerManager(VFController.Create(), null, VRCAvatarDescriptor.AnimLayerType.FX,
+            fx = new VFAvatarController(VFController.Create(), VRCAvatarDescriptor.AnimLayerType.FX,
                 () => 0, () => "", name => name, sources);
-            fx._NewFloat(VFBlendTreeDirect.AlwaysOneParam, 1);
+            fx.GetOrCreateFloat(VFBlendTreeDirect.AlwaysOneParam, 1);
             var controllers = new ControllersService();
-            ((Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager>)typeof(ControllersService).VFField("_controllers").GetValue(controllers))
+            ((Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController>)typeof(ControllersService).VFField("_controllers").GetValue(controllers))
                 [VRCAvatarDescriptor.AnimLayerType.FX] = fx;
             var trees = new DbtLayerService(); Inject(trees, "controllers", controllers);
             service = new SpsPlugRadiusService();
@@ -94,9 +94,9 @@ namespace VF.Tests {
 
         private void Start() {
             service.Create(plug, bake, "Test");
-            mergedParameterName = bake.socketReceivers.GetMergedParameter().Name();
+            mergedParameterName = bake.socketReceivers.GetMergedParameter().name;
             var context = new VFSaveContext(root, false);
-            var controller = new AnimatorController { parameters = fx.parameters };
+            var controller = new AnimatorController { parameters = fx.parameters.Select(p => p.Save()).ToArray() };
             controller.layers = fx.GetLayers().Select(layer => layer.Save(context)).ToArray();
             assets.Add(controller); assets.AddRange(context.NewAssets);
             var animator = root.AddComponent<Animator>(); animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
@@ -107,7 +107,7 @@ namespace VF.Tests {
         }
 
         private VRCContactReceiver SourceReceiver(bool self) {
-            var parameter = bake.socketReceivers.GetParameter(self).Name();
+            var parameter = bake.socketReceivers.GetParameter(self).name;
             return root.GetComponentsInChildren<VRCContactReceiver>(true).Single(r => r.parameter == parameter);
         }
 
@@ -128,17 +128,17 @@ namespace VF.Tests {
             var ogb = receivers.GetParameter(self, parameterName, ContactReceiver.AdvancedParameter.SenderType);
             if (!shaderFirst) Materials();
             var depth = receivers.GetParameter(self, advancedParameters: ContactReceiver.AdvancedParameter.PointSeparation);
-            Assert.That(ogb.Name(), Is.EqualTo(parameterName));
-            Assert.That(depth.Name(), Is.EqualTo(parameterName));
-            Assert.That(fx.GetParam(parameterName), Is.Not.Null);
+            Assert.That(ogb.name, Is.EqualTo(parameterName));
+            Assert.That(depth.name, Is.EqualTo(parameterName));
+            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameterName), Is.Not.Null);
             var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).Single();
             Assert.That(receiver.parameter, Is.EqualTo(parameterName));
             Assert.That(receiver.writeToMaterials, Is.True);
             Assert.That(receiver.shaderTargetRenderers, Is.EqualTo(new[] { renderer }));
             Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderType
                 | ContactReceiver.AdvancedParameter.PointSeparation));
-            Assert.That(fx.GetParam(parameterName + "_PointSeparation"), Is.Not.Null);
-            Assert.That(receivers.GetParameter(self, parameterName).Name(), Is.EqualTo(parameterName));
+            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameterName + "_PointSeparation"), Is.Not.Null);
+            Assert.That(receivers.GetParameter(self, parameterName).name, Is.EqualTo(parameterName));
             receivers.GetMergedParameter();
             Assert.That(SourceReceiver(self), Is.SameAs(receiver));
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(4));
@@ -149,10 +149,10 @@ namespace VF.Tests {
             var receivers = bake.socketReceivers;
             var first = receivers.GetParameter(true, "OGB/First");
             var second = receivers.GetParameter(true, "OGB/Second");
-            Assert.That(first.Name(), Is.EqualTo("OGB/First"));
-            Assert.That(second.Name(), Is.EqualTo("OGB/Second"));
-            Assert.That(receivers.GetParameter(true).Name(), Is.EqualTo(first.Name()));
-            Assert.That(receivers.GetParameter(true, "OGB/Second").Name(), Is.EqualTo(second.Name()));
+            Assert.That(first.name, Is.EqualTo("OGB/First"));
+            Assert.That(second.name, Is.EqualTo("OGB/Second"));
+            Assert.That(receivers.GetParameter(true).name, Is.EqualTo(first.name));
+            Assert.That(receivers.GetParameter(true, "OGB/Second").name, Is.EqualTo(second.name));
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true).Select(r => r.parameter),
                 Is.EquivalentTo(new[] { "OGB/First", "OGB/Second" }));
         }
@@ -170,17 +170,17 @@ namespace VF.Tests {
             var parameter = receivers.GetParameter(self, advancedParameters: ContactReceiver.AdvancedParameter.SenderLocalPosition);
             if (!shaderFirst) Materials();
             var again = receivers.GetParameter(self, advancedParameters: ContactReceiver.AdvancedParameter.SenderLossyScale);
-            Assert.That(again.Name(), Is.EqualTo(parameter.Name()));
+            Assert.That(again.name, Is.EqualTo(parameter.name));
             var all = root.GetComponentsInChildren<VRCContactReceiver>(true);
             Assert.That(all, Has.Length.EqualTo(3));
             Assert.That(all.All(r => r.allowSelf == self && r.allowOthers != self && r.writeToMaterials), Is.True);
             Assert.That(all.Count(r => !string.IsNullOrEmpty(r.parameter)), Is.EqualTo(1));
-            var receiver = all.Single(r => r.parameter == parameter.Name());
+            var receiver = all.Single(r => r.parameter == parameter.name);
             Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderLocalPosition
                 | ContactReceiver.AdvancedParameter.SenderLossyScale));
             foreach (var suffix in new[] { "_SenderLocalPositionX", "_SenderLocalPositionY", "_SenderLocalPositionZ",
                          "_SenderLossyScaleX", "_SenderLossyScaleY", "_SenderLossyScaleZ" }) {
-                Assert.That(fx.GetParam(parameter.Name() + suffix), Is.Not.Null);
+                Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameter.name + suffix), Is.Not.Null);
             }
             var parameterCount = fx.parameters.Length;
             receivers.GetParameter(self);
@@ -193,10 +193,10 @@ namespace VF.Tests {
         public void MergedParameterRequestsUnionOutputsWithoutChangingSourceFlagsOrAddingSelectors() {
             var receivers = bake.socketReceivers;
             var parameter = receivers.GetMergedParameter(ContactReceiver.AdvancedParameter.SenderType);
-            mergedParameterName = parameter.Name();
+            mergedParameterName = parameter.name;
             var layers = fx.GetLayers().Count();
             var again = receivers.GetMergedParameter(ContactReceiver.AdvancedParameter.SenderLossyScale);
-            Assert.That(again.Name(), Is.EqualTo(parameter.Name()));
+            Assert.That(again.name, Is.EqualTo(parameter.name));
             Assert.That(fx.GetLayers().Count(), Is.EqualTo(layers));
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(4));
             foreach (var self in new[] { true, false }) {
@@ -204,8 +204,8 @@ namespace VF.Tests {
                     | ContactReceiver.AdvancedParameter.SenderLossyScale));
                 Assert.That(SourceReceiver(self).advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.PointSeparation));
             }
-            Assert.That(fx.GetParam(parameter.Name() + "_SenderType"), Is.Not.Null);
-            Assert.That(fx.GetParam(parameter.Name() + "_SenderLossyScaleY"), Is.Not.Null);
+            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameter.name + "_SenderType"), Is.Not.Null);
+            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameter.name + "_SenderLossyScaleY"), Is.Not.Null);
         }
 #endif
 
@@ -289,13 +289,13 @@ namespace VF.Tests {
         public void ReciprocalDoesNotBlendInItsNonzeroParameterDefault() {
             var tree = VFBlendTreeDirect.Create("Reciprocal regression");
             fx.NewLayer("Reciprocal regression").NewState("DBT").WithAnimation(tree);
-            var input = fx.NewFloat("Reciprocal input", def: 2);
+            var input = fx.CreateUniqueFloat("Reciprocal input", def: 2);
             var reciprocal = new BlendtreeMath(fx, tree).Invert("Reciprocal output", input);
             Start();
             foreach (var value in new[] { 2f, 4f, 0.5f }) {
-                playable.SetFloat(input.Name(), value);
+                playable.SetFloat(input.name, value);
                 for (var i = 0; i < 10; i++) graph.Evaluate(1f / 60);
-                Assert.That(playable.GetFloat(reciprocal.Name()), Is.EqualTo(1 / value).Within(0.0001f));
+                Assert.That(playable.GetFloat(reciprocal.name), Is.EqualTo(1 / value).Within(0.0001f));
             }
         }
 
@@ -333,7 +333,7 @@ namespace VF.Tests {
             Assert.That(MergedReceiver(true).parameter, Is.EqualTo(MergedReceiver(false).parameter));
             Assert.That(MergedReceiver(true).parameter, Is.Not.EqualTo(SourceReceiver(true).parameter).And.Not.EqualTo(SourceReceiver(false).parameter));
             var again = r.GetMergedParameter();
-            Assert.That(again.Name(), Is.EqualTo(MergedReceiver(true).parameter));
+            Assert.That(again.name, Is.EqualTo(MergedReceiver(true).parameter));
         }
 #endif
 

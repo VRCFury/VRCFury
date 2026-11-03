@@ -9,14 +9,14 @@ namespace VF.Service {
      */
     [VFService]
     internal class RemoveVrcGlobalsFromExpressionParamsService {
-        [VFAutowired] private readonly ParamsService paramsService;
-        private ParamManager paramz => paramsService.GetParams();
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
 
         [FeatureBuilderAction(FeatureOrder.RemoveVrcGlobalsFromExpressionParams)]
         public void Apply() {
-            foreach (var p in paramz.GetRaw().parameters) {
+            if (!VRCExpressionParameterExtensions.SupportsUnsynced()) return;
+            foreach (var p in expressionParams) {
                 if (FullControllerBuilder.VRChatGlobalParams.Contains(p.name)) {
-                    p.SetNetworkSynced(false, true);
+                    p.Unsynced();
                 }
             }
         }

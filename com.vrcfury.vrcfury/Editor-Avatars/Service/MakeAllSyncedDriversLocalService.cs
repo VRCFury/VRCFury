@@ -20,12 +20,11 @@ namespace VF.Service {
     internal class MakeAllSyncedDriversLocalService {
         [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly ParamsService paramsService;
-        private ParamManager paramz => paramsService.GetParams();
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
 
         [FeatureBuilderAction(FeatureOrder.MakeAllSyncedDriversLocal)]
         public void Apply() {
-            var syncedParams = paramz.GetRaw().parameters
+            var syncedParams = expressionParams
                 .Where(param => param.IsNetworkSynced())
                 .Select(param => param.name)
                 .ToImmutableHashSet();

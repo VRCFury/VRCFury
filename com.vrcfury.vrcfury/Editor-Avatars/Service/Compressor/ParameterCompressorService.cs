@@ -12,8 +12,8 @@ namespace VF.Service.Compressor {
     [VFService]
     internal class ParameterCompressorService {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager actionController => controllers.GetAction();
-        [VFAutowired] private readonly ParamsService paramsService;
+        private VFAvatarController actionController => controllers.GetAction();
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ParameterCompressorSolverService solverService;
         [VFAutowired] private readonly ParameterCompressorLayerService newLayerService;
@@ -26,10 +26,8 @@ namespace VF.Service.Compressor {
         public void Apply() {
             ParameterCompressorSolverOutput decisionWithInfo;
             {
-                // This is written weird to make sure we don't clone the params if we don't have to
-                var readOnlyParams = paramsService.GetReadOnlyParams();
-                var mutated = readOnlyParams.Clone();
-                mutated.RemoveDuplicates();
+                var mutated = expressionParams.GetSnapshot()
+                    .GroupBy(p => p.name).Select(group => group.First()).ToList();
                 if (BuildTargetUtils.IsDesktop()) {
                     decisionWithInfo = solverService.GetParamsToOptimize();
                     platformAlignmentService.SaveToDiskAfterBuild(decisionWithInfo.decision, mutated);
@@ -39,11 +37,10 @@ namespace VF.Service.Compressor {
                         decisionWithInfo = solverService.GetParamsToOptimize();
                     }
                 }
-                if (!readOnlyParams.IsSameAs(mutated)) {
-                    var writableParams = paramsService.GetParams().GetRaw();
-                    writableParams.parameters = mutated.parameters;
-                    writableParams.WorkLog(
-                        $"Updated {writableParams.parameters.Length} expression parameters while preparing parameter compression"
+                if (!expressionParams.IsSameAs(mutated)) {
+                    expressionParams.SetParameters(mutated);
+                    expressionParams.WorkLog(
+                        $"Updated {mutated.Count} expression parameters while preparing parameter compression"
                     );
                 }
             }
@@ -56,12 +53,11 @@ namespace VF.Service.Compressor {
                     + " If this came from desktop sync data, rebuild and upload the desktop avatar first.");
             }
             if (!decision.compress.Any()) {
-                saveAssetsService.Run(Enumerable.Empty<ControllerManager>());
+                saveAssetsService.Run(Enumerable.Empty<VFAvatarController>());
                 return;
             }
 
-            var paramz = paramsService.GetParams().GetRaw();
-            var originalCost = paramz.CalcTotalCost();
+            var originalCost = expressionParams.CalcTotalCost();
 
             if (decision.useBadPriorityMethod) {
                 legacyLayerService.BuildLayer(decision, actionController);
@@ -73,16 +69,16 @@ namespace VF.Service.Compressor {
             );
             
             var compressNames = decision.compress.Select(p => p.name).ToImmutableHashSet();
-            foreach (var param in paramz.parameters.Where(p => compressNames.Contains(p.name))) {
-                param.SetNetworkSynced(false);
+            foreach (var param in expressionParams.Where(p => compressNames.Contains(p.name))) {
+                param.Unsynced();
             }
-            var newCost = paramz.CalcTotalCost();
-            paramz.WorkLog(
+            var newCost = expressionParams.CalcTotalCost();
+            expressionParams.WorkLog(
                 $"Compressed {decision.compress.Count} expression parameters to fit VRChat limits ({originalCost} bits to {newCost} bits)"
             );
 
             actionController.UpgradeWrongParamTypes();
-            paramz.Dirty();
+            expressionParams.Dirty();
             CreateDebugInfo(decisionWithInfo, originalCost, newCost);
             saveAssetsService.Run(new[] { actionController });
         }

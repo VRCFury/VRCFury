@@ -11,7 +11,7 @@ namespace VF.Service {
     internal class FloatToDriverService {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
 
         [FeatureBuilderAction(FeatureOrder.DriveNonFloatTypes)]
         public void Apply() {
@@ -60,13 +60,13 @@ namespace VF.Service {
         private class DriveRequest {
             public string output;
             public string source;
-            public VFAFloat control;
+            public VFAParam control;
             public float? onValue;
             public float? offValue;
         }
         
-        public VFAFloat Drive(string output, string source, float? onValue, float? offValue) {
-            var control = fx.NewFloat($"Drive {output} to {onValue}/{offValue}");
+        public VFAParam Drive(string output, string source, float? onValue, float? offValue) {
+            var control = fx.CreateUniqueFloat($"Drive {output} to {onValue}/{offValue}");
             driveRequests.Add(new DriveRequest() {
                 output = output,
                 source = source,

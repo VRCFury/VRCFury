@@ -36,10 +36,10 @@ namespace VF.Tests {
             try {
                 var sources = new LayerSourceService();
                 typeof(LayerSourceService).VFField("globals").SetValue(sources, new GlobalsService());
-                var fx = new ControllerManager(VFController.Create(), null, VRCAvatarDescriptor.AnimLayerType.FX,
+                var fx = new VFAvatarController(VFController.Create(), VRCAvatarDescriptor.AnimLayerType.FX,
                     () => 0, () => "", name => name, sources);
                 var controllers = new ControllersService();
-                var cache = (Dictionary<VRCAvatarDescriptor.AnimLayerType, ControllerManager>)
+                var cache = (Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController>)
                     typeof(ControllersService).VFField("_controllers").GetValue(controllers);
                 cache[VRCAvatarDescriptor.AnimLayerType.FX] = fx;
                 var service = new HapticContactsService();

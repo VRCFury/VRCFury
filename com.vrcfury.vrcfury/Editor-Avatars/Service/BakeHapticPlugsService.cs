@@ -14,6 +14,7 @@ using VF.Model.Feature;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.Dynamics;
+using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Service {
     [VFService]
@@ -38,7 +39,7 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCFuryHapticPlugBaker plugBaker;
         [VFAutowired] private readonly SpsPlugRadiusService plugRadiusService;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
 
@@ -84,34 +85,29 @@ namespace VF.Service {
             VFClip disableDepthClip = null;
             VFClip disableRealtimeShadowsClip = null;
             if (plugs.Any(plug => plug.enableSps)) {
-                var disableDepth = fx.NewBool(
-                    "disableDepth",
-                    synced: true,
-                    saved: true
-                );
+                var disableDepth = fx.CreateUniqueBool("disableDepth");
+                disableDepth.MakeExpressionBool(saved: true);
                 menu.NewMenuToggle(
                     $"{spsOptions.GetOptionsPath()}/<b>Disable Depth Pass<\\/b>\n<size=20>(May fix 'ghost' plugs in some worlds)",
                     disableDepth
                 );
                 disableDepthClip = clipFactory.NewClip("SPS Disable Depth Pass");
                 var directTree = directTreeService.Create("SPS Disable Depth Pass");
-                directTree.Add(BlendtreeMath.GreaterThan(disableDepth.AsFloat(), 0).create(disableDepthClip, null));
-                var disableRealtimeShadows = fx.NewBool(
-                    "disableRealtimeShadows",
-                    synced: true,
-                    saved: true
-                );
+                directTree.Add(BlendtreeMath.GreaterThan(disableDepth, 0).create(disableDepthClip, null));
+                var disableRealtimeShadows = fx.CreateUniqueBool("disableRealtimeShadows");
+                disableRealtimeShadows.MakeExpressionBool(saved: true);
                 menu.NewMenuToggle(
                     $"{spsOptions.GetOptionsPath()}/<b>Disable Realtime Shadows<\\/b>\n<size=20>(May fix 'ghost' plugs in some worlds)",
                     disableRealtimeShadows
                 );
                 disableRealtimeShadowsClip = clipFactory.NewClip("SPS Disable Realtime Shadows");
                 directTree = directTreeService.Create("SPS Disable Realtime Shadows");
-                directTree.Add(BlendtreeMath.GreaterThan(disableRealtimeShadows.AsFloat(), 0).create(disableRealtimeShadowsClip, null));
+                directTree.Add(BlendtreeMath.GreaterThan(disableRealtimeShadows, 0).create(disableRealtimeShadowsClip, null));
             }
 
             if (plugs.Any(plug => plug.addDpsTipLight)) {
-                var param = fx.NewBool("tipLight", synced: true);
+                var param = fx.CreateUniqueBool("tipLight");
+                param.MakeExpressionBool();
                 menu.NewMenuToggle(
                         $"{spsOptions.GetOptionsPath()}/<b>DPS Tip Light<\\/b>\n<size=20>Allows plugs to trigger old DPS animations",
                         param);
@@ -152,7 +148,7 @@ namespace VF.Service {
             var worldLength = bakeInfo.worldLength;
             var localLength = worldLength / bakeRoot.worldScale.x;
             var propsToScale = new List<(UnityEngine.Component, string, float)>();
-            var worldScale = new Lazy<VFAFloat>(() => worldScaleService.GetWorldScale(bakeRoot, name));
+            var worldScale = new Lazy<VFAParam>(() => worldScaleService.GetWorldScale(bakeRoot, name));
             if (bakeInfo.mainSender != null) {
                 plugRadiusService.Create(plug, bakeInfo, name);
             }
@@ -331,7 +327,7 @@ namespace VF.Service {
                 );
             }
             foreach (var inject in injectRequests) {
-                VFAFloat value = null;
+                VFAParam value = null;
                 switch (inject.sourceParam) {
                     case VRCFuryHapticPlugEditor.SpsDepthMeters:
                         value = contacts.Value.closestDistanceMeters.Value;
@@ -355,7 +351,7 @@ namespace VF.Service {
                         value = math.Value.Multiply($"{name}/PlugLengthMeters", worldScale.Value, localLength);
                         break;
                     case VRCFuryHapticPlugEditor.SpsPlugLengthLocal:
-                        value = fx.MakeAap($"{name}/PlugLengthLocal", localLength);
+                        value = fx.CreateUniqueFloat($"{name}/PlugLengthLocal", localLength);
                         break;
                     case VRCFuryHapticPlugEditor.SpsPlugLengthPlugLengths:
                         value = fx.One();
@@ -364,15 +360,15 @@ namespace VF.Service {
                         value = math.Value.Multiply($"{name}/PlugRadiusMeters", worldScale.Value, worldRadius / bakeRoot.worldScale.x);
                         break;
                     case VRCFuryHapticPlugEditor.SpsPlugRadiusLocal:
-                        value = fx.MakeAap($"{name}/PlugRadiusLocal", worldRadius / bakeRoot.worldScale.x);
+                        value = fx.CreateUniqueFloat($"{name}/PlugRadiusLocal", worldRadius / bakeRoot.worldScale.x);
                         break;
                     case VRCFuryHapticPlugEditor.SpsPlugRadiusPlugLengths:
-                        value = fx.MakeAap($"{name}/PlugRadiusInPlugLengths", worldRadius / worldLength);
+                        value = fx.CreateUniqueFloat($"{name}/PlugRadiusInPlugLengths", worldRadius / worldLength);
                         break;
                 }
 
                 if (value != null) {
-                    fx.NewFloat(inject.resolvedParam, usePrefix: false);
+                    fx.GetOrCreateFloat(inject.resolvedParam);
                     math.Value.CopyInPlace(value, inject.resolvedParam);
                 }
             }

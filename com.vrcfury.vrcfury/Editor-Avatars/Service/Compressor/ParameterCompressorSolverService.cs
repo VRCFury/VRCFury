@@ -24,12 +24,12 @@ namespace VF.Service.Compressor {
         [VFAutowired] private readonly ExceptionService excService;
         [VFAutowired] private readonly MenuService menuService;
         private VRCExpressionsMenu menuReadOnly => menuService.GetReadOnlyMenu();
-        [VFAutowired] private readonly ParamsService paramsService;
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
 
         public ParameterCompressorSolverOutput GetParamsToOptimize() {
-            var paramz = paramsService.GetReadOnlyParams().Clone();
-            var originalCost = paramz.CalcTotalCost();
-            var maxCost = VRCExpressionParametersExtensions.GetMaxCost();
+            var paramz = expressionParams.GetSnapshot();
+            var originalCost = expressionParams.CalcTotalCost();
+            var maxCost = ExpressionParamsService.GetMaxCost();
             if (originalCost <= maxCost) {
                 return new ParameterCompressorSolverOutput();
             }
@@ -122,7 +122,7 @@ namespace VF.Service.Compressor {
             var allMenuParamsStr = GetParamsUsedInMenu(null);
             var buttonMenuParamsStr = GetParamsUsedInMenu(new [] {VRCExpressionsMenu.Control.ControlType.Button,VRCExpressionsMenu.Control.ControlType.SubMenu}.ToImmutableHashSet());
 
-            var allSyncedParams = new HashSet<VRCExpressionParameters.Parameter>(paramz.parameters.Where(p => p.IsNetworkSynced()).ToArray());
+            var allSyncedParams = new HashSet<VRCExpressionParameters.Parameter>(paramz.Where(p => p.IsNetworkSynced()).ToArray());
             var warnUnusedParams = allSyncedParams.Where(p => !controllerUsedParams.Contains(p.name)).ToList();
             allSyncedParams.ExceptWith(warnUnusedParams);
             var warnContactParams = allSyncedParams.Where(p => contactParams.Contains(p.name)).ToList();
@@ -240,7 +240,7 @@ namespace VF.Service.Compressor {
         }
 
         private OptimizationDecision GetParamsToOptimize(
-            VRCExpressionParameters paramz,
+            IEnumerable<VRCExpressionParameters.Parameter> paramz,
             ISet<VRCExpressionsMenu.Control.ControlType> allowedMenuTypes,
             ISet<string> addDriven,
             int originalCost,
@@ -249,7 +249,7 @@ namespace VF.Service.Compressor {
             var eligible = new List<VRCExpressionParameters.Parameter>();
             var usedInMenu = GetParamsUsedInMenu(allowedMenuTypes);
 
-            foreach (var param in paramz.parameters) {
+            foreach (var param in paramz) {
                 if (!param.IsNetworkSynced()) continue;
                 if (!param.HasStandardNetworkEncoding()) continue;
                 if (!usedInMenu.Contains(param.name)) continue;

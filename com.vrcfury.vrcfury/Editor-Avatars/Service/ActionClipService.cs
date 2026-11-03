@@ -23,7 +23,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] [CanBeNull] private readonly ClipBuilderService clipBuilder;
         [VFAutowired] [CanBeNull] private readonly ControllersService controllers;
-        [CanBeNull] private ControllerManager fx => controllers?.GetFx();
+        [CanBeNull] private VFAvatarController fx => controllers?.GetFx();
         private readonly IDictionary<Type,ActionBuilder> modelTypeToBuilder;
 
         public ActionClipService(List<ActionBuilder> actionBuilders) {
@@ -145,9 +145,9 @@ namespace VF.Service {
             VFMotion output = clip;
             if (fx != null && (action.localOnly || action.remoteOnly)) {
                 if (action.localOnly) {
-                    output = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0).create(output, null);
+                    output = BlendtreeMath.GreaterThan(fx.IsLocal(), 0).create(output, null);
                 } else {
-                    output = BlendtreeMath.GreaterThan(fx.IsLocal().AsFloat(), 0).create(null, output);
+                    output = BlendtreeMath.GreaterThan(fx.IsLocal(), 0).create(null, output);
                 }
             }
 

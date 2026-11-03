@@ -5,6 +5,8 @@ using VF.Injector;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VRC.SDK3.Avatars.ScriptableObjects;
+using VF.Utils.Controller;
 
 namespace VF.Feature {
 
@@ -12,7 +14,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
 
@@ -27,8 +29,14 @@ namespace VF.Feature {
                 if (stop.x != 0) usesX = true;
                 if (stop.y != 0) usesY = true;
             }
-            var x = fx.NewFloat(model.name + "_x", synced: usesX, saved: model.saved, def: model.defaultX);
-            var y = fx.NewFloat(model.name + "_y", synced: usesY, saved: model.saved, def: model.defaultY);
+            var x = fx.CreateUniqueFloat(model.name + "_x", def: model.defaultX);
+            if (usesX) {
+                x.MakeExpressionFloat(saved: model.saved);
+            }
+            var y = fx.CreateUniqueFloat(model.name + "_y", def: model.defaultY);
+            if (usesY) {
+                y.MakeExpressionFloat(saved: model.saved);
+            }
             
             var tree = VFBlendTree2D.CreateFreeformDirectional(model.name, x, y);
             tree.Add(new Vector2(0,0), clipFactory.GetEmptyClip());

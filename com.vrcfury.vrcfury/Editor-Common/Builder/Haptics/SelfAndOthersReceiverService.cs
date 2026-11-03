@@ -17,7 +17,7 @@ namespace VF.Builder.Haptics {
     internal class SelfAndOthersReceiverService {
         // Implemented by the avatar assembly; shader-only/world consumers don't need it.
         internal interface AnimatorSupport {
-            VFAFloat GetParameter(VRCContactReceiver receiver, string suggestedName);
+            VFAParam GetParameter(VRCContactReceiver receiver, string suggestedName);
             void AddSelector(VFMotion selector);
         }
         [VFAutowired] [JetBrains.Annotations.CanBeNull] private readonly AnimatorSupport animator;
@@ -37,7 +37,7 @@ namespace VF.Builder.Haptics {
             private readonly AnimatorSupport animator;
             private readonly List<VRCContactReceiver> alwaysOnReceivers = new();
             private readonly List<VRCContactReceiver> mergeReceivers = new();
-            private VFAFloat mergedParameter;
+            private VFAParam mergedParameter;
             public bool IsCreated => alwaysOnReceivers.Count > 0 || mergeReceivers.Count > 0;
             private VRCContactReceiver MergedSelf => Find(true, true);
             private VRCContactReceiver MergedOthers => Find(false, true);
@@ -63,7 +63,7 @@ namespace VF.Builder.Haptics {
                     ?? Make(self, merged);
             }
 
-            public VFAFloat GetParameter(bool self, string parameterName = null
+            public VFAParam GetParameter(bool self, string parameterName = null
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
                 , AdvancedParameter advancedParameters = 0
 #endif
@@ -127,7 +127,7 @@ namespace VF.Builder.Haptics {
 #endif
             }
 
-            public VFAFloat GetMergedParameter(
+            public VFAParam GetMergedParameter(
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
                 AdvancedParameter advancedParameters = 0
 #endif
@@ -176,8 +176,8 @@ namespace VF.Builder.Haptics {
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
                 // Proximity clamps at 1 inside a sender. Break that tie using the SDK's
                 // unclamped inner-point distance, with smaller separation selecting self.
-                var separation = Compare(" closest point separation", others.Name() + "_PointSeparation",
-                    self.Name() + "_PointSeparation");
+                var separation = Compare(" closest point separation", others.name + "_PointSeparation",
+                    self.name + "_PointSeparation");
                 var onlyOthersSaturated = VFBlendTree1D.CreateWithData(request.name + " only others saturated", others,
                     (VRCFuryEditorUtils.NextFloatDown(1), selector), (1, chooseOthers));
                 var selfSaturated = VFBlendTree1D.CreateWithData(request.name + " both saturated", others,

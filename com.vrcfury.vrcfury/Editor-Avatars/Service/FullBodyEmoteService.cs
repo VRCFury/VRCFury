@@ -11,19 +11,19 @@ namespace VF.Service {
     [VFService]
     internal class FullBodyEmoteService {
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly FloatToDriverService floatToDriverService;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         
-        private readonly Dictionary<VFBinding.MuscleBindingType, Func<VFClip,VFAFloat>> addCache
-            = new Dictionary<VFBinding.MuscleBindingType, Func<VFClip, VFAFloat>>();
+        private readonly Dictionary<VFBinding.MuscleBindingType, Func<VFClip,VFAParam>> addCache
+            = new Dictionary<VFBinding.MuscleBindingType, Func<VFClip, VFAParam>>();
 
-        public VFAFloat AddClip(VFClip clip, VFBinding.MuscleBindingType type) {
+        public VFAParam AddClip(VFClip clip, VFBinding.MuscleBindingType type) {
             if (!addCache.ContainsKey(type)) {
                 if (type == VFBinding.MuscleBindingType.Body) {
                     var action = controllers.GetAction();
                     var name = "VRCFury Actions";
-                    var param = action.NewInt(name);
+                    var param = action.CreateUniqueInt(name);
                     var paramIndex = 0;
                     var layer = action.NewLayer(name);
                     addedLayers.Add(layer);
@@ -33,7 +33,7 @@ namespace VF.Service {
                     var gesture = controllers.GetController(VRCAvatarDescriptor.AnimLayerType.Gesture);
                     var isLeft = type == VFBinding.MuscleBindingType.LeftHand;
                     var name = "VRCFury " + (isLeft ? "Left Hand" : "Right Hand");
-                    var param = gesture.NewInt(name);
+                    var param = gesture.CreateUniqueInt(name);
                     var paramIndex = 0;
                     var layer = gesture.NewLayer(name);
                     addedLayers.Add(layer);
@@ -54,13 +54,13 @@ namespace VF.Service {
             return addedLayers.Contains(layer);
         }
         
-        private VFAFloat AddClip(
+        private VFAParam AddClip(
             VFClip clip,
-            ControllerManager ctrl,
+            VFAvatarController ctrl,
             VFState idle,
             VFLayer layer,
             VFBinding.MuscleBindingType type,
-            VFAInteger param,
+            VFAParam param,
             int paramIndex
         ) {
             clip = clip.Clone() as VFClip;

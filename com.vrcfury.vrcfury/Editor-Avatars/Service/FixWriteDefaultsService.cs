@@ -13,6 +13,7 @@ using VF.PlayMode;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Service {
     [VFService]
@@ -26,7 +27,7 @@ namespace VF.Service {
         [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
 
         public void RecordDefaultNow(VFBinding binding, bool isFloat, bool force = false) {
             if (binding.IsAnimatorBinding()) return;
@@ -38,6 +39,14 @@ namespace VF.Service {
                 // defaults to override lower layers even though the lower layers should be higher priority.
                 var settings = GetBuildSettings();
                 shouldRecord = !settings.useWriteDefaults;
+            }
+
+            if (!shouldRecord) {
+                // Temporary workaround to fix most SPS issues caused by
+                // https://feedback.vrchat.com/bug-reports/p/animator-defaults-are-improperly-changed-only-on-remote-clients-when-native-ft-i
+                if (binding.type == typeof(VRCContactReceiver) && binding.propertyName == "m_Enabled") {
+                    shouldRecord = true;
+                }
             }
 
             FloatOrObject value = null;
@@ -221,7 +230,7 @@ namespace VF.Service {
             return _buildSettings;
         }
 
-        private IList<VFLayer> GetMaintainedLayers(ControllerManager controller) {
+        private IList<VFLayer> GetMaintainedLayers(VFAvatarController controller) {
             var settings = GetBuildSettings();
             return settings.applyToUnmanagedLayers ? controller.GetLayers() : controller.GetManagedLayers();
         }

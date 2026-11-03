@@ -17,6 +17,10 @@ namespace VF.Injector {
 
         private readonly Dictionary<Type, ISet<Type>> serviceTypesByParent = new Dictionary<Type, ISet<Type>>();
 
+        public VRCFuryInjector() {
+            Set(this);
+        }
+
         public void ImportScan(Type type) {
             foreach (var serviceType in ReflectionUtils.GetTypes(type)) {
                 if (serviceType.GetCustomAttribute<VFServiceAttribute>()?.autoRegister == false) continue;

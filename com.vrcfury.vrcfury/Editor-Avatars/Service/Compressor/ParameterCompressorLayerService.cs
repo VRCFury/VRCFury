@@ -12,21 +12,29 @@ namespace VF.Service.Compressor {
      */
     [VFService]
     internal class ParameterCompressorLayerService {
+        [VFAutowired] private readonly UniqueParamService uniqueParams;
         [VFAutowired] private readonly CompressorLayerUtilsService layerUtilsService;
+        [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
 
-        public void BuildLayer(OptimizationDecision decision, ControllerManager controller) {
+        public void BuildLayer(OptimizationDecision decision, VFAvatarController controller) {
             var (numberBatches, boolBatches) = decision.GetBatches();
 
             var batchCount = Math.Max(numberBatches.Count, boolBatches.Count);
             var indexBitCount = decision.GetIndexBitCount();
             var syncIndex = Enumerable.Range(0, indexBitCount)
-                .Select(i => controller.NewBool($"SyncIndex{i}", synced: true))
+                .Select(i => {
+                    var param = controller.CreateUniqueBool($"SyncIndex{i}");
+                    param.MakeExpressionBool();
+                    return param;
+                })
                 .ToArray();
             var syncInts = Enumerable.Range(0, decision.numberSlots)
-                .Select(i => layerUtilsService.MakeParam("SyncDataNum" + i, VRCExpressionParameters.ValueType.Int, true))
+                .Select(i => expressionParams.AddOrMerge(ExpressionParam.Create(uniqueParams.GetUniqueName("SyncDataNum" + i))
+                    .Int().DisableInterpolation()))
                 .ToList();
             var syncBools = Enumerable.Range(0, decision.boolSlots)
-                .Select(i => layerUtilsService.MakeParam("SyncDataBool" + i, VRCExpressionParameters.ValueType.Bool, true))
+                .Select(i => expressionParams.AddOrMerge(ExpressionParam.Create(uniqueParams.GetUniqueName("SyncDataBool" + i)).Bool()))
                 .ToList();
 
             var layer = controller.NewLayer("Parameter Compressor");
@@ -101,29 +109,30 @@ namespace VF.Service.Compressor {
                 void SyncParam(VRCExpressionParameters.Parameter original, VRCExpressionParameters.Parameter slot) {
                     VRCExpressionParameters.Parameter sendFrom;
                     VRCExpressionParameters.Parameter receiveTo;
-                    var latch = new Lazy<VRCExpressionParameters.Parameter>(() => layerUtilsService.MakeParam(original.name, original.valueType, false));
+                    var latch = new Lazy<VRCExpressionParameters.Parameter>(() => expressionParams.AddOrMerge(
+                        ExpressionParam.Create(uniqueParams.GetUniqueName(original.name)).Type(original.valueType).Unsynced()));
                     if (latchNow) {
                         // No need to latch things in the first batch when sending
                         sendFrom = original;
                     } else {
-                        applyLatchDrivers += () => latchState?.DrivesCopy(original.name, latch.Value.name);
+                        applyLatchDrivers += () => latchState?.DrivesCopy(original.name, latch.Value);
                         sendFrom = latch.Value;
                     }
                     if (unlatchNow) {
                         receiveTo = original;
                     } else {
-                        applyUnlatchDrivers += () => unlatchState?.DrivesCopy(latch.Value.name, original.name);
+                        applyUnlatchDrivers += () => unlatchState?.DrivesCopy(latch.Value.name, original);
                         receiveTo = latch.Value;
                     }
                     if (original.valueType == VRCExpressionParameters.ValueType.Float) {
                         applyCopyDrivers += () => {
-                            sendState.DrivesCopy(sendFrom.name, slot.name, -1, 1, 0, 254);
-                            receiveState.DrivesCopy(slot.name, receiveTo.name, 0, 254, -1, 1);
+                            sendState.DrivesCopy(sendFrom.name, slot, -1, 1, 0, 254);
+                            receiveState.DrivesCopy(slot.name, receiveTo, 0, 254, -1, 1);
                         };
                     } else if (original.valueType == VRCExpressionParameters.ValueType.Int || original.valueType == VRCExpressionParameters.ValueType.Bool) {
                         applyCopyDrivers += () => {
-                            sendState.DrivesCopy(sendFrom.name, slot.name);
-                            receiveState.DrivesCopy(slot.name, receiveTo.name);
+                            sendState.DrivesCopy(sendFrom.name, slot);
+                            receiveState.DrivesCopy(slot.name, receiveTo);
                         };
                     } else {
                         throw new Exception("Unknown type?");

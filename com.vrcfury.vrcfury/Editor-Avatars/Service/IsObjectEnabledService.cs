@@ -15,16 +15,16 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly AllClipsService allClipsService;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
 
-        private readonly Dictionary<VFGameObject, BlendtreeMath.VFAap> hierarchyEnabled =
-            new Dictionary<VFGameObject, BlendtreeMath.VFAap>();
+        private readonly Dictionary<VFGameObject, VFAParam> hierarchyEnabled =
+            new Dictionary<VFGameObject, VFAParam>();
 
-        public VFAFloat Get(VFGameObject obj) {
+        public VFAParam Get(VFGameObject obj) {
             return hierarchyEnabled.GetOrCreate(
                 obj,
-                () => fx.MakeAap($"Object Enabled/{GetPath(obj)}/Hierarchy")
-            ).AsFloat();
+                () => fx.CreateUniqueFloat($"Object Enabled/{GetPath(obj)}/Hierarchy")
+            );
         }
 
         private IEnumerable<VFGameObject> GetSelfAndParentsUnderAvatar(VFGameObject obj) {
@@ -66,11 +66,11 @@ namespace VF.Service {
             var directTree = dbtLayerService.Create("IsObjectEnabledService");
             var math = dbtLayerService.GetMath(directTree);
             var rewrites = new Dictionary<string, string>();
-            var selfEnabled = new Dictionary<VFGameObject, VFAFloat>();
-            VFAFloat GetSelf(VFGameObject obj) {
+            var selfEnabled = new Dictionary<VFGameObject, VFAParam>();
+            VFAParam GetSelf(VFGameObject obj) {
                 return selfEnabled.GetOrCreate(
                     obj,
-                    () => fx.MakeAap($"IsObjectEnabledService/{GetPath(obj)}/Self", obj.active ? 1 : 0)
+                    () => fx.CreateUniqueFloat($"IsObjectEnabledService/{GetPath(obj)}/Self", obj.active)
                 );
             }
 
@@ -95,11 +95,11 @@ namespace VF.Service {
                     continue;
                 }
                 if (toggledObjects.Count == 0) {
-                    fx.SetDefault(output.AsFloat(), 1);
+                    output.SetDefault(true);
                     continue;
                 }
                 if (toggledObjects.Count == 1) {
-                    rewrites[output.Name()] = GetSelf(toggledObjects[0]).Name();
+                    rewrites[output.name] = GetSelf(toggledObjects[0]).name;
                     continue;
                 }
 
@@ -123,7 +123,7 @@ namespace VF.Service {
                     if (animatedObject == null) continue;
                     if (!byObject.TryGetValue(animatedObject, out var enabled)) continue;
 
-                    clip.SetAap(enabled.Name(), curve.Clone());
+                    clip.SetAap(enabled.name, curve.Clone());
                 }
             }
 

@@ -13,14 +13,13 @@ namespace VF.Utils.Controller {
         private string _name;
         private UnityEngine.Object sourceAsset;
         private readonly List<string> workLog = new List<string>();
-        private List<AnimatorControllerParameter> _parameters;
+        private readonly Dictionary<string, VFAParam> parametersByName = new Dictionary<string, VFAParam>();
         private List<VFLayer> _layers;
 
         public static VFController Create(string name = null) {
             return new VFController {
                 _name = name ?? "New Animator Controller",
                 sourceAsset = null,
-                _parameters = new List<AnimatorControllerParameter>(),
                 _layers = new List<VFLayer>()
             };
         }
@@ -28,7 +27,7 @@ namespace VF.Utils.Controller {
         private VFController(
             AnimatorController ctrl,
             VFLoadContext context
-        ) {
+        ) : this() {
             InitFromRaw(ctrl, context);
         }
 
@@ -37,7 +36,7 @@ namespace VF.Utils.Controller {
             _name = source._name;
             sourceAsset = source.sourceAsset;
             workLog.AddRange(source.workLog);
-            _parameters = source._parameters.Select(CloneParameter).ToList();
+            SetParameters(source.parameters.Select(p => p.Clone(this)));
             var context = new VFCloneContext();
             _layers = source._layers.Select(layer => layer?.Clone(this, context)).ToList();
         }
@@ -46,7 +45,9 @@ namespace VF.Utils.Controller {
             if (ctrl == null) throw new ArgumentNullException(nameof(ctrl));
             _name = ctrl.name;
             sourceAsset = ctrl;
-            _parameters = ctrl.parameters.Select(CloneParameter).ToList();
+            // Ignore invalid declarations before resolving duplicate names; the first valid entry wins.
+            SetParameters(ctrl.parameters.Where(p => p.name != null && VRCFEnumUtils.IsValid(p.type))
+                .GroupBy(p => p.name).Select(group => VFAParam.Load(group.First())));
             var rawLayers = ctrl.layers;
             _layers = Enumerable.Repeat<VFLayer>(null, rawLayers.Length).ToList();
             var loading = new HashSet<int>();
@@ -174,16 +175,6 @@ namespace VF.Utils.Controller {
             workLog.Add(item);
         }
 
-        private static AnimatorControllerParameter CloneParameter(AnimatorControllerParameter original) {
-            return new AnimatorControllerParameter {
-                name = original.name,
-                type = original.type,
-                defaultBool = original.defaultBool,
-                defaultFloat = original.defaultFloat,
-                defaultInt = original.defaultInt
-            };
-        }
-
         internal void ReplaceLayers(IEnumerable<VFLayer> layers) {
             _layers = layers.ToList();
         }
@@ -240,77 +231,44 @@ namespace VF.Utils.Controller {
 
             other._layers.Clear();
 
-            // Merge Params
-            foreach (var p in other.parameters) {
-                _NewParam(p.name, p.type, n => {
-                    n.defaultBool = p.defaultBool;
-                    n.defaultFloat = p.defaultFloat;
-                    n.defaultInt = p.defaultInt;
-                });
+            // Merge Params. Ownership moves with each parameter; existing names keep their defaults.
+            foreach (var parameter in other.parameters) {
+                AddOrMergeParam(parameter);
             }
 
-            other.parameters = new AnimatorControllerParameter[] { };
-        }
-
-        public void RemoveParameter(int i) {
-            _parameters = _parameters
-                .Where((_, index) => index != i)
-                .ToList();
+            other.parametersByName.Clear();
         }
 
         public void RemoveParameter(string name) {
-            _parameters = _parameters
-                .Where(p => p.name != name)
-                .ToList();
+            parametersByName.Remove(name);
         }
 
-        public VFABool _NewBool(string name, bool def = false) {
-            var p = _NewParam(name, AnimatorControllerParameterType.Bool, param => param.defaultBool = def);
-            return new VFABool(p.name, p.defaultBool);
-        }
-        public VFAFloat _NewFloat(string name, float def = 0) {
-            var p = _NewParam(name, AnimatorControllerParameterType.Float, param => param.defaultFloat = def);
-            return new VFAFloat(p.name, p.defaultFloat);
+        public VFAParam GetOrCreateFloat(string name, FloatOrBool def = null) =>
+            GetOrCreateParam(name, AnimatorControllerParameterType.Float, def);
+        public VFAParam GetOrCreateInt(string name, FloatOrBool def = null) =>
+            GetOrCreateParam(name, AnimatorControllerParameterType.Int, def);
+        public VFAParam GetOrCreateBool(string name, FloatOrBool def = null) =>
+            GetOrCreateParam(name, AnimatorControllerParameterType.Bool, def);
+
+        private VFAParam GetOrCreateParam(string name, AnimatorControllerParameterType type, FloatOrBool def = null) {
+            var parameter = new VFAParam(name, type);
+            parameter.SetDefault(def);
+            return AddOrMergeParam(parameter);
         }
 
-        public void SetDefault(VFAFloat param, float def) {
-            param.SetDefault(def);
-            var raw = GetParam(param.Name());
-            if (raw != null) raw.defaultFloat = def;
-        }
-        public VFAInteger _NewInt(string name, int def = 0) {
-            var p = _NewParam(name, AnimatorControllerParameterType.Int, param => param.defaultInt = def);
-            return new VFAInteger(p.name, p.defaultInt);
-        }
-        public VFAParam AddParam(VFAParam param) {
-            if (param == null) return null;
-
-            if (param is VFABool boolParam) {
-                return _NewBool(boolParam.Name(), boolParam.GetDefault());
-            } else if (param is VFAInteger intParam) {
-                return _NewInt(intParam.Name(), intParam.GetDefault());
-            } else if (param is VFAFloat floatParam) {
-                return _NewFloat(floatParam.Name(), floatParam.GetDefault());
-            } else {
-                throw new ArgumentException("Unknown parameter type");
+        // Existing defaults are preserved; requested types establish the minimum storage type.
+        public VFAParam AddOrMergeParam(VFAParam input) {
+            if (!TryGetParam(input.name, out var parameter)) {
+                parameter = input;
+                parameter.Controller = this;
+                parametersByName.Add(parameter.name, parameter);
             }
-        }
-        public AnimatorControllerParameter _NewParam(string name, AnimatorControllerParameterType type, Action<AnimatorControllerParameter> with = null) {
-            var exists = GetParam(name);
-            if (exists != null) {
-                return exists;
-            }
-            var param = new AnimatorControllerParameter {
-                name = name,
-                type = type
-            };
-            with?.Invoke(param);
-            _parameters = _parameters.Concat(new[] { param }).ToList();
-            return param;
+            parameter.UpgradeType(input.type);
+            return parameter;
         }
 
-        public AnimatorControllerParameter GetParam(string name) {
-            return _parameters.FirstOrDefault(other => other.name == name);
+        public bool TryGetParam(string name, out VFAParam parameter) {
+            return parametersByName.TryGetValue(name, out parameter);
         }
 
         public IList<VFLayer> GetLayers() {
@@ -323,9 +281,14 @@ namespace VF.Utils.Controller {
             return _layers.GetOrDefault(index);
         }
 
-        public AnimatorControllerParameter[] parameters {
-            get => _parameters.ToArray();
-            set => _parameters = value.ToList();
+        public VFAParam[] parameters => parametersByName.Values.ToArray();
+
+        private void SetParameters(IEnumerable<VFAParam> parameters) {
+            var entries = parameters.ToArray();
+            parametersByName.Clear();
+            foreach (var parameter in entries) {
+                AddOrMergeParam(parameter);
+            }
         }
 
         [CanBeNull]
@@ -361,14 +324,14 @@ namespace VF.Utils.Controller {
             };
 
             var output = new VFController(ac, context);
-            output.RemoveInvalidParameters();
             output.FixNullStateMachines();
             output.FixBadTransitions();
 
             output.RemoveDuplicateStateMachines();
 
             output.FixLayer0Weight();
-            output.RemoveWrongParamTypes();
+            var firstFloat = ac.parameters.FirstOrDefault(p => p.name != null && p.type == AnimatorControllerParameterType.Float)?.name;
+            output.RemoveWrongParamTypes(firstFloat);
             return output;
         }
 
@@ -382,7 +345,7 @@ namespace VF.Utils.Controller {
 
             var finalizedRaw = new AnimatorController();
             finalizedRaw.name = _name;
-            finalizedRaw.parameters = _parameters.Select(CloneParameter).ToArray();
+            finalizedRaw.parameters = parameters.OrderBy(p => p.name).Select(p => p.Save()).ToArray();
             var savedLayers = GetLayers().Select(layer => layer.Save(context)).ToArray();
             finalizedRaw.layers = savedLayers;
             finalizedRaw = VrcfObjectFactory.Register(finalizedRaw);
@@ -465,15 +428,6 @@ namespace VF.Utils.Controller {
             }).NotNull());
         }
 
-        /**
-         * Some tools add parameters with an invalid type (not bool, trigger, float, int, etc)
-         * This causes the VRCSDK to blow up and break the mirror clone and throw exceptions in console.
-         * https://feedback.vrchat.com/bug-reports/p/invalid-parameter-type-within-a-controller-breaks-mirror-clone-and-spams-output
-         */
-        private void RemoveInvalidParameters() {
-            _parameters = _parameters.Where(p => VRCFEnumUtils.IsValid(p.type)).ToList();
-        }
-
         public void RewriteParameters(Func<string, string> rewriteParamNameNullUnsafe, bool includeWrites = true, ICollection<VFLayer> limitToLayers = null) {
             string RewriteParamName(string str) {
                 if (string.IsNullOrEmpty(str)) return str;
@@ -485,12 +439,7 @@ namespace VF.Utils.Controller {
 
             // Params
             if (includeWrites && limitToLayers == null) {
-                var prms = _parameters.ToArray();
-                foreach (var p in prms) {
-                    p.name = RewriteParamName(p.name);
-                }
-
-                _parameters = prms.ToList();
+                SetParameters(parameters.Select(p => p.WithName(RewriteParamName(p.name))));
             }
 
             // States
@@ -537,7 +486,7 @@ namespace VF.Utils.Controller {
             }
         }
 
-        public VFController Clone() {
+        public virtual VFController Clone() {
             return new VFController(this);
         }
 
@@ -560,21 +509,18 @@ namespace VF.Utils.Controller {
                 .Distinct();
         }
 
-        public void RemoveWrongParamTypes() {
-            // Unity resolves duplicate names using the first parameter's type and default value.
-            // Drop later entries before type repair or merging can give them any effect.
-            _parameters = _parameters.GroupBy(p => p.name).Select(group => group.First()).ToList();
-
-            var badBool = new Lazy<string>(() => _NewBool("InvalidParam"));
-            var badFloat = new Lazy<string>(() => _NewFloat("InvalidParamFloat"));
-            var badThreshold = new Lazy<string>(() => _NewBool("BadIntThreshold", def: true));
+        public void RemoveWrongParamTypes([CanBeNull] string firstFloat) {
+            var invalidParam = new Lazy<string>(() => GetOrCreateFloat("InvalidParam".MakeUnique(parameters.Select(p => p.name))));
+            var badThreshold = new Lazy<string>(() => GetOrCreateFloat("BadIntThreshold".MakeUnique(parameters.Select(p => p.name)), def: 1));
             AnimatorCondition InvalidCondition() => new AnimatorCondition {
-                mode = AnimatorConditionMode.If,
-                parameter = badBool.Value,
+                mode = AnimatorConditionMode.Greater,
+                parameter = invalidParam.Value,
+                threshold = 0,
             };
             AnimatorCondition BadThresholdCondition() => new AnimatorCondition {
-                mode = AnimatorConditionMode.If,
+                mode = AnimatorConditionMode.Greater,
                 parameter = badThreshold.Value,
+                threshold = 0,
             };
 
             var paramTypes = parameters
@@ -640,17 +586,11 @@ namespace VF.Utils.Controller {
                             return p;
                         } else {
                             // It exists but isn't a float, use the first float in the controller
-                            var firstFloat = parameters
-                                .FirstOrDefault(pr => pr.type == AnimatorControllerParameterType.Float);
-                            if (firstFloat != null) {
-                                return firstFloat.name;
-                            } else {
-                                return badFloat.Value;
-                            }
+                            return firstFloat ?? invalidParam.Value;
                         }
                     } else {
                         // It doesn't exist
-                        return badFloat.Value;
+                        return invalidParam.Value;
                     }
                 });
             }
@@ -683,21 +623,15 @@ namespace VF.Utils.Controller {
         }
 
         /**
-         * "Upgrades" all parameters to the highest "type" needed for all usages, then makes all usages
-         * work properly.
-         *
-         * For instance, if a parameter is used in both If and as a direct blendtree parameter,
-         * it will be set to type Float, and the If will be converted to Greater than 0.
+         * Upgrade storage types from existing definitions and usages.
+         * Float usages take precedence over int, bool and trigger requirements.
          */
-        public void UpgradeWrongParamTypes() {
+        private Dictionary<string, AnimatorControllerParameterType> GetRequiredParameterTypes() {
             // Figure out what types each param needs to be (at least)
             var paramTypes = new Dictionary<string, AnimatorControllerParameterType>();
             void UpgradeType(string name, AnimatorControllerParameterType newType) {
-                if (!paramTypes.TryGetValue(name, out var type)) type = newType;
-                else if (newType == AnimatorControllerParameterType.Float) type = newType;
-                else if (newType == AnimatorControllerParameterType.Int && (type == AnimatorControllerParameterType.Bool || type == AnimatorControllerParameterType.Trigger)) type = newType;
-                else if (newType == AnimatorControllerParameterType.Bool && type == AnimatorControllerParameterType.Trigger) type = newType;
-                paramTypes[name] = type;
+                paramTypes[name] = paramTypes.TryGetValue(name, out var existing)
+                    ? CombineParameterTypes(existing, newType) : newType;
             }
             foreach (var p in parameters) {
                 UpgradeType(p.name, p.type);
@@ -737,17 +671,25 @@ namespace VF.Utils.Controller {
                 }
             }
 
+            return paramTypes;
+        }
+
+        internal static AnimatorControllerParameterType CombineParameterTypes(
+            AnimatorControllerParameterType a, AnimatorControllerParameterType b) {
+            if (a == AnimatorControllerParameterType.Float || b == AnimatorControllerParameterType.Float) return AnimatorControllerParameterType.Float;
+            if (a == AnimatorControllerParameterType.Int || b == AnimatorControllerParameterType.Int) return AnimatorControllerParameterType.Int;
+            if (a == AnimatorControllerParameterType.Bool || b == AnimatorControllerParameterType.Bool) return AnimatorControllerParameterType.Bool;
+            return AnimatorControllerParameterType.Trigger;
+        }
+
+        public void UpgradeWrongParamTypes() {
+            var paramTypes = GetRequiredParameterTypes();
             // Change the param types
-            parameters = parameters.Select(p => {
+            foreach (var p in parameters) {
                 if (paramTypes.TryGetValue(p.name, out var type)) {
-                    var oldDefault = p.GetDefaultValueAsFloat();
-                    p.type = type;
-                    p.defaultBool = oldDefault > 0;
-                    p.defaultInt = (int)Math.Round(oldDefault);
-                    p.defaultFloat = oldDefault;
+                    p.UpgradeType(type);
                 }
-                return p;
-            }).ToArray();
+            }
 
             // Fix all of the usages
             foreach (var layer in GetLayers()) {

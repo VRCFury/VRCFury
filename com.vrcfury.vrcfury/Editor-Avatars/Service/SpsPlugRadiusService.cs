@@ -23,7 +23,7 @@ namespace VF.Service {
             tree.Add(MakeSampler(bake, proximity));
         }
 
-        internal static VFMotion MakeSampler(VRCFuryHapticPlugEditor.BakeResult bake, VFAFloat proximity) {
+        internal static VFMotion MakeSampler(VRCFuryHapticPlugEditor.BakeResult bake, VFAParam proximity) {
             var sampler = VFBlendTree1D.Create("Radius at socket", proximity);
             // Keep the sender transform invertible even for pointed tips or empty slices.
             // Cap the floor at length so it cannot enlarge the physical contact sphere.

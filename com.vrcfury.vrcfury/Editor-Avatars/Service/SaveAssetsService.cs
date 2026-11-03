@@ -31,12 +31,9 @@ namespace VF.Service {
 
         public SaveAssetsSession Session => session.Value;
 
-        public void Run(IEnumerable<ControllerManager> controllersToSave) {
+        public void Run(IEnumerable<VFAvatarController> controllersToSave) {
             var controllersToSaveArray = controllersToSave.ToArray();
             foreach (var controller in controllersToSaveArray) {
-                controller.parameters = controller.parameters
-                    .OrderBy(p => p.name)
-                    .ToArray();
                 controller.name = $"VRCFury {controller.GetType()}";
                 var saved = controller.Save(avatarObject, Session);
                 VRCAvatarUtils.SetAvatarController(avatar, controller.GetType(), saved);

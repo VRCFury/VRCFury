@@ -11,14 +11,14 @@ namespace VF.Service {
         [VFAutowired] private readonly DbtLayerService trees;
         private VFBlendTreeDirect selectorTree;
 
-        public VFAFloat GetParameter(VRCContactReceiver receiver, string suggestedName) {
+        public VFAParam GetParameter(VRCContactReceiver receiver, string suggestedName) {
             var fx = controllers.GetFx();
-            if (string.IsNullOrEmpty(receiver.parameter)) receiver.parameter = fx.NewFloat(suggestedName);
+            if (string.IsNullOrEmpty(receiver.parameter)) receiver.parameter = fx.CreateUniqueFloat(suggestedName);
             // Newly requested advanced flags may add outputs to an existing receiver.
             foreach (var name in ContactReceiverUtils.GetParameterNames(receiver)) {
-                if (fx.GetParam(name) == null) fx.NewFloat(name, usePrefix: false);
+                fx.GetOrCreateFloat(name);
             }
-            return new VFAFloat(receiver.parameter, 0);
+            return fx.GetOrCreateFloat(receiver.parameter);
         }
 
         public void AddSelector(VFMotion selector) {

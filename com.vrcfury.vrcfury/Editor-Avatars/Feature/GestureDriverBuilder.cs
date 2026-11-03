@@ -11,18 +11,19 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Feature {
     
     [FeatureTitle("Gestures")]
     internal class GestureDriverBuilder : FeatureBuilder<GestureDriver> {
         private int i = 0;
-        private readonly Dictionary<string, VFABool> lockMenuItems = new Dictionary<string, VFABool>();
+        private readonly Dictionary<string, VFAParam> lockMenuItems = new Dictionary<string, VFAParam>();
         private readonly Dictionary<string, VFCondition> exclusiveConditions = new Dictionary<string, VFCondition>();
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly ControllersService controllers;
-        private ControllerManager fx => controllers.GetFx();
+        private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly GlobalsService globals;
@@ -49,10 +50,11 @@ namespace VF.Feature {
             var off = layer.NewState("Off");
             var on = layer.NewState("On");
 
-            VFABool lockMenuParam = null;
+            VFAParam lockMenuParam = null;
             if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
                 if (!lockMenuItems.TryGetValue(gesture.lockMenuItem, out lockMenuParam)) {
-                    lockMenuParam = fx.NewBool(uid + "_lock", synced: true);
+                    lockMenuParam = fx.CreateUniqueBool(uid + "_lock");
+                    lockMenuParam.MakeExpressionBool();
                     menu.NewMenuToggle(gesture.lockMenuItem, lockMenuParam);
                     lockMenuItems[gesture.lockMenuItem] = lockMenuParam;
                 }
@@ -60,7 +62,7 @@ namespace VF.Feature {
 
             var directTree = new Lazy<VFBlendTreeDirect>(() => dbtLayerService.Create());
             var blendtreeMath = new Lazy<BlendtreeMath>(() => dbtLayerService.GetMath(directTree.Value));
-            void MakeHand(bool right, ref VFCondition aggCondition, ref VFAFloat aggWeight) {
+            void MakeHand(bool right, ref VFCondition aggCondition, ref VFAParam aggWeight) {
                 if (hand == GestureDriver.Hand.LEFT && right) return;
                 if (hand == GestureDriver.Hand.RIGHT && !right) return;
                 var sign = (right && hand == GestureDriver.Hand.COMBO) ? gesture.comboSign : gesture.sign;
@@ -78,7 +80,7 @@ namespace VF.Feature {
             }
 
             VFCondition onCondition = null;
-            VFAFloat weight = null;
+            VFAParam weight = null;
             MakeHand(false, ref onCondition, ref weight);
             MakeHand(true, ref onCondition, ref weight);
 
@@ -106,7 +108,7 @@ namespace VF.Feature {
             if (gesture.enableExclusiveTag) {
                 var tags = ToggleBuilder.SeparateList(gesture.exclusiveTag);
                 if (tags.Any()) {
-                    var myOn = fx.NewBool(name);
+                    var myOn = fx.CreateUniqueBool(name);
                     on.Drives(myOn, true);
                     off.Drives(myOn, false);
                     foreach (var tag in tags) {
@@ -125,17 +127,17 @@ namespace VF.Feature {
             on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not()).Interruptable();
         }
 
-        private VFAFloat MakeWeightLayer(VFBlendTreeDirect directTree, VFAFloat input, VFCondition enabled) {
-            var layer = fx.NewLayer($"{input.Name()} Target");
+        private VFAParam MakeWeightLayer(VFBlendTreeDirect directTree, VFAParam input, VFCondition enabled) {
+            var layer = fx.NewLayer($"{input.name} Target");
 
-            var target = fx.MakeAap($"{input.Name()}/Target", def: input.GetDefault());
+            var target = fx.CreateUniqueFloat($"{input.name}/Target", def: input.GetDefault());
 
             var off = layer.NewState("Off").WithAnimation(target.MakeSetter(0));
             var on = layer.NewState("On").WithAnimation(target.MakeCopier(input));
             off.TransitionsTo(on).When(enabled);
             on.TransitionsTo(off).When(enabled.Not());
 
-            return smoothing.Smooth(directTree, $"{input.Name()}/Smoothed", target, 0.15f);
+            return smoothing.Smooth(directTree, $"{input.name}/Smoothed", target, 0.15f);
         }
 
         [FeatureEditor]
