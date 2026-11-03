@@ -78,7 +78,7 @@ namespace VF.Feature {
                     if (model.ignoreSaved) {
                         param.saved = false;
                     }
-                    expressionParams.Merge(param);
+                    expressionParams.AddOrMerge(param);
                 }
                 expressionParams.WorkLog(
                     $"Merged in {copy.Length} expression parameters from {prms.GetPathAndName()}"

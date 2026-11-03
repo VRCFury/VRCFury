@@ -16,7 +16,7 @@ namespace VF.Service {
             if (!VRCExpressionParameterExtensions.SupportsUnsynced()) return;
             foreach (var p in expressionParams) {
                 if (FullControllerBuilder.VRChatGlobalParams.Contains(p.name)) {
-                    p.SetNetworkSynced(false);
+                    p.Unsynced();
                 }
             }
         }

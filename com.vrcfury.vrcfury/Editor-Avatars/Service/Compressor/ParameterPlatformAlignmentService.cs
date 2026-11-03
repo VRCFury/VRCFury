@@ -165,7 +165,7 @@ namespace VF.Service.Compressor {
                 return source.originalParamName + " from " + source.objectPath;
             }).ToArray();
             foreach (var p in mobileExtras) {
-                p.SetNetworkSynced(false);
+                p.Unsynced();
             }
             reordered.AddRange(mobileExtras);
             if (warnAboutExtras.Any()) {

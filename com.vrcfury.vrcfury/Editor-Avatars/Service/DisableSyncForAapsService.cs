@@ -31,7 +31,7 @@ namespace VF.Service {
             foreach (var param in expressionParams) {
                 if (vrcfDrivenAaps.Contains(param.name)) {
                     Debug.LogWarning($"VRCFury is disabling network sync for {param.name} because it is driven by an AAP");
-                    param.SetNetworkSynced(false);
+                    param.Unsynced();
                 }
             }
         }

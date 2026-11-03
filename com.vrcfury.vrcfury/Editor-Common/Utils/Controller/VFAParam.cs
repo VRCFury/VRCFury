@@ -48,7 +48,7 @@ namespace VF.Utils.Controller {
         public override string ToString() => name;
 
         public VFAParam CopyTo(VFController controller) {
-            return controller.GetOrCreateParam(name, type, () => Clone(controller));
+            return controller.AddOrMergeParam(Clone(controller));
         }
 
         internal void UpgradeType(AnimatorControllerParameterType type) {

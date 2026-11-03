@@ -33,6 +33,11 @@
     "versionDefines": [
         {
             "name": "com.vrchat.avatars",
+            "expression": "3.1.12",
+            "define": "VRCSDK_HAS_NETWORK_SYNCED"
+        },
+        {
+            "name": "com.vrchat.avatars",
             "expression": "3.10.6",
             "define": "VRCSDK_HAS_PARAMETER_INTERPOLATION"
         },

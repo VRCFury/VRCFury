@@ -14,7 +14,6 @@ using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
-using VRC.SDK3.Avatars.ScriptableObjects;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -101,10 +100,12 @@ namespace VF.Feature {
             // Override the default even if the parameter already existed in the controller.
             param.SetDefault(defaultValue);
             if (synced || isInt) {
-                var expressionParam = param.MakeExpression(model.slider ? VRCExpressionParameters.ValueType.Float
-                    : isInt ? VRCExpressionParameters.ValueType.Int : VRCExpressionParameters.ValueType.Bool,
-                    saved: model.saved);
+                var expressionParam = ExpressionParam.Create(param.name).Default(param.GetDefault()).Saved(model.saved);
+                if (model.slider) expressionParam.Float();
+                else if (isInt) expressionParam.Int();
+                else expressionParam.Bool();
                 if (isInt) expressionParam.DisableInterpolation();
+                expressionParams.AddOrMerge(expressionParam);
             }
             VFCondition onCase;
             VFAParam weight = null;

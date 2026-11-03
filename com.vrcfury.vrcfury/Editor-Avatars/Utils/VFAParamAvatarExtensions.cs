@@ -9,23 +9,8 @@ namespace VF.Utils {
             if (!(parameter.Controller is VFAvatarController controller) || controller.expressionParams == null) {
                 throw new InvalidOperationException("Expression parameters require a handle from an avatar controller.");
             }
-            var expression = controller.expressionParams.GetOrCreate(parameter.name, p => {
-                p.valueType = type;
-                p.defaultValue = parameter.GetDefault();
-                p.SetNetworkSynced(synced);
-                p.saved = saved;
-            });
-            if (expression.valueType != type) {
-                throw new InvalidOperationException(
-                    $"VRCF tried to create expression parameter {parameter.name} with type {type},"
-                    + $" but parameter already exists with type {expression.valueType}");
-            }
-            if (!expression.HasStandardNetworkEncoding()) {
-                throw new InvalidOperationException(
-                    $"VRCF tried to create expression parameter {parameter.name}, but its network bit width or signedness"
-                    + " conflicts with the requested standard encoding");
-            }
-            return expression;
+            return controller.expressionParams.AddOrMerge(ExpressionParam.Create(parameter.name)
+                .Type(type).Default(parameter.GetDefault()).Saved(saved).Synced(synced));
         }
 
         public static VRCExpressionParameters.Parameter MakeExpressionBool(this VFAParam parameter, bool synced = true, bool saved = false) {

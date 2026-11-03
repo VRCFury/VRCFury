@@ -3,7 +3,6 @@ using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
-using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Service {
     [VFService]
@@ -19,15 +18,7 @@ namespace VF.Service {
             }
 
             var parts = VrcfDebugLine.GetParts(avatarObject, fixWriteDefaultsService.IsStillBroken());
-            var newParams = parts.Select(part => {
-                var param = new VRCExpressionParameters.Parameter();
-                param.name = "VF " + part;
-                param.valueType = VRCExpressionParameters.ValueType.Bool;
-                param.saved = false;
-                param.defaultValue = 0;
-                param.SetNetworkSynced(false);
-                return param;
-            });
+            var newParams = parts.Select(part => ExpressionParam.Create("VF " + part).Bool().Unsynced());
 
             paramz.SetParameters(newParams.Concat(paramz));
         }

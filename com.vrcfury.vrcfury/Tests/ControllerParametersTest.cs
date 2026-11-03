@@ -78,7 +78,7 @@ namespace VF.Tests {
             });
             controller.TryGetParam("Shared", out var original);
             var defaultValue = original.GetDefault();
-            var reused = RequestParameter(controller, "Shared", requested, def: 100);
+            var reused = RequestParameter(controller, "Shared", requested, def: requested == AnimatorControllerParameterType.Bool ? 0 : 100);
             Assert.That(reused.type, Is.EqualTo(expected));
             Assert.That(original.type, Is.EqualTo(expected));
             Assert.That(reused.GetDefault(), Is.EqualTo(defaultValue));
@@ -128,13 +128,22 @@ namespace VF.Tests {
         [TestCase(AnimatorControllerParameterType.Float, AnimatorControllerParameterType.Bool)]
         public void CopyMergesTypesWithoutReplacingTheExistingDefault(
             AnimatorControllerParameterType sourceType, AnimatorControllerParameterType destinationType) {
-            var source = RequestParameter(VFController.Create(), "Shared", sourceType, 1);
+            var sourceController = VFController.Create();
+            var source = RequestParameter(sourceController, "Shared", sourceType, 1);
             var destination = VFController.Create();
             RequestParameter(destination, "Shared", destinationType);
             var copy = source.CopyTo(destination);
             Assert.That(FindDefinition(destination, "Shared").type, Is.EqualTo(AnimatorControllerParameterType.Float));
             Assert.That(copy.GetDefault(), Is.Zero);
             Assert.That(destination.parameters.Length, Is.EqualTo(1));
+
+            var merged = VFController.Create();
+            var existing = RequestParameter(merged, "Shared", destinationType);
+            merged.TakeOwnershipOf(sourceController);
+            Assert.That(merged.parameters.Single(), Is.SameAs(existing));
+            Assert.That(existing.type, Is.EqualTo(AnimatorControllerParameterType.Float));
+            Assert.That(existing.GetDefault(), Is.Zero);
+            Assert.That(sourceController.parameters, Is.Empty);
         }
 
         [TestCase(false)]
@@ -312,7 +321,7 @@ namespace VF.Tests {
             var parameter = new AnimatorControllerParameter { name = name };
             configure(parameter);
             var model = VFAParam.Load(parameter);
-            return controller.GetOrCreateParam(name, model.type, () => model);
+            return controller.AddOrMergeParam(model);
         }
 
         [TestCase(AnimatorControllerParameterType.Bool, 1)]
@@ -328,7 +337,7 @@ namespace VF.Tests {
                 p.defaultInt = -3;
                 p.defaultFloat = -0.75f;
             });
-            Assert.That(controller.GetOrCreateBool("Shared", 100).GetDefault(), Is.EqualTo(expected));
+            Assert.That(controller.GetOrCreateBool("Shared", false).GetDefault(), Is.EqualTo(expected));
             Assert.That(controller.GetOrCreateBool("Shared").GetDefault(), Is.EqualTo(expected));
             Assert.That(raw.type, Is.EqualTo(type));
             Assert.That(controller.parameters.Length, Is.EqualTo(1));

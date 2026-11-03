@@ -25,19 +25,13 @@ namespace VF.Service.Compressor {
             var (numberBatches, boolBatches) = decision.GetBatches();
 
             var syncPointer = controller.CreateUniqueInt("SyncPointer");
-            expressionParams.GetOrCreate(syncPointer, p => {
-                p.valueType = VRCExpressionParameters.ValueType.Int;
-            }).DisableInterpolation();
+            expressionParams.AddOrMerge(ExpressionParam.Create(syncPointer.name).Int().DisableInterpolation());
             var syncInts = Enumerable.Range(0, decision.numberSlots)
-                .Select(i => expressionParams.GetOrCreate(uniqueParams.GetUniqueName("SyncDataNum" + i), p => {
-                    p.valueType = VRCExpressionParameters.ValueType.Int;
-                    p.DisableInterpolation();
-                }))
+                .Select(i => expressionParams.AddOrMerge(ExpressionParam.Create(uniqueParams.GetUniqueName("SyncDataNum" + i))
+                    .Int().DisableInterpolation()))
                 .ToList();
             var syncBools = Enumerable.Range(0, decision.boolSlots)
-                .Select(i => expressionParams.GetOrCreate(uniqueParams.GetUniqueName("SyncDataBool" + i), p => {
-                    p.valueType = VRCExpressionParameters.ValueType.Bool;
-                }))
+                .Select(i => expressionParams.AddOrMerge(ExpressionParam.Create(uniqueParams.GetUniqueName("SyncDataBool" + i)).Bool()))
                 .ToList();
 
             var layer = controller.NewLayer("Legacy Parameter Compressor");

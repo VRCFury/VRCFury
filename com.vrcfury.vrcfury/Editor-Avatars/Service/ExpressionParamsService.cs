@@ -17,16 +17,7 @@ namespace VF.Service {
         private VRCExpressionParameters _asset;
         private VRCExpressionParameters asset => _asset != null ? _asset : (_asset = MakeParams());
 
-        public VRCExpressionParameters.Parameter GetOrCreate(string name, Action<VRCExpressionParameters.Parameter> configure) {
-            var existing = asset.FindParameter(name);
-            if (existing != null) return existing;
-            var parameter = new VRCExpressionParameters.Parameter { name = name, saved = false };
-            configure(parameter);
-            Merge(parameter);
-            return parameter;
-        }
-
-        public void Merge(VRCExpressionParameters.Parameter parameter) {
+        public VRCExpressionParameters.Parameter AddOrMerge(VRCExpressionParameters.Parameter parameter) {
             var existing = asset.FindParameter(parameter.name);
             if (existing != null) {
                 if (parameter.valueType != existing.valueType) {
@@ -40,9 +31,10 @@ namespace VF.Service {
                 if (!parameter.HasSameInterpolation(existing)) {
                     throw new Exception($"VRCF tried to merge expression parameter {parameter.name}, but its interpolation duration conflicts with the existing parameter");
                 }
-                return;
+                return existing;
             }
             SetParameters(asset.parameters.Append(parameter));
+            return parameter;
         }
 
         public void SetParameters(IEnumerable<VRCExpressionParameters.Parameter> parameters) {

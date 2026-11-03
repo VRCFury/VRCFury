@@ -26,6 +26,30 @@ namespace VF.Tests {
         private static ExpressionParamsService GetExpressionParams(GameObject root) =>
             VRCFuryInjectorBuilder.GetInjector(root.AddComponent<VRCAvatarDescriptor>()).GetService<ExpressionParamsService>();
 
+        [TestCase(VRCExpressionParameters.ValueType.Bool)]
+        [TestCase(VRCExpressionParameters.ValueType.Int)]
+        [TestCase(VRCExpressionParameters.ValueType.Float)]
+        public void FluentExpressionDeclarationsDefaultToUnsavedAndConfigureTheSameInstance(VRCExpressionParameters.ValueType type) {
+            var parameter = ExpressionParam.Create("Example");
+            Assert.That(parameter.name, Is.EqualTo("Example"));
+            Assert.That(parameter.saved, Is.False);
+            Assert.That(parameter.IsNetworkSynced(), Is.True);
+            Assert.That(parameter.defaultValue, Is.Zero);
+            var typed = type == VRCExpressionParameters.ValueType.Bool ? parameter.Bool()
+                : type == VRCExpressionParameters.ValueType.Int ? parameter.Int() : parameter.Float();
+            Assert.That(typed, Is.SameAs(parameter));
+            Assert.That(parameter.valueType, Is.EqualTo(type));
+            Assert.That(parameter.Default(true).Saved().Unsynced(), Is.SameAs(parameter));
+            Assert.That(parameter.defaultValue, Is.EqualTo(1));
+            Assert.That(parameter.saved, Is.True);
+            Assert.That(parameter.IsNetworkSynced(), Is.False);
+            Assert.That(parameter.Saved(false).Synced(), Is.SameAs(parameter));
+            Assert.That(parameter.saved, Is.False);
+            Assert.That(parameter.IsNetworkSynced(), Is.True);
+            Assert.That(parameter.defaultValue, Is.EqualTo(1));
+            Assert.That(parameter.valueType, Is.EqualTo(type));
+        }
+
         [TestCase(VRCExpressionParameters.ValueType.Bool, false)]
         [TestCase(VRCExpressionParameters.ValueType.Bool, true)]
         [TestCase(VRCExpressionParameters.ValueType.Int, false)]
@@ -55,7 +79,13 @@ namespace VF.Tests {
                 var parameter = type == VRCExpressionParameters.ValueType.Float ? fx.GetOrCreateFloat("Shared", oldDefault)
                     : type == VRCExpressionParameters.ValueType.Int ? fx.GetOrCreateInt("Shared", oldDefault)
                     : fx.GetOrCreateBool("Shared", oldDefault);
-                if (expressionAlreadyExists) parameter.MakeExpression(type);
+                if (expressionAlreadyExists) {
+                    var expression = new VRCExpressionParameters.Parameter {
+                        name = parameter.name, valueType = type, defaultValue = oldDefault, saved = false
+                    };
+                    if (type == VRCExpressionParameters.ValueType.Int) expression.DisableInterpolation();
+                    injector.GetService<ExpressionParamsService>().AddOrMerge(expression);
+                }
                 var toggle = injector.CreateAndFillObject<VF.Feature.ToggleBuilder>();
                 toggle.featureBaseObject = root;
                 toggle.model = new VF.Model.Feature.Toggle {
@@ -120,13 +150,13 @@ namespace VF.Tests {
                     flippedRepresentation = flipped, saved = true, defaultValue = 1
                 };
                 original.SetNetworkSynced(false);
-                expressions.Merge(original);
+                expressions.AddOrMerge(original);
                 var before = JsonUtility.ToJson(original);
                 var controller = CreateController(expressions);
                 var parameter = type == VRCExpressionParameters.ValueType.Int
                     ? controller.GetOrCreateInt("Shared") : controller.GetOrCreateFloat("Shared");
 
-                var error = Assert.Throws<InvalidOperationException>(() => parameter.MakeExpression(type));
+                var error = Assert.Throws<Exception>(() => parameter.MakeExpression(type));
 
                 Assert.That(error.Message, Does.Contain("bit width or signedness"));
                 Assert.That(JsonUtility.ToJson(expressions.Single()), Is.EqualTo(before));
@@ -268,7 +298,7 @@ namespace VF.Tests {
                 var expressions = VRCFuryInjectorBuilder.GetInjector(avatar).GetService<ExpressionParamsService>();
                 var parameter = CreateController(expressions).GetOrCreateBool("Shared");
                 var existing = parameter.MakeExpression(existingType, saved: true);
-                var exception = Assert.Throws<InvalidOperationException>(() => parameter.MakeExpression(requestedType, saved: false));
+                var exception = Assert.Throws<Exception>(() => parameter.MakeExpression(requestedType, saved: false));
                 Assert.That(exception.Message, Does.Contain("Shared").And.Contain(existingType.ToString()).And.Contain(requestedType.ToString()));
                 Assert.That(expressions.ToArray(), Has.Length.EqualTo(1));
                 Assert.That(existing.valueType, Is.EqualTo(existingType));
@@ -303,7 +333,7 @@ namespace VF.Tests {
                 input.MakeExpressionFloat(synced: false, saved: true);
                 Assert.That(second.expressionParameters, Is.Null);
                 Assert.That(fx.TryGetParam(input.name, out var found), Is.True);
-                found.MakeExpression(VRCExpressionParameters.ValueType.Float, saved: false);
+                found.MakeExpression(VRCExpressionParameters.ValueType.Float, synced: false, saved: true);
                 var expression = first.expressionParameters.FindParameter(input.name);
                 Assert.That(expression.defaultValue, Is.EqualTo(0.75f));
                 Assert.That(expression.saved, Is.True);
@@ -311,10 +341,10 @@ namespace VF.Tests {
 
                 var clone = fx.Clone();
                 clone.RewriteParameters(name => "Clone/" + name);
-                clone.GetOrCreateBool("Clone/" + input.name).MakeExpressionFloat();
+                clone.GetOrCreateBool("Clone/" + input.name).MakeExpressionFloat(synced: false, saved: true);
                 Assert.That(first.expressionParameters.FindParameter("Clone/" + input.name).defaultValue, Is.EqualTo(0.75f));
                 otherFx.TakeOwnershipOf(clone);
-                otherFx.GetOrCreateBool("Clone/" + input.name).MakeExpressionFloat();
+                otherFx.GetOrCreateBool("Clone/" + input.name).MakeExpressionFloat(synced: false, saved: true);
                 Assert.That(second.expressionParameters.FindParameter("Clone/" + input.name).defaultValue, Is.EqualTo(0.75f));
                 otherFx.GetOrCreateBool(input.name, 1).MakeExpressionBool();
                 Assert.That(second.expressionParameters.FindParameter(input.name).valueType, Is.EqualTo(VRCExpressionParameters.ValueType.Bool));
@@ -494,14 +524,13 @@ namespace VF.Tests {
                 Assert.That(avatar.expressionParameters, Is.SameAs(imported));
                 Assert.That(Resources.FindObjectsOfTypeAll<VRCExpressionParameters>(), Has.Length.EqualTo(count));
 
-                var created = expressions.GetOrCreate("New", p => {
-                    Assert.That(p.saved, Is.False, "The initializer sees the service's default");
-                    p.valueType = VRCExpressionParameters.ValueType.Bool;
+                var created = expressions.AddOrMerge(new VRCExpressionParameters.Parameter {
+                    name = "New", saved = false, valueType = VRCExpressionParameters.ValueType.Bool
                 });
                 Assert.That(created.saved, Is.False);
                 Assert.That(expressions.Contains("New"), Is.True);
-                Assert.That(expressions.GetOrCreate("Saved", p => p.saved = true).saved, Is.True);
-                Assert.That(expressions.GetOrCreate("Imported", _ => throw new Exception("Must preserve imported settings")).saved, Is.True);
+                Assert.That(expressions.AddOrMerge(new VRCExpressionParameters.Parameter { name = "Saved", saved = true }).saved, Is.True);
+                Assert.That(expressions.AddOrMerge(imported.parameters[0].Clone()).saved, Is.True);
                 Assert.That(imported.parameters, Has.Length.EqualTo(1));
             } finally {
                 Object.DestroyImmediate(root);
@@ -629,11 +658,9 @@ namespace VF.Tests {
                 var parameter = fx.GetOrCreateBool(name, 0.25f);
                 Assert.That(avatar.expressionParameters, Is.Null, "Animator registration must not create expression entries");
                 var expressions = injector.GetService<ExpressionParamsService>();
-                var expression = expressions.GetOrCreate(parameter, p => {
-                    Assert.That(p.name, Is.EqualTo(name));
-                    p.valueType = VRCExpressionParameters.ValueType.Float;
-                    p.defaultValue = parameter.GetDefault();
-                    p.saved = true;
+                var expression = expressions.AddOrMerge(new VRCExpressionParameters.Parameter {
+                    name = parameter.name, valueType = VRCExpressionParameters.ValueType.Float,
+                    defaultValue = parameter.GetDefault(), saved = true
                 });
                 Assert.That(expression, Is.SameAs(avatar.expressionParameters.FindParameter(name)));
                 Assert.That(expressions.ToArray(), Has.Length.EqualTo(1));
@@ -750,7 +777,7 @@ namespace VF.Tests {
                 var controllers = injector.GetService<ControllersService>();
                 controllers.ClearCache(applyBaseMask: false);
                 var expressionParams = injector.GetService<ExpressionParamsService>();
-                expressionParams.GetOrCreate("VF7_Test", p => p.valueType = VRCExpressionParameters.ValueType.Bool);
+                expressionParams.AddOrMerge(new VRCExpressionParameters.Parameter { name = "VF7_Test", valueType = VRCExpressionParameters.ValueType.Bool, saved = false });
                 var fx = controllers.GetFx();
                 Assert.That(fx.GetOrCreateBool("VF7_Test_2").name, Is.EqualTo("VF7_Test_2"));
                 Assert.That(controllers.GetAction().GetOrCreateBool("VF7_Test_3").name, Is.EqualTo("VF7_Test_3"));
@@ -766,8 +793,29 @@ namespace VF.Tests {
             }
         }
 
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void ExpressionMergeKeepsTheFirstDefaultSavedAndSyncedValues(bool changeSaved, bool changeSync) {
+            var root = new GameObject("Expression merge settings");
+            try {
+                var service = GetExpressionParams(root);
+                var original = service.AddOrMerge(ExpressionParam.Create("Shared").Float().Default(0.75f).Saved());
+                var input = original.Clone();
+                input.defaultValue = 0;
+                if (changeSaved) input.saved = false;
+                if (changeSync) input.Unsynced();
+                var before = JsonUtility.ToJson(original);
+                Assert.That(service.AddOrMerge(input), Is.SameAs(original));
+                Assert.That(JsonUtility.ToJson(original), Is.EqualTo(before));
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+
         [Test]
-        public void GetOrCreateOnlyInitializesMissingParameter() {
+        public void MergeKeepsTheFirstDefaultAndReturnsTheOwnedParameter() {
             var root = new GameObject("Parameter creation");
             var imported = ScriptableObject.CreateInstance<VRCExpressionParameters>();
             try {
@@ -779,19 +827,17 @@ namespace VF.Tests {
                 avatar.customExpressions = true;
                 avatar.expressionParameters = imported;
                 var service = VRCFuryInjectorBuilder.GetInjector(avatar).GetService<ExpressionParamsService>();
-                var existing = service.GetOrCreate("Imported", _ => throw new Exception("Initializer should not run"));
+                var input = imported.parameters[0].Clone();
+                input.defaultValue = 0;
+                var existing = service.AddOrMerge(input);
                 Assert.That(existing.saved, Is.True);
                 Assert.That(existing.defaultValue, Is.EqualTo(0.75f));
                 Assert.That(existing, Is.Not.SameAs(imported.parameters[0]));
-                var calls = 0;
-                var created = service.GetOrCreate("Created", parameter => {
-                    calls++;
-                    Assert.That(parameter.name, Is.EqualTo("Created"));
-                    parameter.valueType = VRCExpressionParameters.ValueType.Int;
+                var created = service.AddOrMerge(new VRCExpressionParameters.Parameter {
+                    name = "Created", valueType = VRCExpressionParameters.ValueType.Int, saved = false
                 });
                 Assert.That(created.name, Is.EqualTo("Created"));
-                Assert.That(service.GetOrCreate("Created", _ => throw new Exception("Initializer should not run")), Is.SameAs(created));
-                Assert.That(calls, Is.EqualTo(1));
+                Assert.That(service.AddOrMerge(created.Clone()), Is.SameAs(created));
                 Assert.That(service.ToArray(), Has.Length.EqualTo(2));
                 Assert.That(imported.parameters, Has.Length.EqualTo(1));
             } finally {
@@ -850,14 +896,10 @@ namespace VF.Tests {
                 var sliderAnimator = controller.GetOrCreateBool("Slider");
                 var boolAnimator = controller.GetOrCreateBool("Toggle");
                 Assert.That(paramz, Is.Empty, "Animator parameters must not create expression entries");
-                expressionParams.GetOrCreate(sliderAnimator, p => {
-                    p.valueType = VRCExpressionParameters.ValueType.Float;
-                });
+                sliderAnimator.MakeExpressionFloat();
                 var modeAnimator = controller.GetOrCreateBool("Mode");
                 Assert.That(paramz.Contains(modeAnimator.name), Is.False, "Animator parameters must not create expression entries");
-                expressionParams.GetOrCreate(modeAnimator, p => {
-                    p.valueType = VRCExpressionParameters.ValueType.Int;
-                });
+                modeAnimator.MakeExpressionInt();
                 var originals = paramz.ToArray();
                 var decision = new OptimizationDecision { numberSlots = 1, compress = originals };
                 if (legacy) injector.GetService<ParameterCompressorLegacyLayerService>().BuildLayer(decision, controller);
@@ -895,16 +937,16 @@ namespace VF.Tests {
                 authored.useCustomLerpDuration = true;
                 authored.customLerpDuration = 0.5f;
                 Assert.That(original.IsSameAs(authored), Is.False);
-                Assert.That(Assert.Throws<Exception>(() => paramz.Merge(authored)).Message,
+                Assert.That(Assert.Throws<Exception>(() => paramz.AddOrMerge(authored)).Message,
                     Does.Contain("Test").And.Contain("interpolation"));
                 Assert.That(original.useCustomLerpDuration, Is.False);
                 Assert.That(original.customLerpDuration, Is.Zero);
                 original.useCustomLerpDuration = true;
                 original.customLerpDuration = 0.5f;
-                paramz.Merge(authored);
+                paramz.AddOrMerge(authored);
                 Assert.That(original.IsSameAs(authored), Is.True);
                 Assert.That(authored.Clone().IsSameAs(authored), Is.True);
-                Assert.That(Assert.Throws<Exception>(() => paramz.Merge(
+                Assert.That(Assert.Throws<Exception>(() => paramz.AddOrMerge(
                     new VRCExpressionParameters.Parameter { name = "Test", valueType = type })).Message,
                     Does.Contain("Test").And.Contain("interpolation"));
                 Assert.That(original.useCustomLerpDuration, Is.True);
@@ -912,14 +954,14 @@ namespace VF.Tests {
                 var conflict = authored.Clone();
                 conflict.DisableInterpolation();
                 Assert.That(conflict.IsSameAs(authored), Is.False);
-                Assert.That(Assert.Throws<Exception>(() => paramz.Merge(conflict)).Message,
+                Assert.That(Assert.Throws<Exception>(() => paramz.AddOrMerge(conflict)).Message,
                     Does.Contain("Test").And.Contain("interpolation"));
                 Assert.That(original.customLerpDuration, Is.EqualTo(0.5f));
                 original.useCustomLerpDuration = false;
                 authored.useCustomLerpDuration = false;
                 original.customLerpDuration = 5;
                 Assert.That(original.IsSameAs(authored), Is.True, "Inactive durations do not affect behavior");
-                paramz.Merge(authored);
+                paramz.AddOrMerge(authored);
                 Assert.That(original.customLerpDuration, Is.EqualTo(5));
             } finally {
                 Object.DestroyImmediate(root);
@@ -983,9 +1025,9 @@ namespace VF.Tests {
                 var paramz = GetExpressionParams(root);
                 paramz.SetParameters(new[] { original });
                 if (same) {
-                    Assert.DoesNotThrow(() => paramz.Merge(added));
+                    Assert.DoesNotThrow(() => paramz.AddOrMerge(added));
                 } else {
-                    var error = Assert.Throws<Exception>(() => paramz.Merge(added));
+                    var error = Assert.Throws<Exception>(() => paramz.AddOrMerge(added));
                     Assert.That(error.Message, Does.Contain("Test").And.Contain("bit width or signedness"));
                 }
                 Assert.That(paramz.Single(), Is.SameAs(original));

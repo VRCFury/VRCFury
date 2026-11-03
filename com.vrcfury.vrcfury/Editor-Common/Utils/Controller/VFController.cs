@@ -233,8 +233,7 @@ namespace VF.Utils.Controller {
 
             // Merge Params. Ownership moves with each parameter; existing names keep their defaults.
             foreach (var parameter in other.parameters) {
-                if (TryGetParam(parameter.name, out _)) continue;
-                GetOrCreateParam(parameter.name, parameter.type, () => parameter);
+                AddOrMergeParam(parameter);
             }
 
             other.parametersByName.Clear();
@@ -252,21 +251,19 @@ namespace VF.Utils.Controller {
             GetOrCreateParam(name, AnimatorControllerParameterType.Bool, def);
 
         private VFAParam GetOrCreateParam(string name, AnimatorControllerParameterType type, FloatOrBool def = null) {
-            return GetOrCreateParam(name, type, () => {
-                var parameter = new VFAParam(name, type);
-                parameter.SetDefault(def);
-                return parameter;
-            });
+            var parameter = new VFAParam(name, type);
+            parameter.SetDefault(def);
+            return AddOrMergeParam(parameter);
         }
 
         // Existing defaults are preserved; requested types establish the minimum storage type.
-        internal VFAParam GetOrCreateParam(string name, AnimatorControllerParameterType type, Func<VFAParam> create) {
-            if (!TryGetParam(name, out var parameter)) {
-                parameter = create();
+        public VFAParam AddOrMergeParam(VFAParam input) {
+            if (!TryGetParam(input.name, out var parameter)) {
+                parameter = input;
                 parameter.Controller = this;
-                parametersByName.Add(name, parameter);
+                parametersByName.Add(parameter.name, parameter);
             }
-            parameter.UpgradeType(type);
+            parameter.UpgradeType(input.type);
             return parameter;
         }
 
@@ -290,7 +287,7 @@ namespace VF.Utils.Controller {
             var entries = parameters.ToArray();
             parametersByName.Clear();
             foreach (var parameter in entries) {
-                GetOrCreateParam(parameter.name, parameter.type, () => parameter);
+                AddOrMergeParam(parameter);
             }
         }
 

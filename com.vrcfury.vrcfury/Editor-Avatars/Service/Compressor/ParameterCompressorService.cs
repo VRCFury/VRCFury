@@ -70,7 +70,7 @@ namespace VF.Service.Compressor {
             
             var compressNames = decision.compress.Select(p => p.name).ToImmutableHashSet();
             foreach (var param in expressionParams.Where(p => compressNames.Contains(p.name))) {
-                param.SetNetworkSynced(false);
+                param.Unsynced();
             }
             var newCost = expressionParams.CalcTotalCost();
             expressionParams.WorkLog(

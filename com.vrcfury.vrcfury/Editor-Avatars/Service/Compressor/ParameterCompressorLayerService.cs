@@ -30,15 +30,11 @@ namespace VF.Service.Compressor {
                 })
                 .ToArray();
             var syncInts = Enumerable.Range(0, decision.numberSlots)
-                .Select(i => expressionParams.GetOrCreate(uniqueParams.GetUniqueName("SyncDataNum" + i), p => {
-                    p.valueType = VRCExpressionParameters.ValueType.Int;
-                    p.DisableInterpolation();
-                }))
+                .Select(i => expressionParams.AddOrMerge(ExpressionParam.Create(uniqueParams.GetUniqueName("SyncDataNum" + i))
+                    .Int().DisableInterpolation()))
                 .ToList();
             var syncBools = Enumerable.Range(0, decision.boolSlots)
-                .Select(i => expressionParams.GetOrCreate(uniqueParams.GetUniqueName("SyncDataBool" + i), p => {
-                    p.valueType = VRCExpressionParameters.ValueType.Bool;
-                }))
+                .Select(i => expressionParams.AddOrMerge(ExpressionParam.Create(uniqueParams.GetUniqueName("SyncDataBool" + i)).Bool()))
                 .ToList();
 
             var layer = controller.NewLayer("Parameter Compressor");
@@ -113,11 +109,8 @@ namespace VF.Service.Compressor {
                 void SyncParam(VRCExpressionParameters.Parameter original, VRCExpressionParameters.Parameter slot) {
                     VRCExpressionParameters.Parameter sendFrom;
                     VRCExpressionParameters.Parameter receiveTo;
-                    var latch = new Lazy<VRCExpressionParameters.Parameter>(() =>
-                        expressionParams.GetOrCreate(uniqueParams.GetUniqueName(original.name), p => {
-                            p.valueType = original.valueType;
-                            p.SetNetworkSynced(false);
-                        }));
+                    var latch = new Lazy<VRCExpressionParameters.Parameter>(() => expressionParams.AddOrMerge(
+                        ExpressionParam.Create(uniqueParams.GetUniqueName(original.name)).Type(original.valueType).Unsynced()));
                     if (latchNow) {
                         // No need to latch things in the first batch when sending
                         sendFrom = original;
