@@ -13,6 +13,7 @@ using VF.PlayMode;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Service {
     [VFService]
@@ -38,6 +39,14 @@ namespace VF.Service {
                 // defaults to override lower layers even though the lower layers should be higher priority.
                 var settings = GetBuildSettings();
                 shouldRecord = !settings.useWriteDefaults;
+            }
+
+            if (!shouldRecord) {
+                // Temporary workaround to fix most SPS issues caused by
+                // https://feedback.vrchat.com/bug-reports/p/animator-defaults-are-improperly-changed-only-on-remote-clients-when-native-ft-i
+                if (binding.type == typeof(VRCContactReceiver) && binding.propertyName == "m_Enabled") {
+                    shouldRecord = true;
+                }
             }
 
             FloatOrObject value = null;
