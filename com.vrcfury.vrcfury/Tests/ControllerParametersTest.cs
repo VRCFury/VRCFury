@@ -98,7 +98,7 @@ namespace VF.Tests {
             var layer = controller.NewLayer("Integer condition");
             layer.NewState("Match").TransitionsFromAny().When(parameter.IsEqualTo(1));
             controller.UpgradeWrongParamTypes();
-            controller.RemoveWrongParamTypes();
+            controller.RemoveWrongParamTypes(null);
             Assert.That(raw.type, Is.EqualTo(AnimatorControllerParameterType.Int));
             Assert.That(raw.Save().defaultInt, Is.EqualTo(defaultValue));
             var clone = controller.Clone();
@@ -147,7 +147,7 @@ namespace VF.Tests {
                 parameter = "Undeclared", mode = AnimatorConditionMode.If
             }));
             controller.UpgradeWrongParamTypes();
-            controller.RemoveWrongParamTypes();
+            controller.RemoveWrongParamTypes(null);
             var condition = layer.allTransitions.Single().conditions.Single();
             var fallback = FindDefinition(controller, condition.parameter);
             Assert.That(fallback.type, Is.EqualTo(AnimatorControllerParameterType.Float));
@@ -156,27 +156,66 @@ namespace VF.Tests {
             Assert.That(condition.threshold, Is.Zero);
             if (collision) Assert.That(FindDefinition(controller, "InvalidParam").GetDefault(), Is.EqualTo(1));
             var count = controller.parameters.Length;
-            controller.RemoveWrongParamTypes();
+            controller.RemoveWrongParamTypes(null);
             Assert.That(controller.parameters.Length, Is.EqualTo(count));
         }
 
-        [Test]
-        public void ThresholdRepairDoesNotMakeInvalidTreeWeightsUseItsTrueGuard() {
+        [TestCase(null)]
+        [TestCase("RawFirst")]
+        public void InvalidTreeWeightsUseTheSuppliedFirstFloatOrZero(string firstFloat) {
             var controller = VFController.Create();
             ImportParameter(controller, "Counter", p => p.type = AnimatorControllerParameterType.Int);
+            controller.GetOrCreateFloat("Other", 0.75f);
+            if (firstFloat != null) controller.GetOrCreateFloat(firstFloat, 0.25f);
             var tree = VFBlendTreeDirect.Create("Invalid integer weight");
             tree.Add("Counter", VFClip.Create());
+            tree.Add("Undeclared", VFClip.Create());
             var layer = controller.NewLayer("Invalid inputs");
             layer.NewState("Idle").WithAnimation(tree).TransitionsTo(layer.NewState("Target")).When(new VFCondition(new AnimatorCondition {
                 parameter = "Counter", mode = AnimatorConditionMode.Greater, threshold = 1.5f
             }));
-            controller.RemoveWrongParamTypes();
+            controller.RemoveWrongParamTypes(firstFloat);
             var guard = layer.allTransitions.Single().conditions.Single(c => c.parameter != "Counter");
             Assert.That(guard.mode, Is.EqualTo(AnimatorConditionMode.Greater));
             Assert.That(FindDefinition(controller, guard.parameter).GetDefault(), Is.EqualTo(1));
-            var weight = controller.GetTrees().Single().children.Single().directBlendParameter;
-            Assert.That(FindDefinition(controller, weight).GetDefault(), Is.Zero);
-            Assert.That(weight, Is.Not.EqualTo(guard.parameter));
+            var weights = controller.GetTrees().Single().children.Select(c => c.directBlendParameter).ToArray();
+            Assert.That(FindDefinition(controller, weights[0]).GetDefault(), Is.EqualTo(firstFloat == null ? 0 : 0.25f));
+            if (firstFloat != null) Assert.That(weights[0], Is.EqualTo(firstFloat));
+            Assert.That(FindDefinition(controller, weights[1]).GetDefault(), Is.Zero);
+            Assert.That(weights, Does.Not.Contain(guard.parameter));
+        }
+
+        [Test]
+        public void ImportedInvalidTreeWeightsUseTheFirstFloatFromTheRawController() {
+            var obj = new GameObject("Raw float order");
+            var source = new AnimatorController();
+            var clip = new AnimationClip();
+            var tree = new BlendTree {
+                blendType = BlendTreeType.Direct,
+                children = new[] { new ChildMotion { motion = clip, directBlendParameter = "Counter", timeScale = 1 } }
+            };
+            var stateMachine = new AnimatorStateMachine();
+            var state = stateMachine.AddState("Blend");
+            state.motion = tree;
+            try {
+                source.parameters = new[] {
+                    new AnimatorControllerParameter { name = "Counter", type = AnimatorControllerParameterType.Int },
+                    new AnimatorControllerParameter { name = "ZFirst", type = AnimatorControllerParameterType.Float, defaultFloat = 0.25f },
+                    new AnimatorControllerParameter { name = "ASecond", type = AnimatorControllerParameterType.Float, defaultFloat = 0.75f }
+                };
+                source.layers = new[] { new AnimatorControllerLayer { name = "Layer", stateMachine = stateMachine, defaultWeight = 1 } };
+                var controller = VFController.Load(source, new VFLoadContext { OwnerObject = obj, AnimatorObject = obj });
+                controller.SortParameters();
+                Assert.That(controller.parameters.First().name, Is.EqualTo("ASecond"));
+                Assert.That(controller.GetTrees().Single().children.Single().directBlendParameter, Is.EqualTo("ZFirst"));
+            } finally {
+                Object.DestroyImmediate(obj);
+                Object.DestroyImmediate(state);
+                Object.DestroyImmediate(stateMachine);
+                Object.DestroyImmediate(tree);
+                Object.DestroyImmediate(clip);
+                Object.DestroyImmediate(source);
+            }
         }
 
         [Test]
@@ -217,7 +256,7 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void ParameterLookupTracksRenamesRemovalsAndFirstEntryOrder() {
+        public void ParameterLookupTracksRenamesRemovalsAndDuplicateDefaults() {
             var controller = VFController.Create();
             var first = controller.GetOrCreateFloat("First", 0.25f);
             controller.GetOrCreateInt("Second", 3);
@@ -237,12 +276,12 @@ namespace VF.Tests {
             Assert.That(controller.TryGetParam("Renamed/Second", out _), Is.False);
             controller.GetOrCreateInt("Renamed/Second");
             Assert.That(controller.parameters.Select(p => p.name),
-                Is.EqualTo(new[] { "Renamed/First", "Renamed/Third", "Renamed/Second" }));
+                Is.EquivalentTo(new[] { "Renamed/First", "Renamed/Third", "Renamed/Second" }));
             controller.RewriteParameters(_ => "Shared");
             var shared = controller.GetOrCreateFloat("Shared");
             Assert.That(shared, Is.Not.SameAs(renamed));
             Assert.That(controller.parameters.Single(), Is.SameAs(shared));
-            controller.RemoveWrongParamTypes();
+            controller.RemoveWrongParamTypes(null);
             Assert.That(controller.parameters.Single(), Is.SameAs(shared));
             Assert.That(shared.GetDefault(), Is.EqualTo(0.25f));
         }

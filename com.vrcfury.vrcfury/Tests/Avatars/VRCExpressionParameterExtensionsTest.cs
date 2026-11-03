@@ -651,7 +651,7 @@ namespace VF.Tests {
                 state.WithAnimation(tree);
             }
             controller.UpgradeWrongParamTypes();
-            controller.RemoveWrongParamTypes();
+            controller.RemoveWrongParamTypes(null);
             Assert.That(FindDefinition(controller, integer.name).type,
                 Is.EqualTo(blendTree ? AnimatorControllerParameterType.Float : AnimatorControllerParameterType.Int));
             Assert.That(FindDefinition(controller, continuous.name).type, Is.EqualTo(AnimatorControllerParameterType.Float));

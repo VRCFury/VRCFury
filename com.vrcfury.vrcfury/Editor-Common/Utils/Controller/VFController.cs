@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Collections.Specialized;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor.Animations;
@@ -14,7 +13,7 @@ namespace VF.Utils.Controller {
         private string _name;
         private UnityEngine.Object sourceAsset;
         private readonly List<string> workLog = new List<string>();
-        private readonly OrderedDictionary parametersByName = new OrderedDictionary();
+        private readonly Dictionary<string, VFAParam> parametersByName = new Dictionary<string, VFAParam>();
         private List<VFLayer> _layers;
 
         public static VFController Create(string name = null) {
@@ -272,8 +271,7 @@ namespace VF.Utils.Controller {
         }
 
         public bool TryGetParam(string name, out VFAParam parameter) {
-            parameter = (VFAParam)parametersByName[name];
-            return parameter != null;
+            return parametersByName.TryGetValue(name, out parameter);
         }
 
         public IList<VFLayer> GetLayers() {
@@ -286,7 +284,7 @@ namespace VF.Utils.Controller {
             return _layers.GetOrDefault(index);
         }
 
-        public VFAParam[] parameters => parametersByName.Values.Cast<VFAParam>().ToArray();
+        public VFAParam[] parameters => parametersByName.Values.ToArray();
 
         public void SortParameters() => SetParameters(parameters.OrderBy(p => p.name));
 
@@ -337,7 +335,8 @@ namespace VF.Utils.Controller {
             output.RemoveDuplicateStateMachines();
 
             output.FixLayer0Weight();
-            output.RemoveWrongParamTypes();
+            var firstFloat = ac.parameters.FirstOrDefault(p => p.name != null && p.type == AnimatorControllerParameterType.Float)?.name;
+            output.RemoveWrongParamTypes(firstFloat);
             return output;
         }
 
@@ -515,7 +514,7 @@ namespace VF.Utils.Controller {
                 .Distinct();
         }
 
-        public void RemoveWrongParamTypes() {
+        public void RemoveWrongParamTypes([CanBeNull] string firstFloat) {
             var invalidParam = new Lazy<string>(() => GetOrCreateFloat("InvalidParam".MakeUnique(parameters.Select(p => p.name))));
             var badThreshold = new Lazy<string>(() => GetOrCreateFloat("BadIntThreshold".MakeUnique(parameters.Select(p => p.name)), def: 1));
             AnimatorCondition InvalidCondition() => new AnimatorCondition {
@@ -592,13 +591,7 @@ namespace VF.Utils.Controller {
                             return p;
                         } else {
                             // It exists but isn't a float, use the first float in the controller
-                            var firstFloat = parameters
-                                .FirstOrDefault(pr => pr.type == AnimatorControllerParameterType.Float && paramTypes.ContainsKey(pr.name));
-                            if (firstFloat != null) {
-                                return firstFloat.name;
-                            } else {
-                                return invalidParam.Value;
-                            }
+                            return firstFloat ?? invalidParam.Value;
                         }
                     } else {
                         // It doesn't exist

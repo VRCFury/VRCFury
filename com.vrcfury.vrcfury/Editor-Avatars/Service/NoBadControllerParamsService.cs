@@ -29,7 +29,7 @@ namespace VF.Service {
                     });
                 }
                 c.UpgradeWrongParamTypes();
-                c.RemoveWrongParamTypes();
+                c.RemoveWrongParamTypes(null);
             }
         }
     }
