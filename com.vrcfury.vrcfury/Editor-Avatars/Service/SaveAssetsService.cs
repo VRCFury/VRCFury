@@ -34,7 +34,6 @@ namespace VF.Service {
         public void Run(IEnumerable<VFAvatarController> controllersToSave) {
             var controllersToSaveArray = controllersToSave.ToArray();
             foreach (var controller in controllersToSaveArray) {
-                controller.SortParameters();
                 controller.name = $"VRCFury {controller.GetType()}";
                 var saved = controller.Save(avatarObject, Session);
                 VRCAvatarUtils.SetAvatarController(avatar, controller.GetType(), saved);

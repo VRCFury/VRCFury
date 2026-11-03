@@ -205,8 +205,6 @@ namespace VF.Tests {
                 };
                 source.layers = new[] { new AnimatorControllerLayer { name = "Layer", stateMachine = stateMachine, defaultWeight = 1 } };
                 var controller = VFController.Load(source, new VFLoadContext { OwnerObject = obj, AnimatorObject = obj });
-                controller.SortParameters();
-                Assert.That(controller.parameters.First().name, Is.EqualTo("ASecond"));
                 Assert.That(controller.GetTrees().Single().children.Single().directBlendParameter, Is.EqualTo("ZFirst"));
             } finally {
                 Object.DestroyImmediate(obj);
@@ -284,6 +282,29 @@ namespace VF.Tests {
             controller.RemoveWrongParamTypes(null);
             Assert.That(controller.parameters.Single(), Is.SameAs(shared));
             Assert.That(shared.GetDefault(), Is.EqualTo(0.25f));
+        }
+
+        [TestCase(AnimatorControllerParameterType.Bool, AnimatorControllerParameterType.Int, AnimatorControllerParameterType.Int)]
+        [TestCase(AnimatorControllerParameterType.Bool, AnimatorControllerParameterType.Float, AnimatorControllerParameterType.Float)]
+        [TestCase(AnimatorControllerParameterType.Int, AnimatorControllerParameterType.Float, AnimatorControllerParameterType.Float)]
+        [TestCase(AnimatorControllerParameterType.Int, AnimatorControllerParameterType.Bool, AnimatorControllerParameterType.Int)]
+        [TestCase(AnimatorControllerParameterType.Float, AnimatorControllerParameterType.Bool, AnimatorControllerParameterType.Float)]
+        [TestCase(AnimatorControllerParameterType.Float, AnimatorControllerParameterType.Int, AnimatorControllerParameterType.Float)]
+        public void RenameCollisionsMergeTypesAndKeepTheFirstDefault(
+            AnimatorControllerParameterType firstType, AnimatorControllerParameterType secondType,
+            AnimatorControllerParameterType expectedType) {
+            var controller = VFController.Create();
+            var first = RequestParameter(controller, "First", firstType, 1);
+            RequestParameter(controller, "Second", secondType, 0);
+
+            controller.RewriteParameters(_ => "Shared");
+
+            var shared = controller.parameters.Single();
+            Assert.That(shared.name, Is.EqualTo("Shared"));
+            Assert.That(shared.type, Is.EqualTo(expectedType));
+            Assert.That(shared.GetDefault(), Is.EqualTo(1));
+            Assert.That(first.name, Is.EqualTo("First"));
+            Assert.That(first.type, Is.EqualTo(firstType));
         }
 
         private static VFAParam ImportParameter(VFController controller, string name,

@@ -78,6 +78,64 @@ namespace VF.Tests {
             }
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void OgbOverridesExistingControllerAndExpressionDefaults(bool expressionAlreadyExists) {
+            var root = new GameObject("OGB defaults");
+            try {
+                var avatar = root.AddComponent<VRCAvatarDescriptor>();
+                avatar.baseAnimationLayers = new[] {
+                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX }
+                };
+                avatar.specialAnimationLayers = new[] {
+                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.Action }
+                };
+                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+                var controllers = injector.GetService<ControllersService>();
+                controllers.ClearCache(applyBaseMask: false);
+                var parameter = controllers.GetFx().GetOrCreateBool("OGB_ENABLED", true);
+                if (expressionAlreadyExists) parameter.MakeExpressionBool(synced: false);
+                injector.GetService<OgbEnabledService>().Register(root);
+                Assert.That(parameter.GetDefault(), Is.Zero);
+                var expression = avatar.expressionParameters.FindParameter("OGB_ENABLED");
+                Assert.That(expression.defaultValue, Is.Zero);
+                Assert.That(expression.IsNetworkSynced(), Is.False);
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+        [TestCase(VRCExpressionParameters.ValueType.Int, 3, false)]
+        [TestCase(VRCExpressionParameters.ValueType.Float, 3, false)]
+        [TestCase(VRCExpressionParameters.ValueType.Int, 8, true)]
+        [TestCase(VRCExpressionParameters.ValueType.Float, 8, true)]
+        public void MakeExpressionRejectsConflictingEncodingWithoutChangingExistingSettings(
+            VRCExpressionParameters.ValueType type, int width, bool flipped) {
+            var root = new GameObject("Conflicting expression encoding");
+            try {
+                var expressions = GetExpressionParams(root);
+                var original = new VRCExpressionParameters.Parameter {
+                    name = "Shared", valueType = type, bitWidth = (byte)width,
+                    flippedRepresentation = flipped, saved = true, defaultValue = 1
+                };
+                original.SetNetworkSynced(false);
+                expressions.Merge(original);
+                var before = JsonUtility.ToJson(original);
+                var controller = CreateController(expressions);
+                var parameter = type == VRCExpressionParameters.ValueType.Int
+                    ? controller.GetOrCreateInt("Shared") : controller.GetOrCreateFloat("Shared");
+
+                var error = Assert.Throws<InvalidOperationException>(() => parameter.MakeExpression(type));
+
+                Assert.That(error.Message, Does.Contain("bit width or signedness"));
+                Assert.That(JsonUtility.ToJson(expressions.Single()), Is.EqualTo(before));
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+#endif
+
         [Test]
         public void ExpressionServiceEnumeratesOwnedParametersAndSnapshotsDoNotMutateImportedAssets() {
             var root = new GameObject("Expression iteration");

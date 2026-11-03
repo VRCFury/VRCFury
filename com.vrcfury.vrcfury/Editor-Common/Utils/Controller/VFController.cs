@@ -47,7 +47,7 @@ namespace VF.Utils.Controller {
             sourceAsset = ctrl;
             // Ignore invalid declarations before resolving duplicate names; the first valid entry wins.
             SetParameters(ctrl.parameters.Where(p => p.name != null && VRCFEnumUtils.IsValid(p.type))
-                .Select(VFAParam.Load));
+                .GroupBy(p => p.name).Select(group => VFAParam.Load(group.First())));
             var rawLayers = ctrl.layers;
             _layers = Enumerable.Repeat<VFLayer>(null, rawLayers.Length).ToList();
             var loading = new HashSet<int>();
@@ -286,10 +286,8 @@ namespace VF.Utils.Controller {
 
         public VFAParam[] parameters => parametersByName.Values.ToArray();
 
-        public void SortParameters() => SetParameters(parameters.OrderBy(p => p.name));
-
         private void SetParameters(IEnumerable<VFAParam> parameters) {
-            var entries = parameters.GroupBy(p => p.name).Select(group => group.First()).ToArray();
+            var entries = parameters.ToArray();
             parametersByName.Clear();
             foreach (var parameter in entries) {
                 GetOrCreateParam(parameter.name, parameter.type, () => parameter);
@@ -350,7 +348,7 @@ namespace VF.Utils.Controller {
 
             var finalizedRaw = new AnimatorController();
             finalizedRaw.name = _name;
-            finalizedRaw.parameters = parameters.Select(p => p.Save()).ToArray();
+            finalizedRaw.parameters = parameters.OrderBy(p => p.name).Select(p => p.Save()).ToArray();
             var savedLayers = GetLayers().Select(layer => layer.Save(context)).ToArray();
             finalizedRaw.layers = savedLayers;
             finalizedRaw = VrcfObjectFactory.Register(finalizedRaw);

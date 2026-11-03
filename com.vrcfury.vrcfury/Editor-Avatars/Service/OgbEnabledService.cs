@@ -17,7 +17,9 @@ namespace VF.Service {
         private VFAParam GetOgbEnabled() {
             if (ogbEnabled != null) return ogbEnabled;
             ogbEnabled = fx.GetOrCreateBool("OGB_ENABLED");
-            ogbEnabled.MakeExpressionBool(synced: false);
+            // Override both defaults even if the controller and expression declarations already existed.
+            ogbEnabled.SetDefault(false);
+            ogbEnabled.MakeExpressionBool(synced: false).defaultValue = 0;
             return ogbEnabled;
         }
 

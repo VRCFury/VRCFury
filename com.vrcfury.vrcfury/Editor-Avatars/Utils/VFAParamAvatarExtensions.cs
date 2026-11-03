@@ -20,6 +20,11 @@ namespace VF.Utils {
                     $"VRCF tried to create expression parameter {parameter.name} with type {type},"
                     + $" but parameter already exists with type {expression.valueType}");
             }
+            if (!expression.HasStandardNetworkEncoding()) {
+                throw new InvalidOperationException(
+                    $"VRCF tried to create expression parameter {parameter.name}, but its network bit width or signedness"
+                    + " conflicts with the requested standard encoding");
+            }
             return expression;
         }
 
