@@ -75,6 +75,29 @@ namespace VF.Tests {
             Assert.That(sizes.GetWorldSize(another), Is.Not.SameAs(size));
         }
 
+        [TestCase(0.5f)]
+        [TestCase(3f)]
+        public void BakeResultKeepsLocalGeometryAndReportsCurrentWorldDimensions(float resize) {
+            plug.enableSps = false;
+            var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            var keys = bake.radiusCurve.keys;
+            var minimumRadius = bake.localMinimumRadius;
+            Assert.That(bake.localLength, Is.EqualTo(0.2f));
+            Assert.That(bake.localRadius, Is.EqualTo(0.005f));
+            Assert.That(keys.First().time, Is.Zero);
+            Assert.That(keys.Last().time, Is.EqualTo(1));
+            Assert.That(keys.First().value, Is.EqualTo(bake.localRadius));
+            root.transform.localScale *= resize;
+            Assert.That(bake.worldLength, Is.EqualTo(0.4f * resize).Within(0.00001f));
+            Assert.That(bake.worldRadius, Is.EqualTo(0.01f * resize).Within(0.00001f));
+            Assert.That(bake.localLength, Is.EqualTo(0.2f));
+            Assert.That(bake.localRadius, Is.EqualTo(0.005f));
+            Assert.That(bake.localMinimumRadius, Is.EqualTo(minimumRadius));
+            Assert.That(bake.radiusCurve.keys, Is.EqualTo(keys));
+            Assert.That(bake.mainSender.worldScale.z, Is.EqualTo(bake.worldLength).Within(0.00001f));
+            Assert.That(bake.mainSender.worldScale.x, Is.EqualTo(bake.worldRadius).Within(0.00001f));
+        }
+
         [Test]
         public void SeparateChannelListsAndLegacyTagOrder() {
             plug.useSharedTag = plug.useHipAvoidance = true;
@@ -194,8 +217,12 @@ namespace VF.Tests {
                 Assert.That(receiver.transform.parent, Is.EqualTo((Transform)frame));
                 Assert.That(receiver.transform.localPosition, Is.EqualTo(Vector3.zero));
                 Assert.That(receiver.transform.localRotation, Is.EqualTo(Quaternion.identity));
-                var expectedRadius = receiver.separateShaderParameter == "SPS_Path" ? 3 : worldLength * 1.6f;
-                Assert.That(receiver.radius * receiver.transform.lossyScale.x, Is.EqualTo(expectedRadius).Within(0.00001));
+                if (receiver.separateShaderParameter == "SPS_Path") {
+                    Assert.That(receiver.radius, Is.EqualTo(100));
+                } else {
+                    Assert.That(receiver.radius * receiver.transform.lossyScale.x,
+                        Is.EqualTo(worldLength * SpsPlugReceiverService.RangeInPlugLengths).Within(0.00001));
+                }
                 Assert.That(receiver.parameter, Is.Empty);
                 Assert.That(receiver.separateShaderParameter, Is.EqualTo("SPS_Self").Or.EqualTo("SPS_Others").Or.EqualTo("SPS_Path"));
                 Assert.That(receiver.writeToMaterials, Is.True);

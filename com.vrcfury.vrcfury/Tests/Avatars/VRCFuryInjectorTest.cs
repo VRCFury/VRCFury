@@ -1,3 +1,4 @@
+using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 using System;
 using System.Collections.Immutable;
 using System.Linq;
@@ -34,15 +35,17 @@ namespace VF.Injector {
         }
 
         [Test]
-        public void DetachedBakeReceiversDoNotResolveAnimatorSupport() {
+        public void DetachedBakeReceiversDoNotResolveAvatarServices() {
             var root = new UnityEngine.GameObject("Detached bake receivers");
             try {
                 var injector = new VRCFuryInjector();
                 injector.ImportScan(typeof(VFServiceAttribute));
                 var receivers = injector.GetService<SelfAndOthersReceiverService>().Create(
                     new SelfAndOthersReceiverService.Request { frame = root, name = "Detached", worldRadius = 1 });
-                Assert.That(() => receivers.GetMergedParameter(), Throws.InvalidOperationException
-                    .With.Message.EqualTo("Animator receiver parameters require avatar support."));
+                var services = (System.Collections.IDictionary)typeof(VRCFuryInjector)
+                    .GetField("services", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(injector);
+                Assert.That(services.Contains(typeof(SelfAndOthersReceiverAnimatorService)), Is.False);
+                Assert.That(services.Contains(typeof(ControllersService)), Is.False);
                 Assert.That(receivers.IsCreated, Is.False);
             } finally {
                 UnityEngine.Object.DestroyImmediate(root);
@@ -65,12 +68,16 @@ namespace VF.Injector {
                     new SelfAndOthersReceiverService.Request {
                         frame = root, name = "Build", worldRadius = 1
                     });
-                var parameter = receivers.GetMergedParameter();
+                var receiverAnimator = injector.GetService<SelfAndOthersReceiverAnimatorService>();
+                receiverAnimator.GetParameter(receivers, Party.Self);
+                Assert.That(controllers.GetFx().GetLayers(), Is.Empty, "Unmerged receiver outputs don't need an animator tree");
+                var parameter = receiverAnimator.GetParameter(receivers, Party.Merged);
+                Assert.That(controllers.GetFx().GetLayers(), Is.Not.Empty);
                 Assert.That(controllers.GetFx().parameters.FirstOrDefault(p => p.name == parameter.name), Is.Not.Null);
                 Assert.That(root.GetComponentsInChildren<VRC.SDK3.Dynamics.Contact.Components.VRCContactReceiver>(true),
                     Has.Length.EqualTo(4));
                 var layers = controllers.GetFx().GetLayers().Count();
-                Assert.That(receivers.GetMergedParameter().name, Is.EqualTo(parameter.name));
+                Assert.That(receiverAnimator.GetParameter(receivers, Party.Merged).name, Is.EqualTo(parameter.name));
                 Assert.That(controllers.GetFx().GetLayers().Count(), Is.EqualTo(layers));
             } finally {
                 UnityEngine.Object.DestroyImmediate(root);

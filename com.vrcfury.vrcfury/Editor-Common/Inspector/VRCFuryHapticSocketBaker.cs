@@ -49,7 +49,6 @@ namespace VF.Inspector {
             {
                 var legacySuffixes = new List<string>();
                 if (channels.Contains(SpsTags.PublicChannel)) legacySuffixes.Add("");
-                if (channels.Contains(SpsTags.NotHipsChannel)) legacySuffixes.Add("_SelfNotOnHips");
                 var rootTags = new List<string>();
                 rootTags.AddRange(legacySuffixes.Select(suffix => SpsTags.LegacySocket2 + suffix));
                 rootTags.AddRange(legacySuffixes.Select(suffix => SpsTags.LegacySocket + suffix));

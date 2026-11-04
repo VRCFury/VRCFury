@@ -15,6 +15,7 @@ namespace VF.Utils {
     internal class BlendtreeMath {
         private readonly VFAvatarController controller;
         private readonly VFBlendTreeDirect directTree;
+        private readonly Dictionary<VFClip, (VFBlendTreeDirect tree, Dictionary<string, VFClip> outputs)> multipliedClips = new();
 
         public BlendtreeMath(VFAvatarController controller, VFBlendTreeDirect directTree) {
             this.controller = controller;
@@ -267,21 +268,22 @@ namespace VF.Utils {
          * multiplier : (-Infinity,Infinity)
          */
         public static VFMotion Add(string name, VFAParam output, params (Value input,float multiplier)[] components) {
+            var terms = components
+                .GroupBy(pair => pair.input.param?.name ?? VFBlendTreeDirect.AlwaysOneParam)
+                .Select(group => (input: group.Key, multiplier: group.Sum(pair =>
+                    pair.multiplier * (pair.input.param == null ? pair.input.constt : 1))))
+                .Where(pair => pair.multiplier != 0)
+                .ToArray();
+            // Cancellation still needs an explicit writer, including when output has a nonzero default.
+            if (terms.Length == 0) return output.MakeSetter(0);
+
             var clipCache = new Dictionary<float, VFClip>();
             VFMotion MakeCachedSetter(float multiplier) {
                 if (clipCache.TryGetValue(multiplier, out var cached)) return cached;
                 return clipCache[multiplier] = output.MakeSetter(multiplier);
             }
 
-            var motionComponents = components.Select(pair => {
-                if (pair.input.param != null) {
-                    return (pair.input.param, MakeCachedSetter(pair.multiplier));
-                } else {
-                    return (VFBlendTreeDirect.AlwaysOneParam, MakeCachedSetter(pair.input.constt * pair.multiplier));
-                }
-            }).ToArray();
-
-            return Add(name, motionComponents);
+            return Add(name, terms.Select(pair => (pair.input, MakeCachedSetter(pair.multiplier))).ToArray());
         }
         
         /**
@@ -296,12 +298,25 @@ namespace VF.Utils {
         }
 
         /**
-         * Delays by 2 frames
+         * Returns 1 / (input * inputMultiplier), with a runtime minimum denominator of 0.0001.
+         * Uses two AAP stages. reuseWriters copies this tree's existing input writers
+         * into the first stage to avoid another read of the source AAP. The input must
+         * be constant or already have its writers in this tree.
          */
-        public VFAParam Invert(string name, VFAParam input) {
-            var def = input.GetDefault() == 0 ? 0 : 1f / input.GetDefault();
+        public VFAParam Invert(string name, VFAParam input, float inputMultiplier = 1, bool reuseWriters = false) {
+            var inputDefault = input.GetDefault() * inputMultiplier;
+            var def = inputDefault == 0 ? 0 : 1f / inputDefault;
             var output = controller.CreateUniqueFloat(name, def: def);
-            var tmp = Add($"{name}/Tmp", (input, 10000), (-1, 1));
+            VFAParam tmp;
+            if (reuseWriters) {
+                // Reuse the input's branches and cached values without reading its output AAP.
+                tmp = controller.CreateUniqueFloat($"{name}/Tmp");
+                CopyInPlace(input, tmp, 10000 * inputMultiplier);
+                tmp.SetDefault(inputDefault * 10000 - 1);
+                directTree.Add(tmp.MakeSetter(-1));
+            } else {
+                tmp = Add($"{name}/Tmp", (input, 10000 * inputMultiplier), (-1, 1));
+            }
             var tree = VFBlendTreeDirect.Create(name);
             tree.SetNormalizedBlendValues(true);
             // Cover the remainder with an explicit zero, rather than Unity's parameter default.
@@ -344,9 +359,10 @@ namespace VF.Utils {
             return output;
         }
 
-        public void MultiplyInPlace(VFAParam output, VFAParam multiplier, VFAParam existing) {
+        public void MultiplyInPlace(VFAParam output, VFAParam multiplier, VFAParam existing, float factor = 1) {
             var oldBinding = VFBinding.MakeAnimatorBinding(existing.name);
             var newBinding = oldBinding.WithPropertyName(output);
+            var additions = new List<(VFBlendTreeDirect tree, VFAParam multiplier, VFClip clip)>();
             foreach (var tree in new AnimatorIterator.Trees().From(directTree)) {
                 tree.RewriteChildren(child => {
                     if (!(child.motion is VFClip oldClip)) return child;
@@ -354,29 +370,44 @@ namespace VF.Utils {
                     if (oldCurve == null) return child;
                     if (oldCurve.FloatCurve.keys.Length == 1 && oldCurve.FloatCurve.keys[0].value == 0) return child;
 
-                    var newClip = VFClip.Create($"{output.name} = {oldCurve.FloatCurve.keys[0].value}");
-                    var newCurve = oldCurve.Clone();
-                    newClip.SetCurve(newBinding, newCurve);
-                    var newTree = VFBlendTreeDirect.Create(oldClip.name);
-                    newTree.Add(oldClip);
-                    newTree.Add(multiplier, newClip);
-
-                    child.motion = newTree;
+                    var group = multipliedClips.GetOrCreate(oldClip, () => {
+                        var groupTree = VFBlendTreeDirect.Create(oldClip.name);
+                        groupTree.Add(oldClip);
+                        return (tree: groupTree, outputs: new Dictionary<string, VFClip>());
+                    });
+                    var outputs = group.outputs.GetOrCreate(multiplier.name, () => {
+                        var clip = VFClip.Create($"{oldClip.name} * {multiplier.name}");
+                        // Do not append children while RewriteChildren is enumerating them.
+                        additions.Add((group.tree, multiplier, clip));
+                        return clip;
+                    });
+                    outputs.SetCurve(newBinding, oldCurve.Scale(factor));
+                    // A later conversion can find the source inside its existing group.
+                    // Add its binding to the shared weighted clip instead of nesting again.
+                    if (tree != (VFMotion)group.tree) child.motion = group.tree;
                     return child;
                 });
             }
+            foreach (var (tree, weight, clip) in additions) tree.Add(weight, clip);
         }
         
         public void CopyInPlace(VFAParam existing, string output, float multiplier = 1f) {
+            // This output is a calculated copy, so its default follows the source too.
+            var target = controller.GetOrCreateFloat(output);
+            target.SetDefault(existing.GetDefault() * multiplier);
             var oldBinding = VFBinding.MakeAnimatorBinding(existing.name);
             var newBinding = oldBinding.WithPropertyName(output);
+            var found = false;
             foreach (var clip in new AnimatorIterator.Clips().From(directTree)) {
                 var curve = clip.GetCurve(oldBinding, true);
                 if (curve != null) {
                     curve = curve.Scale(multiplier);
                     clip.SetCurve(newBinding, curve);
+                    found = true;
                 }
             }
+            // Measurement constants have defaults but no animated writing curves.
+            if (!found) directTree.Add(target.MakeSetter(target.GetDefault()));
         }
     }
 }

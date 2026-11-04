@@ -71,9 +71,6 @@ namespace VF.Feature.Base {
         BoundingBoxFix,
         AnchorOverrideFix,
 
-        // Needs to happen after object moves, once final object hierarchy is known
-        IsObjectEnabled,
-
         // Needs to happen after toggles
         HapticsAnimationRewrites,
         
@@ -81,6 +78,10 @@ namespace VF.Feature.Base {
         // Needs to run after toggles are in place
         // Needs to run after HapticsAnimationRewrites
         TpsScaleFix,
+
+        // Needs the final hierarchy and activation curves, including rewritten SPS toggles.
+        // TPS scale fixes can also register enabled-state consumers.
+        IsObjectEnabled,
         
         ForceStateInAnimator,
 
@@ -95,6 +96,8 @@ namespace VF.Feature.Base {
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
         ApplyModifiedMaterialProperties, // Needs to run before RecordAllDefaults
+        // Capture off values after final material and resting-state changes.
+        BuildObjectTreeDefaults,
         RecordAllDefaults,
         BlendshapeOptimizer, // Needs to run after RecordDefaults
         ActionConflictResolver,

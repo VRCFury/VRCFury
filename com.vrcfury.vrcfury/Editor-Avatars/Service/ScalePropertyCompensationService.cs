@@ -11,20 +11,13 @@ namespace VF.Service {
     [VFService]
     internal class ScalePropertyCompensationService {
         [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
-        [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
+        [VFAutowired] private readonly ObjectTreeService objectTrees;
 
         public void AddScaledProp(VFGameObject scaleReference, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
             var worldScale = worldScaleService.GetWorldScale(scaleReference, "tps scale fix");
             if (worldScale == null) return;
-            AddScaledProp(worldScale, properties);
-        }
-
-        public void AddScaledProp(VFAParam worldScale, IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties) {
-            if (worldScale == null) return;
-
-            var directTree = dbtLayerService.Create();
-            
+            var directTree = objectTrees.Get(scaleReference);
             var zeroClip = clipFactory.NewClip($"scaleComp_zero");
             directTree.Add(zeroClip);
 

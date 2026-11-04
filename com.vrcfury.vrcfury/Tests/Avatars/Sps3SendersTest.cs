@@ -128,7 +128,7 @@ namespace VF.Tests {
             foreach (var tag in new[] { SpsTags.LegacyPlugWidth,
                          SpsTags.LegacyPlugRoot }) {
                 Assert.That(contacts.Single(c => c.collisionTags.Contains(tag)).collisionTags,
-                    Is.EquivalentTo(new[] { tag, tag + "_SelfNotOnHips" }));
+                    Is.EquivalentTo(new[] { tag }));
                 Assert.That(contacts.Single(c => c.collisionTags.Contains(tag)).collisionTags,
                     Does.Not.Contain("SPS/Flag/ScaleV1"));
             }
@@ -141,7 +141,7 @@ namespace VF.Tests {
 
             var native = main;
             Assert.That(native.radius, Is.EqualTo(1).Within(0.000001));
-            Assert.That(native.collisionTags, Does.Contain(SpsTags.LegacyPlugSphere + "_SelfNotOnHips"));
+            Assert.That(native.collisionTags, Does.Not.Contain(SpsTags.LegacyPlugSphere + "_SelfNotOnHips"));
             Assert.That(native.collisionTags.Any(t => t.StartsWith("SPSN1/Plug/")), Is.False);
             Assert.That(native.position, Is.EqualTo(Vector3.zero));
             CheckVector(native.transform.lossyScale, new Vector3(0.03f, 0.03f, 0.4f));
@@ -356,7 +356,7 @@ namespace VF.Tests {
             var entrance = contacts[0].collisionTags;
             var guide = contacts[1].collisionTags;
             Assert.That(entrance.Contains("TPS_Orf_Root"), Is.EqualTo(global));
-            Assert.That(entrance.Contains("TPS_Orf_Root_SelfNotOnHips"), Is.EqualTo(global && !onHips));
+            Assert.That(entrance.Contains("TPS_Orf_Root_SelfNotOnHips"), Is.False);
             Assert.That(entrance.Contains("SPS/Socket/_public"), Is.EqualTo(global));
             Assert.That(entrance.Contains("SPS/Socket/_nothips"), Is.EqualTo(global && !onHips));
             Assert.That(entrance, Does.Not.Contain("SPSN1/Socket"));
@@ -388,7 +388,7 @@ namespace VF.Tests {
             var sender = root.GetComponentsInChildren<VRCContactSender>()
                 .Single(c => c.collisionTags.Contains("TPS_Pen_Penetrating"));
             Assert.That(sender.collisionTags.Contains("TPS_Pen_Penetrating_SelfNotOnHips"),
-                Is.EqualTo(!onHips || !avoidHips));
+                Is.False);
             Assert.That(sender.collisionTags, Does.Contain("SPS/Plug/_public"));
             Assert.That(sender.collisionTags.Contains("SPS/Plug/_nothips"),
                 Is.EqualTo(!onHips || !avoidHips));
@@ -412,10 +412,10 @@ namespace VF.Tests {
             socket.tags.AddRange(new[] { "custom1", "custom2" });
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             var sender = NativeSocketSenders(result.bakeRoot).Single();
-            Assert.That(sender.collisionTags.Count, Is.EqualTo(10));
+            Assert.That(sender.collisionTags.Count, Is.EqualTo(8));
             foreach (var legacyTag in new[] { SpsTags.LegacySocket, SpsTags.LegacySocket2 }) {
                 Assert.That(sender.collisionTags, Does.Contain(legacyTag));
-                Assert.That(sender.collisionTags, Does.Contain(legacyTag + "_SelfNotOnHips"));
+                Assert.That(sender.collisionTags, Does.Not.Contain(legacyTag + "_SelfNotOnHips"));
             }
             foreach (var removedTag in new[] { "SPSLL_Socket_Ring", "SPSLL_Socket_Hole" }) {
                 Assert.That(sender.collisionTags, Does.Not.Contain(removedTag));
@@ -454,7 +454,7 @@ namespace VF.Tests {
                 Is.EquivalentTo(expected.Select(SpsTags.FormatPlug)));
             Assert.That(entrance.collisionTags.Where(t => t.StartsWith("SPS/Socket/")),
                 Is.EquivalentTo(expected.Select(SpsTags.FormatSocket)));
-            Assert.That(main.collisionTags.Contains(SpsTags.LegacyPlugSphere + "_SelfNotOnHips"), Is.EqualTo(shared));
+            Assert.That(main.collisionTags.Contains(SpsTags.LegacyPlugSphere + "_SelfNotOnHips"), Is.False);
             var legacyTags = root.GetComponentsInChildren<VRCContactSender>()
                 .SelectMany(c => c.collisionTags).Where(t => t.StartsWith("TPS_") || t.StartsWith("SPSLL_")).ToArray();
             if (!shared) Assert.That(legacyTags, Is.EquivalentTo(new[] {

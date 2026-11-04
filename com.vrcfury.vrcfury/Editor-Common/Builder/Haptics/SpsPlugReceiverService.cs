@@ -5,34 +5,36 @@ using UnityEngine;
 using VF.Component;
 using VF.Injector;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Builder.Haptics {
     [VFService]
     internal class SpsPlugReceiverService {
-        [VFAutowired] private readonly SpsConfigurer spsConfigurer;
-        [VFAutowired] private readonly SelfAndOthersReceiverService selfAndOthers;
+        internal const float RangeInPlugLengths = 1.6f;
+
+        [VFAutowired] private readonly SpsConfigurer configurer;
+        [VFAutowired] private readonly SelfAndOthersReceiverService receivers;
         [VFAutowired] private readonly PlugSizeService sizes;
         [VFAutowired] private readonly PlugFrameService frames;
-        private readonly Dictionary<VRCFuryHapticPlug, SelfAndOthersReceiverService.Receivers> entrances = new();
+        private readonly Dictionary<VRCFuryHapticPlug, SelfAndOthersReceiverService.Receivers> cache = new();
 
-        public SelfAndOthersReceiverService.Receivers GetReceivers(VRCFuryHapticPlug plug) {
-            if (!entrances.TryGetValue(plug, out var receivers)) {
+        public SelfAndOthersReceiverService.Receivers GetReceivers(VRCFuryHapticPlug plug) =>
+            cache.GetOrCreate(plug, () => {
                 var size = sizes.GetWorldSize(plug);
-                receivers = selfAndOthers.Create(new SelfAndOthersReceiverService.Request {
-                    frame = frames.Get(plug).oneSpace, name = "SPS_",
-                    worldRadius = size.worldLength * 1.6f,
+                return receivers.Create(new SelfAndOthersReceiverService.Request {
+                    frame = frames.Get(plug).oneSpace,
+                    animatorRoot = frames.Get(plug).bakeRoot,
+                    name = "SPS_",
+                    worldRadius = size.worldLength * RangeInPlugLengths,
                     selfTags = GetSocketTags(plug, true).ToArray(),
                     othersTags = GetSocketTags(plug, false).ToArray()
                 });
-                entrances[plug] = receivers;
-            }
-            return receivers;
-        }
+            });
 
         private HashSet<string> GetChannels(VRCFuryHapticPlug plug, bool self) =>
-            spsConfigurer.GetPlugChannels(plug, self
+            configurer.GetPlugChannels(plug, self
                 ? SpsConfigurer.ChannelMode.ReceiverSelf : SpsConfigurer.ChannelMode.ReceiverOthers);
 
         internal List<string> GetSocketTags(VRCFuryHapticPlug plug, bool self) {
@@ -65,27 +67,24 @@ namespace VF.Builder.Haptics {
             receivers.SetMaterials(targets, self: true, needsContactTags: false, shaderParameter: "SPS_Self");
             receivers.SetMaterials(targets, self: false, needsContactTags: true, shaderParameter: "SPS_Others");
             // Guides can extend beyond the entrance-selection range.
-            Add("SPS_Path", GetPathTags(plug), true, true, 3);
-
-            void Add(string name, List<string> tags, bool self, bool others, float worldRadius) {
-                if (tags.Count == 0) return;
-                if (tags.Count > 16) throw new Exception("SPS plug receiver exceeded the material contact tag limit.");
-                for (var i = 0; i < targets.Length; i += ContactReceiver.SHADER_MAX_UPDATED_RENDERERS) {
-                    var obj = GameObjects.Create(name, frame);
-                    var receiver = obj.AddComponent<VRCContactReceiver>();
-                    receiver.shapeType = ContactBase.ShapeType.Sphere;
-                    receiver.radius = worldRadius / frame.worldScale.x;
-                    receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
-                    receiver.allowSelf = self;
-                    receiver.allowOthers = others;
-                    receiver.contentTypes = self && !others ? DynamicsUsageFlags.Avatar : DynamicsUsageFlags.Everything;
-                    receiver.parameter = "";
-                    receiver.separateShaderParameter = name;
-                    receiver.writeToMaterials = true;
-                    receiver.writeToMaterialsContactTags = !self;
-                    receiver.collisionTags = new List<string>(tags);
-                    receiver.shaderTargetRenderers = targets.Skip(i).Take(ContactReceiver.SHADER_MAX_UPDATED_RENDERERS).ToArray();
-                }
+            var tags = GetPathTags(plug);
+            if (tags.Count == 0) return;
+            if (tags.Count > 16) throw new Exception("SPS plug receiver exceeded the material contact tag limit.");
+            for (var i = 0; i < targets.Length; i += ContactReceiver.SHADER_MAX_UPDATED_RENDERERS) {
+                var obj = GameObjects.Create("SPS_Path", frame);
+                var receiver = obj.AddComponent<VRCContactReceiver>();
+                receiver.shapeType = ContactBase.ShapeType.Sphere;
+                receiver.radius = 100;
+                receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
+                receiver.allowSelf = true;
+                receiver.allowOthers = true;
+                receiver.contentTypes = DynamicsUsageFlags.Everything;
+                receiver.parameter = "";
+                receiver.separateShaderParameter = "SPS_Path";
+                receiver.writeToMaterials = true;
+                receiver.writeToMaterialsContactTags = false;
+                receiver.collisionTags = new List<string>(tags);
+                receiver.shaderTargetRenderers = targets.Skip(i).Take(ContactReceiver.SHADER_MAX_UPDATED_RENDERERS).ToArray();
             }
 #endif
         }

@@ -109,7 +109,7 @@ namespace VF.Tests {
                     var front = fronts.Single();
                     Assert.That(front.radius, Is.EqualTo(0.001f).Within(0.00001f));
                     Assert.That(front.position, Is.EqualTo(Vector3.forward * 0.01f));
-                    Assert.That(front.collisionTags, Does.Contain(SpsTags.LegacySocketFront + "_SelfNotOnHips"));
+                    Assert.That(front.collisionTags, Does.Not.Contain(SpsTags.LegacySocketFront + "_SelfNotOnHips"));
                 }
             } finally {
                 Object.DestroyImmediate(root);

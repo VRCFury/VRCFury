@@ -612,14 +612,17 @@ namespace VF.Inspector {
 
         public class BakeResult {
             public VFGameObject mainSender;
-            public AnimationCurve radiusCurve;
+            public AnimationCurve radiusCurve; // Normalized plug length -> local radius.
             public SelfAndOthersReceiverService.Receivers socketReceivers;
             public VFGameObject bakeRoot;
             public VFGameObject oneSpace;
             public VFGameObject worldSpace;
             public ICollection<RendererResult> renderers;
-            public float worldLength;
-            public float worldRadius;
+            public float localLength;
+            public float localRadius;
+            public float localMinimumRadius;
+            public float worldLength => localLength * bakeRoot.worldScale.x;
+            public float worldRadius => localRadius * bakeRoot.worldScale.x;
             public string oscId;
         }
 

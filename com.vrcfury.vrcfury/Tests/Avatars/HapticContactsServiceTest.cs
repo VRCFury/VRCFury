@@ -13,20 +13,13 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     public class HapticContactsServiceTest {
-        [TestCase(HumanBodyBones.Hips, "_SelfNotOnHips")]
-        [TestCase(HumanBodyBones.Head, "")]
-        public void SelfSuffixDependsOnHipLocation(HumanBodyBones bone, string suffix) {
-            var obj = new GameObject("Receiver");
-            try {
-                var closestBone = new ClosestBoneUtils(null, null);
-                var cache = (Dictionary<VFGameObject, HumanBodyBones?>)typeof(ClosestBoneUtils).VFField("results").GetValue(closestBone);
-                cache[obj] = bone;
-                var service = new HapticContactsService();
-                typeof(HapticContactsService).VFField("closestBoneUtils").SetValue(service, closestBone);
-                Assert.That(service.GetSelfTagSuffix(obj), Is.EqualTo(suffix));
-            } finally {
-                Object.DestroyImmediate(obj);
-            }
+        [Test]
+        public void OgbIdsNormalizeSlashesBeforeCheckingUniquenessWithoutChangingMenuNames() {
+            var ids = new HashSet<string>();
+            Assert.That(HapticUtils.MakeUniqueOgbId(ids, "Front/Socket"), Is.EqualTo("Front_Socket"));
+            Assert.That(HapticUtils.MakeUniqueOgbId(ids, "Front_Socket"), Is.EqualTo("Front_Socket_2"));
+            Assert.That(HapticUtils.MakeUniqueOgbId(ids, "Front/Socket"), Is.EqualTo("Front_Socket_3"));
+            Assert.That(HapticUtils.MakeUniqueId(new HashSet<string>(), "Front/Socket"), Is.EqualTo("Front/Socket"));
         }
 
         [Test]
@@ -46,13 +39,13 @@ namespace VF.Tests {
                 typeof(HapticContactsService).VFField("controllers").SetValue(service, controllers);
                 typeof(HapticContactsService).VFField("overlappingService").SetValue(service, new OverlappingContactsFixService());
                 // No bone resolver is installed: AddReceiver must not make hip-policy decisions.
-                var tags = new[] { "Hand", HapticUtils.TagTpsOrfRoot + "_SelfNotOnHips", "SPS/Socket/public" };
+                var tags = new[] { "Hand", SpsTags.PlugClose, "SPS/Socket/public" };
                 service.AddReceiver(new HapticContactsService.ReceiverRequest {
                     obj = obj, objName = "Self", paramName = "Self",
                     tags = tags, party = HapticUtils.ReceiverParty.Self
                 });
                 Assert.That(obj.GetComponentsInChildren<VRCContactReceiver>().Single().collisionTags, Is.EqualTo(tags));
-                Assert.That(tags, Is.EqualTo(new[] { "Hand", "TPS_Orf_Root_SelfNotOnHips", "SPS/Socket/public" }));
+                Assert.That(tags, Is.EqualTo(new[] { "Hand", SpsTags.PlugClose, "SPS/Socket/public" }));
             } finally {
                 Object.DestroyImmediate(obj);
             }

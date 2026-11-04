@@ -36,10 +36,6 @@ namespace VF.Inspector {
             var renderers = size.renderers;
             var worldLength = size.worldLength;
             var worldRadius = size.worldRadius;
-            // Measure before auto-rigging or post-bake actions change the renderer.
-            var radiusCurve = renderers.Count > 0
-                ? PlugRadiusCurve.GetRadiusCurve(plug, size)
-                : AnimationCurve.Constant(0, worldLength, worldRadius);
 
             if (usedRenderers != null) {
                 foreach (var r in renderers) {
@@ -61,6 +57,10 @@ namespace VF.Inspector {
 
             var frames = plugFrames.Get(plug);
             var localSpace = frames.bakeRoot;
+            var scale = localSpace.worldScale.x;
+            var localLength = worldLength / scale;
+            // Measure before auto-rigging or post-bake actions change the renderer.
+            var radiusCurve = PlugRadiusCurve.GetRadiusCurve(plug, size, scale);
             var oneSpace = frames.oneSpace;
             var worldSpace = frames.worldSpace;
             var socketReceivers = spsPlugReceiverService.GetReceivers(plug);
@@ -71,7 +71,6 @@ namespace VF.Inspector {
             var channels = spsConfigurer.GetPlugChannels(plug, SpsConfigurer.ChannelMode.Sender);
             var legacySuffixes = new List<string>();
             if (channels.Contains(SpsTags.PublicChannel)) legacySuffixes.Add("");
-            if (channels.Contains(SpsTags.NotHipsChannel)) legacySuffixes.Add("_SelfNotOnHips");
             var mainSender = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                 obj = senders,
                 objName = "Length",
@@ -206,8 +205,10 @@ namespace VF.Inspector {
                 oneSpace = oneSpace,
                 worldSpace = worldSpace,
                 renderers = rendererResults,
-                worldLength = worldLength,
-                worldRadius = worldRadius,
+                localLength = localLength,
+                localRadius = worldRadius / scale,
+                // A 1mm floor at bake time, capped by length, follows subsequent resizing.
+                localMinimumRadius = Mathf.Min(0.001f, worldLength) / scale,
                 mainSender = mainSender,
                 radiusCurve = radiusCurve,
                 socketReceivers = socketReceivers,

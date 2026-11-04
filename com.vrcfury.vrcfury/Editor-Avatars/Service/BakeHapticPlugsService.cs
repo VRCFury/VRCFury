@@ -1,3 +1,4 @@
+using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,23 +20,25 @@ namespace VF.Service {
     [VFService]
     internal class BakeHapticPlugsService {
 
+        [VFAutowired] private readonly SelfAndOthersReceiverAnimatorService receiverAnimator;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateService restingState;
-        [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
+        [VFAutowired] private readonly SpsDepthAnimationService depthAnimations;
         [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
-        [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly AllClipsService allClipsService;
         [VFAutowired] private readonly AvatarBindingStateService avatarBindingStateService;
         [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
+        [VFAutowired] private readonly ObjectTreeService objectTrees;
         [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly FrameTimeService frameTimeService;
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
         [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
         [VFAutowired] private readonly VRCFuryHapticPlugBaker plugBaker;
         [VFAutowired] private readonly SpsPlugRadiusService plugRadiusService;
+        [VFAutowired] private readonly SpsPlugMeasurementsService plugMeasurements;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private VFAvatarController fx => controllers.GetFx();
 
@@ -96,21 +99,17 @@ namespace VF.Service {
             bool addDpsTipLight,
             ISet<string> usedNames
         ) {
-            var name = HapticUtils.MakeUniqueId(usedNames, bakeInfo.oscId);
+            var name = HapticUtils.MakeUniqueOgbId(usedNames, bakeInfo.oscId);
             Debug.Log("Baking haptic component in " + plug.owner().GetDebugPath() + " as " + name);
 
             var bakeRoot = bakeInfo.bakeRoot;
             var worldSpace = bakeInfo.worldSpace;
             var renderers = bakeInfo.renderers;
-            var worldRadius = bakeInfo.worldRadius;
+            var localLength = bakeInfo.localLength;
             var worldLength = bakeInfo.worldLength;
-            var localLength = worldLength / bakeRoot.worldScale.x;
+            var worldRadius = bakeInfo.worldRadius;
             var propsToScale = new List<(UnityEngine.Component, string, float)>();
-            var worldScale = new Lazy<VFAParam>(() => worldScaleService.GetWorldScale(bakeRoot, name));
-            if (bakeInfo.mainSender != null) {
-                plugRadiusService.Create(plug, bakeInfo, name);
-            }
-            
+
             globals.addOtherFeature(new ShowInFirstPerson {
                 useObjOverride = true,
                 objOverride = bakeRoot,
@@ -120,7 +119,10 @@ namespace VF.Service {
             // Haptics
             if (HapticsToggleMenuItem.Get() && !plug.fromSpsForAll) {
                 // Haptic Receivers
-                var paramPrefix = "OGB/Pen/" + name.Replace('/','_');
+                var paramPrefix = "OGB/Plug/" + name;
+                worldScaleService.GetRawWorldScale(bakeRoot, name, paramPrefix + "/LengthMult1");
+                expressionParams.AddOrMerge(ExpressionParam.Create(paramPrefix + "/LengthMult2")
+                    .Float().Default(worldLength * WorldScaleDetectorService.MaxDetectedScale).Unsynced());
                 var haptics = GameObjects.Create("Haptics", bakeInfo.oneSpace);
                 var halfWay = Vector3.forward * (worldLength / 2);
                 var extraRadiusForTouch = Math.Min(worldRadius, 0.08f /* 8cm */);
@@ -164,27 +166,19 @@ namespace VF.Service {
                     c.party = HapticUtils.ReceiverParty.Others;
                     hapticContacts.AddReceiver(c);
                 }
-                {
-                    var c = req.Clone();
-                    c.paramName = paramPrefix + "/PenSelf";
-                    c.objName = "PenSelf";
-                    c.radius = worldLength;
-                    var suffix = plug.useHipAvoidance ? hapticContacts.GetSelfTagSuffix(haptics) : "";
-                    c.tags = new[] { HapticUtils.TagTpsOrfRoot + suffix };
-                    c.party = HapticUtils.ReceiverParty.Self;
-                    hapticContacts.AddReceiver(c);
-                    c.paramName = paramPrefix + "/PenOthers";
-                    c.objName = "PenOthers";
-                    c.tags = new[] { HapticUtils.TagTpsOrfRoot };
-                    c.party = HapticUtils.ReceiverParty.Others;
-                    hapticContacts.AddReceiver(c);
+                foreach (var self in new[] { true, false }) {
+                    receiverAnimator.GetParameter(bakeInfo.socketReceivers, self, paramPrefix + (self ? "/DepthSelf" : "/DepthOthers")
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+                        , ContactReceiver.AdvancedParameter.All
+#endif
+                    );
                 }
                 {
                     var c = req.Clone();
                     c.paramName = paramPrefix + "/FrotOthers";
                     c.objName = "FrotOthers";
                     c.radius = worldLength;
-                    c.tags = new []{HapticUtils.CONTACT_PEN_CLOSE};
+                    c.tags = new []{SpsTags.PlugClose};
                     c.party = HapticUtils.ReceiverParty.Others;
                     hapticContacts.AddReceiver(c);
                 }
@@ -194,7 +188,7 @@ namespace VF.Service {
                     c.paramName = paramPrefix + "/FrotOthersClose";
                     c.objName = "FrotOthersClose";
                     c.radius = worldRadius+extraRadiusForRub;
-                    c.tags = new []{HapticUtils.CONTACT_PEN_CLOSE};
+                    c.tags = new []{SpsTags.PlugClose};
                     c.party = HapticUtils.ReceiverParty.Others;
                     c.rotation = capsuleRotation;
                     c.height = worldLength;
@@ -202,6 +196,10 @@ namespace VF.Service {
                     hapticContacts.AddReceiver(c);
                 }
                 ogbEnabledService.Register(haptics);
+            }
+
+            if (bakeInfo.mainSender != null) {
+                plugRadiusService.Create(bakeInfo, name);
             }
 
             // TPS
@@ -244,80 +242,29 @@ namespace VF.Service {
                 .Where(r => r.sourceObject == plug.owner())
                 .ToList();
 
-            var directTree = new Lazy<VFBlendTreeDirect>(() => directTreeService.Create($"{name} - Depth Calculations"));
-            var math = new Lazy<BlendtreeMath>(() => directTreeService.GetMath(directTree.Value));
-            var contacts = new Lazy<SpsDepthContacts>(() => new SpsDepthContacts(
-                    worldSpace,
-                    name,
-                    hapticContacts,
-                    directTree.Value,
-                    math.Value,
-                    fx,
-                    frameTimeService,
-                    plug.useHipAvoidance,
-                    worldScale.Value,
-                    localLength
-                ));
+            var math = new Lazy<BlendtreeMath>(() => new BlendtreeMath(fx, objectTrees.Get(bakeRoot)));
+            var measurements = new Lazy<Func<Party, Func<string, VFAParam>>>(() =>
+                plugMeasurements.GetMeasurements(bakeInfo, name));
 
             // Depth Actions / Injected SPS params
             if (plug.depthActions2.Count > 0) {
-                _hapticAnimContactsService.CreateAnims(
-                    $"{name} - Depth Animations",
+                depthAnimations.CreateAnims(
                     plug.depthActions2,
                     plug.owner(),
                     name,
-                    contacts.Value
+                    party => measurements.Value(party),
+                    bakeRoot
                 );
             }
             foreach (var inject in injectRequests) {
-                VFAParam value = null;
-                switch (inject.sourceParam) {
-                    case VRCFuryHapticPlugEditor.SpsDepthMeters:
-                        value = contacts.Value.closestDistanceMeters.Value;
-                        break;
-                    case VRCFuryHapticPlugEditor.SpsDepthLocal:
-                        value = contacts.Value.closestDistanceLocal.Value;
-                        break;
-                    case VRCFuryHapticPlugEditor.SpsDepthPlugLengths:
-                        value = contacts.Value.closestDistancePlugLengths.Value;
-                        break;
-                    case VRCFuryHapticPlugEditor.SpsVelocityMeters:
-                        value = contacts.Value.velocity.Value;
-                        break;
-                    case VRCFuryHapticPlugEditor.SpsVelocityLocal:
-                        value = contacts.Value.velocityLocal.Value;
-                        break;
-                    case VRCFuryHapticPlugEditor.SpsVelocityPlugLengths:
-                        value = contacts.Value.velocityPlugLengths.Value;
-                        break;
-                    case VRCFuryHapticPlugEditor.SpsPlugLengthMeters:
-                        value = math.Value.Multiply($"{name}/PlugLengthMeters", worldScale.Value, localLength);
-                        break;
-                    case VRCFuryHapticPlugEditor.SpsPlugLengthLocal:
-                        value = fx.CreateUniqueFloat($"{name}/PlugLengthLocal", localLength);
-                        break;
-                    case VRCFuryHapticPlugEditor.SpsPlugLengthPlugLengths:
-                        value = fx.One();
-                        break;
-                    case VRCFuryHapticPlugEditor.SpsPlugRadiusMeters:
-                        value = math.Value.Multiply($"{name}/PlugRadiusMeters", worldScale.Value, worldRadius / bakeRoot.worldScale.x);
-                        break;
-                    case VRCFuryHapticPlugEditor.SpsPlugRadiusLocal:
-                        value = fx.CreateUniqueFloat($"{name}/PlugRadiusLocal", worldRadius / bakeRoot.worldScale.x);
-                        break;
-                    case VRCFuryHapticPlugEditor.SpsPlugRadiusPlugLengths:
-                        value = fx.CreateUniqueFloat($"{name}/PlugRadiusInPlugLengths", worldRadius / worldLength);
-                        break;
-                }
-
+                var value = measurements.Value(Party.Merged)(inject.sourceParam);
                 if (value != null) {
-                    fx.GetOrCreateFloat(inject.resolvedParam);
                     math.Value.CopyInPlace(value, inject.resolvedParam);
                 }
             }
 
             if (propsToScale.Count > 0) {
-                scaleCompensationService.AddScaledProp(worldScale.Value, propsToScale);
+                scaleCompensationService.AddScaledProp(bakeRoot, propsToScale);
             }
         }
         

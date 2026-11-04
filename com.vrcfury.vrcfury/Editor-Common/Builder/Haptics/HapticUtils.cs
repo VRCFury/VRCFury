@@ -10,16 +10,6 @@ using Random = System.Random;
 
 namespace VF.Builder.Haptics {
     internal static class HapticUtils {
-        public const string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
-        public const string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
-        public const string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
-        public const string CONTACT_PEN_ROOT = "TPS_Pen_Root";
-        public const string TagTpsOrfRoot = "TPS_Orf_Root";
-        public const string TagTpsOrfFront = "TPS_Orf_Norm";
-
-        public const string TagSpsSocketFront = "SPSLL_Socket_Front";
-        public const string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
-        public const string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
 
         public static readonly string[] SelfContacts = {
             "Hand",
@@ -32,12 +22,6 @@ namespace VF.Builder.Haptics {
             "Foot",
             "Finger"
         };
-        
-        private static readonly Random rand = new Random();
-
-        public static string RandomTag() {
-            return "TPSVF_" + rand.Next(100_000_000, 999_999_999);
-        }
 
         public const int GroupCount = 127;
 
@@ -170,6 +154,11 @@ namespace VF.Builder.Haptics {
             usedIds.Add(id);
             return id;
         }
+
+        public static string NormalizeOgbId(string id) => id.Replace('/', '_');
+
+        public static string MakeUniqueOgbId(ISet<string> usedIds, string prefix) =>
+            MakeUniqueId(usedIds, NormalizeOgbId(prefix));
 
         public static string GetPreferredId<T>(
             T component,

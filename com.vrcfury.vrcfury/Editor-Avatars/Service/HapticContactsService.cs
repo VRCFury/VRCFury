@@ -15,7 +15,7 @@ namespace VF.Service {
     internal class HapticContactsService {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
-        [VFAutowired] private readonly ClosestBoneUtils closestBoneUtils;
+
 
         public class ReceiverRequest {
             public VFGameObject obj;
@@ -68,11 +68,6 @@ namespace VF.Service {
             }
 
             return param;
-        }
-
-        public string GetSelfTagSuffix(VFGameObject obj) {
-            return closestBoneUtils.GetClosestHumanoidBone(obj) == HumanBodyBones.Hips
-                ? "_SelfNotOnHips" : "";
         }
     }
 }

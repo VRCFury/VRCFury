@@ -21,7 +21,7 @@ namespace VF.Features {
                 udonObject,
                 udonSupport,
                 "tip",
-                HapticUtils.CONTACT_PEN_MAIN,
+                SpsTags.LegacyPlugSphere,
                 nameof(SpsSocketUdonSupport.contactEnterInfo),
                 nameof(SpsSocketUdonSupport.contactExitInfo),
                 nameof(SpsSocketUdonSupport._OnTipEnter),
@@ -31,7 +31,7 @@ namespace VF.Features {
                 udonObject,
                 udonSupport,
                 "width",
-                HapticUtils.CONTACT_PEN_WIDTH,
+                SpsTags.LegacyPlugWidth,
                 nameof(SpsSocketUdonSupport.contactEnterInfo),
                 nameof(SpsSocketUdonSupport.contactExitInfo),
                 nameof(SpsSocketUdonSupport._OnWidthEnter),
@@ -41,7 +41,7 @@ namespace VF.Features {
                 udonObject,
                 udonSupport,
                 "root",
-                HapticUtils.CONTACT_PEN_ROOT,
+                SpsTags.LegacyPlugRoot,
                 nameof(SpsSocketUdonSupport.contactEnterInfo),
                 nameof(SpsSocketUdonSupport.contactExitInfo),
                 nameof(SpsSocketUdonSupport._OnRootEnter),
@@ -55,13 +55,13 @@ namespace VF.Features {
         ) {
             var udonObject = GameObjects.Create("udon", bakeResult.bakeRoot);
             ConstraintUtils.MakeWorldSpace(udonObject);
-            udonSupport.plugLengthLocal = bakeResult.worldLength / bakeResult.bakeRoot.worldScale.x;
-            udonSupport.plugWidthLocal = bakeResult.worldRadius / bakeResult.bakeRoot.worldScale.x;
+            udonSupport.plugLengthLocal = bakeResult.localLength;
+            udonSupport.plugWidthLocal = bakeResult.localRadius;
             udonSupport.socketRoots = AddReceiver(
                 udonObject,
                 udonSupport,
                 "socketRoot",
-                HapticUtils.TagTpsOrfRoot,
+                SpsTags.LegacySocket,
                 nameof(SpsPlugUdonSupport.contactEnterInfo),
                 nameof(SpsPlugUdonSupport.contactExitInfo),
                 nameof(SpsPlugUdonSupport._OnEnter),

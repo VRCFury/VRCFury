@@ -8,13 +8,15 @@ using VF.Utils;
 namespace VF.Builder.Haptics {
     internal static class PlugRadiusCurve {
         public static AnimationCurve GetRadiusCurve(VRCFuryHapticPlug plug) {
-            return GetRadiusCurve(plug, PlugSizeDetector.GetWorldSize(plug));
+            return GetRadiusCurve(plug, PlugSizeDetector.GetWorldSize(plug), plug.owner().worldScale.x);
         }
 
-        public static AnimationCurve GetRadiusCurve(VRCFuryHapticPlug plug, PlugSizeDetector.SizeResult size) {
+        // X is normalized plug length (0=root, 1=tip); Y is local radius.
+        public static AnimationCurve GetRadiusCurve(VRCFuryHapticPlug plug, PlugSizeDetector.SizeResult size, float scale) {
+            if (size.renderers.Count == 0) return AnimationCurve.Constant(0, 1, size.worldRadius / scale);
             var position = plug.owner().TransformPoint(size.localPosition);
             var inverseRotation = Quaternion.Inverse(plug.owner().worldRotation * size.localRotation);
-            var boundaryTolerance = size.worldLength * 0.00001f;
+            const float boundaryTolerance = 0.00001f;
             var vertices = new List<Vector3>();
             var triangles = new List<int>();
             foreach (var renderer in size.renderers) {
@@ -24,10 +26,13 @@ namespace VF.Builder.Haptics {
                 var offset = vertices.Count;
                 vertices.AddRange(baked.vertices.Select(v => {
                     var point = inverseRotation * (renderer.owner().TransformPoint(v) - position);
+                    point.x /= scale;
+                    point.y /= scale;
+                    point.z /= size.worldLength;
                     // Roundoff in the world-to-plug transform must not drop one side of a
                     // cross-section that lies exactly on the root or tip plane.
                     if (Mathf.Abs(point.z) <= boundaryTolerance) point.z = 0;
-                    else if (Mathf.Abs(point.z - size.worldLength) <= boundaryTolerance) point.z = size.worldLength;
+                    else if (Mathf.Abs(point.z - 1) <= boundaryTolerance) point.z = 1;
                     return point;
                 }));
                 var mesh = renderer.GetMesh();
@@ -41,15 +46,14 @@ namespace VF.Builder.Haptics {
                     }
                 }
             }
-            return Fit(vertices.ToArray(), triangles.ToArray(), size.worldLength);
+            return Fit(vertices.ToArray(), triangles.ToArray());
         }
 
-        // Input is in the plug's world-unit frame (+Z along the plug). Both curve axes are meters.
+        // Input X/Y are local distances from the plug axis; Z is normalized depth.
         // Slice triangle edges rather than binning vertices: even a sparsely tessellated cone has a profile.
-        public static AnimationCurve Fit(Vector3[] vertices, int[] triangles, float length) {
-            if (!(length > 0) || float.IsInfinity(length)) throw new ArgumentOutOfRangeException(nameof(length));
-            var depths = vertices.Select(v => v.z).Where(z => z >= 0 && z <= length)
-                .Concat(Enumerable.Range(0, 129).Select(i => length * (i / 128f)))
+        public static AnimationCurve Fit(Vector3[] vertices, int[] triangles) {
+            var depths = vertices.Select(v => v.z).Where(z => z >= 0 && z <= 1)
+                .Concat(Enumerable.Range(0, 129).Select(i => i / 128f))
                 .Distinct().OrderBy(z => z).ToArray();
             var extents = new Vector4[depths.Length];
             void Include(int index, Vector3 point) {

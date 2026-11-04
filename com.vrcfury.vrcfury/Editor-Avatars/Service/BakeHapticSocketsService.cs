@@ -1,3 +1,4 @@
+using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,18 +23,20 @@ namespace VF.Service {
     [VFService]
     internal class BakeHapticSocketsService {
 
+        [VFAutowired] private readonly SelfAndOthersReceiverAnimatorService receiverAnimator;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ActionClipService actionClipService;
-        [VFAutowired] private readonly HapticAnimContactsService _hapticAnimContactsService;
+        [VFAutowired] private readonly SpsDepthAnimationService depthAnimations;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
+        [VFAutowired] private readonly SpsSocketReceiverService socketReceivers;
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
-        [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
+        [VFAutowired] private readonly ObjectTreeService objectTrees;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly FrameTimeService frameTimeService;
         [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
         [VFAutowired] private readonly VRCFuryHapticSocketBaker socketBaker;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
@@ -88,13 +91,11 @@ namespace VF.Service {
                     VFGameObject obj = socket.owner();
                     PhysboneUtils.RemoveFromPhysbones(socket.owner());
 
-                    var menuName = HapticUtils.MakeUniqueId(
-                        usedMenuNames,
-                        HapticUtils.GetPreferredId(socket, s => s.name, s => HapticUtils.GetFallbackId(s.owner()))
-                    );
-                    var oscId = HapticUtils.MakeUniqueId(
+                    var preferredMenuName = VRCFuryHapticSocketEditor.GetMenuName(socket);
+                    var menuName = HapticUtils.MakeUniqueId(usedMenuNames, preferredMenuName);
+                    var oscId = HapticUtils.MakeUniqueOgbId(
                         usedOscIds,
-                        HapticUtils.GetPreferredId(socket, s => s.oscId, _ => menuName)
+                        HapticUtils.GetPreferredId(socket, s => s.oscId, _ => preferredMenuName)
                     );
                     Debug.Log("Baking haptic component in " + socket.owner().GetDebugPath() + " as " + oscId);
 
@@ -119,6 +120,8 @@ namespace VF.Service {
                         onlyIfChildOfHead = true
                     });
 
+                    var mainReceivers = socketReceivers.GetReceivers(socket, bakeResult.worldSpace, oscId, bakeResult.bakeRoot);
+
                     VFGameObject haptics = null;
                     if (HapticsToggleMenuItem.Get() && !socket.fromSpsForAll) {
                         // Haptic receivers
@@ -126,7 +129,9 @@ namespace VF.Service {
                         // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
                         var capsuleRotation = Quaternion.Euler(90,0,0);
 
-                        var paramPrefix = "OGB/Orf/" + oscId.Replace('/','_');
+                        var paramPrefix = "OGB/Socket/" + oscId;
+                        expressionParams.AddOrMerge(ExpressionParam.Create(paramPrefix + "/DepthRadius")
+                            .Float().Default(SpsSocketReceiverService.WorldRadius).Unsynced());
 
                         // Receivers
                         var handTouchZoneSize = socketBaker.GetHandTouchZoneSize(socket);
@@ -155,11 +160,6 @@ namespace VF.Service {
                                 r.tags = HapticUtils.BodyContacts;
                                 r.party = HapticUtils.ReceiverParty.Others;
                                 hapticContacts.AddReceiver(r);
-                                // Legacy non-upgraded TPS detection
-                                r.paramName = paramPrefix + "/PenOthers";
-                                r.objName = "PenOthers";
-                                r.tags = new[] { HapticUtils.CONTACT_PEN_MAIN };
-                                hapticContacts.AddReceiver(r);
                             }
                             {
                                 var r = baseReq.Clone();
@@ -178,11 +178,6 @@ namespace VF.Service {
                                 r.tags = HapticUtils.BodyContacts;
                                 r.party = HapticUtils.ReceiverParty.Others;
                                 hapticContacts.AddReceiver(r);
-                                // Legacy non-upgraded TPS detection
-                                r.paramName = paramPrefix + "/PenOthersClose";
-                                r.objName = "PenOthersClose";
-                                r.tags = new[] { HapticUtils.CONTACT_PEN_MAIN };
-                                hapticContacts.AddReceiver(r);
                             }
                             {
                                 var frotRadius = 0.1f;
@@ -192,53 +187,33 @@ namespace VF.Service {
                                 r.paramName = paramPrefix + "/FrotOthers";
                                 r.objName = "FrotOthers";
                                 r.radius = frotRadius;
-                                r.tags = new[] { HapticUtils.TagTpsOrfRoot };
+                                r.tags = new[] { SpsTags.LegacySocket };
                                 r.party = HapticUtils.ReceiverParty.Others;
                                 hapticContacts.AddReceiver(r);
                             }
                         }
 
-                        var req = baseReq.Clone();
-                        req.radius = 1f;
-                        req.paramName = paramPrefix + "/PenSelfNewRoot";
-                        req.objName = "PenSelfNewRoot";
-                        var selfTagSuffix = hapticContacts.GetSelfTagSuffix(haptics);
-                        req.tags = new[] { HapticUtils.CONTACT_PEN_ROOT + selfTagSuffix };
-                        req.party = HapticUtils.ReceiverParty.Self;
-                        hapticContacts.AddReceiver(req);
-                        req.paramName = paramPrefix + "/PenOthersNewRoot";
-                        req.objName = "PenOthersNewRoot";
-                        req.tags = new[] { HapticUtils.CONTACT_PEN_ROOT };
-                        req.party = HapticUtils.ReceiverParty.Others;
-                        hapticContacts.AddReceiver(req);
-                        req.paramName = paramPrefix + "/PenSelfNewTip";
-                        req.objName = "PenSelfNewTip";
-                        req.tags = new[] { HapticUtils.CONTACT_PEN_MAIN + selfTagSuffix };
-                        req.party = HapticUtils.ReceiverParty.Self;
-                        hapticContacts.AddReceiver(req);
-                        req.paramName = paramPrefix + "/PenOthersNewTip";
-                        req.objName = "PenOthersNewTip";
-                        req.tags = new[] { HapticUtils.CONTACT_PEN_MAIN };
-                        req.party = HapticUtils.ReceiverParty.Others;
-                        hapticContacts.AddReceiver(req);
+                        foreach (var self in new[] { true, false }) {
+                            receiverAnimator.GetParameter(mainReceivers, self, paramPrefix + (self ? "/DepthSelf" : "/DepthOthers")
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+                                , ContactReceiver.AdvancedParameter.All
+#endif
+                            );
+                        }
                         ogbEnabledService.Register(haptics);
                     }
 
-                    var worldScale = new Lazy<VFAParam>(() => worldScaleService.GetWorldScale(bakeResult.bakeRoot, menuName));
-                    var Contacts = new Lazy<SpsDepthContacts>(() => {
-                        var animRoot = GameObjects.Create("Animations", bakeResult.worldSpace);
-                        var directTree = directTreeService.Create($"{oscId} - Depth Calculations");
-                        var math = directTreeService.GetMath(directTree);
-                        return new SpsDepthContacts(animRoot, oscId, hapticContacts, directTree, math, fx, frameTimeService, true, worldScale.Value);
-                    });
+                    var math = new Lazy<BlendtreeMath>(() => new BlendtreeMath(fx, objectTrees.Get(bakeResult.bakeRoot)));
+                    var measurements = new Lazy<Func<Party, Func<string, VFAParam>>>(() =>
+                        socketReceivers.GetMeasurements(socket, mainReceivers, oscId));
 
                     if (socket.depthActions2.Count > 0) {
-                        _hapticAnimContactsService.CreateAnims(
-                            $"{oscId} - Depth Animations",
+                        depthAnimations.CreateAnims(
                             socket.depthActions2,
                             socket.owner(),
                             oscId,
-                            Contacts.Value
+                            party => measurements.Value(party),
+                            bakeResult.bakeRoot
                         );
                     }
 
@@ -259,63 +234,11 @@ namespace VF.Service {
                             sourceParam = VRCFuryHapticPlugEditor.SpsPlugRadiusMeters
                         });
                     }
-                    var closestMath = new Lazy<BlendtreeMath>(() => directTreeService.GetMath(Contacts.Value.directTree));
 
                     foreach (var inject in injectRequests) {
-                        VFAParam value = null;
-                        switch (inject.sourceParam) {
-                            case VRCFuryHapticPlugEditor.SpsDepthMeters:
-                                value = Contacts.Value.closestDistanceMeters.Value;
-                                break;
-                            case VRCFuryHapticPlugEditor.SpsDepthLocal:
-                                value = Contacts.Value.closestDistanceLocal.Value;
-                                break;
-                            case VRCFuryHapticPlugEditor.SpsDepthPlugLengths:
-                                value = Contacts.Value.closestDistancePlugLengths.Value;
-                                break;
-                            case VRCFuryHapticPlugEditor.SpsVelocityMeters:
-                                value = Contacts.Value.velocity.Value;
-                                break;
-                            case VRCFuryHapticPlugEditor.SpsVelocityLocal:
-                                value = Contacts.Value.velocityLocal.Value;
-                                break;
-                            case VRCFuryHapticPlugEditor.SpsVelocityPlugLengths:
-                                value = Contacts.Value.velocityPlugLengths.Value;
-                                break;
-                            case VRCFuryHapticPlugEditor.SpsPlugLengthMeters:
-                                value = Contacts.Value.closestLength.Value;
-                                break;
-                            case VRCFuryHapticPlugEditor.SpsPlugLengthLocal:
-                                value = closestMath.Value.Multiply(
-                                    $"{oscId}/Closest/LengthInSpsScale",
-                                    Contacts.Value.worldScaleInverted.Value,
-                                    Contacts.Value.closestLength.Value
-                                );
-                                break;
-                            case VRCFuryHapticPlugEditor.SpsPlugLengthPlugLengths:
-                                value = fx.One();
-                                break;
-                            case VRCFuryHapticPlugEditor.SpsPlugRadiusMeters:
-                                value = Contacts.Value.closestRadius.Value;
-                                break;
-                            case VRCFuryHapticPlugEditor.SpsPlugRadiusLocal:
-                                value = closestMath.Value.Multiply(
-                                    $"{oscId}/Closest/RadiusInSpsScale",
-                                    Contacts.Value.worldScaleInverted.Value,
-                                    Contacts.Value.closestRadius.Value
-                                );
-                                break;
-                            case VRCFuryHapticPlugEditor.SpsPlugRadiusPlugLengths:
-                                value = closestMath.Value.Multiply(
-                                    $"{oscId}/Closest/RadiusInPlugLengths",
-                                    Contacts.Value.closestLengthInverted.Value,
-                                    Contacts.Value.closestRadius.Value
-                                );
-                                break;
-                        }
+                        var value = measurements.Value(Party.Merged)(inject.sourceParam);
                         if (value != null) {
-                            fx.GetOrCreateFloat(inject.resolvedParam);
-                            closestMath.Value.CopyInPlace(value, inject.resolvedParam);
+                            math.Value.CopyInPlace(value, inject.resolvedParam);
                         }
                     }
 
@@ -343,8 +266,8 @@ namespace VF.Service {
                         bakeResult.bakeRoot.active = false;
                         var onClip = clipFactory.NewClip($"{oscId}");
                         onClip.SetEnabled(bakeResult.bakeRoot, true);
-                        var directTree = directTreeService.Create($"{oscId} - Toggle");
-                        directTree.Add(toggleParam, onClip);
+                        var toggleTree = directTreeService.Create($"{oscId} - Toggle");
+                        toggleTree.Add(toggleParam, onClip);
 
                         var activeClip = actionClipService.LoadState($"SPS - Active Animation for {oscId}", socket.activeActions);
                         if (new AnimatorIterator.Clips().From(activeClip).SelectMany(clip => clip.GetAllBindings()).Any()) {
@@ -356,7 +279,7 @@ namespace VF.Service {
                             off.TransitionsTo(on).When(activeAnimParam.IsGreaterThan(0));
                             on.TransitionsTo(off).When(activeAnimParam.IsLessThan(1));
 
-                            onClip.SetAap(activeAnimParam, 1);
+                            objectTrees.Get(bakeResult.bakeRoot).Add(activeAnimParam.MakeSetter(1));
                         }
 
                         var gizmo = obj.GetComponent<VRCFurySocketGizmo>();
@@ -399,21 +322,30 @@ namespace VF.Service {
             }
 
             if (autoOn != null && autoSockets.Count > 0) {
+#if !VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+                throw new Exception("SPS Auto Mode requires VRCSDK 3.10.6 or newer.");
+#else
                 var autoActiveNum = fx.CreateUniqueInt("AutoSocketNum", def: -1);
-                var autoActiveDist = fx.CreateUniqueFloat("AutoActiveDist");
-                var autoCurrentDist = fx.CreateUniqueFloat("AutoCurrentDist");
+                var autoActiveDist = fx.CreateUniqueFloat("AutoActiveDist", def: 10000);
+                var autoProximity = fx.CreateUniqueFloat("AutoContact");
+                var autoCurrentDist = fx.GetOrCreateFloat(autoProximity.name + "_PointSeparation", def: -1);
                 var dbt = directTreeService.Create("SPS - Auto Mode");
-                var math = directTreeService.GetMath(dbt);
-                var diff = math.Subtract(autoCurrentDist, autoActiveDist);
+                var closer = fx.CreateUniqueFloat("AutoCloser");
+                // PointSeparation remains valid inside a plug's length sphere, where
+                // proximity saturates. Its -1 no-contact sentinel must never win.
+                dbt.Add(BlendtreeMath.GreaterThan(autoCurrentDist, 0, true)
+                    .And(BlendtreeMath.GreaterThan(autoActiveDist, autoCurrentDist))
+                    .create(closer.MakeSetter(1), closer.MakeSetter(0)));
 
                 var autoReceiverObj = GameObjects.Create("SpsAutoDistance", avatarObject);
                 ConstraintUtils.MakeWorldSpace(autoReceiverObj);
 
                 var receiver = autoReceiverObj.AddComponent<VRCContactReceiver>();
-                receiver.parameter = autoCurrentDist;
+                receiver.parameter = autoProximity;
+                receiver.advancedParameters = ContactReceiver.AdvancedParameter.PointSeparation;
                 receiver.radius = 1f;
                 receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
-                receiver.collisionTags.Add(HapticUtils.CONTACT_PEN_MAIN);
+                receiver.collisionTags.Add(SpsTags.LegacyPlugSphere);
                 receiver.allowOthers = true;
                 receiver.allowSelf = false;
                 receiver.localOnly = true;
@@ -432,7 +364,7 @@ namespace VF.Service {
                 var turnOffState = layer.NewState("Turn Off");
                 active.TransitionsTo(turnOffState).When(autoOn.IsFalse());
                 turnOffState.Drives(autoActiveNum, -1);
-                turnOffState.Drives(autoActiveDist, 0);
+                turnOffState.Drives(autoActiveDist, 10000);
                 foreach (var o in autoSockets) turnOffState.Drives(o.Item2, false);
                 turnOffState.TransitionsTo(active).When(autoOn.IsTrue());
 
@@ -456,12 +388,12 @@ namespace VF.Service {
                     var settleState2 = layer.NewState($"Settle2 {name}").WithAnimation(evalClip);
                     settleState.TransitionsTo(settleState2).When().WithTransitionExitTime(settleTime);
 
-                    // We need to settle for another frame for the dbt subtraction to apply
+                    // We need to settle for another frame for the DBT comparison to apply
                     var settleState3 = layer.NewState($"Settle3 {name}").WithAnimation(evalClip);
                     settleState2.TransitionsTo(settleState3).When(fx.Always());
 
                     // Active socket went out of range
-                    settleState3.TransitionsTo(turnOffState).When(autoActiveNum.IsEqualTo(i).And(autoCurrentDist.IsLessThanOrEquals(0)));
+                    settleState3.TransitionsTo(turnOffState).When(autoActiveNum.IsEqualTo(i).And(autoCurrentDist.IsLessThan(0)));
 
                     var updateState = layer.NewState($"Update {name}").WithAnimation(evalClip);
                     updateState.DrivesCopy(autoCurrentDist, autoActiveDist);
@@ -474,7 +406,7 @@ namespace VF.Service {
                         if (o.Item2 != enabled) switchToState.Drives(o.Item2, false);
                     }
                     switchToState.Drives(enabled, true);
-                    settleState3.TransitionsTo(switchToState).When(diff.IsGreaterThan(0));
+                    settleState3.TransitionsTo(switchToState).When(closer.IsGreaterThan(0));
 
                     addNext = (next) => {
                         settleState3.TransitionsTo(next).When(fx.Always());
@@ -484,6 +416,7 @@ namespace VF.Service {
                 }
 
                 if (addNext != null) addNext(active);
+#endif
             }
         }
     }

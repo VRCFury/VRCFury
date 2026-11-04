@@ -13,12 +13,14 @@ namespace VF.Inspector {
             T target,
             VFGameObject owner,
             Func<VFGameObject, IEnumerable<T>> getItems,
-            Func<T, string> getPreferredId
+            Func<T, string> getPreferredId,
+            bool isOgbId = true
         ) {
             return VRCFuryEditorUtils.AutoIdProp(
                 prop,
                 label,
-                () => HapticUtils.GetActualId(target, owner, getItems, getPreferredId)
+                () => HapticUtils.GetActualId(target, owner, getItems,
+                    item => isOgbId ? HapticUtils.NormalizeOgbId(getPreferredId(item)) : getPreferredId(item))
             );
         }
     }

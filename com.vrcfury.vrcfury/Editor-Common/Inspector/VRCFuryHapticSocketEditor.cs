@@ -224,7 +224,8 @@ namespace VF.Inspector {
                     target,
                     target.owner(),
                     avatar => avatar.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>(),
-                    GetMenuName
+                    GetMenuName,
+                    isOgbId: false
                 ));
                 toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("menuIcon"), "Menu Icon", tooltip: "Override the menu icon used for this socket's individual toggle. Looking to move or change the icon of the main SPS menu? Add a VRCFury 'SPS Options' component to the avatar root."));
                 return toggles;

@@ -123,13 +123,42 @@ namespace VF.Tests {
                 var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
                 var controllers = injector.GetService<ControllersService>();
                 controllers.ClearCache(applyBaseMask: false);
-                var parameter = controllers.GetFx().GetOrCreateBool("OGB_ENABLED", true);
+                var parameter = controllers.GetFx().GetOrCreateBool("OGB/Enabled", true);
                 if (expressionAlreadyExists) parameter.MakeExpressionBool(synced: false);
                 injector.GetService<OgbEnabledService>().Register(root);
                 Assert.That(parameter.GetDefault(), Is.Zero);
-                var expression = avatar.expressionParameters.FindParameter("OGB_ENABLED");
+                var expression = avatar.expressionParameters.FindParameter("OGB/Enabled");
                 Assert.That(expression.defaultValue, Is.Zero);
                 Assert.That(expression.IsNetworkSynced(), Is.False);
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [TestCase("plug", true)]
+        [TestCase("socket", true)]
+        [TestCase("touch", true)]
+        [TestCase("automatic", false)]
+        [TestCase("none", false)]
+        public void DisabledHapticsMarkerRequiresARequestedHapticFeature(string feature, bool requested) {
+            var root = new GameObject("Haptics availability");
+            try {
+                var avatar = root.AddComponent<VRCAvatarDescriptor>();
+                if (feature == "plug") root.AddComponent<VF.Component.VRCFuryHapticPlug>();
+                if (feature == "socket") root.AddComponent<VF.Component.VRCFuryHapticSocket>();
+                if (feature == "touch") root.AddComponent<VF.Component.VRCFuryHapticTouchReceiver>();
+                if (feature == "automatic") root.AddComponent<VF.Component.VRCFuryHapticPlug>().fromSpsForAll = true;
+                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+                injector.GetService<BakeHapticVersionsService>().Apply();
+                var marker = avatar.expressionParameters?.FindParameter("OGB/HapticsDisabled");
+                Assert.That(marker != null, Is.EqualTo(requested && !VF.Menu.HapticsToggleMenuItem.Get()));
+                if (marker != null) {
+                    Assert.That(marker.valueType, Is.EqualTo(VRCExpressionParameters.ValueType.Bool));
+                    Assert.That(marker.defaultValue, Is.EqualTo(1));
+                    Assert.That(marker.IsNetworkSynced(), Is.False);
+                    Assert.That(marker.saved, Is.False);
+                }
+                Assert.That(avatar.expressionParameters?.FindParameter("OGB/Version/11") != null, Is.EqualTo(requested));
             } finally {
                 Object.DestroyImmediate(root);
             }
