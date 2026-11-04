@@ -137,7 +137,8 @@ namespace VF.Service {
                         output.MakeCopier(Field("SenderVelocityZ"), -100, 100), output.MakeSetter(0)));
                     return output;
                 });
-                var inverseLength = new Lazy<VFAParam>(() => math.Invert(prefix + "/Length/Inverted", length.Value, reuseWriters: true));
+                // Read the cached size instead of extending its decoding branches with inversion writers.
+                var inverseLength = new Lazy<VFAParam>(() => math.Invert(prefix + "/Length/Inverted", length.Value));
                 var outputs = new Dictionary<(string parameter, string units), VFAParam>();
                 return source => {
                     var parsed = ParseSpsMagicParam(source);
@@ -156,7 +157,12 @@ namespace VF.Service {
                         var multiplier = units == SpsUnitsLocal ? inverseWorldScale.Value : inverseLength.Value;
                         var output = fx.CreateUniqueFloat(input.name + (units == SpsUnitsLocal ? "/Local" : "/PlugLengths"),
                             parameter == SpsParamDepth ? 100 : input.GetDefault() * multiplier.GetDefault());
-                        math.MultiplyInPlace(output, multiplier, input);
+                        if (parameter == SpsParamPlugLength || parameter == SpsParamPlugRadius) {
+                            // Size may settle a frame later. Keep its decoding/cache branches out of unit conversions.
+                            tree.Add(multiplier, output.MakeCopier(input));
+                        } else {
+                            math.MultiplyInPlace(output, multiplier, input);
+                        }
                         return output;
                     });
                 };

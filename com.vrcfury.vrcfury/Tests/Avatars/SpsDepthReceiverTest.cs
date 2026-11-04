@@ -223,7 +223,8 @@ namespace VF.Tests {
         public void NativeDimensionsAndEuclideanDepthRemainLiveIncludingSaturation(float distance, float length, float radius) {
             measurements = Socket(false)(Party.Self);
             var outputs = new[] { measurements(SpsPlugLengthMeters), measurements(SpsPlugRadiusMeters), measurements(SpsDepthMeters),
-                measurements(SpsDepthPlugLengths), measurements(SpsDepthLocal) };
+                measurements(SpsDepthPlugLengths), measurements(SpsDepthLocal),
+                measurements(SpsPlugLengthLocal), measurements(SpsPlugRadiusLocal), measurements(SpsPlugRadiusPlugLengths) };
             Start();
             playable.SetFloat(scale, 2);
             Set(Main(), 1, distance, length, radius, native: true);
@@ -233,11 +234,17 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(outputs[2]), Is.EqualTo(distance - length).Within(0.0001f));
             Assert.That(playable.GetFloat(outputs[3]), Is.EqualTo((distance - length) / length).Within(0.002f));
             Assert.That(playable.GetFloat(outputs[4]), Is.EqualTo((distance - length) / 2).Within(0.002f));
+            Assert.That(playable.GetFloat(outputs[5]), Is.EqualTo(length / 2).Within(0.002f));
+            Assert.That(playable.GetFloat(outputs[6]), Is.EqualTo(radius / 2).Within(0.002f));
+            Assert.That(playable.GetFloat(outputs[7]), Is.EqualTo(radius / length).Within(0.002f));
             Set(Main(), 1, distance, length * 2, radius * 2, native: true);
             Evaluate();
             Assert.That(playable.GetFloat(outputs[0]), Is.EqualTo(length * 2).Within(0.0001f));
             Assert.That(playable.GetFloat(outputs[1]), Is.EqualTo(radius * 2).Within(0.0001f));
             Assert.That(playable.GetFloat(outputs[2]), Is.EqualTo(distance - length * 2).Within(0.0001f));
+            Assert.That(playable.GetFloat(outputs[5]), Is.EqualTo(length).Within(0.002f));
+            Assert.That(playable.GetFloat(outputs[6]), Is.EqualTo(radius).Within(0.002f));
+            Assert.That(playable.GetFloat(outputs[7]), Is.EqualTo(radius / length).Within(0.002f));
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(1));
             Set(Main(), 0, 0);
             Evaluate();
@@ -1013,7 +1020,32 @@ namespace VF.Tests {
                 var plugContacts = plugRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>();
                 Assert.That(plugContacts.All(r => r.transform.parent == (Transform)plugRoot), Is.True);
                 var plugHaptics = plugContacts.Where(r => r.localOnly).ToArray();
-                Assert.That(plugHaptics, Has.Length.EqualTo(6));
+                Assert.That(plugHaptics, Has.Length.EqualTo(3));
+                Assert.That(plugHaptics.Any(r => r.parameter.EndsWith("/TouchSelfClose")
+                    || r.parameter.EndsWith("/TouchOthersClose") || r.parameter.EndsWith("/FrotOthersClose")), Is.False);
+                foreach (var self in new[] { true, false }) {
+                    var touchReceiver = plugHaptics.Single(r => r.parameter == "OGB/Plug/Plug/" + (self ? "TouchSelf" : "TouchOthers"));
+                    Assert.That(touchReceiver.name, Is.EqualTo("Receiver - Touch (" + (self ? "Self" : "Others") + ")"));
+                    Assert.That(touchReceiver.shapeType, Is.EqualTo(ContactBase.ShapeType.Box));
+                    Assert.That(touchReceiver.useFaceProximity, Is.True);
+                    Assert.That(touchReceiver.receiverType, Is.EqualTo(ContactReceiver.ReceiverType.Proximity));
+                    Assert.That(touchReceiver.allowSelf, Is.EqualTo(self));
+                    Assert.That(touchReceiver.allowOthers, Is.EqualTo(!self));
+                    Assert.That(Vector3.Distance(touchReceiver.size, new Vector3(0.16f, 0.16f, 0.4f)), Is.LessThan(0.0001f));
+                    var endDirection = touchReceiver.transform.TransformDirection(touchReceiver.rotation * Vector3.forward);
+                    Assert.That(Vector3.Dot(endDirection, plugRoot.worldRotation * Vector3.forward), Is.EqualTo(-1).Within(0.0001f));
+                }
+                var frot = plugHaptics.Single(r => r.parameter == "OGB/Plug/Plug/FrotOthers");
+                Assert.That(frot.name, Is.EqualTo("Receiver - Plugs (Others)"));
+                Assert.That(frot.shapeType, Is.EqualTo(ContactBase.ShapeType.Box));
+                Assert.That(frot.useFaceProximity, Is.True);
+                Assert.That(frot.receiverType, Is.EqualTo(ContactReceiver.ReceiverType.Proximity));
+                Assert.That(frot.allowSelf, Is.False);
+                Assert.That(frot.allowOthers, Is.True);
+                Assert.That(frot.collisionTags, Is.EqualTo(new[] { SpsTags.PlugClose }));
+                Assert.That(Vector3.Distance(frot.size, new Vector3(0.24f, 0.24f, 0.4f)), Is.LessThan(0.0001f));
+                Assert.That(frot.position, Is.EqualTo(plugHaptics.First(r => r.name == "Receiver - Touch (Others)").position));
+                Assert.That(frot.rotation, Is.EqualTo(Quaternion.Euler(0, 180, 0)));
                 Assert.That(plugHaptics.All(r => !r.gameObject.activeSelf), Is.True);
                 Assert.That(plugSelf.gameObject.activeSelf && plugOthers.gameObject.activeSelf, Is.True);
                 var scaleDetector = injector.GetService<WorldScaleDetectorService>();

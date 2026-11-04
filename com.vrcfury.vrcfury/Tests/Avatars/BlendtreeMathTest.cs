@@ -128,9 +128,6 @@ namespace VF.Tests {
             var decoded = math.Multiply("Decoded", raw, 200);
             var buffered = math.Invert("Buffered inverse", decoded);
             var folded = math.Invert("Folded inverse", raw, 200);
-            var reused = math.Invert("Reused inverse", decoded, reuseWriters: true);
-            Assert.That(fx.parameters.Single(p => p.name.EndsWith("Reused inverse/Tmp")).GetDefault(),
-                Is.EqualTo(decoded.GetDefault() * 10000 - 1));
             Assert.That(folded.GetDefault(), Is.EqualTo(buffered.GetDefault()));
             Start();
             Evaluate(5);
@@ -138,7 +135,6 @@ namespace VF.Tests {
             playable.SetFloat(raw, 0.02f);
             Evaluate(2);
             Assert.That(playable.GetFloat(folded), Is.EqualTo(0.25f).Within(0.0001f));
-            Assert.That(playable.GetFloat(reused), Is.EqualTo(0.25f).Within(0.0001f));
             Assert.That(playable.GetFloat(buffered), Is.EqualTo(0.5f).Within(0.0001f));
             Evaluate();
             Assert.That(playable.GetFloat(buffered), Is.EqualTo(0.25f).Within(0.0001f));
@@ -148,7 +144,6 @@ namespace VF.Tests {
                 var expected = 1 / Mathf.Max(value * 200, 0.0001f);
                 Assert.That(playable.GetFloat(folded), Is.EqualTo(expected).Within(expected * 0.0001f));
                 Assert.That(playable.GetFloat(buffered), Is.EqualTo(expected).Within(expected * 0.0001f));
-                Assert.That(playable.GetFloat(reused), Is.EqualTo(expected).Within(expected * 0.0001f));
             }
         }
 

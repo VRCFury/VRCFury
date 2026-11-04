@@ -299,24 +299,13 @@ namespace VF.Utils {
 
         /**
          * Returns 1 / (input * inputMultiplier), with a runtime minimum denominator of 0.0001.
-         * Uses two AAP stages. reuseWriters copies this tree's existing input writers
-         * into the first stage to avoid another read of the source AAP. The input must
-         * be constant or already have its writers in this tree.
+         * Uses two AAP stages.
          */
-        public VFAParam Invert(string name, VFAParam input, float inputMultiplier = 1, bool reuseWriters = false) {
+        public VFAParam Invert(string name, VFAParam input, float inputMultiplier = 1) {
             var inputDefault = input.GetDefault() * inputMultiplier;
             var def = inputDefault == 0 ? 0 : 1f / inputDefault;
             var output = controller.CreateUniqueFloat(name, def: def);
-            VFAParam tmp;
-            if (reuseWriters) {
-                // Reuse the input's branches and cached values without reading its output AAP.
-                tmp = controller.CreateUniqueFloat($"{name}/Tmp");
-                CopyInPlace(input, tmp, 10000 * inputMultiplier);
-                tmp.SetDefault(inputDefault * 10000 - 1);
-                directTree.Add(tmp.MakeSetter(-1));
-            } else {
-                tmp = Add($"{name}/Tmp", (input, 10000 * inputMultiplier), (-1, 1));
-            }
+            var tmp = Add($"{name}/Tmp", (input, 10000 * inputMultiplier), (-1, 1));
             var tree = VFBlendTreeDirect.Create(name);
             tree.SetNormalizedBlendValues(true);
             // Cover the remainder with an explicit zero, rather than Unity's parameter default.

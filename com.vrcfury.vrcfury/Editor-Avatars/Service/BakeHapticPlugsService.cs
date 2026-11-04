@@ -125,43 +125,25 @@ namespace VF.Service {
                 var extraRadiusForTouch = Math.Min(worldRadius, 0.08f /* 8cm */);
                 // Extra rub radius should always match for everyone, so when two plugs collide, both trigger at the same time
                 var extraRadiusForRub = 0.08f;
-                // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
-                var capsuleRotation = Quaternion.Euler(90,0,0);
 
                 var req = new HapticContactsService.ReceiverRequest() {
                     obj = bakeRoot,
+                    pos = halfWay,
+                    // The SDK measures toward +Z. Face the base so deeper touches read higher.
+                    rotation = Quaternion.Euler(0, 180, 0),
+                    useFaceProximity = true,
                     enableWithOgb = true,
                     localOnly = true,
                     usePrefix = false
                 };
-                {
+                foreach (var self in new[] { true, false }) {
                     var c = req.Clone();
-                    c.pos = halfWay;
-                    c.paramName = paramPrefix + "/TouchSelfClose";
-                    c.objName = "Receiver - TouchSelfClose";
-                    c.radius = worldRadius + extraRadiusForTouch;
+                    c.paramName = paramPrefix + (self ? "/TouchSelf" : "/TouchOthers");
+                    c.objName = self ? "Receiver - Touch (Self)" : "Receiver - Touch (Others)";
+                    c.size = new Vector3(2 * (worldRadius + extraRadiusForTouch),
+                        2 * (worldRadius + extraRadiusForTouch), worldLength);
                     c.tags = HapticUtils.SelfContacts;
-                    c.party = HapticUtils.ReceiverParty.Self;
-                    c.rotation = capsuleRotation;
-                    c.height = worldLength + extraRadiusForTouch * 2;
-                    c.type = ContactReceiver.ReceiverType.Constant;
-                    hapticContacts.AddReceiver(c);
-                    c.paramName = paramPrefix + "/TouchOthersClose";
-                    c.objName = "Receiver - TouchOthersClose";
-                    c.party = HapticUtils.ReceiverParty.Others;
-                    hapticContacts.AddReceiver(c);
-                }
-                {
-                    var c = req.Clone();
-                    c.paramName = paramPrefix + "/TouchSelf";
-                    c.objName = "Receiver - TouchSelf";
-                    c.radius = worldLength + extraRadiusForTouch;
-                    c.tags = HapticUtils.SelfContacts;
-                    c.party = HapticUtils.ReceiverParty.Self;
-                    hapticContacts.AddReceiver(c);
-                    c.paramName = paramPrefix + "/TouchOthers";
-                    c.objName = "Receiver - TouchOthers";
-                    c.party = HapticUtils.ReceiverParty.Others;
+                    c.party = self ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others;
                     hapticContacts.AddReceiver(c);
                 }
                 foreach (var self in new[] { true, false }) {
@@ -174,25 +156,14 @@ namespace VF.Service {
                 {
                     var c = req.Clone();
                     c.paramName = paramPrefix + "/FrotOthers";
-                    c.objName = "Receiver - FrotOthers";
-                    c.radius = worldLength;
+                    c.objName = "Receiver - Plugs (Others)";
+                    c.size = new Vector3(2 * (worldRadius + extraRadiusForRub),
+                        2 * (worldRadius + extraRadiusForRub), worldLength);
                     c.tags = new []{SpsTags.PlugClose};
                     c.party = HapticUtils.ReceiverParty.Others;
                     hapticContacts.AddReceiver(c);
                 }
-                {
-                    var c = req.Clone();
-                    c.pos = halfWay;
-                    c.paramName = paramPrefix + "/FrotOthersClose";
-                    c.objName = "Receiver - FrotOthersClose";
-                    c.radius = worldRadius+extraRadiusForRub;
-                    c.tags = new []{SpsTags.PlugClose};
-                    c.party = HapticUtils.ReceiverParty.Others;
-                    c.rotation = capsuleRotation;
-                    c.height = worldLength;
-                    c.type = ContactReceiver.ReceiverType.Constant;
-                    hapticContacts.AddReceiver(c);
-                }
+
             }
 
             if (bakeInfo.mainSender != null) {
