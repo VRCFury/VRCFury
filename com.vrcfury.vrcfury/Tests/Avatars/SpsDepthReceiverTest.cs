@@ -927,6 +927,29 @@ namespace VF.Tests {
             Assert.That(outputs, Is.Unique);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SocketDeclaresOgbEnabledOnlyWhenItHasObjectsToGate(bool touchZone) {
+            if (!VF.Menu.HapticsToggleMenuItem.Get()) Assert.Ignore("OGB haptics are disabled");
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> {
+                new SpsOptions { autoModeAvailable = false, legacyModeAvailable = false }
+            };
+            globals.addOtherFeature = _ => { };
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addMenuItem = false;
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.length = 0.2f;
+            socket.unitsInMeters = true;
+            socket.enableHandTouchZone2 = touchZone ? VRCFuryHapticSocket.EnableTouchZone.On : VRCFuryHapticSocket.EnableTouchZone.Off;
+            injector.GetService<BakeHapticSocketsService>().Apply();
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true).Count(r => r.localOnly), Is.EqualTo(touchZone ? 5 : 0));
+            Assert.That(fx.TryGetParam("OGB/Enabled", out _), Is.EqualTo(touchZone));
+            Assert.That(injector.GetService<ExpressionParamsService>().Any(p => p.name == "OGB/Enabled"), Is.EqualTo(touchZone));
+        }
+
         [Test]
         public void SocketBakeSharesDepthActionsAndInjectedDimensions() {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
@@ -963,6 +986,169 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat("InjectedLength"), Is.EqualTo(0.6f).Within(0.002f));
             Assert.That(playable.GetFloat("InjectedRadius"), Is.EqualTo(0.06f).Within(0.002f));
             Assert.That(playable.GetFloat("InjectedDepth"), Is.EqualTo(-0.4f).Within(0.002f));
+        }
+
+        [Test]
+        public void SocketFramesKeepWorldDimensionsLocalUnitsAndIndependentHapticAndLegacySwitches() {
+            if (!VF.Menu.HapticsToggleMenuItem.Get()) Assert.Ignore("OGB haptics are disabled");
+            root.transform.localScale = Vector3.one * 2;
+            scale.SetDefault(2);
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> {
+                new SpsOptions { autoModeAvailable = false, legacyModeAvailable = true }
+            };
+            globals.addOtherFeature = _ => { };
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.name = "Test";
+            socket.addMenuItem = false;
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.enableHandTouchZone2 = VRCFuryHapticSocket.EnableTouchZone.On;
+            socket.unitsInMeters = true;
+            socket.length = 0.2f;
+            socket.tags.Add("test");
+            socket.useRadiusOffset = true;
+            var stop = GameObjects.Create("Guide", root);
+            stop.localPosition = Vector3.forward;
+            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
+            var detector = injector.GetService<WorldScaleDetectorService>();
+            ((Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
+                typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector))
+                [root] = (null, new Lazy<VFAParam>(() => scale), inverseScale);
+            foreach (var (source, output) in new[] { (SpsDepthMeters, "Depth meters"), (SpsDepthLocal, "Depth local"),
+                         (SpsPlugRadiusLocal, "Radius local") }) {
+                injector.GetService<ParameterInjectService>().Register(new ParameterInjectService.Request {
+                    sourceObject = root, sourceParam = source, resolvedParam = output
+                });
+            }
+            injector.GetService<BakeHapticSocketsService>().Apply();
+            var bakeRoot = root.asVf().Children().Single(obj => obj.name == "BakedSpsSocket");
+            var worldSpace = bakeRoot.Children().Single(obj => obj.name == "WorldSpace");
+            var legacyLights = bakeRoot.Children().Single(obj => obj.name == "LegacyLights");
+            Assert.That(bakeRoot.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "WorldSpace", "LegacyLights" }));
+            Assert.That(worldSpace.Children().All(obj => obj.Children().Length == 0), Is.True);
+            Assert.That(bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Animations.ScaleConstraint>(), Has.Length.EqualTo(2));
+            var contacts = bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>();
+            Assert.That(contacts.All(r => r.transform.parent == (Transform)worldSpace), Is.True);
+            Assert.That(contacts.Select(r => r.name), Is.EquivalentTo(new[] {
+                "Receiver - Plugs (Self)", "Receiver - Plugs (Others)",
+                "Receiver - Plugs (Self Merged)", "Receiver - Plugs (Others Merged)",
+                "Receiver - Legacy Plug Width (Others)", "Receiver - Touch (Self)", "Receiver - Touch (Others)",
+                "Receiver - Touch Close (Self)", "Receiver - Touch Close (Others)", "Receiver - Sockets (Others)"
+            }));
+            var haptics = contacts.Where(r => r.localOnly).ToArray();
+            var lights = bakeRoot.GetComponentsInSelfAndChildren<Light>();
+            Assert.That(haptics, Has.Length.EqualTo(5));
+            Assert.That(haptics.All(r => !r.gameObject.activeSelf), Is.True);
+            Assert.That(!legacyLights.active, Is.True);
+            var legacy = injector.GetService<SpsOptionsService>().GetLegacyParameter();
+            Start();
+            foreach (var resize in new[] { 0.5f, 1f, 3f }) {
+                root.transform.localScale = Vector3.one * resize;
+                // Manual EditMode graph evaluation does not run scene constraints.
+                worldSpace.worldScale = Vector3.one;
+                legacyLights.worldScale = Vector3.one;
+                playable.SetFloat(scale, resize);
+                Set(Merged(), 1, 0.2f, 0.6f, 0.06f, native: true);
+                Evaluate(12);
+                Assert.That(Vector3.Distance(worldSpace.worldScale, Vector3.one), Is.LessThan(0.0001f));
+                Assert.That(Vector3.Distance(legacyLights.worldPosition, bakeRoot.worldPosition),
+                    Is.EqualTo(VRCFuryHapticSocketEditor.LegacyRadiusOffset * resize).Within(0.0001f));
+                Assert.That(playable.GetFloat("Depth meters"), Is.EqualTo(-0.4f).Within(0.001f));
+                Assert.That(playable.GetFloat("Depth local"), Is.EqualTo(-0.4f / resize).Within(0.001f));
+                Assert.That(playable.GetFloat("Radius local"), Is.EqualTo(0.06f / resize).Within(0.001f));
+                foreach (var receiver in contacts.Where(r => !r.localOnly)) {
+                    Assert.That(receiver.radius * receiver.transform.lossyScale.x, Is.EqualTo(1).Within(0.0001f));
+                }
+                var touch = haptics.Single(r => r.parameter.EndsWith("/TouchSelf"));
+                Assert.That(touch.radius * touch.transform.lossyScale.x, Is.EqualTo(0.2f).Within(0.0001f));
+                Assert.That(Vector3.Distance(lights[0].transform.position, lights[1].transform.position), Is.EqualTo(0.01f).Within(0.0001f));
+                foreach (var sender in bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()) {
+                    Assert.That(sender.transform.lossyScale.y, Is.EqualTo(1).Within(0.0001f));
+                    Assert.That(sender.transform.lossyScale.z, Is.EqualTo(1).Within(0.0001f));
+                }
+            }
+            playable.SetFloat("IsLocal", 1);
+            playable.SetFloat("OGB/Enabled", 1);
+            playable.SetFloat(legacy, 1);
+            Evaluate(4);
+            Assert.That(haptics.All(r => r.gameObject.activeSelf), Is.True);
+            Assert.That(lights.All(l => l.gameObject.activeInHierarchy), Is.True);
+            playable.SetFloat("OGB/Enabled", 0);
+            playable.SetFloat(legacy, 0);
+            Evaluate(4);
+            Assert.That(haptics.All(r => !r.gameObject.activeSelf), Is.True);
+            Assert.That(lights.All(l => !l.gameObject.activeInHierarchy), Is.True);
+            Assert.That(Main().gameObject.activeSelf, Is.True);
+            Assert.That(worldSpace.Children().Single(obj => obj.name == "Sender - Root").active, Is.True);
+        }
+
+        [TestCase(false, false, true)]
+        [TestCase(false, true, true)]
+        [TestCase(true, false, true)]
+        [TestCase(true, true, true)]
+        [TestCase(false, false, false)]
+        [TestCase(true, false, false)]
+        public void LegacyToggleControlsSocketLightsTpsFrontAndDpsTipIncludingPlugOnlyAvatars(bool withSocket, bool defaultOn, bool available) {
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> {
+                new SpsOptions { autoModeAvailable = withSocket, legacyModeAvailable = available,
+                    legacyModeEnabledOnAvatarLoad = defaultOn, addDpsTipLight = true, tpsDepthAnimationCompatibility = true }
+            };
+            globals.addOtherFeature = _ => { };
+            var plug = GameObjects.Create("Plug", root).AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoPosition = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.04f;
+            if (withSocket) {
+                var socket = GameObjects.Create("Socket", root).AddComponent<VRCFuryHapticSocket>();
+                socket.name = "Socket";
+                socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+                socket.addMenuItem = true;
+            }
+            var serviceTypes = injector.GetServices<object>().Select(service => service.GetType()).ToArray();
+            int SortPosition<T>() => Array.IndexOf(serviceTypes, typeof(T)) + 1;
+            globals.currentMenuSortPosition = SortPosition<BakeHapticPlugsService>();
+            injector.GetService<BakeHapticPlugsService>().ApplyEarlyBake();
+            injector.GetService<BakeHapticPlugsService>().Apply();
+            globals.currentMenuSortPosition = SortPosition<BakeHapticSocketsService>();
+            injector.GetService<BakeHapticSocketsService>().Apply();
+            var options = injector.GetService<SpsOptionsService>();
+            globals.currentMenuSortPosition = SortPosition<SpsOptionsService>();
+            options.MoveMenus();
+            var menus = injector.GetService<MenuService>();
+            if (menus.GetReadOnlyMenu() != null) menus.GetMenu().SortMenu();
+            var legacyObjects = root.transform.GetComponentsInChildren<Transform>(true)
+                .Where(t => t.name == "LegacyLights" || t.name == "Light - Legacy DPS Trigger" || t.name == "Sender - Legacy Front").ToArray();
+            Assert.That(legacyObjects, Has.Length.EqualTo(!available ? 0 : withSocket ? 3 : 1));
+            var legacy = options.GetLegacyParameter();
+            var menu = injector.GetService<MenuService>().GetReadOnlyMenu();
+            if (!available) {
+                Assert.That(legacy, Is.Null);
+                Assert.That(menu == null || menu.controls.Single(c => c.name == "SPS").subMenu.controls
+                    .All(c => !c.name.Contains("Legacy Support")), Is.True);
+                return;
+            }
+            var controls = menu.controls.Single(c => c.name == "SPS").subMenu.controls;
+            Assert.That(controls.Count(c => c.parameter?.name == legacy.name), Is.EqualTo(1));
+            Assert.That(controls.Last().parameter.name, Is.EqualTo(legacy.name), "Legacy is created after the socket menu items");
+            if (withSocket) Assert.That(controls.First().parameter.name, Is.EqualTo(options.GetAutoParameter().name));
+            Assert.That(legacyObjects.All(t => !t.gameObject.activeSelf), Is.True);
+            Start();
+            Evaluate(5);
+            Assert.That(legacyObjects.All(t => t.gameObject.activeSelf == defaultOn), Is.True, "Legacy default on avatar load");
+            foreach (var enabled in new[] { true, false, true, false }) {
+                playable.SetFloat(legacy, enabled ? 1 : 0);
+                Evaluate(3);
+                Assert.That(legacyObjects.All(t => t.gameObject.activeSelf == enabled), Is.True);
+                Assert.That(root.GetComponentsInChildren<VRCContactSender>(true)
+                    .Where(sender => sender.name == "Sender - Root" || sender.name == "Sender - Sphere")
+                    .All(sender => sender.gameObject.activeSelf), Is.True, "Main senders remain available in both legacy modes");
+            }
         }
 
         [Test]

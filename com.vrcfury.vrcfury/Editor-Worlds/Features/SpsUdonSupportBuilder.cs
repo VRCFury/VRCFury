@@ -14,13 +14,10 @@ namespace VF.Features {
             SpsSocketUdonSupport udonSupport,
             VRCFuryHapticSocketEditor.BakeResult bakeResult
         ) {
-            var udonObject = GameObjects.Create("udon", bakeResult.bakeRoot);
-            ConstraintUtils.MakeWorldSpace(udonObject);
-
             udonSupport.tip = AddReceiver(
-                udonObject,
+                bakeResult.worldSpace,
                 udonSupport,
-                "tip",
+                "Receiver - Legacy Plug Sphere",
                 SpsTags.LegacyPlugSphere,
                 nameof(SpsSocketUdonSupport.contactEnterInfo),
                 nameof(SpsSocketUdonSupport.contactExitInfo),
@@ -28,9 +25,9 @@ namespace VF.Features {
                 nameof(SpsSocketUdonSupport._OnTipExit)
             );
             udonSupport.width = AddReceiver(
-                udonObject,
+                bakeResult.worldSpace,
                 udonSupport,
-                "width",
+                "Receiver - Legacy Plug Width",
                 SpsTags.LegacyPlugWidth,
                 nameof(SpsSocketUdonSupport.contactEnterInfo),
                 nameof(SpsSocketUdonSupport.contactExitInfo),
@@ -38,9 +35,9 @@ namespace VF.Features {
                 nameof(SpsSocketUdonSupport._OnWidthExit)
             );
             udonSupport.root = AddReceiver(
-                udonObject,
+                bakeResult.worldSpace,
                 udonSupport,
-                "root",
+                "Receiver - Legacy Plug Root",
                 SpsTags.LegacyPlugRoot,
                 nameof(SpsSocketUdonSupport.contactEnterInfo),
                 nameof(SpsSocketUdonSupport.contactExitInfo),

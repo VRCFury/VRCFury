@@ -37,7 +37,6 @@ namespace VF.Service {
         [VFAutowired] private readonly ObjectTreeService objectTrees;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
         [VFAutowired] private readonly VRCFuryHapticSocketBaker socketBaker;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private VFAvatarController fx => controllers.GetFx();
@@ -120,9 +119,8 @@ namespace VF.Service {
                         onlyIfChildOfHead = true
                     });
 
-                    var mainReceivers = socketReceivers.GetReceivers(socket, bakeResult.worldSpace, oscId, bakeResult.bakeRoot);
+                    var mainReceivers = socketReceivers.GetReceivers(socket, bakeResult.worldSpace, oscId);
 
-                    VFGameObject haptics = null;
                     if (HapticsToggleMenuItem.Get() && !socket.fromSpsForAll) {
                         // Haptic receivers
 
@@ -135,12 +133,12 @@ namespace VF.Service {
 
                         // Receivers
                         var handTouchZoneSize = socketBaker.GetHandTouchZoneSize(socket);
-                        haptics = GameObjects.Create("Haptics", bakeResult.oneSpace);
 
                         var baseReq = new HapticContactsService.ReceiverRequest() {
-                            obj = haptics,
+                            obj = bakeResult.worldSpace,
                             usePrefix = false,
-                            localOnly = true
+                            localOnly = true,
+                            enableWithOgb = true
                         };
 
                         if (handTouchZoneSize != null) {
@@ -150,13 +148,13 @@ namespace VF.Service {
                                 var r = baseReq.Clone();
                                 r.pos = Vector3.forward * -oscDepth;
                                 r.paramName = paramPrefix + "/TouchSelf";
-                                r.objName = "TouchSelf";
+                                r.objName = "Receiver - Touch (Self)";
                                 r.radius = oscDepth;
                                 r.tags = HapticUtils.SelfContacts;
                                 r.party = HapticUtils.ReceiverParty.Self;
                                 hapticContacts.AddReceiver(r);
                                 r.paramName = paramPrefix + "/TouchOthers";
-                                r.objName = "TouchOthers";
+                                r.objName = "Receiver - Touch (Others)";
                                 r.tags = HapticUtils.BodyContacts;
                                 r.party = HapticUtils.ReceiverParty.Others;
                                 hapticContacts.AddReceiver(r);
@@ -165,7 +163,7 @@ namespace VF.Service {
                                 var r = baseReq.Clone();
                                 r.pos = Vector3.forward * -(oscDepth / 2);
                                 r.paramName = paramPrefix + "/TouchSelfClose";
-                                r.objName = "TouchSelfClose";
+                                r.objName = "Receiver - Touch Close (Self)";
                                 r.radius = closeRadius;
                                 r.tags = HapticUtils.SelfContacts;
                                 r.party = HapticUtils.ReceiverParty.Self;
@@ -174,7 +172,7 @@ namespace VF.Service {
                                 r.type = ContactReceiver.ReceiverType.Constant;
                                 hapticContacts.AddReceiver(r);
                                 r.paramName = paramPrefix + "/TouchOthersClose";
-                                r.objName = "TouchOthersClose";
+                                r.objName = "Receiver - Touch Close (Others)";
                                 r.tags = HapticUtils.BodyContacts;
                                 r.party = HapticUtils.ReceiverParty.Others;
                                 hapticContacts.AddReceiver(r);
@@ -185,7 +183,7 @@ namespace VF.Service {
                                 var r = baseReq.Clone();
                                 r.pos = Vector3.forward * frotPos;
                                 r.paramName = paramPrefix + "/FrotOthers";
-                                r.objName = "FrotOthers";
+                                r.objName = "Receiver - Sockets (Others)";
                                 r.radius = frotRadius;
                                 r.tags = new[] { SpsTags.LegacySocket };
                                 r.party = HapticUtils.ReceiverParty.Others;
@@ -200,10 +198,9 @@ namespace VF.Service {
 #endif
                             );
                         }
-                        ogbEnabledService.Register(haptics);
                     }
 
-                    var math = new Lazy<BlendtreeMath>(() => new BlendtreeMath(fx, objectTrees.Get(bakeResult.bakeRoot)));
+                    var math = new Lazy<BlendtreeMath>(() => new BlendtreeMath(fx, objectTrees.Get(bakeResult.worldSpace)));
                     var measurements = new Lazy<Func<Party, Func<string, VFAParam>>>(() =>
                         socketReceivers.GetMeasurements(socket, mainReceivers, oscId));
 
@@ -213,7 +210,7 @@ namespace VF.Service {
                             socket.owner(),
                             oscId,
                             party => measurements.Value(party),
-                            bakeResult.bakeRoot
+                            bakeResult.worldSpace
                         );
                     }
 
@@ -243,18 +240,17 @@ namespace VF.Service {
                     }
 
                     if (legacyOnClip != null) {
-                        foreach (var child in new[] { bakeResult.lights }.NotNull()) {
-                            child.active = false;
-                            legacyOnClip.SetEnabled(child, true);
+                        foreach (var child in new[] { bakeResult.legacyLights, bakeResult.legacyFrontSender }.NotNull()) {
+                            spsOptions.RegisterLegacyObject(child);
                         }
                         var legacyGizmo = obj.GetComponent<VRCFurySocketGizmo>();
                         if (legacyGizmo != null) {
                             legacyGizmo.data.useLegacyLights = false;
-                            legacyOnClip.SetCurve(legacyGizmo, "data.useLegacyLights", bakeResult.lights != null ? 1 : 0);
+                            legacyOnClip.SetCurve(legacyGizmo, "data.useLegacyLights", bakeResult.legacyLights != null ? 1 : 0);
                         }
                     }
 
-                    if (toggleParam != null && bakeResult.lights != null) {
+                    if (toggleParam != null && bakeResult.legacyLights != null) {
                         exclusiveTriggers.Add((oscId, toggleParam));
                     }
 
@@ -279,7 +275,7 @@ namespace VF.Service {
                             off.TransitionsTo(on).When(activeAnimParam.IsGreaterThan(0));
                             on.TransitionsTo(off).When(activeAnimParam.IsLessThan(1));
 
-                            objectTrees.Get(bakeResult.bakeRoot).Add(activeAnimParam.MakeSetter(1));
+                            objectTrees.Get(bakeResult.worldSpace).Add(activeAnimParam.MakeSetter(1));
                         }
 
                         var gizmo = obj.GetComponent<VRCFurySocketGizmo>();
@@ -295,10 +291,6 @@ namespace VF.Service {
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to build SPS Socket: {socket.owner().GetDebugPath()}", e);
                 }
-            }
-
-            if (legacyOn != null) {
-                menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/<b>Legacy Support<\\/b>\n<size=20>DPS\\/TPS\\/SPS1\\/SPS2\nOne socket at a time", legacyOn);
             }
 
             if (exclusiveTriggers.Count >= 2) {

@@ -194,6 +194,7 @@ namespace VF.Service {
             // DPS Tip Light
             if (addDpsTipLight) {
                 var tip = GameObjects.Create("Light - Legacy DPS Trigger", bakeRoot);
+                spsOptions.RegisterLegacyObject(tip);
                 var light = tip.AddComponent<Light>();
                 light.type = LightType.Point;
                 light.color = Color.black;

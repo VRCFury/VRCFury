@@ -75,7 +75,7 @@ namespace VF.Tests {
                 var injector = new VRCFuryInjector();
                 injector.ImportScan(typeof(VFServiceAttribute));
                 var result = injector.GetService<VF.Inspector.VRCFuryHapticSocketBaker>().Bake(socket, legacyAvailable: available);
-                Assert.That(result.lights != null, Is.EqualTo(available));
+                Assert.That(result.legacyLights != null, Is.EqualTo(available));
             } finally {
                 Object.DestroyImmediate(root);
             }
@@ -102,7 +102,7 @@ namespace VF.Tests {
                 injector.ImportScan(typeof(VFServiceAttribute));
                 var result = injector.GetService<VF.Inspector.VRCFuryHapticSocketBaker>().Bake(socket,
                     legacyAvailable: legacy, tpsDepthAnimationCompatibility: enabled);
-                var fronts = result.senders.GetComponentsInSelfAndChildren<VRC.SDK3.Dynamics.Contact.Components.VRCContactSender>()
+                var fronts = result.bakeRoot.GetComponentsInSelfAndChildren<VRC.SDK3.Dynamics.Contact.Components.VRCContactSender>()
                     .Where(sender => sender.collisionTags.Contains(SpsTags.LegacySocketFront)).ToArray();
                 Assert.That(fronts.Length, Is.EqualTo(enabled && legacy ? 1 : 0));
                 if (enabled && legacy) {

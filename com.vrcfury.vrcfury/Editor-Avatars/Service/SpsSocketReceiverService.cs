@@ -32,9 +32,10 @@ namespace VF.Service {
             return tags;
         }
 
-        public SelfAndOthersReceiverService.Receivers GetReceivers(VRCFuryHapticSocket socket, VFGameObject frame, string name, VFGameObject bakeRoot = null) =>
+        public SelfAndOthersReceiverService.Receivers GetReceivers(VRCFuryHapticSocket socket, VFGameObject frame, string name) =>
             cache.GetOrCreate(socket, () => receivers.Create(new SelfAndOthersReceiverService.Request {
-                frame = frame, animatorRoot = bakeRoot, name = name + "/Depth", worldRadius = WorldRadius,
+                frame = frame, name = name + "/Depth", worldRadius = WorldRadius,
+                objectName = (self, merged) => "Receiver - Plugs (" + (self ? "Self" : "Others") + (merged ? " Merged" : "") + ")",
                 selfTags = GetPlugTags(socket, true).ToArray(),
                 othersTags = GetPlugTags(socket, false).ToArray()
             }));
@@ -51,11 +52,12 @@ namespace VF.Service {
             var tree = receiverAnimator.GetTree(main);
             var math = new BlendtreeMath(fx, tree);
             var inverseWorldScale = new Lazy<VFAParam>(() => worldScaleService.GetInverseWorldScale(
-                main.request.animatorRoot ?? main.request.frame, name));
+                socket.owner(), name));
             var includeLegacy = socket.useSharedTag;
             var legacyWidthReceiver = includeLegacy ? new Lazy<SelfAndOthersReceiverService.Receivers>(() => receivers.Create(new SelfAndOthersReceiverService.Request {
                 frame = main.request.frame,
                 name = name + "/LegacyWidth",
+                objectName = (self, merged) => "Receiver - Legacy Plug Width (Others)",
                 worldRadius = WorldRadius,
                 othersTags = new[] { SpsTags.LegacyPlugWidth }
             })) : null;

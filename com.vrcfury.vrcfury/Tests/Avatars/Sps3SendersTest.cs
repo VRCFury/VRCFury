@@ -178,7 +178,7 @@ namespace VF.Tests {
 
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Animator>(), Is.Empty);
-            var lights = result.lights.GetComponentsInSelfAndChildren<Light>();
+            var lights = result.legacyLights.GetComponentsInSelfAndChildren<Light>();
             Assert.That(lights.Select(l => l.range), Is.EquivalentTo(new[] {
                 type == VRCFuryHapticSocket.AddLight.Hole ? 0.4102f : 0.4202f, 0.4502f
             }));
@@ -190,8 +190,10 @@ namespace VF.Tests {
             var contact = NativeSocketSenders(result.bakeRoot).Single();
             CheckNode(contact, 1, 0, flags, radiusOffset: true);
             Assert.That(contact, Is.SameAs(legacy.Single(c => c.collisionTags.Contains(SpsTags.LegacySocket2))));
-            Assert.That(contact.transform.parent.asVf(), Is.EqualTo(result.senders));
-            Assert.That(result.senders.parent, Is.EqualTo(result.worldSpace));
+            Assert.That(contact.transform.parent.asVf(), Is.EqualTo(result.worldSpace));
+            CheckVector(result.worldSpace.worldScale, Vector3.one);
+            Assert.That(result.worldSpace.GetComponent<UnityEngine.Animations.ScaleConstraint>(), Is.Not.Null);
+            Assert.That(result.bakeRoot.Children().Select(child => child.name), Is.EquivalentTo(new[] { "WorldSpace", "LegacyLights" }));
             var typeBits = flags == Flags.Hole ? 1 << 14 : flags == Flags.Ring ? 1 << 13 : 0;
             Assert.That(contact.transform.lossyScale.x, Is.EqualTo(1 | typeBits | (1 << 12)).Within(0.01));
             Assert.That(legacy.All(c => c.radius == 0), Is.True);
@@ -201,7 +203,7 @@ namespace VF.Tests {
             Assert.That(Vector3.Distance(contact.transform.position, lights.First().transform.position), Is.GreaterThan(0.05));
             root.transform.localScale *= 3;
             CheckNode(contact, 1, 0, flags, 3, radiusOffset: true);
-            result.senders.active = false;
+            result.bakeRoot.active = false;
             Assert.That(contact.gameObject.activeInHierarchy, Is.False);
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
         }
@@ -237,7 +239,7 @@ namespace VF.Tests {
                 CheckVector(contacts[i].transform.forward, target.forward);
                 Assert.That(contacts[i].transform.lossyScale.x, Is.EqualTo(1 | (i << 7) | (i == 2 ? 1 << 14 : 0)).Within(0.01));
                 Assert.That(contacts[i].radius, Is.Zero);
-                Assert.That(contacts[i].transform.parent.asVf(), Is.EqualTo(result.senders));
+                Assert.That(contacts[i].transform.parent.asVf(), Is.EqualTo(result.worldSpace));
                 var constraints = VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot })
                     .Where(c => c.GetSources().Single() == target.asVf()).ToArray();
                 Assert.That(constraints.Length, Is.EqualTo(1));
@@ -246,8 +248,8 @@ namespace VF.Tests {
                 Assert.That(contacts[i].collisionTags, Does.Contain("SPS/SocketPath/_nothips"));
             }
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>().Length, Is.EqualTo(4));
-            Assert.That(VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot }).Count(), Is.EqualTo(4));
-            result.senders.active = false;
+            Assert.That(VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot }).Count(), Is.EqualTo(5));
+            result.bakeRoot.active = false;
             Assert.That(contacts.All(c => !c.gameObject.activeInHierarchy), Is.True);
         }
 
@@ -282,7 +284,7 @@ namespace VF.Tests {
             Assert.That(guide.transform.lossyScale.y, Is.EqualTo(1).Within(0.000001));
             var constraint = VFConstraint.GetConstraintsInSelfAndChildren(new[] { guide.owner() }).Single();
             Assert.That(constraint.GetSources().Single(), Is.EqualTo(stop.asVf()));
-            result.senders.active = false;
+            result.bakeRoot.active = false;
             Assert.That(guide.gameObject.activeInHierarchy, Is.False);
         }
 
@@ -655,7 +657,7 @@ namespace VF.Tests {
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             Assert.That(NativeSocketSenders(result.bakeRoot), Is.Empty);
             if (!BuildTargetUtils.IsDesktop()) return;
-            var legacy = result.senders.GetComponentsInSelfAndChildren<VRCContactSender>()
+            var legacy = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
                 .Single();
             Assert.That(legacy.collisionTags, Is.Empty);
             Assert.That(legacy.radius, Is.Zero);
@@ -803,8 +805,35 @@ namespace VF.Tests {
             var native = NativeSocketSenders(result.bakeRoot).Single();
             CheckNode(native, 1, 0, Flags.Ring);
             CheckVector(native.transform.position, result.bakeRoot.worldPosition);
-            Assert.That(result.lights.GetComponentsInSelfAndChildren<Light>().Select(l => l.range),
+            Assert.That(result.legacyLights.GetComponentsInSelfAndChildren<Light>().Select(l => l.range),
                 Does.Contain(0.4102f));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SeparateSocketFramesPreserveTheAuthoredOffsetAndFrontSpacing(bool overrideOffset) {
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.useRadiusOffset = true;
+            socket.overrideLegacyOffset = overrideOffset;
+            socket.legacyOffsetLocal = new Vector3(0.1f, 0.2f, 0.3f);
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket, tpsDepthAnimationCompatibility: true);
+            if (!BuildTargetUtils.IsDesktop()) return;
+            var offset = overrideOffset ? socket.legacyOffsetLocal : Vector3.up * VRCFuryHapticSocketEditor.LegacyRadiusOffset;
+            var main = result.legacyLights.Children().Single(obj => obj.name == "Light - Legacy Root");
+            var front = result.legacyLights.Children().Single(obj => obj.name == "Light - Legacy Front");
+            CheckVector(main.worldPosition, result.bakeRoot.worldPosition + result.bakeRoot.worldRotation * (offset * 2));
+            CheckVector(front.worldPosition - main.worldPosition, result.bakeRoot.worldRotation * Vector3.forward * 0.01f);
+            Assert.That(result.bakeRoot.Children().Select(obj => obj.name), Is.EquivalentTo(new[] {
+                "WorldSpace", "LegacyLights"
+            }));
+            Assert.That(result.worldSpace.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "Sender - Root", "Sender - Legacy Front" }));
+            Assert.That(result.legacyLights.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "Light - Legacy Root", "Light - Legacy Front" }));
+            Assert.That(result.worldSpace.Children().All(obj => obj.Children().Length == 0), Is.True);
+            Assert.That(result.legacyLights.Children().All(obj => obj.Children().Length == 0), Is.True);
+            CheckVector(result.legacyLights.localPosition, offset);
+            Assert.That(result.bakeRoot.GetComponent<UnityEngine.Animations.ScaleConstraint>(), Is.Null);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Animations.ScaleConstraint>(), Has.Length.EqualTo(2));
         }
 
         [Test]

@@ -34,16 +34,12 @@ namespace VF.Inspector {
             bakeRoot.localPosition = localPosition;
             bakeRoot.localRotation = localRotation;
 
-            var oneSpace = GameObjects.Create("OneSpace", bakeRoot);
-            oneSpace.worldScale = Vector3.one;
-
             var worldSpace = GameObjects.Create("WorldSpace", bakeRoot);
             ConstraintUtils.MakeWorldSpace(worldSpace);
 
-            var senders = GameObjects.Create("Senders", worldSpace);
-
             var legacyLightType = GetLegacyLightType(socket, lightType);
             VFGameObject rootSender;
+            VFGameObject legacyFrontSender = null;
 
             // Senders
             {
@@ -53,15 +49,15 @@ namespace VF.Inspector {
                 rootTags.AddRange(legacySuffixes.Select(suffix => SpsTags.LegacySocket2 + suffix));
                 rootTags.AddRange(legacySuffixes.Select(suffix => SpsTags.LegacySocket + suffix));
                 rootSender = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                    obj = senders,
-                    objName = "Root",
+                    obj = worldSpace,
+                    objName = "Sender - Root",
                     radius = 0,
                     tags = rootTags.ToArray()
                 });
                 if (legacyAvailable && tpsDepthAnimationCompatibility && legacySuffixes.Count > 0) {
-                    HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest {
-                        obj = senders,
-                        objName = "Front",
+                    legacyFrontSender = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest {
+                        obj = worldSpace,
+                        objName = "Sender - Legacy Front",
                         pos = Vector3.forward * 0.01f,
                         radius = 0.001f,
                         tags = legacySuffixes.Select(suffix => SpsTags.LegacySocketFront + suffix).ToArray()
@@ -69,7 +65,7 @@ namespace VF.Inspector {
                 }
             }
 
-            VFGameObject lights = null;
+            VFGameObject legacyLights = null;
             if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
                 ForEachPossibleLight(transform, false, light => {
                     light.Destroy();
@@ -100,17 +96,11 @@ namespace VF.Inspector {
                                 ? Vector3.up * VRCFuryHapticSocketEditor.LegacyRadiusOffset
                                 : Vector3.zero;
                         }
-                        if (legacyOffset == Vector3.zero) {
-                            lights = GameObjects.Create("Lights", worldSpace);
-                        } else {
-                            // If the lights are offset, we need to normalize the scale separately from WorldSpace so the offset
-                            // can remain in local-units.
-                            lights = GameObjects.Create("Lights", bakeRoot);
-                            lights.localPosition = legacyOffset;
-                            ConstraintUtils.MakeWorldSpace(lights);
-                        }
-                        var main = GameObjects.Create("Root", lights);
-                        main.localPosition = Vector3.zero;
+                        legacyLights = GameObjects.Create("LegacyLights", bakeRoot);
+                        // Keep the offset in socket-local units while light spacing stays in meters.
+                        legacyLights.localPosition = legacyOffset;
+                        ConstraintUtils.MakeWorldSpace(legacyLights);
+                        var main = GameObjects.Create("Light - Legacy Root", legacyLights);
                         var mainLight = main.AddComponent<Light>();
                         mainLight.type = LightType.Point;
                         mainLight.color = Color.black;
@@ -121,8 +111,8 @@ namespace VF.Inspector {
                         mainLight.shadows = LightShadows.None;
                         mainLight.renderMode = LightRenderMode.ForceVertex;
 
-                        var front = GameObjects.Create("Front", lights);
-                        front.localPosition = Vector3.forward * 0.01f / lights.worldScale.x;
+                        var front = GameObjects.Create("Light - Legacy Front", legacyLights);
+                        front.localPosition = Vector3.forward * 0.01f;
                         var frontLight = front.AddComponent<Light>();
                         frontLight.type = LightType.Point;
                         frontLight.color = Color.black;
@@ -139,15 +129,14 @@ namespace VF.Inspector {
             if (EditorApplication.isPlaying && !socket.fromSpsForAll) {
                 var gizmo = socket.owner().AddComponent<VRCFurySocketGizmo>();
                 gizmo.data = GetGizmoData(socket);
-                gizmo.data.useLegacyLights = lights != null;
+                gizmo.data.useLegacyLights = legacyLights != null;
             }
 
             return new BakeResult {
                 bakeRoot = bakeRoot,
-                oneSpace = oneSpace,
                 worldSpace = worldSpace,
-                lights = lights,
-                senders = senders
+                legacyLights = legacyLights,
+                legacyFrontSender = legacyFrontSender
             };
         }
 
@@ -218,7 +207,7 @@ namespace VF.Inspector {
             AddNode(rootSender, rootType, 0);
 
             for (var i = 0; i < stopCount; i++) {
-                var sender = GameObjects.Create($"SPS3 Stop #{i + 1}", rootSender.parent);
+                var sender = GameObjects.Create($"Sender - Path Stop {i + 1}", rootSender.parent);
                 var target = stops[i].transform.asVf();
                 sender.worldPosition = target.worldPosition;
                 sender.worldRotation = target.worldRotation;

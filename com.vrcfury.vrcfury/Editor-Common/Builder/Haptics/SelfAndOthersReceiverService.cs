@@ -14,7 +14,6 @@ namespace VF.Builder.Haptics {
 
         public class Request {
             public VFGameObject frame;
-            public VFGameObject animatorRoot;
             public string name;
             public Func<bool, bool, string> objectName;
             public float worldRadius;

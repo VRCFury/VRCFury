@@ -21,7 +21,7 @@ namespace VF.Service {
         private readonly HashSet<SelfAndOthersReceiverService.Receivers> selectors = new();
 
         public VFBlendTreeDirect GetTree(SelfAndOthersReceiverService.Receivers receivers) =>
-            objectTrees.Get(receivers.request.animatorRoot ?? receivers.request.frame);
+            objectTrees.Get(receivers.request.frame);
 
         private VFAParam RegisterParameter(VRCContactReceiver receiver, string suggestedName) {
             overlapping.Activate();

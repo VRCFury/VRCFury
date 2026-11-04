@@ -46,9 +46,18 @@ namespace VF.Service {
             return legacyOnClip;
         }
 
+        public void RegisterLegacyObject(VFGameObject obj) {
+            obj.active = false;
+            GetLegacyOnClip()?.SetEnabled(obj, true);
+        }
+
         [FeatureBuilderAction(FeatureOrder.MoveSpsMenus)]
         public void MoveMenus() {
             var mainPath = GetMenuPath();
+            // Add this after socket entries, including when only a plug's DPS tip needs it.
+            if (legacyParameter != null) {
+                menuService.GetMenu().NewMenuToggle($"{mainPath}/<b>Legacy Support<\\/b>\n<size=20>DPS\\/TPS\\/SPS1\\/SPS2\nOne socket at a time", legacyParameter);
+            }
             
             menuChanges.AddExtraAction(new MoveMenuItem {
                 fromPath = "Holes",
