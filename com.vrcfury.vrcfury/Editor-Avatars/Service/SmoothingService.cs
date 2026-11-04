@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using VF.Component;
 using VF.Injector;
 using VF.Utils;
@@ -17,18 +18,26 @@ namespace VF.Service {
         private VFAvatarController fx => controllers.GetFx();
         
         public VFAParam Smooth(VFBlendTreeDirect directTree, string name, VFAParam target, float smoothingSeconds, bool useAcceleration = true, float minSupported = 0, float maxSupported = float.MaxValue) {
+            if (smoothingSeconds <= 0) return target;
+            return Smooth(directTree, name, smoothingSeconds, target.GetDefault(),
+                output => output.MakeCopier(target, minSupported, maxSupported), useAcceleration, minSupported, maxSupported);
+        }
+
+        // Build the target directly into the first pass, avoiding an intermediate AAP.
+        public VFAParam Smooth(VFBlendTreeDirect directTree, string name, float smoothingSeconds, float defaultValue,
+            Func<VFAParam, VFMotion> targetMotion, bool useAcceleration = true, float minSupported = 0, float maxSupported = float.MaxValue) {
             if (smoothingSeconds <= 0) {
-                return target;
+                var output = fx.CreateUniqueFloat(name, def: defaultValue);
+                directTree.Add(targetMotion(output));
+                return output;
             }
             if (smoothingSeconds > 10) smoothingSeconds = 10;
             var speed = GetSpeed(smoothingSeconds, useAcceleration);
-
-            if (!useAcceleration) {
-                return Smooth_(directTree, target, name, speed, minSupported, maxSupported);
-            }
-
-            var pass1 = Smooth_(directTree, target, $"{name}/Pass1", speed, minSupported, maxSupported);
-            return Smooth_(directTree, pass1, $"{name}/Pass2", speed, minSupported, maxSupported);
+            var pass1 = Smooth_(directTree, useAcceleration ? $"{name}/Pass1" : name, speed,
+                defaultValue, targetMotion, minSupported, maxSupported);
+            if (!useAcceleration) return pass1;
+            return Smooth_(directTree, $"{name}/Pass2", speed, defaultValue,
+                output => output.MakeCopier(pass1, minSupported, maxSupported), minSupported, maxSupported);
         }
 
         private readonly Dictionary<string, VFAParam> cachedSpeeds = new Dictionary<string, VFAParam>();
@@ -59,19 +68,20 @@ namespace VF.Service {
             return output;
         }
 
-        private VFAParam Smooth_(VFBlendTreeDirect directTree, VFAParam target, string name, VFAParam speedParam, float minSupported, float maxSupported) {
-            var output = fx.CreateUniqueFloat(name, def: target.GetDefault());
+        private VFAParam Smooth_(VFBlendTreeDirect directTree, string name, VFAParam speedParam,
+            float defaultValue, Func<VFAParam, VFMotion> targetMotion, float minSupported, float maxSupported) {
+            var output = fx.CreateUniqueFloat(name, def: defaultValue);
             
             // Maintain tree - keeps the current value
             var maintainTree = output.MakeCopier(output, minSupported, maxSupported);
 
             // Target tree - uses the target (input) value
-            var targetTree = output.MakeCopier(target, minSupported, maxSupported);
+            var targetTree = targetMotion(output);
 
             //The following two trees merge the update and the maintain tree together. The smoothParam controls 
             //how much from either tree should be applied during each tick
             var smoothTree = VFBlendTree1D.CreateWithData(
-                $"{output.name} smoothto {target.name}",
+                $"{output.name} smoothing",
                 speedParam,
                 (0, maintainTree),
                 (1, targetTree)

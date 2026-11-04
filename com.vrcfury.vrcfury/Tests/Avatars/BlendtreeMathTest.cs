@@ -72,6 +72,34 @@ namespace VF.Tests {
             for (var i = 0; i < frames; i++) graph.Evaluate(1f / 60);
         }
 
+        [TestCase(0f, 3f, false, true)]
+        [TestCase(-2f, 3f, true, true)]
+        [TestCase(-2f, 3f, false, false)]
+        [TestCase(-2f, 3f, true, false)]
+        [TestCase(1f, 1f, true, true)]
+        [TestCase(1f, 1f, false, true)]
+        public void RangeUsesOneTreeAndPreservesComparisonBoundaries(float min, float max, bool includeMin, bool includeMax) {
+            var input = fx.CreateUniqueFloat("Input", min);
+            var actual = fx.CreateUniqueFloat("Range");
+            var expected = fx.CreateUniqueFloat("Comparisons");
+            var range = BlendtreeMath.InRange(input, min, max, includeMin, includeMax);
+            var comparisons = BlendtreeMath.GreaterThan(input, min, includeMin)
+                .And(BlendtreeMath.LessThan(input, max, includeMax));
+            var motion = range.create(actual.MakeSetter(1), actual.MakeSetter(0));
+            Assert.That(new AnimatorIterator.Trees().From(motion).Count, Is.LessThanOrEqualTo(1));
+            Assert.That(range.defaultIsTrue, Is.EqualTo(comparisons.defaultIsTrue));
+            tree.Add(motion);
+            tree.Add(comparisons.create(expected.MakeSetter(1), expected.MakeSetter(0)));
+            Start();
+            foreach (var value in new[] { min - 1, min, VF.Inspector.VRCFuryEditorUtils.NextFloatUp(min),
+                         (min + max) / 2, VF.Inspector.VRCFuryEditorUtils.NextFloatDown(max), max, max + 1 }) {
+                playable.SetFloat(input, value);
+                Evaluate();
+                Assert.That(playable.GetFloat(actual), Is.EqualTo(playable.GetFloat(expected)).Within(0.0001f),
+                    "Input " + value);
+            }
+        }
+
         [Test]
         public void AddCombinesRepeatedInputsAndConstantsWithoutAddingDelay() {
             var a = fx.CreateUniqueFloat("A", 2);

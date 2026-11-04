@@ -1171,7 +1171,7 @@ namespace VF.Tests {
             injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Test",
                 _ => _ => input, root);
             var requiresMap = smoothingSeconds > 0 || motionTime;
-            Assert.That(fx.parameters.Any(p => p.name.Contains("/Mapped")), Is.EqualTo(requiresMap));
+            Assert.That(fx.parameters.Any(p => p.name.Contains("/Mapped")), Is.EqualTo(motionTime && smoothingSeconds <= 0));
             Start();
             Evaluate(5);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
@@ -1187,6 +1187,89 @@ namespace VF.Tests {
                 Evaluate(4);
                 Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f), "The original 1% activation threshold still applies");
             }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SmoothedDepthFoldsMappingAndPreservesTheResponseOneFrameEarlier(bool reverseMotion) {
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var input = fx.CreateUniqueFloat("Raw depth", 0);
+            var action = new VRCFuryHapticSocket.DepthActionNew {
+                range = new Vector2(-0.25f, 0), units = VRCFuryHapticSocket.DepthActionUnits.Meters,
+                smoothingSeconds = 0.1f, reverseClip = reverseMotion
+            };
+            var clip = VFClip.Create("Depth action");
+            clip.SetAap(fx.GetOrCreateFloat("Depth action output"), reverseMotion ? AnimationCurve.Linear(0, 0, 1, 1) : AnimationCurve.Constant(0, 0, 1));
+            action.actionSet.actions.Add(new VF.Model.StateAction.AnimationClipAction { vfClip = clip });
+            injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Test", _ => _ => input, root);
+            Assert.That(fx.parameters.Any(p => p.name.Contains("/Mapped")), Is.False);
+            var actual = fx.parameters.Single(p => p.name.Contains("/Smoothed/Pass2"));
+            Assert.That(actual.GetDefault(), Is.EqualTo(reverseMotion ? 1 : 0));
+
+            // Reproduce the former mapped-AAP + two-pass smoother with the same live speed.
+            var speed = fx.parameters.Single(p => p.name.Contains("smoothingSpeed/"));
+            var mapped = math.Map("Reference mapped", input, 0, -0.25f, 0, 1);
+            mapped.SetDefault(actual.GetDefault());
+            VFAParam ReferencePass(string name, VFAParam target) {
+                var output = fx.CreateUniqueFloat(name, actual.GetDefault());
+                tree.Add(VFBlendTree1D.CreateWithData(name, speed,
+                    (0, output.MakeCopier(output)), (1, output.MakeCopier(target))));
+                return output;
+            }
+            var reference = ReferencePass("Reference pass 2", ReferencePass("Reference pass 1", mapped));
+            Start();
+            Evaluate(120);
+            foreach (var value in new[] { -0.125f, -0.5f, 0.2f, -0.2f }) {
+                playable.SetFloat(input, value);
+                var previous = playable.GetFloat(actual);
+                for (var frame = 0; frame < 60; frame++) {
+                    Evaluate(1);
+                    Assert.That(playable.GetFloat(reference), Is.EqualTo(previous).Within(0.0001f),
+                        $"Input {value}, frame {frame}");
+                    previous = playable.GetFloat(actual);
+                }
+                Assert.That(playable.GetFloat(actual), Is.EqualTo(Mathf.Clamp01(value / -0.25f)).Within(0.001f));
+            }
+        }
+
+        [TestCase(0f, "range")]
+        [TestCase(0f, "input")]
+        [TestCase(0f, "initial")]
+        [TestCase(0.1f, "range")]
+        [TestCase(0.1f, "input")]
+        [TestCase(0.1f, "initial")]
+        [TestCase(0.1f, "smoothing")]
+        public void DepthActionsShareControlsOnlyWhenTheirSettingsMatch(float seconds, string difference) {
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var selfInput = fx.CreateUniqueFloat("Merged depth", 0);
+            var otherInput = fx.CreateUniqueFloat("Others depth", 0);
+            var actions = Enumerable.Range(0, 3).Select(i => {
+                var different = i == 2;
+                var action = new VRCFuryHapticSocket.DepthActionNew {
+                    range = new Vector2(different && difference == "range" ? -0.5f : -0.25f, 0),
+                    units = VRCFuryHapticSocket.DepthActionUnits.Meters,
+                    enableSelf = !(different && difference == "input"),
+                    smoothingSeconds = different && difference == "smoothing" ? seconds * 2 : seconds,
+                    reverseClip = different && difference == "initial"
+                };
+                var clip = VFClip.Create("MotionTime " + i);
+                clip.SetAap(fx.GetOrCreateFloat("Output " + i), AnimationCurve.Linear(0, 0, 1, 1));
+                action.actionSet.actions.Add(new VF.Model.StateAction.AnimationClipAction { vfClip = clip });
+                return action;
+            }).ToArray();
+            injector.GetService<SpsDepthAnimationService>().CreateAnims(actions, root, "Test",
+                party => _ => party == Party.Merged ? selfInput : otherInput, root);
+            var controls = fx.parameters.Where(p => seconds > 0 ? p.name.Contains("/Smoothed/Pass2") : p.name.Contains("/Mapped")).ToArray();
+            Assert.That(controls, Has.Length.EqualTo(2), "The first two actions share a control; the third must remain independent");
+            Assert.That(controls.Select(p => p.GetDefault()), Is.EquivalentTo(difference == "initial" ? new[] { 0f, 1f } : new[] { 0f, 0f }));
+            Start();
+            playable.SetFloat(selfInput, -0.125f);
+            playable.SetFloat(otherInput, -0.2f);
+            Evaluate(180);
+            Assert.That(playable.GetFloat("Output 0"), Is.EqualTo(0.5f).Within(0.01f));
+            Assert.That(playable.GetFloat("Output 1"), Is.EqualTo(0.5f).Within(0.01f));
+            var expected = difference == "range" ? 0.25f : difference == "input" ? 0.8f : 0.5f;
+            Assert.That(playable.GetFloat("Output 2"), Is.EqualTo(expected).Within(0.01f));
         }
 
         [TestCase(0f, false)]

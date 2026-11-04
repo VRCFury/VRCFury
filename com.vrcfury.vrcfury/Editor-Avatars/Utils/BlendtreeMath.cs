@@ -33,6 +33,14 @@ namespace VF.Utils {
                 this.defaultIsTrue = defaultIsTrue;
             }
 
+            // Share a condition across outputs without buffering it through an AAP.
+            public (VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse) CreateBranches(VFBlendTreeDirect parent, string name) {
+                var whenTrue = VFBlendTreeDirect.Create(name + " - True");
+                var whenFalse = VFBlendTreeDirect.Create(name + " - False");
+                parent.Add(create(whenTrue, whenFalse));
+                return (whenTrue, whenFalse);
+            }
+
             public Condition Or(Condition b) {
                 return new Condition(
                     (whenTrue, whenFalse) => create(
@@ -148,24 +156,20 @@ namespace VF.Utils {
             outputDefault = VrcfMath.Clamp(outputDefault, outMin, outMax);
             var output = controller.CreateUniqueFloat(name, def: outputDefault);
 
-            // These clips drive the output param to certain values
-            var minClip = output.MakeSetter(outMin);
-            var maxClip = output.MakeSetter(outMax);
-
-            var tree = VFBlendTree1D.Create($"{input} ({inMin}-{inMax}) -> ({outMin}-{outMax})", input);
-            if (inMin < inMax) {
-                tree.Add(inMin, minClip);
-                tree.Add(inMax, maxClip);
-            } else {
-                tree.Add(inMax, maxClip);
-                tree.Add(inMin, minClip);
-            }
-
-            directTree.Add(tree);
-
+            directTree.Add(Map(output, input, inMin, inMax, outMin, outMax));
             return output;
         }
-        
+
+        public static VFMotion Map(VFAParam output, VFAParam input, float inMin, float inMax, float outMin, float outMax) {
+            var minClip = output.MakeSetter(outMin);
+            var maxClip = output.MakeSetter(outMax);
+            return inMin < inMax
+                ? VFBlendTree1D.CreateWithData($"{input} ({inMin}-{inMax}) -> ({outMin}-{outMax})", input,
+                    (inMin, minClip), (inMax, maxClip))
+                : VFBlendTree1D.CreateWithData($"{input} ({inMin}-{inMax}) -> ({outMin}-{outMax})", input,
+                    (inMax, maxClip), (inMin, minClip));
+        }
+
         /**
          * a,b : (-Infinity,Infinity)
          */
@@ -215,6 +219,19 @@ namespace VF.Utils {
          */
         public static Condition LessThan(VFAParam a, float b, bool orEqual = false, string name = null) {
             return GreaterThan(a, b, !orEqual, name).Not();
+        }
+
+        // A bounded interval needs one 1D tree, rather than two nested comparisons.
+        public static Condition InRange(VFAParam input, float min, float max, bool includeMin = true, bool includeMax = true) {
+            var first = includeMin ? min : Up(min);
+            var last = includeMax ? max : Down(max);
+            if (first > last) return False();
+            if (first == last) return Equals(input, first);
+            return new Condition((whenTrue, whenFalse) => VFBlendTree1D.CreateWithData(
+                $"{input} in {min}..{max}", input,
+                (Down(first), whenFalse), (first, whenTrue),
+                (last, whenTrue), (Up(last), whenFalse)),
+                input.GetDefault() >= first && input.GetDefault() <= last);
         }
 
         private static float Up(float a) {

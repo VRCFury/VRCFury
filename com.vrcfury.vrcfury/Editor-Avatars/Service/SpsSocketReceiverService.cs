@@ -76,27 +76,23 @@ namespace VF.Service {
                 var native = new Lazy<BlendtreeMath.Condition>(() => !legacy ? BlendtreeMath.True()
                     : channels.Select(SpsTags.FormatPlug).Aggregate(BlendtreeMath.False(),
                         (condition, tag) => condition.Or(BlendtreeMath.GreaterThan(Field("CollisionTag_" + tag), 0))));
+                var presence = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
+                    present.Value.CreateBranches(tree, prefix + "/Present"));
+                var encoding = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
+                    native.Value.CreateBranches(presence.Value.whenTrue, prefix + "/Native"));
                 // Outside the length sphere, infer B = centerDistance - A * (1 - proximity).
                 // At saturation this is a lower bound; use it to seed a missing estimate.
                 var length = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Length", 0.3f);
                     var nativeInput = Field("SenderLossyScaleZ");
-                    VFMotion motion;
-                    if (legacy) {
-                        var estimate = math.Add(prefix + "/LegacyLengthEstimate",
-                            (Field("PointSeparation"), 1), (proximity.Value, WorldRadius), (1, -WorldRadius));
-                        motion = LegacyEstimate("Length", output, nativeInput, estimate, proximity.Value, 0.3f);
-                    } else {
-                        motion = present.Value.create(
-                            output.MakeCopier(nativeInput), output.MakeSetter(0.3f));
-                    }
-                    tree.Add(motion);
+                    var estimate = legacy ? math.Add(prefix + "/LegacyLengthEstimate",
+                        (Field("PointSeparation"), 1), (proximity.Value, WorldRadius), (1, -WorldRadius)) : null;
+                    AddSize("Length", output, nativeInput, 0.3f, estimate);
                     return output;
                 });
                 var radius = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Radius", 0.03f);
                     var nativeInput = Field("SenderLossyScaleX");
-                    VFMotion motion;
                     if (legacy) {
                         var helper = receiverAnimator.GetParameter(legacyWidthReceiver.Value, Party.Others);
                         VFAParam HelperField(string suffix) => receiverAnimator.GetAdvancedParam(legacyWidthReceiver.Value, Party.Others, suffix);
@@ -106,35 +102,31 @@ namespace VF.Service {
                         var estimate = math.Add(prefix + "/LegacyRadiusEstimate", (proximity.Value, WorldRadius / 2), (helper, -WorldRadius / 2));
                         var measurable = BlendtreeMath.GreaterThan(helperRadius, 0.01001f)
                             .And(BlendtreeMath.LessThan(helper, 1));
-                        motion = LegacyEstimate("Radius", output, nativeInput, estimate, proximity.Value, 0.03f, helperPresent, measurable,
+                        AddSize("Radius", output, nativeInput, 0.03f, estimate, helperPresent, measurable,
                             BlendtreeMath.GreaterThan(proximity.Value, 1, true).Or(BlendtreeMath.GreaterThan(helper, 1, true)));
                     } else {
-                        motion = present.Value.create(
-                            output.MakeCopier(nativeInput), output.MakeSetter(0.03f));
+                        AddSize("Radius", output, nativeInput, 0.03f);
                     }
-                    tree.Add(motion);
                     return output;
                 });
                 var distance = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Dist/Meters", 100);
                     VFMotion Sum(string label, params (BlendtreeMath.Value input, float multiplier)[] terms) =>
                         BlendtreeMath.Add(prefix + "/Dist/" + label, output, terms);
-                    var legacyDistance = legacy
-                        ? BlendtreeMath.LessThan(proximity.Value, 1).create(
+                    encoding.Value.whenTrue.Add(Sum("Native", (Field("PointSeparation"), 1), (Field("SenderLossyScaleZ"), -1)));
+                    if (legacy) {
+                        encoding.Value.whenFalse.Add(BlendtreeMath.LessThan(proximity.Value, 1).create(
                             Sum("LegacyOutside", (1, WorldRadius), (proximity.Value, -WorldRadius)),
-                            Sum("LegacyInside", (Field("PointSeparation"), 1), (length.Value, -1)))
-                        : output.MakeSetter(100);
-                    var measured = native.Value.create(
-                        Sum("Native", (Field("PointSeparation"), 1), (Field("SenderLossyScaleZ"), -1)),
-                        legacyDistance);
-                    tree.Add(present.Value.create(measured, output.MakeSetter(100)));
+                            Sum("LegacyInside", (Field("PointSeparation"), 1), (length.Value, -1))));
+                    }
+                    presence.Value.whenFalse.Add(output.MakeSetter(100));
                     return output;
                 });
                 var velocity = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Velocity");
                     // Deliberately axial velocity, not total speed or a buffered radial-depth derivative.
-                    tree.Add(present.Value.create(
-                        output.MakeCopier(Field("SenderVelocityZ"), -100, 100), output.MakeSetter(0)));
+                    presence.Value.whenTrue.Add(output.MakeCopier(Field("SenderVelocityZ"), -100, 100));
+                    presence.Value.whenFalse.Add(output.MakeSetter(0));
                     return output;
                 });
                 // Read the cached size instead of extending its decoding branches with inversion writers.
@@ -167,14 +159,20 @@ namespace VF.Service {
                     });
                 };
 
-                VFMotion LegacyEstimate(string label, VFAParam output, VFAParam nativeInput, VFAParam estimate,
-                    VFAParam proximity, float assumed, BlendtreeMath.Condition extraPresent = null,
+                void AddSize(string label, VFAParam output, VFAParam nativeInput, float assumed,
+                    VFAParam estimate = null, BlendtreeMath.Condition extraPresent = null,
                     BlendtreeMath.Condition extraMeasurable = null, BlendtreeMath.Condition saturated = null) {
+                    if (!legacy) {
+                        encoding.Value.whenTrue.Add(output.MakeCopier(nativeInput));
+                        presence.Value.whenFalse.Add(output.MakeSetter(assumed));
+                        return;
+                    }
                     var confidence = fx.CreateUniqueFloat(prefix + "/Legacy" + label + "Valid");
-                    var measurable = BlendtreeMath.LessThan(proximity, 1)
-                        .Or(BlendtreeMath.GreaterThan(confidence, 0).Not())
-                        .And(BlendtreeMath.GreaterThan(estimate, 0)).And(BlendtreeMath.LessThan(estimate, 3, true));
-                    if (extraMeasurable != null) measurable = measurable.And(extraMeasurable);
+                    // Check helper/bounds before the OR to avoid repeating the cache fallback.
+                    var measurable = (extraMeasurable ?? BlendtreeMath.True())
+                        .And(BlendtreeMath.InRange(estimate, 0, 3, includeMin: false))
+                        .And(BlendtreeMath.LessThan(proximity.Value, 1)
+                            .Or(BlendtreeMath.GreaterThan(confidence, 0).Not()));
                     VFBlendTreeDirect WithConfidence(VFMotion motion, float value) {
                         var result = VFBlendTreeDirect.Create(prefix + "/Legacy" + label);
                         result.Add(motion);
@@ -183,12 +181,13 @@ namespace VF.Service {
                     }
                     var fallback = WithConfidence(output.MakeSetter(assumed), 0);
                     var measured = measurable.create(WithConfidence(output.MakeCopier(estimate), 1),
-                        (saturated ?? BlendtreeMath.GreaterThan(proximity, 1, true))
+                        (saturated ?? BlendtreeMath.GreaterThan(proximity.Value, 1, true))
                         .And(BlendtreeMath.GreaterThan(confidence, 0)).create(
                             WithConfidence(output.MakeCopier(output), 1), fallback));
                     if (extraPresent != null) measured = extraPresent.create(measured, fallback);
-                    return present.Value.create(native.Value.create(
-                        WithConfidence(output.MakeCopier(nativeInput), 0), measured), fallback);
+                    encoding.Value.whenTrue.Add(WithConfidence(output.MakeCopier(nativeInput), 0));
+                    encoding.Value.whenFalse.Add(measured);
+                    presence.Value.whenFalse.Add(fallback);
                 }
             });
 #else

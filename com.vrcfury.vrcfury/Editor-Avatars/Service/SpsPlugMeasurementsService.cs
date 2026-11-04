@@ -37,16 +37,19 @@ namespace VF.Service {
                 VFAParam Field(string suffix) => receiverAnimator.GetAdvancedParam(main, party, suffix);
                 var present = new Lazy<BlendtreeMath.Condition>(() => BlendtreeMath.GreaterThan(proximity.Value, 0)
                     .And(BlendtreeMath.GreaterThan(Field("PointSeparation"), 0, true)));
+                var presence = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
+                    present.Value.CreateBranches(tree, prefix + "/Present"));
                 var distance = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Dist/Meters", 100);
-                    tree.Add(present.Value.create(BlendtreeMath.Add(prefix + "/Dist/Socket", output,
-                        (Field("PointSeparation"), 1), (worldScale.Value, -localLength)), output.MakeSetter(100)));
+                    presence.Value.whenTrue.Add(BlendtreeMath.Add(prefix + "/Dist/Socket", output,
+                        (Field("PointSeparation"), 1), (worldScale.Value, -localLength)));
+                    presence.Value.whenFalse.Add(output.MakeSetter(100));
                     return output;
                 });
                 var velocity = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Velocity");
-                    tree.Add(present.Value.create(
-                        output.MakeCopier(Field("SenderVelocityZ"), -100, 100), output.MakeSetter(0)));
+                    presence.Value.whenTrue.Add(output.MakeCopier(Field("SenderVelocityZ"), -100, 100));
+                    presence.Value.whenFalse.Add(output.MakeSetter(0));
                     return output;
                 });
                 var outputs = new Dictionary<(string parameter, string units), VFAParam>();

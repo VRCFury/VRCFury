@@ -26,7 +26,7 @@ namespace VF.Service {
             VFGameObject bakeRoot
         ) {
             var calculations = objectTrees.Get(bakeRoot);
-            var math = new BlendtreeMath(fx, calculations);
+            var controls = new Dictionary<(string input, float off, float on, float seconds, float initial), VFAParam>();
             var actionNum = 0;
             foreach (var depthAction in actions) {
                 actionNum++;
@@ -43,9 +43,12 @@ namespace VF.Service {
                 var offThreshold = depthAction.range.Max();
                 var onThreshold = depthAction.range.Min();
                 if (!useRawDepth) {
-                    var mapped = math.Map($"{prefix}/Mapped", unsmoothed, offThreshold, onThreshold, 0, 1);
-                    mapped.SetDefault(action.useMotionTime && depthAction.reverseClip ? 1 : 0);
-                    parameter = smoothing.Smooth(calculations, $"{prefix}/Smoothed", mapped, depthAction.smoothingSeconds);
+                    var initial = action.useMotionTime && depthAction.reverseClip ? 1f : 0f;
+                    var seconds = Math.Max(0, Math.Min(10, depthAction.smoothingSeconds));
+                    parameter = controls.GetOrCreate((unsmoothed.name, offThreshold, onThreshold, seconds, initial), () =>
+                        smoothing.Smooth(calculations, prefix + (seconds > 0 ? "/Smoothed" : "/Mapped"), seconds, initial,
+                            output => BlendtreeMath.Map(output, unsmoothed, offThreshold, onThreshold, 0, 1),
+                            minSupported: 0, maxSupported: 1));
                     offThreshold = 0;
                     onThreshold = 1;
                 }
