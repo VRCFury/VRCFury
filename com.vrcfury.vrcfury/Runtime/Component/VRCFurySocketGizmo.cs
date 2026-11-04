@@ -34,11 +34,11 @@ namespace VF.Component {
 
         private void Update() {
             if (show && !lastShow) {
-                try { EnableSceneLighting?.Invoke(); } catch (Exception) {}
+                try { EnableSceneGizmos?.Invoke(); } catch (Exception) {}
             }
             lastShow = show;
         }
 
-        public static Action EnableSceneLighting;
+        public static Action EnableSceneGizmos;
     }
 }

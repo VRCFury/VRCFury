@@ -19,12 +19,9 @@ namespace VF.Inspector {
 
         [VFInit]
         private static void Init() {
-            VRCFurySocketGizmo.EnableSceneLighting = () => {
+            VRCFurySocketGizmo.EnableSceneGizmos = () => {
                 var sv = EditorWindowFinder.GetWindows<SceneView>().FirstOrDefault();
-                if (sv != null) {
-                    sv.sceneLighting = true;
-                    sv.drawGizmos = true;
-                }
+                if (sv != null) sv.drawGizmos = true;
             };
         }
 
