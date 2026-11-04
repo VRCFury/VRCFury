@@ -8,24 +8,16 @@ namespace VF.Builder.Haptics {
     [VFService]
     internal class PlugFrameService {
         [VFAutowired] private readonly PlugSizeService sizes;
-        private readonly Dictionary<VRCFuryHapticPlug, Frames> frames = new();
+        private readonly Dictionary<VRCFuryHapticPlug, VFGameObject> roots = new();
 
-        public class Frames {
-            public VFGameObject bakeRoot;
-            public VFGameObject oneSpace;
-            public VFGameObject worldSpace;
-        }
-
-        public Frames Get(VRCFuryHapticPlug plug) => frames.GetOrCreate(plug, () => {
+        public VFGameObject Get(VRCFuryHapticPlug plug) => roots.GetOrCreate(plug, () => {
             var size = sizes.GetWorldSize(plug);
             var root = GameObjects.Create("BakedSpsPlug", plug.owner());
             root.localPosition = size.localPosition;
             root.localRotation = size.localRotation;
-            var oneSpace = GameObjects.Create("OneSpace", root);
-            oneSpace.worldScale = Vector3.one;
-            var worldSpace = GameObjects.Create("WorldSpace", root);
-            ConstraintUtils.MakeWorldSpace(worldSpace);
-            return new Frames { bakeRoot = root, oneSpace = oneSpace, worldSpace = worldSpace };
+            // The shader uses this frame's scale as the resize factor since baking.
+            root.worldScale = Vector3.one;
+            return root;
         });
     }
 }

@@ -615,8 +615,6 @@ namespace VF.Inspector {
             public AnimationCurve radiusCurve; // Normalized plug length -> local radius.
             public SelfAndOthersReceiverService.Receivers socketReceivers;
             public VFGameObject bakeRoot;
-            public VFGameObject oneSpace;
-            public VFGameObject worldSpace;
             public ICollection<RendererResult> renderers;
             public float localLength;
             public float localRadius;

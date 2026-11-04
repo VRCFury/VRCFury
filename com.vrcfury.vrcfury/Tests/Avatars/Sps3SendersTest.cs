@@ -110,7 +110,7 @@ namespace VF.Tests {
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.03f;
-            injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
             var contacts = root.GetComponentsInChildren<VRCContactSender>(true);
             if (!BuildTargetUtils.IsDesktop()) {
                 Assert.That(contacts, Is.Empty);
@@ -118,6 +118,11 @@ namespace VF.Tests {
             }
 
             Assert.That(contacts.Length, Is.EqualTo(4));
+            CheckVector(bake.bakeRoot.worldScale, Vector3.one);
+            Assert.That(contacts.All(c => c.transform.parent == (Transform)bake.bakeRoot), Is.True);
+            Assert.That(contacts.Select(c => c.name), Is.EquivalentTo(new[] {
+                "Sender - Sphere", "Sender - Legacy Width", "Sender - Legacy Root", "Sender - Envelope"
+            }));
             var main = contacts.Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugSphere));
             var width = contacts.Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugWidth));
             var envelope = contacts.Single(c => c.collisionTags.Contains(SpsTags.PlugClose));
@@ -136,7 +141,7 @@ namespace VF.Tests {
             Assert.That(main.radius * MaxScale(main.transform), Is.EqualTo(0.4f).Within(0.00001));
             Assert.That(width.radius * MaxScale(width.transform), Is.EqualTo(0.34f).Within(0.00001));
             Assert.That(envelope.radius * MaxScale(envelope.transform), Is.EqualTo(0.03f).Within(0.00001));
-            Assert.That(legacyRoot.radius * MaxScale(legacyRoot.transform), Is.EqualTo(0.01f).Within(0.00001));
+            Assert.That(legacyRoot.radius * MaxScale(legacyRoot.transform), Is.Zero.Within(0.00001));
             Assert.That(envelope.position.z * envelope.transform.lossyScale.z, Is.EqualTo(0.2f).Within(0.00001));
 
             var native = main;
@@ -441,7 +446,7 @@ namespace VF.Tests {
             plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "OTHER", allowSelf = false, allowOthers = true });
             injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
             var main = root.GetComponentsInChildren<VRCContactSender>()
-                .Single(c => c.name == "Length");
+                .Single(c => c.name == "Sender - Sphere");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             socket.useSharedTag = shared;
@@ -474,7 +479,7 @@ namespace VF.Tests {
             plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "  " + channel.ToUpperInvariant() + "  " });
             plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = channel });
             injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
-            var main = root.GetComponentsInChildren<VRCContactSender>().Single(c => c.name == "Length");
+            var main = root.GetComponentsInChildren<VRCContactSender>().Single(c => c.name == "Sender - Sphere");
             Assert.That(main.collisionTags, Is.Unique);
             Assert.That(main.collisionTags.Count(t => t == SpsTags.FormatPlug(channel)), Is.EqualTo(1));
             var socket = root.AddComponent<VRCFuryHapticSocket>();
@@ -553,7 +558,7 @@ namespace VF.Tests {
                 allowSelf || allowOthers ? new[] { "custom" } : Array.Empty<string>()));
             injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
             var main = root.GetComponentsInChildren<VRCContactSender>()
-                .Single(c => c.name == "Length");
+                .Single(c => c.name == "Sender - Sphere");
             Assert.That(main.collisionTags.Where(t => t.StartsWith("SPS/Plug/")), Is.EquivalentTo(
                 allowSelf || allowOthers ? new[] { "SPS/Plug/custom" } : Array.Empty<string>()));
             Assert.That(root.GetComponentsInChildren<VRCContactSender>(), Has.Length.EqualTo(2));
@@ -749,10 +754,10 @@ namespace VF.Tests {
                     var sender = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
                         .Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugSphere));
                     CheckVector(sender.transform.lossyScale, new Vector3(0.03f, 0.03f, 0.4f));
-                    var receivers = result.oneSpace.GetComponentsInSelfAndChildren<VRCContactReceiver>();
+                    var receivers = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>();
                     Assert.That(receivers.Length, Is.EqualTo(3));
                     foreach (var receiver in receivers) {
-                        Assert.That(receiver.transform.parent, Is.EqualTo((Transform)result.oneSpace));
+                        Assert.That(receiver.transform.parent, Is.EqualTo((Transform)result.bakeRoot));
                         CheckVector(receiver.transform.lossyScale, Vector3.one);
                         CheckVector(receiver.transform.position, result.bakeRoot.worldPosition);
                     }

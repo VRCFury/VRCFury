@@ -55,25 +55,21 @@ namespace VF.Inspector {
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
-            var frames = plugFrames.Get(plug);
-            var localSpace = frames.bakeRoot;
+            var localSpace = plugFrames.Get(plug);
             var scale = localSpace.worldScale.x;
             var localLength = worldLength / scale;
             // Measure before auto-rigging or post-bake actions change the renderer.
             var radiusCurve = PlugRadiusCurve.GetRadiusCurve(plug, size, scale);
-            var oneSpace = frames.oneSpace;
-            var worldSpace = frames.worldSpace;
             var socketReceivers = spsPlugReceiverService.GetReceivers(plug);
 
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
-            var senders = GameObjects.Create("Senders", localSpace);
             var channels = spsConfigurer.GetPlugChannels(plug, SpsConfigurer.ChannelMode.Sender);
             var legacySuffixes = new List<string>();
             if (channels.Contains(SpsTags.PublicChannel)) legacySuffixes.Add("");
             var mainSender = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                obj = senders,
-                objName = "Length",
+                obj = localSpace,
+                objName = "Sender - Sphere",
                 radius = worldLength,
                 worldScale = HapticUtils.EncodePlugScale(worldLength, worldRadius),
                 tags = channels.Select(SpsTags.FormatPlug)
@@ -81,22 +77,22 @@ namespace VF.Inspector {
             });
             if (legacySuffixes.Count > 0) {
                 HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                    obj = senders,
-                    objName = "WidthHelper",
+                    obj = localSpace,
+                    objName = "Sender - Legacy Width",
                     radius = Mathf.Max(0.01f, worldLength - worldRadius*2),
                     tags = legacySuffixes.Select(suffix => SpsTags.LegacyPlugWidth + suffix).ToArray()
                 });
                 HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                    obj = worldSpace,
-                    objName = "Sender - Root",
-                    radius = 0.01f,
+                    obj = localSpace,
+                    objName = "Sender - Legacy Root",
+                    radius = 0,
                     tags = legacySuffixes.Select(suffix => SpsTags.LegacyPlugRoot + suffix).ToArray()
                 });
             }
             HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                obj = senders,
+                obj = localSpace,
                 pos = halfWay,
-                objName = "Envelope",
+                objName = "Sender - Envelope",
                 radius = worldRadius,
                 tags = new[] { SpsTags.PlugClose },
                 rotation = capsuleRotation,
@@ -202,8 +198,6 @@ namespace VF.Inspector {
 
             return new BakeResult {
                 bakeRoot = localSpace,
-                oneSpace = oneSpace,
-                worldSpace = worldSpace,
                 renderers = rendererResults,
                 localLength = localLength,
                 localRadius = worldRadius / scale,

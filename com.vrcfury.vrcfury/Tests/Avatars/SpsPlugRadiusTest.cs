@@ -261,7 +261,7 @@ namespace VF.Tests {
             Assert.That(bake.radiusCurve.keys.First().time, Is.Zero);
             Assert.That(bake.radiusCurve.keys.Last().time, Is.EqualTo(1));
             Assert.That(bake.radiusCurve.Evaluate(distance),
-                Is.EqualTo(Mathf.Lerp(0.03f, 0, Mathf.Clamp01(distance))).Within(0.000001f));
+                Is.EqualTo(Mathf.Lerp(0.06f, 0, Mathf.Clamp01(distance))).Within(0.000001f));
             Start();
             var self = SourceReceiver(true);
             var other = SourceReceiver(false);
@@ -396,7 +396,7 @@ namespace VF.Tests {
             var injector = new VRCFuryInjector(); injector.ImportScan(typeof(VFServiceAttribute));
             bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
             foreach (var depth in new[] { 0f, 0.25f, 0.75f, 1f })
-                Assert.That(bake.radiusCurve.Evaluate(depth), Is.EqualTo(0.03f).Within(0.00001f));
+                Assert.That(bake.radiusCurve.Evaluate(depth), Is.EqualTo(0.06f).Within(0.00001f));
         }
 
 #if VRCSDK_HAS_MATERIAL_CONTACTS
@@ -416,7 +416,13 @@ namespace VF.Tests {
             }
             Start();
             if (!shaderFirst) Shader();
-            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(5)); // Quartet plus shader-only path buffer.
+            var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
+            Assert.That(contacts, Has.Length.EqualTo(5)); // Quartet plus shader-only path buffer.
+            Assert.That(contacts.All(c => c.transform.parent == (Transform)bake.bakeRoot), Is.True);
+            Assert.That(contacts.Select(c => c.name), Is.EquivalentTo(new[] {
+                "Receiver - Sockets (Self)", "Receiver - Sockets (Others)", "Receiver - Socket Paths",
+                "Receiver - Sockets (Self Merged)", "Receiver - Socket (Others Merged)"
+            }));
             var r = bake.socketReceivers;
             Assert.That(SourceReceiver(true).writeToMaterials && SourceReceiver(false).writeToMaterials, Is.True);
             Assert.That(MergedReceiver(true).writeToMaterials || MergedReceiver(false).writeToMaterials, Is.False);
@@ -582,8 +588,8 @@ namespace VF.Tests {
                 // collision-enter events as well as its receiver job; no Animator/DBT evaluation
                 // occurs between those steps or between the SDK write and the value assertion.
                 foreach (var distances in new[] { (0.2f, 0.7f), (0.8f, 0.3f), (0.4f, 0.9f), (0.9f, 0.1f) }) {
-                    self.transform.position = bake.bakeRoot.TransformPoint(Vector3.forward * (0.2f * distances.Item1));
-                    other.transform.position = bake.bakeRoot.TransformPoint(Vector3.forward * (0.2f * distances.Item2));
+                    self.transform.position = bake.bakeRoot.TransformPoint(Vector3.forward * (bake.localLength * distances.Item1));
+                    other.transform.position = bake.bakeRoot.TransformPoint(Vector3.forward * (bake.localLength * distances.Item2));
                     Tick();
                     Tick();
                     Assert.That(playable.GetFloat(SourceReceiver(true).parameter),

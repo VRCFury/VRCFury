@@ -15,6 +15,7 @@ namespace VF.Service {
     internal class HapticContactsService {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
+        [VFAutowired] private readonly OgbEnabledService ogbEnabled;
 
 
         public class ReceiverRequest {
@@ -27,6 +28,7 @@ namespace VF.Service {
             public HapticUtils.ReceiverParty party;
             public bool usePrefix = true;
             public bool localOnly = false;
+            public bool enableWithOgb;
             public float height = 0;
             public Quaternion rotation = default;
             public ContactReceiver.ReceiverType type = ContactReceiver.ReceiverType.Proximity;
@@ -67,6 +69,7 @@ namespace VF.Service {
                 receiver.height /= child.worldScale.x;
             }
 
+            if (req.enableWithOgb) ogbEnabled.Register(child);
             return param;
         }
     }

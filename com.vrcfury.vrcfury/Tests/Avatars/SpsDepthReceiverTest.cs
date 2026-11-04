@@ -85,7 +85,7 @@ namespace VF.Tests {
         }
 
         private Func<Party, Func<string, VFAParam>> PlugMeasurements(VRCFuryHapticPlug plug) {
-            var bakeRoot = injector.GetService<PlugFrameService>().Get(plug).bakeRoot;
+            var bakeRoot = injector.GetService<PlugFrameService>().Get(plug);
             var bake = new VRCFuryHapticPlugEditor.BakeResult {
                 bakeRoot = bakeRoot,
                 socketReceivers = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug),
@@ -1009,7 +1009,13 @@ namespace VF.Tests {
                 var plugSelf = receivers.Single(r => r.parameter == "OGB/Plug/Plug/DepthSelf");
                 var plugOthers = receivers.Single(r => r.parameter == "OGB/Plug/Plug/DepthOthers");
                 var lengthReceiver = receivers.Single(r => r.parameter == "OGB/Plug/Plug/LengthMult1");
-                var plugRoot = injector.GetService<PlugFrameService>().Get(plug).bakeRoot;
+                var plugRoot = injector.GetService<PlugFrameService>().Get(plug);
+                var plugContacts = plugRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>();
+                Assert.That(plugContacts.All(r => r.transform.parent == (Transform)plugRoot), Is.True);
+                var plugHaptics = plugContacts.Where(r => r.localOnly).ToArray();
+                Assert.That(plugHaptics, Has.Length.EqualTo(6));
+                Assert.That(plugHaptics.All(r => !r.gameObject.activeSelf), Is.True);
+                Assert.That(plugSelf.gameObject.activeSelf && plugOthers.gameObject.activeSelf, Is.True);
                 var scaleDetector = injector.GetService<WorldScaleDetectorService>();
                 var measuredScale = scaleDetector.GetWorldScale(plugRoot, "Another consumer");
                 Assert.That(receivers.Count(r => r.collisionTags.Contains("VRCF_WSD")
@@ -1037,6 +1043,14 @@ namespace VF.Tests {
                     .Any(binding => binding.type == typeof(Animator)
                         && (binding.propertyName.StartsWith("OGB/Plug/") || binding.propertyName.StartsWith("OGB/Socket/"))), Is.False);
                 Start();
+                playable.SetFloat("IsLocal", 1);
+                playable.SetFloat("OGB/Enabled", 1);
+                Evaluate(3);
+                Assert.That(plugHaptics.All(r => r.gameObject.activeSelf), Is.True);
+                playable.SetFloat("OGB/Enabled", 0);
+                Evaluate(3);
+                Assert.That(plugHaptics.All(r => !r.gameObject.activeSelf), Is.True);
+                Assert.That(plugSelf.gameObject.activeSelf && plugOthers.gameObject.activeSelf, Is.True);
                 Set(socketSelf, 0.8f, 0.6f, 0.4f, 0.04f, native: true);
                 Set(plugSelf, 0.6875f, 0.2f);
                 Evaluate();
@@ -1330,7 +1344,7 @@ namespace VF.Tests {
                 var rewrites = (List<BakeHapticPlugsService.SpsRewriteToDo>)typeof(BakeHapticPlugsService)
                     .VFField("spsRewritesToDo").GetValue(baker);
                 rewrites.Add(new BakeHapticPlugsService.SpsRewriteToDo {
-                    plugObject = obj, skin = skin, bakeRoot = injector.GetService<PlugFrameService>().Get(plug).bakeRoot,
+                    plugObject = obj, skin = skin, bakeRoot = injector.GetService<PlugFrameService>().Get(plug),
                     configureMaterial = (_, material) => material, spsBlendshapes = Array.Empty<string>()
                 });
                 baker.ApplySpsRewrites();

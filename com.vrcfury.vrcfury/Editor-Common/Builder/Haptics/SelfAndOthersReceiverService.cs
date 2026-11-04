@@ -16,6 +16,7 @@ namespace VF.Builder.Haptics {
             public VFGameObject frame;
             public VFGameObject animatorRoot;
             public string name;
+            public Func<bool, bool, string> objectName;
             public float worldRadius;
             public string[] selfTags = Array.Empty<string>();
             public string[] othersTags = Array.Empty<string>();
@@ -50,8 +51,9 @@ namespace VF.Builder.Haptics {
 
             private VRCContactReceiver Make(bool self, bool merged) {
                 var list = merged ? mergeReceivers : alwaysOnReceivers;
-                var obj = GameObjects.Create(request.name + (merged ? "Merged" : "")
-                    + (self ? "Self" : "Others") + (list.Count < 2 ? "" : list.Count.ToString()), request.frame);
+                var name = request.objectName?.Invoke(self, merged)
+                    ?? request.name + (merged ? "Merged" : "") + (self ? "Self" : "Others");
+                var obj = GameObjects.Create(name + (list.Count < 2 ? "" : " " + list.Count), request.frame);
                 var receiver = obj.AddComponent<VRCContactReceiver>();
                 receiver.shapeType = ContactBase.ShapeType.Sphere;
                 receiver.radius = localRadius;

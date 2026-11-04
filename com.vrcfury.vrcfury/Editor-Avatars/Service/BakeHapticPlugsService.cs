@@ -35,7 +35,6 @@ namespace VF.Service {
         [VFAutowired] private readonly ObjectTreeService objectTrees;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ExpressionParamsService expressionParams;
-        [VFAutowired] private readonly OgbEnabledService ogbEnabledService;
         [VFAutowired] private readonly VRCFuryHapticPlugBaker plugBaker;
         [VFAutowired] private readonly SpsPlugRadiusService plugRadiusService;
         [VFAutowired] private readonly SpsPlugMeasurementsService plugMeasurements;
@@ -103,7 +102,6 @@ namespace VF.Service {
             Debug.Log("Baking haptic component in " + plug.owner().GetDebugPath() + " as " + name);
 
             var bakeRoot = bakeInfo.bakeRoot;
-            var worldSpace = bakeInfo.worldSpace;
             var renderers = bakeInfo.renderers;
             var localLength = bakeInfo.localLength;
             var worldLength = bakeInfo.worldLength;
@@ -123,7 +121,6 @@ namespace VF.Service {
                 worldScaleService.GetRawWorldScale(bakeRoot, name, paramPrefix + "/LengthMult1");
                 expressionParams.AddOrMerge(ExpressionParam.Create(paramPrefix + "/LengthMult2")
                     .Float().Default(worldLength * WorldScaleDetectorService.MaxDetectedScale).Unsynced());
-                var haptics = GameObjects.Create("Haptics", bakeInfo.oneSpace);
                 var halfWay = Vector3.forward * (worldLength / 2);
                 var extraRadiusForTouch = Math.Min(worldRadius, 0.08f /* 8cm */);
                 // Extra rub radius should always match for everyone, so when two plugs collide, both trigger at the same time
@@ -132,7 +129,8 @@ namespace VF.Service {
                 var capsuleRotation = Quaternion.Euler(90,0,0);
 
                 var req = new HapticContactsService.ReceiverRequest() {
-                    obj = haptics,
+                    obj = bakeRoot,
+                    enableWithOgb = true,
                     localOnly = true,
                     usePrefix = false
                 };
@@ -140,7 +138,7 @@ namespace VF.Service {
                     var c = req.Clone();
                     c.pos = halfWay;
                     c.paramName = paramPrefix + "/TouchSelfClose";
-                    c.objName = "TouchSelfClose";
+                    c.objName = "Receiver - TouchSelfClose";
                     c.radius = worldRadius + extraRadiusForTouch;
                     c.tags = HapticUtils.SelfContacts;
                     c.party = HapticUtils.ReceiverParty.Self;
@@ -149,20 +147,20 @@ namespace VF.Service {
                     c.type = ContactReceiver.ReceiverType.Constant;
                     hapticContacts.AddReceiver(c);
                     c.paramName = paramPrefix + "/TouchOthersClose";
-                    c.objName = "TouchOthersClose";
+                    c.objName = "Receiver - TouchOthersClose";
                     c.party = HapticUtils.ReceiverParty.Others;
                     hapticContacts.AddReceiver(c);
                 }
                 {
                     var c = req.Clone();
                     c.paramName = paramPrefix + "/TouchSelf";
-                    c.objName = "TouchSelf";
+                    c.objName = "Receiver - TouchSelf";
                     c.radius = worldLength + extraRadiusForTouch;
                     c.tags = HapticUtils.SelfContacts;
                     c.party = HapticUtils.ReceiverParty.Self;
                     hapticContacts.AddReceiver(c);
                     c.paramName = paramPrefix + "/TouchOthers";
-                    c.objName = "TouchOthers";
+                    c.objName = "Receiver - TouchOthers";
                     c.party = HapticUtils.ReceiverParty.Others;
                     hapticContacts.AddReceiver(c);
                 }
@@ -176,7 +174,7 @@ namespace VF.Service {
                 {
                     var c = req.Clone();
                     c.paramName = paramPrefix + "/FrotOthers";
-                    c.objName = "FrotOthers";
+                    c.objName = "Receiver - FrotOthers";
                     c.radius = worldLength;
                     c.tags = new []{SpsTags.PlugClose};
                     c.party = HapticUtils.ReceiverParty.Others;
@@ -186,7 +184,7 @@ namespace VF.Service {
                     var c = req.Clone();
                     c.pos = halfWay;
                     c.paramName = paramPrefix + "/FrotOthersClose";
-                    c.objName = "FrotOthersClose";
+                    c.objName = "Receiver - FrotOthersClose";
                     c.radius = worldRadius+extraRadiusForRub;
                     c.tags = new []{SpsTags.PlugClose};
                     c.party = HapticUtils.ReceiverParty.Others;
@@ -195,7 +193,6 @@ namespace VF.Service {
                     c.type = ContactReceiver.ReceiverType.Constant;
                     hapticContacts.AddReceiver(c);
                 }
-                ogbEnabledService.Register(haptics);
             }
 
             if (bakeInfo.mainSender != null) {
@@ -225,7 +222,7 @@ namespace VF.Service {
             
             // DPS Tip Light
             if (addDpsTipLight) {
-                var tip = GameObjects.Create("LegacyDpsTip", worldSpace);
+                var tip = GameObjects.Create("Light - Legacy DPS Trigger", bakeRoot);
                 var light = tip.AddComponent<Light>();
                 light.type = LightType.Point;
                 light.color = Color.black;

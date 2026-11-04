@@ -5,7 +5,6 @@ using UnityEngine;
 using VF.Component;
 using VF.Injector;
 using VF.Utils;
-using VF.Utils.Controller;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
 
@@ -24,9 +23,11 @@ namespace VF.Builder.Haptics {
             cache.GetOrCreate(plug, () => {
                 var size = sizes.GetWorldSize(plug);
                 return receivers.Create(new SelfAndOthersReceiverService.Request {
-                    frame = frames.Get(plug).oneSpace,
-                    animatorRoot = frames.Get(plug).bakeRoot,
+                    frame = frames.Get(plug),
                     name = "SPS_",
+                    objectName = (self, merged) => merged
+                        ? self ? "Receiver - Sockets (Self Merged)" : "Receiver - Socket (Others Merged)"
+                        : self ? "Receiver - Sockets (Self)" : "Receiver - Sockets (Others)",
                     worldRadius = size.worldLength * RangeInPlugLengths,
                     selfTags = GetSocketTags(plug, true).ToArray(),
                     othersTags = GetSocketTags(plug, false).ToArray()
@@ -63,7 +64,7 @@ namespace VF.Builder.Haptics {
 #if VRCSDK_HAS_MATERIAL_CONTACTS
             var targets = renderers.Where(r => r != null).Distinct().ToArray();
             var receivers = GetReceivers(plug);
-            var frame = frames.Get(plug).oneSpace;
+            var frame = frames.Get(plug);
             receivers.SetMaterials(targets, self: true, needsContactTags: false, shaderParameter: "SPS_Self");
             receivers.SetMaterials(targets, self: false, needsContactTags: true, shaderParameter: "SPS_Others");
             // Guides can extend beyond the entrance-selection range.
@@ -71,10 +72,10 @@ namespace VF.Builder.Haptics {
             if (tags.Count == 0) return;
             if (tags.Count > 16) throw new Exception("SPS plug receiver exceeded the material contact tag limit.");
             for (var i = 0; i < targets.Length; i += ContactReceiver.SHADER_MAX_UPDATED_RENDERERS) {
-                var obj = GameObjects.Create("SPS_Path", frame);
+                var obj = GameObjects.Create("Receiver - Socket Paths" + (i == 0 ? "" : " " + i / ContactReceiver.SHADER_MAX_UPDATED_RENDERERS), frame);
                 var receiver = obj.AddComponent<VRCContactReceiver>();
                 receiver.shapeType = ContactBase.ShapeType.Sphere;
-                receiver.radius = 100;
+                receiver.radius = 100 / frame.worldScale.x;
                 receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
                 receiver.allowSelf = true;
                 receiver.allowOthers = true;

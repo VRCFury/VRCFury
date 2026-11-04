@@ -52,7 +52,7 @@ namespace VF.Tests {
             var sizes = injector.GetService<PlugSizeService>();
             var size = sizes.GetWorldSize(plug);
             var receivers = service.GetReceivers(plug);
-            var frames = injector.GetService<PlugFrameService>().Get(plug);
+            var frame = injector.GetService<PlugFrameService>().Get(plug);
             plug.length = 0.8f;
             plug.radius = 0.02f;
             Assert.That(sizes.GetWorldSize(plug), Is.SameAs(size));
@@ -61,9 +61,8 @@ namespace VF.Tests {
             Assert.That(bake.worldLength, Is.EqualTo(0.4f));
             Assert.That(bake.worldRadius, Is.EqualTo(0.01f));
             Assert.That(bake.socketReceivers, Is.SameAs(receivers));
-            Assert.That(bake.bakeRoot, Is.EqualTo(frames.bakeRoot));
-            Assert.That(bake.oneSpace, Is.EqualTo(frames.oneSpace));
-            Assert.That(bake.worldSpace, Is.EqualTo(frames.worldSpace));
+            Assert.That(bake.bakeRoot, Is.EqualTo(frame));
+            Assert.That(frame.worldScale, Is.EqualTo(Vector3.one));
             Assert.That(root.GetComponentsInChildren<Transform>().Count(t => t.name == "BakedSpsPlug"), Is.EqualTo(1));
             Assert.That(receivers.IsCreated, Is.False);
             var another = GameObjects.Create("Other plug", root).AddComponent<VRCFuryHapticPlug>();
@@ -75,23 +74,28 @@ namespace VF.Tests {
             Assert.That(sizes.GetWorldSize(another), Is.Not.SameAs(size));
         }
 
-        [TestCase(0.5f)]
-        [TestCase(3f)]
-        public void BakeResultKeepsLocalGeometryAndReportsCurrentWorldDimensions(float resize) {
+        [TestCase(0.5f, 0.5f)]
+        [TestCase(0.5f, 3f)]
+        [TestCase(2f, 0.5f)]
+        [TestCase(2f, 3f)]
+        [TestCase(3f, 0.5f)]
+        [TestCase(3f, 3f)]
+        public void BakeResultKeepsLocalGeometryAndReportsCurrentWorldDimensions(float uploadScale, float resize) {
+            root.transform.localScale = Vector3.one * uploadScale;
             plug.enableSps = false;
             var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
             var keys = bake.radiusCurve.keys;
             var minimumRadius = bake.localMinimumRadius;
-            Assert.That(bake.localLength, Is.EqualTo(0.2f));
-            Assert.That(bake.localRadius, Is.EqualTo(0.005f));
+            Assert.That(bake.localLength, Is.EqualTo(0.4f));
+            Assert.That(bake.localRadius, Is.EqualTo(0.01f));
             Assert.That(keys.First().time, Is.Zero);
             Assert.That(keys.Last().time, Is.EqualTo(1));
             Assert.That(keys.First().value, Is.EqualTo(bake.localRadius));
             root.transform.localScale *= resize;
             Assert.That(bake.worldLength, Is.EqualTo(0.4f * resize).Within(0.00001f));
             Assert.That(bake.worldRadius, Is.EqualTo(0.01f * resize).Within(0.00001f));
-            Assert.That(bake.localLength, Is.EqualTo(0.2f));
-            Assert.That(bake.localRadius, Is.EqualTo(0.005f));
+            Assert.That(bake.localLength, Is.EqualTo(0.4f));
+            Assert.That(bake.localRadius, Is.EqualTo(0.01f));
             Assert.That(bake.localMinimumRadius, Is.EqualTo(minimumRadius));
             Assert.That(bake.radiusCurve.keys, Is.EqualTo(keys));
             Assert.That(bake.mainSender.worldScale.z, Is.EqualTo(bake.worldLength).Within(0.00001f));
@@ -163,7 +167,7 @@ namespace VF.Tests {
             var reference = GameObjects.Create("OGBTestBase", root);
             reference.localPosition = new Vector3(0.3f, 0.5f, -0.1f);
             reference.localRotation = Quaternion.Euler(17, 29, 41);
-            var frame = injector.GetService<PlugFrameService>().Get(plug).oneSpace;
+            var frame = injector.GetService<PlugFrameService>().Get(plug);
             var renderer = GameObjects.Create("Renderer", root).AddComponent<MeshRenderer>();
             service.Create(plug, new[] { renderer });
             var receivers = root.GetComponentsInChildren<VRCContactReceiver>().Where(r => r.writeToMaterials).ToArray();
@@ -203,7 +207,7 @@ namespace VF.Tests {
         [TestCase(9, 9, 0.4f)]
         public void MaterialReceiversBatchActualRenderersWithoutAnimatorParameters(int rendererCount, int receiverCount, float worldLength) {
             plug.length = worldLength;
-            var frame = injector.GetService<PlugFrameService>().Get(plug).oneSpace;
+            var frame = injector.GetService<PlugFrameService>().Get(plug);
             var renderers = Enumerable.Range(0, rendererCount)
                 .Select(i => (Renderer)GameObjects.Create("Renderer " + i, root).AddComponent<MeshRenderer>()).ToArray();
             service.Create(plug, renderers.Concat(renderers));
