@@ -146,38 +146,18 @@ namespace VF.Inspector {
             return VRCFuryHapticSocketGizmo.BuildGizmoData(
                 socket,
                 lightType,
-                GetHandTouchZoneSize(socket),
                 localPosition,
                 localRotation
             );
         }
 
-        internal static bool ShouldProbablyHaveTouchZone(
+        internal static bool ShouldSupportOgbTouch(
             VRCFuryHapticSocket socket,
             HumanBodyBones? closestBone
         ) {
             if (closestBone != HumanBodyBones.Hips) return false;
-
             var name = GetMenuName(socket).ToLower();
             return !name.Contains("rubbing") && !name.Contains("job");
-        }
-
-        public Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
-            var enableHandTouchZone = socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On
-                || (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.Auto
-                    && ShouldProbablyHaveTouchZone(
-                        socket,
-                        autoChannelGenerator?.GetClosestBone(socket.owner())
-                    ));
-            if (!enableHandTouchZone) return null;
-
-            var length = socket.length * (socket.unitsInMeters ? 1f : socket.owner().worldScale.z);
-            if (length <= 0) {
-                var viewPosition = autoChannelGenerator?.GetAvatarViewPosition(socket.owner());
-                if (viewPosition == null || viewPosition.Value.y <= 0) return null;
-                length = viewPosition.Value.y * 0.05f;
-            }
-            return Tuple.Create(length, length / 2.5f);
         }
 
         private static bool ShouldProbablyBeHole(
@@ -185,7 +165,7 @@ namespace VF.Inspector {
             HumanBodyBones? closestBone
         ) {
             if (closestBone == HumanBodyBones.Head || closestBone == HumanBodyBones.Jaw) return true;
-            return ShouldProbablyHaveTouchZone(socket, closestBone);
+            return ShouldSupportOgbTouch(socket, closestBone);
         }
 
         internal void ConfigureSpsSenders(VRCFuryHapticSocket socket,

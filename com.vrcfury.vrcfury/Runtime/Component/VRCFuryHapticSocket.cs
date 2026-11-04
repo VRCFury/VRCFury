@@ -14,6 +14,7 @@ namespace VF.Component {
             RingOneWay
         }
 
+        [Obsolete]
         public enum EnableTouchZone {
             Auto,
             On,
@@ -28,9 +29,9 @@ namespace VF.Component {
         public AddLight addLight = AddLight.Auto;
         public new string name;
         public string oscId;
-        public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
-        public float length;
-        public bool unitsInMeters = true;
+        [Obsolete, HideInInspector] public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
+        [Obsolete, HideInInspector] public float length;
+        [Obsolete, HideInInspector] public bool unitsInMeters = true;
         public bool addMenuItem = true;
         public GuidTexture2d menuIcon;
         [Obsolete("Configure Auto Mode sockets in SPS Options instead."), HideInInspector]

@@ -38,6 +38,7 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VRCFuryHapticSocketBaker socketBaker;
+        [VFAutowired] private readonly SpsAutoChannelGenerator autoChannelGenerator;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private VFAvatarController fx => controllers.GetFx();
         private VFAvatarController actionController => controllers.GetAction();
@@ -122,72 +123,26 @@ namespace VF.Service {
                     var mainReceivers = socketReceivers.GetReceivers(socket, bakeResult.worldSpace, oscId);
 
                     if (HapticsToggleMenuItem.Get() && !socket.fromSpsForAll) {
-                        // Haptic receivers
-
-                        // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
-                        var capsuleRotation = Quaternion.Euler(90,0,0);
-
                         var paramPrefix = "OGB/Socket/" + oscId;
                         expressionParams.AddOrMerge(ExpressionParam.Create(paramPrefix + "/DepthRadius")
                             .Float().Default(SpsSocketReceiverService.WorldRadius).Unsynced());
 
-                        // Receivers
-                        var handTouchZoneSize = socketBaker.GetHandTouchZoneSize(socket);
-
-                        var baseReq = new HapticContactsService.ReceiverRequest() {
-                            obj = bakeResult.worldSpace,
-                            usePrefix = false,
-                            localOnly = true,
-                            enableWithOgb = true
-                        };
-
-                        if (handTouchZoneSize != null) {
-                            var oscDepth = handTouchZoneSize.Item1;
-                            var closeRadius = handTouchZoneSize.Item2;
-                            {
-                                var r = baseReq.Clone();
-                                r.pos = Vector3.forward * -oscDepth;
-                                r.paramName = paramPrefix + "/TouchSelf";
-                                r.objName = "Receiver - Touch (Self)";
-                                r.radius = oscDepth;
-                                r.tags = HapticUtils.SelfContacts;
-                                r.party = HapticUtils.ReceiverParty.Self;
-                                hapticContacts.AddReceiver(r);
-                                r.paramName = paramPrefix + "/TouchOthers";
-                                r.objName = "Receiver - Touch (Others)";
-                                r.tags = HapticUtils.BodyContacts;
-                                r.party = HapticUtils.ReceiverParty.Others;
-                                hapticContacts.AddReceiver(r);
-                            }
-                            {
-                                var r = baseReq.Clone();
-                                r.pos = Vector3.forward * -(oscDepth / 2);
-                                r.paramName = paramPrefix + "/TouchSelfClose";
-                                r.objName = "Receiver - Touch Close (Self)";
-                                r.radius = closeRadius;
-                                r.tags = HapticUtils.SelfContacts;
-                                r.party = HapticUtils.ReceiverParty.Self;
-                                r.height = oscDepth;
-                                r.rotation = capsuleRotation;
-                                r.type = ContactReceiver.ReceiverType.Constant;
-                                hapticContacts.AddReceiver(r);
-                                r.paramName = paramPrefix + "/TouchOthersClose";
-                                r.objName = "Receiver - Touch Close (Others)";
-                                r.tags = HapticUtils.BodyContacts;
-                                r.party = HapticUtils.ReceiverParty.Others;
-                                hapticContacts.AddReceiver(r);
-                            }
-                            {
-                                var frotRadius = 0.1f;
-                                var frotPos = 0.05f;
-                                var r = baseReq.Clone();
-                                r.pos = Vector3.forward * frotPos;
-                                r.paramName = paramPrefix + "/FrotOthers";
-                                r.objName = "Receiver - Sockets (Others)";
-                                r.radius = frotRadius;
-                                r.tags = new[] { SpsTags.LegacySocket };
-                                r.party = HapticUtils.ReceiverParty.Others;
-                                hapticContacts.AddReceiver(r);
+                        if (VRCFuryHapticSocketBaker.ShouldSupportOgbTouch(socket, autoChannelGenerator.GetClosestBone(socket.owner()))) {
+                            var radius = (autoChannelGenerator.GetAvatarViewPosition(socket.owner())?.y ?? 0) * 0.03f;
+                            if (radius > 0) {
+                                foreach (var self in new[] { true, false }) {
+                                    hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest {
+                                        obj = bakeResult.worldSpace,
+                                        radius = radius,
+                                        paramName = paramPrefix + (self ? "/TouchSelf" : "/TouchOthers"),
+                                        objName = self ? "Receiver - Touch (Self)" : "Receiver - Touch (Others)",
+                                        tags = HapticUtils.SelfContacts,
+                                        party = self ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others,
+                                        localOnly = true,
+                                        usePrefix = false,
+                                        enableWithOgb = true
+                                    });
+                                }
                             }
                         }
 

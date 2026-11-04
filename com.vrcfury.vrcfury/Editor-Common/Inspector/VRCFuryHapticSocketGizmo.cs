@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -149,7 +148,6 @@ namespace VF.Inspector {
         internal static VRCFurySocketGizmo.SocketGizmoData BuildGizmoData(
             VRCFuryHapticSocket socket,
             VRCFuryHapticSocket.AddLight lightType,
-            Tuple<float, float> handTouchZoneSize,
             Vector3 localPosition,
             Quaternion localRotation
         ) {
@@ -166,10 +164,7 @@ namespace VF.Inspector {
                     socket,
                     s => s.name,
                     s => HapticUtils.GetFallbackId(s.owner())
-                ),
-                hasHandTouchZone = handTouchZoneSize != null,
-                handTouchZoneLength = handTouchZoneSize?.Item1 ?? 0,
-                handTouchZoneRadius = handTouchZoneSize?.Item2 ?? 0
+                )
             };
 
             var guidedPathStops = socket.guidedPathStops
@@ -192,19 +187,6 @@ namespace VF.Inspector {
             var socketTransformWorld = new TransformData(owner) * new TransformData(data.pos, data.rot);
             var worldStart = socketTransformWorld.position;
             var worldRotation = owner.worldRotation * data.rot;
-            var localForward = data.rot * Vector3.forward;
-
-            if (data.hasHandTouchZone) {
-                var worldForward = owner.worldRotation * localForward;
-                var worldEnd = worldStart - worldForward * data.handTouchZoneLength;
-                VRCFuryGizmoUtils.DrawCapsule(
-                    worldStart,
-                    worldEnd,
-                    data.handTouchZoneRadius,
-                    Color.gray
-                );
-            }
-
             if (guidedPathStops.Count > 0 && data.type != VRCFuryHapticSocket.AddLight.None) {
                 DrawGizmo(
                     worldStart,

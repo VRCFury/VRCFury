@@ -257,14 +257,6 @@ namespace VF.Inspector {
                     avatar => avatar.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>(),
                     GetOscId
                 ));
-                haptics.Add(VRCFuryEditorUtils.BetterProp(
-                    serializedObject.FindProperty("enableHandTouchZone2"),
-                    "Enable hand touch zone? (Auto will add only if child of Hips)"
-                ));
-                haptics.Add(VRCFuryEditorUtils.BetterProp(
-                    serializedObject.FindProperty("length"),
-                    "Hand touch zone depth override in meters:\nNote, this zone is only used for hand touches, not plug interaction."
-                ));
             }));
 
             var channels = VRCFuryEditorUtils.Section("Channels", "Filter which plugs can target this socket");
@@ -300,7 +292,6 @@ namespace VF.Inspector {
             plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugLengthParameterName")));
             plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Radius (meters) (Deprecated, use Inject Parameters on Full Controller)"));
             plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugWidthParameterName")));
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"), "Units are in world-space"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
 

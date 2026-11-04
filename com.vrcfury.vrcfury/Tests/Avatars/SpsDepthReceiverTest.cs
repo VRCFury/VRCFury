@@ -43,6 +43,14 @@ namespace VF.Tests {
         private AnimatorControllerPlayable playable;
         private readonly List<Object> assets = new();
 
+        private sealed class TouchBoneChannels : SpsAutoChannelGenerator {
+            private readonly HumanBodyBones? bone;
+            public TouchBoneChannels(HumanBodyBones? bone) => this.bone = bone;
+            public HumanBodyBones? GetClosestBone(VFGameObject obj) => bone;
+            public VFGameObject GetBone(VFGameObject obj, HumanBodyBones requested) => null;
+            public Vector3? GetAvatarViewPosition(VFGameObject obj) => new Vector3(0, 2, 0);
+        }
+
         [SetUp]
         public void SetUp() {
             optimizeTrees = false;
@@ -927,10 +935,17 @@ namespace VF.Tests {
             Assert.That(outputs, Is.Unique);
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void SocketDeclaresOgbEnabledOnlyWhenItHasObjectsToGate(bool touchZone) {
+        [TestCase(HumanBodyBones.Hips, "Test", true)]
+        [TestCase(HumanBodyBones.Hips, "Rubbing Job", false)]
+        [TestCase(HumanBodyBones.Hips, "Rubbing", false)]
+        [TestCase(HumanBodyBones.Hips, "Job", false)]
+        [TestCase(HumanBodyBones.Head, "Test", false)]
+        [TestCase(HumanBodyBones.Spine, "Test", false)]
+        [TestCase(HumanBodyBones.LeftUpperLeg, "Test", false)]
+        [TestCase(HumanBodyBones.LastBone, "Test", false)]
+        public void SocketTouchReceiversUseSharedEligibility(HumanBodyBones bone, string menuName, bool supportsTouch) {
             if (!VF.Menu.HapticsToggleMenuItem.Get()) Assert.Ignore("OGB haptics are disabled");
+            injector.Set("autoChannelGenerator", new TouchBoneChannels(bone == HumanBodyBones.LastBone ? null : bone));
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
@@ -939,15 +954,44 @@ namespace VF.Tests {
             };
             globals.addOtherFeature = _ => { };
             var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.name = menuName;
+            socket.oscId = "Test";
             socket.addMenuItem = false;
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
-            socket.length = 0.2f;
-            socket.unitsInMeters = true;
-            socket.enableHandTouchZone2 = touchZone ? VRCFuryHapticSocket.EnableTouchZone.On : VRCFuryHapticSocket.EnableTouchZone.Off;
+#pragma warning disable 0612
+            // Obsolete touch settings, including an explicit opposite choice, must be ignored.
+            socket.length = 999;
+            socket.unitsInMeters = false;
+            socket.enableHandTouchZone2 = supportsTouch ? VRCFuryHapticSocket.EnableTouchZone.Off : VRCFuryHapticSocket.EnableTouchZone.On;
+#pragma warning restore 0612
             injector.GetService<BakeHapticSocketsService>().Apply();
-            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true).Count(r => r.localOnly), Is.EqualTo(touchZone ? 5 : 0));
-            Assert.That(fx.TryGetParam("OGB/Enabled", out _), Is.EqualTo(touchZone));
-            Assert.That(injector.GetService<ExpressionParamsService>().Any(p => p.name == "OGB/Enabled"), Is.EqualTo(touchZone));
+            var receivers = root.GetComponentsInChildren<VRCContactReceiver>(true).Where(r => r.localOnly).ToArray();
+            Assert.That(receivers, Has.Length.EqualTo(supportsTouch ? 2 : 0));
+            Assert.That(fx.TryGetParam("OGB/Enabled", out _), Is.EqualTo(supportsTouch));
+            Assert.That(injector.GetService<ExpressionParamsService>().Any(p => p.name == "OGB/Enabled"), Is.EqualTo(supportsTouch));
+            if (!supportsTouch) return;
+            foreach (var self in new[] { true, false }) {
+                var receiver = receivers.Single(r => r.parameter == "OGB/Socket/Test/" + (self ? "TouchSelf" : "TouchOthers"));
+                Assert.That(receiver.name, Is.EqualTo("Receiver - Touch (" + (self ? "Self" : "Others") + ")"));
+                Assert.That(receiver.shapeType, Is.EqualTo(ContactBase.ShapeType.Sphere));
+                Assert.That(receiver.receiverType, Is.EqualTo(ContactReceiver.ReceiverType.Proximity));
+                Assert.That(receiver.allowSelf, Is.EqualTo(self));
+                Assert.That(receiver.allowOthers, Is.EqualTo(!self));
+                Assert.That(receiver.collisionTags, Is.EquivalentTo(HapticUtils.SelfContacts));
+                Assert.That(receiver.radius, Is.EqualTo(0.1f).Within(0.0001f));
+                Assert.That(receiver.position, Is.EqualTo(Vector3.zero));
+                Assert.That(receiver.transform.parent.name, Is.EqualTo("WorldSpace"));
+                Assert.That(receiver.gameObject.activeSelf, Is.False);
+            }
+            Start();
+            playable.SetFloat("IsLocal", 1);
+            playable.SetFloat("OGB/Enabled", 1);
+            Evaluate(3);
+            Assert.That(receivers.All(r => r.gameObject.activeSelf), Is.True);
+            Assert.That(receivers.All(r => !playable.IsParameterControlledByCurve(r.parameter)), Is.True);
+            playable.SetFloat("OGB/Enabled", 0);
+            Evaluate(3);
+            Assert.That(receivers.All(r => !r.gameObject.activeSelf), Is.True);
         }
 
         [Test]
@@ -991,6 +1035,7 @@ namespace VF.Tests {
         [Test]
         public void SocketFramesKeepWorldDimensionsLocalUnitsAndIndependentHapticAndLegacySwitches() {
             if (!VF.Menu.HapticsToggleMenuItem.Get()) Assert.Ignore("OGB haptics are disabled");
+            injector.Set("autoChannelGenerator", new TouchBoneChannels(HumanBodyBones.Hips));
             root.transform.localScale = Vector3.one * 2;
             scale.SetDefault(2);
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
@@ -1004,9 +1049,6 @@ namespace VF.Tests {
             socket.name = "Test";
             socket.addMenuItem = false;
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
-            socket.enableHandTouchZone2 = VRCFuryHapticSocket.EnableTouchZone.On;
-            socket.unitsInMeters = true;
-            socket.length = 0.2f;
             socket.tags.Add("test");
             socket.useRadiusOffset = true;
             var stop = GameObjects.Create("Guide", root);
@@ -1034,12 +1076,11 @@ namespace VF.Tests {
             Assert.That(contacts.Select(r => r.name), Is.EquivalentTo(new[] {
                 "Receiver - Plugs (Self)", "Receiver - Plugs (Others)",
                 "Receiver - Plugs (Self Merged)", "Receiver - Plugs (Others Merged)",
-                "Receiver - Legacy Plug Width (Others)", "Receiver - Touch (Self)", "Receiver - Touch (Others)",
-                "Receiver - Touch Close (Self)", "Receiver - Touch Close (Others)", "Receiver - Sockets (Others)"
+                "Receiver - Legacy Plug Width (Others)", "Receiver - Touch (Self)", "Receiver - Touch (Others)"
             }));
             var haptics = contacts.Where(r => r.localOnly).ToArray();
             var lights = bakeRoot.GetComponentsInSelfAndChildren<Light>();
-            Assert.That(haptics, Has.Length.EqualTo(5));
+            Assert.That(haptics, Has.Length.EqualTo(2));
             Assert.That(haptics.All(r => !r.gameObject.activeSelf), Is.True);
             Assert.That(!legacyLights.active, Is.True);
             var legacy = injector.GetService<SpsOptionsService>().GetLegacyParameter();
@@ -1062,7 +1103,7 @@ namespace VF.Tests {
                     Assert.That(receiver.radius * receiver.transform.lossyScale.x, Is.EqualTo(1).Within(0.0001f));
                 }
                 var touch = haptics.Single(r => r.parameter.EndsWith("/TouchSelf"));
-                Assert.That(touch.radius * touch.transform.lossyScale.x, Is.EqualTo(0.2f).Within(0.0001f));
+                Assert.That(touch.radius * touch.transform.lossyScale.x, Is.EqualTo(0.1f).Within(0.0001f));
                 Assert.That(Vector3.Distance(lights[0].transform.position, lights[1].transform.position), Is.EqualTo(0.01f).Within(0.0001f));
                 foreach (var sender in bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()) {
                     Assert.That(sender.transform.lossyScale.y, Is.EqualTo(1).Within(0.0001f));

@@ -21,9 +21,6 @@ namespace VF.Component {
             public bool overrideLegacyOffset;
             public Vector3 legacyOffsetLocal;
             public string name;
-            public bool hasHandTouchZone;
-            public float handTouchZoneLength;
-            public float handTouchZoneRadius;
             public List<GuidedPathStopData> guidedPathStops = new List<GuidedPathStopData>();
         }
 
