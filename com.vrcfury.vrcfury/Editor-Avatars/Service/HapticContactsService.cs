@@ -60,6 +60,9 @@ namespace VF.Service {
             receiver.allowOthers = req.party == HapticUtils.ReceiverParty.Others;
             receiver.allowSelf = req.party == HapticUtils.ReceiverParty.Self;
             receiver.localOnly = req.localOnly;
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            receiver.advancedParameters = ContactReceiver.AdvancedParameter.SenderVelocity;
+#endif
             if (req.size.HasValue) {
 #if VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS
                 receiver.shapeType = ContactBase.ShapeType.Box;

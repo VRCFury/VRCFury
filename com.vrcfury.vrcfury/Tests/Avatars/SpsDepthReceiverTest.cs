@@ -975,10 +975,12 @@ namespace VF.Tests {
                 Assert.That(receiver.name, Is.EqualTo("Receiver - Touch (" + (self ? "Self" : "Others") + ")"));
                 Assert.That(receiver.shapeType, Is.EqualTo(ContactBase.ShapeType.Sphere));
                 Assert.That(receiver.receiverType, Is.EqualTo(ContactReceiver.ReceiverType.Proximity));
+                Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderVelocity));
+                Assert.That(fx.TryGetParam(receiver.parameter + "_SenderVelocityMagnitude", out _), Is.False);
                 Assert.That(receiver.allowSelf, Is.EqualTo(self));
                 Assert.That(receiver.allowOthers, Is.EqualTo(!self));
                 Assert.That(receiver.collisionTags, Is.EquivalentTo(HapticUtils.SelfContacts));
-                Assert.That(receiver.radius, Is.EqualTo(0.1f).Within(0.0001f));
+                Assert.That(receiver.radius, Is.EqualTo(0.06f).Within(0.0001f));
                 Assert.That(receiver.position, Is.EqualTo(Vector3.zero));
                 Assert.That(receiver.transform.parent.name, Is.EqualTo("WorldSpace"));
                 Assert.That(receiver.gameObject.activeSelf, Is.False);
@@ -1103,7 +1105,7 @@ namespace VF.Tests {
                     Assert.That(receiver.radius * receiver.transform.lossyScale.x, Is.EqualTo(1).Within(0.0001f));
                 }
                 var touch = haptics.Single(r => r.parameter.EndsWith("/TouchSelf"));
-                Assert.That(touch.radius * touch.transform.lossyScale.x, Is.EqualTo(0.1f).Within(0.0001f));
+                Assert.That(touch.radius * touch.transform.lossyScale.x, Is.EqualTo(0.06f).Within(0.0001f));
                 Assert.That(Vector3.Distance(lights[0].transform.position, lights[1].transform.position), Is.EqualTo(0.01f).Within(0.0001f));
                 foreach (var sender in bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()) {
                     Assert.That(sender.transform.lossyScale.y, Is.EqualTo(1).Within(0.0001f));
@@ -1226,6 +1228,13 @@ namespace VF.Tests {
                 var receivers = root.GetComponentsInChildren<VRCContactReceiver>(true);
                 Assert.That(receivers.Where(r => r.allowSelf).SelectMany(r => r.collisionTags)
                     .Any(tag => (tag.StartsWith("TPS_") && tag != SpsTags.PlugClose) || tag.StartsWith("SPSLL_")), Is.False);
+                foreach (var receiver in receivers.Where(r => r.localOnly)) {
+                    Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderVelocity));
+                    Assert.That(fx.TryGetParam(receiver.parameter, out _), Is.True);
+                    foreach (var output in ContactReceiverUtils.GetParameterNames(receiver).Skip(1)) {
+                        Assert.That(fx.TryGetParam(output, out _), Is.False, output);
+                    }
+                }
                 Assert.That(receivers.Single(r => r.parameter == "OGB/Touch/Touch/Self").collisionTags,
                     Does.Contain(SpsTags.PlugClose));
                 var socketSelf = receivers.Single(r => r.parameter == "OGB/Socket/Socket/DepthSelf");
