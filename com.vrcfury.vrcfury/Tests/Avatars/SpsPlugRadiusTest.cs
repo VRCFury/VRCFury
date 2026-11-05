@@ -424,7 +424,7 @@ namespace VF.Tests {
             Assert.That(contacts.All(c => c.transform.parent == (Transform)bake.bakeRoot), Is.True);
             Assert.That(contacts.Select(c => c.name), Is.EquivalentTo(new[] {
                 "Receiver - Sockets (Self)", "Receiver - Sockets (Others)", "Receiver - Socket Paths",
-                "Receiver - Sockets (Self Merged)", "Receiver - Socket (Others Merged)"
+                "Receiver - Sockets (Self Merged)", "Receiver - Sockets (Others Merged)"
             }));
             var r = bake.socketReceivers;
             Assert.That(SourceReceiver(true).writeToMaterials && SourceReceiver(false).writeToMaterials, Is.True);

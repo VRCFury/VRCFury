@@ -26,7 +26,7 @@ namespace VF.Builder.Haptics {
                     frame = frames.Get(plug),
                     name = "SPS_",
                     objectName = (self, merged) => merged
-                        ? self ? "Receiver - Sockets (Self Merged)" : "Receiver - Socket (Others Merged)"
+                        ? self ? "Receiver - Sockets (Self Merged)" : "Receiver - Sockets (Others Merged)"
                         : self ? "Receiver - Sockets (Self)" : "Receiver - Sockets (Others)",
                     worldRadius = size.worldLength * RangeInPlugLengths,
                     selfTags = GetSocketTags(plug, true).ToArray(),
