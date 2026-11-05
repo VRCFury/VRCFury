@@ -1,8 +1,16 @@
 using VRC.Dynamics;
+using UnityEngine;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace com.vrcfury.udon {
     internal static class VrcfuryUtils {
+        public static T[] Resize<T>(T[] items, int length) {
+            if (items.Length == length) return items;
+            var result = new T[length];
+            for (var i = 0; i < items.Length && i < length; i++) result[i] = items[i];
+            return result;
+        }
+
         public static int AddToList<T>(ref T[] list, T item) {
             for (var i = 0; i < list.Length; i++) {
                 if (Equals(list[i], item)) return i;
@@ -55,17 +63,25 @@ namespace com.vrcfury.udon {
         }
 
         public static ContactSenderProxy GetNearestSender(
-            VRCContactReceiver receiver,
+            VRCContactReceiver[] receivers,
             ContactSenderProxy[] candidates
         ) {
             var nearestProximity = 0f;
+            var nearestDistance = float.PositiveInfinity;
             ContactSenderProxy nearest = null;
             for (var i = 0; i < candidates.Length; i++) {
                 var candidate = candidates[i];
                 if (candidate == null || !candidate.isValid) continue;
-                var proximity = receiver.CalculateProximity(candidate);
-                if (proximity <= nearestProximity) continue;
+                var proximity = 0f;
+                for (var r = 0; r < receivers.Length; r++) {
+                    if (receivers[r] != null && receivers[r].isActiveAndEnabled)
+                        proximity = Mathf.Max(proximity, receivers[r].CalculateProximity(candidate));
+                }
+                if (proximity <= 0 || proximity < nearestProximity) continue;
+                var distance = Vector3.Distance(receivers[0].transform.position, candidate.position);
+                if (proximity == nearestProximity && (proximity < 1 || distance >= nearestDistance)) continue;
                 nearestProximity = proximity;
+                nearestDistance = distance;
                 nearest = candidate;
             }
             return nearest;

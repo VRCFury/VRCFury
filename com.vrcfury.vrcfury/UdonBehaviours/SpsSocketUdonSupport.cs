@@ -7,16 +7,19 @@ namespace com.vrcfury.udon {
     [AddComponentMenu("VRCFury/SPS Socket Udon Support (VRCFury)")]
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class SpsSocketUdonSupport : UdonSharpBehaviour {
-        [SerializeField, HideInInspector] internal VRCContactReceiver tip;
-        [SerializeField, HideInInspector] internal VRCContactReceiver root;
+        [SerializeField, HideInInspector] internal VRCContactReceiver[] plugs;
         [SerializeField, HideInInspector] internal VRCContactReceiver width;
+        [SerializeField, HideInInspector] internal string[] nativeTags;
         private Component[] callbacks = new Component[0];
-        private ContactSenderProxy[] tipContacts = new ContactSenderProxy[0];
-        private ContactSenderProxy[] rootContacts = new ContactSenderProxy[0];
+        private ContactSenderProxy[] plugContacts = new ContactSenderProxy[0];
         private ContactSenderProxy[] widthContacts = new ContactSenderProxy[0];
-        private float[] cachedPlugLengths = new float[0];
-        private float[] cachedPlugWidths = new float[0];
+        private Vector2[] cachedPlugSizes = new Vector2[0];
+        private bool[] nativePlugs = new bool[0];
+        private bool[] measuredLengths = new bool[0];
+        private bool[] measuredWidths = new bool[0];
         private int lastMeasurementFrame = -1;
+        private int nearestPlug = -1;
+        private float cachedProximity = float.PositiveInfinity;
         internal ContactEnterInfo contactEnterInfo;
         internal ContactExitInfo contactExitInfo;
 
@@ -29,100 +32,118 @@ namespace com.vrcfury.udon {
             VrcfuryUtils.AddToList(ref callbacks, callback);
         }
 
-        public void _OnTipEnter() {
-            if (tipContacts.IndexOf(contactEnterInfo.contactSender) >= 0) return;
-            var id = VrcfuryUtils.AddToList(ref tipContacts, contactEnterInfo.contactSender);
-            if (id >= cachedPlugLengths.Length) {
-                var newLengths = new float[id + 1];
-                var newWidths = new float[id + 1];
-                for (var i = 0; i < cachedPlugLengths.Length; i++) {
-                    newLengths[i] = cachedPlugLengths[i];
-                    newWidths[i] = cachedPlugWidths[i];
+        public void _OnEnter() {
+            var id = VrcfuryUtils.AddToList(ref plugContacts, contactEnterInfo.contactSender);
+            lastMeasurementFrame = -1;
+            cachedPlugSizes = VrcfuryUtils.Resize(cachedPlugSizes, plugContacts.Length);
+            nativePlugs = VrcfuryUtils.Resize(nativePlugs, plugContacts.Length);
+            measuredLengths = VrcfuryUtils.Resize(measuredLengths, plugContacts.Length);
+            measuredWidths = VrcfuryUtils.Resize(measuredWidths, plugContacts.Length);
+            cachedPlugSizes[id] = new Vector2(0.3f, 0.03f);
+            measuredLengths[id] = false;
+            measuredWidths[id] = false;
+            nativePlugs[id] = false;
+            var matchingTags = contactEnterInfo.matchingTags;
+            if (matchingTags == null) return;
+            for (var t = 0; t < matchingTags.Length; t++) {
+                for (var n = 0; n < nativeTags.Length; n++) {
+                    if (matchingTags[t] == nativeTags[n]) nativePlugs[id] = true;
                 }
-                cachedPlugLengths = newLengths;
-                cachedPlugWidths = newWidths;
             }
-            cachedPlugLengths[id] = 0.3f;
-            cachedPlugWidths[id] = 0.03f;
         }
 
-        public void _OnTipExit() {
-            tipContacts.RemoveFromList(tipContacts.IndexOf(contactExitInfo.contactSender));
+        public void _OnExit() {
+            plugContacts.RemoveFromList(plugContacts.IndexOf(contactExitInfo.contactSender));
+            lastMeasurementFrame = -1;
         }
 
         public void _OnWidthEnter() {
             VrcfuryUtils.AddToList(ref widthContacts, contactEnterInfo.contactSender);
+            lastMeasurementFrame = -1;
         }
 
         public void _OnWidthExit() {
             widthContacts.RemoveFromList(widthContacts.IndexOf(contactExitInfo.contactSender));
-        }
-
-        public void _OnRootEnter() {
-            VrcfuryUtils.AddToList(ref rootContacts, contactEnterInfo.contactSender);
-        }
-
-        public void _OnRootExit() {
-            rootContacts.RemoveFromList(rootContacts.IndexOf(contactExitInfo.contactSender));
+            lastMeasurementFrame = -1;
         }
 
         public float _GetPlugLength() {
             UpdateMeasurements();
-            var nearestTip = VrcfuryUtils.GetNearestSender(tip, tipContacts);
-            if (nearestTip == null) return 0;
-            var nearestTipIndex = tipContacts.IndexOf(nearestTip);
-            return cachedPlugLengths[nearestTipIndex];
+            return nearestPlug < 0 ? 0 : cachedPlugSizes[nearestPlug].x;
         }
 
         public float _GetPlugWidth() {
             UpdateMeasurements();
-            var nearestTip = VrcfuryUtils.GetNearestSender(tip, tipContacts);
-            if (nearestTip == null) return 0;
-            var nearestTipIndex = tipContacts.IndexOf(nearestTip);
-            return cachedPlugWidths[nearestTipIndex];
+            // The existing API's "width" is a radius. Native SPS uses overall radius X.
+            return nearestPlug < 0 ? 0 : cachedPlugSizes[nearestPlug].y;
         }
 
         public float _GetProximity() {
             UpdateMeasurements();
-            var tipContact = VrcfuryUtils.GetNearestSender(tip, tipContacts);
-            if (tipContact == null) return float.PositiveInfinity;
-            var nearestTipIndex = tipContacts.IndexOf(tipContact);
-            var tipProximity = tip.CalculateProximity(tipContact);
-            if (tipProximity < 1) return tip.radius * (1 - tipProximity);
+            return cachedProximity;
+        }
 
-            var matchingRoot = VrcfuryUtils.GetMatchingContact(tipContact, rootContacts);
-            if (matchingRoot == null) return 0;
-            return root.radius * (1 - root.CalculateProximity(matchingRoot))
-                   - cachedPlugLengths[nearestTipIndex]
-                   + 0.01f;
+        private float GetReceiverRadius() {
+            return plugs[0].radius * Mathf.Abs(plugs[0].transform.lossyScale.x);
+        }
+
+        private float GetProximity(ContactSenderProxy sender) {
+            var proximity = 0f;
+            for (var i = 0; i < plugs.Length; i++) {
+                if (plugs[i].isActiveAndEnabled) proximity = Mathf.Max(proximity, plugs[i].CalculateProximity(sender));
+            }
+            return proximity;
         }
 
         private void UpdateMeasurements() {
             if (lastMeasurementFrame == Time.frameCount) return;
             lastMeasurementFrame = Time.frameCount;
-            for (var i = 0; i < tipContacts.Length; i++) {
-                if (tipContacts[i] != null && tipContacts[i].isValid) UpdateMeasurement(i);
+            for (var i = 0; i < plugContacts.Length; i++) {
+                var sender = plugContacts[i];
+                if (sender == null || !sender.isValid) continue;
+                if (nativePlugs[i]) {
+                    var scale = sender.scale;
+                    if (scale.z > 0) cachedPlugSizes[i].x = scale.z;
+                    if (scale.x > 0) cachedPlugSizes[i].y = scale.x;
+                    continue;
+                }
+
+                var proximity = GetProximity(sender);
+                if (proximity <= 0) continue;
+                var radius = GetReceiverRadius();
+                if (proximity < 1 || !measuredLengths[i]) {
+                    var distance = Vector3.Distance(plugs[0].transform.position, sender.position);
+                    var length = distance - radius * (1 - proximity);
+                    if (length > 0 && length <= 3) {
+                        cachedPlugSizes[i].x = length;
+                        measuredLengths[i] = true;
+                    }
+                }
+
+                // A saturated main sphere underestimates width. Only use it to seed a missing measurement.
+                if (width == null || (proximity >= 1 && measuredWidths[i])) continue;
+                var helper = VrcfuryUtils.GetMatchingContact(sender, widthContacts);
+                if (helper == null) continue;
+                var helperProximity = width.CalculateProximity(helper);
+                if (helperProximity <= 0 || helperProximity >= 1) continue;
+                var helperRadius = Vector3.Distance(width.transform.position, helper.position)
+                    - radius * (1 - helperProximity);
+                // Legacy width spheres clamp to 1 cm; that clamp does not encode a width.
+                if (helperRadius <= 0.01001f) continue;
+                var plugRadius = radius * (proximity - helperProximity) / 2;
+                if (plugRadius > 0 && plugRadius <= 3) {
+                    cachedPlugSizes[i].y = plugRadius;
+                    measuredWidths[i] = true;
+                }
             }
+            var nearest = VrcfuryUtils.GetNearestSender(plugs, plugContacts);
+            nearestPlug = nearest == null ? -1 : plugContacts.IndexOf(nearest);
+            cachedProximity = float.PositiveInfinity;
+            if (nearestPlug < 0) return;
+            var nearestProximity = GetProximity(nearest);
+            cachedProximity = !nativePlugs[nearestPlug] && nearestProximity < 1
+                ? GetReceiverRadius() * (1 - nearestProximity)
+                : Vector3.Distance(plugs[0].transform.position, nearest.position) - cachedPlugSizes[nearestPlug].x;
         }
-
-        private void UpdateMeasurement(int tipIndex) {
-            var tipContact = tipContacts[tipIndex];
-            var tipProximity = tip.CalculateProximity(tipContact);
-            if (tipProximity >= 1) return;
-
-            var matchingRoot = VrcfuryUtils.GetMatchingContact(tipContact, rootContacts);
-
-            if (matchingRoot != null) {
-                var rootProximity = root.CalculateProximity(matchingRoot);
-                cachedPlugLengths[tipIndex] = tip.radius * (tipProximity - rootProximity) + 0.01f;
-            }
-
-            var matchingWidth = VrcfuryUtils.GetMatchingContact(tipContact, widthContacts);
-
-            if (matchingWidth == null) return;
-            var widthProximity = width.CalculateProximity(matchingWidth);
-            cachedPlugWidths[tipIndex] = tip.radius / 2 * (tipProximity - widthProximity);
-        }
-
     }
 }

@@ -98,6 +98,10 @@ namespace VF.Tests {
             Assert.That(bake.localRadius, Is.EqualTo(0.01f));
             Assert.That(bake.localMinimumRadius, Is.EqualTo(minimumRadius));
             Assert.That(bake.radiusCurve.keys, Is.EqualTo(keys));
+            if (!BuildTargetUtils.IsDesktop()) {
+                Assert.That(bake.mainSender, Is.Null);
+                return;
+            }
             Assert.That(bake.mainSender.worldScale.z, Is.EqualTo(bake.worldLength).Within(0.00001f));
             Assert.That(bake.mainSender.worldScale.x, Is.EqualTo(bake.worldRadius).Within(0.00001f));
         }

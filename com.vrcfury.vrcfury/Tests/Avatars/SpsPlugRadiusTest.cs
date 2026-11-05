@@ -93,6 +93,9 @@ namespace VF.Tests {
         }
 
         private void Start() {
+#if !VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            Assert.Ignore("SPS radius sampling requires advanced contact parameters from VRCSDK 3.10.6 or newer.");
+#endif
             service.Create(bake, "Test");
             mergedParameterName = receiverAnimator.GetParameter(bake.socketReceivers, Party.Merged).name;
             injector.GetService<IsObjectEnabledService>().Apply();

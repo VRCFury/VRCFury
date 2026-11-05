@@ -11,34 +11,20 @@ using VF.Utils.Controller;
 
 namespace VF.Service {
     [VFService]
-    internal class SpsSocketReceiverService {
-        internal const float WorldRadius = 1;
-
+    internal class SpsSocketMeasurementsService {
         [VFAutowired] private readonly SelfAndOthersReceiverAnimatorService receiverAnimator;
-        [VFAutowired] private readonly SelfAndOthersReceiverService receivers;
+        [VFAutowired] private readonly SpsSocketReceiverService contacts;
         [VFAutowired] private readonly SpsConfigurer configurer;
+        [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
-        private readonly Dictionary<VRCFuryHapticSocket, SelfAndOthersReceiverService.Receivers> cache = new();
 
         private HashSet<string> GetChannels(VRCFuryHapticSocket socket, bool self) =>
             configurer.GetSocketChannels(socket, self
                 ? SpsConfigurer.ChannelMode.ReceiverSelf : SpsConfigurer.ChannelMode.ReceiverOthers);
 
-        private List<string> GetPlugTags(VRCFuryHapticSocket socket, bool self) {
-            var tags = GetChannels(socket, self).OrderBy(c => c, StringComparer.Ordinal)
-                .Select(SpsTags.FormatPlug).ToList();
-            if (!self && socket.useSharedTag) tags.Add(SpsTags.LegacyPlugSphere);
-            return tags;
-        }
-
         public SelfAndOthersReceiverService.Receivers GetReceivers(VRCFuryHapticSocket socket, VFGameObject frame, string name) =>
-            cache.GetOrCreate(socket, () => receivers.Create(new SelfAndOthersReceiverService.Request {
-                frame = frame, name = name + "/Depth", worldRadius = WorldRadius,
-                objectName = (self, merged) => "Receiver - Plugs (" + (self ? "Self" : "Others") + (merged ? " Merged" : "") + ")",
-                selfTags = GetPlugTags(socket, true).ToArray(),
-                othersTags = GetPlugTags(socket, false).ToArray()
-            }));
+            contacts.GetReceivers(socket, frame, name, spsOptions.GetOptions().legacyModeAvailable);
 
         public Func<Party, Func<string, VFAParam>> GetMeasurements(
             VRCFuryHapticSocket socket,
@@ -53,14 +39,8 @@ namespace VF.Service {
             var math = new BlendtreeMath(fx, tree);
             var inverseWorldScale = new Lazy<VFAParam>(() => worldScaleService.GetInverseWorldScale(
                 socket.owner(), name));
-            var includeLegacy = socket.useSharedTag;
-            var legacyWidthReceiver = includeLegacy ? new Lazy<SelfAndOthersReceiverService.Receivers>(() => receivers.Create(new SelfAndOthersReceiverService.Request {
-                frame = main.request.frame,
-                name = name + "/LegacyWidth",
-                objectName = (self, merged) => "Receiver - Legacy Plug Width (Others)",
-                worldRadius = WorldRadius,
-                othersTags = new[] { SpsTags.LegacyPlugWidth }
-            })) : null;
+            var worldRadius = main.request.worldRadius;
+            var includeLegacy = main.request.othersTags.Contains(SpsTags.LegacyPlugSphere);
 
             var byParty = new Dictionary<Party, Func<string, VFAParam>>();
             return party => byParty.GetOrCreate(party, () => {
@@ -88,7 +68,7 @@ namespace VF.Service {
                     var output = fx.CreateUniqueFloat(prefix + "/Length", 0.3f);
                     var nativeInput = Field("SenderLossyScaleZ");
                     var estimate = legacy ? math.Add(prefix + "/LegacyLengthEstimate",
-                        (Field("PointSeparation"), 1), (proximity.Value, WorldRadius), (1, -WorldRadius)) : null;
+                        (Field("PointSeparation"), 1), (proximity.Value, worldRadius), (1, -worldRadius)) : null;
                     AddSize("Length", output, nativeInput, 0.3f, estimate);
                     return output;
                 });
@@ -96,12 +76,13 @@ namespace VF.Service {
                     var output = fx.CreateUniqueFloat(prefix + "/Radius", 0.03f);
                     var nativeInput = Field("SenderLossyScaleX");
                     if (legacy) {
-                        var helper = receiverAnimator.GetParameter(legacyWidthReceiver.Value, Party.Others);
-                        VFAParam HelperField(string suffix) => receiverAnimator.GetAdvancedParam(legacyWidthReceiver.Value, Party.Others, suffix);
+                        var legacyWidthReceiver = contacts.GetLegacyWidthReceiver(main);
+                        var helper = receiverAnimator.GetParameter(legacyWidthReceiver, Party.Others);
+                        VFAParam HelperField(string suffix) => receiverAnimator.GetAdvancedParam(legacyWidthReceiver, Party.Others, suffix);
                         var helperPresent = BlendtreeMath.GreaterThan(helper, 0);
                         var helperRadius = math.Add(prefix + "/LegacyHelperRadius",
-                            (HelperField("PointSeparation"), 1), (helper, WorldRadius), (1, -WorldRadius));
-                        var estimate = math.Add(prefix + "/LegacyRadiusEstimate", (proximity.Value, WorldRadius / 2), (helper, -WorldRadius / 2));
+                            (HelperField("PointSeparation"), 1), (helper, worldRadius), (1, -worldRadius));
+                        var estimate = math.Add(prefix + "/LegacyRadiusEstimate", (proximity.Value, worldRadius / 2), (helper, -worldRadius / 2));
                         var measurable = BlendtreeMath.GreaterThan(helperRadius, 0.01001f)
                             .And(BlendtreeMath.LessThan(helper, 1));
                         AddSize("Radius", output, nativeInput, 0.03f, estimate, helperPresent, measurable,
@@ -118,7 +99,7 @@ namespace VF.Service {
                     encoding.Value.whenTrue.Add(Sum("Native", (Field("PointSeparation"), 1), (Field("SenderLossyScaleZ"), -1)));
                     if (legacy) {
                         encoding.Value.whenFalse.Add(BlendtreeMath.LessThan(proximity.Value, 1).create(
-                            Sum("LegacyOutside", (1, WorldRadius), (proximity.Value, -WorldRadius)),
+                            Sum("LegacyOutside", (1, worldRadius), (proximity.Value, -worldRadius)),
                             Sum("LegacyInside", (Field("PointSeparation"), 1), (length.Value, -1))));
                     }
                     presence.Value.whenFalse.Add(output.MakeSetter(100));

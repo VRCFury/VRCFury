@@ -30,7 +30,7 @@ namespace VF.Service {
         [VFAutowired] private readonly SpsDepthAnimationService depthAnimations;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
-        [VFAutowired] private readonly SpsSocketReceiverService socketReceivers;
+        [VFAutowired] private readonly SpsSocketMeasurementsService socketMeasurements;
         [VFAutowired] private readonly ExpressionParamsService expressionParams;
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
@@ -120,12 +120,12 @@ namespace VF.Service {
                         onlyIfChildOfHead = true
                     });
 
-                    var mainReceivers = socketReceivers.GetReceivers(socket, bakeResult.worldSpace, oscId);
+                    var mainReceivers = socketMeasurements.GetReceivers(socket, bakeResult.worldSpace, oscId);
 
                     if (HapticsToggleMenuItem.Get() && !socket.fromSpsForAll) {
                         var paramPrefix = "OGB/Socket/" + oscId;
                         expressionParams.AddOrMerge(ExpressionParam.Create(paramPrefix + "/DepthRadius")
-                            .Float().Default(SpsSocketReceiverService.WorldRadius).Unsynced());
+                            .Float().Default(mainReceivers.request.worldRadius).Unsynced());
 
                         if (VRCFuryHapticSocketBaker.ShouldSupportOgbTouch(socket, autoChannelGenerator.GetClosestBone(socket.owner()))) {
                             var radius = (autoChannelGenerator.GetAvatarViewPosition(socket.owner())?.y ?? 0) * 0.03f;
@@ -157,7 +157,7 @@ namespace VF.Service {
 
                     var math = new Lazy<BlendtreeMath>(() => new BlendtreeMath(fx, objectTrees.Get(bakeResult.worldSpace)));
                     var measurements = new Lazy<Func<Party, Func<string, VFAParam>>>(() =>
-                        socketReceivers.GetMeasurements(socket, mainReceivers, oscId));
+                        socketMeasurements.GetMeasurements(socket, mainReceivers, oscId));
 
                     if (socket.depthActions2.Count > 0) {
                         depthAnimations.CreateAnims(

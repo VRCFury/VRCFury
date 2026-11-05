@@ -60,6 +60,7 @@ namespace VF.Tests {
             avatar.baseAnimationLayers = new[] { new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX } };
             avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
             injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+            injector.GetService<GlobalsService>().allFeaturesInRun = new List<FeatureModel>();
             var controllers = injector.GetService<ControllersService>();
             controllers.ClearCache(applyBaseMask: false);
             fx = controllers.GetFx();
@@ -83,7 +84,7 @@ namespace VF.Tests {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.useSharedTag = legacy;
             socket.tags.Add("test");
-            var service = injector.GetService<SpsSocketReceiverService>();
+            var service = injector.GetService<SpsSocketMeasurementsService>();
             var contacts = service.GetReceivers(socket, root, "Test");
             var detector = injector.GetService<WorldScaleDetectorService>();
             ((Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
@@ -209,6 +210,35 @@ namespace VF.Tests {
             }
         }
 
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void LegacyAvailabilityControlsSocketRangeAndReceiverTags(bool available, bool defaultOn) {
+            injector.GetService<GlobalsService>().allFeaturesInRun = new List<FeatureModel> {
+                new SpsOptions { legacyModeAvailable = available, legacyModeEnabledOnAvatarLoad = defaultOn }
+            };
+            root.transform.localScale = Vector3.one * 2;
+            var factory = Socket();
+            foreach (var party in new[] { Party.Self, Party.Others, Party.Merged }) {
+                var outputs = factory(party);
+                _ = outputs(SpsDepthMeters);
+                _ = outputs(SpsPlugLengthMeters);
+                _ = outputs(SpsPlugRadiusMeters);
+            }
+            var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
+            foreach (var receiver in contacts) {
+                Assert.That(receiver.radius * receiver.transform.lossyScale.x,
+                    Is.EqualTo(available ? 1 : 0.2f).Within(0.0001f));
+                if (receiver.collisionTags.Contains(SpsTags.FormatPlug("test"))) {
+                    Assert.That(receiver.collisionTags.Contains(SpsTags.LegacyPlugSphere),
+                        Is.EqualTo(available && receiver.allowOthers));
+                }
+            }
+            Assert.That(contacts.Any(r => r.collisionTags.Contains(SpsTags.LegacyPlugWidth)), Is.EqualTo(available));
+            Assert.That(fx.parameters.Any(p => p.name.Contains("Test/Others/Legacy")), Is.EqualTo(available));
+        }
+
         [Test]
         public void MeasurementFactoriesRejectInvalidPartiesWithoutCreatingContacts() {
             var socket = Socket(false);
@@ -280,11 +310,17 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(radiusOutput), Is.EqualTo(radius).Within(0.001f));
         }
 
-        [TestCase(true, false)]
-        [TestCase(false, false)]
-        [TestCase(false, true)]
-        public void NativeTagSelectsEncodingOnlyWhenLegacyTagsCanMatch(bool self, bool includeLegacy) {
+        [TestCase(true, false, true)]
+        [TestCase(false, false, true)]
+        [TestCase(false, true, true)]
+        [TestCase(true, true, false)]
+        [TestCase(false, true, false)]
+        public void NativeTagSelectsEncodingOnlyWhenLegacyTagsCanMatch(bool self, bool includeLegacy, bool legacyAvailable) {
+            injector.GetService<GlobalsService>().allFeaturesInRun = new List<FeatureModel> {
+                new SpsOptions { legacyModeAvailable = legacyAvailable }
+            };
             measurements = Socket(includeLegacy)(self ? Party.Self : Party.Others);
+            includeLegacy &= legacyAvailable;
             var depth = measurements(SpsDepthMeters);
             var length = measurements(SpsPlugLengthMeters);
             var radius = measurements(SpsPlugRadiusMeters);
@@ -1242,7 +1278,7 @@ namespace VF.Tests {
                 var depthRadius = injector.GetService<ExpressionParamsService>()
                     .Single(p => p.name == "OGB/Socket/Socket/DepthRadius");
                 Assert.That(depthRadius.valueType, Is.EqualTo(VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters.ValueType.Float));
-                Assert.That(depthRadius.defaultValue, Is.EqualTo(1));
+                Assert.That(depthRadius.defaultValue, Is.EqualTo(0.2f));
                 Assert.That(depthRadius.IsNetworkSynced(), Is.False);
                 Assert.That(depthRadius.saved, Is.False);
                 Assert.That(socketSelf.radius * socketSelf.transform.lossyScale.x, Is.EqualTo(depthRadius.defaultValue));

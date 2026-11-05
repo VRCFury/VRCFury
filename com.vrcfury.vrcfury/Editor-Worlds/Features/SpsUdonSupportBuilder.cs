@@ -1,64 +1,59 @@
-using System.Collections.Generic;
+using System.Linq;
 using com.vrcfury.udon;
 using UdonSharp;
 using UdonSharpEditor;
-using UnityEngine;
 using VF.Builder.Haptics;
+using VF.Component;
+using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Features {
-    internal static class SpsUdonSupportBuilder {
-        internal static void Apply(
+    [VFService]
+    internal class SpsUdonSupportBuilder {
+        [VFAutowired] private readonly SpsSocketReceiverService socketReceivers;
+
+        internal void Apply(
             SpsSocketUdonSupport udonSupport,
+            VRCFuryHapticSocket socket,
             VRCFuryHapticSocketEditor.BakeResult bakeResult
         ) {
-            udonSupport.tip = AddReceiver(
-                bakeResult.worldSpace,
+            var main = socketReceivers.GetReceivers(socket, bakeResult.worldSpace, socket.name);
+            udonSupport.plugs = new[] { main.Find(true, false), main.Find(false, false) };
+            udonSupport.nativeTags = udonSupport.plugs.SelectMany(r => r.collisionTags)
+                .Where(tag => tag.StartsWith(SpsTags.FormatPlug(""))).Distinct().ToArray();
+            foreach (var receiver in udonSupport.plugs) AddForwarder(receiver,
                 udonSupport,
-                "Receiver - Legacy Plug Sphere",
-                SpsTags.LegacyPlugSphere,
                 nameof(SpsSocketUdonSupport.contactEnterInfo),
                 nameof(SpsSocketUdonSupport.contactExitInfo),
-                nameof(SpsSocketUdonSupport._OnTipEnter),
-                nameof(SpsSocketUdonSupport._OnTipExit)
+                nameof(SpsSocketUdonSupport._OnEnter),
+                nameof(SpsSocketUdonSupport._OnExit)
             );
-            udonSupport.width = AddReceiver(
-                bakeResult.worldSpace,
-                udonSupport,
-                "Receiver - Legacy Plug Width",
-                SpsTags.LegacyPlugWidth,
-                nameof(SpsSocketUdonSupport.contactEnterInfo),
-                nameof(SpsSocketUdonSupport.contactExitInfo),
-                nameof(SpsSocketUdonSupport._OnWidthEnter),
-                nameof(SpsSocketUdonSupport._OnWidthExit)
-            );
-            udonSupport.root = AddReceiver(
-                bakeResult.worldSpace,
-                udonSupport,
-                "Receiver - Legacy Plug Root",
-                SpsTags.LegacyPlugRoot,
-                nameof(SpsSocketUdonSupport.contactEnterInfo),
-                nameof(SpsSocketUdonSupport.contactExitInfo),
-                nameof(SpsSocketUdonSupport._OnRootEnter),
-                nameof(SpsSocketUdonSupport._OnRootExit)
-            );
+            udonSupport.width = null;
+            if (socket.useSharedTag) {
+                udonSupport.width = socketReceivers.GetLegacyWidthReceiver(main).Find(false, false);
+                AddForwarder(udonSupport.width, udonSupport,
+                    nameof(SpsSocketUdonSupport.contactEnterInfo),
+                    nameof(SpsSocketUdonSupport.contactExitInfo),
+                    nameof(SpsSocketUdonSupport._OnWidthEnter),
+                    nameof(SpsSocketUdonSupport._OnWidthExit));
+            }
         }
 
-        internal static void Apply(
+        internal void Apply(
             SpsPlugUdonSupport udonSupport,
             VRCFuryHapticPlugEditor.BakeResult bakeResult
         ) {
-            var udonObject = GameObjects.Create("udon", bakeResult.bakeRoot);
-            ConstraintUtils.MakeWorldSpace(udonObject);
+            udonSupport.plugRoot = bakeResult.bakeRoot;
             udonSupport.plugLengthLocal = bakeResult.localLength;
             udonSupport.plugWidthLocal = bakeResult.localRadius;
-            udonSupport.socketRoots = AddReceiver(
-                udonObject,
+            udonSupport.socketRoots = new[] {
+                bakeResult.socketReceivers.Find(true, false),
+                bakeResult.socketReceivers.Find(false, false)
+            };
+            foreach (var receiver in udonSupport.socketRoots) AddForwarder(receiver,
                 udonSupport,
-                "socketRoot",
-                SpsTags.LegacySocket,
                 nameof(SpsPlugUdonSupport.contactEnterInfo),
                 nameof(SpsPlugUdonSupport.contactExitInfo),
                 nameof(SpsPlugUdonSupport._OnEnter),
@@ -66,28 +61,20 @@ namespace VF.Features {
             );
         }
 
-        private static VRCContactReceiver AddReceiver(
-            VFGameObject parent,
+        private static void AddForwarder(
+            VRCContactReceiver receiver,
             UdonSharpBehaviour target,
-            string name,
-            string tag,
             string enterField,
             string exitField,
             string onEnter,
             string onExit
         ) {
-            var contactObject = GameObjects.Create(name, parent);
-            var receiver = contactObject.AddComponent<VRCContactReceiver>();
-            receiver.radius = 3;
-            receiver.collisionTags = new List<string> { tag };
-
-            var forwarder = ((GameObject)contactObject).AddUdonSharpComponent<SpsContactForwarder>();
+            var forwarder = receiver.gameObject.AddUdonSharpComponent<SpsContactForwarder>();
             forwarder.target = target;
             forwarder.enterField = enterField;
             forwarder.exitField = exitField;
             forwarder.onEnter = onEnter;
             forwarder.onExit = onExit;
-            return receiver;
         }
     }
 }
