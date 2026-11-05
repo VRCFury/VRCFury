@@ -1,22 +1,13 @@
 ﻿using UnityEngine.UIElements;
 using VF.Feature.Base;
-using VF.Injector;
 using VF.Inspector;
 using VF.Model.Feature;
-using VRC.SDK3.Avatars.Components;
 
 namespace VF.Feature {
     [FeatureTitle("Remove Built-in Blinking")]
     [FeatureOnlyOneAllowed]
     [FeatureRootOnly]
     internal class RemoveBlinkingBuilder : FeatureBuilder<RemoveBlinking> {
-        [VFAutowired] private readonly VRCAvatarDescriptor avatar;
-
-        [FeatureBuilderAction(FeatureOrder.RemoveBuiltInBlinking)]
-        public void Apply() {
-            avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.None;
-        }
-
         [FeatureEditor]
         public static VisualElement Editor() {
             return VRCFuryEditorUtils.Info(
