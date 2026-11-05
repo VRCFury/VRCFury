@@ -1182,13 +1182,15 @@ namespace VF.Tests {
             Assert.That(worldSpace.Children().Single(obj => obj.name == "Sender - Root").active, Is.True);
         }
 
-        [TestCase(false, false, true)]
-        [TestCase(false, true, true)]
-        [TestCase(true, false, true)]
-        [TestCase(true, true, true)]
-        [TestCase(false, false, false)]
-        [TestCase(true, false, false)]
-        public void LegacyToggleControlsSocketLightsTpsFrontAndDpsTipIncludingPlugOnlyAvatars(bool withSocket, bool defaultOn, bool available) {
+        [TestCase(false, false, true, true)]
+        [TestCase(false, true, true, true)]
+        [TestCase(true, false, true, true)]
+        [TestCase(true, true, true, true)]
+        [TestCase(false, false, false, true)]
+        [TestCase(true, false, false, true)]
+        [TestCase(false, true, true, false)]
+        [TestCase(true, true, true, false)]
+        public void LegacyToggleControlsSocketLightsTpsFrontAndDpsTipIncludingPlugOnlyAvatars(bool withSocket, bool defaultOn, bool available, bool shared) {
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
@@ -1202,11 +1204,13 @@ namespace VF.Tests {
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.04f;
+            plug.useSharedTag = shared;
             if (withSocket) {
                 var socket = GameObjects.Create("Socket", root).AddComponent<VRCFuryHapticSocket>();
                 socket.name = "Socket";
                 socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
                 socket.addMenuItem = true;
+                socket.useSharedTag = shared;
             }
             var serviceTypes = injector.GetServices<object>().Select(service => service.GetType()).ToArray();
             int SortPosition<T>() => Array.IndexOf(serviceTypes, typeof(T)) + 1;
@@ -1222,7 +1226,8 @@ namespace VF.Tests {
             if (menus.GetReadOnlyMenu() != null) menus.GetMenu().SortMenu();
             var legacyObjects = root.transform.GetComponentsInChildren<Transform>(true)
                 .Where(t => t.name == "LegacyLights" || t.name == "Light - Legacy DPS Trigger" || t.name == "Sender - Legacy Front").ToArray();
-            Assert.That(legacyObjects, Has.Length.EqualTo(!available ? 0 : withSocket ? 3 : 1));
+            Assert.That(legacyObjects, Has.Length.EqualTo(!available || !shared ? 0 : withSocket ? 3 : 1));
+            if (!shared) return;
             var legacy = options.GetLegacyParameter();
             var menu = injector.GetService<MenuService>().GetReadOnlyMenu();
             if (!available) {

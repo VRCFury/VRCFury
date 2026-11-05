@@ -31,7 +31,7 @@ namespace VF.Features {
                 nameof(SpsSocketUdonSupport._OnExit)
             );
             udonSupport.width = null;
-            if (socket.useSharedTag) {
+            if (main.request.othersTags.Contains(SpsTags.LegacyPlugSphere)) {
                 udonSupport.width = socketReceivers.GetLegacyWidthReceiver(main).Find(false, false);
                 AddForwarder(udonSupport.width, udonSupport,
                     nameof(SpsSocketUdonSupport.contactEnterInfo),

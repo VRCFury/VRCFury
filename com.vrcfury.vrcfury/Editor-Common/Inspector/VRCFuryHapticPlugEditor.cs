@@ -382,18 +382,16 @@ namespace VF.Inspector {
             channels.Add(VRCFuryEditorUtils.BetterProp(
                 useHipAvoidance,
                 "Exclude sockets on own Hips",
-                tooltip: "If this plug is on your hips, it will not target sockets on your hips."
+                tooltip: "If this plug is on your hips, its public channel excludes sockets on your hips. Custom channels can still match them."
             ));
             channels.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (!useHipAvoidance.boolValue) return new VisualElement();
-                var autoChannelGenerator = VRCFuryPerFrameInjector.GetPerFrameInjector(target.owner())
-                    .GetServices<SpsAutoChannelGenerator>()
-                    .FirstOrDefault();
-                if (autoChannelGenerator?.GetClosestBone(target.owner()) != HumanBodyBones.Hips) {
+                var selfChannels = VRCFuryPerFrameInjector.GetPerFrameInjector(target.owner())
+                    .GetService<SpsConfigurer>().GetPlugChannels(target, SpsConfigurer.ChannelMode.ReceiverSelf);
+                if (!selfChannels.Contains(SpsTags.NotHipsChannel)) {
                     return new VisualElement();
                 }
-                return VRCFuryEditorUtils.Info("This plug will exclude sockets on your hips.");
-            }, useHipAvoidance));
+                return VRCFuryEditorUtils.Info("The public channel excludes sockets on your hips. Custom channels can still match them.");
+            }, useHipAvoidance, useSharedTag, includeChannels));
             container.Add(channels);
 
             var adv = new Foldout {

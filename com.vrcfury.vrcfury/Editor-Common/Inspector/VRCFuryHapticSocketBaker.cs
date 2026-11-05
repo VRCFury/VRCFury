@@ -87,7 +87,7 @@ namespace VF.Inspector {
                                 + stopObj.GetDebugPath());
                         }
                     }
-                    if (legacyAvailable) {
+                    if (legacyAvailable && socket.useSharedTag) {
                         Vector3 legacyOffset;
                         if (socket.overrideLegacyOffset) {
                             legacyOffset = socket.legacyOffsetLocal;

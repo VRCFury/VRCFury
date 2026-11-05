@@ -455,6 +455,7 @@ namespace VF.Tests {
             socket.tags.AddRange(new[] { "my channel", " other " });
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             var entrance = NativeSocketSenders(result.bakeRoot).Single();
+            Assert.That(result.legacyLights != null, Is.EqualTo(shared));
             var expected = new[] { "my channel", "other" }
                 .Concat(shared ? new[] { "_public", "_nothips" } : Array.Empty<string>()).ToArray();
             Assert.That(main.collisionTags.Where(t => t.StartsWith("SPS/Plug/")),

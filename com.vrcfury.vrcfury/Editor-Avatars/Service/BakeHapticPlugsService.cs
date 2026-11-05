@@ -192,7 +192,7 @@ namespace VF.Service {
             }
             
             // DPS Tip Light
-            if (addDpsTipLight) {
+            if (addDpsTipLight && plug.useSharedTag) {
                 var tip = GameObjects.Create("Light - Legacy DPS Trigger", bakeRoot);
                 spsOptions.RegisterLegacyObject(tip);
                 var light = tip.AddComponent<Light>();
