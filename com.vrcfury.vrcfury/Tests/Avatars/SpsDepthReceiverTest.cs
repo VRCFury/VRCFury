@@ -16,6 +16,7 @@ using VF.Component;
 using VF.Injector;
 using VF.Inspector;
 using VF.Hooks.GestureManagerFixes;
+using VF.Hooks.Av3EmuFixes;
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
@@ -638,8 +639,9 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(velocity), Is.EqualTo(-1.2f).Within(0.001f));
         }
 
-        [Test]
-        public void SdkAdvancedContactValuesMustUseThePlayableParameterBridge() {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SdkAdvancedContactValuesMustUseThePlayableParameterBridge(bool av3Emu) {
             measurements = Socket()(Party.Self);
             var length = measurements(SpsPlugLengthMeters);
             var radius = measurements(SpsPlugRadiusMeters);
@@ -680,7 +682,7 @@ namespace VF.Tests {
                 var ordinaryAnimator = new Dictionary<string, float>();
                 // Reproduce Gesture Manager replacing the main bridge while advanced SDK
                 // accessors still write to a different Animator parameter store.
-                FixGestureManagerAdvancedContactsHook.Rebind(receiver, name => new TestParameterAccess(
+                ContactReceiverUtils.RebindAdvancedParameters(receiver, name => new TestParameterAccess(
                     () => ordinaryAnimator.TryGetValue(name, out var value) ? value : 0,
                     value => ordinaryAnimator[name] = value));
                 var senderObject = GameObjects.Create("Native plug", root);
@@ -708,8 +710,17 @@ namespace VF.Tests {
                 Assert.That(playable.GetFloat(length), Is.Zero);
                 Assert.That(playable.GetFloat(radius), Is.Zero);
 
-                receiver.paramAccess = new GestureParameterAccess(playableAccess, receiver.parameter);
-                FixGestureManagerAdvancedContactsHook.Postfix(playableAccess, receiver);
+                if (av3Emu) {
+                    receiver.paramAccess = new Av3EmuParameterAccess { runtime = playableAccess, paramName = receiver.parameter };
+                    // A skipped remote contact must retain its existing advanced accessors.
+                    var before = receiver.param_PointSeparation;
+                    Av3EmuAdvancedContactsFixHook.Postfix(new object(), new[] { receiver });
+                    Assert.That(receiver.param_PointSeparation, Is.SameAs(before));
+                    Av3EmuAdvancedContactsFixHook.Postfix(playableAccess, new[] { receiver });
+                } else {
+                    receiver.paramAccess = new GestureParameterAccess(playableAccess, receiver.parameter);
+                    FixGestureManagerAdvancedContactsHook.Postfix(playableAccess, receiver);
+                }
                 Tick(); Tick();
                 receiver.param_SenderVelocityZ.floatVal = -0.6f;
                 Evaluate();
@@ -730,6 +741,14 @@ namespace VF.Tests {
                 Object.DestroyImmediate(managerObject);
                 Field(typeof(ContactManager), "Inst").SetValue(null, previousManager);
             }
+        }
+
+        public sealed class Av3EmuParameterAccess : IAnimParameterAccess {
+            public Func<string, IAnimParameterAccess> runtime;
+            public string paramName;
+            public float floatVal { get => runtime(paramName).floatVal; set => runtime(paramName).floatVal = value; }
+            public int intVal { get => (int)floatVal; set => floatVal = value; }
+            public bool boolVal { get => floatVal != 0; set => floatVal = value ? 1 : 0; }
         }
 
         private sealed class TestParameterAccess : IAnimParameterAccess {
