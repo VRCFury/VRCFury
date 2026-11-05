@@ -30,6 +30,9 @@ namespace VF.Feature.Base {
 
         // Needs to be the first thing to instantiate the ControllerManagers
         AnimatorLayerControlRecordBase,
+
+        // Needs to disable original eyelids before Full Controller's FT auto-upgrade
+        RemoveBuiltInBlinking,
         
         // Needs to happen before any objects are moved, so imported controller data
         // resolves against the hierarchy it was authored for

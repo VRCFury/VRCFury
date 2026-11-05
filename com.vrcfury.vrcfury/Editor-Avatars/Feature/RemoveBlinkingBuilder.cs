@@ -12,7 +12,7 @@ namespace VF.Feature {
     internal class RemoveBlinkingBuilder : FeatureBuilder<RemoveBlinking> {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
 
-        [FeatureBuilderAction]
+        [FeatureBuilderAction(FeatureOrder.RemoveBuiltInBlinking)]
         public void Apply() {
             avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.None;
         }

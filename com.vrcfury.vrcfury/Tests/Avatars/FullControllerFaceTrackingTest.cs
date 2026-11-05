@@ -1951,6 +1951,30 @@ namespace VF.Tests {
             }
         }
 
+        [TestCase(VRCAvatarDescriptor.EyelidType.Blendshapes, VRCAvatarDescriptor.FaceTrackingKey.EyeClosedLeft)]
+        [TestCase(VRCAvatarDescriptor.EyelidType.Bones, VRCAvatarDescriptor.FaceTrackingKey.EyeClosedLeft)]
+        [TestCase(VRCAvatarDescriptor.EyelidType.Blendshapes, VRCAvatarDescriptor.FaceTrackingKey.EyeLookUpLeft)]
+        [TestCase(VRCAvatarDescriptor.EyelidType.Bones, VRCAvatarDescriptor.FaceTrackingKey.EyeLookUpLeft)]
+        public void RemovingBuiltInBlinkingPreventsLegacyFtMigration(VRCAvatarDescriptor.EyelidType eyelidType, VRCAvatarDescriptor.FaceTrackingKey importedKey) {
+            using (var build = new Build()) {
+                var legacy = build.Skin("Legacy");
+                var imported = build.Skin("Imported");
+                build.avatar.enableEyeLook = true;
+                build.avatar.customEyeLookSettings.eyelidType = eyelidType;
+                build.avatar.customEyeLookSettings.eyelidsSkinnedMesh = legacy;
+                build.avatar.customEyeLookSettings.eyelidsBlendshapes = new[] { 0, -1, -1 };
+                var remove = new RemoveBlinkingBuilder();
+                typeof(RemoveBlinkingBuilder).VFField("avatar").SetValue(remove, build.avatar);
+                remove.Apply();
+                build.Full(imported.gameObject, importedKey);
+                build.Run();
+                Assert.That(build.avatar.faceTrackingBlendshapesSetList
+                    .Any(set => set.setName.StartsWith("_vrcf_upgraded_eyelids")), Is.False);
+                Assert.That(build.avatar.faceTrackingBlendshapesSetList
+                    .Any(set => !string.IsNullOrEmpty(set.faceTrackingBlendshapeNames[(int)importedKey])), Is.True);
+            }
+        }
+
         [TestCase(VRCAvatarDescriptor.FaceTrackingKey.EyeClosedLeft)]
         [TestCase(VRCAvatarDescriptor.FaceTrackingKey.EyeLookUpLeft)]
         public void ExplicitUpgradeRegistrationPreservesLegacyEyeScopes(VRCAvatarDescriptor.FaceTrackingKey importedKey) {
