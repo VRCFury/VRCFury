@@ -38,7 +38,6 @@ namespace VF.Component {
         public bool enableAuto = true;
         public Vector3 position;
         public Vector3 rotation;
-        [NonSerialized] public bool fromSpsForAll = false;
         
         public List<DepthActionNew> depthActions2 = new List<DepthActionNew>();
         public State activeActions = new State();

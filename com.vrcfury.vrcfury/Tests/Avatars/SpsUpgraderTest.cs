@@ -83,7 +83,7 @@ namespace VF.Tests {
         private (Light main, Light front) Lights(GameObject parent, float range = 0.41f) => (
             Light(parent, "Root", range, new Vector3(0.03f, -0.02f, 0.04f)),
             Light(parent, "Front", 0.45f, new Vector3(0.04f, -0.02f, 0.04f)));
-        private string Apply(bool dryRun = false, int mode = 0) => upgrader.Apply(root, dryRun, (SpsUpgrader.Mode)mode);
+        private string Apply(bool dryRun = false) => upgrader.Apply(root, dryRun);
         private VRCFuryHapticSocket[] Sockets => root.GetComponentsInChildren<VRCFuryHapticSocket>(true);
         private VRCFuryHapticPlug[] Plugs => root.GetComponentsInChildren<VRCFuryHapticPlug>(true);
         private static void Vector(Vector3 actual, Vector3 expected) => Assert.That(Vector3.Distance(actual, expected), Is.LessThan(0.0001f));
@@ -139,10 +139,8 @@ namespace VF.Tests {
             Assert.That(main != null, Is.True);
         }
 
-        [TestCase(0)]
-        [TestCase(1)]
-        [TestCase(2)]
-        public void UpgradeModesKeepTheirExistingCleanupContract(int mode) {
+        [Test]
+        public void UpgradesLegacyContentAndClaimsLights() {
             var owner = Child("Socket");
             var (main, front) = Lights(owner);
             var guides = Child("GUIDES_DELETE");
@@ -150,14 +148,13 @@ namespace VF.Tests {
             contact.collisionTags = new List<string> { "Legacy" };
             controller.AddLayer("DPS_Holes");
             controller.AddParameter("DPS_Hole", AnimatorControllerParameterType.Int);
-            Apply(mode: mode);
+            Apply();
             var socket = Sockets.Single();
-            Assert.That(socket.fromSpsForAll, Is.EqualTo(mode == 2));
-            Assert.That(socket.addLight, Is.EqualTo(mode == 2 ? LightType.None : LightType.Hole));
-            Assert.That(main == null && front == null, Is.EqualTo(mode == 0));
-            Assert.That(guides == null && contact == null, Is.EqualTo(mode == 0));
-            Assert.That(controller.layers.Any(l => l.name == "DPS_Holes"), Is.EqualTo(mode != 0));
-            Assert.That(controller.parameters.Any(p => p.name == "DPS_Hole"), Is.EqualTo(mode != 0));
+            Assert.That(socket.addLight, Is.EqualTo(LightType.Hole));
+            Assert.That(main == null && front == null, Is.True);
+            Assert.That(guides == null && contact == null, Is.True);
+            Assert.That(controller.layers.Any(l => l.name == "DPS_Holes"), Is.False);
+            Assert.That(controller.parameters.Any(p => p.name == "DPS_Hole"), Is.False);
         }
 
         private ParentConstraint Attachment(float firstWeight = 1, float secondWeight = 0, bool nullSource = false) {
@@ -322,11 +319,44 @@ namespace VF.Tests {
         [TestCase("DPS Orifice")]
         [TestCase("Orifice Position")]
         public void RecognizedLegacyLayersAreRemoved(string layerName) {
+            Lights(Child("Socket"));
             controller.AddLayer(layerName);
             Apply(true);
             Assert.That(controller.layers.Select(l => l.name), Does.Contain(layerName));
             Apply();
             Assert.That(controller.layers.Select(l => l.name), Is.EqualTo(new[] { "Unrelated" }));
+        }
+
+        [TestCase("none")]
+        [TestCase("plug")]
+        [TestCase("existing socket")]
+        [TestCase("incomplete lights")]
+        public void NoUpgradeableSocketPreservesLegacyLayersParametersMenusAndGuides(string setup) {
+            if (setup == "plug") PlugMesh("TPS");
+            if (setup == "existing socket") Child("Existing Socket").AddComponent<VRCFuryHapticSocket>();
+            if (setup == "incomplete lights") Light(Child("Socket"), "Root", 0.41f, Vector3.zero);
+            var guides = Child("GUIDES_DELETE");
+            var guide = Child("Positioning guide", guides.transform);
+            foreach (var layer in new[] { "DPS_Holes", "DPS_Rings", "HotDog", "DPS Orifice", "Orifice Position" })
+                controller.AddLayer(layer);
+            foreach (var parameter in new[] { "DPS_Hole", "DPS_Ring", "HotDog", "fluff/dps/orifice",
+                         "EZDPS/Orifice", "TPS/Socket/VF/Depth", "OGB/Legacy", "Nsfw/Ori/Test" }) {
+                controller.AddParameter(parameter, AnimatorControllerParameterType.Float);
+                parameters.parameters = parameters.parameters.Concat(new[] {
+                    new VRCExpressionParameters.Parameter { name = parameter }
+                }).ToArray();
+                menu.controls.Add(Toggle(parameter));
+            }
+            var original = EditorJsonUtility.ToJson(controller) + EditorJsonUtility.ToJson(parameters) + EditorJsonUtility.ToJson(menu);
+            Apply(true);
+            Assert.That(guides != null && guide != null, Is.True);
+            Assert.That(EditorJsonUtility.ToJson(controller) + EditorJsonUtility.ToJson(parameters)
+                + EditorJsonUtility.ToJson(menu), Is.EqualTo(original));
+            Apply(false);
+            Assert.That(guides != null && guide != null, Is.True);
+            Assert.That(EditorJsonUtility.ToJson(controller) + EditorJsonUtility.ToJson(parameters)
+                + EditorJsonUtility.ToJson(menu), Is.EqualTo(original));
+            if (setup == "plug") Assert.That(Plugs, Has.Length.EqualTo(1));
         }
 
         [TestCase("DPS_Hole")]
@@ -338,6 +368,7 @@ namespace VF.Tests {
         [TestCase("OGB/Legacy")]
         [TestCase("Nsfw/Ori/Test")]
         public void RecognizedLegacyParametersRemoveTheirTogglesAndEmptyMenuAncestors(string parameter) {
+            Lights(Child("Socket"));
             controller.AddParameter(parameter, AnimatorControllerParameterType.Float);
             parameters.parameters = parameters.parameters.Concat(new[] { new VRCExpressionParameters.Parameter { name = parameter } }).ToArray();
             var leaf = NewMenu();
@@ -590,13 +621,13 @@ namespace VF.Tests {
             var services = build ? VRCFuryInjectorBuilder.GetInjector(avatar) : injector;
             if (build) services.GetService<ControllersService>().LoadAllControllers();
             var service = services.GetService<SpsUpgrader>();
-            service.Apply(root, true, SpsUpgrader.Mode.Manual);
+            service.Apply(root, true);
             Assert.That(Sockets, Is.Empty);
             Assert.That(Plugs, Is.Empty);
             Assert.That(root.GetComponentsInChildren<ParentConstraint>(), Has.Length.EqualTo(2));
             Assert.That(EditorJsonUtility.ToJson(controller) + EditorJsonUtility.ToJson(parameters)
                 + EditorJsonUtility.ToJson(menu) + EditorJsonUtility.ToJson(legacyMenu) + EditorJsonUtility.ToJson(secondPage), Is.EqualTo(original));
-            service.Apply(root, false, SpsUpgrader.Mode.Manual);
+            service.Apply(root, false);
             Assert.That(Sockets, Has.Length.EqualTo(18));
             Assert.That(Sockets.All(s => s.addMenuItem && s.addLight == LightType.Auto), Is.True);
             Assert.That(Plugs.Single().gameObject, Is.SameAs(plugRenderer.gameObject));
@@ -614,6 +645,7 @@ namespace VF.Tests {
 
         [Test]
         public void MixedRecursiveMenusKeepUserItemsAndControllerReferences() {
+            Lights(Child("Socket"));
             controller.AddParameter("DPS_Hole", AnimatorControllerParameterType.Int);
             var state = controller.layers[0].stateMachine.AddState("Uses Legacy Parameter");
             state.AddTransition(state).AddCondition(AnimatorConditionMode.Equals, 1, "DPS_Hole");

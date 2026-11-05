@@ -51,13 +51,6 @@ namespace VF.Builder.Haptics {
             VFGameObject bakeRoot,
             IList<string> spsBlendshapes
         ) {
-            if (DpsConfigurer.IsDps(m) || TpsConfigurer.IsTps(m)) {
-                throw new Exception(
-                    $"VRCFury SPS plug was asked to use SPS deformation on renderer," +
-                    $" but it already has TPS or DPS. If you want to use SPS, use a regular shader" +
-                    $" on the mesh instead.");
-            }
-
             SpsPatcher.Patch(m, SpsDevModeMenuItem.Get() && !IsActuallyUploadingHook.Get(), spsBlendshapes.Count > 0);
             {
                 // Prevent poi from stripping our parameters

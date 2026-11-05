@@ -19,14 +19,11 @@ namespace VF.Inspector {
         [VFAutowired] private readonly SpsConfigurer spsConfigurer;
         private int nextGroupId = 1;
 
-        [CanBeNull]
         public BakeResult Bake(VRCFuryHapticSocket socket, bool legacyAvailable = true, bool tpsDepthAnimationCompatibility = false) {
             var closestBone = autoChannelGenerator?.GetClosestBone(socket.owner());
             var channels = spsConfigurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender);
             var transform = socket.owner();
-            if (!HapticUtils.AssertValidScale(transform, "socket", shouldThrow: !socket.fromSpsForAll)) {
-                return null;
-            }
+            HapticUtils.AssertValidScale(transform);
 
             var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket, closestBone);
 
@@ -66,7 +63,7 @@ namespace VF.Inspector {
             }
 
             VFGameObject legacyLights = null;
-            if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
+            if (lightType != VRCFuryHapticSocket.AddLight.None) {
                 ForEachPossibleLight(transform, false, light => {
                     light.Destroy();
                 });
@@ -126,7 +123,7 @@ namespace VF.Inspector {
 
             ConfigureSpsSenders(socket, lightType, channels, rootSender);
 
-            if (EditorApplication.isPlaying && !socket.fromSpsForAll) {
+            if (EditorApplication.isPlaying) {
                 var gizmo = socket.owner().AddComponent<VRCFurySocketGizmo>();
                 gizmo.data = GetGizmoData(socket);
                 gizmo.data.useLegacyLights = legacyLights != null;
@@ -170,8 +167,6 @@ namespace VF.Inspector {
 
         internal void ConfigureSpsSenders(VRCFuryHapticSocket socket,
             VRCFuryHapticSocket.AddLight type, IReadOnlyCollection<string> channels, VFGameObject rootSender) {
-            // Automatic legacy sockets keep their original lights; don't also advertise a native visual target.
-            if (socket.fromSpsForAll) return;
             if (rootSender == null || type == VRCFuryHapticSocket.AddLight.None) return;
             if (channels.Count == 0) return;
             var rootTags = channels.Select(SpsTags.FormatSocket).ToArray();

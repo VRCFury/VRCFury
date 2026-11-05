@@ -26,7 +26,7 @@ namespace VF.Service {
             }
 
             RemoveTPSSenders();
-            spsUpgrader.Apply(globals.avatarObject, false, SpsUpgrader.Mode.AutomatedForEveryone);
+            spsUpgrader.Apply(globals.avatarObject, false);
         }
 
         private void RemoveTPSSenders() {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
+using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Injector;
@@ -858,12 +859,17 @@ namespace VF.Tests {
             Assert.That(native.transform.lossyScale.x, Is.EqualTo((129 | (1 << 14)) * 2).Within(0.01));
         }
 
+        private SpsUpgrader CreateUpgrader() {
+            var avatar = root.AddComponent<VRCAvatarDescriptor>();
+            avatar.baseAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+            avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+            return VRCFuryInjectorBuilder.CreateForManualEditing(root).GetService<SpsUpgrader>();
+        }
+
         [TestCase(0.41f)]
         [TestCase(0.42f)]
-        public void AutomaticLegacyUpgradePreservesLightsAndOnlyPublishesLegacyContacts(float rootRange) {
-            var socket = root.AddComponent<VRCFuryHapticSocket>();
-            socket.addLight = VRCFuryHapticSocket.AddLight.None;
-            socket.fromSpsForAll = true;
+        public void AutomaticLegacyUpgradeReplacesLightsWithFullSocket(float rootRange) {
+            var upgrader = CreateUpgrader();
             var main = new GameObject("Existing DPS Root").AddComponent<Light>();
             main.transform.SetParent(root.transform, false);
             main.color = Color.black;
@@ -873,20 +879,73 @@ namespace VF.Tests {
             front.transform.localPosition = Vector3.forward * 0.005f;
             front.color = Color.black;
             front.range = 0.45f;
+            var expectedPosition = main.transform.position;
+            var expectedForward = (front.transform.position - main.transform.position).normalized;
+            upgrader.Apply(root, true);
+            Assert.That(root.GetComponent<VRCFuryHapticSocket>(), Is.Null, "Dry run must not add components");
+            Assert.That(main != null && front != null, Is.True, "Dry run must preserve authored lights");
+            upgrader.Apply(root, false);
+            var socket = root.GetComponent<VRCFuryHapticSocket>();
+            Assert.That(socket, Is.Not.Null);
+            Assert.That(socket.addLight, Is.EqualTo(rootRange == 0.41f
+                ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.Ring));
+            Assert.That(main == null && front == null, Is.True, "Authored lights must be removed during upgrade");
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
-            Assert.That(main == null || front == null, Is.False);
-            Assert.That(main.range, Is.EqualTo(rootRange));
-            Assert.That(front.range, Is.EqualTo(0.45f));
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
             if (!BuildTargetUtils.IsDesktop()) return;
-            Assert.That(NativeSocketSenders(result.bakeRoot), Is.Empty);
+            Assert.That(NativeSocketSenders(result.bakeRoot), Has.Length.EqualTo(1));
+            Assert.That(result.legacyLights.GetComponentsInSelfAndChildren<Light>().Select(light => light.range),
+                Is.EquivalentTo(new[] { rootRange == 0.41f ? 0.4104f : 0.4204f, 0.4504f }));
             var legacy = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>().Single();
             Assert.That(legacy.collisionTags, Does.Contain(SpsTags.LegacySocket));
             Assert.That(legacy.collisionTags, Does.Contain(SpsTags.LegacySocket2));
-            Assert.That(legacy.collisionTags.Any(tag => tag.StartsWith(SpsTags.Prefix)
-                || tag.StartsWith(SpsTags.LegacySocketHole) || tag.StartsWith(SpsTags.LegacySocketRing)), Is.False);
-            CheckVector(legacy.transform.position, main.transform.position);
-            CheckVector(legacy.transform.forward, (front.transform.position - main.transform.position).normalized);
+            Assert.That(legacy.collisionTags, Does.Contain(SpsTags.FormatSocket(SpsTags.PublicChannel)));
+            CheckVector(legacy.transform.position, expectedPosition);
+            CheckVector(legacy.transform.forward, expectedForward);
+        }
+
+        [TestCase("Legacy Contact", "TPSVF_Depth")]
+        [TestCase("OGB_Legacy Contact", "Finger")]
+        public void AutomaticLegacyUpgradeRemovesLegacyContacts(string objectName, string tag) {
+            var upgrader = CreateUpgrader();
+            var legacy = GameObjects.Create(objectName, root);
+            legacy.active = false;
+            var sender = legacy.AddComponent<VRCContactSender>();
+            sender.collisionTags = new List<string> { tag };
+            var receiver = legacy.AddComponent<VRCContactReceiver>();
+            receiver.collisionTags = new List<string> { tag };
+            var unrelated = GameObjects.Create("Unrelated Contact", root);
+            var unrelatedSender = unrelated.AddComponent<VRCContactSender>();
+            unrelatedSender.collisionTags = new List<string> { "Finger" };
+            var unrelatedReceiver = unrelated.AddComponent<VRCContactReceiver>();
+            unrelatedReceiver.collisionTags = new List<string> { "Finger" };
+
+            upgrader.Apply(root, true);
+            Assert.That(sender != null && receiver != null, Is.True, "Dry run must preserve contacts");
+            upgrader.Apply(root, false);
+            Assert.That(sender == null && receiver == null, Is.True, "Legacy senders and receivers must be removed");
+            Assert.That(unrelatedSender != null && unrelatedReceiver != null, Is.True, "Unrelated contacts must remain");
+        }
+
+        [TestCase("OGB_Baked_Pen", true)]
+        [TestCase("BakedSpsPlug", true)]
+        [TestCase("OGB_Marker_Pen", true)]
+        [TestCase("OGB_Baked_Orf", false)]
+        [TestCase("BakedSpsSocket", false)]
+        [TestCase("OGB_Marker_Hole", false)]
+        public void AutomaticLegacyUpgradeDeletesReplacedObjects(string objectName, bool isPlug) {
+            var upgrader = CreateUpgrader();
+            var replaced = GameObjects.Create(objectName, root);
+            var child = GameObjects.Create("Old Child", replaced).AddComponent<BoxCollider>();
+            var unrelated = GameObjects.Create("Unrelated", root).AddComponent<BoxCollider>();
+
+            upgrader.Apply(root, true);
+            Assert.That(replaced != null && child != null, Is.True, "Dry run must preserve replaced hierarchies");
+            upgrader.Apply(root, false);
+            Assert.That(replaced == null && child == null, Is.True, "Replaced objects and their children must be removed");
+            Assert.That(unrelated != null, Is.True);
+            Assert.That(isPlug ? (UnityEngine.Component)root.GetComponent<VRCFuryHapticPlug>()
+                : root.GetComponent<VRCFuryHapticSocket>(), Is.Not.Null, "Replacement component must remain");
         }
 
         [TestCase(0f, 0.03f)]

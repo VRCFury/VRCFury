@@ -138,7 +138,6 @@ namespace VF.Tests {
         [TestCase("plug", true)]
         [TestCase("socket", true)]
         [TestCase("touch", true)]
-        [TestCase("automatic", false)]
         [TestCase("none", false)]
         public void DisabledHapticsMarkerRequiresARequestedHapticFeature(string feature, bool requested) {
             var root = new GameObject("Haptics availability");
@@ -147,7 +146,6 @@ namespace VF.Tests {
                 if (feature == "plug") root.AddComponent<VF.Component.VRCFuryHapticPlug>();
                 if (feature == "socket") root.AddComponent<VF.Component.VRCFuryHapticSocket>();
                 if (feature == "touch") root.AddComponent<VF.Component.VRCFuryHapticTouchReceiver>();
-                if (feature == "automatic") root.AddComponent<VF.Component.VRCFuryHapticPlug>().fromSpsForAll = true;
                 var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
                 injector.GetService<BakeHapticVersionsService>().Apply();
                 var marker = avatar.expressionParameters?.FindParameter("OGB/HapticsDisabled");

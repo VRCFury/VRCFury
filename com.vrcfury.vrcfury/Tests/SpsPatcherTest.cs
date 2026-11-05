@@ -28,6 +28,75 @@ float4 frag() : SV_Target {
 
     private const string SpsStub = "void sps_apply(inout SpsInputs input) {}";
 
+    [TestCase("PenetratorReshape")]
+    [TestCase("applyRalivDynamicPenetrationSystem")]
+    [TestCase("ApplyTPSPenetrator")]
+    public void MakesLegacyDeformationInputOnlyEvenWhenLockedOn(string function) {
+        var program = Common + @"
+#pragma vertex vert
+#define LOCKED_TPS_ENABLED 1
+void " + function + @"(inout float4 vertex) {
+    // A closing brace in a comment must not terminate the function: }
+    if (LOCKED_TPS_ENABLED) { vertex.x += 100; }
+    /* Nor should this: } */
+}
+VertexOutput vert(AppData data) {
+    " + function + @"(data.vertex);
+    VertexOutput output;
+    output.position = data.vertex;
+    return output;
+}
+";
+        var patched = SpsPatcher.DisableLegacyDeformation(program);
+        Assert.That(patched, Does.Contain("#define inout in\nvoid " + function));
+        Assert.That(patched, Does.Contain("vertex.x += 100"));
+        Assert.That(patched, Does.Contain(function + "(data.vertex)"));
+        AssertShaderCompiles(SpsPatcher.PatchProgram(patched, true, SpsStub, "", false), "CGPROGRAM", "ENDCG");
+    }
+
+    [Test]
+    public void PreservesUnrelatedShaderCodeAndCommentedFunctions() {
+        const string source = @"
+// void ApplyTPSPenetrator() {
+/* void PenetratorReshape() { */
+void OrificeReshape(inout float4 vertex) { vertex.x += 1; }
+void ApplyTPSOrifice(inout float4 vertex) { vertex.y += 1; }
+";
+        Assert.That(SpsPatcher.DisableLegacyDeformation(source), Is.EqualTo(source));
+    }
+
+    [TestCase("XSVert.cginc")]
+    [TestCase("RalivDPS_Functions.cginc")]
+    [TestCase("PenetratorFunctions.cginc")]
+    public void DisablesLegacyIncludesUsingOnlyScopedDefines(string fileName) {
+        var folder = "Assets/SpsLegacyIncludes_" + Guid.NewGuid().ToString("N");
+        AssetDatabase.CreateFolder("Assets", Path.GetFileName(folder));
+        var legacy = folder + "/" + fileName;
+        const string legacySource = "void PenetratorReshape(inout float4 vertex) { vertex.x += 100; }";
+        try {
+            File.WriteAllText(legacy, legacySource);
+            var include = "#include_with_pragmas \"" + legacy + "\"";
+            var patched = SpsPatcher.DisableLegacyDeformation(include);
+            Assert.That(patched, Does.Contain("#define inout in\n" + include + "\n#undef inout"));
+            Assert.That(patched, Does.Not.Contain("void PenetratorReshape"));
+            Assert.That(Directory.GetFiles(folder), Has.Length.EqualTo(1));
+            Assert.That(File.ReadAllText(legacy), Is.EqualTo(legacySource));
+            AssertShaderCompiles(Common + "\n" + patched + @"
+#pragma vertex vert
+void Unrelated(inout float4 vertex) { vertex.y += 1; }
+VertexOutput vert(AppData data) {
+    PenetratorReshape(data.vertex);
+    Unrelated(data.vertex);
+    VertexOutput output;
+    output.position = data.vertex;
+    return output;
+}", "CGPROGRAM", "ENDCG");
+        } finally {
+            FileUtil.DeleteFileOrDirectory(folder);
+            FileUtil.DeleteFileOrDirectory(folder + ".meta");
+        }
+    }
+
     [TestCase("", "4.5")]
     [TestCase("#pragma target 2.0", "4.5")]
     [TestCase("#pragma target 4.0", "4.5")]

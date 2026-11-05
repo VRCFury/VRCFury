@@ -250,9 +250,14 @@ namespace VF.Tests {
             Assert.That(controller.layers, Has.Length.EqualTo(2));
         }
 
-        [TestCase((int)SpsUpgrader.Mode.AutomatedComponent)]
-        [TestCase((int)SpsUpgrader.Mode.AutomatedForEveryone)]
-        public void AutomaticSpsUpgradeDoesNotRunManualCleanup(int mode) {
+        [Test]
+        public void AutomaticSpsUpgradeCleansBuildCopiesWithoutChangingSourceAssets() {
+            foreach (var range in new[] { 0.41f, 0.45f }) {
+                var light = GameObjects.Create("Legacy Socket Light", root).AddComponent<Light>();
+                light.color = Color.black;
+                light.range = range;
+                light.transform.localPosition = range == 0.41f ? Vector3.zero : Vector3.forward * 0.01f;
+            }
             var layers = controller.layers;
             layers[1].name = "DPS Orifice";
             controller.layers = layers;
@@ -261,13 +266,13 @@ namespace VF.Tests {
             menu.controls[1].parameter.name = "DPS_Hole";
             var original = OriginalAssets();
             var fx = LoadBuild();
-            injector.GetService<SpsUpgrader>().Apply(root, false, (SpsUpgrader.Mode)mode);
+            injector.GetService<SpsUpgrader>().Apply(root, false);
             Assert.That(OriginalAssets(), Is.EqualTo(original));
-            Assert.That(fx.GetLayers().Select(l => l.name), Does.Contain("DPS Orifice").And.Contain("[VF0] Generated"));
-            Assert.That(fx.parameters.Select(p => p.name), Does.Contain("DPS_Hole"));
-            Assert.That(injector.GetService<ExpressionParamsService>().Select(p => p.name), Does.Contain("DPS_Hole"));
+            Assert.That(fx.GetLayers().Select(l => l.name), Does.Not.Contain("DPS Orifice").And.Contain("[VF0] Generated"));
+            Assert.That(fx.parameters.Select(p => p.name), Does.Not.Contain("DPS_Hole").And.Contain("Generated"));
+            Assert.That(injector.GetService<ExpressionParamsService>().Select(p => p.name), Does.Not.Contain("DPS_Hole").And.Contain("Generated"));
             Assert.That(injector.GetService<MenuService>().GetMenu().GetRaw().controls.Select(c => c.parameter.name),
-                Does.Contain("DPS_Hole"));
+                Does.Not.Contain("DPS_Hole").And.Contain("Generated"));
         }
 
         [Test]

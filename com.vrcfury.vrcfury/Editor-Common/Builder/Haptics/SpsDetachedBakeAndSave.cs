@@ -29,7 +29,6 @@ namespace VF.Builder.Haptics {
                 socket.Upgrade();
                 try {
                     var result = socketBaker.Bake(socket);
-                    if (result == null) continue;
                     onSocketBaked?.Invoke(socket, result);
                     foreach (var component in result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                         saveSession.SaveAssetAndChildren(component);
@@ -46,7 +45,6 @@ namespace VF.Builder.Haptics {
                 plug.Upgrade();
                 try {
                     var result = plugBaker.Bake(plug);
-                    if (result == null) continue;
                     onPlugBaked?.Invoke(plug, result);
                     Unity6RendererFixHook.Register(result.bakeRoot);
                     foreach (var component in result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {

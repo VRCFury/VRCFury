@@ -12,7 +12,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly SpsUpgrader spsUpgrader;
         [FeatureBuilderAction(FeatureOrder.UpgradeLegacyHaptics)]
         public void Apply() {
-            spsUpgrader.Apply(featureBaseObject, false, SpsUpgrader.Mode.AutomatedComponent);
+            spsUpgrader.Apply(featureBaseObject, false);
         }
         
         [FeatureEditor]

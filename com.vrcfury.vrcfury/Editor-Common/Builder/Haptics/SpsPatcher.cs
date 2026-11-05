@@ -32,7 +32,7 @@ namespace VF.Builder.Haptics {
                     && m.GetParameters()[3].IsOut);
         }
 
-        private const string HashBuster = "19";
+        private const string HashBuster = "22";
         private static readonly Regex ProgramStartRegex = GetRegex(@"\G(?:^|\n)[ \t]*(CGPROGRAM|HLSLPROGRAM)[ \t]*(?:\n|$)");
         private static readonly Regex CgProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDCG[ \t]*(?:\n|$)");
         private static readonly Regex HlslProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDHLSL[ \t]*(?:\n|$)");
@@ -113,6 +113,7 @@ namespace VF.Builder.Haptics {
 
             var contents = ReadFile(sourcePath, true);
             contents = ApplyPcssFix(shader, contents);
+            contents = DisableLegacyDeformation(contents);
 
             void Replace(string pattern, string replacement, int count) {
                 var startLen = contents.Length + "" + contents.GetHashCode();
@@ -1032,6 +1033,30 @@ namespace VF.Builder.Haptics {
                     return "\n" + before + path + after + "\n";
                 }
             });
+        }
+
+        internal static string DisableLegacyDeformation(string content) {
+            // Poiyomi's optimizer retains enabled #ifdef branches even when it bakes properties into constants.
+            const string disableKeywords = "\n#undef TPS_Penetrator\n#undef RALIV_PENETRATION\n";
+            content = GetRegex(@"(?m)^(\s*(?:CGPROGRAM|HLSLPROGRAM|CGINCLUDE|HLSLINCLUDE)[ \t]*\r?\n)")
+                .Replace(content, "$1" + disableKeywords);
+            content = GetRegex(@"(?m)^[ \t]*#define[ \t]+(TPS_Penetrator|RALIV_PENETRATION)\b[^\r\n]*")
+                .Replace(content, "#undef $1");
+
+            // These includes contain DPS deformation and its helpers, without unrelated inout functions.
+            // Make their parameters input-only so deformation cannot modify the caller's vertex/normal.
+            content = GetRegex(@"(?m)^[ \t]*#(?:include|include_with_pragmas)[ \t]+""(?:[^""\r\n]*[/\\])?(?:RalivDPS_Functions|XSVert|PenetratorFunctions)\.cginc""[^\r\n]*")
+                .Replace(content, match => "\n#define inout in\n" + match.Value + "\n#undef inout\n");
+
+            // Locked/combined shaders can contain these definitions directly instead of including them.
+            var functions = GetRegex(@"(?s:/\*.*?\*/)|//[^\r\n]*|""(?:\\.|[^""\\])*""|(?<function>\bvoid\s+(?:PenetratorReshape|applyRalivDynamicPenetrationSystem|ApplyTPSPenetrator)\s*\([^;{}]*\)\s*\{)");
+            foreach (var match in functions.Matches(content).Cast<Match>()
+                         .Where(m => m.Groups["function"].Success).Reverse()) {
+                var close = IndexOfEndOfNextContext(content, match.Index + match.Length - 1);
+                content = content.Substring(0, close + 1) + "\n#undef inout\n" + content.Substring(close + 1);
+                content = content.Substring(0, match.Index) + "\n#define inout in\n" + content.Substring(match.Index);
+            }
+            return content;
         }
 
         private static string ReadAndFlattenPath(string path, HashSet<string> included = null, bool includeLibraryFiles = false) {

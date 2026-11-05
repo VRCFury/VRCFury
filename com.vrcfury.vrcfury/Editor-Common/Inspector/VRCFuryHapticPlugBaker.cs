@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using JetBrains.Annotations;
 using UnityEngine;
 using UnityEngine.Animations;
 using VF.Builder;
@@ -21,16 +20,13 @@ namespace VF.Inspector {
         [VFAutowired] private readonly PlugSizeService plugSizes;
         [VFAutowired] private readonly PlugFrameService plugFrames;
 
-        [CanBeNull]
         public BakeResult Bake(
             VRCFuryHapticPlug plug,
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
             bool deferMaterialConfig = false
         ) {
             var transform = plug.owner();
-            if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.fromSpsForAll)) {
-                return null;
-            }
+            HapticUtils.AssertValidScale(transform);
 
             var size = plugSizes.GetWorldSize(plug);
             var renderers = size.renderers;

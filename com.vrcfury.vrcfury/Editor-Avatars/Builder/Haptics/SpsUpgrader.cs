@@ -37,7 +37,7 @@ namespace VF.Builder.Haptics {
             if (avatarObject == null) return;
 
             var upgrader = VRCFuryInjectorBuilder.CreateForManualEditing(avatarObject).GetService<SpsUpgrader>();
-            var messages = upgrader.Apply(avatarObject, true, Mode.Manual);
+            var messages = upgrader.Apply(avatarObject, true);
             if (string.IsNullOrWhiteSpace(messages)) {
                 DialogUtils.DisplayDialog(
                     dialogTitle,
@@ -55,7 +55,7 @@ namespace VF.Builder.Haptics {
             );
             if (!doIt) return;
 
-            upgrader.Apply(avatarObject, false, Mode.Manual);
+            upgrader.Apply(avatarObject, false);
             DialogUtils.DisplayDialog(
                 dialogTitle,
                 "Upgrade complete!",
@@ -73,12 +73,7 @@ namespace VF.Builder.Haptics {
             return false;
         }
 
-        public enum Mode {
-            Manual,
-            AutomatedComponent,
-            AutomatedForEveryone
-        }
-        public string Apply(VFGameObject avatarObject, bool dryRun, Mode mode) {
+        public string Apply(VFGameObject avatarObject, bool dryRun) {
             var objectsToDelete = new List<VFGameObject>();
             var componentsToDelete = new List<UnityEngine.Component>();
             var hasExistingSocket = new HashSet<VFGameObject>();
@@ -107,7 +102,6 @@ namespace VF.Builder.Haptics {
                 if (dryRun) return null;
                 var plug = obj.AddComponent<VRCFuryHapticPlug>();
                 plug.enableSps = false;
-                plug.fromSpsForAll = mode == Mode.AutomatedForEveryone;
                 return plug;
             }
             VRCFuryHapticSocket AddSocket(VFGameObject obj) {
@@ -117,7 +111,6 @@ namespace VF.Builder.Haptics {
                 var socket = obj.AddComponent<VRCFuryHapticSocket>();
                 socket.addLight = VRCFuryHapticSocket.AddLight.None;
                 socket.addMenuItem = false;
-                socket.fromSpsForAll = mode == Mode.AutomatedForEveryone;
                 return socket;
             }
 
@@ -132,61 +125,58 @@ namespace VF.Builder.Haptics {
             }
             
             // Upgrade "parent-constraint" DPS setups
-            if (mode == Mode.Manual) {
-                foreach (var parent in avatarObject.GetComponentsInSelfAndChildren<Transform>()) {
-                    var constraint = parent.owner().GetConstraints().FirstOrDefault(c => c.IsParent());
-                    if (constraint == null) continue;
-                    var sourceTransforms = constraint.GetSources();
-                    if (sourceTransforms.Length < 2) continue;
-                    var sourcesWithWeight = 0;
-                    foreach (var i in Enumerable.Range(0, sourceTransforms.Length)) {
-                        if (constraint.GetWeight(i) > 0) sourcesWithWeight++;
-                    }
+            foreach (var parent in avatarObject.GetComponentsInSelfAndChildren<Transform>()) {
+                var constraint = parent.owner().GetConstraints().FirstOrDefault(c => c.IsParent());
+                if (constraint == null) continue;
+                var sourceTransforms = constraint.GetSources();
+                if (sourceTransforms.Length < 2) continue;
+                var sourcesWithWeight = 0;
+                foreach (var i in Enumerable.Range(0, sourceTransforms.Length)) {
+                    if (constraint.GetWeight(i) > 0) sourcesWithWeight++;
+                }
 
-                    if (sourcesWithWeight > 1) {
-                        // This is probably not a parent constraint socket, but rather an actual position splitter.
-                        // (used to position a socket between two bones)
-                        continue;
-                    }
+                if (sourcesWithWeight > 1) {
+                    // This is probably not a parent constraint socket, but rather an actual position splitter.
+                    // (used to position a socket between two bones)
+                    continue;
+                }
 
-                    var parentInfo = GetIsParent(parent);
-                    if (parentInfo == null) continue;
+                var parentInfo = GetIsParent(parent);
+                if (parentInfo == null) continue;
 
-                    var parentLightType = parentInfo.Item1;
-                    var parentPosition = parentInfo.Item2;
-                    var parentRotation = parentInfo.Item3;
+                var parentPosition = parentInfo.Item2;
+                var parentRotation = parentInfo.Item3;
 
-                    foundParentConstraint = true;
-                    objectsToDelete.Add(parent);
+                foundParentConstraint = true;
+                objectsToDelete.Add(parent);
 
-                    foreach (var i in Enumerable.Range(0, sourceTransforms.Length)) {
-                        var t = sourceTransforms[i];
-                        if (t == null) continue;
-                        var sourcePositionOffset = constraint.GetPositionOffset(i);
-                        var sourceRotationOffset = Quaternion.Euler(constraint.GetRotationOffset(i));
-                        var name = HapticUtils.GetFallbackId(t);
+                foreach (var i in Enumerable.Range(0, sourceTransforms.Length)) {
+                    var t = sourceTransforms[i];
+                    if (t == null) continue;
+                    var sourcePositionOffset = constraint.GetPositionOffset(i);
+                    var sourceRotationOffset = Quaternion.Euler(constraint.GetRotationOffset(i));
+                    var name = HapticUtils.GetFallbackId(t);
 
-                        var socket = AddSocket(t);
-                        addedSocketNames[t] = name;
-                        if (socket != null) {
-                            socket.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
-                                * constraint.owner().worldScale.x / socket.owner().worldScale.x;
-                            socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
-                            socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
-                            socket.addMenuItem = true;
-                            //t.name = "Haptic Socket";
+                    var socket = AddSocket(t);
+                    addedSocketNames[t] = name;
+                    if (socket != null) {
+                        socket.position = (sourcePositionOffset + sourceRotationOffset * parentPosition)
+                            * constraint.owner().worldScale.x / socket.owner().worldScale.x;
+                        socket.rotation = (sourceRotationOffset * parentRotation).eulerAngles;
+                        socket.addLight = VRCFuryHapticSocket.AddLight.Auto;
+                        socket.addMenuItem = true;
+                        //t.name = "Haptic Socket";
 
-                            if (name.ToLower().Contains("vag")) {
-                                AddBlendshapeIfPresent(avatarObject, socket,
-                                    VRCFuryEditorUtils.Rev("2ECIFIRO"), new Vector2(0, 0.03f));
-                            }
+                        if (name.ToLower().Contains("vag")) {
+                            AddBlendshapeIfPresent(avatarObject, socket,
+                                VRCFuryEditorUtils.Rev("2ECIFIRO"), new Vector2(0, 0.03f));
+                        }
 
-                            var closestBone = ClosestBoneUtils.GetPerFrame(avatarObject)
-                                .GetClosestHumanoidBone(socket.owner());
-                            if (VRCFuryHapticSocketBaker.ShouldSupportOgbTouch(socket, closestBone)) {
-                                AddBlendshapeIfPresent(avatarObject, socket,
-                                    VRCFuryEditorUtils.Rev("egluBymmuT"), new Vector2(-0.15f, 0));
-                            }
+                        var closestBone = ClosestBoneUtils.GetPerFrame(avatarObject)
+                            .GetClosestHumanoidBone(socket.owner());
+                        if (VRCFuryHapticSocketBaker.ShouldSupportOgbTouch(socket, closestBone)) {
+                            AddBlendshapeIfPresent(avatarObject, socket,
+                                VRCFuryEditorUtils.Rev("egluBymmuT"), new Vector2(-0.15f, 0));
                         }
                     }
                 }
@@ -274,40 +264,37 @@ namespace VF.Builder.Haptics {
             }
             
             // Claim lights on all OGB components
-            if (mode == Mode.Manual || mode == Mode.AutomatedComponent) {
-                foreach (var transform in hasExistingSocket.Concat(addedSocket)) {
-                    if (!dryRun) {
-                        foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
-                            if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
-                                var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.owner());
-                                if (info != null) {
-                                    var type = info.Item1;
-                                    var position = info.Item2;
-                                    var rotation = info.Item3;
-                                    socket.addLight = type;
-                                    socket.position = position;
-                                    socket.rotation = rotation.eulerAngles;
-                                }
+            foreach (var transform in hasExistingSocket.Concat(addedSocket)) {
+                if (!dryRun) {
+                    foreach (var socket in transform.GetComponents<VRCFuryHapticSocket>()) {
+                        if (socket.addLight == VRCFuryHapticSocket.AddLight.None) {
+                            var info = VRCFuryHapticSocketEditor.GetInfoFromLights(socket.owner());
+                            if (info != null) {
+                                var type = info.Item1;
+                                var position = info.Item2;
+                                var rotation = info.Item3;
+                                socket.addLight = type;
+                                socket.position = position;
+                                socket.rotation = rotation.eulerAngles;
                             }
                         }
                     }
-
-                    VRCFuryHapticSocketEditor.ForEachPossibleLight(transform, false,
-                        light => { componentsToDelete.Add(light); });
                 }
+
+                VRCFuryHapticSocketEditor.ForEachPossibleLight(transform, false,
+                    light => { componentsToDelete.Add(light); });
             }
 
             // Clean up
-            var deletions = new List<string>();
-            if (mode == Mode.Manual) {
-                deletions = cleaner.Cleanup(
+            var upgradingSockets = addedSocket.Count > 0;
+            var deletions = cleaner.Cleanup(
                     avatarObject,
                     perform: !dryRun,
                     ShouldRemoveObj: obj => {
-                        return obj.name == "GUIDES_DELETE"
+                        return (upgradingSockets && obj.name == "GUIDES_DELETE")
                                || objectsToDelete.Contains(obj);
                     },
-                    ShouldRemoveLayer: layer => {
+                    ShouldRemoveLayer: !upgradingSockets ? null : layer => {
                         var lower = layer.ToLower();
                         if (foundParentConstraint && lower.Contains("tps") && lower.Contains("orifice")) {
                             return true;
@@ -323,7 +310,7 @@ namespace VF.Builder.Haptics {
                                || layer == "DPS Orifice"
                                || layer == "Orifice Position";
                     },
-                    ShouldRemoveParam: param => {
+                    ShouldRemoveParam: !upgradingSockets ? null : param => {
                         return param == "DPS_Hole"
                                || param == "DPS_Ring"
                                || param == "HotDog"
@@ -341,7 +328,6 @@ namespace VF.Builder.Haptics {
                         return false;
                     }
                 );
-            }
 
             var parts = new List<string>();
             var alreadyExists = hasExistingSocket

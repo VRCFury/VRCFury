@@ -113,7 +113,6 @@ namespace VF.Service {
 
                     var bakeResult = socketBaker.Bake(socket, legacyAvailable: options.legacyModeAvailable,
                         tpsDepthAnimationCompatibility: options.tpsDepthAnimationCompatibility);
-                    if (bakeResult == null) continue;
                     globals.addOtherFeature(new ShowInFirstPerson {
                         useObjOverride = true,
                         objOverride = bakeResult.bakeRoot,
@@ -122,7 +121,7 @@ namespace VF.Service {
 
                     var mainReceivers = socketMeasurements.GetReceivers(socket, bakeResult.worldSpace, oscId);
 
-                    if (HapticsToggleMenuItem.Get() && !socket.fromSpsForAll) {
+                    if (HapticsToggleMenuItem.Get()) {
                         var paramPrefix = "OGB/Socket/" + oscId;
                         expressionParams.AddOrMerge(ExpressionParam.Create(paramPrefix + "/DepthRadius")
                             .Float().Default(mainReceivers.request.worldRadius).Unsynced());

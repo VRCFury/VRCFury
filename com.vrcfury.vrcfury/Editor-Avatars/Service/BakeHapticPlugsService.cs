@@ -57,10 +57,7 @@ namespace VF.Service {
                     PhysboneUtils.RemoveFromPhysbones(plug.owner());
 
                     if (BuildTargetUtils.IsDesktop()) {
-                        var bakeInfo = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true);
-                        if (bakeInfo != null) {
-                            bakeResults[plug] = bakeInfo;
-                        }
+                        bakeResults[plug] = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true);
                     }
 
                     var postBakeClip = actionClipService.LoadStateAdv("sps_postbake", plug.postBakeActions, plug.owner());
@@ -115,7 +112,7 @@ namespace VF.Service {
             });
             
             // Haptics
-            if (HapticsToggleMenuItem.Get() && !plug.fromSpsForAll) {
+            if (HapticsToggleMenuItem.Get()) {
                 // Haptic Receivers
                 var paramPrefix = "OGB/Plug/" + name;
                 worldScaleService.GetRawWorldScale(bakeRoot, name, paramPrefix + "/LengthMult1");

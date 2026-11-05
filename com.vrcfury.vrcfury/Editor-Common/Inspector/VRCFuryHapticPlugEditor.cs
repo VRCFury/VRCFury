@@ -212,6 +212,11 @@ namespace VF.Inspector {
             boneWarning.SetVisible(false);
             container.Add(boneWarning);
 
+            var legacyMaterialWarning = VRCFuryEditorUtils.Warn(
+                "This plug's renderer uses DPS or TPS materials. There is no reason to do this with SPS. Replace the material with a normal non-deforming shader.");
+            legacyMaterialWarning.SetVisible(false);
+            container.Add(legacyMaterialWarning);
+
             var sizeSection = VRCFuryEditorUtils.Section("Size and Masking");
             container.Add(sizeSection);
             
@@ -287,6 +292,8 @@ namespace VF.Inspector {
                 var isInsideBone = bones.Any(bone => target.owner().IsSameOrChildOf(bone));
                 var displayWarning = bones.Length > 0 && !isInsideBone;
                 boneWarning.SetVisible(displayWarning);
+
+                legacyMaterialWarning.SetVisible(size.renderers.Any(TpsConfigurer.HasDpsOrTpsMaterial));
                 
                 return text.Join('\n');
             }));

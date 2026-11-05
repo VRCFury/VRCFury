@@ -74,23 +74,21 @@ namespace VF.Builder.Haptics {
             return Math.Abs(scale.x - scale.y) / scale.x > 0.05
                    || Math.Abs(scale.x - scale.z) / scale.x > 0.05;
         }
-        public static bool AssertValidScale(VFGameObject obj, string type, bool shouldThrow = true) {
+        public static void AssertValidScale(VFGameObject obj) {
             var current = obj;
             var nonUniformScales = new List<string>();
             while (true) {
                 if (IsZeroScale(current)) {
-                    if (shouldThrow) throw new Exception(
+                    throw new Exception(
                         "SPS cannot be used on an object with zero scale.\n\n" +
                         "Component path: " + obj.GetDebugPath() + "\n" +
                         "Offending object: " + current.GetDebugPath());
-                    return false;
                 }
                 if (IsNegativeScale(current)) {
-                    if (shouldThrow) throw new Exception(
+                    throw new Exception(
                         "SPS cannot be used on an object with negative scale.\n\n" +
                         "Component path: " + obj.GetDebugPath() + "\n" +
                         "Offending object: " + current.GetDebugPath());
-                    return false;
                 }
                 if (IsNonUniformScale(current)) {
                     var scale = current.localScale;
@@ -104,15 +102,12 @@ namespace VF.Builder.Haptics {
 
             var bypass = obj.Find("ItsOkayThatOgbMightBeBroken") != null;
             if (nonUniformScales.Any() && !bypass) {
-                if (shouldThrow) throw new Exception(
+                throw new Exception(
                     "SPS cannot be used on an object with non-uniform scale." +
                     " This object (and all parents) must have a scale where X=Y=Z, such as 1,1,1, or 1.5,1.5,1.5, etc.\n\n" +
                     "Component path: " + obj.GetDebugPath() + "\n" +
                     "Offending objects:\n" + nonUniformScales.Join('\n'));
-                return false;
             }
-
-            return true;
         }
 
         private static string GetActualId<T>(IEnumerable<T> items, T target, Func<T, string> getPreferredId) {
