@@ -126,6 +126,8 @@ namespace VF.Tests {
                 string path = null,
                 string blendshape = "Smile",
                 bool includeSet = true,
+                VRCAvatarDescriptor.VisemeDampenMode dampenMode = VRCAvatarDescriptor.VisemeDampenMode.None,
+                float dampenAmount = 1,
                 params VRCAvatarDescriptor.FaceTrackingParameterBehavior[] behaviors) {
                 var set = new VRCAvatarDescriptor.FaceTrackingBlendshapesSet { setName = setName, setWeight = setWeight };
                 if (visemes) SetMapping(set, 1, blendshape, visemes: true);
@@ -138,7 +140,9 @@ namespace VF.Tests {
                             : (skins ?? new[] { owner.GetComponent<SkinnedMeshRenderer>() })
                                 .Select(skin => (ObjectReference<SkinnedMeshRenderer>)skin).ToList(),
                         faceTrackingBlendshapeSets = includeSet ? new() { set } : new(),
-                        faceTrackingParameterBehaviors = behaviors.ToList()
+                        faceTrackingParameterBehaviors = behaviors.ToList(),
+                        visemeDampenMode = dampenMode,
+                        visemeDampenAmount = dampenAmount
                     }
                 };
                 Add(builder, builder.model);
@@ -2152,8 +2156,13 @@ namespace VF.Tests {
                     : VRC.SDKBase.VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
                 build.avatar.visemeDampenMode = mode;
                 build.avatar.visemeDampenAmount = 0.37f;
+                var accessory = new GameObject("Accessory");
+                accessory.transform.SetParent(build.root.transform);
+                source.transform.SetParent(accessory.transform);
                 build.Full(source.gameObject, visemes: !hardwareFirst);
-                build.Full(build.Skin("OtherSource").gameObject, visemes: hardwareFirst);
+                var other = build.Skin("OtherSource");
+                other.transform.SetParent(accessory.transform);
+                build.Full(other.gameObject, visemes: hardwareFirst);
                 build.Run();
                 Assert.That(build.avatar.enableFaceTracking, Is.True);
                 Assert.That(build.avatar.useAllTrackingKeys, Is.True);
@@ -2161,6 +2170,62 @@ namespace VF.Tests {
                 Assert.That(build.avatar.visemeDampenMode,
                     Is.EqualTo(faceTrackingEnabled && hardwareEnabled && visemesEnabled ? mode : VRCAvatarDescriptor.VisemeDampenMode.None));
                 Assert.That(build.avatar.visemeDampenAmount, Is.EqualTo(0.37f));
+            }
+        }
+
+        [TestCase(VRCAvatarDescriptor.VisemeDampenMode.None, false)]
+        [TestCase(VRCAvatarDescriptor.VisemeDampenMode.None, true)]
+        [TestCase(VRCAvatarDescriptor.VisemeDampenMode.DampenTracking, false)]
+        [TestCase(VRCAvatarDescriptor.VisemeDampenMode.DampenTracking, true)]
+        [TestCase(VRCAvatarDescriptor.VisemeDampenMode.DampenVisemes, false)]
+        [TestCase(VRCAvatarDescriptor.VisemeDampenMode.DampenVisemes, true)]
+        public void FirstDirectChildFtControllerDeterminesDampening(VRCAvatarDescriptor.VisemeDampenMode mode, bool visemesFirst) {
+            using (var build = new Build()) {
+                var nested = build.Skin("Nested");
+                var parent = new GameObject("Accessory");
+                parent.transform.SetParent(build.root.transform);
+                nested.transform.SetParent(parent.transform);
+                build.Full(nested.gameObject, dampenMode: VRCAvatarDescriptor.VisemeDampenMode.DampenVisemes, dampenAmount: 0.9f);
+                build.Full(build.Skin("Primary").gameObject, visemes: visemesFirst, dampenMode: mode, dampenAmount: 0.37f);
+                build.Full(build.Skin("Other").gameObject, visemes: !visemesFirst,
+                    dampenMode: VRCAvatarDescriptor.VisemeDampenMode.DampenTracking, dampenAmount: 0.8f);
+                build.Run();
+                Assert.That(build.avatar.visemeDampenMode, Is.EqualTo(mode));
+                Assert.That(build.avatar.visemeDampenAmount, Is.EqualTo(0.37f));
+            }
+        }
+
+        [TestCase("Body", true)]
+        [TestCase("Nested/Body", false)]
+        [TestCase("", false)]
+        [TestCase("direct", true)]
+        [TestCase("nested", false)]
+        [TestCase("bone", false)]
+        public void DampeningInspectorUsesPrimaryMeshReferences(string target, bool expected) {
+            using (var build = new Build()) {
+                var owner = ScriptableObject.CreateInstance<AuthoringFields>();
+                try {
+                    var skin = build.Skin("Body");
+                    var entry = new ObjectReference<SkinnedMeshRenderer> { useBone = false, offset = target };
+                    if (target == "direct" || target == "nested") {
+                        entry.useObj = true;
+                        entry.obj = skin.gameObject;
+                        entry.offset = "";
+                        if (target == "nested") {
+                            var parent = new GameObject("Nested");
+                            parent.transform.SetParent(build.root.transform);
+                            skin.transform.SetParent(parent.transform);
+                        }
+                    }
+                    if (target == "bone") entry.useBone = true;
+                    owner.controller.faceTrackingMeshes.Add(entry);
+                    using (var serialized = new SerializedObject(owner)) {
+                        Assert.That(FaceTrackingEditor.CanConfigureVisemeDampening(
+                            serialized.FindProperty("controller.faceTrackingMeshes")), Is.EqualTo(expected));
+                    }
+                } finally {
+                    Object.DestroyImmediate(owner);
+                }
             }
         }
 

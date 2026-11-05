@@ -27,6 +27,8 @@ namespace VF.Model.Feature {
         public List<ObjectReference<SkinnedMeshRenderer>> faceTrackingMeshes = new();
         public List<VRCAvatarDescriptor.FaceTrackingBlendshapesSet> faceTrackingBlendshapeSets = new List<VRCAvatarDescriptor.FaceTrackingBlendshapesSet>();
         public List<VRCAvatarDescriptor.FaceTrackingParameterBehavior> faceTrackingParameterBehaviors = new List<VRCAvatarDescriptor.FaceTrackingParameterBehavior>();
+        public VRCAvatarDescriptor.VisemeDampenMode visemeDampenMode;
+        [Range(0, 1)] public float visemeDampenAmount = 1;
 #endif
 
         public string injectSpsDepthParam;

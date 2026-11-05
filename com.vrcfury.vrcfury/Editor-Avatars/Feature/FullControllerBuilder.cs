@@ -258,6 +258,7 @@ namespace VF.Feature {
                     }
                 }).Distinct().ToArray();
             faceTracking.RegisterFullControllerMeshes(skins);
+            faceTracking.ConfigureVisemeDampening(skins, model.visemeDampenMode, model.visemeDampenAmount);
             if (skins.Contains(avatar.VisemeSkinnedMesh) && avatar.VisemeSkinnedMesh != null
                 && (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape
                     || avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.JawFlapBlendShape))
@@ -713,7 +714,9 @@ namespace VF.Feature {
             content.Add(FaceTrackingEditor.Create(
                 prop.FindPropertyRelative("faceTrackingMeshes"),
                 prop.FindPropertyRelative("faceTrackingBlendshapeSets"),
-                prop.FindPropertyRelative("faceTrackingParameterBehaviors")));
+                prop.FindPropertyRelative("faceTrackingParameterBehaviors"),
+                prop.FindPropertyRelative("visemeDampenMode"),
+                prop.FindPropertyRelative("visemeDampenAmount")));
 #endif
 
             var adv = new Foldout {

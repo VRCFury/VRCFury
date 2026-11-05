@@ -64,6 +64,13 @@ namespace VF.Service {
         private readonly List<SkinnedMeshRenderer> meshes = new List<SkinnedMeshRenderer>();
         private readonly Dictionary<SkinnedMeshRenderer, string> meshOwners = new();
         private bool captured;
+        private (VRCAvatarDescriptor.VisemeDampenMode mode, float amount)? visemeDampening;
+
+        public void ConfigureVisemeDampening(IEnumerable<SkinnedMeshRenderer> skins,
+            VRCAvatarDescriptor.VisemeDampenMode mode, float amount) {
+            if (visemeDampening != null || !skins.Any(skin => skin != null && skin.transform.parent == avatar.transform)) return;
+            visemeDampening = (mode, Mathf.Clamp01(amount));
+        }
 
         private static string NameAt(string[] names, int index) => names != null && index < names.Length ? names[index] ?? "" : "";
         private static float MultiplierAt(float[] values, int index) => values != null && index < values.Length ? values[index] : 1f;
@@ -357,6 +364,11 @@ namespace VF.Service {
             avatar.faceTrackingParameterBehaviors = plan.behaviors;
             if (plan.legacyVisemes != null) avatar.VisemeBlendShapes = plan.legacyVisemes;
             if (plan.legacyMouthOpenBlendshape != null) avatar.MouthOpenBlendShapeName = plan.legacyMouthOpenBlendshape;
+            // Apply after all imports: enabling hardware tracking or FT visemes can reset dampening.
+            if (visemeDampening is { } dampening) {
+                avatar.visemeDampenMode = dampening.mode;
+                avatar.visemeDampenAmount = dampening.amount;
+            }
             avatar.Dirty();
             if (plan.warnings.Count > 0)
                 Debug.LogWarning("VRCFury: Some Face Tracking blendshape mappings could not be resolved and were skipped:\n"
