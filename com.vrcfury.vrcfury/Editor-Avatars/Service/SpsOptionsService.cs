@@ -56,7 +56,10 @@ namespace VF.Service {
             var mainPath = GetMenuPath();
             // Add this after socket entries, including when only a plug's DPS tip needs it.
             if (legacyParameter != null) {
-                menuService.GetMenu().NewMenuToggle($"{mainPath}/<b>Legacy Support<\\/b>\n<size=20>DPS\\/TPS\\/SPS1\\/SPS2\nOne socket at a time", legacyParameter);
+                var menu = menuService.GetMenu();
+                menu.GetSubmenu(mainPath);
+                // Menus sort by service ID, whose order is independent of build phase order.
+                menu.OverrideSortPosition(int.MaxValue, () => menu.NewMenuToggle($"{mainPath}/<b>Legacy Support<\\/b>\n<size=20>DPS\\/TPS\\/SPS1\\/SPS2\nOne socket at a time", legacyParameter));
             }
             
             menuChanges.AddExtraAction(new MoveMenuItem {

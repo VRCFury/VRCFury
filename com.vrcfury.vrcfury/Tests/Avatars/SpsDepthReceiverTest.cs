@@ -1190,7 +1190,9 @@ namespace VF.Tests {
         [TestCase(true, false, false, true)]
         [TestCase(false, true, true, false)]
         [TestCase(true, true, true, false)]
-        public void LegacyToggleControlsSocketLightsTpsFrontAndDpsTipIncludingPlugOnlyAvatars(bool withSocket, bool defaultOn, bool available, bool shared) {
+        [TestCase(true, false, true, true, true)]
+        [TestCase(true, true, true, true, true)]
+        public void LegacyToggleControlsSocketLightsTpsFrontAndDpsTipIncludingPlugOnlyAvatars(bool withSocket, bool defaultOn, bool available, bool shared, bool legacyServiceFirst = false) {
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
@@ -1220,7 +1222,7 @@ namespace VF.Tests {
             globals.currentMenuSortPosition = SortPosition<BakeHapticSocketsService>();
             injector.GetService<BakeHapticSocketsService>().Apply();
             var options = injector.GetService<SpsOptionsService>();
-            globals.currentMenuSortPosition = SortPosition<SpsOptionsService>();
+            globals.currentMenuSortPosition = legacyServiceFirst ? 0 : SortPosition<SpsOptionsService>();
             options.MoveMenus();
             var menus = injector.GetService<MenuService>();
             if (menus.GetReadOnlyMenu() != null) menus.GetMenu().SortMenu();
