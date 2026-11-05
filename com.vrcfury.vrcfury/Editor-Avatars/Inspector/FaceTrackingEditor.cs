@@ -12,7 +12,8 @@ using VRC.SDK3A.Editor;
 
 namespace VF.Inspector {
     internal static class FaceTrackingEditor {
-        public static VisualElement Create(SerializedProperty meshes, SerializedProperty sets, SerializedProperty behaviors) {
+        public static VisualElement Create(SerializedProperty meshes, SerializedProperty sets, SerializedProperty behaviors,
+            SerializedProperty dampenMode = null, SerializedProperty dampenAmount = null) {
             var output = new Foldout {
                 text = "Face Tracking",
                 value = meshes.arraySize > 0 || sets.arraySize > 0 || behaviors.arraySize > 0
@@ -26,6 +27,24 @@ namespace VF.Inspector {
                 allowBone = false,
                 componentType = typeof(SkinnedMeshRenderer)
             }));
+            if (dampenMode != null && dampenAmount != null) {
+                var dampening = new VisualElement();
+                dampening.Add(VRCFuryEditorUtils.RefreshOnTrigger(() => {
+                    if (!CanConfigureVisemeDampening(meshes)) return new VisualElement();
+                    var section = VRCFuryEditorUtils.Section("Viseme Dampening");
+                    section.Add(VRCFuryEditorUtils.BetterProp(dampenMode, "Viseme Dampen",
+                        tooltip: "None: No dampening. Dampen Tracking: Active visemes dampen mouth-related tracking. Dampen Visemes: Tracking dampens visemes."));
+                    section.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                        if (dampenMode.intValue == (int)VRCAvatarDescriptor.VisemeDampenMode.None) return new VisualElement();
+                        return VRCFuryEditorUtils.BetterProp(dampenAmount, "Dampen Amount",
+                            tooltip: "Amount (0-1) for the selected dampening mode.");
+                    }, dampenMode));
+                    return section;
+                }, meshes.serializedObject, out var refreshDampening));
+                // RefreshOnChange only watches array size; assignments within mesh rows matter here too.
+                dampening.TrackPropertyValue(meshes, _ => refreshDampening());
+                output.Add(dampening);
+            }
             var setsSection = VRCFuryEditorUtils.Section("Face Tracking Blendshape Sets").AddTo(output);
             setsSection.Add(new BlendshapeSetsEditor(sets, meshes));
             var behaviorsSection = VRCFuryEditorUtils.Section("Face Tracking Parameter Behaviours").AddTo(output);
@@ -39,6 +58,20 @@ namespace VF.Inspector {
                 return entry;
             }));
             return output;
+        }
+
+        internal static bool CanConfigureVisemeDampening(SerializedProperty meshes) {
+            for (var i = 0; i < meshes.arraySize; i++) {
+                var entry = meshes.GetArrayElementAtIndex(i);
+                if (entry.FindPropertyRelative("useBone").boolValue) continue;
+                var useObj = entry.FindPropertyRelative("useObj").boolValue;
+                var offset = entry.FindPropertyRelative("offset").stringValue;
+                if (!useObj && !string.IsNullOrWhiteSpace(offset) && !offset.Contains("/")) return true;
+                var target = entry.FindPropertyRelative("obj").objectReferenceValue as GameObject;
+                if (useObj && string.IsNullOrWhiteSpace(offset) && target != null
+                    && target.transform.parent != null && target.transform.parent.GetComponent<VRCAvatarDescriptor>() != null) return true;
+            }
+            return false;
         }
 
         internal static string Serialize(SerializedProperty property, bool behaviors) {
