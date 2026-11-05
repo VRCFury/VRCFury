@@ -104,6 +104,7 @@ namespace VF.Service {
             var nativeMeshes = (avatar.faceTrackingMeshes ?? Enumerable.Empty<SkinnedMeshRenderer>())
                 .Where(skin => skin != null).Distinct().ToArray();
             foreach (var skin in nativeMeshes) meshOwners[skin] = "on the avatar descriptor";
+            NormalizeDescriptor();
             if (!avatar.enableFaceTracking) return;
             meshes.AddRange(nativeMeshes);
             var scope = meshes.ToArray();
@@ -129,11 +130,8 @@ namespace VF.Service {
 
         private void EnsureEnabled() {
             CaptureInitialState();
-            if (avatar.enableFaceTracking) return;
             // The service owns the pending lists. Publish them only after planning succeeds.
             avatar.enableFaceTracking = true;
-            avatar.useAllTrackingKeys = false;
-            avatar.visemeDampenMode = VRCAvatarDescriptor.VisemeDampenMode.None;
         }
 
         public void EnsureVisemesEnabled() {
@@ -142,11 +140,7 @@ namespace VF.Service {
             var (visemeMesh, visemeNames) = FaceTrackingUtils.GetLegacyVisemes(avatar);
             var jawMesh = avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.JawFlapBlendShape ? avatar.VisemeSkinnedMesh : null;
             EnsureEnabled();
-            if (avatar.lipSync != VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShapeFaceTracking) {
-                ClearInactiveInputs(true);
-                avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShapeFaceTracking;
-                avatar.visemeDampenMode = VRCAvatarDescriptor.VisemeDampenMode.None;
-            }
+            avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShapeFaceTracking;
             if (visemeNames.Any(name => !string.IsNullOrEmpty(name))) {
                 FaceTrackingUtils.EnsureMesh(meshes, visemeMesh);
                 var set = AddSet("_vrcf_upgraded_visemes");
@@ -168,18 +162,12 @@ namespace VF.Service {
                 throw new VRCFBuilderException("Cannot enable Face Tracking eyelids while the avatar uses bone-based eyelids. Convert its eyelids to blendshapes first.");
             var (mesh, names) = FaceTrackingUtils.GetLegacyEyelids(avatar);
             EnsureEnabled();
-            if (!avatar.enableEyeLook) ResetDisabledEyeLook();
-            else if (avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes
+            if (avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes
                 && avatar.customEyeLookSettings.eyeGazeMode == VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.BoneRotation) {
-                ClearGazeMappings();
                 avatar.customEyeLookSettings.eyeGazeMode = VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.Both;
             }
             avatar.enableEyeLook = true;
-            if (avatar.customEyeLookSettings.eyelidType != VRCAvatarDescriptor.EyelidType.FaceTracking) {
-                foreach (var set in sets) set.mappings.RemoveAll(mapping => mapping.slot == (int)VRCAvatarDescriptor.FaceTrackingKey.EyeClosedRight
-                    || mapping.slot == (int)VRCAvatarDescriptor.FaceTrackingKey.EyeClosedLeft);
-                avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.FaceTracking;
-            }
+            avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.FaceTracking;
             if (!names.Any(name => !string.IsNullOrEmpty(name))) return;
             FaceTrackingUtils.EnsureMesh(meshes, mesh);
             var upgraded = AddSet("_vrcf_upgraded_eyelids");
@@ -202,42 +190,61 @@ namespace VF.Service {
                 && avatar.customEyeLookSettings.eyeGazeMode != VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.BoneRotation) return;
             if (avatar.enableEyeLook && avatar.customEyeLookSettings.eyelidType == VRCAvatarDescriptor.EyelidType.Blendshapes)
                 EnsureEyelidsEnabled();
-            if (!avatar.enableEyeLook) {
-                ResetDisabledEyeLook();
-                avatar.enableEyeLook = true;
-            }
-            if (avatar.customEyeLookSettings.eyeGazeMode == VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.BoneRotation)
-                ClearGazeMappings();
+            avatar.enableEyeLook = true;
             avatar.customEyeLookSettings.eyeGazeMode = VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.Both;
         }
 
-        private void ResetDisabledEyeLook() {
-            avatar.customEyeLookSettings.leftEye = null;
-            avatar.customEyeLookSettings.rightEye = null;
-            avatar.customEyeLookSettings.eyelidType = VRCAvatarDescriptor.EyelidType.None;
-            avatar.customEyeLookSettings.eyeGazeMode = VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.BoneRotation;
-        }
+        // Remove gated-off native data before any imports can enable those inputs.
+        private void NormalizeDescriptor() {
+            var eyes = avatar.customEyeLookSettings;
+            if (!avatar.enableEyeLook) {
+                eyes.leftEye = null;
+                eyes.rightEye = null;
+                eyes.eyelidType = VRCAvatarDescriptor.EyelidType.None;
+                eyes.eyeGazeMode = VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.BoneRotation;
+                avatar.customEyeLookSettings = eyes;
+            }
+            if (!avatar.enableFaceTracking) avatar.useAllTrackingKeys = false;
+            var hardware = avatar.enableFaceTracking && avatar.useAllTrackingKeys;
+            var visemes = avatar.enableFaceTracking && avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShapeFaceTracking;
+            // Match the SDK gates: None permits blink inputs, and disabled Eye Look does not gate FT eye inputs.
+            var eyelids = !avatar.enableEyeLook || eyes.eyelidType == VRCAvatarDescriptor.EyelidType.None
+                || eyes.eyelidType == VRCAvatarDescriptor.EyelidType.FaceTracking;
+            var gaze = !avatar.enableEyeLook || eyes.eyeGazeMode != VRCAvatarDescriptor.CustomEyeLookSettings.EyeGazeMode.BoneRotation;
+            if (!hardware || !visemes) avatar.visemeDampenMode = VRCAvatarDescriptor.VisemeDampenMode.None;
+            if (!avatar.enableFaceTracking) {
+                avatar.faceTrackingBlendshapesSetList = new List<FtSet>();
+                avatar.faceTrackingParameterBehaviors = new List<FtBehavior>();
+                return;
+            }
 
-        private void ClearGazeMappings() {
-            var first = (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookOutRight;
-            var count = (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookDownLeft - first + 1;
-            foreach (var set in sets) set.mappings.RemoveAll(mapping => mapping.slot >= first && mapping.slot < first + count);
-        }
+            var firstGaze = (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookOutRight;
+            var lastGaze = (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookDownLeft;
+            var inactiveKeys = Enumerable.Range(0, FaceTrackingUtils.FaceTrackingCount).Where(key =>
+                !hardware && !VRCAvatarDescriptor.IsBasicFaceTrackingKey(key)
+                || !eyelids && (key == (int)VRCAvatarDescriptor.FaceTrackingKey.EyeClosedLeft
+                    || key == (int)VRCAvatarDescriptor.FaceTrackingKey.EyeClosedRight)
+                || !gaze && key >= firstGaze && key <= lastGaze).ToHashSet();
+            var inactiveInputs = inactiveKeys.Select(key => ((VRCAvatarDescriptor.FaceTrackingKey)key).ToString()).ToHashSet();
+            if (!visemes) inactiveInputs.UnionWith(Enumerable.Range(0, FaceTrackingUtils.VisemeCount)
+                .Select(i => VRCAvatarDescriptor.GetFaceTrackingVisemeInputName((VRC_AvatarDescriptor.Viseme)i)));
 
-        private void ClearInactiveInputs(bool visemes) {
-            foreach (var set in sets) set.mappings.RemoveAll(mapping => visemes ? mapping.slot >= FaceTrackingUtils.FaceTrackingCount
-                : mapping.slot < FaceTrackingUtils.FaceTrackingCount && !VRCAvatarDescriptor.IsBasicFaceTrackingKey(mapping.slot));
-            behaviors.RemoveAll(behavior => visemes ? FaceTrackingUtils.UsesVisemeInputs(behavior.settings)
-                : FaceTrackingUtils.UsesHardwareInputs(behavior.settings));
-        }
-
-        private void EnsureHardwareTrackingEnabled() {
-            if (avatar.useAllTrackingKeys) return;
-            // These mappings and behaviors were inactive before hardware tracking was enabled.
-            // Do not activate stale native data as a side effect of importing a new asset.
-            ClearInactiveInputs(false);
-            avatar.visemeDampenMode = VRCAvatarDescriptor.VisemeDampenMode.None;
-            avatar.useAllTrackingKeys = true;
+            // Settings may be shared with source components; normalize copies.
+            avatar.faceTrackingBlendshapesSetList = (avatar.faceTrackingBlendshapesSetList ?? Enumerable.Empty<FtSet>())
+                .Where(set => set != null).Select(source => {
+                    var set = UnitySerializationUtils.CloneSerializable(source);
+                    foreach (var key in inactiveKeys) {
+                        if (key < (set.faceTrackingBlendshapeNames?.Length ?? 0)) set.faceTrackingBlendshapeNames[key] = "";
+                        if (key < (set.faceTrackingBlendshapeMultipliers?.Length ?? 0)) set.faceTrackingBlendshapeMultipliers[key] = 1;
+                    }
+                    if (!visemes) {
+                        set.visemeBlendshapeNames = Array.Empty<string>();
+                        set.visemeBlendshapeMultipliers = Array.Empty<float>();
+                    }
+                    return set;
+                }).ToList();
+            avatar.faceTrackingParameterBehaviors = (avatar.faceTrackingParameterBehaviors ?? Enumerable.Empty<FtBehavior>())
+                .Where(behavior => behavior != null && !FaceTrackingUtils.UsesAnyInput(behavior, inactiveInputs)).ToList();
         }
 
         public void RegisterFullControllerMeshes(SkinnedMeshRenderer[] skins) {
@@ -253,18 +260,10 @@ namespace VF.Service {
 
         public PendingFtBlendshapeSet RegisterImportedSet(FtSet settings, SkinnedMeshRenderer[] skins) {
             EnsureEnabled();
-            if (Enumerable.Range(0, FaceTrackingUtils.FaceTrackingCount).Any(i => !VRCAvatarDescriptor.IsBasicFaceTrackingKey(i)
-                    && !string.IsNullOrEmpty(NameAt(settings.faceTrackingBlendshapeNames, i))))
-                EnsureHardwareTrackingEnabled();
-            if ((settings.visemeBlendshapeNames ?? Enumerable.Empty<string>()).Take(FaceTrackingUtils.VisemeCount).Any(name => !string.IsNullOrEmpty(name)))
-                EnsureVisemesEnabled();
-            bool UsesKey(VRCAvatarDescriptor.FaceTrackingKey key) => !string.IsNullOrEmpty(NameAt(settings.faceTrackingBlendshapeNames, (int)key));
-            if (UsesKey(VRCAvatarDescriptor.FaceTrackingKey.EyeClosedLeft) || UsesKey(VRCAvatarDescriptor.FaceTrackingKey.EyeClosedRight))
-                EnsureEyelidsEnabled();
-            var firstGaze = (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookOutRight;
-            if (Enumerable.Range(firstGaze, (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookDownLeft - firstGaze + 1)
-                .Any(key => UsesKey((VRCAvatarDescriptor.FaceTrackingKey)key)))
-                EnsureEyeGazeEnabled();
+            if (FaceTrackingUtils.UsesHardwareInputs(settings)) avatar.useAllTrackingKeys = true;
+            if (FaceTrackingUtils.UsesVisemeInputs(settings)) EnsureVisemesEnabled();
+            if (FaceTrackingUtils.UsesEyelidInputs(settings)) EnsureEyelidsEnabled();
+            if (FaceTrackingUtils.UsesGazeInputs(settings)) EnsureEyeGazeEnabled();
             settings.setName = settings.setName.MakeUnique(ReservedSetNames(), FaceTrackingUtils.MaxSetNameLength);
             return CaptureSet(settings, skins);
         }
@@ -281,8 +280,10 @@ namespace VF.Service {
                 && (settings.inputTrackingKeyNames?.Length ?? 0) > FaceTrackingUtils.MaxParameterBehaviorInputs)
                 throw new VRCFBuilderException($"Face Tracking parameter behaviors support at most {FaceTrackingUtils.MaxParameterBehaviorInputs} inputs.");
             EnsureEnabled();
-            if (FaceTrackingUtils.UsesHardwareInputs(settings)) EnsureHardwareTrackingEnabled();
+            if (FaceTrackingUtils.UsesHardwareInputs(settings)) avatar.useAllTrackingKeys = true;
             if (FaceTrackingUtils.UsesVisemeInputs(settings)) EnsureVisemesEnabled();
+            if (FaceTrackingUtils.UsesEyelidInputs(settings)) EnsureEyelidsEnabled();
+            if (FaceTrackingUtils.UsesGazeInputs(settings)) EnsureEyeGazeEnabled();
             behaviors.Add((settings, Targets(settings.targetBlendshapeName, skins)));
         }
 
@@ -315,7 +316,7 @@ namespace VF.Service {
             if (plan != null) ApplyPlan(plan);
         }
 
-        // Reads the staged configuration and live mesh names, but never mutates output assets.
+        // After initial normalization, planning only reads staged configuration and live mesh names.
         internal FtMergePlan CreatePlan() {
             CaptureInitialState();
             if (!avatar.enableFaceTracking) return null;
@@ -364,7 +365,7 @@ namespace VF.Service {
             avatar.faceTrackingParameterBehaviors = plan.behaviors;
             if (plan.legacyVisemes != null) avatar.VisemeBlendShapes = plan.legacyVisemes;
             if (plan.legacyMouthOpenBlendshape != null) avatar.MouthOpenBlendShapeName = plan.legacyMouthOpenBlendshape;
-            // Apply after all imports: enabling hardware tracking or FT visemes can reset dampening.
+            // Apply the first eligible controller's override after native state has been normalized.
             if (visemeDampening is { } dampening) {
                 avatar.visemeDampenMode = dampening.mode;
                 avatar.visemeDampenAmount = dampening.amount;

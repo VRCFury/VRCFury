@@ -26,18 +26,15 @@ namespace VF.Service {
                 // Inspect all components, including controllers whose FT merge has not run yet.
                 foreach (var full in globals.allFeaturesInRun.OfType<FullController>()) {
                     var sets = (full.faceTrackingBlendshapeSets ?? new()).Where(set => set != null).ToArray();
+                    var behaviors = (full.faceTrackingParameterBehaviors ?? new()).Where(behavior => behavior != null).ToArray();
                     foreach (var entry in full.faceTrackingMeshes ?? new()) {
                         var renderer = entry.Resolve(avatar.gameObject, objectPaths, armatureCache);
                         if (renderer == null) continue;
-                        bool HasShape(string name) => !string.IsNullOrEmpty(name) && renderer.HasBlendshape(name);
-                        bool HasKey(VRCAvatarDescriptor.FaceTrackingKey key) => sets.Any(set =>
-                            HasShape(set.faceTrackingBlendshapeNames?.ElementAtOrDefault((int)key)));
                         var previous = result.GetOrDefault(renderer);
-                        result[renderer] = (previous.visemes || sets.Any(set =>
-                                (set.visemeBlendshapeNames ?? Array.Empty<string>())
-                                .Take(FaceTrackingUtils.VisemeCount).Any(HasShape)),
-                            previous.eyelids || HasKey(VRCAvatarDescriptor.FaceTrackingKey.EyeClosedLeft)
-                                || HasKey(VRCAvatarDescriptor.FaceTrackingKey.EyeClosedRight));
+                        result[renderer] = (previous.visemes || sets.Any(FaceTrackingUtils.UsesVisemeInputs)
+                                || behaviors.Any(FaceTrackingUtils.UsesVisemeInputs),
+                            previous.eyelids || sets.Any(FaceTrackingUtils.UsesEyelidInputs)
+                                || behaviors.Any(FaceTrackingUtils.UsesEyelidInputs));
                     }
                 }
 #endif
