@@ -106,8 +106,8 @@ namespace VF.Inspector {
                         mainLight.color = Color.black;
                         mainLight.range =
                             (legacyLightType == VRCFuryHapticSocket.AddLight.Ring || legacyLightType == VRCFuryHapticSocket.AddLight.RingOneWay)
-                                ? 0.4202f
-                                : 0.4102f;
+                                ? 0.4204f
+                                : 0.4104f;
                         mainLight.shadows = LightShadows.None;
                         mainLight.renderMode = LightRenderMode.ForceVertex;
 
@@ -116,7 +116,7 @@ namespace VF.Inspector {
                         var frontLight = front.AddComponent<Light>();
                         frontLight.type = LightType.Point;
                         frontLight.color = Color.black;
-                        frontLight.range = 0.4502f;
+                        frontLight.range = 0.4504f;
                         frontLight.shadows = LightShadows.None;
                         frontLight.renderMode = LightRenderMode.ForceVertex;
                     }

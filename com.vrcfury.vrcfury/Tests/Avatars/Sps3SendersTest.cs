@@ -180,7 +180,7 @@ namespace VF.Tests {
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Animator>(), Is.Empty);
             var lights = result.legacyLights.GetComponentsInSelfAndChildren<Light>();
             Assert.That(lights.Select(l => l.range), Is.EquivalentTo(new[] {
-                type == VRCFuryHapticSocket.AddLight.Hole ? 0.4102f : 0.4202f, 0.4502f
+                type == VRCFuryHapticSocket.AddLight.Hole ? 0.4104f : 0.4204f, 0.4504f
             }));
             var legacy = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>();
             Assert.That(legacy.Length, Is.EqualTo(1));
@@ -806,7 +806,7 @@ namespace VF.Tests {
             CheckNode(native, 1, 0, Flags.Ring);
             CheckVector(native.transform.position, result.bakeRoot.worldPosition);
             Assert.That(result.legacyLights.GetComponentsInSelfAndChildren<Light>().Select(l => l.range),
-                Does.Contain(0.4102f));
+                Does.Contain(0.4104f));
         }
 
         [TestCase(false)]

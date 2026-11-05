@@ -13,10 +13,20 @@ uint sps_light_type(uint index) {
     half4 color = unity_LightColor[index];
     if (!sps_is_zero(color.rgb) && color.a > 0) return 0;
     uint kind = (uint)round(fmod(range, 0.1) * 100);
-    // All SPS-marked lights are represented by contacts, including SPS1's .0002 suffix.
-    // Never let a filtered-out contact reappear through its compatibility light.
+    // System      Emitted offset     Accepted range      Meaning
+    // DPS         +.0000             (-.005, +.005)      Base
+    // TPS older   +.0000             (-.001, +.001)      Base
+    // TPS newer   +.0000             (-.001, +.001)      Base
+    // SPS1 older  +.0002             (-.005, +.005)      Base
+    // SPS1 older  +.0002             (.0001, .0003)      Hole/ring requires contacts
+    // SPS1 later  +.0002             (-.005, +.005)      Base
+    // SPS1 later  +.0002             [.00015, .00025]    Hole/ring requires contacts
+    // SPS2        +.0006             (-.005, +.005)      Base
+    // SPS2        +.0006             [.0005, .0007]      Ignored SPS2 compatibility light
+    // SPS3        +.0004             (-.005, +.005)      Base
+    // SPS3        +.0004             (.0001, .0007]      Ignored SPS1/SPS2/SPS3 compatibility light
     float marker = fmod(range, 0.001) * 10000;
-    if ((marker > 1 && marker < 4) || (marker > 5 && marker < 7)) return 0;
+    if (marker > 1 && marker <= 7) return 0;
     return kind == 1 || kind == 2 || kind == 5 ? kind : 0;
 }
 
