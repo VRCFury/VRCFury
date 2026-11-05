@@ -11,7 +11,8 @@ namespace VF.Utils {
         public static void ForEachMenu(
             this VRCExpressionsMenu root,
             Action<VRCExpressionsMenu,IList<string>> ForEachMenu = null,
-            Func<VRCExpressionsMenu.Control,IList<string>,ForEachMenuItemResult> ForEachItem = null
+            Func<VRCExpressionsMenu.Control,IList<string>,ForEachMenuItemResult> ForEachItem = null,
+            bool dirtyAll = true
         ) {
             var stack = new Stack<Tuple<string[],VRCExpressionsMenu>>();
             var seen = new HashSet<VRCExpressionsMenu>();
@@ -45,7 +46,7 @@ namespace VF.Utils {
                         stack.Push(Tuple.Create(itemPathArr, item.subMenu));
                     }
                 }
-                menu.Dirty();
+                if (dirtyAll) menu.Dirty();
             }
         }
         

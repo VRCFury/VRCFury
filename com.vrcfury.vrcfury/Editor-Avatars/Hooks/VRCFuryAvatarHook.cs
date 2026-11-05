@@ -96,7 +96,8 @@ namespace VF.Hooks {
                         " containing the avatar descriptor, OR a child object containing ONLY vrcfury components."
                     );
                 }
-                injector.Set("avatarObject", gameObject.GetAvatarRoot());
+                var avatarObject = gameObject.GetAvatarRoot();
+                if (avatarObject != null) injector.Set("avatarObject", avatarObject);
             };
 
             FeatureFinder.onGetBuilder = (gameObject, builderType, title) => {
@@ -127,7 +128,7 @@ namespace VF.Hooks {
                     injector.ImportOne(typeof(VRCFArmatureCache));
                 }
                 injector.ImportScan(typeof(ActionBuilder));
-                injector.Set("avatarObject", avatarObject);
+                if (avatarObject != null) injector.Set("avatarObject", avatarObject);
                 injector.Set("componentObject", new Func<VFGameObject>(() => avatarObject));
                 var mainBuilder = injector.GetService<ActionClipService>();
                 var test = mainBuilder.LoadStateAdv("test", actionSet, gameObject, debugMode: true);

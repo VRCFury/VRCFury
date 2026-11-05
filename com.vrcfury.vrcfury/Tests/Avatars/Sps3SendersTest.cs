@@ -673,9 +673,9 @@ namespace VF.Tests {
             avatar.baseAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
             avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
             injector.Set("avatarObject", root.asVf());
-            injector.Set("componentObject", null);
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
             injector.Set(typeof(VRCAvatarDescriptor), avatar);
-            injector.Set(typeof(GlobalsService), null);
+            injector.Set(new GlobalsService { avatarObject = root });
             var plug = root.AddComponent<VRCFuryHapticPlug>();
             var rendererObject = GameObjects.Create("Renderer", root);
             Renderer renderer = skinned

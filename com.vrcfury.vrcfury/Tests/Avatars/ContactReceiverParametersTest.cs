@@ -52,6 +52,7 @@ namespace VF.Tests {
                 var globals = new GlobalsService { avatarObject = root, currentFeatureNum = 7 };
                 var parameters = new ExpressionParamsService();
                 Inject(parameters, "avatar", avatar);
+                Inject(parameters, "globals", globals);
                 var controllers = new ControllersService();
                 Inject(controllers, "avatar", avatar);
                 Inject(controllers, "globals", globals);

@@ -14,11 +14,15 @@ namespace VF.Service {
         private MenuManager _menu;
         public MenuManager GetMenu() {
             if (_menu == null) {
+                var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
+                if (globals.useOriginalAssets && origMenu != null) {
+                    _menu = new MenuManager(origMenu, () => globals.currentMenuSortPosition);
+                    return _menu;
+                }
                 var menu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
                 var initializing = true;
                 _menu = new MenuManager(menu, () => initializing ? 0 : globals.currentMenuSortPosition);
 
-                var origMenu = VRCAvatarUtils.GetAvatarMenu(avatar);
                 if (origMenu != null) _menu.MergeMenu(origMenu);
                 
                 VRCAvatarUtils.SetAvatarMenu(avatar, menu);

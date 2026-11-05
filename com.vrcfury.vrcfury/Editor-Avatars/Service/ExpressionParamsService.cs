@@ -13,6 +13,7 @@ namespace VF.Service {
     [VFService]
     internal class ExpressionParamsService : IEnumerable<VRCExpressionParameters.Parameter> {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
+        [VFAutowired] private readonly GlobalsService globals;
         
         private VRCExpressionParameters _asset;
         private VRCExpressionParameters asset => _asset != null ? _asset : (_asset = MakeParams());
@@ -43,7 +44,9 @@ namespace VF.Service {
             asset.Dirty();
         }
 
-        public void WorkLog(string message) => asset.WorkLog(message);
+        public void WorkLog(string message) {
+            if (!globals.useOriginalAssets) asset.WorkLog(message);
+        }
         public void Dirty() => asset.Dirty();
 
         public IEnumerator<VRCExpressionParameters.Parameter> GetEnumerator() =>
@@ -79,6 +82,7 @@ namespace VF.Service {
 
         private VRCExpressionParameters MakeParams() {
             var origParams = VRCAvatarUtils.GetAvatarParams(avatar);
+            if (globals.useOriginalAssets && origParams != null) return origParams;
             VRCExpressionParameters prms;
             if (VrcfObjectFactory.DidCreate(origParams)) {
                 // We probably made this in an earlier preprocessor hook, so we can just adopt it
@@ -98,5 +102,6 @@ namespace VF.Service {
         public void ClearCache() {
             _asset = null;
         }
+
     }
 }

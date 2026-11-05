@@ -7,6 +7,7 @@ using UnityEngine;
 using VF.Component;
 using VF.Exceptions;
 using VF.Inspector;
+using VF.Injector;
 using VF.Menu;
 using VF.Model;
 using VF.Model.StateAction;
@@ -14,7 +15,10 @@ using VF.Utils;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Builder.Haptics {
-    internal static class SpsUpgrader {
+    [VFService]
+    internal class SpsUpgrader {
+        [VFAutowired] private readonly AvatarCleaner cleaner;
+
         [MenuItem(MenuItems.upgradeLegacyHaptics, priority = MenuItems.upgradeLegacyHapticsPriority)]
         private static void MenuRun() {
             VRCFuryBuildContext.Run(Run);
@@ -32,7 +36,8 @@ namespace VF.Builder.Haptics {
             var avatarObject = MenuUtils.GetSelectedAvatar();
             if (avatarObject == null) return;
 
-            var messages = Apply(avatarObject, true, Mode.Manual);
+            var upgrader = VRCFuryInjectorBuilder.CreateForManualEditing(avatarObject).GetService<SpsUpgrader>();
+            var messages = upgrader.Apply(avatarObject, true, Mode.Manual);
             if (string.IsNullOrWhiteSpace(messages)) {
                 DialogUtils.DisplayDialog(
                     dialogTitle,
@@ -50,7 +55,7 @@ namespace VF.Builder.Haptics {
             );
             if (!doIt) return;
 
-            Apply(avatarObject, false, Mode.Manual);
+            upgrader.Apply(avatarObject, false, Mode.Manual);
             DialogUtils.DisplayDialog(
                 dialogTitle,
                 "Upgrade complete!",
@@ -73,7 +78,7 @@ namespace VF.Builder.Haptics {
             AutomatedComponent,
             AutomatedForEveryone
         }
-        public static string Apply(VFGameObject avatarObject, bool dryRun, Mode mode) {
+        public string Apply(VFGameObject avatarObject, bool dryRun, Mode mode) {
             var objectsToDelete = new List<VFGameObject>();
             var componentsToDelete = new List<UnityEngine.Component>();
             var hasExistingSocket = new HashSet<VFGameObject>();
@@ -201,6 +206,8 @@ namespace VF.Builder.Haptics {
                         if (size) {
                             p.length = size.localScale.x;
                             p.radius = size.localScale.y;
+                            p.autoLength = false;
+                            p.autoRadius = false;
                         }
                         p.name = GetNameFromBakeInfo(info);
                     }
@@ -293,20 +300,12 @@ namespace VF.Builder.Haptics {
             // Clean up
             var deletions = new List<string>();
             if (mode == Mode.Manual) {
-                deletions = AvatarCleaner.Cleanup(
+                deletions = cleaner.Cleanup(
                     avatarObject,
                     perform: !dryRun,
                     ShouldRemoveObj: obj => {
                         return obj.name == "GUIDES_DELETE"
                                || objectsToDelete.Contains(obj);
-                    },
-                    ShouldRemoveAsset: asset => {
-                        if (asset == null) return false;
-                        var path = AssetDatabase.GetAssetPath(asset);
-                        if (path == null) return false;
-                        var lower = path.ToLower();
-                        if (lower.Contains("dps_attach")) return true;
-                        return false;
                     },
                     ShouldRemoveLayer: layer => {
                         var lower = layer.ToLower();
@@ -382,8 +381,10 @@ namespace VF.Builder.Haptics {
             var lightInfo = VRCFuryHapticSocketEditor.GetInfoFromLights(obj, true);
             if (lightInfo == null) {
                 var child = obj.Find("Orifice");
-                if (child != null && obj.childCount == 1) {
-                    lightInfo = VRCFuryHapticSocketEditor.GetInfoFromLights(child, true);
+                if (child != null && obj.childCount == 1
+                    && VRCFuryHapticSocketEditor.GetInfoFromLights(child, true) != null) {
+                    // Read in the constraint object's space, including the Orifice container's transform.
+                    lightInfo = VRCFuryHapticSocketEditor.GetInfoFromLights(obj);
                 }
             }
             if (lightInfo != null) {

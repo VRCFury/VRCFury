@@ -13,6 +13,7 @@ namespace VF.Service {
     [VFService]
     internal class SpsSendersForAllService {
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly SpsUpgrader spsUpgrader;
         
         [FeatureBuilderAction(FeatureOrder.GiveEverythingSpsSenders)]
         public void Apply() {
@@ -25,7 +26,7 @@ namespace VF.Service {
             }
 
             RemoveTPSSenders();
-            SpsUpgrader.Apply(globals.avatarObject, false, SpsUpgrader.Mode.AutomatedForEveryone);
+            spsUpgrader.Apply(globals.avatarObject, false, SpsUpgrader.Mode.AutomatedForEveryone);
         }
 
         private void RemoveTPSSenders() {

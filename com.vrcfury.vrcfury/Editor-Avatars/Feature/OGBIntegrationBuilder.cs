@@ -2,15 +2,17 @@ using UnityEngine.UIElements;
 using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Inspector;
+using VF.Injector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
     [FeatureTitle("Haptic Component Auto-Adder")]
     [FeatureHideInMenu]
     internal class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration2> {
+        [VFAutowired] private readonly SpsUpgrader spsUpgrader;
         [FeatureBuilderAction(FeatureOrder.UpgradeLegacyHaptics)]
         public void Apply() {
-            SpsUpgrader.Apply(featureBaseObject, false, SpsUpgrader.Mode.AutomatedComponent);
+            spsUpgrader.Apply(featureBaseObject, false, SpsUpgrader.Mode.AutomatedComponent);
         }
         
         [FeatureEditor]

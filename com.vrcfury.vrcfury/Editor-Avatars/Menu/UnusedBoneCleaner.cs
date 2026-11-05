@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEditor;
+using VF.Builder;
 using VF.Exceptions;
 using VF.Hooks;
 using VF.Service;
@@ -49,7 +50,7 @@ namespace VF.Menu {
         
         private static List<string> Clean(VFGameObject avatarObj, bool perform = false) {
             var used = ArmatureLinkService.GetUsageReasons(avatarObj.GetAvatarRoot());
-            return AvatarCleaner.Cleanup(
+            return VRCFuryInjectorBuilder.CreateForManualEditing(avatarObj).GetService<AvatarCleaner>().Cleanup(
                 avatarObj,
                 perform: perform,
                 ShouldRemoveObj: obj => {

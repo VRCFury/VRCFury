@@ -52,10 +52,12 @@ namespace VF.Injector {
         }
 
         public void Set(object service) {
+            if (service == null) throw new ArgumentNullException(nameof(service));
             Set(service.GetType(), service);
         }
         
         public void Set(Type type, object service) {
+            if (service == null) throw new ArgumentNullException(nameof(service));
             if (services.ContainsKey(type)) {
                 throw new Exception("Service of type " + type.Name + " already set");
             }
@@ -66,6 +68,7 @@ namespace VF.Injector {
         }
         
         public void Set(string name, object service) {
+            if (service == null) throw new ArgumentNullException(nameof(service));
             qualifiedObjects[name] = service;
         }
 

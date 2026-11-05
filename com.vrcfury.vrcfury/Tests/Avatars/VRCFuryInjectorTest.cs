@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
+using JetBrains.Annotations;
 using UnityEditor;
 using VF.Actions;
 using VF.Builder;
@@ -17,11 +18,75 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Injector {
     [Category("VRCFury")]
     public class VRCFuryInjectorTest {
+        private UnityEngine.GameObject root;
+
+        [SetUp]
+        public void SetUp() => root = new UnityEngine.GameObject("Injector context");
+
+        [TearDown]
+        public void TearDown() => UnityEngine.Object.DestroyImmediate(root);
+
+        private VRCFuryInjector CreateActionDebuggerInjector() {
+            var injector = new VRCFuryInjector();
+            injector.ImportOne(typeof(ActionClipService));
+            injector.ImportOne(typeof(ClipFactoryService));
+            injector.ImportOne(typeof(VRCFObjectPathCache));
+            injector.ImportScan(typeof(ActionBuilder));
+            injector.Set("avatarObject", root.asVf());
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            return injector;
+        }
+
         private class InjectorConsumer {
             public readonly VRCFuryInjector injector;
             public InjectorConsumer(VRCFuryInjector injector) {
                 this.injector = injector;
             }
+        }
+
+        private class Dependency { }
+
+        private class RequiredConsumer {
+            public readonly Dependency dependency;
+            public RequiredConsumer(Dependency dependency) => this.dependency = dependency;
+        }
+
+        private class OptionalConsumer {
+            public readonly Dependency dependency;
+            public OptionalConsumer([CanBeNull] Dependency dependency) => this.dependency = dependency;
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        public void SetRejectsNullWithoutRegisteringIt(int overload) {
+            var injector = new VRCFuryInjector();
+            switch (overload) {
+                case 0: Assert.Throws<ArgumentNullException>(() => injector.Set((object)null)); break;
+                case 1: Assert.Throws<ArgumentNullException>(() => injector.Set(typeof(Dependency), null)); break;
+                case 2: Assert.Throws<ArgumentNullException>(() => injector.Set("dependency", null)); break;
+            }
+            Assert.Throws<Exception>(() => injector.CreateAndFillObject<RequiredConsumer>());
+            var dependency = new Dependency();
+            if (overload == 2) injector.Set("dependency", dependency);
+            else injector.Set(dependency);
+            Assert.That(injector.CreateAndFillObject<RequiredConsumer>().dependency, Is.SameAs(dependency));
+        }
+
+        [Test]
+        public void MissingDependenciesRequireCanBeNull() {
+            var injector = new VRCFuryInjector();
+            Assert.That(injector.CreateAndFillObject<OptionalConsumer>().dependency, Is.Null);
+            Assert.Throws<Exception>(() => injector.CreateAndFillObject<RequiredConsumer>());
+        }
+
+        [Test]
+        public void RejectedNullDoesNotOverwriteNamedRegistration() {
+            var injector = new VRCFuryInjector();
+            var dependency = new Dependency();
+            injector.Set("dependency", dependency);
+            Assert.Throws<ArgumentNullException>(() => injector.Set("dependency", null));
+            Assert.That(injector.CreateAndFillObject<RequiredConsumer>().dependency, Is.SameAs(dependency));
         }
 
         [Test]
@@ -90,10 +155,10 @@ namespace VF.Injector {
                 var injector = new VRCFuryInjector();
                 injector.ImportScan(typeof(VFServiceAttribute));
                 injector.ImportScan(typeof(ActionBuilder));
-                injector.Set("avatarObject", null);
-                injector.Set("componentObject", null);
-                injector.Set(typeof(GlobalsService), null);
-                injector.Set(typeof(VRCAvatarDescriptor), null);
+                injector.Set("avatarObject", root.asVf());
+                injector.Set("componentObject", new Func<VFGameObject>(() => root));
+                injector.Set(new GlobalsService { avatarObject = root });
+                injector.Set(root.AddComponent<VRCAvatarDescriptor>());
                 injector.GetServices<object>();
             });
         }
@@ -101,13 +166,7 @@ namespace VF.Injector {
         [Test]
         public void ActionDebuggerContextResolves() {
             Verify("action debugger context", () => {
-                var injector = new VRCFuryInjector();
-                injector.ImportOne(typeof(ActionClipService));
-                injector.ImportOne(typeof(ClipFactoryService));
-                injector.ImportOne(typeof(VRCFObjectPathCache));
-                injector.ImportScan(typeof(ActionBuilder));
-                injector.Set("avatarObject", null);
-                injector.Set("componentObject", null);
+                var injector = CreateActionDebuggerInjector();
                 injector.GetService<ActionClipService>();
             });
         }
@@ -117,7 +176,7 @@ namespace VF.Injector {
             Verify("per-frame SPS inspector context", () => {
                 var injector = new VRCFuryInjector();
                 injector.ImportScan(typeof(VFServiceAttribute));
-                injector.Set("avatarObject", null);
+                injector.Set("avatarObject", root.asVf());
                 injector.GetService<SpsConfigurer>();
                 injector.GetService<VRCFuryHapticPlugBaker>();
                 injector.GetService<VRCFuryHapticSocketBaker>();
@@ -149,34 +208,37 @@ namespace VF.Injector {
 
                 Verify("editor context for " + builderType.Name, () => {
                     var injector = new VRCFuryInjector();
-                    injector.Set(modelType, null);
-                    injector.Set(typeof(SerializedProperty), null);
-                    injector.Set("avatarObject", null);
-                    injector.Set("componentObject", null);
-                    injector.VerifyMethod(editorMethod);
+                    injector.Set(Activator.CreateInstance(modelType));
+                    using (var serializedObject = new SerializedObject(root.transform)) {
+                        injector.Set(serializedObject.FindProperty("m_LocalPosition"));
+                        injector.Set("avatarObject", root.asVf());
+                        injector.Set("componentObject", root.asVf());
+                        injector.VerifyMethod(editorMethod);
+                    }
                 });
             }
         }
 
         [Test]
         public void ActionBuilderContextsResolve() {
+            var actionClipService = CreateActionDebuggerInjector().GetService<ActionClipService>();
             foreach (var builderType in ReflectionUtils.GetTypes(typeof(IVRCFuryBuilder))) {
                 var modelType = ReflectionUtils.GetGenericArgument(builderType, typeof(IVRCFuryBuilder<>));
                 if (typeof(ActionBuilder).IsAssignableFrom(builderType)) {
                     Verify("Build method for " + builderType.Name, () => {
                         var injector = new VRCFuryInjector();
                         injector.Set(Activator.CreateInstance(modelType));
-                        injector.Set("actionName", null);
-                        injector.Set("animObject", null);
+                        injector.Set("actionName", "Test action");
+                        injector.Set("animObject", root.asVf());
                         injector.Set("debugMode", false);
-                        injector.Set(typeof(ActionClipService), null);
+                        injector.Set(actionClipService);
                         var buildMethod = builderType.VFMethod("Build");
                         injector.VerifyMethod(buildMethod);
                     });
                     Verify("BuildOff method for " + builderType.Name, () => {
                         var injector = new VRCFuryInjector();
                         injector.Set(Activator.CreateInstance(modelType));
-                        injector.Set("animObject", null);
+                        injector.Set("animObject", root.asVf());
                         var buildMethod = builderType.VFMethod("BuildOff");
                         if (buildMethod != null) {
                             injector.VerifyMethod(buildMethod);
