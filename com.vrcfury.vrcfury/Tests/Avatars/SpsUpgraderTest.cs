@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -25,7 +26,10 @@ using LightType = VF.Component.VRCFuryHapticSocket.AddLight;
 
 namespace VF.Tests {
     [Category("VRCFury")]
+    [NonParallelizable]
     public class SpsUpgraderTest {
+        private static readonly FieldInfo TpsImportEnabled = typeof(TpsDepthAnimationImporter).VFField("ENABLED");
+        private bool previousTpsImportEnabled;
         private GameObject root;
         private VRCAvatarDescriptor avatar;
         private AnimatorController controller;
@@ -37,6 +41,8 @@ namespace VF.Tests {
 
         [SetUp]
         public void SetUp() {
+            previousTpsImportEnabled = (bool)TpsImportEnabled.GetValue(null);
+            TpsImportEnabled.SetValue(null, true);
             root = new GameObject("Upgrade Test");
             avatar = root.AddComponent<VRCAvatarDescriptor>();
             controller = Track(new AnimatorController());
@@ -59,6 +65,7 @@ namespace VF.Tests {
 
         [TearDown]
         public void TearDown() {
+            TpsImportEnabled.SetValue(null, previousTpsImportEnabled);
             var masks = root.GetComponentsInChildren<VRCFuryHapticPlug>(true)
                 .Select(p => p.textureMask.Get()).Where(texture => texture != null && VrcfObjectFactory.DidCreate(texture))
                 .Select(AssetDatabase.GetAssetPath).Where(path => path != "").Distinct().ToArray();
@@ -188,6 +195,16 @@ namespace VF.Tests {
             Assert.That(controller.parameters.Any(p => p.name.StartsWith("TPS_")), Is.False);
             Apply();
             Assert.That(plug ? Plugs.Single().depthActions2.Count : Sockets.Single().depthActions2.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void DisabledTpsDepthImportPreservesLegacyAnimations() {
+            TpsImportEnabled.SetValue(null, false);
+            var setup = TpsDepthAnimation(false);
+            Apply();
+            Assert.That(Sockets.Single().depthActions2, Is.Empty);
+            Assert.That(setup.receiver != null, Is.True);
+            Assert.That(controller.layers.Any(layer => layer.name == setup.layer), Is.True);
         }
 
         [Test]
