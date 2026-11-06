@@ -26,9 +26,9 @@ using LightType = VF.Component.VRCFuryHapticSocket.AddLight;
 
 namespace VF.Tests {
     [Category("VRCFury")]
-    [NonParallelizable]
     public class SpsUpgraderTest {
-        private static readonly FieldInfo TpsImportEnabled = typeof(TpsDepthAnimationImporter).VFField("ENABLED");
+        private static readonly FieldInfo TpsImportEnabled = typeof(TpsDepthAnimationImporter)
+            .GetField("ENABLED", BindingFlags.Static | BindingFlags.NonPublic);
         private bool previousTpsImportEnabled;
         private GameObject root;
         private VRCAvatarDescriptor avatar;

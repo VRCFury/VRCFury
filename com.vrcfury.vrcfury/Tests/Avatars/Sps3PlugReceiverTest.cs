@@ -330,12 +330,14 @@ namespace VF.Tests {
                 Assert.That(second.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
                 Assert.That(first.GetFloat("_SPS_OthersLegacyTags"), Is.EqualTo(compatibility ? 1 : 0));
                 Assert.That(second.GetFloat("_SPS_OthersLegacyTags"), Is.EqualTo(compatibility ? 1 : 0));
+#if VRCSDK_HAS_MATERIAL_CONTACTS
                 foreach (var receiver in bake.bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()
                              .Where(r => r.separateShaderParameter == "SPS_Others")) {
                     foreach (var tag in new[] { SpsTags.LegacySocketHole, SpsTags.LegacySocketRing, SpsTags.LegacySocket }) {
                         Assert.That(receiver.collisionTags.Contains(tag), Is.EqualTo(compatibility));
                     }
                 }
+#endif
                 Assert.That(source.shader, Is.EqualTo(Shader.Find("Unlit/Color")));
             } finally {
                 Object.DestroyImmediate(mesh);
