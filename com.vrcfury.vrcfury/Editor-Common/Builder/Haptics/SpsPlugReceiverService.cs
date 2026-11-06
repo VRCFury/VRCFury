@@ -45,6 +45,9 @@ namespace VF.Builder.Haptics {
                 // Keep these immediately after the channels, in this order, for the shader.
                 tags.Add(SpsTags.LegacySocketHole);
                 tags.Add(SpsTags.LegacySocketRing);
+                // TPS sockets only publish this root tag. Depth uses their point separation;
+                // the shader ignores untyped contacts and continues to use their legacy lights.
+                tags.Add(SpsTags.LegacySocket);
             }
             return tags;
         }

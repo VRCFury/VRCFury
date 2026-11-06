@@ -367,6 +367,39 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(outputs[2]), Is.EqualTo(100).Within(0.001f));
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void PlugDepthReceivesTpsSocketRootOnlyOnPublicRemoteRoute(bool shared) {
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.05f;
+            plug.useSharedTag = shared;
+            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "test" });
+            var factory = PlugMeasurements(plug);
+            var depth = factory(Party.Others)(SpsDepthMeters);
+            _ = factory(Party.Self)(SpsDepthMeters);
+            var receivers = root.GetComponentsInChildren<VRCContactReceiver>(true);
+            var others = receivers.Single(r => r.allowOthers);
+            var self = receivers.Single(r => r.allowSelf);
+            var socket = new GameObject("Remote TPS socket");
+            assets.Add(socket);
+            var sender = socket.AddComponent<VRCContactSender>();
+            sender.radius = 0.01f;
+            sender.collisionTags = new List<string> { SpsTags.LegacySocket };
+            var matches = sender.collisionTags.Intersect(others.collisionTags).Any();
+            Assert.That(matches, Is.EqualTo(shared), "TPS sockets publish the root tag without SPS channel or hole/ring tags");
+            Assert.That(sender.collisionTags.Intersect(self.collisionTags), Is.Empty,
+                "Self contacts continue to require native SPS channels");
+            Start();
+            foreach (var distance in new[] { 0.5f, 0.2f, 0f }) {
+                Set(others, matches ? 0.5f : 0, matches ? distance : -1, native: false);
+                Evaluate();
+                Assert.That(playable.GetFloat(depth), Is.EqualTo(shared ? distance - 0.4f : 100).Within(0.001f));
+            }
+        }
+
 #if VRCSDK_HAS_MATERIAL_CONTACTS
         [TestCase(true)]
         [TestCase(false)]

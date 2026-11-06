@@ -116,7 +116,7 @@ namespace VF.Tests {
             }));
             Assert.That(service.GetSocketTags(plug, false), Is.EqualTo(new[] {
                 SpsTags.FormatSocket(SpsTags.PublicChannel), SpsTags.FormatSocket("second"),
-                SpsTags.LegacySocketHole, SpsTags.LegacySocketRing
+                SpsTags.LegacySocketHole, SpsTags.LegacySocketRing, SpsTags.LegacySocket
             }));
             Assert.That(service.GetPathTags(plug), Is.EquivalentTo(new[] {
                 SpsTags.FormatSocketPath(SpsTags.PublicChannel), SpsTags.FormatSocketPath(SpsTags.NotHipsChannel),

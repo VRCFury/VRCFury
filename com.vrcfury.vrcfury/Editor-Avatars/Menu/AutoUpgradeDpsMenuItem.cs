@@ -14,9 +14,11 @@ namespace VF.Menu {
             if (Get()) {
                 var ok = DialogUtils.DisplayDialog(
                     "Warning",
-                    "Disabling this option will prevent meshes with DPS from being able to trigger haptics and" +
-                    " animations on other avatars. Are you sure you want to continue?",
-                    "Yes, do not add contacts to DPS",
+                    "Disabling this option will prevent your DPS/TPS assets from triggering haptics or" +
+                    " triggering depth animations, and may prevent them from working entirely in certain worlds" +
+                    " or future versions of VRChat.\n\n" +
+                    " Are you sure you want to continue?",
+                    "Yes, never upgrade DPS/TPS",
                     "Cancel"
                 );
                 if (!ok) return;
