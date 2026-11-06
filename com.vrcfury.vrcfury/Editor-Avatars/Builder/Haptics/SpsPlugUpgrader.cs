@@ -11,6 +11,8 @@ namespace VF.Builder.Haptics {
         private readonly SpsUpgradeContext context;
         private readonly HashSet<VFGameObject> existing = new HashSet<VFGameObject>();
         public IEnumerable<VFGameObject> Existing => existing;
+        public IEnumerable<VFGameObject> Owners => context.root.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()
+            .Select(p => p.owner()).Concat(added).Distinct();
         private readonly HashSet<VFGameObject> added = new HashSet<VFGameObject>();
         private readonly HashSet<VFGameObject> objectsToDelete = new HashSet<VFGameObject>();
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using System.Linq;
 using UnityEditor;
 using VF.Component;
@@ -13,6 +14,7 @@ namespace VF.Builder.Haptics {
     internal class SpsUpgrader {
         [VFAutowired] private readonly AvatarCleaner cleaner;
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly TpsDepthAnimationImporter tpsAnimations;
 
         [MenuItem(MenuItems.upgradeLegacyHaptics, priority = MenuItems.upgradeLegacyHapticsPriority)]
         private static void MenuRun() {
@@ -88,6 +90,11 @@ namespace VF.Builder.Haptics {
             plugs?.Migrate(shouldSaveMasks: globals.useOriginalAssets);
             sockets?.Migrate();
 
+            var recovered = tpsAnimations.Import(avatarObject,
+                plugs?.Owners.Where(context.WillSurvive) ?? Array.Empty<VFGameObject>(),
+                sockets?.Owners.Where(context.WillSurvive) ?? Array.Empty<VFGameObject>(),
+                dryRun);
+
             bool ShouldRemoveContact(UnityEngine.Component contact, List<string> tags) {
                 if (tags.Any(t => t.StartsWith("TPSVF_"))) return true;
                 if (!contact.owner().name.StartsWith("OGB_")) return false;
@@ -113,15 +120,17 @@ namespace VF.Builder.Haptics {
 
             var parameterFilters = new[] { plugs?.ParameterFilter, sockets?.GetParameterFilter(includeUnscoped: plugs != null) }
                 .Where(filter => filter != null).ToArray();
+            var layerFilters = new[] { sockets?.LayerFilter, recovered.layers.Count == 0 ? null : (Func<string, bool>)recovered.layers.Contains }
+                .Where(filter => filter != null).ToArray();
             var deletions = cleaner.Cleanup(
                 avatarObject,
                 perform: !dryRun,
                 ShouldRemoveObj: obj => (plugs?.ShouldRemoveObj(obj) ?? false) || (sockets?.ShouldRemoveObj(obj) ?? false),
-                ShouldRemoveLayer: sockets?.LayerFilter,
-                ShouldRemoveParam: parameterFilters.Length == 0 ? null
-                    : (System.Func<string, bool>)(param => parameterFilters.Any(filter => filter(param))),
+                ShouldRemoveLayer: layerFilters.Length == 0 ? null : (Func<string, bool>)(layer => layerFilters.Any(filter => filter(layer))),
+                ShouldRemoveParam: parameterFilters.Length == 0 && recovered.parameters.Count == 0 ? null
+                    : (Func<string, bool>)(param => recovered.parameters.Contains(param) || parameterFilters.Any(filter => filter(param))),
                 ShouldRemoveComponent: component => {
-                    if ((plugs?.ShouldRemoveComponent(component) ?? false)
+                    if (recovered.contacts.Contains(component) || (plugs?.ShouldRemoveComponent(component) ?? false)
                         || (sockets?.ShouldRemoveComponent(component) ?? false)) return true;
                     if (component is VRCContactSender sender) return ShouldRemoveContact(sender, sender.collisionTags);
                     if (component is VRCContactReceiver receiver) return ShouldRemoveContact(receiver, receiver.collisionTags);
@@ -135,6 +144,7 @@ namespace VF.Builder.Haptics {
             }
 
             if (deletions.Count > 0) parts.Add("These objects will be deleted:\n" + deletions.Join('\n'));
+            if (recovered.descriptions.Count > 0) parts.Add("TPS depth animations will be imported on:\n" + recovered.descriptions.Join('\n'));
             if (existingPaths.Length > 0)
                 parts.Add("SPS already exists on:\n" + existingPaths.Join('\n'));
             return parts.Join("\n\n");

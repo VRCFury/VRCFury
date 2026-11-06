@@ -61,8 +61,14 @@ namespace VF.Tests {
             var masks = root.GetComponentsInChildren<VRCFuryHapticPlug>(true)
                 .Select(p => p.textureMask.Get()).Where(texture => texture != null && VrcfObjectFactory.DidCreate(texture))
                 .Select(AssetDatabase.GetAssetPath).Where(path => path != "").Distinct().ToArray();
+            var depthClips = root.GetComponentsInChildren<VRCFuryHapticPlug>(true).SelectMany(p => p.depthActions2)
+                .Concat(root.GetComponentsInChildren<VRCFuryHapticSocket>(true).SelectMany(s => s.depthActions2))
+                .SelectMany(a => a.actionSet.actions).OfType<VF.Model.StateAction.AnimationClipAction>()
+                .Select(a => a.clip.Get()).Where(c => c != null && VrcfObjectFactory.DidCreate(c))
+                .Select(AssetDatabase.GetAssetPath).Where(path => path != "").Distinct().ToArray();
             Object.DestroyImmediate(root);
             foreach (var path in masks) AssetDatabase.DeleteAsset(path);
+            foreach (var path in depthClips) AssetDatabase.DeleteAsset(path);
             foreach (var asset in assets) if (asset != null) Object.DestroyImmediate(asset);
             assets.Clear();
         }
@@ -95,6 +101,214 @@ namespace VF.Tests {
         private VRCFuryHapticSocket[] Sockets => root.GetComponentsInChildren<VRCFuryHapticSocket>(true);
         private VRCFuryHapticPlug[] Plugs => root.GetComponentsInChildren<VRCFuryHapticPlug>(true);
         private static void Vector(Vector3 actual, Vector3 expected) => Assert.That(Vector3.Distance(actual, expected), Is.LessThan(0.0001f));
+
+        private (GameObject owner, SkinnedMeshRenderer body, VRCContactReceiver receiver, string layer) TpsDepthAnimation(bool plug, float scale = 1) {
+            var owner = plug ? PlugMesh("TPS").gameObject : Child("TPS Socket");
+            owner.transform.localScale = Vector3.one * scale;
+            if (!plug) Lights(owner);
+            var body = Child("Body").AddComponent<SkinnedMeshRenderer>();
+            var mesh = Track(new Mesh { vertices = new[] { Vector3.zero, Vector3.right, Vector3.up }, triangles = new[] { 0, 1, 2 } });
+            mesh.AddBlendShapeFrame("Enter", 100, new Vector3[3], new Vector3[3], new Vector3[3]);
+            mesh.AddBlendShapeFrame("In", 100, new Vector3[3], new Vector3[3], new Vector3[3]);
+            body.sharedMesh = mesh;
+            var kind = plug ? "Pen" : "Orf";
+            var prefix = "TPS_" + kind + "_0_";
+            var internalPrefix = "TPS_Internal/" + kind + "/0/";
+            var receiver = Child("TPS Depth", owner.transform).AddComponent<VRCContactReceiver>();
+            receiver.parameter = internalPrefix + (plug ? "RootRoot" : "Depth_In");
+            receiver.radius = 0.4f / scale;
+            receiver.receiverType = VRC.Dynamics.ContactReceiver.ReceiverType.Proximity;
+            receiver.allowSelf = receiver.allowOthers = true;
+            receiver.collisionTags = new List<string> { plug ? SpsTags.LegacySocket : SpsTags.LegacyPlugSphere };
+            controller.AddParameter(receiver.parameter, AnimatorControllerParameterType.Float);
+            controller.AddParameter(prefix + "Depth", AnimatorControllerParameterType.Float);
+            controller.AddParameter(prefix + "Width", AnimatorControllerParameterType.Float);
+            AnimationClip Frame(float enter, float inside) {
+                var clip = Track(new AnimationClip());
+                // TPS CustomCurve((1, value)) writes a single pose key at time one, without a time-zero key.
+                clip.SetCurve("Body", typeof(SkinnedMeshRenderer), "blendShape.Enter", new AnimationCurve(new Keyframe(1, enter)));
+                clip.SetCurve("Body", typeof(SkinnedMeshRenderer), "blendShape.In", new AnimationCurve(new Keyframe(1, inside)));
+                clip.SetCurve("", typeof(Animator), prefix + "Depth", new AnimationCurve(new Keyframe(1, inside / 100)));
+                return clip;
+            }
+            var zero = Frame(0, 0);
+            Motion Width(Motion full) => plug ? full : Track(new BlendTree {
+                blendType = BlendTreeType.Simple1D, blendParameter = prefix + "Width", useAutomaticThresholds = false,
+                children = new[] { new ChildMotion { motion = zero, threshold = 0, timeScale = 1 },
+                    new ChildMotion { motion = full, threshold = 0.8f, timeScale = 1 } }
+            });
+            var tree = Track(new BlendTree {
+                blendType = BlendTreeType.Simple1D, blendParameter = receiver.parameter, useAutomaticThresholds = false,
+                children = new[] {
+                    new ChildMotion { motion = Width(zero), threshold = 0, timeScale = 1 },
+                    new ChildMotion { motion = Width(Frame(100, 0)), threshold = 0.05f, timeScale = 1 },
+                    new ChildMotion { motion = Width(Frame(0, 100)), threshold = 1, timeScale = 1 }
+                }
+            });
+            var layer = "[TPS][" + kind + "0] Depth";
+            controller.AddLayer(layer);
+            var machine = controller.layers.Last().stateMachine;
+            machine.AddState("Penetrated").motion = tree;
+            machine.AddState("No Penetration").motion = zero;
+            return (owner, body, receiver, layer);
+        }
+
+        [TestCase(false, 1f)]
+        [TestCase(false, 2f)]
+        [TestCase(true, 1f)]
+        public void ImportsTpsDepthAnimationsAsLinearClips(bool plug, float scale) {
+            var setup = TpsDepthAnimation(plug, scale);
+            Child("Body", setup.owner.transform).AddComponent<SkinnedMeshRenderer>().sharedMesh = setup.body.sharedMesh;
+            Assert.That(Apply(true), Does.Contain("TPS depth animations will be imported"));
+            Assert.That(Plugs.SelectMany(p => p.depthActions2).Concat(Sockets.SelectMany(s => s.depthActions2)), Is.Empty);
+            Assert.That(setup.receiver != null, Is.True);
+            Apply();
+            var action = plug ? Plugs.Single().depthActions2.Single() : Sockets.Single().depthActions2.Single();
+            Assert.That(action.units, Is.EqualTo(VRCFuryHapticSocket.DepthActionUnits.Local));
+            Assert.That(action.range.x, Is.EqualTo(-0.4f / scale).Within(0.0001f));
+            Assert.That(action.range.y, Is.Zero);
+            Assert.That(action.enableSelf, Is.True);
+            var animation = (VF.Model.StateAction.AnimationClipAction)action.actionSet.actions.Single();
+            var clip = animation.clip.Get();
+            Assert.That(AssetDatabase.GetAssetPath(clip), Is.Not.Empty);
+            Assert.That(AnimationUtility.GetCurveBindings(clip).Any(b => b.type == typeof(Animator)), Is.False);
+            var enter = AnimationUtility.GetEditorCurve(clip, EditorCurveBinding.FloatCurve("/Body", typeof(SkinnedMeshRenderer), "blendShape.Enter"));
+            var inside = AnimationUtility.GetEditorCurve(clip, EditorCurveBinding.FloatCurve("/Body", typeof(SkinnedMeshRenderer), "blendShape.In"));
+            Assert.That(enter.Evaluate(0.025f), Is.EqualTo(50).Within(0.001f));
+            Assert.That(enter.Evaluate(0.05f), Is.EqualTo(100).Within(0.001f));
+            Assert.That(inside.Evaluate(1), Is.EqualTo(100).Within(0.001f));
+            var loaded = VFMotion.Load(clip, new VFLoadContext {
+                OwnerObject = setup.owner, AnimatorObject = root, ObjectPaths = injector.GetService<VRCFObjectPathCache>()
+            });
+            Assert.That(loaded.GetFloatBindings().All(b => b.target == setup.body.owner()), Is.True,
+                "Absolute paths must keep targeting the original renderer, even with a same-named child");
+            Assert.That(setup.receiver == null, Is.True);
+            Assert.That(controller.layers.Any(l => l.name == setup.layer), Is.False);
+            Assert.That(controller.parameters.Any(p => p.name.StartsWith("TPS_")), Is.False);
+            Apply();
+            Assert.That(plug ? Plugs.Single().depthActions2.Count : Sockets.Single().depthActions2.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TpsAnimationImportPreservesExistingActionsAndOtherSide() {
+            var setup = TpsDepthAnimation(false);
+            var socket = setup.owner.AddComponent<VRCFuryHapticSocket>();
+            var existing = new VRCFuryHapticSocket.DepthActionNew();
+            socket.depthActions2.Add(existing);
+            upgrader.ApplyPlugs(root, false);
+            Assert.That(socket.depthActions2, Is.EqualTo(new[] { existing }));
+            Assert.That(setup.receiver != null, Is.True);
+            upgrader.ApplySockets(root, false);
+            Assert.That(socket.depthActions2, Has.Count.EqualTo(2));
+            Assert.That(socket.depthActions2[0], Is.SameAs(existing));
+        }
+
+        [Test]
+        public void BuildTpsAnimationImportKeepsGeneratedClipInMemoryAndSourceControllerUntouched() {
+            var setup = TpsDepthAnimation(false);
+            var before = EditorJsonUtility.ToJson(controller);
+            var build = VRCFuryInjectorBuilder.GetInjector(avatar);
+            build.GetService<ControllersService>().LoadAllControllers();
+            build.GetService<SpsUpgrader>().Apply(root, false);
+            var animation = (VF.Model.StateAction.AnimationClipAction)Sockets.Single().depthActions2.Single().actionSet.actions.Single();
+            Assert.That(animation.clip.Get(), Is.Null);
+            Assert.That(animation.vfClip, Is.TypeOf<VFClip>());
+            Assert.That(EditorJsonUtility.ToJson(controller), Is.EqualTo(before));
+            Assert.That(build.GetService<ControllersService>().GetFx().GetLayers().Any(l => l.name == setup.layer), Is.False);
+        }
+
+        [Test]
+        public void TpsShaderBufferingDoesNotCreateDepthActions() {
+            var setup = TpsDepthAnimation(true);
+            var sender = Child("TPS Sender", setup.owner.transform).AddComponent<VRCContactSender>();
+            sender.collisionTags = new List<string> { SpsTags.LegacyPlugSphere };
+            foreach (var clip in controller.animationClips) {
+                foreach (var binding in AnimationUtility.GetCurveBindings(clip)) AnimationUtility.SetEditorCurve(clip, binding, null);
+                clip.SetCurve(setup.owner.name, typeof(Renderer), "material._TPS_BufferedDepth", AnimationCurve.Constant(0, 1, 1));
+                clip.SetCurve(setup.owner.name + "/TPS Sender", typeof(VRCContactSender), "m_Enabled", new AnimationCurve(new Keyframe(1, 1)));
+                clip.SetCurve("", typeof(Animator), "TPS_Pen_0_BufferedDepth", new AnimationCurve(new Keyframe(1, 1)));
+            }
+            controller.AddParameter("TPS_Pen_0_BufferedDepth", AnimatorControllerParameterType.Float);
+            var rootRoot = controller.layers.Last().stateMachine.states[0].state.motion as BlendTree;
+            rootRoot.blendType = BlendTreeType.FreeformCartesian2D;
+            rootRoot.blendParameterY = "TPS_Pen_0_BufferedDepth";
+            foreach (var suffix in new[] { "RootForw", "BackRoot" }) {
+                var contact = Child("TPS " + suffix, setup.owner.transform).AddComponent<VRCContactReceiver>();
+                contact.parameter = "TPS_Internal/Pen/0/" + suffix;
+                contact.collisionTags = new List<string> { SpsTags.LegacySocket };
+                controller.AddParameter(contact.parameter, AnimatorControllerParameterType.Float);
+            }
+            foreach (var suffix in new[] { "Comp1", "Comp2" }) {
+                var parameter = "TPS_Internal/Pen/0/" + suffix;
+                controller.AddParameter(parameter, AnimatorControllerParameterType.Float);
+                var comparison = Track(new AnimationClip());
+                comparison.SetCurve("", typeof(Animator), parameter, new AnimationCurve(new Keyframe(1, 1)));
+                controller.AddLayer("[TPS][Pen0] " + suffix);
+                controller.layers.Last().stateMachine.AddState("Compare").motion = comparison;
+            }
+            Apply();
+            Assert.That(Plugs.Single().depthActions2, Is.Empty);
+            Assert.That(setup.receiver == null, Is.True, "SPS deformation replaces the TPS shader buffer's contacts");
+            Assert.That(sender == null, Is.True);
+            Assert.That(controller.layers.Any(l => l.name == setup.layer), Is.False);
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
+            Assert.That(controller.layers.Any(l => l.name.StartsWith("[TPS]")), Is.False);
+        }
+
+        [Test]
+        public void TpsBufferCleanupPreservesUserAnimationInTheSameLayer() {
+            var setup = TpsDepthAnimation(true);
+            var rootRoot = controller.layers.Last().stateMachine.states[0].state.motion as BlendTree;
+            rootRoot.blendType = BlendTreeType.FreeformCartesian2D;
+            rootRoot.blendParameterY = "TPS_Pen_0_BufferedDepth";
+            var comparison = Track(new AnimationClip());
+            const string parameter = "TPS_Internal/Pen/0/Comp1";
+            controller.AddParameter(parameter, AnimatorControllerParameterType.Float);
+            comparison.SetCurve("", typeof(Animator), parameter, new AnimationCurve(new Keyframe(1, 1)));
+            const string mathLayer = "[TPS][Pen0] Comparison";
+            controller.AddLayer(mathLayer);
+            controller.layers.Last().stateMachine.AddState("Compare").motion = comparison;
+            Apply();
+            Assert.That(Plugs.Single().depthActions2, Is.Empty);
+            Assert.That(setup.receiver != null, Is.True);
+            Assert.That(controller.layers.Any(l => l.name == setup.layer), Is.True);
+            Assert.That(controller.layers.Any(l => l.name == mathLayer), Is.True,
+                "Unsupported user animation must retain its TPS calculations and contact inputs");
+        }
+
+        [Test]
+        public void TpsDepthImportRemovesWidthMathAndContactsAndCopiesSelfSetting() {
+            var setup = TpsDepthAnimation(false);
+            setup.receiver.allowSelf = false;
+            var width = Child("TPS Width", setup.owner.transform).AddComponent<VRCContactReceiver>();
+            width.parameter = "TPS_Internal/Orf/0/Width1_In";
+            width.collisionTags = new List<string> { SpsTags.LegacyPlugSphere };
+            controller.AddParameter(width.parameter, AnimatorControllerParameterType.Float);
+            var clip = Track(new AnimationClip());
+            clip.SetCurve("", typeof(Animator), "TPS_Orf_0_Width", AnimationCurve.Linear(0, 0, 1, 1));
+            const string mathLayer = "[TPS][Orf0] Width Calculation";
+            controller.AddLayer(mathLayer);
+            var feedback = controller.layers.Last().stateMachine.AddState("Buffer Width");
+            feedback.motion = clip;
+            feedback.timeParameterActive = true;
+            feedback.timeParameter = "TPS_Orf_0_Width";
+            Apply();
+            Assert.That(Sockets.Single().depthActions2.Single().enableSelf, Is.False);
+            Assert.That(width == null, Is.True);
+            Assert.That(controller.layers.Any(l => l.name == mathLayer), Is.False);
+        }
+
+        [Test]
+        public void TpsDepthImportPreservesUnsupportedAnimatedStates() {
+            var setup = TpsDepthAnimation(false);
+            var extra = Track(new AnimationClip());
+            extra.SetCurve("Body", typeof(SkinnedMeshRenderer), "blendShape.Enter", AnimationCurve.Linear(0, 0, 1, 100));
+            controller.layers.Last().stateMachine.AddState("User Animation").motion = extra;
+            Apply();
+            Assert.That(Sockets.Single().depthActions2, Is.Empty);
+            Assert.That(setup.receiver != null, Is.True);
+            Assert.That(controller.layers.Any(l => l.name == setup.layer), Is.True);
+        }
 
         [TestCase(0.41f, false)]
         [TestCase(0.42f, false)]

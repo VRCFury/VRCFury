@@ -16,6 +16,7 @@ namespace VF.Builder.Haptics {
         private readonly SpsUpgradeContext context;
         private readonly HashSet<VFGameObject> existing = new HashSet<VFGameObject>();
         public IEnumerable<VFGameObject> Existing => existing;
+        public IEnumerable<VFGameObject> Owners => existing.Concat(added.Keys).Distinct();
         private readonly Dictionary<VFGameObject, string> added = new Dictionary<VFGameObject, string>();
         private readonly HashSet<VFGameObject> objectsToDelete = new HashSet<VFGameObject>();
         private bool foundParentConstraint;
