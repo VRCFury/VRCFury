@@ -11,6 +11,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Exceptions;
 using VF.Injector;
+using VF.Inspector;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
@@ -624,6 +625,99 @@ namespace VF.Tests {
             Assert.That(unrelatedRenderer != null && unrelatedLights.main != null && unrelatedLights.front != null, Is.True);
             Assert.That(guides != null && legacyContact != null, Is.True);
             Assert.That(EditorJsonUtility.ToJson(controller) + EditorJsonUtility.ToJson(parameters) + EditorJsonUtility.ToJson(menu), Is.EqualTo(before));
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void NonUniformLegacySocketUpgradesToConstrainedRootAndBakes(bool duringBuild, bool scaledAncestor) {
+            root.transform.localScale = Vector3.one * 1.2f;
+            var bone = Child("Bone");
+            bone.transform.localPosition = new Vector3(0.3f, 0.8f, -0.2f);
+            bone.transform.localRotation = Quaternion.Euler(15, 35, 20);
+            var owner = Child("DPS Socket", bone.transform);
+            (scaledAncestor ? bone : owner).transform.localScale = new Vector3(1.3f, 0.7f, 2);
+            var (main, front) = Lights(owner);
+            var position = main.transform.position;
+            var forward = (front.transform.position - position).normalized;
+            var expectedName = HapticUtils.GetFallbackId(owner);
+            var originalCount = root.GetComponentsInChildren<Transform>(true).Length;
+            Apply(true);
+            Assert.That(Sockets, Is.Empty);
+            Assert.That(root.GetComponentsInChildren<Transform>(true), Has.Length.EqualTo(originalCount));
+            if (duringBuild) {
+                var services = VRCFuryInjectorBuilder.GetInjector(avatar);
+                services.GetService<ControllersService>().LoadAllControllers();
+                services.GetService<SpsAutoUpgradeService>().Apply(autoUpgrade: true);
+            } else {
+                Apply();
+            }
+            var socket = Sockets.Single();
+            Apply();
+            Assert.That(Sockets.Single(), Is.SameAs(socket), "Repeating the upgrade must not add another constrained socket");
+            var baked = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket, avatarRoot: root);
+            Vector(baked.bakeRoot.worldPosition, position);
+            Vector(baked.bakeRoot.worldRotation * Vector3.forward, forward);
+            Assert.That(baked.bakeRoot.parent.parent, Is.EqualTo(root.asVf()));
+            Assert.That(baked.bakeRoot.parent.name, Is.EqualTo("Nonuniform SPS Sockets"));
+            Vector(baked.bakeRoot.localScale, Vector3.one);
+            Assert.That(owner.GetComponent<VRCFuryHapticSocket>(), Is.SameAs(socket));
+            Assert.That(VRCFuryHapticSocketEditor.GetMenuName(socket), Is.EqualTo(expectedName));
+            var constraint = baked.bakeRoot.GetConstraints().Single();
+            Assert.That(constraint.IsParent(), Is.True);
+            var target = constraint.GetSources().Single();
+            Assert.That(target.parent, Is.EqualTo(owner.asVf()));
+            Vector(target.worldPosition, position);
+            Vector(target.worldRotation * Vector3.forward, forward);
+            Vector(constraint.GetPositionOffset(0), Vector3.zero);
+            Vector(constraint.GetRotationOffset(0), Vector3.zero);
+            Assert.That(constraint.GetWeight(0), Is.EqualTo(1));
+            Assert.That(main == null && front == null, Is.True);
+        }
+
+        [Test]
+        public void RelocatingNonUniformSocketPreservesDepthAnimationsAndSettings() {
+            var owner = Child("DPS Socket");
+            owner.transform.localScale = new Vector3(1.3f, 0.7f, 2);
+            Lights(owner);
+            var sockets = new SpsSocketUpgrader(new SpsUpgradeContext(root, false, _ => false));
+            sockets.Discover();
+            var socket = Sockets.Single();
+            socket.name = "Custom Socket";
+            socket.addMenuItem = true;
+            socket.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew {
+                range = new Vector2(-0.2f, 0.03f),
+                actionSet = new VF.Model.State { actions = {
+                    new VF.Model.StateAction.BlendShapeAction { blendShape = "Enter" }
+                } }
+            });
+            sockets.Migrate();
+            var baked = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket, avatarRoot: root);
+            var replacement = Sockets.Single();
+            Assert.That(replacement, Is.SameAs(socket));
+            Assert.That(baked.bakeRoot.parent.parent, Is.EqualTo(root.asVf()));
+            Assert.That(replacement.name, Is.EqualTo("Custom Socket"));
+            Assert.That(replacement.addMenuItem, Is.True);
+            Assert.That(replacement.addLight, Is.EqualTo(LightType.Hole));
+            var action = replacement.depthActions2.Single();
+            Assert.That(action.range, Is.EqualTo(new Vector2(-0.2f, 0.03f)));
+            Assert.That(((VF.Model.StateAction.BlendShapeAction)action.actionSet.actions.Single()).blendShape, Is.EqualTo("Enter"));
+        }
+
+        [Test]
+        public void NonUniformAttachmentTargetCreatesConstrainedReplacementWithMenuSettings() {
+            var attachment = Attachment(nullSource: true);
+            var source = attachment.GetSource(0).sourceTransform;
+            source.localScale = new Vector3(1.3f, 0.7f, 2);
+            Apply();
+            var socket = Sockets.Single();
+            var baked = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket, avatarRoot: root);
+            Assert.That(baked.bakeRoot.parent.parent, Is.EqualTo(root.asVf()));
+            Assert.That(baked.bakeRoot.GetConstraints().Single().GetFirstSource().parent, Is.EqualTo(source.owner()));
+            Assert.That(socket.addLight, Is.EqualTo(LightType.Auto));
+            Assert.That(socket.addMenuItem, Is.True);
+            Assert.That(VRCFuryHapticSocketEditor.GetMenuName(socket), Is.EqualTo(HapticUtils.GetFallbackId(source)));
         }
 
         private ParentConstraint Attachment(float firstWeight = 1, float secondWeight = 0, bool nullSource = false) {

@@ -1734,7 +1734,11 @@ namespace VF.Tests {
         [TestCase(false, false)]
         [TestCase(true, true)]
         [TestCase(false, true)]
-        public void SocketCalculationGateResetsOutputsForMenuAndParentToggles(bool useMenu, bool optimize) {
+        [TestCase(true, false, true)]
+        [TestCase(false, false, true)]
+        [TestCase(true, true, true)]
+        [TestCase(false, true, true)]
+        public void SocketCalculationGateResetsOutputsForMenuAndParentToggles(bool useMenu, bool optimize, bool nonUniform = false) {
             optimizeTrees = optimize;
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();
@@ -1744,6 +1748,7 @@ namespace VF.Tests {
             };
             globals.addOtherFeature = _ => { };
             var parent = GameObjects.Create("Socket parent", root);
+            if (nonUniform) parent.localScale = new Vector3(1.2f, 0.7f, 1.8f);
             var obj = GameObjects.Create("Socket", parent);
             var socket = obj.AddComponent<VRCFuryHapticSocket>();
             socket.name = "Test";
@@ -1771,6 +1776,14 @@ namespace VF.Tests {
             fx.NewLayer("Parent toggle").NewState("Parent toggle").WithAnimation(
                 VFBlendTree1D.CreateWithData("Parent toggle", parentEnabled, (0, parentOff), (1, parentOn)));
             injector.GetService<BakeHapticSocketsService>().Apply();
+            GameObject relocatedRoot = null;
+            if (nonUniform) {
+                var group = root.transform.Find("Nonuniform SPS Sockets");
+                Assert.That(group, Is.Not.Null);
+                Assert.That(group.childCount, Is.EqualTo(1));
+                relocatedRoot = group.GetChild(0).gameObject;
+                Assert.That(socket.owner(), Is.EqualTo(obj), "Baking must leave the authored component in place");
+            }
             var menuToggle = useMenu ? fx.parameters.Single(p => p.name.EndsWith("_Test")) : null;
             var internalValues = fx.parameters.Where(p => p.name.Contains("/Mapped") || p.name.Contains("/Smoothed")
                 || p.name.Contains("/LegacyLengthValid") || p.name.Contains("/LegacyRadiusValid")).ToArray();
@@ -1782,6 +1795,7 @@ namespace VF.Tests {
             }
             Contact(1, 0.2f);
             Evaluate(120);
+            if (nonUniform) Assert.That(relocatedRoot.activeSelf, Is.True);
             Assert.That(playable.GetFloat(output), Is.EqualTo(1).Within(0.002f));
             if (useMenu) Assert.That(playable.GetFloat("Socket active output"), Is.EqualTo(1));
             Assert.That(playable.GetFloat("Injected depth"), Is.EqualTo(-0.4f).Within(0.002f));
@@ -1789,6 +1803,7 @@ namespace VF.Tests {
             Evaluate(3);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
             Evaluate(4);
+            if (nonUniform) Assert.That(relocatedRoot.activeSelf, Is.False);
             if (useMenu) Assert.That(playable.GetFloat("Socket active output"), Is.Zero);
             Assert.That(playable.GetFloat("Injected depth"), Is.EqualTo(100).Within(0.001f));
             Assert.That(playable.GetFloat("Injected length"), Is.EqualTo(0.3f).Within(0.001f));
@@ -1804,6 +1819,15 @@ namespace VF.Tests {
             playable.SetFloat(parentEnabled, 1);
             if (menuToggle != null) playable.SetFloat(menuToggle, 1);
             Evaluate(120);
+            if (nonUniform) {
+                Assert.That(relocatedRoot.activeSelf, Is.True);
+                playable.SetFloat(parentEnabled, 0);
+                Evaluate(8);
+                Assert.That(relocatedRoot.activeSelf, Is.False, "Parent activation must also gate sockets with a menu toggle");
+                playable.SetFloat(parentEnabled, 1);
+                Evaluate(8);
+                Assert.That(relocatedRoot.activeSelf, Is.True);
+            }
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
             Assert.That(playable.GetFloat("Injected depth"), Is.EqualTo(100).Within(0.001f));
         }

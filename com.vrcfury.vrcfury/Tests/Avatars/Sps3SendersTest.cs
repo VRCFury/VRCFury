@@ -43,6 +43,17 @@ namespace VF.Tests {
             Assert.That(SpsTags.FormatSocketPath("custom"), Is.EqualTo("SPS/SocketPath/custom"));
         }
 
+        [TestCase(2, 1, 1)]
+        [TestCase(0, 1, 1)]
+        [TestCase(-1, 1, 1)]
+        public void StandaloneSocketBakeStillRejectsInvalidScale(float x, float y, float z) {
+            var obj = GameObjects.Create("World socket", root);
+            obj.localScale = new Vector3(x, y, z);
+            var socket = obj.AddComponent<VRCFuryHapticSocket>();
+            Assert.Throws<Exception>(() => injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket));
+            Assert.That(obj.childCount, Is.Zero, "Validation must fail before creating a placeholder or baked objects");
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void ChangeSpsTagActionNoLongerGeneratesAnimation(bool debugMode) {

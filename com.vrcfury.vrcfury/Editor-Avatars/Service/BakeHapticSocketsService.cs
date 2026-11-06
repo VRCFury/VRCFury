@@ -35,6 +35,7 @@ namespace VF.Service {
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ObjectTreeService objectTrees;
+        [VFAutowired] private readonly IsObjectEnabledService objectEnabled;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VRCFuryHapticSocketBaker socketBaker;
@@ -112,7 +113,7 @@ namespace VF.Service {
                     }
 
                     var bakeResult = socketBaker.Bake(socket, legacyPlugCompatibility: options.legacyModeAvailable,
-                        tpsDepthAnimationCompatibility: options.tpsDepthAnimationCompatibility);
+                        tpsDepthAnimationCompatibility: options.tpsDepthAnimationCompatibility, avatarRoot: avatarObject);
                     globals.addOtherFeature(new ShowInFirstPerson {
                         useObjOverride = true,
                         objOverride = bakeResult.bakeRoot,
@@ -209,15 +210,26 @@ namespace VF.Service {
                     }
 
                     // Do the toggle last so all the objects have been generated and can be toggled on/off
+                    var relocated = bakeResult.bakeRoot.parent != obj;
+                    VFClip onClip = null;
+                    if (toggleParam != null || relocated) {
+                        bakeResult.bakeRoot.active = false;
+                        onClip = clipFactory.NewClip($"{oscId}");
+                        onClip.SetEnabled(bakeResult.bakeRoot, true);
+                        var toggleTree = directTreeService.Create($"{oscId} - Toggle");
+                        if (relocated) {
+                            var condition = BlendtreeMath.GreaterThan(objectEnabled.Get(obj), 0);
+                            if (toggleParam != null) condition = condition.And(BlendtreeMath.GreaterThan(toggleParam, 0));
+                            var offClip = clipFactory.NewClip($"{oscId} - Off");
+                            offClip.SetEnabled(bakeResult.bakeRoot, false);
+                            toggleTree.Add(condition.create(onClip, offClip));
+                        } else {
+                            toggleTree.Add(toggleParam, onClip);
+                        }
+                    }
                     if (toggleParam != null) {
                         obj.active = true;
                         forceEnable.Add(obj);
-
-                        bakeResult.bakeRoot.active = false;
-                        var onClip = clipFactory.NewClip($"{oscId}");
-                        onClip.SetEnabled(bakeResult.bakeRoot, true);
-                        var toggleTree = directTreeService.Create($"{oscId} - Toggle");
-                        toggleTree.Add(toggleParam, onClip);
 
                         var activeClip = actionClipService.LoadState($"SPS - Active Animation for {oscId}", socket.activeActions);
                         if (new AnimatorIterator.Clips().From(activeClip).SelectMany(clip => clip.GetAllBindings()).Any()) {

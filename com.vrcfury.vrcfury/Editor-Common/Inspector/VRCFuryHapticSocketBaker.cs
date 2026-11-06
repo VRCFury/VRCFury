@@ -18,18 +18,36 @@ namespace VF.Inspector {
         [VFAutowired] [CanBeNull] private readonly SpsAutoChannelGenerator autoChannelGenerator;
         [VFAutowired] private readonly SpsConfigurer spsConfigurer;
         private int nextGroupId = 1;
+        private readonly Dictionary<VFGameObject, VFGameObject> nonUniformRoots = new();
 
-        public BakeResult Bake(VRCFuryHapticSocket socket, bool legacyPlugCompatibility = true, bool tpsDepthAnimationCompatibility = false) {
+        public BakeResult Bake(VRCFuryHapticSocket socket, bool legacyPlugCompatibility = true,
+            bool tpsDepthAnimationCompatibility = false, VFGameObject avatarRoot = null) {
             var closestBone = autoChannelGenerator?.GetClosestBone(socket.owner());
             var channels = spsConfigurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender);
             var transform = socket.owner();
-            HapticUtils.AssertValidScale(transform);
+            var relocate = false;
+            try {
+                HapticUtils.AssertValidScale(transform);
+            } catch (Exception) when (avatarRoot != null) {
+                relocate = true;
+            }
 
             var (lightType, localPosition, localRotation) = GetSocketTransform(socket, closestBone);
 
             var bakeRoot = GameObjects.Create("BakedSpsSocket", transform);
             bakeRoot.localPosition = localPosition;
             bakeRoot.localRotation = localRotation;
+
+            if (relocate) {
+                var target = bakeRoot;
+                target.name = "SPS Socket Target";
+                var root = nonUniformRoots.GetOrCreate(avatarRoot,
+                    () => GameObjects.Create("Nonuniform SPS Sockets", avatarRoot));
+                bakeRoot = GameObjects.Create("BakedSpsSocket", root);
+                bakeRoot.worldPosition = target.worldPosition;
+                bakeRoot.worldRotation = target.worldRotation;
+                VFConstraint.CreateParent(bakeRoot).AddSource(target, weight: 1);
+            }
 
             var worldSpace = GameObjects.Create("WorldSpace", bakeRoot);
             ConstraintUtils.MakeWorldSpace(worldSpace);
