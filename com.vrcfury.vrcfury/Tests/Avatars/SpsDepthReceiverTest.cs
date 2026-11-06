@@ -246,7 +246,7 @@ namespace VF.Tests {
             Assert.Throws<ArgumentOutOfRangeException>(() => _ = socket((Party)999)(SpsDepthMeters));
             _ = socket(Party.Merged);
             var plug = root.AddComponent<VRCFuryHapticPlug>();
-            plug.autoRenderer = plug.autoPosition = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.05f;
@@ -342,7 +342,7 @@ namespace VF.Tests {
         [Test]
         public void PlugDepthUsesItsOwnResizedDimensionsAndNeverDecodesSocketScaleAsLength() {
             var plug = root.AddComponent<VRCFuryHapticPlug>();
-            plug.autoRenderer = plug.autoPosition = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.05f;
@@ -372,7 +372,7 @@ namespace VF.Tests {
         [TestCase(false)]
         public void PlugDepthAndDeformationUseTheSameEntranceReceivers(bool materialsFirst) {
             var plug = root.AddComponent<VRCFuryHapticPlug>();
-            plug.autoRenderer = plug.autoPosition = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.05f;
@@ -513,7 +513,7 @@ namespace VF.Tests {
         [Test]
         public void CombinedPlugDepthReadsMergedSdkOutputsWithoutRebuildingPartySelection() {
             var plug = root.AddComponent<VRCFuryHapticPlug>();
-            plug.autoRenderer = plug.autoPosition = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.05f;
@@ -1202,7 +1202,7 @@ namespace VF.Tests {
             };
             globals.addOtherFeature = _ => { };
             var plug = GameObjects.Create("Plug", root).AddComponent<VRCFuryHapticPlug>();
-            plug.autoRenderer = plug.autoPosition = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.04f;
@@ -1270,7 +1270,7 @@ namespace VF.Tests {
                 socket.plugLengthParameterName = "InjectedLength";
                 var plug = root.AddComponent<VRCFuryHapticPlug>();
                 plug.name = "Plug";
-                plug.autoRenderer = plug.autoPosition = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+                plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
                 plug.unitsInMeters = true;
                 plug.length = 0.4f;
                 plug.radius = 0.04f;
@@ -1410,7 +1410,7 @@ namespace VF.Tests {
             if (!VF.Menu.HapticsToggleMenuItem.Get()) Assert.Ignore("OGB haptics are disabled");
             var plug = root.AddComponent<VRCFuryHapticPlug>();
             plug.name = "Test";
-            plug.autoRenderer = plug.autoPosition = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.05f;
@@ -1715,7 +1715,7 @@ namespace VF.Tests {
             var obj = GameObjects.Create("Plug", parent);
             var plug = obj.AddComponent<VRCFuryHapticPlug>();
             plug.name = "Test";
-            plug.autoRenderer = plug.autoPosition = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.05f;

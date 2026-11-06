@@ -25,7 +25,7 @@ namespace VF.Inspector {
             var transform = socket.owner();
             HapticUtils.AssertValidScale(transform);
 
-            var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket, closestBone);
+            var (lightType, localPosition, localRotation) = GetSocketTransform(socket, closestBone);
 
             var bakeRoot = GameObjects.Create("BakedSpsSocket", transform);
             bakeRoot.localPosition = localPosition;
@@ -64,10 +64,6 @@ namespace VF.Inspector {
 
             VFGameObject legacyLights = null;
             if (lightType != VRCFuryHapticSocket.AddLight.None) {
-                ForEachPossibleLight(transform, false, light => {
-                    light.Destroy();
-                });
-
                 if (BuildTargetUtils.IsDesktop()) {
                     var guidedPathStops = socket.guidedPathStops.ToList();
                     for (var i = 0; i < guidedPathStops.Count; i++) {
@@ -139,7 +135,7 @@ namespace VF.Inspector {
 
         public VRCFurySocketGizmo.SocketGizmoData GetGizmoData(VRCFuryHapticSocket socket) {
             var closestBone = autoChannelGenerator?.GetClosestBone(socket.owner());
-            var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket, closestBone);
+            var (lightType, localPosition, localRotation) = GetSocketTransform(socket, closestBone);
             return VRCFuryHapticSocketGizmo.BuildGizmoData(
                 socket,
                 lightType,
@@ -221,7 +217,7 @@ namespace VF.Inspector {
             if (combined.Count > 16) throw new Exception("SPS3 sender exceeds the 16 contact tag limit.");
             sender.collisionTags = combined;
         }
-        private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(
+        private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetSocketTransform(
             VRCFuryHapticSocket socket,
             HumanBodyBones? closestBone
         ) {

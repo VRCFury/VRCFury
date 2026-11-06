@@ -289,7 +289,24 @@ namespace VF.Tests {
             Object.DestroyImmediate(avatar);
             var manual = VRCFuryInjectorBuilder.CreateForManualEditing(root);
             Assert.Throws<Exception>(() => manual.GetService<VRCAvatarDescriptor>());
-            Assert.Throws<Exception>(() => manual.GetService<AvatarCleaner>());
+            Assert.Throws<Exception>(() => manual.GetService<ControllersService>());
+            Assert.DoesNotThrow(() => manual.GetService<AvatarCleaner>());
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CleanupWithoutDescriptorHandlesSceneObjectsAndSkipsAvatarAssets(bool perform) {
+            Object.DestroyImmediate(avatar);
+            var manual = VRCFuryInjectorBuilder.CreateForManualEditing(root);
+            var child = GameObjects.Create("Remove", root);
+            var original = OriginalAssets();
+            var result = manual.GetService<AvatarCleaner>().Cleanup(root, perform: perform,
+                ShouldRemoveObj: obj => obj == child,
+                ShouldRemoveLayer: _ => throw new Exception("A root without a descriptor has no avatar layers"),
+                ShouldRemoveParam: _ => throw new Exception("A root without a descriptor has no avatar parameters"));
+            Assert.That(result, Does.Contain("Object: Remove"));
+            Assert.That(child == null, Is.EqualTo(perform));
+            Assert.That(OriginalAssets(), Is.EqualTo(original));
         }
 
         [Test]

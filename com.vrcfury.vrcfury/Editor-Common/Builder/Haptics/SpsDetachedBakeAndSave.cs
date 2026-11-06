@@ -19,6 +19,11 @@ namespace VF.Builder.Haptics {
         ) {
             if (sockets.Count == 0 && plugs.Count == 0) return;
 
+            foreach (var socket in sockets) socket.Upgrade();
+            foreach (var plug in plugs) plug.Upgrade();
+            SpsPlugPreparation.ImportSettingsFromLegacySystems(plugs);
+            SpsSocketPreparation.ImportSettingsFromLegacySystems(sockets, deleteLights: true);
+
             var injector = new VRCFuryInjector();
             injector.ImportScan(typeof(VFServiceAttribute));
             var plugBaker = injector.GetService<VRCFuryHapticPlugBaker>();
@@ -26,7 +31,6 @@ namespace VF.Builder.Haptics {
             var saveSession = new SaveAssetsSession("SPS");
 
             foreach (var socket in sockets) {
-                socket.Upgrade();
                 try {
                     var result = socketBaker.Bake(socket);
                     onSocketBaked?.Invoke(socket, result);
@@ -42,7 +46,6 @@ namespace VF.Builder.Haptics {
             }
 
             foreach (var plug in plugs) {
-                plug.Upgrade();
                 try {
                     var result = plugBaker.Bake(plug);
                     onPlugBaked?.Invoke(plug, result);

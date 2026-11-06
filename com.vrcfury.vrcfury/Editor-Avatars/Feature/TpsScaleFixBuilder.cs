@@ -60,12 +60,12 @@ namespace VF.Feature {
                 }
 
                 renderer.sharedMaterials = renderer.sharedMaterials.Select(mat => {
-                    var isTps = TpsConfigurer.IsTps(mat);
+                    var isTps = TpsUtils.IsTps(mat);
 
                     if (!isTps) return mat;
 
                     mat = mat.Clone("Needed to mark TPS parameters as animated for TPS Scale Fix");
-                    if (TpsConfigurer.IsLocked(mat)) {
+                    if (TpsUtils.IsLocked(mat)) {
                         throw new VRCFBuilderException(
                             "TpsScaleFix requires that all deforming materials using poiyomi must be unlocked. " +
                             $"Please unlock the material on {renderer.owner().GetDebugPath()}");
@@ -110,7 +110,7 @@ namespace VF.Feature {
                     Add(propName, val);
                 }
                 
-                if (TpsConfigurer.IsTps(mat)) {
+                if (TpsUtils.IsTps(mat)) {
                     AddFloat("_TPS_PenetratorLength");
                     AddVector("_TPS_PenetratorScale");
                 }

@@ -9,14 +9,18 @@ using UnityEngine.Animations;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
+using VF.Exceptions;
 using VF.Injector;
 using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
 using LightType = VF.Component.VRCFuryHapticSocket.AddLight;
+
+#pragma warning disable 0612 // Exercise serialized inputs from legacy components.
 
 namespace VF.Tests {
     [Category("VRCFury")]
@@ -54,7 +58,11 @@ namespace VF.Tests {
 
         [TearDown]
         public void TearDown() {
+            var masks = root.GetComponentsInChildren<VRCFuryHapticPlug>(true)
+                .Select(p => p.textureMask.Get()).Where(texture => texture != null && VrcfObjectFactory.DidCreate(texture))
+                .Select(AssetDatabase.GetAssetPath).Where(path => path != "").Distinct().ToArray();
             Object.DestroyImmediate(root);
+            foreach (var path in masks) AssetDatabase.DeleteAsset(path);
             foreach (var asset in assets) if (asset != null) Object.DestroyImmediate(asset);
             assets.Clear();
         }
@@ -94,7 +102,7 @@ namespace VF.Tests {
         [TestCase(0.44f, false)]
         [TestCase(0.41f, true)]
         [TestCase(0.42f, true)]
-        public void DpsAndTpsLightSocketsPreservePoseAndRemoveOnlyLegacySocketLights(float range, bool inactive) {
+        public void DpsAndTpsLightSocketsPreservePoseAndRemoveLegacyLights(float range, bool inactive) {
             var owner = Child("Socket");
             owner.transform.localScale = Vector3.one * 2;
             owner.transform.localRotation = Quaternion.Euler(12, 30, -17);
@@ -120,7 +128,8 @@ namespace VF.Tests {
             Vector(owner.transform.TransformPoint(socket.position), position);
             Vector(owner.transform.TransformDirection(Quaternion.Euler(socket.rotation) * Vector3.forward), forward);
             Assert.That(main == null && front == null && receiver == null, Is.True);
-            Assert.That(visible != null && tip != null && unrelated != null, Is.True);
+            Assert.That(tip == null, Is.True);
+            Assert.That(visible != null && unrelated != null, Is.True);
             Assert.That(owner.activeSelf, Is.EqualTo(!inactive));
             Apply();
             Assert.That(Sockets, Has.Length.EqualTo(1), "Repeated upgrades must not duplicate sockets");
@@ -136,7 +145,30 @@ namespace VF.Tests {
             if (visible) main.color = Color.white;
             Apply();
             Assert.That(Sockets, Is.Empty);
-            Assert.That(main != null, Is.True);
+            Assert.That(main == null, Is.EqualTo(!visible));
+        }
+
+        [TestCase(0.41f)]
+        [TestCase(0.42f)]
+        [TestCase(0.43f)]
+        [TestCase(0.44f)]
+        [TestCase(0.45f)]
+        [TestCase(0.46f)]
+        [TestCase(0.48f)]
+        [TestCase(0.49f)]
+        public void RemovesUnpairedLegacyLightsWithoutCreatingSockets(float range) {
+            var owner = Child("Unused legacy light");
+            owner.SetActive(false);
+            var light = Light(owner, "Legacy", range, Vector3.zero);
+            // Stock DPS tip prefab uses RGB bytes (1, 1, 1), rather than full white.
+            if (range >= 0.48f) light.color = new Color(1f / 255, 1f / 255, 1f / 255, 1);
+            Apply(true);
+            Assert.That(light != null, Is.True, "Preview must not delete lights");
+            Assert.That(Sockets, Is.Empty);
+            Apply();
+            Assert.That(light == null, Is.True);
+            Assert.That(Sockets, Is.Empty);
+            Assert.That(Plugs, Is.Empty);
         }
 
         [Test]
@@ -155,6 +187,229 @@ namespace VF.Tests {
             Assert.That(guides == null && contact == null, Is.True);
             Assert.That(controller.layers.Any(l => l.name == "DPS_Holes"), Is.False);
             Assert.That(controller.parameters.Any(p => p.name == "DPS_Hole"), Is.False);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void PlugAndSocketUpgradesCanRunSeparatelyInEitherOrder(bool plugsFirst) {
+            var renderer = PlugMesh("TPS");
+            var tip = Light(renderer.gameObject, "Tip", 0.49f, Vector3.zero);
+            var plugMarker = Child("OGB_Marker_Pen", renderer.transform);
+            var socketOwner = Child("Socket");
+            var (main, front) = Lights(socketOwner);
+            var socketMarker = Child("OGB_Marker_Hole", socketOwner.transform);
+            var guides = Child("GUIDES_DELETE");
+            controller.AddLayer("DPS_Holes");
+
+            string Upgrade(bool plugs, bool preview) => plugs
+                ? upgrader.ApplyPlugs(root, preview) : upgrader.ApplySockets(root, preview);
+            Upgrade(plugsFirst, true);
+            Assert.That(main != null && front != null && tip != null, Is.True);
+            Assert.That(Plugs, Is.Empty);
+            Assert.That(Sockets, Is.Empty);
+            Upgrade(plugsFirst, false);
+            Assert.That(Plugs.Length, Is.EqualTo(plugsFirst ? 1 : 0));
+            Assert.That(Sockets.Length, Is.EqualTo(plugsFirst ? 0 : 1));
+            Assert.That(tip == null && plugMarker == null, Is.EqualTo(plugsFirst));
+            Assert.That(main == null && front == null && socketMarker == null, Is.EqualTo(!plugsFirst));
+            Assert.That(guides != null, Is.EqualTo(plugsFirst));
+            Assert.That(controller.layers.Any(l => l.name == "DPS_Holes"), Is.EqualTo(plugsFirst));
+            Upgrade(!plugsFirst, false);
+            Assert.That(Plugs.Single().enableSps, Is.True);
+            Assert.That(Sockets, Has.Length.EqualTo(1));
+            Assert.That(main == null && front == null && tip == null, Is.True);
+            Assert.That(plugMarker == null && socketMarker == null, Is.True);
+            Assert.That(guides == null, Is.True);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SocketMigrationCapturesSharedLightsBeforeAnyAreRemoved(bool deleteLights) {
+            var outer = Child("Outer").AddComponent<VRCFuryHapticSocket>();
+            var inner = Child("Inner", outer.transform).AddComponent<VRCFuryHapticSocket>();
+            outer.addLight = inner.addLight = LightType.None;
+            inner.transform.localPosition = new Vector3(0.1f, 0.2f, 0.3f);
+            var (main, front) = Lights(inner.gameObject);
+            var position = main.transform.position;
+            SpsSocketPreparation.ImportSettingsFromLegacySystems(new[] { outer, inner }, deleteLights);
+            Assert.That(main == null && front == null, Is.EqualTo(deleteLights));
+            foreach (var socket in new[] { outer, inner }) {
+                Assert.That(socket.addLight, Is.EqualTo(LightType.Hole));
+                Vector(socket.transform.TransformPoint(socket.position), position);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void SeparateUpgradePreservesContactsOwnedByTheOtherSide(bool plugs) {
+            var renderer = PlugMesh("TPS");
+            var plug = renderer.gameObject.AddComponent<VRCFuryHapticPlug>();
+            var socket = Child("Socket").AddComponent<VRCFuryHapticSocket>();
+            var plugContact = Child("OGB_Contact", plug.transform).AddComponent<VRCContactReceiver>();
+            var socketContact = Child("OGB_Contact", socket.transform).AddComponent<VRCContactReceiver>();
+            var unscoped = Child("OGB_Unscoped").AddComponent<VRCContactReceiver>();
+            if (plugs) upgrader.ApplyPlugs(root, false);
+            else upgrader.ApplySockets(root, false);
+            Assert.That(plugContact == null, Is.EqualTo(plugs));
+            Assert.That(socketContact == null, Is.EqualTo(!plugs));
+            Assert.That(unscoped != null, Is.True);
+        }
+
+        [Test]
+        public void SocketOnlyUpgradePreservesUnscopedAndPlugParameters() {
+            Lights(Child("Socket"));
+            foreach (var name in new[] { "OGB/Pen/Old", "TPS/Plug/VF/Depth", "TPS/Socket/VF/Depth" })
+                controller.AddParameter(name, AnimatorControllerParameterType.Float);
+            upgrader.ApplySockets(root, false);
+            Assert.That(controller.parameters.Select(p => p.name), Does.Contain("OGB/Pen/Old"));
+            Assert.That(controller.parameters.Select(p => p.name), Does.Contain("TPS/Plug/VF/Depth"));
+            Assert.That(controller.parameters.Select(p => p.name), Does.Not.Contain("TPS/Socket/VF/Depth"));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void PlugAssetCleanupRequiresANewPlugAndPreservesSocketAndUnscopedParameters(bool newPlug) {
+            if (newPlug) PlugMesh("TPS");
+            var plugParams = new[] { "TPS/Plug/VF/Depth", "TPS/Pen/VF/Depth", "OGB/Pen/Old" };
+            var keepParams = new[] { "TPS/Socket/VF/Depth", "OGB/Legacy", "OGB/Plug/Native/DepthSelf", "DPS_Hole" };
+            foreach (var name in plugParams.Concat(keepParams)) {
+                controller.AddParameter(name, AnimatorControllerParameterType.Float);
+                parameters.parameters = parameters.parameters.Append(new VRCExpressionParameters.Parameter { name = name }).ToArray();
+                menu.controls.Add(Toggle(name));
+            }
+            var before = EditorJsonUtility.ToJson(controller) + EditorJsonUtility.ToJson(parameters) + EditorJsonUtility.ToJson(menu);
+            upgrader.ApplyPlugs(root, true);
+            Assert.That(EditorJsonUtility.ToJson(controller) + EditorJsonUtility.ToJson(parameters) + EditorJsonUtility.ToJson(menu), Is.EqualTo(before));
+            upgrader.ApplyPlugs(root, false);
+            foreach (var name in plugParams.Concat(keepParams)) {
+                var retained = !newPlug || keepParams.Contains(name);
+                Assert.That(controller.parameters.Any(p => p.name == name), Is.EqualTo(retained), name);
+                Assert.That(parameters.parameters.Any(p => p.name == name), Is.EqualTo(retained), name);
+                Assert.That(menu.controls.Any(c => c.parameter?.name == name), Is.EqualTo(retained), name);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void SeparateUpgradePreviewIncludesContactsUnderNewComponents(bool plugs) {
+            var renderer = PlugMesh("TPS");
+            renderer.name = "Plug";
+            var socketOwner = Child("Socket");
+            Lights(socketOwner);
+            var plugContact = Child("OGB_Contact", renderer.transform).AddComponent<VRCContactReceiver>();
+            var socketContact = Child("OGB_Contact", socketOwner.transform).AddComponent<VRCContactReceiver>();
+            var preview = plugs ? upgrader.ApplyPlugs(root, true) : upgrader.ApplySockets(root, true);
+            Assert.That(preview, Does.Contain((plugs ? "Plug" : "Socket") + "/OGB_Contact"));
+            Assert.That(preview, Does.Not.Contain((plugs ? "Socket" : "Plug") + "/OGB_Contact"));
+            Assert.That(plugContact != null && socketContact != null, Is.True);
+            Assert.That(Plugs, Is.Empty);
+            Assert.That(Sockets, Is.Empty);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void SeparateUpgradesAlwaysRemoveTpsVfSendersAndReceivers(bool plugs) {
+            var opposite = Child("Other Side");
+            if (plugs) opposite.AddComponent<VRCFuryHapticSocket>();
+            else {
+                var plug = opposite.AddComponent<VRCFuryHapticPlug>();
+                plug.autoRenderer = false;
+            }
+            var sender = Child("Sender", opposite.transform).AddComponent<VRCContactSender>();
+            sender.collisionTags = new List<string> { "Unrelated", "TPSVF_Orifice" };
+            var receiver = Child("Unscoped Receiver").AddComponent<VRCContactReceiver>();
+            receiver.collisionTags = new List<string> { "TPSVF_Depth" };
+            var preview = plugs ? upgrader.ApplyPlugs(root, true) : upgrader.ApplySockets(root, true);
+            Assert.That(preview, Does.Contain("Other Side/Sender").And.Contain("Unscoped Receiver"));
+            Assert.That(sender != null && receiver != null, Is.True);
+            if (plugs) upgrader.ApplyPlugs(root, false);
+            else upgrader.ApplySockets(root, false);
+            Assert.That(sender == null && receiver == null, Is.True);
+            Assert.That(opposite != null, Is.True);
+        }
+
+        [TestCase(SpsTags.LegacyPlugSphere, true)]
+        [TestCase(SpsTags.LegacyPlugWidth, true)]
+        [TestCase(SpsTags.LegacySocket, false)]
+        [TestCase(SpsTags.LegacySocketFront, false)]
+        public void UpgraderRemovesLegacySendersOnTheSelectedSideButNotReceivers(string tag, bool plugs) {
+            var sender = Child("Legacy Sender").AddComponent<VRCContactSender>();
+            sender.collisionTags = new List<string> { tag };
+            var receiver = Child("User Receiver").AddComponent<VRCContactReceiver>();
+            receiver.collisionTags = new List<string> { tag };
+            var other = Child("Other Side Sender").AddComponent<VRCContactSender>();
+            other.collisionTags = new List<string> { plugs ? SpsTags.LegacySocket : SpsTags.LegacyPlugSphere };
+            var preview = plugs ? upgrader.ApplyPlugs(root, true) : upgrader.ApplySockets(root, true);
+            Assert.That(preview, Does.Contain("Legacy Sender"));
+            Assert.That(sender != null, Is.True);
+            if (plugs) upgrader.ApplyPlugs(root, false);
+            else upgrader.ApplySockets(root, false);
+            Assert.That(sender == null, Is.True);
+            Assert.That(receiver != null && other != null, Is.True);
+        }
+
+        [Test]
+        public void AutomaticUpgradeMigratesExistingInputsBeforeBaking() {
+            var renderer = PlugMesh("TPS");
+            var plug = renderer.gameObject.AddComponent<VRCFuryHapticPlug>();
+            plug.enableSps = false;
+            plug.autoRenderer = false;
+            plug.configureTpsMesh.Add(renderer);
+            var socket = Child("Socket").AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = LightType.None;
+            var (main, front) = Lights(socket.gameObject);
+            var position = main.transform.position;
+            var tip = Light(plug.gameObject, "Tip", 0.49f, Vector3.zero);
+            var sender = Child("TPS Sender").AddComponent<VRCContactSender>();
+            sender.collisionTags = new List<string> { SpsTags.LegacyPlugSphere };
+            var services = VRCFuryInjectorBuilder.GetInjector(avatar);
+            services.GetService<ControllersService>().LoadAllControllers();
+            services.GetService<SpsAutoUpgradeService>().Apply(autoUpgrade: true);
+            Assert.That(plug.enableSps, Is.True);
+            Assert.That(plug.autoLength || plug.autoRadius, Is.False);
+            Assert.That(plug.length, Is.EqualTo(0.3f).Within(0.0001f));
+            Assert.That(plug.radius, Is.EqualTo(0.02f).Within(0.0001f));
+            Assert.That(socket.addLight, Is.EqualTo(LightType.Hole));
+            Vector(socket.transform.TransformPoint(socket.position), position);
+            Assert.That(main == null && front == null && tip == null && sender == null, Is.True);
+        }
+
+        [TestCase("Raliv")]
+        [TestCase("TPS")]
+        public void DisablingAutomaticUpgradeStillPreparesExistingComponentsWithoutConvertingOtherSetups(string kind) {
+            var renderer = PlugMesh(kind, includeLength: true);
+            renderer.sharedMaterial.SetFloat("_Length", 0.45f);
+            renderer.transform.localPosition = new Vector3(0.1f, 0.2f, 0.3f);
+            var plug = Child("Explicit Plug").AddComponent<VRCFuryHapticPlug>();
+            plug.enableSps = plug.autoRenderer = false;
+            plug.configureTpsMesh.Add(renderer);
+            var socket = Child("Explicit Socket").AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = LightType.None;
+            var (main, front) = Lights(socket.gameObject);
+            var socketPosition = main.transform.position;
+            var unrelatedRenderer = PlugMesh("TPS");
+            var unrelatedLights = Lights(Child("Unconfigured Socket"));
+            var guides = Child("GUIDES_DELETE");
+            var legacyContact = Child("Old Contact").AddComponent<VRCContactReceiver>();
+            legacyContact.collisionTags = new List<string> { "TPSVF_Depth" };
+            controller.AddLayer("DPS_Holes");
+            controller.AddParameter("DPS_Hole", AnimatorControllerParameterType.Int);
+            menu.controls.Add(Toggle("DPS_Hole"));
+            var before = EditorJsonUtility.ToJson(controller) + EditorJsonUtility.ToJson(parameters) + EditorJsonUtility.ToJson(menu);
+            var services = VRCFuryInjectorBuilder.GetInjector(avatar);
+            services.GetService<SpsAutoUpgradeService>().Apply(autoUpgrade: false);
+            Assert.That(Plugs, Is.EqualTo(new[] { plug }));
+            Assert.That(Sockets, Is.EqualTo(new[] { socket }));
+            Assert.That(plug.enableSps, Is.True);
+            Assert.That(plug.autoLength || plug.autoRadius, Is.False);
+            Assert.That(plug.length, Is.EqualTo(kind == "Raliv" ? 0.45f : 0.3f).Within(0.0001f));
+            Vector(plug.transform.TransformPoint(plug.position), renderer.transform.position);
+            Assert.That(socket.addLight, Is.EqualTo(LightType.Hole));
+            Vector(socket.transform.TransformPoint(socket.position), socketPosition);
+            Assert.That(main == null && front == null, Is.True);
+            Assert.That(unrelatedRenderer != null && unrelatedLights.main != null && unrelatedLights.front != null, Is.True);
+            Assert.That(guides != null && legacyContact != null, Is.True);
+            Assert.That(EditorJsonUtility.ToJson(controller) + EditorJsonUtility.ToJson(parameters) + EditorJsonUtility.ToJson(menu), Is.EqualTo(before));
         }
 
         private ParentConstraint Attachment(float firstWeight = 1, float secondWeight = 0, bool nullSource = false) {
@@ -395,7 +650,7 @@ namespace VF.Tests {
             Assert.That(controller.layers.Select(l => l.name).Contains("EZDPS Orifices"), Is.EqualTo(!attachment));
         }
 
-        private MeshRenderer PlugMesh(string kind) {
+        private MeshRenderer PlugMesh(string kind, bool includeLength = false) {
             var obj = Child("Plug Mesh");
             var mesh = Track(new Mesh {
                 vertices = new[] { new Vector3(-0.02f, 0, 0.01f), new Vector3(0.02f, 0, 0.01f),
@@ -408,11 +663,256 @@ namespace VF.Tests {
                 : kind == "UnityChan" ? "Fixture/DPS" : "Fixture/" + Guid.NewGuid().ToString("N");
             var property = kind == "TPS" ? "_TPSPenetratorEnabled" : kind == "UnityChan" ? "_ReCurvature" : "_PenetratorEnabled";
             var shader = Track(ShaderUtil.CreateShaderAsset("Shader \"" + shaderName + "\" { Properties { " + property
-                + " (\"Enabled\", Float) = 1 } SubShader { Pass { } } }"));
+                + " (\"Enabled\", Float) = 1 "
+                + (kind == "TPS" ? "_TPS_PenetratorForward (\"Forward\", Vector) = (0,0,1,0) "
+                    + "_TPS_AnimatedToggle (\"Toggle\", Float) = 1 "
+                    + "_TPS_IsSkinnedMeshRenderer (\"Baked Vertices\", Float) = 0 "
+                    + "_TPS_BakedMesh (\"Mask\", 2D) = \"white\" {} " : "")
+                + (includeLength ? "_Length (\"Length\", Float) = 0 " : "")
+                + "} SubShader { Pass { } } }"));
             var material = Track(new Material(shader));
             if (kind == "Disabled") material.SetFloat(property, 0);
             renderer.sharedMaterial = material;
             return renderer;
+        }
+
+        [TestCase(0.08f)]
+        [TestCase(0.09f)]
+        [TestCase(0.48f)]
+        [TestCase(0.49f)]
+        public void OrdinaryWhiteLightsAreNotDeletedAsDpsTips(float range) {
+            var light = Light(root, "Normal white light", range, Vector3.zero);
+            light.color = Color.white;
+            Assert.That(Apply(true), Does.Not.Contain("Normal white light"));
+            Apply();
+            Assert.That(light != null, Is.True);
+        }
+
+        [Test]
+        public void RemovesLegacyTipWithOutOfRangeAlphaWithoutRemovingVisibleSpotlight() {
+            var tip = Light(root, "Legacy tip", 0.49f, Vector3.zero);
+            tip.color = new Color(1, 1, 1, 255);
+            var spotlight = Light(root, "Spotlight", 0.49f, Vector3.zero);
+            spotlight.type = UnityEngine.LightType.Spot;
+            Apply();
+            Assert.That(tip == null, Is.True);
+            Assert.That(spotlight != null, Is.True);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ManualImportPersistsExistingPrefabComponentSettings(bool socket) {
+            var folder = "Assets/SpsUpgradePersistence_" + Guid.NewGuid().ToString("N");
+            AssetDatabase.CreateFolder("Assets", folder.Substring("Assets/".Length));
+            GameObject instance = null;
+            try {
+                GameObject source;
+                if (socket) {
+                    source = Child("Existing Socket");
+                    source.AddComponent<VRCFuryHapticSocket>().addLight = LightType.None;
+                    Lights(source);
+                } else {
+                    var renderer = PlugMesh("TPS");
+                    source = renderer.gameObject;
+                    var plug = source.AddComponent<VRCFuryHapticPlug>();
+                    plug.enableSps = false;
+                    plug.autoRenderer = false;
+                    plug.configureTpsMesh.Add(renderer);
+                    AssetDatabase.CreateAsset(renderer.sharedMaterial.shader, folder + "/Shader.asset");
+                    AssetDatabase.CreateAsset(renderer.sharedMaterial, folder + "/Material.mat");
+                    AssetDatabase.CreateAsset(renderer.GetComponent<MeshFilter>().sharedMesh, folder + "/Mesh.asset");
+                }
+                var prefab = PrefabUtility.SaveAsPrefabAsset(source, folder + "/Existing.prefab");
+                Object.DestroyImmediate(source);
+                instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                VRCFuryInjectorBuilder.CreateForManualEditing(instance).GetService<SpsUpgrader>().Apply(instance, false);
+                Assert.That(PrefabUtility.GetPropertyModifications(instance)
+                    .Any(p => p.propertyPath == (socket ? "addLight" : "enableSps")), Is.True,
+                    "Imported component settings must be recorded as prefab overrides");
+
+                // Saving a variant exercises prefab override serialization without replacing the test runner's scene.
+                var saved = PrefabUtility.SaveAsPrefabAsset(instance, folder + "/Upgraded.prefab");
+                Object.DestroyImmediate(instance);
+                instance = (GameObject)PrefabUtility.InstantiatePrefab(saved);
+                if (socket) {
+                    var component = instance.GetComponent<VRCFuryHapticSocket>();
+                    Assert.That(component.addLight, Is.EqualTo(LightType.Hole));
+                    Vector(component.position, new Vector3(0.03f, -0.02f, 0.04f));
+                } else {
+                    var component = instance.GetComponent<VRCFuryHapticPlug>();
+                    Assert.That(component.enableSps, Is.True);
+                    Assert.That(component.autoLength, Is.False);
+                    Assert.That(component.length, Is.EqualTo(0.3f).Within(0.0001f));
+                }
+            } finally {
+                if (instance != null) Object.DestroyImmediate(instance);
+                assets.RemoveAll(asset => AssetDatabase.GetAssetPath(asset).StartsWith(folder + "/"));
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
+
+        [TestCase(0f, false)]
+        [TestCase(0.3f, false)]
+        [TestCase(0f, true)]
+        public void ImportsTpsAnimatedToggleWithoutOverwritingAuthoredSpsValue(float value, bool authored) {
+            var renderer = PlugMesh("TPS");
+            renderer.sharedMaterial.SetFloat("_TPS_AnimatedToggle", value);
+            if (authored) renderer.gameObject.AddComponent<VRCFuryHapticPlug>().spsAnimatedEnabled = 0.25f;
+            Apply(true);
+            Apply();
+            Assert.That(Plugs.Single().spsAnimatedEnabled, Is.EqualTo(authored ? 0.25f : value));
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        public void ImportsTpsTextureMaskAndKeepsItAfterLegacyMaterialRemoval(bool unreadable, bool entirelyMasked) {
+            var renderer = PlugMesh("TPS");
+            var mesh = renderer.GetComponent<MeshFilter>().sharedMesh;
+            mesh.uv = new[] { new Vector2(0.25f, 0.5f), new Vector2(0.75f, 0.5f),
+                new Vector2(0.25f, 0.5f), new Vector2(0.75f, 0.5f) };
+            var texture = Track(new Texture2D(2, 1, TextureFormat.RGBA32, false, true));
+            texture.SetPixels(new[] { new Color(0, 1, 1, 1), entirelyMasked ? Color.black : Color.white });
+            texture.Apply(false, unreadable);
+            renderer.sharedMaterial.SetTexture("_TPS_BakedMesh", texture);
+            Apply(true);
+            Assert.That(Plugs, Is.Empty);
+            Apply();
+            var plug = Plugs.Single();
+            Assert.That(plug.length, Is.GreaterThan(0));
+            Assert.That(plug.radius, Is.GreaterThan(0));
+            renderer.sharedMaterials = Array.Empty<Material>();
+            Assert.That(PlugMaskGenerator.GetMask(renderer, plug), Is.EqualTo(entirelyMasked
+                ? new[] { 0f, 0f, 0f, 0f } : new[] { 0f, 1f, 0f, 1f }));
+            Assert.That(texture.isReadable, Is.EqualTo(!unreadable), "The source texture must stay unchanged");
+        }
+
+        [Test]
+        public void ImportsTpsBakedVertexMaskAcrossTextureRows() {
+            var renderer = PlugMesh("TPS");
+            var mesh = renderer.GetComponent<MeshFilter>().sharedMesh;
+            var vertices = mesh.vertices.ToList();
+            while (vertices.Count < 1366) vertices.Add(vertices[0]);
+            mesh.vertices = vertices.ToArray();
+            mesh.triangles = new[] { 0, 1, 1364, 1, 1365, 1364 };
+            var uvs = new Vector2[vertices.Count];
+            uvs[1] = new Vector2(0.25f, 0.5f);
+            uvs[1364] = new Vector2(0.5f, 0.5f);
+            uvs[1365] = new Vector2(0.75f, 0.5f);
+            mesh.uv = uvs;
+            var texture = Track(new Texture2D(8190, 2, TextureFormat.RGBA32, false, true));
+            var pixels = new Color32[8190 * 2];
+            // Six RGBA-encoded IEEE floats per vertex; zero normals mark excluded vertices.
+            foreach (var vertex in new[] { 1, 1365 }) pixels[vertex * 6 + 5] = new Color32(0, 0, 128, 63); // 1f
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            renderer.sharedMaterial.SetFloat("_TPS_IsSkinnedMeshRenderer", 1);
+            renderer.sharedMaterial.SetTexture("_TPS_BakedMesh", texture);
+            Apply();
+            var plug = Plugs.Single();
+            renderer.sharedMaterials = Array.Empty<Material>();
+            var mask = PlugMaskGenerator.GetMask(renderer, plug);
+            Assert.That(mask[0], Is.Zero);
+            Assert.That(mask[1], Is.EqualTo(1));
+            Assert.That(mask[1364], Is.Zero);
+            Assert.That(mask[1365], Is.EqualTo(1));
+        }
+
+        [TestCase(FilterMode.Point, 0f)]
+        [TestCase(FilterMode.Bilinear, 0.25f)]
+        public void TpsTextureMaskPreservesSamplerAndFractionalWeights(FilterMode filterMode, float expected) {
+            var renderer = PlugMesh("TPS");
+            var mesh = renderer.GetComponent<MeshFilter>().sharedMesh;
+            mesh.uv = Enumerable.Repeat(new Vector2(0.375f, 0.5f), mesh.vertexCount).ToArray();
+            var texture = Track(new Texture2D(2, 1, TextureFormat.RGBA32, false, true));
+            texture.filterMode = filterMode;
+            texture.SetPixels(new[] { Color.black, Color.white });
+            texture.Apply();
+            renderer.sharedMaterial.SetTexture("_TPS_BakedMesh", texture);
+            Apply();
+            var plug = Plugs.Single();
+            var imported = plug.textureMask.Get();
+            Assert.That(PlugMaskGenerator.GetMask(renderer, plug), Has.All.EqualTo(expected).Within(0.001f));
+            Apply();
+            Assert.That(plug.textureMask.Get(), Is.SameAs(imported),
+                "An unchanged mask should reuse its existing asset");
+            Assert.That(PlugMaskGenerator.GetMask(renderer, plug), Has.All.EqualTo(expected).Within(0.001f),
+                "Repeated imports must not multiply the mask again");
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ImportedMaskIsSavedBesideMaterialOnlyForManualUpgrades(bool manual) {
+            var folder = "Assets/SpsUpgradeMask_" + Guid.NewGuid().ToString("N");
+            AssetDatabase.CreateFolder("Assets", folder.Substring("Assets/".Length));
+            try {
+                var renderer = PlugMesh("TPS");
+                var texture = Track(new Texture2D(1, 1, TextureFormat.RGBA32, false, true));
+                texture.SetPixel(0, 0, Color.black);
+                texture.Apply();
+                renderer.sharedMaterial.SetTexture("_TPS_BakedMesh", texture);
+                AssetDatabase.CreateAsset(texture, folder + "/OriginalMask.asset");
+                AssetDatabase.CreateAsset(renderer.sharedMaterial.shader, folder + "/Shader.asset");
+                AssetDatabase.CreateAsset(renderer.sharedMaterial, folder + "/Original.mat");
+                if (manual) Apply();
+                else {
+                    var build = VRCFuryInjectorBuilder.GetInjector(avatar);
+                    build.GetService<ControllersService>().LoadAllControllers();
+                    build.GetService<SpsUpgrader>().Apply(root, false);
+                }
+                var imported = Plugs.Single().textureMask.Get();
+                var path = AssetDatabase.GetAssetPath(imported);
+                if (manual) {
+                    Assert.That(path, Does.StartWith(folder + "/Original SPS Mask"));
+                    Assert.That(AssetDatabase.LoadAssetAtPath<Texture2D>(path), Is.EqualTo(imported));
+                } else {
+                    Assert.That(path, Is.Empty, "Builds must keep imported masks in memory");
+                }
+                Assert.That(renderer.sharedMaterial.GetTexture("_TPS_BakedMesh"), Is.EqualTo(texture));
+                Assert.That(imported, Is.Not.EqualTo(texture));
+            } finally {
+                assets.RemoveAll(asset => AssetDatabase.GetAssetPath(asset).StartsWith(folder + "/"));
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
+
+        [Test]
+        public void ExistingSpsMaskIsNotReplacedByTpsMask() {
+            var renderer = PlugMesh("TPS");
+            var mesh = renderer.GetComponent<MeshFilter>().sharedMesh;
+            mesh.subMeshCount = 2;
+            mesh.SetTriangles(new[] { 0, 2, 1 }, 0);
+            mesh.SetTriangles(new[] { 1, 2, 3 }, 1);
+            var other = PlugMesh("Poiyomi").sharedMaterial;
+            renderer.sharedMaterials = new[] { renderer.sharedMaterial, other };
+            renderer.sharedMaterials[0].SetTexture("_TPS_BakedMesh", Texture2D.blackTexture);
+            var plug = renderer.gameObject.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = false;
+            plug.configureTpsMesh.Add(renderer);
+            var authored = Track(new Texture2D(1, 1, TextureFormat.RGBA32, false, true));
+            authored.SetPixel(0, 0, new Color(0.25f, 0.25f, 0.25f, 1));
+            authored.Apply();
+            plug.textureMask = authored;
+            Apply();
+            renderer.sharedMaterials = Array.Empty<Material>();
+            var mask = PlugMaskGenerator.GetMask(renderer, plug);
+            Assert.That(plug.textureMask.Get(), Is.SameAs(authored));
+            Assert.That(mask, Has.All.EqualTo(0.75f).Within(0.01f));
+        }
+
+        [Test]
+        public void TpsMaskUsesFirstMaterialWithAMask() {
+            var renderer = PlugMesh("TPS");
+            var second = PlugMesh("TPS");
+            var third = PlugMesh("TPS");
+            renderer.sharedMaterial.SetTexture("_TPS_BakedMesh", null);
+            second.sharedMaterial.SetTexture("_TPS_BakedMesh", Texture2D.blackTexture);
+            third.sharedMaterial.SetTexture("_TPS_BakedMesh", Texture2D.whiteTexture);
+            renderer.sharedMaterials = new[] { renderer.sharedMaterial, second.sharedMaterial, third.sharedMaterial };
+            Object.DestroyImmediate(second.gameObject);
+            Object.DestroyImmediate(third.gameObject);
+            Apply();
+            Assert.That(PlugMaskGenerator.GetMask(renderer, Plugs.Single()), Has.All.Zero);
         }
 
         [TestCase("Raliv")]
@@ -430,11 +930,80 @@ namespace VF.Tests {
             Apply();
             var plug = Plugs.Single();
             Assert.That(plug.gameObject, Is.SameAs(renderer.gameObject));
-            Assert.That(plug.enableSps, Is.False);
+            Assert.That(plug.enableSps, Is.True);
             Assert.That(renderer.sharedMaterial, Is.SameAs(material));
             Assert.That(EditorJsonUtility.ToJson(material), Is.EqualTo(json));
             Apply();
             Assert.That(Plugs, Has.Length.EqualTo(1));
+        }
+
+        [TestCase("Raliv")]
+        [TestCase("XSToon")]
+        [TestCase("UnityChan")]
+        [TestCase("Poiyomi")]
+        public void NewPlugImportsDpsMaterialLengthBeforeMaterialIsRemoved(string kind) {
+            var renderer = PlugMesh(kind, includeLength: true);
+            renderer.transform.localScale = Vector3.one * 2;
+            renderer.sharedMaterial.SetFloat("_Length", 0.45f);
+            var before = EditorJsonUtility.ToJson(renderer.sharedMaterial);
+            Apply(true);
+            Assert.That(Plugs, Is.Empty);
+            Apply();
+            var plug = Plugs.Single();
+            Assert.That(plug.autoLength, Is.False);
+            Assert.That(plug.length, Is.EqualTo(0.45f).Within(0.0001f));
+            Assert.That(plug.radius, Is.EqualTo(0.02f).Within(0.0001f));
+            Assert.That(EditorJsonUtility.ToJson(renderer.sharedMaterial), Is.EqualTo(before));
+            renderer.sharedMaterials = Array.Empty<Material>();
+            Assert.That(PlugSizeDetector.GetWorldSize(plug).worldLength, Is.EqualTo(0.9f).Within(0.0001f));
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void ExistingPlugImportsDpsLengthInItsOwnUnitsAndKeepsExplicitLength(bool meters, bool explicitLength) {
+            var renderer = PlugMesh("Raliv", includeLength: true);
+            renderer.transform.localScale = Vector3.one * 2;
+            renderer.sharedMaterial.SetFloat("_Length", 0.45f);
+            // Include an unrelated earlier slot with its own _Length property.
+            var other = PlugMesh("Disabled", includeLength: true);
+            other.sharedMaterial.SetFloat("_Length", 2);
+            renderer.sharedMaterials = new[] { other.sharedMaterial, renderer.sharedMaterial };
+            var plug = Child("Existing Plug").AddComponent<VRCFuryHapticPlug>();
+            plug.transform.localScale = Vector3.one * 3;
+            plug.autoRenderer = false;
+            plug.configureTpsMesh.Add(renderer);
+            plug.unitsInMeters = meters;
+            plug.autoLength = !explicitLength;
+            plug.length = 0.2f;
+            Apply();
+            var expected = explicitLength ? 0.2f : meters ? 0.9f : 0.3f;
+            Assert.That(plug.length, Is.EqualTo(expected).Within(0.0001f));
+            Assert.That(plug.autoLength, Is.False);
+            renderer.sharedMaterials[1].SetFloat("_Length", 0.7f);
+            Apply();
+            Assert.That(plug.length, Is.EqualTo(expected).Within(0.0001f), "Captured length is now an explicit component setting");
+        }
+
+        [TestCase(0f)]
+        [TestCase(-1f)]
+        [TestCase(float.NaN)]
+        [TestCase(float.PositiveInfinity)]
+        [TestCase(float.NegativeInfinity)]
+        public void InvalidDpsMaterialLengthFallsBackToMesh(float length) {
+            var renderer = PlugMesh("Raliv", includeLength: true);
+            renderer.sharedMaterial.SetFloat("_Length", length);
+            Apply();
+            Assert.That(Plugs.Single().length, Is.EqualTo(0.3f).Within(0.0001f));
+        }
+
+        [Test]
+        public void TpsMaterialDoesNotImportAnUnrelatedLengthProperty() {
+            var renderer = PlugMesh("TPS", includeLength: true);
+            renderer.sharedMaterial.SetFloat("_Length", 2);
+            Apply();
+            Assert.That(Plugs.Single().length, Is.EqualTo(0.3f).Within(0.0001f));
         }
 
         [Test]
@@ -455,6 +1024,463 @@ namespace VF.Tests {
             plug.configureTpsMesh.Add(renderer);
             Apply();
             Assert.That(Plugs, Is.EqualTo(new[] { plug }));
+        }
+
+        [Test]
+        public void StandalonePlugCapturesPoseWithoutMovingObject() {
+            var renderer = PlugMesh("TPS");
+            renderer.transform.SetPositionAndRotation(new Vector3(0.2f, 0.3f, 0.4f), Quaternion.Euler(12, 34, 56));
+            var owner = Child("Standalone Plug");
+            var plug = owner.AddComponent<VRCFuryHapticPlug>();
+            plug.enableSps = plug.autoRenderer = plug.autoLength = plug.autoRadius = false;
+            plug.configureTpsMesh.Add(renderer);
+            plug.length = 0.3f;
+            plug.radius = 0.02f;
+            Apply(true);
+            Vector(owner.transform.localPosition, Vector3.zero);
+            Apply();
+            Assert.That(Plugs.Single(), Is.SameAs(plug));
+            Assert.That(plug.gameObject, Is.SameAs(owner));
+            Assert.That(owner.transform.childCount, Is.Zero);
+            Vector(owner.transform.localPosition, Vector3.zero);
+            var size = PlugSizeDetector.GetWorldSize(plug);
+            Vector(owner.transform.TransformPoint(size.localPosition), renderer.transform.position);
+            Assert.That(Quaternion.Angle(owner.transform.rotation * size.localRotation, renderer.transform.rotation), Is.LessThan(0.001f));
+        }
+
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void SharedPlugObjectKeepsComponentReferenceHierarchyAndSettings(bool otherComponent, bool hasChildren) {
+            var renderer = PlugMesh("TPS");
+            var owner = Child("Authored Object");
+            owner.transform.SetPositionAndRotation(new Vector3(1, 2, 3), Quaternion.Euler(12, 34, 56));
+            owner.transform.localScale = Vector3.one * 2;
+            owner.SetActive(false);
+            if (otherComponent) owner.AddComponent<BoxCollider>();
+            var userChild = hasChildren ? Child("User Child", owner.transform) : null;
+            var matrix = owner.transform.localToWorldMatrix;
+            var plug = owner.AddComponent<VRCFuryHapticPlug>();
+            plug.enableSps = plug.autoRenderer = plug.autoLength = plug.autoRadius = false;
+            plug.configureTpsMesh.Add(renderer);
+            plug.enabled = false;
+            plug.name = "Authored Name";
+            plug.length = 0.3f;
+            plug.radius = 0.02f;
+            plug.spsAnimatedEnabled = 0.25f;
+            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "Custom Channel", allowOthers = false });
+            Apply(true);
+            Assert.That(owner.GetComponent<VRCFuryHapticPlug>(), Is.SameAs(plug));
+            Assert.That(owner.transform.Find("SPS Plug"), Is.Null);
+            Apply();
+            var moved = Plugs.Single();
+            Assert.That(moved, Is.SameAs(plug));
+            Assert.That(moved.gameObject, Is.SameAs(owner));
+            Assert.That(owner.transform.Find("SPS Plug"), Is.Null);
+            Assert.That(owner.transform.childCount, Is.EqualTo(hasChildren ? 1 : 0));
+            var size = PlugSizeDetector.GetWorldSize(moved);
+            Vector(moved.transform.TransformPoint(size.localPosition), renderer.transform.position);
+            Assert.That(Quaternion.Angle(moved.transform.rotation * size.localRotation, renderer.transform.rotation), Is.LessThan(0.001f));
+            Assert.That(owner.transform.localToWorldMatrix, Is.EqualTo(matrix));
+            Assert.That(owner.activeSelf, Is.False);
+            Assert.That(moved.gameObject.activeInHierarchy, Is.False);
+            if (userChild != null) Assert.That(userChild.transform.parent, Is.SameAs(owner.transform));
+            if (otherComponent) Assert.That(owner.GetComponent<BoxCollider>(), Is.Not.Null);
+            Assert.That(moved.enabled, Is.False);
+            Assert.That(moved.name, Is.EqualTo("Authored Name"));
+            Assert.That(moved.length, Is.EqualTo(0.3f));
+            Assert.That(moved.radius, Is.EqualTo(0.02f));
+            Assert.That(moved.spsAnimatedEnabled, Is.EqualTo(0.25f));
+            Assert.That(moved.includeTags.Single().tag, Is.EqualTo("Custom Channel"));
+            Assert.That(moved.includeTags.Single().allowOthers, Is.False);
+            Apply();
+            Assert.That(Plugs.Single(), Is.SameAs(moved));
+            Assert.That(owner.transform.childCount, Is.EqualTo(hasChildren ? 1 : 0));
+        }
+
+        [Test]
+        public void UpgradePreservesEnableActionsAndAnimationTargets() {
+            var renderer = PlugMesh("TPS");
+            var plug = renderer.gameObject.AddComponent<VRCFuryHapticPlug>();
+            var action = new VF.Model.StateAction.SpsOnAction { target = plug };
+            var toggle = new VF.Model.Feature.Toggle();
+            toggle.state.actions.Add(action);
+            var feature = Child("Toggle").AddComponent<VF.Model.VRCFury>();
+            feature.content = toggle;
+            var clip = VFClip.Create("Enable SPS");
+            clip.SetCurve(plug, "spsAnimatedEnabled", 1);
+            Apply();
+            var moved = Plugs.Single();
+            Assert.That(moved, Is.SameAs(plug));
+            Assert.That(action.target, Is.SameAs(moved));
+            Assert.That(((VF.Model.StateAction.SpsOnAction)((VF.Model.Feature.Toggle)feature.content).state.actions.Single()).target,
+                Is.SameAs(moved));
+            var binding = clip.GetFloatBindings().Single();
+            Assert.That(binding.Targets(plug.owner()), Is.True);
+            Assert.That(renderer.GetComponent<VRCFuryHapticPlug>(), Is.SameAs(plug));
+        }
+
+        private static void SamePlugGeometry(VRCFuryHapticPlug plug, PlugSizeDetector.SizeResult expected, Transform originalFrame) {
+            var actual = PlugSizeDetector.GetWorldSize(plug);
+            Vector(plug.transform.TransformPoint(actual.localPosition), originalFrame.TransformPoint(expected.localPosition));
+            Assert.That(Quaternion.Angle(plug.transform.rotation * actual.localRotation,
+                originalFrame.rotation * expected.localRotation), Is.LessThan(0.001f));
+            Assert.That(actual.worldLength, Is.EqualTo(expected.worldLength).Within(0.0001f));
+            Assert.That(actual.worldRadius, Is.EqualTo(expected.worldRadius).Within(0.0001f));
+            Assert.That(actual.renderers, Is.EquivalentTo(expected.renderers));
+        }
+
+        [Test]
+        public void PlugSizingIgnoresLegacyInputsUntilUpgraded() {
+            var renderer = PlugMesh("TPS");
+            renderer.sharedMaterial.SetVector("_TPS_PenetratorForward", new Vector4(1, 0, 0, 0));
+            var plug = renderer.gameObject.AddComponent<VRCFuryHapticPlug>();
+            plug.enableSps = plug.autoLength = plug.autoRadius = false;
+            plug.length = 0.3f;
+            plug.radius = 0.02f;
+            var reference = Child("OGBTestBase", plug.transform);
+            reference.transform.localPosition = new Vector3(0.1f, 0.02f, 0.03f);
+            reference.transform.localRotation = Quaternion.Euler(12, 34, 56);
+            var size = PlugSizeDetector.GetWorldSize(plug);
+            Vector(size.localPosition, Vector3.zero);
+            Assert.That(Quaternion.Angle(size.localRotation, Quaternion.identity), Is.LessThan(0.001f));
+            Apply();
+            plug = Plugs.Single();
+            size = PlugSizeDetector.GetWorldSize(plug);
+            Vector(plug.transform.TransformPoint(size.localPosition), reference.transform.position);
+            Assert.That(Quaternion.Angle(plug.transform.rotation * size.localRotation, reference.transform.rotation), Is.LessThan(0.001f));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SocketBakingUsesComponentDataAndLeavesLegacyLightsForUpgrader(bool deform) {
+            var owner = Child("Socket");
+            var socket = owner.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = deform ? LightType.Ring : LightType.None;
+            socket.position = new Vector3(-0.1f, 0.02f, 0.03f);
+            socket.rotation = new Vector3(12, 34, 56);
+            var (main, front) = Lights(owner);
+            var context = new VRCFuryInjector();
+            context.ImportScan(typeof(VFServiceAttribute));
+            var result = context.GetService<VF.Inspector.VRCFuryHapticSocketBaker>().Bake(socket);
+            Vector(result.bakeRoot.localPosition, socket.position);
+            Assert.That(Quaternion.Angle(result.bakeRoot.localRotation, Quaternion.Euler(socket.rotation)), Is.LessThan(0.001f));
+            Assert.That(main != null && front != null, Is.True);
+            Assert.That(result.legacyLights != null, Is.EqualTo(deform && BuildTargetUtils.IsDesktop()));
+        }
+
+        [TestCase("TPS", false)]
+        [TestCase("TPS", true)]
+        [TestCase("Raliv", false)]
+        [TestCase("Raliv", true)]
+        [TestCase("Poiyomi", false)]
+        [TestCase("Poiyomi", true)]
+        public void UpgradedPlugPreservesGeometryAfterRemovingLegacyMaterials(string kind, bool existing) {
+            var renderer = PlugMesh(kind);
+            renderer.transform.localScale = Vector3.one * 2;
+            renderer.transform.localRotation = Quaternion.Euler(12, 23, 34);
+            if (kind == "TPS") {
+                var mesh = renderer.GetComponent<MeshFilter>().sharedMesh;
+                mesh.vertices = mesh.vertices.Select(v => Quaternion.Euler(0, 90, 0) * v).ToArray();
+                renderer.sharedMaterial.SetVector("_TPS_PenetratorForward", new Vector4(1, 0, 0, 0));
+            }
+            var expectedRotation = renderer.transform.rotation * (kind == "TPS" ? Quaternion.Euler(0, 90, 0) : Quaternion.identity);
+            VRCFuryHapticPlug original = null;
+            if (existing) {
+                original = Child("Existing Plug").AddComponent<VRCFuryHapticPlug>();
+                original.enableSps = false;
+                original.configureTps = true;
+                original.autoRenderer = false;
+                original.configureTpsMesh.Add(renderer);
+            }
+            Apply();
+            var plug = Plugs.Single();
+            if (existing) Assert.That(plug, Is.SameAs(original));
+            Assert.That(plug.enableSps, Is.True);
+            Assert.That(plug.configureTps, Is.EqualTo(existing), "The obsolete field is retained but ignored");
+            Assert.That(plug.autoRenderer || plug.autoLength || plug.autoRadius, Is.False);
+            Assert.That(plug.configureTpsMesh, Is.EqualTo(new[] { renderer }));
+            renderer.sharedMaterials = Array.Empty<Material>();
+            var size = PlugSizeDetector.GetWorldSize(plug);
+            Assert.That(Quaternion.Angle(plug.transform.rotation * size.localRotation, expectedRotation), Is.LessThan(0.001f));
+            Assert.That(size.worldLength, Is.EqualTo(0.6f).Within(0.0001f));
+            Assert.That(size.worldRadius, Is.EqualTo(0.04f).Within(0.0001f));
+            var json = EditorJsonUtility.ToJson(plug);
+            Apply();
+            Assert.That(EditorJsonUtility.ToJson(plug), Is.EqualTo(json), "Repeated upgrades must preserve captured overrides");
+        }
+
+        [TestCase(0.41f)]
+        [TestCase(0.42f)]
+        public void SocketPreparationCapturesLightFrameBeforeBuildCleanup(float range) {
+            var owner = Child("Legacy Socket");
+            owner.transform.SetPositionAndRotation(new Vector3(1, 2, 3), Quaternion.Euler(12, 34, 56));
+            owner.transform.localScale = Vector3.one * 2;
+            var socket = owner.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = LightType.None;
+            var (main, front) = Lights(owner, range);
+            var expectedPosition = main.transform.position;
+            var expectedForward = (front.transform.position - main.transform.position).normalized;
+            var tip = Light(owner, "Tip", 0.49f, Vector3.zero);
+            var visible = Light(owner, "Visible", 0.41f, Vector3.zero);
+            visible.color = Color.white;
+            SpsSocketPreparation.ImportSettingsFromLegacySystems(new[] { socket }, deleteLights: true);
+            Assert.That(main == null && front == null, Is.True);
+            Assert.That(tip != null && visible != null, Is.True);
+            Assert.That(socket.addLight, Is.EqualTo(range == 0.41f ? LightType.Hole : LightType.Ring));
+            Vector(owner.transform.TransformPoint(socket.position), expectedPosition);
+            Vector(owner.transform.TransformDirection(Quaternion.Euler(socket.rotation) * Vector3.forward), expectedForward);
+            var before = EditorJsonUtility.ToJson(socket);
+            SpsSocketPreparation.ImportSettingsFromLegacySystems(new[] { socket }, deleteLights: true);
+            Assert.That(EditorJsonUtility.ToJson(socket), Is.EqualTo(before));
+            var services = new VRCFuryInjector();
+            services.ImportScan(typeof(VFServiceAttribute));
+            var baked = services.GetService<VF.Inspector.VRCFuryHapticSocketBaker>().Bake(socket);
+            Vector(baked.bakeRoot.worldPosition, expectedPosition);
+            Vector(baked.bakeRoot.TransformDirection(Vector3.forward), expectedForward);
+        }
+
+        [TestCase((int)LightType.Auto)]
+        [TestCase((int)LightType.Hole)]
+        [TestCase((int)LightType.Ring)]
+        public void SocketPreparationPreservesAuthoredSettingsWhileRemovingLegacyLights(int type) {
+            var owner = Child("Authored Socket");
+            var socket = owner.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = (LightType)type;
+            socket.position = new Vector3(0.1f, 0.2f, 0.3f);
+            socket.rotation = new Vector3(12, 34, 56);
+            var (main, front) = Lights(owner);
+            var before = EditorJsonUtility.ToJson(socket);
+            SpsSocketPreparation.ImportSettingsFromLegacySystems(new[] { socket }, deleteLights: true);
+            Assert.That(main == null && front == null, Is.True);
+            Assert.That(EditorJsonUtility.ToJson(socket), Is.EqualTo(before));
+        }
+
+        [TestCase("TPS", false, false, false)]
+        [TestCase("TPS", true, false, false)]
+        [TestCase("TPS", false, true, false)]
+        [TestCase("TPS", true, false, true)]
+        [TestCase("Raliv", true, false, false)]
+        public void LegacyMaterialDeterminesPlugPoseRegardlessOfOldPositionAndDeformationSettings(
+            string kind, bool enableSps, bool configureTps, bool oldAutoPosition) {
+            var renderer = PlugMesh(kind);
+            renderer.transform.localRotation = Quaternion.Euler(12, 34, 56);
+            if (kind == "TPS") renderer.sharedMaterial.SetVector("_TPS_PenetratorForward", new Vector4(1, 0, 0, 0));
+            var plug = Child("Plug").AddComponent<VRCFuryHapticPlug>();
+            plug.enableSps = enableSps;
+            plug.configureTps = configureTps;
+            plug.autoPosition = oldAutoPosition;
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = false;
+            plug.configureTpsMesh.Add(renderer);
+            plug.length = 0.3f;
+            plug.radius = 0.02f;
+            Apply();
+            var moved = Plugs.Single();
+            var size = PlugSizeDetector.GetWorldSize(moved);
+            Vector(moved.transform.TransformPoint(size.localPosition), renderer.transform.position);
+            var expectedRotation = renderer.transform.rotation * (kind == "TPS" ? Quaternion.Euler(0, 90, 0) : Quaternion.identity);
+            Assert.That(Quaternion.Angle(moved.transform.rotation * size.localRotation, expectedRotation), Is.LessThan(0.001f));
+            Assert.That(moved.enableSps, Is.True);
+            Assert.That(moved.configureTps, Is.EqualTo(configureTps), "The obsolete field is retained but ignored");
+            Assert.That(moved.autoPosition, Is.EqualTo(oldAutoPosition), "The obsolete field should not be read or rewritten");
+        }
+
+        [Test]
+        public void PreparationUsesSuppliedRendererAndConvertsLegacyMaterialInLaterSlot() {
+            var unrelated = PlugMesh("Disabled");
+            var selected = PlugMesh("TPS");
+            selected.sharedMaterials = new[] { unrelated.sharedMaterial, selected.sharedMaterial };
+            selected.sharedMaterials[1].SetVector("_TPS_PenetratorForward", new Vector4(1, 0, 0, 0));
+            selected.transform.localPosition = new Vector3(0.1f, 0.2f, 0.3f);
+            selected.transform.localRotation = Quaternion.Euler(12, 23, 34);
+            // Ordinary auto-search would pick the renderer on the plug's own object.
+            var plug = unrelated.gameObject.AddComponent<VRCFuryHapticPlug>();
+            plug.enableSps = plug.autoLength = plug.autoRadius = false;
+            plug.length = 0.3f;
+            plug.radius = 0.02f;
+            SpsPlugPreparation.ImportSettingsFromLegacySystems(plug, new[] { selected });
+            Assert.That(plug.enableSps, Is.True);
+            Assert.That(plug.autoRenderer, Is.False);
+            Assert.That(plug.configureTpsMesh, Is.EqualTo(new[] { selected }));
+            Vector(plug.transform.TransformPoint(plug.position), selected.transform.position);
+            Assert.That(Quaternion.Angle(plug.transform.rotation * Quaternion.Euler(plug.rotation),
+                selected.transform.rotation * Quaternion.Euler(0, 90, 0)), Is.LessThan(0.001f));
+        }
+
+        [Test]
+        public void PreparationPreservesAutomaticSettingsOnOrdinarySpsPlugs() {
+            var renderer = PlugMesh("Disabled");
+            var plug = renderer.gameObject.AddComponent<VRCFuryHapticPlug>();
+            plug.position = new Vector3(0, 0, -0.01f);
+            plug.rotation = new Vector3(0, 10, 0);
+            var before = EditorJsonUtility.ToJson(plug);
+            SpsPlugPreparation.ImportSettingsFromLegacySystems(plug, PlugRendererFinder.GetRenderers(plug));
+            Assert.That(EditorJsonUtility.ToJson(plug), Is.EqualTo(before));
+        }
+
+        [Test]
+        public void LegacyAutoSearchStillFindsOrdinaryChildRenderersWithoutPreparation() {
+            var owner = Child("Old Plug");
+            var renderer = PlugMesh("Disabled");
+            renderer.transform.SetParent(owner.transform, false);
+            var plug = owner.AddComponent<VRCFuryHapticPlug>();
+            plug.useLegacyRendererFinder = true;
+            var before = EditorJsonUtility.ToJson(plug);
+            Assert.That(PlugRendererFinder.GetRenderers(plug), Is.EqualTo(new[] { renderer }));
+            SpsPlugPreparation.ImportSettingsFromLegacySystems(plug, PlugRendererFinder.GetRenderers(plug));
+            Assert.That(EditorJsonUtility.ToJson(plug), Is.EqualTo(before));
+            Assert.That(PlugRendererFinder.GetRenderers(plug), Is.EqualTo(new[] { renderer }));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void PlugPreservesSceneHelperFrameAfterHelperIsRemoved(bool enableSps) {
+            var plug = Child("Plug").AddComponent<VRCFuryHapticPlug>();
+            plug.enableSps = enableSps;
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = false;
+            plug.length = 0.3f;
+            plug.radius = 0.02f;
+            var reference = Child("OGBTestBase", plug.transform);
+            reference.transform.localPosition = new Vector3(0.1f, -0.2f, 0.03f);
+            reference.transform.localRotation = Quaternion.Euler(12, 34, 56);
+            var originalFrame = plug.transform;
+            var expected = new PlugSizeDetector.SizeResult {
+                renderers = Array.Empty<Renderer>(), worldLength = 0.3f, worldRadius = 0.02f,
+                localPosition = reference.transform.localPosition, localRotation = reference.transform.localRotation
+            };
+            var json = EditorJsonUtility.ToJson(plug);
+            Apply(true);
+            Assert.That(EditorJsonUtility.ToJson(plug), Is.EqualTo(json));
+            Apply();
+            plug = Plugs.Single();
+            Object.DestroyImmediate(reference);
+            SamePlugGeometry(plug, expected, originalFrame);
+        }
+
+        [Test]
+        public void LegacyRendererSearchBecomesAnExplicitReferenceBeforeMaterialsAreRemoved() {
+            var owner = Child("Old Plug");
+            var ordinary = PlugMesh("Disabled");
+            ordinary.transform.SetParent(owner.transform, false);
+            var selected = PlugMesh("TPS");
+            selected.transform.SetParent(owner.transform, false);
+            var plug = owner.AddComponent<VRCFuryHapticPlug>();
+            plug.enableSps = false;
+            plug.useLegacyRendererFinder = true;
+            Assert.That(PlugRendererFinder.GetRenderers(plug), Is.EqualTo(new[] { selected }));
+            var expected = new PlugSizeDetector.SizeResult {
+                renderers = new[] { selected }, worldLength = 0.3f, worldRadius = 0.02f,
+                localPosition = Vector3.zero, localRotation = Quaternion.identity
+            };
+            Apply();
+            plug = Plugs.Single();
+            selected.sharedMaterials = Array.Empty<Material>();
+            SamePlugGeometry(plug, expected, owner.transform);
+            Assert.That(plug.autoRenderer, Is.False);
+            Assert.That(plug.configureTpsMesh, Is.EqualTo(new[] { selected }));
+        }
+
+        [Test]
+        public void AuthoredPlugSettingsSurviveUpgrade() {
+            var renderer = PlugMesh("Disabled");
+            var plug = renderer.gameObject.AddComponent<VRCFuryHapticPlug>();
+            plug.enableSps = false;
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = false;
+            plug.configureTpsMesh.Add(renderer);
+            renderer.transform.localPosition = new Vector3(0, 0, -0.01f);
+            renderer.transform.localRotation = Quaternion.Euler(0, 10, 0);
+            plug.position = new Vector3(0, 0, -0.01f);
+            plug.rotation = new Vector3(0, 5, 0);
+            plug.name = "Authored Plug";
+            plug.length = 0.2f;
+            plug.radius = 0.03f;
+            plug.unitsInMeters = true;
+            var expected = PlugSizeDetector.GetWorldSize(plug);
+            Apply();
+            plug = Plugs.Single();
+            Assert.That(plug.name, Is.EqualTo("Authored Plug"));
+            Assert.That(plug.length, Is.EqualTo(0.2f));
+            Assert.That(plug.radius, Is.EqualTo(0.03f));
+            Assert.That(plug.unitsInMeters, Is.True);
+            Assert.That(plug.enableSps, Is.False);
+            renderer.sharedMaterials = Array.Empty<Material>();
+            SamePlugGeometry(plug, expected, renderer.transform);
+        }
+
+        [Test]
+        public void SkinnedPlugPreservesRendererRootBoneFrame() {
+            var original = PlugMesh("TPS");
+            var owner = original.gameObject;
+            var mesh = owner.GetComponent<MeshFilter>().sharedMesh;
+            var material = original.sharedMaterial;
+            Object.DestroyImmediate(original);
+            var bone = Child("Plug Root Bone");
+            bone.transform.localPosition = new Vector3(0.005f, 0, 0);
+            bone.transform.localRotation = Quaternion.Euler(0, 10, 0);
+            mesh.boneWeights = mesh.vertices.Select(_ => new BoneWeight { boneIndex0 = 0, weight0 = 1 }).ToArray();
+            mesh.bindposes = new[] { bone.transform.worldToLocalMatrix * owner.transform.localToWorldMatrix };
+            var renderer = owner.AddComponent<SkinnedMeshRenderer>();
+            renderer.sharedMesh = mesh;
+            renderer.sharedMaterial = material;
+            renderer.bones = new[] { bone.transform };
+            renderer.rootBone = bone.transform;
+            var plug = owner.AddComponent<VRCFuryHapticPlug>();
+            plug.enableSps = false;
+            var dimensions = PlugSizeDetector.GetAutoWorldSize(new[] { renderer }, bone.transform.position, bone.transform.rotation);
+            var expected = new PlugSizeDetector.SizeResult {
+                renderers = new[] { renderer }, worldLength = dimensions.Item1, worldRadius = dimensions.Item2,
+                localPosition = owner.transform.InverseTransformPoint(bone.transform.position),
+                localRotation = Quaternion.Inverse(owner.transform.rotation) * bone.transform.rotation
+            };
+            Apply();
+            plug = Plugs.Single();
+            renderer.rootBone = null;
+            renderer.sharedMaterials = Array.Empty<Material>();
+            SamePlugGeometry(plug, expected, owner.transform);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void UnbakingPreservesBakedRootPose(bool isPlug) {
+            var owner = Child("Old Component");
+            owner.transform.localRotation = Quaternion.Euler(12, 23, 34);
+            owner.transform.localScale = Vector3.one * 2;
+            var baked = Child(isPlug ? "BakedHapticPlug" : "BakedHapticSocket", owner.transform);
+            baked.transform.localPosition = new Vector3(0.01f, -0.02f, 0.03f);
+            baked.transform.localRotation = Quaternion.Euler(21, 32, 43);
+            var expectedPosition = baked.transform.localPosition;
+            var expectedRotation = baked.transform.localRotation;
+            if (isPlug) Child("size", baked.transform).transform.localScale = new Vector3(0.3f, 0.02f, 1);
+            Apply();
+            Assert.That(baked == null, Is.True);
+            if (isPlug) {
+                var size = PlugSizeDetector.GetWorldSize(Plugs.Single());
+                Vector(size.localPosition, expectedPosition);
+                Assert.That(Quaternion.Angle(size.localRotation, expectedRotation), Is.LessThan(0.001f));
+            } else {
+                var frame = VF.Inspector.VRCFuryHapticSocketEditor.GetSocketTransformLocal(Sockets.Single()).Item2;
+                Vector(frame.position, expectedPosition);
+                Assert.That(Quaternion.Angle(frame.rotation, expectedRotation), Is.LessThan(0.001f));
+            }
+        }
+
+        [TestCase(0.41f)]
+        [TestCase(0.42f)]
+        public void ExistingSocketCopiesLightSettingsBeforeDeletingLights(float range) {
+            var owner = Child("Old Socket");
+            var socket = owner.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = LightType.None;
+            var (main, front) = Lights(owner, range);
+            var expectedPosition = main.transform.localPosition;
+            var expectedForward = (front.transform.localPosition - main.transform.localPosition).normalized;
+            Apply();
+            Assert.That(main == null && front == null, Is.True);
+            Assert.That(socket.addLight, Is.EqualTo(range == 0.41f ? LightType.Hole : LightType.Ring));
+            Vector(socket.position, expectedPosition);
+            Vector(Quaternion.Euler(socket.rotation) * Vector3.forward, expectedForward);
+            var frame = VF.Inspector.VRCFuryHapticSocketEditor.GetSocketTransformLocal(socket).Item2;
+            Vector(frame.position, expectedPosition);
+            Vector(frame.rotation * Vector3.forward, expectedForward);
         }
 
         [TestCase(false)]
@@ -519,6 +1545,34 @@ namespace VF.Tests {
             Assert.That(Sockets, Is.Empty);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ReplacingAttachmentWithExistingComponentDoesNotReportDeletedObject(bool socketsOnly) {
+            var constraint = Attachment();
+            var oldSocket = constraint.gameObject.AddComponent<VRCFuryHapticSocket>();
+            var preview = socketsOnly ? upgrader.ApplySockets(root, true) : Apply(true);
+            Assert.That(preview, Does.Not.Contain("SPS already exists on:"));
+            Assert.That(oldSocket != null, Is.True);
+            var report = socketsOnly ? upgrader.ApplySockets(root, false) : Apply();
+            Assert.That(oldSocket == null && constraint == null, Is.True);
+            Assert.That(Sockets, Has.Length.EqualTo(2));
+            Assert.That(report, Does.Contain("Socket component will be added to:"));
+            Assert.That(report, Does.Not.Contain("SPS already exists on:"));
+        }
+
+        [Test]
+        public void PlugMigrationErrorIdentifiesTheComponentAndRetainsTheCause() {
+            var renderer = PlugMesh("TPS");
+            renderer.GetComponent<MeshFilter>().sharedMesh = null;
+            var plug = Child("Broken Plug").AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = false;
+            plug.configureTpsMesh.Add(renderer);
+            var error = Assert.Throws<ExceptionWithCause>(() => SpsPlugPreparation.ImportSettingsFromLegacySystems(new[] { plug }));
+            Assert.That(error.Message, Does.Contain("Upgrade Test/Broken Plug"));
+            Assert.That(error.InnerException, Is.TypeOf<VRCFBuilderException>());
+            Assert.That(error.InnerException.Message, Does.Contain("Failed to detect plug length"));
+        }
+
         [Test]
         public void AttachmentTargetsWithExistingSocketsAreNotOverwritten() {
             var constraint = Attachment();
@@ -572,7 +1626,8 @@ namespace VF.Tests {
             var owner = parent ? root : Child("Existing Plug", renderer.transform);
             var existing = owner.AddComponent<VRCFuryHapticPlug>();
             Apply();
-            Assert.That(Plugs, Is.EqualTo(new[] { existing }));
+            Assert.That(Plugs, Has.Length.EqualTo(1));
+            Assert.That(Plugs.Single(), Is.SameAs(existing));
         }
 
         [Test]
@@ -662,6 +1717,24 @@ namespace VF.Tests {
             Assert.That(shared.controls.Select(c => c.name), Is.EqualTo(new[] { "Unrelated", "Back" }));
             Assert.That(menu.controls.Select(c => c.name), Is.EqualTo(new[] { "Unrelated", "Mixed", "Shared" }));
             Assert.That(shared.controls.Last().subMenu, Is.SameAs(menu));
+        }
+
+        [Test]
+        public void ManualUpgradeWorksWithoutAnAvatarDescriptor() {
+            Object.DestroyImmediate(avatar);
+            var renderer = PlugMesh("TPS");
+            var (main, front) = Lights(Child("Socket"));
+            var manual = VRCFuryInjectorBuilder.CreateForManualEditing(root).GetService<SpsUpgrader>();
+            var preview = manual.Apply(root, true);
+            Assert.That(preview, Does.Contain("Plug component will be added").And.Contain("Socket component will be added"));
+            Assert.That(Plugs, Is.Empty);
+            Assert.That(Sockets, Is.Empty);
+            Assert.That(main != null && front != null, Is.True);
+            manual.Apply(root, false);
+            Assert.That(Plugs.Single().gameObject, Is.SameAs(renderer.gameObject));
+            Assert.That(Plugs.Single().enableSps, Is.True);
+            Assert.That(Sockets, Has.Length.EqualTo(1));
+            Assert.That(main == null && front == null, Is.True);
         }
 
         [Test]

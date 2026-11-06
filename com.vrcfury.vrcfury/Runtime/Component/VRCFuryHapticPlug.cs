@@ -8,7 +8,11 @@ namespace VF.Component {
     [AddComponentMenu("VRCFury/SPS Plug (VRCFury)")]
     internal class VRCFuryHapticPlug : VRCFuryComponent {
         public bool autoRenderer = true;
+        // Retained for serialized compatibility; no longer used.
+        [Obsolete, HideInInspector]
         public bool autoPosition = true;
+        public Vector3 position;
+        public Vector3 rotation;
         public bool autoLength = true;
         public bool useBoneMask = true;
         public GuidTexture2d textureMask = null;
@@ -17,7 +21,7 @@ namespace VF.Component {
         public float radius;
         public new string name;
         public bool unitsInMeters = false;
-        public bool configureTps = false;
+        [Obsolete, HideInInspector] public bool configureTps = false;
         public bool enableSps = true;
         public bool spsAutorig = true;
         public List<string> spsBlendshapes = new List<string>();

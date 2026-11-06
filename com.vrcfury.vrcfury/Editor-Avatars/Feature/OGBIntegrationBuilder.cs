@@ -9,12 +9,6 @@ namespace VF.Feature {
     [FeatureTitle("Haptic Component Auto-Adder")]
     [FeatureHideInMenu]
     internal class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration2> {
-        [VFAutowired] private readonly SpsUpgrader spsUpgrader;
-        [FeatureBuilderAction(FeatureOrder.UpgradeLegacyHaptics)]
-        public void Apply() {
-            spsUpgrader.Apply(featureBaseObject, false);
-        }
-        
         [FeatureEditor]
         public static VisualElement Editor() {
             var content = new VisualElement();

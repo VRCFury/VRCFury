@@ -54,7 +54,7 @@ namespace VF.Service {
             if (renderer == null) return;
 
             var usesLights = renderer.sharedMaterials.Any(mat =>
-                DpsConfigurer.IsDps(mat) || TpsConfigurer.IsTps(mat));
+                DpsUtils.IsDps(mat) || TpsUtils.IsTps(mat));
             if (usesLights) return;
 
             if (renderer is SkinnedMeshRenderer skin) {

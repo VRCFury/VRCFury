@@ -9,19 +9,16 @@ namespace VF.Builder.Haptics {
             Renderer renderer,
             Transform origin,
             float[] activeFromMask,
-            bool tpsCompatibility,
             ICollection<string> spsBlendshapes = null
         ) {
-            var bakedMesh = MeshBaker.BakeMesh(renderer, origin, !tpsCompatibility);
+            var bakedMesh = MeshBaker.BakeMesh(renderer, origin, true);
             if (bakedMesh == null)
                 throw new VRCFBuilderException("Failed to bake mesh for SPS configuration");
 
-            var baked = new SpsBakedTexture(tpsCompatibility);
+            var baked = new SpsBakedTexture();
 
             // version
-            if (!tpsCompatibility) {
-                baked.WriteFloat(0);
-            }
+            baked.WriteFloat(0);
 
             float GetActive(int i) {
                 return activeFromMask.GetOrDefault(i, 1);
@@ -30,20 +27,12 @@ namespace VF.Builder.Haptics {
             for (var i = 0; i < bakedMesh.vertices.Length; i++) {
                 baked.WriteVector3(bakedMesh.vertices[i]);
 
-                if (tpsCompatibility) {
-                    if (GetActive(i) == 0) {
-                        baked.WriteVector3(new Vector3(0,0,0));
-                    } else {
-                        baked.WriteVector3(bakedMesh.normals.GetOrDefault(i, Vector3.zero));
-                    }
-                } else {
-                    baked.WriteVector3(bakedMesh.normals.GetOrDefault(i, Vector3.zero));
-                    baked.WriteVector3(bakedMesh.tangents.GetOrDefault(i, Vector3.zero));
-                    baked.WriteFloat(GetActive(i));
-                }
+                baked.WriteVector3(bakedMesh.normals.GetOrDefault(i, Vector3.zero));
+                baked.WriteVector3(bakedMesh.tangents.GetOrDefault(i, Vector3.zero));
+                baked.WriteFloat(GetActive(i));
             }
 
-            if (!tpsCompatibility && spsBlendshapes != null) {
+            if (spsBlendshapes != null) {
                 foreach (var bs in spsBlendshapes) {
                     var weight = renderer.GetBlendshapeWeight(bs);
                     renderer.SetBlendshapeWeight(bs, 0);

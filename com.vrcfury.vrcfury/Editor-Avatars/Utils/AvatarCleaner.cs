@@ -11,9 +11,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 namespace VF.Utils {
     [VFService]
     internal class AvatarCleaner {
-        [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly ExpressionParamsService expressionParams;
-        [VFAutowired] private readonly MenuService menuService;
+        [VFAutowired] private readonly VRCFuryInjector injector;
 
         public List<string> Cleanup(
             VFGameObject avatarObj,
@@ -71,6 +69,9 @@ namespace VF.Utils {
 
             var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
             if (avatar != null) {
+                // Scene-only cleanup also supports roots without an avatar descriptor.
+                // Resolve avatar services only when their assets are actually being inspected.
+                var controllers = injector.GetService<ControllersService>();
                 foreach (var controller in controllers.GetAllUsedControllers()) {
                     var typeName = VRCFEnumUtils.GetName(controller.vrcType);
                     var removedLayers = new HashSet<VFLayer>();
@@ -107,6 +108,7 @@ namespace VF.Utils {
                 if (perform) controllers.CommitRemovals();
 
                 if (ShouldRemoveParam != null) {
+                    var expressionParams = injector.GetService<ExpressionParamsService>();
                     var prms = new List<VRCExpressionParameters.Parameter>(expressionParams.GetSnapshot());
                     var originalCount = prms.Count;
                     for (var i = 0; i < prms.Count; i++) {
@@ -125,8 +127,8 @@ namespace VF.Utils {
                     }
                 }
 
-                var m = ShouldRemoveParam != null
-                    ? menuService.GetReadOnlyMenu() : null;
+                var menuService = ShouldRemoveParam != null ? injector.GetService<MenuService>() : null;
+                var m = menuService?.GetReadOnlyMenu();
                 if (m != null && perform) {
                     m = menuService.GetMenu().GetRaw();
                 }

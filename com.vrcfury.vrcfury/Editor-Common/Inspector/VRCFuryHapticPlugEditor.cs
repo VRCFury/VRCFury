@@ -182,7 +182,7 @@ namespace VF.Inspector {
                 plug,
                 p => p.name,
                 p => {
-                    var renderers = GetRenderers(p);
+                    var renderers = PlugRendererFinder.GetRenderers(p);
                     if (renderers.Count > 0) {
                         return HapticUtils.GetFallbackId(renderers.First().owner());
                     }
@@ -194,7 +194,6 @@ namespace VF.Inspector {
 
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticPlug target) {
             var container = new VisualElement();
-            var configureTps = serializedObject.FindProperty("configureTps");
             var enableSps = serializedObject.FindProperty("enableSps");
 
             if (DexProtectUtils.IsDexProtectPresent()) {
@@ -229,15 +228,6 @@ namespace VF.Inspector {
                 }
                 return c;
             }, autoMesh));
-
-            sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var c = new VisualElement();
-                if (!configureTps.boolValue && !enableSps.boolValue) {
-                    c.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("autoPosition"),
-                        "Detect position/rotation from mesh"));
-                }
-                return c;
-            }, configureTps, enableSps));
 
             var autoLength = serializedObject.FindProperty("autoLength");
             sizeSection.Add(VRCFuryEditorUtils.BetterProp(autoLength, "Detect length from mesh"));
@@ -293,7 +283,7 @@ namespace VF.Inspector {
                 var displayWarning = bones.Length > 0 && !isInsideBone;
                 boneWarning.SetVisible(displayWarning);
 
-                legacyMaterialWarning.SetVisible(size.renderers.Any(TpsConfigurer.HasDpsOrTpsMaterial));
+                legacyMaterialWarning.SetVisible(size.renderers.Any(TpsUtils.HasDpsOrTpsMaterial));
                 
                 return text.Join('\n');
             }));
@@ -406,9 +396,14 @@ namespace VF.Inspector {
                 value = false
             };
             container.Add(adv);
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"), "(Deprecated) Units are in world-space"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"),
+                "(Deprecated) Length and radius are in world-space meters",
+                tooltip: "When checked, manually entered length and radius ignore the plug object's scale at build time. " +
+                         "When unchecked, they use local units and are multiplied by the object's scale. " +
+                         "Automatically detected dimensions are unaffected."));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLegacyRendererFinder"), "(Deprecated) Use legacy renderer search"));
-            adv.Add(VRCFuryEditorUtils.BetterProp(configureTps, "(Deprecated) Auto-configure Poiyomi TPS"));
 
             return container;
         }
@@ -443,29 +438,20 @@ namespace VF.Inspector {
             
             return VRCFuryEditorUtils.Debug(refreshElement: () => {
                 var output = new VisualElement();
-                var legacyRendererPaths = new List<string>();
                 var tipLightPaths = new List<string>();
                 var orificeLightPaths = new List<string>();
 
                 foreach (var light in c.owner().GetComponentsInUploadRoot<Light>()) {
                     if (light.type != LightType.Point && light.type != LightType.Spot) continue;
                     var path = light.owner().GetDebugPath();
-                    var type = VRCFuryHapticSocketEditor.GetLegacyDpsLightType(light);
-                    if (type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Tip)
+                    var type = DpsUtils.GetLegacyDpsLightType(light);
+                    if (type == DpsUtils.LegacyDpsLightType.Tip)
                         tipLightPaths.Add(path);
-                    else if (type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Hole ||
-                             type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Ring ||
-                             type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Front)
+                    else if (type == DpsUtils.LegacyDpsLightType.Hole ||
+                             type == DpsUtils.LegacyDpsLightType.Ring ||
+                             type == DpsUtils.LegacyDpsLightType.Front)
                         orificeLightPaths.Add(path);
                 }
-                foreach (var renderer in c.owner().GetComponentsInUploadRoot<Renderer>()) {
-                    foreach (var m in renderer.sharedMaterials) {
-                        if (DpsConfigurer.IsDps(m) || TpsConfigurer.IsTps(m)) {
-                            legacyRendererPaths.Add($"{m.name} in {renderer.owner().GetDebugPath()}");
-                        }
-                    }
-                }
-
                 output.Clear();
                 if (tipLightPaths.Any()) {
                     var warning = VRCFuryEditorUtils.Warn(
@@ -485,16 +471,6 @@ namespace VF.Inspector {
                     );
                     output.Add(warning);
                 }
-                if (legacyRendererPaths.Any()) {
-                    var warning = VRCFuryEditorUtils.Warn(
-                        "This avatar still contains a legacy DPS or TPS penetrator! This means your avatar has not been fully converted to SPS," +
-                        " and your legacy penetrator may cause issues if too many sockets are on nearby." +
-                        " Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
-                        legacyRendererPaths.Join('\n')
-                    );
-                    output.Add(warning);
-                }
-
                 var inConstraints = c.owner().GetConstraints(true).Any();
                 if (inConstraints) {
                     var warning = VRCFuryEditorUtils.Warn(
@@ -603,16 +579,6 @@ namespace VF.Inspector {
             for (var i = 0; i < gizmoCount; i++) {
                 Gizmos.DrawSphere(gizmoStart + (gizmoEnd - gizmoStart) * i / (gizmoCount-1), worldRadius);
             }
-        }
-
-        public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug plug) {
-            var renderers = new List<Renderer>();
-            if (plug.autoRenderer) {
-                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(plug.owner(), !plug.useLegacyRendererFinder));
-            } else {
-                renderers.AddRange(plug.configureTpsMesh.Where(r => r != null));
-            }
-            return renderers;
         }
 
         public class BakeResult {

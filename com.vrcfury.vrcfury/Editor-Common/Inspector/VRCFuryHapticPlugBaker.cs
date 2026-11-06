@@ -100,11 +100,10 @@ namespace VF.Inspector {
 
             RendererResult[] rendererResults;
 
-            if (plug.configureTps || plug.enableSps) {
-                var checkboxName = plug.enableSps ? "Enable Deformation" : "Auto-Configure TPS";
+            if (plug.enableSps) {
                 if (renderers.Count == 0) {
                     throw new Exception(
-                        $"VRCFury SPS Plug has '{checkboxName}' checked, but no renderer was found.");
+                        "VRCFury SPS Plug has 'Enable Deformation' checked, but no renderer was found.");
                 }
 
                 rendererResults = renderers.Select(renderer => {
@@ -117,16 +116,13 @@ namespace VF.Inspector {
                             .ToArray();
 
                         var activeFromMask = PlugMaskGenerator.GetMask(renderer, plug);
-                        if (plug.enableSps && plug.spsAutorig) {
+                        if (plug.spsAutorig) {
                             renderer = SpsAutoRigger.AutoRig(renderer, localSpace, worldLength, worldRadius, activeFromMask);
                         }
-                        if (plug.enableSps) {
-                            SpsConfigurer.ExtendBoundsForSps(renderer, localSpace, worldLength);
-                        }
+                        SpsConfigurer.ExtendBoundsForSps(renderer, localSpace, worldLength);
 
-                        var spsBaked = plug.enableSps ? SpsBaker.Bake(renderer, localSpace, activeFromMask, false, spsBlendshapes) : null;
+                        var spsBaked = SpsBaker.Bake(renderer, localSpace, activeFromMask, spsBlendshapes);
 
-                        var finishedTpsCopies = new HashSet<Material>();
                         var spsCopies = new Dictionary<Material, Material>();
                         Material ConfigureMaterial(int slotNum, Material mat) {
                             var shouldPatch = size.matSlots.Get(renderer.owner()).Contains(slotNum);
@@ -136,27 +132,16 @@ namespace VF.Inspector {
                                 if (mat == null) return null;
                                 if (!BuildTargetUtils.IsDesktop()) return mat;
 
-                                if (plug.enableSps) {
-                                    if (spsCopies.TryGetValue(mat, out var configured)) return configured;
-                                    // Bake data belongs to this renderer, even if another
-                                    // feature already made the source material mutable.
-                                    var copy = mat.Clone("Needed to swap shader to SPS", forceClone: true);
-                                    SpsConfigurer.ConfigureSpsMaterial(renderer, copy, worldLength, worldRadius,
-                                        spsBaked,
-                                        plug, localSpace, spsBlendshapes);
-                                    spsPlugReceiverService.ConfigureMaterial(copy, plug);
-                                    spsCopies[mat] = copy;
-                                    return copy;
-                                }
-                                if (plug.configureTps && TpsConfigurer.IsTps(mat)) {
-                                    var copy = mat.Clone("Needed to change properties for TPS autoconfiguration");
-                                    if (finishedTpsCopies.Contains(copy)) return copy;
-                                    finishedTpsCopies.Add(copy);
-                                    TpsConfigurer.ConfigureTpsMaterial(renderer, localSpace, copy, worldLength, activeFromMask);
-                                    return copy;
-                                }
-
-                                return mat;
+                                if (spsCopies.TryGetValue(mat, out var configured)) return configured;
+                                // Bake data belongs to this renderer, even if another
+                                // feature already made the source material mutable.
+                                var copy = mat.Clone("Needed to swap shader to SPS", forceClone: true);
+                                SpsConfigurer.ConfigureSpsMaterial(renderer, copy, worldLength, worldRadius,
+                                    spsBaked,
+                                    plug, localSpace, spsBlendshapes);
+                                spsPlugReceiverService.ConfigureMaterial(copy, plug);
+                                spsCopies[mat] = copy;
+                                return copy;
                             } catch (Exception e) {
                                 throw new ExceptionWithCause($"Failed to configure material: {mat.name}", e);
                             }

@@ -168,9 +168,8 @@ namespace VF.Tests {
         [Test]
         public void SdkWritesCanonicalFrameToSeparateMaterialParameterEvenWithNoSenders() {
             Assert.That(ContactReceiver.SHADER_MAX_TARGET_CONTACTS, Is.EqualTo(8));
-            var reference = GameObjects.Create("OGBTestBase", root);
-            reference.localPosition = new Vector3(0.3f, 0.5f, -0.1f);
-            reference.localRotation = Quaternion.Euler(17, 29, 41);
+            plug.position = new Vector3(0.3f, 0.5f, -0.1f);
+            plug.rotation = new Vector3(17, 29, 41);
             var frame = injector.GetService<PlugFrameService>().Get(plug);
             var renderer = GameObjects.Create("Renderer", root).AddComponent<MeshRenderer>();
             service.Create(plug, new[] { renderer });

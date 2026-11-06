@@ -167,14 +167,6 @@ namespace VF.Service {
                 plugRadiusService.Create(bakeInfo, name);
             }
 
-            // TPS
-            if (plug.configureTps) {
-                foreach (var r in renderers) {
-                    var renderer = r.renderer;
-                    globals.addOtherFeature(new TpsScaleFix() { singleRenderer = renderer });
-                }
-            }
-
             // SPS
             if (plug.enableSps) {
                 foreach (var r in renderers) {

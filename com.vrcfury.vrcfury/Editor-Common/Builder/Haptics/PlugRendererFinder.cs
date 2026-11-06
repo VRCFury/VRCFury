@@ -1,12 +1,24 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEngine;
+using VF.Component;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {
-    /** Automatically finds the renderer to use for a plug */
+    /** Resolves a plug's configured or automatically selected renderers. */
     internal static class PlugRendererFinder {
-        public static IImmutableList<Renderer> GetAutoRenderer(VFGameObject obj, bool newSearchAlgo) {
+        public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug plug) {
+            var renderers = new List<Renderer>();
+            if (plug.autoRenderer) {
+                renderers.AddRange(GetAutoRenderer(plug.owner(), !plug.useLegacyRendererFinder));
+            } else {
+                renderers.AddRange(plug.configureTpsMesh.Where(r => r != null));
+            }
+            return renderers;
+        }
+
+        private static IImmutableList<Renderer> GetAutoRenderer(VFGameObject obj, bool newSearchAlgo) {
             if (newSearchAlgo) {
                 var current = obj;
 
@@ -42,7 +54,7 @@ namespace VF.Builder.Haptics {
         }
 
         private static IImmutableList<Renderer> GetAutoRendererInner(VFGameObject obj, bool dpsOrTpsOnly) {
-            bool IsDps(Renderer r) => !dpsOrTpsOnly || TpsConfigurer.HasDpsOrTpsMaterial(r);
+            bool IsDps(Renderer r) => !dpsOrTpsOnly || TpsUtils.HasDpsOrTpsMaterial(r);
 
             var foundOnObject = obj.GetComponents<Renderer>().Where(IsDps).ToImmutableList();
             if (foundOnObject.Count > 0) return foundOnObject;
