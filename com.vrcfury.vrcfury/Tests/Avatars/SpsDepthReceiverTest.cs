@@ -452,6 +452,17 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(meters), Is.EqualTo(0.04f).Within(0.001f));
             Assert.That(playable.GetFloat(local), Is.EqualTo(0.02f).Within(0.001f));
             Assert.That(playable.GetFloat(normalized), Is.EqualTo(0.05f).Within(0.001f));
+            foreach (var plugLength in new[] { 0.4f, 0.8f }) {
+                foreach (var (outside, fraction) in new[] { (0.1f, 0f), (0.05f, 0f), (0.025f, 0.5f), (0f, 1f), (-0.1f, 1f) }) {
+                    Set(receiver, 0.9f, plugLength * (1 + outside), length: plugLength, radius: 0.12f, native: true);
+                    playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.04f);
+                    Evaluate(30);
+                    Assert.That(playable.GetFloat(meters), Is.EqualTo(0.04f * fraction).Within(0.001f),
+                        $"Entry radius at {outside:P} outside a {plugLength}m plug");
+                    Assert.That(playable.GetFloat(local), Is.EqualTo(0.02f * fraction).Within(0.001f));
+                    Assert.That(playable.GetFloat(normalized), Is.EqualTo(0.04f * fraction / plugLength).Within(0.001f));
+                }
+            }
             Set(receiver, 0, -1, length: 0.8f, radius: 0.12f, native: true);
             Evaluate();
             foreach (var output in new[] { meters, local, normalized }) Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
@@ -1761,6 +1772,18 @@ namespace VF.Tests {
             Start();
             playable.SetFloat(toggle, 1);
             var receiver = self ? Merged() : Main(false);
+            Set(receiver, 0.9f, 0.66f, length: 0.6f, radius: 0.2f, native: true);
+            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.05f);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.01f), "Radius animations stay off beyond 5% outside");
+            Set(receiver, 0.9f, 0.615f, length: 0.6f, radius: 0.2f, native: true);
+            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.05f);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.25f).Within(0.01f), "2.5% outside gives half the sampled radius");
+            Set(receiver, 1, 0.6f, length: 0.6f, radius: 0.2f, native: true);
+            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.05f);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.5f).Within(0.01f), "Tip touching the entrance permits radius animations");
             Set(receiver, 1, 0.3f, length: 0.6f, radius: 0.2f, native: true);
             playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.05f);
             Evaluate(120);
@@ -1768,6 +1791,17 @@ namespace VF.Tests {
             playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.1f);
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.EqualTo(1).Within(0.01f));
+            Set(receiver, 0.9f, 0.66f, length: 0.6f, radius: 0.2f, native: true);
+            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.1f);
+            if (smoothingSeconds > 0) {
+                Evaluate(4);
+                Assert.That(playable.GetFloat(output), Is.GreaterThan(0.01f), "Withdrawing must let smoothing fade the animation out");
+            }
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.01f), "Withdrawing returns the animation to zero");
+            Set(receiver, 1, 0.3f, length: 0.6f, radius: 0.2f, native: true);
+            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.1f);
+            Evaluate(120);
             playable.SetFloat(toggle, 0);
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.01f), "Disabled sockets must stop radius animations");

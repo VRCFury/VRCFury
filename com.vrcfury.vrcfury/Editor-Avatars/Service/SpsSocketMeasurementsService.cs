@@ -118,11 +118,14 @@ namespace VF.Service {
                 VFAParam entryRadius = null;
                 VFAParam CreateEntryRadius() {
                     var output = fx.CreateUniqueFloat(prefix + "/PlugEntryRadius");
-                    encoding.Value.whenTrue.Add(output.MakeCopier(Field("SenderLossyScaleY")));
+                    // Modern plugs reach their sampled radius at the entrance, tapering to zero 5% outside.
+                    var depth = GetOutput(SpsParamDepth, SpsUnitsPlugLengths);
+                    encoding.Value.whenTrue.Add(VFBlendTree1D.CreateWithData(prefix + "/PlugEntryRadius/NativeTaper",
+                        depth, (0, output.MakeCopier(Field("SenderLossyScaleY"))), (0.05f, output.MakeSetter(0))));
                     if (legacy) {
                         var helper = receiverAnimator.GetParameter(contacts.GetLegacyWidthReceiver(main), Party.Others);
-                        var taper = VFBlendTree1D.CreateWithData(prefix + "/PlugEntryRadius/Taper",
-                            GetOutput(SpsParamDepth, SpsUnitsPlugLengths),
+                        var taper = VFBlendTree1D.CreateWithData(prefix + "/PlugEntryRadius/LegacyTaper",
+                            depth,
                             (-0.05f, output.MakeCopier(radius.Value)), (0, output.MakeSetter(0)));
                         encoding.Value.whenFalse.Add(BlendtreeMath.GreaterThan(helper, 0)
                             .create(taper, output.MakeSetter(0)));
