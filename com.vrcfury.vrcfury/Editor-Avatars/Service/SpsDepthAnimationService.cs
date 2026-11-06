@@ -8,7 +8,7 @@ using VF.Utils;
 using VF.Utils.Controller;
 
 namespace VF.Service {
-    // Builds depth animations from shared SPS measurements.
+    // Builds depth and radius animations from shared SPS measurements.
     [VFService]
     internal class SpsDepthAnimationService {
         [VFAutowired] private readonly SmoothingService smoothing;
@@ -19,31 +19,34 @@ namespace VF.Service {
         [VFAutowired] private readonly ObjectTreeService objectTrees;
 
         public void CreateAnims(
-            ICollection<VRCFuryHapticSocket.DepthActionNew> actions,
+            IEnumerable<VRCFuryHapticSocket.DepthActionNew> actions,
             VFGameObject spsComponentOwner,
             string name,
             Func<Party, Func<string, VFAParam>> getMeasurements,
-            VFGameObject bakeRoot
+            VFGameObject bakeRoot,
+            string measurement = SpsParamDepth
         ) {
             var calculations = objectTrees.Get(bakeRoot);
+            var increasing = measurement == SpsParamPlugEntryRadius;
             var controls = new Dictionary<(string input, float off, float on, float seconds, float initial), VFAParam>();
             var actionNum = 0;
             foreach (var depthAction in actions) {
+                var reverseClip = !increasing && depthAction.reverseClip;
                 actionNum++;
                 var prefix = $"{name}/Anim/{actionNum}";
 
                 var measurements = getMeasurements(depthAction.enableSelf ? Party.Merged : Party.Others);
                 var units = depthAction.units == VRCFuryHapticSocket.DepthActionUnits.Plugs ? SpsUnitsPlugLengths
                     : depthAction.units == VRCFuryHapticSocket.DepthActionUnits.Meters ? SpsUnitsMeters : SpsUnitsLocal;
-                var unsmoothed = measurements(GetSpsMagicParam(SpsParamDepth, units));
+                var unsmoothed = measurements(GetSpsMagicParam(measurement, units));
                 var action = actionClipService.LoadStateAdv(prefix, depthAction.actionSet, spsComponentOwner, ActionClipService.MotionTimeMode.Auto);
-                var useRawDepth = depthAction.smoothingSeconds <= 0 && !action.useMotionTime
+                var useRawInput = depthAction.smoothingSeconds <= 0 && !action.useMotionTime
                     && depthAction.range.Min() < depthAction.range.Max();
                 var parameter = unsmoothed;
-                var offThreshold = depthAction.range.Max();
-                var onThreshold = depthAction.range.Min();
-                if (!useRawDepth) {
-                    var initial = action.useMotionTime && depthAction.reverseClip ? 1f : 0f;
+                var offThreshold = increasing ? depthAction.range.Min() : depthAction.range.Max();
+                var onThreshold = increasing ? depthAction.range.Max() : depthAction.range.Min();
+                if (!useRawInput) {
+                    var initial = action.useMotionTime && reverseClip ? 1f : 0f;
                     var seconds = Math.Max(0, Math.Min(10, depthAction.smoothingSeconds));
                     parameter = controls.GetOrCreate((unsmoothed.name, offThreshold, onThreshold, seconds, initial), () =>
                         smoothing.Smooth(calculations, prefix + (seconds > 0 ? "/Smoothed" : "/Mapped"), seconds, initial,
@@ -55,28 +58,30 @@ namespace VF.Service {
 
                 if (!action.useMotionTime) {
                     var tree = VFBlendTree1D.Create(prefix + " tree", parameter);
-                    if (useRawDepth) {
+                    if (useRawInput && !increasing) {
                         tree.Add(onThreshold, action.onClip);
                         tree.Add(offThreshold, clipFactory.GetEmptyClip());
                     } else {
                         tree.Add(offThreshold, clipFactory.GetEmptyClip());
                         tree.Add(onThreshold, action.onClip);
                     }
-                    var active = useRawDepth
-                        ? BlendtreeMath.LessThan(parameter, offThreshold + (onThreshold - offThreshold) * 0.01f)
+                    var active = useRawInput
+                        ? increasing
+                            ? BlendtreeMath.GreaterThan(parameter, offThreshold + (onThreshold - offThreshold) * 0.01f)
+                            : BlendtreeMath.LessThan(parameter, offThreshold + (onThreshold - offThreshold) * 0.01f)
                         : BlendtreeMath.GreaterThan(parameter, 0.01f);
-                    calculations.Add(depthAction.reverseClip ? tree : active.create(tree, null));
+                    calculations.Add(reverseClip ? tree : active.create(tree, null));
                     continue;
                 }
-                var layer = fx.NewLayer($"{name} - Depth Animations - {actionNum} - Action");
+                var layer = fx.NewLayer($"{name} - {(increasing ? "Plug Entry Radius" : "Depth")} Animations - {actionNum} - Action");
                 var off = layer.NewState("Off");
                 var on = layer.NewState("On");
                 on.WithAnimation(action.onClip).MotionTime(parameter);
-                if (depthAction.reverseClip) {
+                if (reverseClip) {
                     foreach (var clip in new AnimatorIterator.Clips().From(action.onClip)) clip.Reverse();
                 }
 
-                if (depthAction.reverseClip) {
+                if (reverseClip) {
                     off.TransitionsTo(on).When(fx.Always());
                 } else {
                     var onWhen = parameter.IsGreaterThan(0.01f);

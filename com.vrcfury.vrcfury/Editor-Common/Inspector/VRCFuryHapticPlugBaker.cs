@@ -57,7 +57,7 @@ namespace VF.Inspector {
             var localLength = worldLength / scale;
             // Measure before auto-rigging or post-bake actions change the renderer.
             var radiusCurve = PlugRadiusCurve.GetRadiusCurve(plug, size, scale);
-            var socketReceivers = spsPlugReceiverService.GetReceivers(plug);
+            var socketReceivers = spsPlugReceiverService.GetReceivers(plug, legacySocketCompatibility);
 
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
@@ -167,7 +167,7 @@ namespace VF.Inspector {
             }
 
             if (plug.enableSps && BuildTargetUtils.IsDesktop()) {
-                spsPlugReceiverService.Create(plug, rendererResults.Select(r => r.renderer));
+                spsPlugReceiverService.Create(plug, rendererResults.Select(r => r.renderer), legacySocketCompatibility);
             }
 
             if (!deferMaterialConfig) {

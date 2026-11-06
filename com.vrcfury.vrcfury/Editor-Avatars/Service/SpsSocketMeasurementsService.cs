@@ -115,10 +115,27 @@ namespace VF.Service {
                 // Read the cached size instead of extending its decoding branches with inversion writers.
                 var inverseLength = new Lazy<VFAParam>(() => math.Invert(prefix + "/Length/Inverted", length.Value));
                 var outputs = new Dictionary<(string parameter, string units), VFAParam>();
+                VFAParam entryRadius = null;
+                VFAParam CreateEntryRadius() {
+                    var output = fx.CreateUniqueFloat(prefix + "/PlugEntryRadius");
+                    encoding.Value.whenTrue.Add(output.MakeCopier(Field("SenderLossyScaleY")));
+                    if (legacy) {
+                        var helper = receiverAnimator.GetParameter(contacts.GetLegacyWidthReceiver(main), Party.Others);
+                        var taper = VFBlendTree1D.CreateWithData(prefix + "/PlugEntryRadius/Taper",
+                            GetOutput(SpsParamDepth, SpsUnitsPlugLengths),
+                            (-0.05f, output.MakeCopier(radius.Value)), (0, output.MakeSetter(0)));
+                        encoding.Value.whenFalse.Add(BlendtreeMath.GreaterThan(helper, 0)
+                            .create(taper, output.MakeSetter(0)));
+                    }
+                    presence.Value.whenFalse.Add(output.MakeSetter(0));
+                    return output;
+                }
                 return source => {
                     var parsed = ParseSpsMagicParam(source);
-                    if (parsed == null) return null;
-                    var (parameter, units) = parsed.Value;
+                    return parsed == null ? null : GetOutput(parsed.Value.param, parsed.Value.units);
+                };
+
+                VFAParam GetOutput(string parameter, string units) {
                     return outputs.GetOrCreate((parameter, units), () => {
                         if (parameter == SpsParamPlugLength && units == SpsUnitsPlugLengths) return fx.One();
                         var input = parameter switch {
@@ -126,7 +143,8 @@ namespace VF.Service {
                             SpsParamVelocity => velocity.Value,
                             SpsParamPlugLength => length.Value,
                             SpsParamPlugRadius => radius.Value,
-                            _ => throw new ArgumentOutOfRangeException(nameof(source))
+                            SpsParamPlugEntryRadius => entryRadius ??= CreateEntryRadius(),
+                            _ => throw new ArgumentOutOfRangeException(nameof(parameter))
                         };
                         if (units == SpsUnitsMeters) return input;
                         var multiplier = units == SpsUnitsLocal ? inverseWorldScale.Value : inverseLength.Value;
@@ -140,7 +158,7 @@ namespace VF.Service {
                         }
                         return output;
                     });
-                };
+                }
 
                 void AddSize(string label, VFAParam output, VFAParam nativeInput, float assumed,
                     VFAParam estimate = null, BlendtreeMath.Condition extraPresent = null,

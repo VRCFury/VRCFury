@@ -169,6 +169,12 @@ namespace VF.Service {
                         );
                     }
 
+                    if (socket.plugEntryRadiusActions.Count > 0) {
+                        depthAnimations.CreateAnims(socket.plugEntryRadiusActions, socket.owner(), oscId + "/PlugEntryRadius",
+                            party => measurements.Value(party), bakeResult.worldSpace,
+                            measurement: VRCFuryHapticPlugEditor.SpsParamPlugEntryRadius);
+                    }
+
                     var injectRequests = parameterInjectService.GetRequests()
                         .Where(r => r.sourceObject == socket.owner())
                         .ToList();

@@ -430,6 +430,70 @@ namespace VF.Tests {
         }
 #endif
 
+        [TestCase(true, false)]
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        public void NativePlugEntryRadiusUsesSampledRadiusAndSharesUnitConversions(bool self, bool merged) {
+            var outputs = Socket(false)(merged ? Party.Merged : self ? Party.Self : Party.Others);
+            var meters = outputs(SpsPlugEntryRadiusMeters);
+            var local = outputs(SpsPlugEntryRadiusLocal);
+            var normalized = outputs(SpsPlugEntryRadiusPlugLengths);
+            Assert.That(outputs(SpsPlugEntryRadiusMeters), Is.SameAs(meters));
+            Assert.That(fx.parameters.Count(p => p.name.Contains("/PlugEntryRadius") && !p.name.Contains("/Local")
+                && !p.name.Contains("/PlugLengths")), Is.EqualTo(1));
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true)
+                .Any(r => r.collisionTags.Contains(SpsTags.LegacyPlugWidth)), Is.False);
+            Start();
+            playable.SetFloat(scale, 2);
+            var receiver = merged ? Merged() : Main(self);
+            Set(receiver, 1, 0.3f, length: 0.8f, radius: 0.12f, native: true);
+            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.04f);
+            Evaluate();
+            Assert.That(playable.GetFloat(meters), Is.EqualTo(0.04f).Within(0.001f));
+            Assert.That(playable.GetFloat(local), Is.EqualTo(0.02f).Within(0.001f));
+            Assert.That(playable.GetFloat(normalized), Is.EqualTo(0.05f).Within(0.001f));
+            Set(receiver, 0, -1, length: 0.8f, radius: 0.12f, native: true);
+            Evaluate();
+            foreach (var output in new[] { meters, local, normalized }) Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void LegacyPlugEntryRadiusTapersOverFirstFivePercentAndRequiresHelper(bool merged) {
+            var outputs = Socket()(merged ? Party.Merged : Party.Others);
+            var output = outputs(SpsPlugEntryRadiusMeters);
+            _ = outputs(SpsDepthPlugLengths);
+            Assert.That(fx.parameters.Count(p => p.name.Contains("/Dist/Meters/PlugLengths")), Is.EqualTo(1),
+                "Radius taper and depth animations must share their normalized depth");
+            Start();
+            void Contact(float separation, float main, float helper) {
+                Set(merged ? Merged() : Main(false), main, separation, length: 20, radius: 20);
+                Set(Width(false), helper, separation);
+                Evaluate(30);
+            }
+            Contact(0.3f, 1, 0);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f), "A fresh plug without a helper stays at zero");
+            Contact(0.63f, 0.97f, 0.85f);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f), "Before insertion");
+            Contact(0.6f, 1, 0.88f);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f), "Tip touching entrance");
+            Contact(0.585f, 1, 0.88f);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.03f).Within(0.001f), "2.5% insertion");
+            Contact(0.57f, 1, 0.88f);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.06f).Within(0.001f), "5% insertion");
+            Contact(0.3f, 1, 0.88f);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.06f).Within(0.001f), "Further insertion");
+            var receiver = merged ? Merged() : Main(false);
+            Set(receiver, 1, 0.3f, length: 0.6f, radius: 0.2f, native: true);
+            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.04f);
+            Evaluate(30);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.04f).Within(0.001f), "Native plugs use sampled radius even with a stale legacy helper");
+            Contact(0.3f, 1, 0);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f), "A plug without a radius helper must not use the assumed radius");
+            Contact(0, 0, 0);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
+        }
+
         [Test]
         public void LegacyLengthUsesCenterDistanceResetsOnExitAndIgnoresTeleports() {
             measurements = Socket()(Party.Others);
@@ -1237,6 +1301,13 @@ namespace VF.Tests {
             var senders = root.GetComponentsInChildren<VRCContactSender>(true);
             Assert.That(senders.Single(s => s.name == "Sender - Sphere").collisionTags.Contains(SpsTags.LegacyPlugSphere), Is.EqualTo(enabled));
             Assert.That(senders.Count(s => s.name == "Sender - Legacy Width" || s.name == "Sender - Legacy Root"), Is.EqualTo(enabled ? 2 : 0));
+            var main = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
+            receiverAnimator.GetParameter(main, Party.Merged);
+            foreach (var receiver in root.GetComponentsInChildren<VRCContactReceiver>(true)) {
+                foreach (var tag in new[] { SpsTags.LegacySocketHole, SpsTags.LegacySocketRing, SpsTags.LegacySocket }) {
+                    Assert.That(receiver.collisionTags.Contains(tag), Is.EqualTo(enabled && receiver.allowOthers), receiver.name + ": " + tag);
+                }
+            }
         }
 
         [TestCase(false, false, true, true)]
@@ -1556,6 +1627,60 @@ namespace VF.Tests {
             }
             Assert.That(playable.GetFloat("OGB/Plug/Test/LengthMult1") * multiplier.defaultValue,
                 Is.EqualTo(0.4f * resize).Within(0.0001f));
+        }
+
+        [TestCase(0f, false, false)]
+        [TestCase(0.1f, false, true)]
+        [TestCase(0f, true, false)]
+        [TestCase(0f, true, true)]
+        [TestCase(0f, true, false, true)]
+        [TestCase(0.1f, true, true, true)]
+        public void PlugEntryRadiusAnimationsUseSampledRadiusWithDepthAnimationOptions(float smoothingSeconds, bool motionTime, bool self, bool savedReverseClip = false) {
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> {
+                new SpsOptions { autoModeAvailable = false, legacyModeAvailable = false }
+            };
+            globals.addOtherFeature = _ => { };
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addMenuItem = true;
+            socket.name = "RadiusTest";
+            socket.useSharedTag = false;
+            socket.tags.Add("test");
+            var output = fx.GetOrCreateFloat("Radius action output");
+            var action = new VRCFuryHapticSocket.PlugEntryRadiusAction {
+                range = new Vector2(0, 0.1f), smoothingSeconds = smoothingSeconds, enableSelf = self, reverseClip = savedReverseClip
+            };
+            if (motionTime) {
+                var clip = VFClip.Create("Radius motion time");
+                clip.SetAap(output, AnimationCurve.Linear(0, 0, 1, 1));
+                action.actionSet.actions.Add(new VF.Model.StateAction.AnimationClipAction { vfClip = clip });
+            } else {
+                action.actionSet.actions.Add(new VF.Model.StateAction.FxFloatAction { name = output.name, value = 1 });
+            }
+            socket.plugEntryRadiusActions.Add(action);
+            injector.GetService<BakeHapticSocketsService>().Apply();
+            var toggle = fx.parameters.Single(p => p.name.EndsWith("_RadiusTest"));
+            Start();
+            playable.SetFloat(toggle, 1);
+            var receiver = self ? Merged() : Main(false);
+            Set(receiver, 1, 0.3f, length: 0.6f, radius: 0.2f, native: true);
+            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.05f);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.5f).Within(0.01f));
+            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.1f);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(1).Within(0.01f));
+            playable.SetFloat(toggle, 0);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.01f), "Disabled sockets must stop radius animations");
+            playable.SetFloat(toggle, 1);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(1).Within(0.01f));
+            Set(receiver, 0, -1, length: 0.6f, radius: 0.2f, native: true);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.01f));
         }
 
         [TestCase(0f, false)]

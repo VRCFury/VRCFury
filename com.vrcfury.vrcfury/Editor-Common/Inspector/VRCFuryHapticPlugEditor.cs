@@ -24,6 +24,7 @@ namespace VF.Inspector {
         public const string SpsParamVelocity = "Velocity";
         public const string SpsParamPlugLength = "Plug Length";
         public const string SpsParamPlugRadius = "Plug Radius";
+        public const string SpsParamPlugEntryRadius = "Plug Entry Radius";
         public const string SpsUnitsMeters = "Meters";
         public const string SpsUnitsLocal = "Local";
         public const string SpsUnitsPlugLengths = "Plug Lengths";
@@ -39,6 +40,9 @@ namespace VF.Inspector {
         public const string SpsPlugRadiusMeters = "__sps_plug_radius_meters";
         public const string SpsPlugRadiusLocal = "__sps_plug_radius_local";
         public const string SpsPlugRadiusPlugLengths = "__sps_plug_radius_plug_lengths";
+        public const string SpsPlugEntryRadiusMeters = "__sps_plug_entry_radius_meters";
+        public const string SpsPlugEntryRadiusLocal = "__sps_plug_entry_radius_local";
+        public const string SpsPlugEntryRadiusPlugLengths = "__sps_plug_entry_radius_plug_lengths";
 
         public static readonly string[] SpsParams = {
             SpsParamDepth,
@@ -65,6 +69,9 @@ namespace VF.Inspector {
             if (param == SpsParamPlugRadius && units == SpsUnitsMeters) return SpsPlugRadiusMeters;
             if (param == SpsParamPlugRadius && units == SpsUnitsLocal) return SpsPlugRadiusLocal;
             if (param == SpsParamPlugRadius && units == SpsUnitsPlugLengths) return SpsPlugRadiusPlugLengths;
+            if (param == SpsParamPlugEntryRadius && units == SpsUnitsMeters) return SpsPlugEntryRadiusMeters;
+            if (param == SpsParamPlugEntryRadius && units == SpsUnitsLocal) return SpsPlugEntryRadiusLocal;
+            if (param == SpsParamPlugEntryRadius && units == SpsUnitsPlugLengths) return SpsPlugEntryRadiusPlugLengths;
             return "";
         }
 
@@ -82,6 +89,9 @@ namespace VF.Inspector {
                 case SpsPlugRadiusMeters: return (SpsParamPlugRadius, SpsUnitsMeters);
                 case SpsPlugRadiusLocal: return (SpsParamPlugRadius, SpsUnitsLocal);
                 case SpsPlugRadiusPlugLengths: return (SpsParamPlugRadius, SpsUnitsPlugLengths);
+                case SpsPlugEntryRadiusMeters: return (SpsParamPlugEntryRadius, SpsUnitsMeters);
+                case SpsPlugEntryRadiusLocal: return (SpsParamPlugEntryRadius, SpsUnitsLocal);
+                case SpsPlugEntryRadiusPlugLengths: return (SpsParamPlugEntryRadius, SpsUnitsPlugLengths);
                 default: return null;
             }
         }
@@ -364,7 +374,7 @@ namespace VF.Inspector {
                     VRCFuryEditorUtils.AddToList(list, newAction => {
                         newAction.FindPropertyRelative("range").vector2Value = new Vector2(-1, 0);
                         newAction.FindPropertyRelative("units").enumValueIndex =
-                            (int)VRCFuryHapticSocket.DepthActionUnits.Plugs;
+                            (int)VRCFuryHapticSocket.DepthActionUnits.Local;
                     });
                 })
             ));

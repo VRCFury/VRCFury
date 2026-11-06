@@ -40,6 +40,7 @@ namespace VF.Component {
         public Vector3 rotation;
         
         public List<DepthActionNew> depthActions2 = new List<DepthActionNew>();
+        public List<PlugEntryRadiusAction> plugEntryRadiusActions = new List<PlugEntryRadiusAction>();
         public State activeActions = new State();
         public bool useHipAvoidance = true;
         public bool useSharedTag = true;
@@ -106,10 +107,17 @@ namespace VF.Component {
         public class DepthActionNew {
             public State actionSet = new State();
             public Vector2 range = new Vector2(-0.25f, 0);
-            public DepthActionUnits units = DepthActionUnits.Meters;
+            public DepthActionUnits units = DepthActionUnits.Local;
             public bool enableSelf;
             public float smoothingSeconds = 0;
             public bool reverseClip = false;
+        }
+
+        [Serializable]
+        public class PlugEntryRadiusAction : DepthActionNew {
+            public PlugEntryRadiusAction() {
+                range = new Vector2(0, 0.1f);
+            }
         }
 
         public override bool Upgrade(int fromVersion) {

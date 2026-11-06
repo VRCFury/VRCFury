@@ -239,6 +239,17 @@ namespace VF.Inspector {
                 "Depth Animations"
             ));
 
+            var radiusActions = serializedObject.FindProperty("plugEntryRadiusActions");
+            container.Add(VRCFuryEditorUtils.CheckboxList(
+                radiusActions,
+                "Enable Plug Entry Radius Animations",
+                "Animate based on the plug's radius at the socket entrance",
+                "Plug Entry Radius Animations",
+                VRCFuryEditorUtils.List(radiusActions, () => VRCFuryEditorUtils.AddToList(radiusActions, action => {
+                    action.FindPropertyRelative("range").vector2Value = new Vector2(0, 0.1f);
+                }))
+            ));
+
             // Active Animations
             container.Add(VRCFuryEditorUtils.CheckboxList(
                 serializedObject.FindProperty("activeActions.actions"),
@@ -298,6 +309,7 @@ namespace VF.Inspector {
         
         [CustomPropertyDrawer(typeof(VRCFuryHapticSocket.DepthActionNew))]
         public class DepthActionDrawer : PropertyDrawer {
+            protected virtual bool IsRadius => false;
             public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
                 var c = new VisualElement();
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("actionSet")));
@@ -305,21 +317,41 @@ namespace VF.Inspector {
                 c.Add(VRCFuryEditorUtils.RefreshOnChange(() =>
                     VRCFuryEditorUtils.BetterProp(
                         null,
-                        "Activation distance",
-                        tooltip: "Animation will begin at the far distance, and 'max' at the near distance. If you provide a static action or clip," +
+                        IsRadius ? "Plug entry radius" : "Activation distance",
+                        tooltip: IsRadius ? "The animation is off at the minimum radius and fully on at the maximum radius."
+                            : "Animation will begin at the far distance, and 'max' at the near distance. If you provide a static action or clip," +
                                  " the animation will be fully 'off' at the far distance, and fully 'on' at the near distance.",
-                        fieldOverride: new DepthActionSlider(prop.FindPropertyRelative("range"), (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex)
+                        fieldOverride: new DepthActionSlider(prop.FindPropertyRelative("range"), (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex, radius: IsRadius)
                     )
                 , units));
-                c.Add(VRCFuryEditorUtils.BetterProp(
-                    units,
-                    "Range Units"
-                ));
+                if (IsRadius) {
+                    var field = new PopupField<string>(new List<string> { "Local", "Meters" }, 0);
+                    void UpdateUnits(SerializedProperty value) => field.SetValueWithoutNotify(value.enumDisplayNames[value.enumValueIndex]);
+                    UpdateUnits(units);
+                    field.TrackPropertyValue(units, UpdateUnits);
+                    field.RegisterValueChangedCallback(change => {
+                        units.enumValueIndex = (int)(change.newValue == "Meters"
+                            ? VRCFuryHapticSocket.DepthActionUnits.Meters : VRCFuryHapticSocket.DepthActionUnits.Local);
+                        units.serializedObject.ApplyModifiedProperties();
+                    });
+                    c.Add(VRCFuryEditorUtils.BetterProp(null, "Range Units", fieldOverride: field));
+                } else {
+                    c.Add(VRCFuryEditorUtils.BetterProp(units, "Range Units"));
+                }
+                c.Add(VRCFuryEditorUtils.RefreshOnChange(() =>
+                    (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex == VRCFuryHapticSocket.DepthActionUnits.Meters
+                        ? VRCFuryEditorUtils.Warn("Usually you should use Local rather than Meters. Ranges in Meters stay fixed in world space and do not scale with the avatar.")
+                        : new VisualElement(), units));
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target depth. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("reverseClip"), "Reverse clip (unusual)"));
+                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target value. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
+                if (!IsRadius) c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("reverseClip"), "Reverse clip (unusual)"));
                 return c;
             }
+        }
+
+        [CustomPropertyDrawer(typeof(VRCFuryHapticSocket.PlugEntryRadiusAction))]
+        public class PlugEntryRadiusActionDrawer : DepthActionDrawer {
+            protected override bool IsRadius => true;
         }
 
 

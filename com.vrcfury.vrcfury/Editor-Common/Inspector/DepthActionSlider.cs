@@ -11,10 +11,15 @@ namespace VF.Inspector {
         private readonly MinMaxSlider slider;
         private readonly FloatField xField;
         private readonly FloatField yField;
+        private readonly Label meters;
+        private readonly UnityEngine.Component owner;
+        private readonly bool radius;
         
-        public DepthActionSlider(SerializedProperty prop, VRCFuryHapticSocket.DepthActionUnits units) : base(null,null) {
+        public DepthActionSlider(SerializedProperty prop, VRCFuryHapticSocket.DepthActionUnits units, bool radius = false) : base(null,null) {
+            this.radius = radius;
             bindingPath = prop.propertyPath;
             Clear();
+            style.flexDirection = FlexDirection.Column;
 
             var output = new VisualElement();
             output.Row();
@@ -32,41 +37,43 @@ namespace VF.Inspector {
 
             var c = new VisualElement();
 
-            var test = new Label(units == VRCFuryHapticSocket.DepthActionUnits.Plugs ? "Fully\n\u2193 Inserted" : units == VRCFuryHapticSocket.DepthActionUnits.Local ? "Tip inside\n\u2193 1 local-unit" : "Tip\n\u2193 inside 1m");
-            test.style.position = Position.Absolute;
-            test.style.bottom = 15;
-            test.style.fontSize = 9;
-            c.Add(test);
+            if (!radius) {
+                var test = new Label(units == VRCFuryHapticSocket.DepthActionUnits.Plugs ? "Fully\n\u2193 Inserted" : units == VRCFuryHapticSocket.DepthActionUnits.Local ? "Tip inside\n\u2193 1 local-unit" : "Tip\n\u2193 inside 1m");
+                test.style.position = Position.Absolute;
+                test.style.bottom = 15;
+                test.style.fontSize = 9;
+                c.Add(test);
 
-            var test2 = new Label("Tip at\n\u2193 Entrance");
-            test2.style.position = Position.Absolute;
-            test2.style.bottom = 15;
-            test2.style.left = Length.Percent(25);
-            test2.style.fontSize = 9;
-            c.Add(test2);
+                var test2 = new Label("Tip at\n\u2193 Entrance");
+                test2.style.position = Position.Absolute;
+                test2.style.bottom = 15;
+                test2.style.left = Length.Percent(25);
+                test2.style.fontSize = 9;
+                c.Add(test2);
         
-            var test3 = new Label(units == VRCFuryHapticSocket.DepthActionUnits.Plugs ? "Tip 3 plug-lengths\naway \u2193" : units == VRCFuryHapticSocket.DepthActionUnits.Local ? "Tip 3 local-units\naway \u2193" : "Tip 3m\naway \u2193");
-            test3.style.position = Position.Absolute;
-            test3.style.bottom = 15;
-            test3.style.right = 0;
-            test3.style.fontSize = 9;
-            test3.style.unityTextAlign = TextAnchor.UpperRight;
-            c.Add(test3);
+                var test3 = new Label(units == VRCFuryHapticSocket.DepthActionUnits.Plugs ? "Tip 3 plug-lengths\naway \u2193" : units == VRCFuryHapticSocket.DepthActionUnits.Local ? "Tip 3 local-units\naway \u2193" : "Tip 3m\naway \u2193");
+                test3.style.position = Position.Absolute;
+                test3.style.bottom = 15;
+                test3.style.right = 0;
+                test3.style.fontSize = 9;
+                test3.style.unityTextAlign = TextAnchor.UpperRight;
+                c.Add(test3);
+            }
 
             slider = new MinMaxSlider {
-                highLimit = 3,
-                lowLimit = -1
+                highLimit = radius ? 0.5f : 3,
+                lowLimit = radius ? 0 : -1
             };
             slider.RegisterValueChangedCallback(e => {
-                // When using slider, store in steps of 0.2
+                // Keep more precision for the smaller radius ranges.
                 Changed(new Vector2(
-                    (float)Math.Round(e.newValue.x, 2),
-                    (float)Math.Round(e.newValue.y, 2)
+                    (float)Math.Round(e.newValue.x, radius ? 3 : 2),
+                    (float)Math.Round(e.newValue.y, radius ? 3 : 2)
                 ));
             });
             c.Add(slider);
 
-            output.style.marginTop = 20;
+            output.style.marginTop = radius ? 0 : 20;
 
             output.Add(c.FlexGrow(1).FlexBasis(0));
 
@@ -83,13 +90,29 @@ namespace VF.Inspector {
 
             output.FlexGrow(1);
             Add(output);
+            if (units == VRCFuryHapticSocket.DepthActionUnits.Local
+                && prop.serializedObject.targetObject is UnityEngine.Component component) {
+                owner = component;
+                meters = VRCFuryEditorUtils.WrappedLabel("");
+                Add(meters);
+                meters.schedule.Execute(UpdateMeters).Every(100);
+                UpdateMeters();
+            }
+        }
+
+        private void UpdateMeters() {
+            if (meters == null || owner == null) return;
+            var scale = owner.transform.lossyScale.x;
+            meters.text = radius
+                ? $"Min: {value.x * scale:G4} m    Max: {value.y * scale:G4} m"
+                : $"In: {value.x * scale:G4} m    Out: {value.y * scale:G4} m";
         }
 
         private void Changed(Vector2 newValue) {
             newValue.x = Mathf.Min(newValue.x, newValue.y);
             newValue.y = Mathf.Max(newValue.x, newValue.y);
-            newValue.x = Mathf.Clamp(newValue.x, -1, 3);
-            newValue.y = Mathf.Clamp(newValue.y, -1, 3);
+            newValue.x = Mathf.Clamp(newValue.x, radius ? 0 : -1, radius ? float.MaxValue : 3);
+            newValue.y = Mathf.Clamp(newValue.y, radius ? 0 : -1, radius ? float.MaxValue : 3);
             value = newValue;
             // This usually happens automatically, but might not if the user sets the float
             // to something invalid
@@ -98,9 +121,11 @@ namespace VF.Inspector {
 
         public override void SetValueWithoutNotify(Vector2 newValue) {
             base.SetValueWithoutNotify(newValue);
+            if (radius) slider.highLimit = Mathf.Max(slider.highLimit, newValue.y);
             slider.SetValueWithoutNotify(newValue);
             xField.SetValueWithoutNotify(newValue.x);
             yField.SetValueWithoutNotify(newValue.y);
+            UpdateMeters();
         }
     }
 }

@@ -19,7 +19,7 @@ namespace VF.Builder.Haptics {
         [VFAutowired] private readonly PlugFrameService frames;
         private readonly Dictionary<VRCFuryHapticPlug, SelfAndOthersReceiverService.Receivers> cache = new();
 
-        public SelfAndOthersReceiverService.Receivers GetReceivers(VRCFuryHapticPlug plug) =>
+        public SelfAndOthersReceiverService.Receivers GetReceivers(VRCFuryHapticPlug plug, bool legacySocketCompatibility = true) =>
             cache.GetOrCreate(plug, () => {
                 var size = sizes.GetWorldSize(plug);
                 return receivers.Create(new SelfAndOthersReceiverService.Request {
@@ -29,8 +29,8 @@ namespace VF.Builder.Haptics {
                         ? self ? "Receiver - Sockets (Self Merged)" : "Receiver - Sockets (Others Merged)"
                         : self ? "Receiver - Sockets (Self)" : "Receiver - Sockets (Others)",
                     worldRadius = size.worldLength * RangeInPlugLengths,
-                    selfTags = GetSocketTags(plug, true).ToArray(),
-                    othersTags = GetSocketTags(plug, false).ToArray()
+                    selfTags = GetSocketTags(plug, true, legacySocketCompatibility).ToArray(),
+                    othersTags = GetSocketTags(plug, false, legacySocketCompatibility).ToArray()
                 });
             });
 
@@ -38,10 +38,10 @@ namespace VF.Builder.Haptics {
             configurer.GetPlugChannels(plug, self
                 ? SpsConfigurer.ChannelMode.ReceiverSelf : SpsConfigurer.ChannelMode.ReceiverOthers);
 
-        internal List<string> GetSocketTags(VRCFuryHapticPlug plug, bool self) {
+        internal List<string> GetSocketTags(VRCFuryHapticPlug plug, bool self, bool legacySocketCompatibility = true) {
             var tags = GetChannels(plug, self).OrderBy(c => c, StringComparer.Ordinal)
                 .Select(SpsTags.FormatSocket).ToList();
-            if (!self && plug.useSharedTag) {
+            if (!self && plug.useSharedTag && legacySocketCompatibility) {
                 // Keep these immediately after the channels, in this order, for the shader.
                 tags.Add(SpsTags.LegacySocketHole);
                 tags.Add(SpsTags.LegacySocketRing);
@@ -62,11 +62,11 @@ namespace VF.Builder.Haptics {
 #endif
         }
 
-        public void Create(VRCFuryHapticPlug plug, IEnumerable<Renderer> renderers) {
+        public void Create(VRCFuryHapticPlug plug, IEnumerable<Renderer> renderers, bool legacySocketCompatibility = true) {
             RequireMaterialContacts();
 #if VRCSDK_HAS_MATERIAL_CONTACTS
             var targets = renderers.Where(r => r != null).Distinct().ToArray();
-            var receivers = GetReceivers(plug);
+            var receivers = GetReceivers(plug, legacySocketCompatibility);
             var frame = frames.Get(plug);
             receivers.SetMaterials(targets, self: true, needsContactTags: false, shaderParameter: "SPS_Self");
             receivers.SetMaterials(targets, self: false, needsContactTags: true, shaderParameter: "SPS_Others");
@@ -95,7 +95,7 @@ namespace VF.Builder.Haptics {
 
         public void ConfigureMaterial(Material material, VRCFuryHapticPlug plug, bool legacySocketCompatibility = true) {
             material.SetFloat("_SPS_OthersChannelTagCount", GetChannels(plug, false).Count);
-            material.SetFloat("_SPS_OthersLegacyTags", plug.useSharedTag ? 1 : 0);
+            material.SetFloat("_SPS_OthersLegacyTags", plug.useSharedTag && legacySocketCompatibility ? 1 : 0);
             material.SetFloat("_SPS_UseLegacyLights", plug.useSharedTag && legacySocketCompatibility ? 1 : 0);
         }
     }

@@ -261,7 +261,7 @@ namespace VF.Tests {
                 SpsPatcher.Patch(material, false, false);
                 service.ConfigureMaterial(material, plug, compatibility);
                 Assert.That(material.GetFloat("_SPS_OthersChannelTagCount"), Is.EqualTo(1));
-                Assert.That(material.GetFloat("_SPS_OthersLegacyTags"), Is.EqualTo(1));
+                Assert.That(material.GetFloat("_SPS_OthersLegacyTags"), Is.EqualTo(compatibility ? 1 : 0));
                 Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
                 Assert.That(material.HasProperty("_SPS_BakeRootScale"), Is.False);
                 Assert.That(material.HasProperty("_SPS_PlugOrigin"), Is.False);
@@ -328,6 +328,14 @@ namespace VF.Tests {
                 Assert.That(first.GetTexture("_SPS_Bake"), Is.Not.SameAs(second.GetTexture("_SPS_Bake")));
                 Assert.That(first.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
                 Assert.That(second.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
+                Assert.That(first.GetFloat("_SPS_OthersLegacyTags"), Is.EqualTo(compatibility ? 1 : 0));
+                Assert.That(second.GetFloat("_SPS_OthersLegacyTags"), Is.EqualTo(compatibility ? 1 : 0));
+                foreach (var receiver in bake.bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>()
+                             .Where(r => r.separateShaderParameter == "SPS_Others")) {
+                    foreach (var tag in new[] { SpsTags.LegacySocketHole, SpsTags.LegacySocketRing, SpsTags.LegacySocket }) {
+                        Assert.That(receiver.collisionTags.Contains(tag), Is.EqualTo(compatibility));
+                    }
+                }
                 Assert.That(source.shader, Is.EqualTo(Shader.Find("Unlit/Color")));
             } finally {
                 Object.DestroyImmediate(mesh);

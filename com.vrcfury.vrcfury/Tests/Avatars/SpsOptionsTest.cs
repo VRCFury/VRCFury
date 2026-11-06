@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
@@ -19,6 +20,40 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     public class SpsOptionsTest {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void PlugEntryRadiusEditorRendersSliderAndPreservesEditableRange(bool existingPlugUnits) {
+            var root = new GameObject("Radius editor");
+            try {
+                root.transform.localScale = Vector3.one * 2;
+                var socket = root.AddComponent<VRCFuryHapticSocket>();
+                socket.plugEntryRadiusActions.Add(new VRCFuryHapticSocket.PlugEntryRadiusAction());
+                if (existingPlugUnits) socket.plugEntryRadiusActions[0].units = VRCFuryHapticSocket.DepthActionUnits.Plugs;
+                var serialized = new UnityEditor.SerializedObject(socket);
+                var action = serialized.FindProperty("plugEntryRadiusActions").GetArrayElementAtIndex(0);
+                var editor = new VRCFuryHapticSocketEditor.PlugEntryRadiusActionDrawer().CreatePropertyGUI(action);
+                Assert.That(editor.Query<Label>().ToList().Any(label => label.text == "Reverse clip (unusual)"), Is.False);
+                var unitField = editor.Query<PopupField<string>>().ToList()
+                    .Single(field => field.choices.SequenceEqual(new[] { "Local", "Meters" }));
+                Assert.That(unitField.value, Is.EqualTo(existingPlugUnits ? "Plugs" : "Local"));
+                Assert.That(socket.plugEntryRadiusActions[0].units, Is.EqualTo(existingPlugUnits
+                    ? VRCFuryHapticSocket.DepthActionUnits.Plugs : VRCFuryHapticSocket.DepthActionUnits.Local));
+                var control = editor.Q<DepthActionSlider>();
+                Assert.That(control, Is.Not.Null);
+                var slider = control.Q<MinMaxSlider>();
+                Assert.That(slider, Is.Not.Null);
+                Assert.That(slider.lowLimit, Is.Zero);
+                control.SetValueWithoutNotify(new Vector2(0.02f, 0.5f));
+                Assert.That(slider.value, Is.EqualTo(control.value));
+                control.SetValueWithoutNotify(new Vector2(0.025f, 0.075f));
+                Assert.That(slider.value, Is.EqualTo(control.value));
+                Assert.That(control.Query<Label>().ToList().Any(label =>
+                    label.text == $"Min: {0.05f:G4} m    Max: {0.15f:G4} m"), Is.EqualTo(!existingPlugUnits));
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+
         [TestCase(false, false, false)]
         [TestCase(false, true, true)]
         [TestCase(true, false, false)]
