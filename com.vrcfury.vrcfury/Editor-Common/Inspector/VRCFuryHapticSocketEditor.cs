@@ -137,7 +137,7 @@ namespace VF.Inspector {
                 if (addLightProp.enumValueIndex == noneIndex) return new VisualElement();
                 var output = new VisualElement();
 
-                var section = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "SPS2 plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
+                var section = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "Plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
                 var modeField = new PopupField<string>(
                     new List<string>() { "Auto", "Hole", "Ring", "One-Way Ring (Uncommon)" },
                     addLightProp.enumValueIndex == 4 ? 3 : addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0
@@ -172,7 +172,7 @@ namespace VF.Inspector {
                         .OfType<SpsOptions>()
                         .FirstOrDefault();
                     return options != null && !options.legacyModeAvailable
-                        ? VRCFuryEditorUtils.Warn("Legacy Mode is excluded from this avatar in SPS Options. These settings will have no effect. Enable 'Include in Avatar' under Legacy Mode in SPS Options to use them.")
+                        ? VRCFuryEditorUtils.Warn("Legacy plug compatibility is disabled in SPS Options. These settings will have no effect. Enable 'DPS/TPS/SPS1/SPS2 Plugs' under Legacy Compatibility to use them.")
                         : null;
                 }));
                 var overrideLegacySocketType = serializedObject.FindProperty("overrideLegacySocketType");
@@ -279,21 +279,19 @@ namespace VF.Inspector {
             container.Add(channels);
             
             var adv = new Foldout {
-                text = "Advanced",
+                text = "Deprecated Options",
                 value = false,
             };
             container.Add(adv);
-            
-            var plugParams = VRCFuryEditorUtils.Section("Global Plug Parameters");
-            adv.Add(plugParams);
+
             var enablePlugLengthParameterProp = serializedObject.FindProperty("enablePlugLengthParameter");
             var enablePlugWidthParameterProp = serializedObject.FindProperty("enablePlugWidthParameter");
-            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugLengthParameterProp, "Plug Length (meters) (Deprecated, use Inject Parameters on Full Controller)"));
-            plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugLengthParameterName")));
-            plugParams.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Radius (meters) (Deprecated, use Inject Parameters on Full Controller)"));
-            plugParams.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugWidthParameterName")));
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(enablePlugLengthParameterProp, "Plug Length (meters) (Deprecated, use Inject Parameters on Full Controller)"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugLengthParameterName")));
+            adv.Add(VRCFuryEditorUtils.BetterProp(enablePlugWidthParameterProp, "Plug Radius (meters) (Deprecated, use Inject Parameters on Full Controller)"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("plugWidthParameterName")));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position (Deprecated, move the object instead)"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation (Deprecated, move the object instead)"));
 
             return container;
         }

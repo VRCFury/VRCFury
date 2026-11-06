@@ -32,7 +32,7 @@ namespace VF.Service {
 
         public VFAParam GetLegacyParameter() {
             var options = GetOptions();
-            if (!options.legacyModeAvailable) return null;
+            if (!options.NeedsLegacyMode) return null;
             if (legacyParameter != null) return legacyParameter;
             legacyParameter = controllers.GetFx().CreateUniqueBool("legacy", def: options.legacyModeEnabledOnAvatarLoad);
             legacyParameter.MakeExpressionBool(saved: options.legacyModeSaved);

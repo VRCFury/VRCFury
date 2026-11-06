@@ -249,8 +249,9 @@ namespace VF.Tests {
         }
 #endif
 
-        [Test]
-        public void MaterialSettingsUseOthersChannelCountAndLegacySwitches() {
+        [TestCase(true)]
+        [TestCase(false)]
+        public void MaterialSettingsUseOthersChannelCountAndLegacySwitches(bool compatibility) {
             var material = new Material(Shader.Find("Unlit/Color"));
             try {
 #if !VRCSDK_HAS_MATERIAL_CONTACTS
@@ -258,30 +259,34 @@ namespace VF.Tests {
                     Does.Contain("Update the VRCSDK"));
 #else
                 SpsPatcher.Patch(material, false, false);
-                service.ConfigureMaterial(material, plug);
+                service.ConfigureMaterial(material, plug, compatibility);
                 Assert.That(material.GetFloat("_SPS_OthersChannelTagCount"), Is.EqualTo(1));
                 Assert.That(material.GetFloat("_SPS_OthersLegacyTags"), Is.EqualTo(1));
-                Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(1));
+                Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
                 Assert.That(material.HasProperty("_SPS_BakeRootScale"), Is.False);
                 Assert.That(material.HasProperty("_SPS_PlugOrigin"), Is.False);
                 plug.useLights = false;
-                service.ConfigureMaterial(material, plug);
-                Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(1));
+                service.ConfigureMaterial(material, plug, compatibility);
+                Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
                 plug.useSharedTag = false;
                 plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "self", allowSelf = true, allowOthers = false });
                 plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "both", allowSelf = true, allowOthers = true });
-                service.ConfigureMaterial(material, plug);
+                service.ConfigureMaterial(material, plug, compatibility);
                 Assert.That(service.GetSocketTags(plug, true).Count, Is.EqualTo(2));
                 Assert.That(material.GetFloat("_SPS_OthersChannelTagCount"), Is.EqualTo(1));
                 Assert.That(material.GetFloat("_SPS_OthersLegacyTags"), Is.Zero);
+                Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.Zero);
 #endif
             } finally {
                 Object.DestroyImmediate(material);
             }
         }
 
-        [Test]
-        public void BakeDoesNotReuseMutableMaterialsAcrossRenderers() {
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void BakeDoesNotReuseMutableMaterialsAcrossRenderers(bool compatibility, bool deferred) {
             var mesh = new Mesh {
                 vertices = new[] { Vector3.zero, Vector3.right * 0.02f, Vector3.forward * 0.2f },
                 triangles = new[] { 0, 1, 2 }
@@ -307,14 +312,22 @@ namespace VF.Tests {
                     return;
                 }
 #endif
-                injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+                var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug,
+                    deferMaterialConfig: deferred, legacySocketCompatibility: compatibility);
                 if (!BuildTargetUtils.IsDesktop()) return;
+                if (deferred) {
+                    foreach (var result in bake.renderers) {
+                        result.renderer.sharedMaterials = result.renderer.sharedMaterials.Select((material, slot) => result.configureMaterial(slot, material)).ToArray();
+                    }
+                }
                 var first = plug.configureTpsMesh[0].sharedMaterial;
                 var second = plug.configureTpsMesh[1].sharedMaterial;
                 Assert.That(first, Is.Not.SameAs(source));
                 Assert.That(second, Is.Not.SameAs(source));
                 Assert.That(first, Is.Not.SameAs(second));
                 Assert.That(first.GetTexture("_SPS_Bake"), Is.Not.SameAs(second.GetTexture("_SPS_Bake")));
+                Assert.That(first.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
+                Assert.That(second.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
                 Assert.That(source.shader, Is.EqualTo(Shader.Find("Unlit/Color")));
             } finally {
                 Object.DestroyImmediate(mesh);

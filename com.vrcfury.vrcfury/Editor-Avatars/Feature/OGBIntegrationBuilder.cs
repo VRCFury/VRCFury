@@ -1,8 +1,6 @@
 using UnityEngine.UIElements;
-using VF.Builder.Haptics;
 using VF.Feature.Base;
 using VF.Inspector;
-using VF.Injector;
 using VF.Model.Feature;
 
 namespace VF.Feature {
@@ -11,9 +9,7 @@ namespace VF.Feature {
     internal class OGBIntegrationBuilder : FeatureBuilder<OGBIntegration2> {
         [FeatureEditor]
         public static VisualElement Editor() {
-            var content = new VisualElement();
-            content.Add(VRCFuryEditorUtils.Error("This feature is deprecated. Use SPS instead! See vrcfury.com/sps"));
-            return content;
+            return VRCFuryEditorUtils.Error("This feature is deprecated and now does nothing. Use SPS instead! See vrcfury.com/sps");
         }
     }
 }

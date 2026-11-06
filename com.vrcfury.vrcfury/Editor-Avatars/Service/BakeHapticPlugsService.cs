@@ -57,7 +57,8 @@ namespace VF.Service {
                     PhysboneUtils.RemoveFromPhysbones(plug.owner());
 
                     if (BuildTargetUtils.IsDesktop()) {
-                        bakeResults[plug] = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true);
+                        bakeResults[plug] = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true,
+                            legacySocketCompatibility: spsOptions.GetOptions().legacySocketCompatibility);
                     }
 
                     var postBakeClip = actionClipService.LoadStateAdv("sps_postbake", plug.postBakeActions, plug.owner());
@@ -77,7 +78,7 @@ namespace VF.Service {
 
             var plugs = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>();
             var options = spsOptions.GetOptions();
-            var addDpsTipLight = options.legacyModeAvailable && options.addDpsTipLight;
+            var addDpsTipLight = options.legacySocketCompatibility && options.addDpsTipLight;
 
             foreach (var plug in plugs) {
                 try {

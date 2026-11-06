@@ -19,7 +19,7 @@ namespace VF.Inspector {
         [VFAutowired] private readonly SpsConfigurer spsConfigurer;
         private int nextGroupId = 1;
 
-        public BakeResult Bake(VRCFuryHapticSocket socket, bool legacyAvailable = true, bool tpsDepthAnimationCompatibility = false) {
+        public BakeResult Bake(VRCFuryHapticSocket socket, bool legacyPlugCompatibility = true, bool tpsDepthAnimationCompatibility = false) {
             var closestBone = autoChannelGenerator?.GetClosestBone(socket.owner());
             var channels = spsConfigurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender);
             var transform = socket.owner();
@@ -51,7 +51,7 @@ namespace VF.Inspector {
                     radius = 0,
                     tags = rootTags.ToArray()
                 });
-                if (legacyAvailable && tpsDepthAnimationCompatibility && legacySuffixes.Count > 0) {
+                if (legacyPlugCompatibility && tpsDepthAnimationCompatibility && legacySuffixes.Count > 0) {
                     legacyFrontSender = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest {
                         obj = worldSpace,
                         objName = "Sender - Legacy Front",
@@ -80,7 +80,7 @@ namespace VF.Inspector {
                                 + stopObj.GetDebugPath());
                         }
                     }
-                    if (legacyAvailable && socket.useSharedTag) {
+                    if (legacyPlugCompatibility && socket.useSharedTag) {
                         Vector3 legacyOffset;
                         if (socket.overrideLegacyOffset) {
                             legacyOffset = socket.legacyOffsetLocal;

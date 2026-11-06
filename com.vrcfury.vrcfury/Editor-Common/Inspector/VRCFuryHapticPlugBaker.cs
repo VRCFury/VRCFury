@@ -23,7 +23,8 @@ namespace VF.Inspector {
         public BakeResult Bake(
             VRCFuryHapticPlug plug,
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
-            bool deferMaterialConfig = false
+            bool deferMaterialConfig = false,
+            bool legacySocketCompatibility = true
         ) {
             var transform = plug.owner();
             HapticUtils.AssertValidScale(transform);
@@ -62,7 +63,7 @@ namespace VF.Inspector {
             var halfWay = Vector3.forward * (worldLength / 2);
             var channels = spsConfigurer.GetPlugChannels(plug, SpsConfigurer.ChannelMode.Sender);
             var legacySuffixes = new List<string>();
-            if (channels.Contains(SpsTags.PublicChannel)) legacySuffixes.Add("");
+            if (legacySocketCompatibility && channels.Contains(SpsTags.PublicChannel)) legacySuffixes.Add("");
             var mainSender = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                 obj = localSpace,
                 objName = "Sender - Sphere",
@@ -139,7 +140,7 @@ namespace VF.Inspector {
                                 SpsConfigurer.ConfigureSpsMaterial(renderer, copy, worldLength, worldRadius,
                                     spsBaked,
                                     plug, localSpace, spsBlendshapes);
-                                spsPlugReceiverService.ConfigureMaterial(copy, plug);
+                                spsPlugReceiverService.ConfigureMaterial(copy, plug, legacySocketCompatibility);
                                 spsCopies[mat] = copy;
                                 return copy;
                             } catch (Exception e) {

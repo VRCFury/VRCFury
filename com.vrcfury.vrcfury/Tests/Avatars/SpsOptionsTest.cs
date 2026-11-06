@@ -6,11 +6,14 @@ using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
+using VF.Inspector;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Model.Feature;
 using VF.Service;
+using VF.Utils;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
@@ -74,7 +77,7 @@ namespace VF.Tests {
                 socket.useLights = !available;
                 var injector = new VRCFuryInjector();
                 injector.ImportScan(typeof(VFServiceAttribute));
-                var result = injector.GetService<VF.Inspector.VRCFuryHapticSocketBaker>().Bake(socket, legacyAvailable: available);
+                var result = injector.GetService<VF.Inspector.VRCFuryHapticSocketBaker>().Bake(socket, legacyPlugCompatibility: available);
                 Assert.That(result.legacyLights != null, Is.EqualTo(available));
             } finally {
                 Object.DestroyImmediate(root);
@@ -86,13 +89,46 @@ namespace VF.Tests {
             var options = new SpsOptions();
             Assert.That(options.autoModeAvailable && options.legacyModeAvailable, Is.True);
             Assert.That(options.tpsDepthAnimationCompatibility, Is.False);
+            Assert.That(options.legacySocketCompatibility, Is.True);
         }
 
         [TestCase(false, false)]
         [TestCase(false, true)]
         [TestCase(true, false)]
         [TestCase(true, true)]
-        public void TpsDepthCompatibilityRequiresLegacyAvailability(bool enabled, bool legacy) {
+        public void LegacySocketCompatibilityControlsLegacyPlugSenders(bool enabled, bool shared) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Contact senders are desktop-only.");
+            var root = new GameObject("Legacy socket compatibility");
+            try {
+                var plug = root.AddComponent<VRCFuryHapticPlug>();
+                plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+                plug.unitsInMeters = true;
+                plug.length = 0.4f;
+                plug.radius = 0.03f;
+                plug.useSharedTag = shared;
+                plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "custom" });
+                var injector = new VRCFuryInjector();
+                injector.ImportScan(typeof(VFServiceAttribute));
+                var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug, legacySocketCompatibility: enabled);
+                var senders = bake.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>();
+                Assert.That(senders.Count, Is.EqualTo(2 + (enabled && shared ? 2 : 0)));
+                var main = senders.Single(s => s.name == "Sender - Sphere");
+                Assert.That(main.collisionTags.Contains(SpsTags.LegacyPlugSphere), Is.EqualTo(enabled && shared));
+                Assert.That(main.collisionTags, Does.Contain(SpsTags.FormatPlug("custom")));
+                Assert.That(main.collisionTags.Contains(SpsTags.FormatPlug(SpsTags.PublicChannel)), Is.EqualTo(shared));
+                Assert.That(senders.Any(s => s.collisionTags.Contains(SpsTags.LegacyPlugWidth)), Is.EqualTo(enabled && shared));
+                Assert.That(senders.Any(s => s.collisionTags.Contains(SpsTags.LegacyPlugRoot)), Is.EqualTo(enabled && shared));
+                Assert.That(senders.Single(s => s.name == "Sender - Envelope").collisionTags, Does.Contain(SpsTags.PlugClose));
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void TpsDepthCompatibilityRequiresLegacyPlugCompatibility(bool enabled, bool legacy) {
             if (!VF.Utils.BuildTargetUtils.IsDesktop()) Assert.Ignore("Contact senders are desktop-only.");
             var root = new GameObject("TPS depth compatibility");
             try {
@@ -101,10 +137,11 @@ namespace VF.Tests {
                 var injector = new VRCFuryInjector();
                 injector.ImportScan(typeof(VFServiceAttribute));
                 var result = injector.GetService<VF.Inspector.VRCFuryHapticSocketBaker>().Bake(socket,
-                    legacyAvailable: legacy, tpsDepthAnimationCompatibility: enabled);
+                    legacyPlugCompatibility: legacy, tpsDepthAnimationCompatibility: enabled);
                 var fronts = result.bakeRoot.GetComponentsInSelfAndChildren<VRC.SDK3.Dynamics.Contact.Components.VRCContactSender>()
                     .Where(sender => sender.collisionTags.Contains(SpsTags.LegacySocketFront)).ToArray();
                 Assert.That(fronts.Length, Is.EqualTo(enabled && legacy ? 1 : 0));
+                Assert.That(result.legacyLights != null, Is.EqualTo(legacy));
                 if (enabled && legacy) {
                     var front = fronts.Single();
                     Assert.That(front.radius, Is.EqualTo(0.001f).Within(0.00001f));

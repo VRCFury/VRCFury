@@ -13,7 +13,9 @@ using VF.Component;
 using VF.Exceptions;
 using VF.Injector;
 using VF.Menu;
+using VF.Model;
 using VF.Utils;
+using SpsOptions = VF.Model.Feature.SpsOptions;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
@@ -292,7 +294,7 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (enableSps.boolValue) {
-                    var spsBox = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "This plug will deform toward SPS/TPS/DPS sockets\nCheck out vrcfury.com/sps for details");
+                    var spsBox = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "This plug will deform toward sockets\nCheck out vrcfury.com/sps for details");
                     c.Add(spsBox);
                     spsBox.Add(VRCFuryEditorUtils.BetterProp(
                         serializedObject.FindProperty("spsAutorig"),
@@ -337,6 +339,19 @@ namespace VF.Inspector {
                 }
                 return c;
             }, enableSps));
+
+            container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
+                if (target == null) return null;
+                var options = target.owner().GetComponentsInUploadRoot<VRCFury>()
+                    .SelectMany(component => component.GetAllFeatures())
+                    .OfType<SpsOptions>()
+                    .FirstOrDefault();
+                if (options == null || options.legacySocketCompatibility) return null;
+                var legacySupport = VRCFuryEditorUtils.Section("Legacy Compatibility",
+                    "Compatibility with DPS/TPS/SPS1/SPS2 sockets");
+                legacySupport.Add(VRCFuryEditorUtils.Warn("Legacy socket compatibility is disabled in SPS Options. This plug will not target legacy sockets. Enable 'DPS/TPS/SPS1/SPS2 Sockets' under Legacy Compatibility to use them."));
+                return legacySupport;
+            }));
 
             // Depth Animations
             var list = serializedObject.FindProperty("depthActions2");
@@ -392,18 +407,18 @@ namespace VF.Inspector {
             container.Add(channels);
 
             var adv = new Foldout {
-                text = "Advanced Plug Options",
+                text = "Deprecated Options",
                 value = false
             };
             container.Add(adv);
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position"));
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position (Deprecated, move the object instead)"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation (Deprecated, move the object instead)"));
             adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"),
-                "(Deprecated) Length and radius are in world-space meters",
+                "Length and radius are in world-space meters (Deprecated, specifying these in world units breaks if you resize the plug in the editor)",
                 tooltip: "When checked, manually entered length and radius ignore the plug object's scale at build time. " +
                          "When unchecked, they use local units and are multiplied by the object's scale. " +
                          "Automatically detected dimensions are unaffected."));
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLegacyRendererFinder"), "(Deprecated) Use legacy renderer search"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLegacyRendererFinder"), "Use legacy renderer search (Deprecated)"));
 
             return container;
         }
@@ -455,18 +470,16 @@ namespace VF.Inspector {
                 output.Clear();
                 if (tipLightPaths.Any()) {
                     var warning = VRCFuryEditorUtils.Warn(
-                        "This avatar still contains a DPS tip light! This means your avatar has not been fully converted to SPS," +
-                        " and your DPS penetrator may cause issues if too many sockets are on nearby." +
-                        " Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
+                        "Your avatar still contains legacy DPS tip lights!" +
+                        " Run Tools > VRCFury > SPS > Upgrade to SPS to finish upgrading this avatar to SPS.\n\n" +
                         tipLightPaths.Join('\n')
                     );
                     output.Add(warning);
                 }
                 if (orificeLightPaths.Any()) {
                     var warning = VRCFuryEditorUtils.Warn(
-                        "This avatar still contains un-upgraded DPS orifice lights! This means your avatar has not been fully converted to SPS," +
-                        " and your DPS orifices may cause issues if too many are active at the same time." +
-                        " Check out https://vrcfury.com/sps for details about how to upgrade DPS orifices to SPS sockets.\n\n" +
+                        "This avatar still contains legacy DPS orifice lights!" +
+                        " Run Tools > VRCFury > SPS > Upgrade to SPS to finish upgrading this avatar to SPS.\n\n" +
                         orificeLightPaths.Join('\n')
                     );
                     output.Add(warning);

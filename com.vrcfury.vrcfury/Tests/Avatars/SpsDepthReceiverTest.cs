@@ -1215,6 +1215,30 @@ namespace VF.Tests {
             Assert.That(worldSpace.Children().Single(obj => obj.name == "Sender - Root").active, Is.True);
         }
 
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void AvatarBuildAppliesLegacySocketCompatibilityIndependentlyOfLegacyMode(bool enabled, bool legacyAvailable) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Contact senders are desktop-only.");
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> {
+                new SpsOptions { legacySocketCompatibility = enabled, legacyModeAvailable = legacyAvailable }
+            };
+            globals.addOtherFeature = _ => { };
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.04f;
+            injector.GetService<BakeHapticPlugsService>().ApplyEarlyBake();
+            var senders = root.GetComponentsInChildren<VRCContactSender>(true);
+            Assert.That(senders.Single(s => s.name == "Sender - Sphere").collisionTags.Contains(SpsTags.LegacyPlugSphere), Is.EqualTo(enabled));
+            Assert.That(senders.Count(s => s.name == "Sender - Legacy Width" || s.name == "Sender - Legacy Root"), Is.EqualTo(enabled ? 2 : 0));
+        }
+
         [TestCase(false, false, true, true)]
         [TestCase(false, true, true, true)]
         [TestCase(true, false, true, true)]
@@ -1231,7 +1255,7 @@ namespace VF.Tests {
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
             globals.allFeaturesInRun = new List<FeatureModel> {
                 new SpsOptions { autoModeAvailable = withSocket, legacyModeAvailable = available,
-                    legacyModeEnabledOnAvatarLoad = defaultOn, addDpsTipLight = true, tpsDepthAnimationCompatibility = true }
+                    legacyModeEnabledOnAvatarLoad = defaultOn, addDpsTipLight = available, tpsDepthAnimationCompatibility = available }
             };
             globals.addOtherFeature = _ => { };
             var plug = GameObjects.Create("Plug", root).AddComponent<VRCFuryHapticPlug>();
@@ -1287,6 +1311,59 @@ namespace VF.Tests {
                     .Where(sender => sender.name == "Sender - Root" || sender.name == "Sender - Sphere")
                     .All(sender => sender.gameObject.activeSelf), Is.True, "Main senders remain available in both legacy modes");
             }
+        }
+
+        [Test]
+        public void CompatibilityFeaturesRespectDependenciesAndUseLegacyToggle(
+            [Values(false, true)] bool legacyPlugs,
+            [Values(false, true)] bool legacySockets,
+            [Values(false, true)] bool tpsAnimations,
+            [Values(false, true)] bool dpsAnimations) {
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> {
+                new SpsOptions {
+                    autoModeAvailable = false,
+                    legacyModeAvailable = legacyPlugs,
+                    legacySocketCompatibility = legacySockets,
+                    tpsDepthAnimationCompatibility = tpsAnimations,
+                    addDpsTipLight = dpsAnimations,
+                    legacyModeEnabledOnAvatarLoad = true
+                }
+            };
+            globals.addOtherFeature = _ => { };
+            var plug = GameObjects.Create("Plug", root).AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.04f;
+            var socket = GameObjects.Create("Socket", root).AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.addMenuItem = true;
+            injector.GetService<BakeHapticPlugsService>().ApplyEarlyBake();
+            injector.GetService<BakeHapticPlugsService>().Apply();
+            injector.GetService<BakeHapticSocketsService>().Apply();
+            var transforms = root.GetComponentsInChildren<Transform>(true);
+            Assert.That(transforms.Any(t => t.name == "LegacyLights"), Is.EqualTo(legacyPlugs));
+            Assert.That(transforms.Any(t => t.name == "Sender - Legacy Front"), Is.EqualTo(legacyPlugs && tpsAnimations));
+            Assert.That(transforms.Any(t => t.name == "Light - Legacy DPS Trigger"), Is.EqualTo(legacySockets && dpsAnimations));
+            var options = injector.GetService<SpsOptionsService>();
+            var legacy = options.GetLegacyParameter();
+            Assert.That(legacy != null, Is.EqualTo(legacyPlugs || (legacySockets && dpsAnimations)));
+            options.MoveMenus();
+            var menu = injector.GetService<MenuService>().GetReadOnlyMenu();
+            Assert.That(menu.controls.Single(c => c.name == "SPS").subMenu.controls
+                .Count(c => c.name.Contains("Legacy Support")), Is.EqualTo(legacy != null ? 1 : 0));
+            if (legacy == null) return;
+            var legacyObjects = transforms.Where(t => t.name == "LegacyLights"
+                || t.name == "Sender - Legacy Front" || t.name == "Light - Legacy DPS Trigger").ToArray();
+            Start();
+            Evaluate(5);
+            Assert.That(legacyObjects.All(t => t.gameObject.activeSelf), Is.True);
+            playable.SetFloat(legacy, 0);
+            Evaluate(3);
+            Assert.That(legacyObjects.All(t => !t.gameObject.activeSelf), Is.True);
         }
 
         [Test]

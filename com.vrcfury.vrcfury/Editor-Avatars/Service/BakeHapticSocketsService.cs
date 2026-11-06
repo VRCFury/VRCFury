@@ -111,7 +111,7 @@ namespace VF.Service {
                         continue;
                     }
 
-                    var bakeResult = socketBaker.Bake(socket, legacyAvailable: options.legacyModeAvailable,
+                    var bakeResult = socketBaker.Bake(socket, legacyPlugCompatibility: options.legacyModeAvailable,
                         tpsDepthAnimationCompatibility: options.tpsDepthAnimationCompatibility);
                     globals.addOtherFeature(new ShowInFirstPerson {
                         useObjOverride = true,

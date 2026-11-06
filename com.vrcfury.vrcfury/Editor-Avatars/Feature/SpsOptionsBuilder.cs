@@ -29,49 +29,53 @@ namespace VF.Feature {
             menu.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("saveSockets"), "Save Active Sockets Between Worlds"));
             c.Add(menu);
 
-            VisualElement Mode(string title, string subtitle, string availableName, string defaultName, string savedName) {
-                var section = VRCFuryEditorUtils.Section(title, subtitle);
-                var available = prop.FindPropertyRelative(availableName);
-                c.Add(VRCFuryEditorUtils.Prop(available, $"Include {title} in Avatar"));
-                section.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(defaultName), "Default On"));
-                section.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(savedName), "Save Setting Between Worlds"));
-                c.Add(VRCFuryEditorUtils.RefreshOnChange(() =>
-                    available.boolValue ? section : new VisualElement(), available));
-                return section;
-            }
-            var legacy = Mode(
-                "Legacy Mode",
-                null,
-                "legacyModeAvailable",
-                "legacyModeEnabledOnAvatarLoad",
-                "legacyModeSaved"
-            );
-            legacy.Add(VRCFuryEditorUtils.WrappedLabel("Adds compatibility with:").Bold());
-            void CompatibilityCheckbox(string propertyName, string label, string penalty) {
-                var checkbox = propertyName == null
-                    ? VRCFuryEditorUtils.Prop(null, label, fieldOverride: new Toggle { value = true })
-                    : VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(propertyName), label);
-                if (propertyName == null) checkbox.SetEnabled(false);
-                legacy.Add(checkbox);
+            var compatibility = VRCFuryEditorUtils.Section("Legacy Compatibility");
+            var plugs = prop.FindPropertyRelative("legacyModeAvailable");
+            var sockets = prop.FindPropertyRelative("legacySocketCompatibility");
+            void CompatibilityCheckbox(string propertyName, string label, string penalty, SerializedProperty enabledWhen = null) {
+                VisualElement Checkbox() {
+                    if (enabledWhen == null || enabledWhen.boolValue) {
+                        return VRCFuryEditorUtils.Prop(prop.FindPropertyRelative(propertyName), label);
+                    }
+                    var disabled = VRCFuryEditorUtils.Prop(null, label, fieldOverride: new Toggle());
+                    disabled.SetEnabled(false);
+                    return disabled;
+                }
+                compatibility.Add(enabledWhen == null ? Checkbox() : VRCFuryEditorUtils.RefreshOnChange(Checkbox, enabledWhen));
                 var subtitle = VRCFuryEditorUtils.WrappedLabel(penalty).PaddingLeft(18);
                 subtitle.style.fontSize = 11;
                 subtitle.style.opacity = 0.75f;
                 subtitle.style.marginBottom = 6;
-                legacy.Add(subtitle);
+                compatibility.Add(subtitle);
             }
-            CompatibilityCheckbox(null, "DPS/TPS/SPS1/SPS2 Plugs",
-                "Adds 2 lights per socket\nOnly one socket can be active at a time");
+            CompatibilityCheckbox("legacyModeAvailable", "DPS/TPS/SPS1/SPS2 Plugs",
+                "Adds 2 lights per socket\nRequires Legacy Mode On");
+            CompatibilityCheckbox("legacySocketCompatibility", "DPS/TPS/SPS1/SPS2 Sockets",
+                "Adds 2 contact senders per plug");
             CompatibilityCheckbox("tpsDepthAnimationCompatibility", "TPS Plug Animations (Not Recommended, Rare)",
-                "Adds 1 contact sender per socket");
+                "Adds 1 contact sender per socket\nRequires Legacy Mode On", enabledWhen: plugs);
             CompatibilityCheckbox("addDpsTipLight", "DPS Socket Animations (Not Recommended, Rare)",
-                "Adds 1 light per plug");
-            Mode(
-                "Auto Mode",
-                "Automatically activates socket that touches a plug.",
-                "autoModeAvailable",
-                "autoModeDefaultOn",
-                "autoModeSaved"
-            );
+                "Adds 1 light per plug\nRequires Legacy Mode On", enabledWhen: sockets);
+            var dps = prop.FindPropertyRelative("addDpsTipLight");
+            compatibility.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                var controls = new VisualElement();
+                if (!plugs.boolValue && !(sockets.boolValue && dps.boolValue)) return controls;
+                controls.Add(VRCFuryEditorUtils.WrappedLabel("Legacy Mode Menu").Bold());
+                controls.Add(VRCFuryEditorUtils.WrappedLabel("Only one socket can be active at a time"));
+                controls.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("legacyModeEnabledOnAvatarLoad"), "Default On"));
+                controls.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("legacyModeSaved"), "Save Setting Between Worlds"));
+                return controls;
+            }, plugs, sockets, dps));
+            c.Add(compatibility);
+            var autoAvailable = prop.FindPropertyRelative("autoModeAvailable");
+            c.Add(VRCFuryEditorUtils.Prop(autoAvailable, "Include Auto Mode in Avatar"));
+            c.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                if (!autoAvailable.boolValue) return new VisualElement();
+                var auto = VRCFuryEditorUtils.Section("Auto Mode", "Automatically activates socket that touches a plug.");
+                auto.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("autoModeDefaultOn"), "Default On"));
+                auto.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("autoModeSaved"), "Save Setting Between Worlds"));
+                return auto;
+            }, autoAvailable));
             return c;
         }
     }
