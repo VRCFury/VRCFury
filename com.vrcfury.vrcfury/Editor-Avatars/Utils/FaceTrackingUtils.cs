@@ -27,14 +27,38 @@ namespace VF.Utils {
         private static readonly HashSet<string> HardwareInputs = Enumerable.Range(0, FaceTrackingCount)
             .Where(i => !VRCAvatarDescriptor.IsBasicFaceTrackingKey(i))
             .Select(i => ((VRCAvatarDescriptor.FaceTrackingKey)i).ToString()).ToHashSet();
+        private static readonly HashSet<string> EyelidInputs = new HashSet<string> {
+            nameof(VRCAvatarDescriptor.FaceTrackingKey.EyeClosedLeft),
+            nameof(VRCAvatarDescriptor.FaceTrackingKey.EyeClosedRight)
+        };
+        private static readonly HashSet<string> GazeInputs = Enumerable.Range(
+                (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookOutRight,
+                (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookDownLeft - (int)VRCAvatarDescriptor.FaceTrackingKey.EyeLookOutRight + 1)
+            .Select(i => ((VRCAvatarDescriptor.FaceTrackingKey)i).ToString()).ToHashSet();
 
         private static IEnumerable<string> Inputs(FtBehavior settings) =>
             settings.combineMode == VRCAvatarDescriptor.ParameterBehaviorCombineMode.Custom
                 ? Regex.Split(settings.customExpression ?? "", @"\W+")
                 : (settings.inputTrackingKeyNames ?? Array.Empty<string>()).Take(MaxParameterBehaviorInputs);
 
+        private static IEnumerable<string> Inputs(FtSet settings) =>
+            (settings.faceTrackingBlendshapeNames ?? Array.Empty<string>()).Take(FaceTrackingCount)
+                .Select((name, key) => string.IsNullOrEmpty(name)
+                    ? null : ((VRCAvatarDescriptor.FaceTrackingKey)key).ToString())
+                .Concat((settings.visemeBlendshapeNames ?? Array.Empty<string>()).Take(VisemeCount)
+                    .Select((name, key) => string.IsNullOrEmpty(name) ? null
+                        : VRCAvatarDescriptor.GetFaceTrackingVisemeInputName((VRC_AvatarDescriptor.Viseme)key)))
+                .Where(input => input != null);
+
         public static bool UsesVisemeInputs(FtBehavior settings) => Inputs(settings).Any(VisemeInputs.Contains);
         public static bool UsesHardwareInputs(FtBehavior settings) => Inputs(settings).Any(HardwareInputs.Contains);
+        public static bool UsesEyelidInputs(FtBehavior settings) => Inputs(settings).Any(EyelidInputs.Contains);
+        public static bool UsesGazeInputs(FtBehavior settings) => Inputs(settings).Any(GazeInputs.Contains);
+        public static bool UsesVisemeInputs(FtSet settings) => Inputs(settings).Any(VisemeInputs.Contains);
+        public static bool UsesHardwareInputs(FtSet settings) => Inputs(settings).Any(HardwareInputs.Contains);
+        public static bool UsesEyelidInputs(FtSet settings) => Inputs(settings).Any(EyelidInputs.Contains);
+        public static bool UsesGazeInputs(FtSet settings) => Inputs(settings).Any(GazeInputs.Contains);
+        public static bool UsesAnyInput(FtBehavior settings, ISet<string> inputs) => Inputs(settings).Any(inputs.Contains);
 
         public static (SkinnedMeshRenderer mesh, string[] names) GetLegacyVisemes(VRCAvatarDescriptor avatar) {
             if (avatar.lipSync != VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape || avatar.VisemeSkinnedMesh == null)
