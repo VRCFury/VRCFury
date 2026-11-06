@@ -177,6 +177,12 @@ namespace VF.Tests {
                     .Where(sender => sender.collisionTags.Contains(SpsTags.LegacySocketFront)).ToArray();
                 Assert.That(fronts.Length, Is.EqualTo(enabled && legacy ? 1 : 0));
                 Assert.That(result.legacyLights != null, Is.EqualTo(legacy));
+                var rootSender = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
+                    .Single(sender => sender.name == "Sender - Root");
+                Assert.That(rootSender.collisionTags.Contains(SpsTags.LegacySocket2), Is.EqualTo(legacy),
+                    "SPS2 depth animations must not be triggered when legacy plug compatibility is unavailable");
+                Assert.That(rootSender.collisionTags.Contains(SpsTags.LegacySocket), Is.EqualTo(legacy));
+                Assert.That(rootSender.collisionTags, Does.Contain(SpsTags.FormatSocket(SpsTags.PublicChannel)));
                 if (enabled && legacy) {
                     var front = fronts.Single();
                     Assert.That(front.radius, Is.EqualTo(0.001f).Within(0.00001f));

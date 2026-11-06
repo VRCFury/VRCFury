@@ -59,7 +59,7 @@ namespace VF.Inspector {
             // Senders
             {
                 var legacySuffixes = new List<string>();
-                if (channels.Contains(SpsTags.PublicChannel)) legacySuffixes.Add("");
+                if (legacyPlugCompatibility && channels.Contains(SpsTags.PublicChannel)) legacySuffixes.Add("");
                 var rootTags = new List<string>();
                 rootTags.AddRange(legacySuffixes.Select(suffix => SpsTags.LegacySocket2 + suffix));
                 rootTags.AddRange(legacySuffixes.Select(suffix => SpsTags.LegacySocket + suffix));
