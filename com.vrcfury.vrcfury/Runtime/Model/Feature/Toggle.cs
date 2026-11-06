@@ -18,6 +18,8 @@ namespace VF.Model.Feature {
         public bool exclusiveOffState;
         public bool enableExclusiveTag;
         public string exclusiveTag = "";
+        public bool enableSetTag;
+        public string setTag = "";
         [Obsolete] public List<GameObject> resetPhysbones = new List<GameObject>();
         [NonSerialized] public bool addMenuItem = true;
         [NonSerialized] public bool usePrefixOnParam = true;
