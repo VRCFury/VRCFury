@@ -1028,11 +1028,18 @@ namespace VF.Tests {
             public bool boolVal { get => inner.boolVal; set => inner.boolVal = value; }
         }
 
-        [Test]
-        public void AutoSelectionUsesPointSeparationIncludingZeroAndRejectsMissingContacts() {
-            var socket = root.AddComponent<VRCFuryHapticSocket>();
-            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
-            socket.addMenuItem = true;
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void AutoSelectionUsesCloseContactHysteresisAndLocksActiveSocket(bool remote, bool manualSocket) {
+            root.GetComponent<VRCAvatarDescriptor>().ViewPosition = new Vector3(0, 1.8f, 0);
+            foreach (var name in new[] { "SocketA", "SocketB", "NoMenu" }) {
+                var socket = GameObjects.Create(name, root).AddComponent<VRCFuryHapticSocket>();
+                socket.name = name;
+                socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+                socket.addMenuItem = name != "NoMenu";
+            }
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
@@ -1040,22 +1047,111 @@ namespace VF.Tests {
             globals.addOtherFeature = _ => { };
             injector.GetService<BakeHapticSocketsService>().Apply();
             var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).Single(r => r.gameObject.name == "SpsAutoDistance");
-            Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.PointSeparation));
-            var activeDistance = fx.parameters.Single(p => p.name.EndsWith("_AutoActiveDist"));
-            var closer = fx.parameters.Single(p => p.name.EndsWith("_AutoCloser"));
-            var pointSeparation = receiver.parameter + "_PointSeparation";
-            Assert.That(fx.parameters.Single(p => p.name == pointSeparation).GetDefault(), Is.EqualTo(-1));
+            Assert.That(receiver.collisionTags, Is.EqualTo(new[] { SpsTags.PlugClose }));
+            Assert.That(receiver.radius, Is.EqualTo(0.18f).Within(0.0001f));
+            Assert.That(receiver.allowOthers && !receiver.allowSelf && receiver.localOnly, Is.True);
+            Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.None));
+            Assert.That(receiver.owner().GetConstraints().Single(c => c.IsParent()).GetSources(), Has.Length.EqualTo(2));
+            Assert.That(fx.parameters.Any(p => p.name.EndsWith("_AutoActiveDist") || p.name.EndsWith("_AutoCloser")
+                || p.name.EndsWith("_AutoSocketNum") || p.name == receiver.parameter + "_PointSeparation"), Is.False);
+            var a = fx.parameters.Single(p => p.name.EndsWith("_SocketA"));
+            var b = fx.parameters.Single(p => p.name.EndsWith("_SocketB"));
+            var auto = injector.GetService<SpsOptionsService>().GetAutoParameter();
+            var layer = fx.GetLayers().Single(l => l.name.EndsWith("SPS - Auto Socket Selection"));
+            var states = layer.allStates.ToDictionary(s => Animator.StringToHash(s.name));
             Start();
-            // The ordinary proximity remains saturated throughout these comparisons.
-            playable.SetFloat(receiver.parameter, 1);
-            foreach (var values in new[] { (0.4f, 0.2f, 1f), (0.4f, 0f, 1f),
-                         (0.4f, 0.8f, 0f), (0.4f, 0.4f, 0f), (0.4f, -1f, 0f),
-                         (0f, 0f, 0f), (10000f, 0.6f, 1f), (10000f, -1f, 0f) }) {
-                playable.SetFloat(activeDistance, values.Item1);
-                playable.SetFloat(pointSeparation, values.Item2);
-                Evaluate(2);
-                Assert.That(playable.GetFloat(closer), Is.EqualTo(values.Item3).Within(0.001f));
+            var layerIndex = fx.GetLayers().ToList().IndexOf(layer);
+            var lastState = 0;
+            var proximityA = 0.5f;
+            var proximityB = 0.5f;
+            string CurrentState() => states.GetOrDefault(playable.GetCurrentAnimatorStateInfo(layerIndex).shortNameHash)?.name ?? "";
+            void Tick(int frames) {
+                for (var frame = 0; frame < frames; frame++) {
+                    var stateName = CurrentState();
+                    playable.SetFloat(receiver.parameter, stateName.EndsWith("SocketA") ? proximityA
+                        : stateName.EndsWith("SocketB") ? proximityB : 0);
+                    Evaluate(1);
+                    var state = playable.GetCurrentAnimatorStateInfo(layerIndex).shortNameHash;
+                    if (state == lastState) continue;
+                    lastState = state;
+                    // Unity runs the state machine; emulate VRChat's Set drivers on state entry.
+                    if (!states.TryGetValue(state, out var entered)) continue;
+                    foreach (var parameter in entered.behaviours.GetBehaviours<VRCAvatarParameterDriver>().SelectMany(d => d.parameters)) {
+                        Assert.That(parameter.type, Is.EqualTo(VRC_AvatarParameterDriver.ChangeType.Set));
+                        playable.SetFloat(parameter.name, parameter.value);
+                    }
+                }
             }
+            playable.SetFloat("IsLocal", remote ? 0 : 1);
+            if (manualSocket) playable.SetFloat(a, 1);
+            playable.SetFloat(auto, 1);
+            Tick(120);
+            Assert.That(playable.GetFloat(a), Is.EqualTo(manualSocket ? 1 : 0));
+            Assert.That(playable.GetFloat(b), Is.Zero);
+            Assert.That(receiver.gameObject.activeSelf, Is.EqualTo(!remote));
+            if (remote) return;
+            if (manualSocket) {
+                proximityA = 1;
+                Tick(120);
+                Assert.That(playable.GetFloat(a), Is.EqualTo(1));
+                Assert.That(playable.GetFloat(b), Is.Zero);
+                Assert.That(CurrentState(), Is.Not.EqualTo("Switch To SocketA"), "Auto must not claim an already-enabled socket");
+                playable.SetFloat(auto, 0);
+                Tick(120);
+                Assert.That(playable.GetFloat(a), Is.EqualTo(1), "Turning Auto off while scanning must preserve manual sockets");
+                playable.SetFloat(auto, 1);
+                proximityB = 1;
+                Tick(120);
+                Assert.That(playable.GetFloat(a), Is.EqualTo(1), "Acquiring another socket must not turn manual sockets off");
+                Assert.That(playable.GetFloat(b), Is.EqualTo(1));
+                proximityB = 0.009f;
+                Tick(120);
+                Assert.That(playable.GetFloat(a), Is.EqualTo(1));
+                Assert.That(playable.GetFloat(b), Is.Zero, "Leaving contact must only release the Auto-owned socket");
+                proximityB = 1;
+                Tick(120);
+                playable.SetFloat(auto, 0);
+                Tick(120);
+                Assert.That(playable.GetFloat(a), Is.EqualTo(1));
+                Assert.That(playable.GetFloat(b), Is.Zero, "Turning Auto off must only release its own socket");
+                playable.SetFloat(auto, 1);
+                Tick(120);
+                Assert.That(playable.GetFloat(b), Is.EqualTo(1));
+                playable.SetFloat(b, 0);
+                proximityB = 0;
+                Tick(120);
+                playable.SetFloat(b, 1);
+                playable.SetFloat(auto, 0);
+                Tick(120);
+                Assert.That(playable.GetFloat(a), Is.EqualTo(1));
+                Assert.That(playable.GetFloat(b), Is.EqualTo(1), "Manual off/on must relinquish Auto ownership");
+                return;
+            }
+            for (var frame = 0; frame < 120 && CurrentState() != "Settle SocketA"; frame++) Tick(1);
+            Assert.That(CurrentState(), Is.EqualTo("Settle SocketA"));
+            proximityA = 0.51f;
+            proximityB = 1;
+            Tick(120);
+            Assert.That(playable.GetFloat(a), Is.EqualTo(1));
+            Assert.That(playable.GetFloat(b), Is.Zero);
+            proximityA = 0.01f;
+            Tick(120);
+            Assert.That(CurrentState(), Is.EqualTo("Switch To SocketA"), "Even a stronger nearby contact must not steal the socket");
+            Assert.That(playable.GetFloat(a), Is.EqualTo(1));
+            Assert.That(playable.GetFloat(b), Is.Zero);
+            proximityA = 0.009f;
+            Tick(120);
+            Assert.That(playable.GetFloat(a), Is.Zero);
+            Assert.That(playable.GetFloat(b), Is.EqualTo(1));
+            proximityA = 1;
+            proximityB = 0.02f;
+            Tick(120);
+            Assert.That(CurrentState(), Is.EqualTo("Switch To SocketB"));
+            playable.SetFloat(auto, 0);
+            Tick(120);
+            Assert.That(playable.GetFloat(a), Is.Zero);
+            Assert.That(playable.GetFloat(b), Is.Zero);
+            Assert.That(receiver.gameObject.activeSelf, Is.False);
         }
 
         [TestCase(false)]

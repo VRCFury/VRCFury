@@ -286,30 +286,18 @@ namespace VF.Service {
             }
 
             if (autoOn != null && autoSockets.Count > 0) {
-#if !VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-                throw new Exception("SPS Auto Mode requires VRCSDK 3.10.6 or newer.");
-#else
-                var autoActiveNum = fx.CreateUniqueInt("AutoSocketNum", def: -1);
-                var autoActiveDist = fx.CreateUniqueFloat("AutoActiveDist", def: 10000);
                 var autoProximity = fx.CreateUniqueFloat("AutoContact");
-                var autoCurrentDist = fx.GetOrCreateFloat(autoProximity.name + "_PointSeparation", def: -1);
-                var dbt = directTreeService.Create("SPS - Auto Mode");
-                var closer = fx.CreateUniqueFloat("AutoCloser");
-                // PointSeparation remains valid inside a plug's length sphere, where
-                // proximity saturates. Its -1 no-contact sentinel must never win.
-                dbt.Add(BlendtreeMath.GreaterThan(autoCurrentDist, 0, true)
-                    .And(BlendtreeMath.GreaterThan(autoActiveDist, autoCurrentDist))
-                    .create(closer.MakeSetter(1), closer.MakeSetter(0)));
 
                 var autoReceiverObj = GameObjects.Create("SpsAutoDistance", avatarObject);
                 ConstraintUtils.MakeWorldSpace(autoReceiverObj);
+                autoReceiverObj.active = false;
+                autoOnClip.SetEnabled(autoReceiverObj, true);
 
                 var receiver = autoReceiverObj.AddComponent<VRCContactReceiver>();
                 receiver.parameter = autoProximity;
-                receiver.advancedParameters = ContactReceiver.AdvancedParameter.PointSeparation;
-                receiver.radius = 1f;
+                receiver.radius = avatar.ViewPosition.y * 0.1f;
                 receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
-                receiver.collisionTags.Add(SpsTags.LegacyPlugSphere);
+                receiver.collisionTags.Add(SpsTags.PlugClose);
                 receiver.allowOthers = true;
                 receiver.allowSelf = false;
                 receiver.localOnly = true;
@@ -317,7 +305,7 @@ namespace VF.Service {
 
                 var constraint = VFConstraint.CreateParent(autoReceiverObj);
 
-                var layer = fx.NewLayer("SPS - Auto Socket Comparison");
+                var layer = fx.NewLayer("SPS - Auto Socket Selection");
                 var remoteTrap = layer.NewState("Remote trap");
                 var idle = layer.NewState("Idle");
                 remoteTrap.TransitionsTo(idle).When(fx.IsLocal().IsTrue());
@@ -325,12 +313,7 @@ namespace VF.Service {
                 var active = layer.NewState("Active");
                 idle.TransitionsTo(active).When(autoOn.IsTrue());
 
-                var turnOffState = layer.NewState("Turn Off");
-                active.TransitionsTo(turnOffState).When(autoOn.IsFalse());
-                turnOffState.Drives(autoActiveNum, -1);
-                turnOffState.Drives(autoActiveDist, 10000);
-                foreach (var o in autoSockets) turnOffState.Drives(o.Item2, false);
-                turnOffState.TransitionsTo(active).When(autoOn.IsTrue());
+                active.TransitionsTo(idle).When(autoOn.IsFalse());
 
                 var lastState = idle;
                 Action<VFState> addNext = (next) => active.TransitionsTo(next).When(fx.Always());
@@ -352,35 +335,28 @@ namespace VF.Service {
                     var settleState2 = layer.NewState($"Settle2 {name}").WithAnimation(evalClip);
                     settleState.TransitionsTo(settleState2).When().WithTransitionExitTime(settleTime);
 
-                    // We need to settle for another frame for the DBT comparison to apply
+                    // Read the contact only after the constraint and contact system have settled.
                     var settleState3 = layer.NewState($"Settle3 {name}").WithAnimation(evalClip);
                     settleState2.TransitionsTo(settleState3).When(fx.Always());
 
-                    // Active socket went out of range
-                    settleState3.TransitionsTo(turnOffState).When(autoActiveNum.IsEqualTo(i).And(autoCurrentDist.IsLessThan(0)));
-
-                    var updateState = layer.NewState($"Update {name}").WithAnimation(evalClip);
-                    updateState.DrivesCopy(autoCurrentDist, autoActiveDist);
-                    settleState3.TransitionsTo(updateState).When(autoActiveNum.IsEqualTo(i));
-
                     var switchToState = layer.NewState($"Switch To {name}").WithAnimation(evalClip);
-                    switchToState.Drives(autoActiveNum, i);
-                    switchToState.DrivesCopy(autoCurrentDist, autoActiveDist);
-                    foreach (var o in autoSockets) {
-                        if (o.Item2 != enabled) switchToState.Drives(o.Item2, false);
-                    }
                     switchToState.Drives(enabled, true);
-                    settleState3.TransitionsTo(switchToState).When(closer.IsGreaterThan(0));
+                    settleState3.TransitionsTo(switchToState).When(autoOn.IsTrue()
+                        .And(enabled.IsFalse()).And(autoProximity.IsGreaterThan(0.5f)));
+                    // Hold the receiver at this socket; do not scan or switch while it remains active.
+                    // A manual off relinquishes ownership without writing the toggle again.
+                    switchToState.TransitionsTo(idle).When(enabled.IsFalse());
+                    var turnOffState = layer.NewState($"Turn Off {name}");
+                    turnOffState.Drives(enabled, false);
+                    switchToState.TransitionsTo(turnOffState).When(autoOn.IsFalse().Or(autoProximity.IsLessThan(0.01f)));
+                    turnOffState.TransitionsTo(idle).When(fx.Always());
 
                     addNext = (next) => {
                         settleState3.TransitionsTo(next).When(fx.Always());
-                        updateState.TransitionsTo(next).When(fx.Always());
-                        switchToState.TransitionsTo(next).When(fx.Always());
                     };
                 }
 
                 if (addNext != null) addNext(active);
-#endif
             }
         }
     }
