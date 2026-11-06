@@ -111,8 +111,10 @@ namespace VF.Inspector {
         private void Changed(Vector2 newValue) {
             newValue.x = Mathf.Min(newValue.x, newValue.y);
             newValue.y = Mathf.Max(newValue.x, newValue.y);
-            newValue.x = Mathf.Clamp(newValue.x, radius ? 0 : -1, radius ? float.MaxValue : 3);
-            newValue.y = Mathf.Clamp(newValue.y, radius ? 0 : -1, radius ? float.MaxValue : 3);
+            if (radius) {
+                newValue.x = Mathf.Max(0, newValue.x);
+                newValue.y = Mathf.Max(0, newValue.y);
+            }
             value = newValue;
             // This usually happens automatically, but might not if the user sets the float
             // to something invalid
@@ -121,7 +123,8 @@ namespace VF.Inspector {
 
         public override void SetValueWithoutNotify(Vector2 newValue) {
             base.SetValueWithoutNotify(newValue);
-            if (radius) slider.highLimit = Mathf.Max(slider.highLimit, newValue.y);
+            if (!radius) slider.lowLimit = Mathf.Min(slider.lowLimit, newValue.x);
+            slider.highLimit = Mathf.Max(slider.highLimit, newValue.y);
             slider.SetValueWithoutNotify(newValue);
             xField.SetValueWithoutNotify(newValue.x);
             yField.SetValueWithoutNotify(newValue.y);

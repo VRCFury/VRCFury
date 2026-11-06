@@ -324,20 +324,28 @@ namespace VF.Inspector {
                         fieldOverride: new DepthActionSlider(prop.FindPropertyRelative("range"), (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex, radius: IsRadius)
                     )
                 , units));
-                if (IsRadius) {
-                    var field = new PopupField<string>(new List<string> { "Local", "Meters" }, 0);
-                    void UpdateUnits(SerializedProperty value) => field.SetValueWithoutNotify(value.enumDisplayNames[value.enumValueIndex]);
-                    UpdateUnits(units);
-                    field.TrackPropertyValue(units, UpdateUnits);
-                    field.RegisterValueChangedCallback(change => {
-                        units.enumValueIndex = (int)(change.newValue == "Meters"
-                            ? VRCFuryHapticSocket.DepthActionUnits.Meters : VRCFuryHapticSocket.DepthActionUnits.Local);
-                        units.serializedObject.ApplyModifiedProperties();
-                    });
-                    c.Add(VRCFuryEditorUtils.BetterProp(null, "Range Units", fieldOverride: field));
-                } else {
-                    c.Add(VRCFuryEditorUtils.BetterProp(units, "Range Units"));
-                }
+                var unitNames = units.enumDisplayNames;
+                var unitField = new PopupField<string>(IsRadius
+                    ? new List<string> { "Local", "Meters" } : unitNames.ToList(), 0);
+                void UpdateUnits(SerializedProperty value) => unitField.SetValueWithoutNotify(unitNames[value.enumValueIndex]);
+                UpdateUnits(units);
+                unitField.TrackPropertyValue(units, UpdateUnits);
+                unitField.RegisterValueChangedCallback(change => {
+                    var oldUnits = (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex;
+                    var newUnits = (VRCFuryHapticSocket.DepthActionUnits)Array.IndexOf(unitNames, change.newValue);
+                    if (prop.serializedObject.targetObject is UnityEngine.Component owner) {
+                        var scale = owner.transform.lossyScale.x;
+                        var range = prop.FindPropertyRelative("range");
+                        if (oldUnits == VRCFuryHapticSocket.DepthActionUnits.Local && newUnits == VRCFuryHapticSocket.DepthActionUnits.Meters) {
+                            range.vector2Value *= scale;
+                        } else if (oldUnits == VRCFuryHapticSocket.DepthActionUnits.Meters && newUnits == VRCFuryHapticSocket.DepthActionUnits.Local && scale != 0) {
+                            range.vector2Value /= scale;
+                        }
+                    }
+                    units.enumValueIndex = (int)newUnits;
+                    units.serializedObject.ApplyModifiedProperties();
+                });
+                c.Add(VRCFuryEditorUtils.BetterProp(null, "Range Units", fieldOverride: unitField));
                 c.Add(VRCFuryEditorUtils.RefreshOnChange(() =>
                     (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex == VRCFuryHapticSocket.DepthActionUnits.Meters
                         ? VRCFuryEditorUtils.Warn("Usually you should use Local rather than Meters. Ranges in Meters stay fixed in world space and do not scale with the avatar.")

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
@@ -7,11 +8,104 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VF.Inspector;
+using VF.Component;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
     [Category("VRCFury")]
     internal class EditorChangeTrackingTest {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TypedAnimationRangesAreUnboundedExceptForRadiusMinimum(bool radius) {
+            var panelOwner = ScriptableObject.CreateInstance<Fields>();
+            var obj = new GameObject("Range owner");
+            try {
+                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                socket.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew());
+                using (var serialized = new SerializedObject(socket))
+                using (var panel = new Panel(panelOwner)) {
+                    var range = serialized.FindProperty("depthActions2").GetArrayElementAtIndex(0).FindPropertyRelative("range");
+                    var control = new DepthActionSlider(range, VRCFuryHapticSocket.DepthActionUnits.Local, radius);
+                    panel.root.Add(control);
+                    panel.root.Bind(serialized);
+                    panel.Pump();
+                    var fields = control.Query<FloatField>().ToList();
+                    fields[0].value = -10;
+                    fields[1].value = 25;
+                    panel.Pump();
+                    Assert.That(control.value, Is.EqualTo(new Vector2(radius ? 0 : -10, 25)));
+                    Assert.That(range.vector2Value, Is.EqualTo(control.value));
+                    var slider = control.Q<MinMaxSlider>();
+                    Assert.That(slider.value, Is.EqualTo(control.value));
+                    Assert.That(slider.lowLimit, Is.EqualTo(radius ? 0 : -10));
+                    Assert.That(slider.highLimit, Is.EqualTo(25));
+                }
+            } finally {
+                Object.DestroyImmediate(obj);
+                Object.DestroyImmediate(panelOwner);
+            }
+        }
+
+        [TestCase("socket", 0.5f)]
+        [TestCase("socket", 2f)]
+        [TestCase("plug", 0.5f)]
+        [TestCase("plug", 2f)]
+        [TestCase("radius", 0.5f)]
+        [TestCase("radius", 2f)]
+        public void AnimationUnitChangesPreservePhysicalRange(string kind, float scale) {
+            var panelOwner = ScriptableObject.CreateInstance<Fields>();
+            var parent = new GameObject("Scaled parent");
+            var obj = new GameObject("Animation owner");
+            obj.transform.SetParent(parent.transform, false);
+            parent.transform.localScale = Vector3.one * 3;
+            obj.transform.localScale = Vector3.one * scale;
+            try {
+                UnityEngine.Component component;
+                var original = kind == "radius" ? new Vector2(0.02f, 0.1f) : new Vector2(-0.25f, 0.1f);
+                string list;
+                if (kind == "plug") {
+                    var plug = obj.AddComponent<VRCFuryHapticPlug>();
+                    plug.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew { range = original });
+                    component = plug;
+                    list = "depthActions2";
+                } else {
+                    var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                    if (kind == "radius") socket.plugEntryRadiusActions.Add(new VRCFuryHapticSocket.PlugEntryRadiusAction { range = original });
+                    else socket.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew { range = original });
+                    component = socket;
+                    list = kind == "radius" ? "plugEntryRadiusActions" : "depthActions2";
+                }
+                using (var serialized = new SerializedObject(component))
+                using (var panel = new Panel(panelOwner)) {
+                    var action = serialized.FindProperty(list).GetArrayElementAtIndex(0);
+                    var drawer = kind == "radius"
+                        ? new VRCFuryHapticSocketEditor.PlugEntryRadiusActionDrawer()
+                        : new VRCFuryHapticSocketEditor.DepthActionDrawer();
+                    var editor = drawer.CreatePropertyGUI(action);
+                    panel.root.Add(editor);
+                    panel.root.Bind(serialized);
+                    panel.Pump();
+                    var units = editor.Query<PopupField<string>>().ToList().Single(field => field.choices.Contains("Meters"));
+                    units.value = "Meters";
+                    panel.Pump();
+                    Assert.That(action.FindPropertyRelative("range").vector2Value, Is.EqualTo(original * (scale * 3)));
+                    parent.transform.localScale = Vector3.one * 6;
+                    units.value = "Local";
+                    panel.Pump();
+                    Assert.That(action.FindPropertyRelative("range").vector2Value, Is.EqualTo(original / 2),
+                        "Meters to Local must use the current scale, including ancestors");
+                    if (kind != "radius") {
+                        units.value = "Plugs";
+                        panel.Pump();
+                        Assert.That(action.FindPropertyRelative("range").vector2Value, Is.EqualTo(original / 2));
+                    }
+                }
+            } finally {
+                Object.DestroyImmediate(parent);
+                Object.DestroyImmediate(panelOwner);
+            }
+        }
+
         private class Fields : ScriptableObject {
             public int number;
             public bool flag;
