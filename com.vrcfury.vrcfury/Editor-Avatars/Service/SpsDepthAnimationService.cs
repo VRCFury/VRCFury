@@ -65,12 +65,7 @@ namespace VF.Service {
                         tree.Add(offThreshold, clipFactory.GetEmptyClip());
                         tree.Add(onThreshold, action.onClip);
                     }
-                    var active = useRawInput
-                        ? increasing
-                            ? BlendtreeMath.GreaterThan(parameter, offThreshold + (onThreshold - offThreshold) * 0.01f)
-                            : BlendtreeMath.LessThan(parameter, offThreshold + (onThreshold - offThreshold) * 0.01f)
-                        : BlendtreeMath.GreaterThan(parameter, 0.01f);
-                    calculations.Add(reverseClip ? tree : active.create(tree, null));
+                    calculations.Add(tree);
                     continue;
                 }
                 var layer = fx.NewLayer($"{name} - {(increasing ? "Plug Entry Radius" : "Depth")} Animations - {actionNum} - Action");
@@ -84,7 +79,7 @@ namespace VF.Service {
                 if (reverseClip) {
                     off.TransitionsTo(on).When(fx.Always());
                 } else {
-                    var onWhen = parameter.IsGreaterThan(0.01f);
+                    var onWhen = parameter.IsGreaterThan(0);
                     off.TransitionsTo(on).When(onWhen);
                     on.TransitionsTo(off).When(onWhen.Not());
                 }

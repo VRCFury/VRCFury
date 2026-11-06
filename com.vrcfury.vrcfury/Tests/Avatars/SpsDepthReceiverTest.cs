@@ -1737,9 +1737,11 @@ namespace VF.Tests {
         }
 
         [TestCase(0f, false, false)]
+        [TestCase(0.1f, false, false)]
         [TestCase(0.1f, false, true)]
         [TestCase(0f, true, false)]
         [TestCase(0f, true, true)]
+        [TestCase(0.1f, true, false)]
         [TestCase(0f, true, false, true)]
         [TestCase(0.1f, true, true, true)]
         public void PlugEntryRadiusAnimationsUseSampledRadiusWithDepthAnimationOptions(float smoothingSeconds, bool motionTime, bool self, bool savedReverseClip = false) {
@@ -1788,6 +1790,10 @@ namespace VF.Tests {
             playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.05f);
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.5f).Within(0.01f));
+            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.0005f);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.005f).Within(0.0001f),
+                "Radius animations must follow values below 1% of the animation range");
             playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.1f);
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.EqualTo(1).Within(0.01f));
@@ -1846,10 +1852,13 @@ namespace VF.Tests {
                 Evaluate(1);
                 Assert.That(playable.GetFloat(output), Is.EqualTo(0.8f).Within(0.001f),
                     "Static unsmoothed actions must consume the current depth without a mapping AAP");
-                playable.SetFloat(input, -0.001f);
-                Evaluate(4);
-                Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f), "The original 1% activation threshold still applies");
             }
+            playable.SetFloat(input, -0.001f);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.004f).Within(0.0001f), "Depth animations must follow values below 1% of the animation range");
+            playable.SetFloat(input, 0.1f);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.0001f));
         }
 
         [TestCase(false)]
