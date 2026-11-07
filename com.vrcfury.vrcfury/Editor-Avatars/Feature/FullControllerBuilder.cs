@@ -667,8 +667,15 @@ namespace VF.Feature {
                     if (sourceObject == null) return;
                     if (sourceObject.GetComponent<VRCFuryHapticPlug>() == null
                         && sourceObject.GetComponent<VRCFuryHapticSocket>() == null) return;
-                    if (VRCFuryHapticPlugEditor.ParseSpsMagicParam(sourceParamProp.stringValue,
-                        isSocket: sourceObject.GetComponent<VRCFuryHapticSocket>() != null) != null) return;
+                    VRCFuryHapticPlugEditor.ParseDepthSocketModes(sourceParamProp.stringValue, out var unfiltered);
+                    if (VRCFuryHapticPlugEditor.ParseSpsMagicParam(unfiltered,
+                        isSocket: sourceObject.GetComponent<VRCFuryHapticSocket>() != null) != null) {
+                        if (sourceObject.GetComponent<VRCFuryHapticPlug>() == null && sourceParamProp.stringValue != unfiltered) {
+                            sourceParamProp.stringValue = unfiltered;
+                            sourceParamProp.serializedObject.ApplyModifiedProperties();
+                        }
+                        return;
+                    }
                     sourceParamProp.stringValue = VRCFuryHapticPlugEditor.SpsDepthMeters;
                     sourceParamProp.serializedObject.ApplyModifiedProperties();
                 }
@@ -681,8 +688,9 @@ namespace VF.Feature {
                     var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
                     if (sourceObject == null) return false;
                     var isSocket = sourceObject.GetComponent<VRCFuryHapticSocket>() != null;
+                    VRCFuryHapticPlugEditor.ParseDepthSocketModes(sourceParamProp.stringValue, out var unfiltered);
                     return (isSocket || sourceObject.GetComponent<VRCFuryHapticPlug>() != null)
-                        && VRCFuryHapticPlugEditor.ParseSpsMagicParam(sourceParamProp.stringValue, isSocket) != null;
+                        && VRCFuryHapticPlugEditor.ParseSpsMagicParam(unfiltered, isSocket) != null;
                 }
                 var showingSpsEditor = false;
                 content.Add(VRCFuryEditorUtils.RefreshOnTrigger(() => {

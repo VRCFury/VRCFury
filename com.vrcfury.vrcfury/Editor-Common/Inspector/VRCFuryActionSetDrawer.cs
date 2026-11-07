@@ -90,10 +90,13 @@ namespace VF.Inspector {
             }, list));
             
             if (showDebugInfo && renderDebugInfo != null) {
+                var findActionSet = prop.CreateObjectLookup();
                 container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
-                    var actionSet = prop.GetObject() as State;
+                    var current = findActionSet();
+                    if (current == null) return new VisualElement();
+                    var actionSet = current.GetObject() as State;
                     if (actionSet == null) return new VisualElement();
-                    var gameObject = prop.serializedObject.GetGameObject();
+                    var gameObject = current.serializedObject.GetGameObject();
                     return renderDebugInfo(gameObject, actionSet);
                 }));
             }

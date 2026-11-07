@@ -67,6 +67,43 @@ namespace com.vrcfury.api.Components {
             });
         }
 
+        public enum SpsDepthUnits {
+            Meters,
+            Local,
+            PlugLengths
+        }
+
+        [System.Flags]
+        public enum SpsSocketTypes {
+            Hole = 1,
+            Ring = 2,
+            RingOneWay = 4,
+            Any = ~0
+        }
+
+        public void AddInjectedSpsDepthParam(
+            GameObject sourcePlug,
+            string targetParam,
+            SpsDepthUnits units = SpsDepthUnits.Local,
+            SpsSocketTypes socketTypes = SpsSocketTypes.Any
+        ) {
+            var source = units switch {
+                SpsDepthUnits.Meters => "__sps_depth_meters",
+                SpsDepthUnits.Local => "__sps_depth_local",
+                SpsDepthUnits.PlugLengths => "__sps_depth_plug_lengths",
+                _ => throw new System.ArgumentOutOfRangeException(nameof(units))
+            };
+            if ((int)socketTypes != 0 && socketTypes != SpsSocketTypes.Any) {
+                if (((int)socketTypes & ~7) != 0) throw new System.ArgumentOutOfRangeException(nameof(socketTypes));
+                var modes = new System.Collections.Generic.List<string>();
+                if ((socketTypes & SpsSocketTypes.Hole) != 0) modes.Add("hole");
+                if ((socketTypes & SpsSocketTypes.Ring) != 0) modes.Add("ring");
+                if ((socketTypes & SpsSocketTypes.RingOneWay) != 0) modes.Add("one-way-ring");
+                source += "_socket_types_" + string.Join("+", modes);
+            }
+            AddInjectedParam(sourcePlug, source, targetParam);
+        }
+
         public void AddPathRewrite(string from, string to) {
             c.rewriteBindings.Add(new FullController.BindingRewrite {
                 from = from,
