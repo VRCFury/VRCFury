@@ -38,7 +38,9 @@ namespace VF.Service {
                 var measurements = getMeasurements(depthAction.enableSelf ? Party.Merged : Party.Others);
                 var units = depthAction.units == VRCFuryHapticSocket.DepthActionUnits.Plugs ? SpsUnitsPlugLengths
                     : depthAction.units == VRCFuryHapticSocket.DepthActionUnits.Meters ? SpsUnitsMeters : SpsUnitsLocal;
-                var unsmoothed = measurements(GetSpsMagicParam(measurement, units));
+                var socketModes = spsComponentOwner.GetComponent<VRCFuryHapticPlug>() != null
+                    ? depthAction.socketMode : VRCFuryHapticSocket.DepthActionSocketMode.Any;
+                var unsmoothed = measurements(GetSpsMagicParam(measurement, units, socketModes));
                 var action = actionClipService.LoadStateAdv(prefix, depthAction.actionSet, spsComponentOwner, ActionClipService.MotionTimeMode.Auto);
                 var useRawInput = depthAction.smoothingSeconds <= 0 && !action.useMotionTime
                     && depthAction.range.Min() < depthAction.range.Max();

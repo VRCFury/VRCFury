@@ -87,6 +87,55 @@ namespace VF.Inspector {
             return "";
         }
 
+        public static string GetSpsMagicParam(string param, string units, VRCFuryHapticSocket.DepthActionSocketMode modes) {
+            var source = GetSpsMagicParam(param, units);
+            if (param != SpsParamDepth || (int)modes == 0 || modes == VRCFuryHapticSocket.DepthActionSocketMode.Any) return source;
+            var names = new List<string>();
+            if ((modes & VRCFuryHapticSocket.DepthActionSocketMode.Hole) != 0) names.Add("hole");
+            if ((modes & VRCFuryHapticSocket.DepthActionSocketMode.Ring) != 0) names.Add("ring");
+            if ((modes & VRCFuryHapticSocket.DepthActionSocketMode.RingOneWay) != 0) names.Add("one-way-ring");
+            return source + "_socket_types_" + string.Join("+", names);
+        }
+
+        public static VRCFuryHapticSocket.DepthActionSocketMode ParseDepthSocketModes(string source, out string unfiltered) {
+            unfiltered = source;
+            var index = source?.IndexOf("_socket_types_", StringComparison.Ordinal) ?? -1;
+            if (index < 0) return VRCFuryHapticSocket.DepthActionSocketMode.Any;
+            var baseSource = source.Substring(0, index);
+            if (ParseSpsMagicParam(baseSource, isSocket: false)?.param != SpsParamDepth) return VRCFuryHapticSocket.DepthActionSocketMode.Any;
+            var modes = (VRCFuryHapticSocket.DepthActionSocketMode)0;
+            foreach (var name in source.Substring(index + "_socket_types_".Length).Split('+')) {
+                switch (name) {
+                    case "hole": modes |= VRCFuryHapticSocket.DepthActionSocketMode.Hole; break;
+                    case "ring": modes |= VRCFuryHapticSocket.DepthActionSocketMode.Ring; break;
+                    case "one-way-ring": modes |= VRCFuryHapticSocket.DepthActionSocketMode.RingOneWay; break;
+                    default: return VRCFuryHapticSocket.DepthActionSocketMode.Any;
+                }
+            }
+            if ((int)modes == 0) return VRCFuryHapticSocket.DepthActionSocketMode.Any;
+            unfiltered = baseSource;
+            return modes;
+        }
+
+        internal static PopupField<string> SocketModesField(VRCFuryHapticSocket.DepthActionSocketMode selected,
+            Action<VRCFuryHapticSocket.DepthActionSocketMode> save) {
+            var modes = Enumerable.Range(0, 8).Select(value => value == 0
+                ? VRCFuryHapticSocket.DepthActionSocketMode.Any : (VRCFuryHapticSocket.DepthActionSocketMode)value).ToList();
+            string Label(VRCFuryHapticSocket.DepthActionSocketMode mode) {
+                if ((int)mode == 0 || mode == VRCFuryHapticSocket.DepthActionSocketMode.Any) return "Any";
+                var selectedNames = new List<string>();
+                if ((mode & VRCFuryHapticSocket.DepthActionSocketMode.Hole) != 0) selectedNames.Add("Hole");
+                if ((mode & VRCFuryHapticSocket.DepthActionSocketMode.Ring) != 0) selectedNames.Add("Ring");
+                if ((mode & VRCFuryHapticSocket.DepthActionSocketMode.RingOneWay) != 0) selectedNames.Add("One-Way Ring");
+                return string.Join(", ", selectedNames);
+            }
+            var labels = modes.Select(Label).ToList();
+            var field = new PopupField<string>("Socket Types", labels, Label(selected));
+            field.tooltip = "Choose which socket modes provide the injected depth value. Other modes produce an inactive depth value. Untyped legacy sockets only match Any.";
+            field.RegisterValueChangedCallback(change => save(modes[labels.IndexOf(change.newValue)]));
+            return field;
+        }
+
         public static (string param, string units)? ParseSpsMagicParam(string sourceParam, bool isSocket) {
             switch (sourceParam) {
                 case SpsInteractingWithLegacy: return (SpsParamInteractingWithLegacy, null);
@@ -116,16 +165,20 @@ namespace VF.Inspector {
             if (sourceObject == null) return false;
             var isSocket = sourceObject.GetComponent<VRCFuryHapticSocket>() != null;
             if (!isSocket && sourceObject.GetComponent<VRCFuryHapticPlug>() == null) return false;
-            return ParseSpsMagicParam(injectProp.FindPropertyRelative("sourceParam").stringValue,
-                isSocket) != null;
+            ParseDepthSocketModes(injectProp.FindPropertyRelative("sourceParam").stringValue, out var unfiltered);
+            return ParseSpsMagicParam(unfiltered, isSocket) != null;
         }
 
         public static VisualElement RenderSpsInjectParamEditor(SerializedProperty injectProp) {
+            var findEntry = injectProp.CreateObjectLookup();
             var sourceParamProp = injectProp.FindPropertyRelative("sourceParam");
 
             var sourceObject = injectProp.FindPropertyRelative("sourceObject").objectReferenceValue as GameObject;
+            if (sourceObject == null) return null;
             var isSocket = sourceObject.GetComponent<VRCFuryHapticSocket>() != null;
-            var parsed = ParseSpsMagicParam(sourceParamProp.stringValue, isSocket);
+            var supportsModes = sourceObject.GetComponent<VRCFuryHapticPlug>() != null;
+            var selectedModes = ParseDepthSocketModes(sourceParamProp.stringValue, out var unfilteredSource);
+            var parsed = ParseSpsMagicParam(unfilteredSource, isSocket);
             if (parsed == null) return null;
             var content = new VisualElement();
             var parameters = SpsParams.ToList();
@@ -138,26 +191,46 @@ namespace VF.Inspector {
             var paramField = new PopupField<string>("Parameter", parameters, selectedParam, ParameterLabel, ParameterLabel);
             var unitsField = new PopupField<string>("Units", SpsUnits.ToList(), selectedUnits ?? SpsUnitsMeters);
             unitsField.style.display = selectedUnits == null ? DisplayStyle.None : DisplayStyle.Flex;
+            var modesField = SocketModesField(selectedModes, modes => {
+                selectedModes = modes;
+                Save();
+            });
+            void RefreshModes() => modesField.SetVisible(supportsModes && paramField.value == SpsParamDepth);
 
             void Save() {
-                sourceParamProp.stringValue = GetSpsMagicParam(paramField.value, unitsField.value);
-                unitsField.style.display = ParseSpsMagicParam(sourceParamProp.stringValue, isSocket)?.units == null
+                var current = findEntry();
+                if (current == null) return;
+                var currentSource = current.FindPropertyRelative("sourceObject").objectReferenceValue as GameObject;
+                var currentSupportsModes = currentSource != null && currentSource.GetComponent<VRCFuryHapticPlug>() != null;
+                var currentParam = current.FindPropertyRelative("sourceParam");
+                currentParam.stringValue = GetSpsMagicParam(paramField.value, unitsField.value,
+                    currentSupportsModes ? selectedModes : VRCFuryHapticSocket.DepthActionSocketMode.Any);
+                unitsField.style.display = ParseSpsMagicParam(GetSpsMagicParam(paramField.value, unitsField.value), isSocket)?.units == null
                     ? DisplayStyle.None : DisplayStyle.Flex;
-                sourceParamProp.serializedObject.ApplyModifiedProperties();
+                current.serializedObject.ApplyModifiedProperties();
             }
 
-            paramField.RegisterValueChangedCallback(_ => Save());
+            paramField.RegisterValueChangedCallback(_ => { Save(); RefreshModes(); });
             unitsField.RegisterValueChangedCallback(_ => Save());
             content.TrackProperty(sourceParamProp, p => {
-                var current = ParseSpsMagicParam(p.stringValue, isSocket);
+                var entry = findEntry();
+                if (entry == null) return;
+                selectedModes = ParseDepthSocketModes(entry.FindPropertyRelative("sourceParam").stringValue, out var currentSource);
+                var current = ParseSpsMagicParam(currentSource, isSocket);
                 if (current == null) return;
                 paramField.SetValueWithoutNotify(current.Value.param);
                 unitsField.SetValueWithoutNotify(current.Value.units ?? SpsUnitsMeters);
                 unitsField.style.display = current.Value.units == null ? DisplayStyle.None : DisplayStyle.Flex;
+                var modeIndex = selectedModes == VRCFuryHapticSocket.DepthActionSocketMode.Any ? 0 : (int)selectedModes;
+                modesField.SetValueWithoutNotify(modesField.choices[modeIndex]);
+                RefreshModes();
             });
 
             content.Add(paramField);
             content.Add(unitsField);
+            content.Add(modesField);
+            RefreshModes();
+            if (!supportsModes && unfilteredSource != sourceParamProp.stringValue) Save();
             return content;
         }
 

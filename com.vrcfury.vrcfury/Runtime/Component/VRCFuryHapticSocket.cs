@@ -99,6 +99,14 @@ namespace VF.Component {
             Local
         }
 
+        [Flags]
+        public enum DepthActionSocketMode {
+            Hole = 1,
+            Ring = 2,
+            RingOneWay = 4,
+            Any = ~0
+        }
+
         private void Reset() {
             offsetsInLocalUnits = true;
         }
@@ -108,6 +116,7 @@ namespace VF.Component {
             public State actionSet = new State();
             public Vector2 range = new Vector2(-0.25f, 0);
             public DepthActionUnits units = DepthActionUnits.Local;
+            public DepthActionSocketMode socketMode = DepthActionSocketMode.Any;
             public bool enableSelf;
             public float smoothingSeconds = 0;
             public bool reverseClip = false;

@@ -3,6 +3,7 @@ using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using VF.Component;
 using VF.Builder.Haptics;
 using VF.Injector;
 using VF.Inspector;
@@ -66,11 +67,37 @@ namespace VF.Service {
                     return output;
                 });
                 var outputs = new Dictionary<(string parameter, string units), VFAParam>();
-                return source => {
-                    var parsed = ParseSpsMagicParam(source, isSocket: false);
+                var filteredDistances = new Dictionary<VRCFuryHapticSocket.DepthActionSocketMode, VFAParam>();
+                VFAParam FilterDistance(VRCFuryHapticSocket.DepthActionSocketMode modes) {
+                    if ((int)modes == 0 || modes == VRCFuryHapticSocket.DepthActionSocketMode.Any) return distance.Value;
+                    return filteredDistances.GetOrCreate(modes, () => {
+                        // Reuse upstream's scale decoder and legacy classification.
+                        var hole = BlendtreeMath.GreaterThan(GetOutput(SpsSocketIsHole), 0);
+                        var ring = BlendtreeMath.GreaterThan(GetOutput(SpsSocketIsTwoWay), 0);
+                        var typedLegacy = legacy
+                            ? BlendtreeMath.GreaterThan(Field("CollisionTag_" + SpsTags.LegacySocketHole), 0)
+                                .Or(BlendtreeMath.GreaterThan(Field("CollisionTag_" + SpsTags.LegacySocketRing), 0))
+                            : BlendtreeMath.False();
+                        var matches = BlendtreeMath.False();
+                        if ((modes & VRCFuryHapticSocket.DepthActionSocketMode.Hole) != 0) matches = matches.Or(hole);
+                        if ((modes & VRCFuryHapticSocket.DepthActionSocketMode.Ring) != 0) matches = matches.Or(hole.Not().And(ring));
+                        if ((modes & VRCFuryHapticSocket.DepthActionSocketMode.RingOneWay) != 0) matches = matches.Or(hole.Not().And(ring.Not()));
+                        matches = matches.And(native.Value.Or(typedLegacy));
+                        var output = fx.CreateUniqueFloat(prefix + "/SocketModes/" + modes + "/Meters", 100);
+                        tree.Add(present.Value.And(matches).create(
+                            output.MakeCopier(distance.Value, minSupported: -100, maxSupported: 100),
+                            output.MakeSetter(100)));
+                        return output;
+                    });
+                }
+                return GetOutput;
+
+                VFAParam GetOutput(string source) {
+                    var modes = ParseDepthSocketModes(source, out var unfilteredSource);
+                    var parsed = ParseSpsMagicParam(unfilteredSource, isSocket: false);
                     if (parsed == null) return null;
                     var (parameter, units) = parsed.Value;
-                    return outputs.GetOrCreate((parameter, units), () => {
+                    return outputs.GetOrCreate((source, units), () => {
                         if (parameter == SpsParamInteractingWithLegacy) {
                             if (!legacy) return fx.Zero();
                             var legacyOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithLegacy");
@@ -111,7 +138,7 @@ namespace VF.Service {
                         if (parameter == SpsParamPlugRadius && units == SpsUnitsPlugLengths) return normalizedRadius.Value;
                         if (parameter == SpsParamPlugRadius && units == SpsUnitsLocal) return localRadiusParam.Value;
                         var input = parameter switch {
-                            SpsParamDepth => distance.Value,
+                            SpsParamDepth => FilterDistance(modes),
                             SpsParamVelocity => velocity.Value,
                             SpsParamPlugLength => length.Value,
                             SpsParamPlugRadius => radius.Value,
@@ -125,7 +152,7 @@ namespace VF.Service {
                         math.MultiplyInPlace(output, multiplier, input, factor);
                         return output;
                     });
-                };
+                }
             });
 #else
             throw new Exception("SPS depth measurements require VRCSDK 3.10.6 or newer. Update the VRCSDK to use SPS.");

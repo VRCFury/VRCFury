@@ -5,6 +5,24 @@ using UnityEngine;
 
 namespace VF.Utils {
     internal static class SerializedPropertyExtensions {
+        // Fix for Unity having an aneurysm when a Depth Animations item is removed
+        public static System.Func<SerializedProperty> CreateObjectLookup(this SerializedProperty prop) {
+            var serialized = prop.serializedObject;
+            var path = prop.propertyPath;
+            var expected = prop.GetObject();
+            return () => {
+                try {
+                    if (serialized.targetObject == null) return null;
+                    var current = serialized.FindProperty(path);
+                    return current != null && ReferenceEquals(current.GetObject(), expected) ? current : null;
+                } catch (System.ObjectDisposedException) {
+                    return null;
+                } catch (System.InvalidOperationException) {
+                    return null;
+                }
+            };
+        }
+
         [CanBeNull]
         public static object GetObject(this SerializedProperty prop) {
             var path = prop.propertyPath.Replace(".Array.data[", ".[");

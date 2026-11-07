@@ -19,6 +19,106 @@ namespace VF.Inspector {
         internal const float GizmoRadiusOffset = 0.04f;
         internal const float LegacyRadiusOffset = 0.03f;
 
+        internal static VisualElement SocketModesField(
+            Func<VRCFuryHapticSocket.DepthActionSocketMode> getModes,
+            Action<VRCFuryHapticSocket.DepthActionSocketMode> setModes,
+            Func<bool> isValid
+        ) {
+            var field = new IMGUIContainer();
+            SocketModesPopup popup = null;
+            field.RegisterCallback<DetachFromPanelEvent>(_ => popup?.Close());
+            var modes = new[] {
+                ("Hole", VRCFuryHapticSocket.DepthActionSocketMode.Hole),
+                ("Ring", VRCFuryHapticSocket.DepthActionSocketMode.Ring),
+                ("One-Way Ring", VRCFuryHapticSocket.DepthActionSocketMode.RingOneWay)
+            };
+
+            int GetSelected() {
+                var selected = (int)getModes();
+                return selected == -1 ? 0 : selected;
+            }
+
+            string GetLabel() {
+                var selected = GetSelected();
+                return selected == 0
+                    ? "Any"
+                    : string.Join(", ", modes.Where(mode => (selected & (int)mode.Item2) != 0).Select(mode => mode.Item1));
+            }
+
+            void Save(int selected) {
+                if (!isValid()) {
+                    popup?.Close();
+                    return;
+                }
+                setModes(selected == 0 ? VRCFuryHapticSocket.DepthActionSocketMode.Any : (VRCFuryHapticSocket.DepthActionSocketMode)selected);
+                field.MarkDirtyRepaint();
+            }
+
+            field.onGUIHandler = () => {
+                if (!isValid()) {
+                    popup?.Close();
+                    return;
+                }
+                var rect = EditorGUILayout.GetControlRect(false, EditorGUIUtility.singleLineHeight);
+                if (!EditorGUI.DropdownButton(rect, new GUIContent(GetLabel()), FocusType.Passive, EditorStyles.popup)) return;
+
+                popup = new SocketModesPopup(GetSelected, Save, modes, () => field.panel != null && isValid());
+                UnityEditor.PopupWindow.Show(rect, popup);
+            };
+            field.style.height = EditorGUIUtility.singleLineHeight;
+            return field;
+        }
+
+        private sealed class SocketModesPopup : PopupWindowContent {
+            private readonly Func<int> getSelected;
+            private readonly Action<int> save;
+            private readonly Func<bool> isValid;
+            private readonly (string label, VRCFuryHapticSocket.DepthActionSocketMode mode)[] modes;
+
+            public SocketModesPopup(Func<int> getSelected, Action<int> save,
+                (string label, VRCFuryHapticSocket.DepthActionSocketMode mode)[] modes, Func<bool> isValid) {
+                this.getSelected = getSelected;
+                this.save = save;
+                this.modes = modes;
+                this.isValid = isValid;
+            }
+
+            public void Close() {
+                if (editorWindow != null) editorWindow.Close();
+            }
+
+            public override Vector2 GetWindowSize() =>
+                new Vector2(220, 24 + (modes.Length + 2) * (EditorGUIUtility.singleLineHeight + 2));
+
+            public override void OnGUI(Rect rect) {
+                if (!isValid()) {
+                    Close();
+                    return;
+                }
+                if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Escape) {
+                    editorWindow.Close();
+                    Event.current.Use();
+                    return;
+                }
+
+                GUILayout.BeginArea(new Rect(8, 6, rect.width - 16, rect.height - 12));
+                GUILayout.Label("Select one or more socket types", EditorStyles.miniLabel);
+                EditorGUI.BeginChangeCheck();
+                var any = EditorGUILayout.ToggleLeft("Any", getSelected() == 0);
+                if (EditorGUI.EndChangeCheck() && any) save(0);
+                GUILayout.Space(4);
+                foreach (var (label, mode) in modes) {
+                    var selected = getSelected();
+                    EditorGUI.BeginChangeCheck();
+                    var enabled = EditorGUILayout.ToggleLeft(label, (selected & (int)mode) != 0);
+                    if (EditorGUI.EndChangeCheck()) {
+                        save(enabled ? selected | (int)mode : selected & ~(int)mode);
+                    }
+                }
+                GUILayout.EndArea();
+            }
+        }
+
         private void OnSceneGUI() {
             if (!(target is VRCFuryHapticSocket socket)) return;
             VRCFuryHapticSocketGizmo.DrawEditableStops(socket.guidedPathStops
@@ -346,6 +446,25 @@ namespace VF.Inspector {
                     units.serializedObject.ApplyModifiedProperties();
                 });
                 c.Add(VRCFuryEditorUtils.BetterProp(null, "Range Units", fieldOverride: unitField));
+                if (!IsRadius && prop.serializedObject.targetObject is VRCFuryHapticPlug) {
+                    var mode = prop.FindPropertyRelative("socketMode");
+                    var findAction = prop.CreateObjectLookup();
+                    c.Add(VRCFuryEditorUtils.BetterProp(
+                        mode,
+                        "Socket Types",
+                        tooltip: "Choose which socket modes can trigger this animation. Untyped legacy sockets only match Any.",
+                        fieldOverride: SocketModesField(
+                            () => (VRCFuryHapticSocket.DepthActionSocketMode)(findAction()?.FindPropertyRelative("socketMode").intValue ?? -1),
+                            selected => {
+                                var current = findAction()?.FindPropertyRelative("socketMode");
+                                if (current == null) return;
+                                current.intValue = (int)selected;
+                                current.serializedObject.ApplyModifiedProperties();
+                            },
+                            () => findAction() != null
+                        )
+                    ));
+                }
                 c.Add(VRCFuryEditorUtils.RefreshOnChange(() =>
                     (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex == VRCFuryHapticSocket.DepthActionUnits.Meters
                         ? VRCFuryEditorUtils.Warn("Usually you should use Local rather than Meters. Ranges in Meters stay fixed in world space and do not scale with the avatar.")
