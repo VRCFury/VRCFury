@@ -247,15 +247,16 @@ namespace VF.Tests {
             CheckNode(contacts[3], 1, 3, Flags.RingOneWay);
             for (var i = 1; i < contacts.Length; i++) {
                 var target = socket.guidedPathStops[i - 1].transform;
+                var pathRoot = target.asVf().Children().Single(child => child.name == "BakedSpsPath");
                 CheckVector(contacts[i].transform.position, target.position);
                 CheckVector(contacts[i].transform.forward, target.forward);
                 Assert.That(contacts[i].transform.lossyScale.x, Is.EqualTo(1 | (i << 7) | (i == 2 ? 1 << 14 : 0)).Within(0.01));
                 Assert.That(contacts[i].radius, Is.Zero);
                 Assert.That(contacts[i].transform.parent.asVf(), Is.EqualTo(result.worldSpace));
                 var constraints = VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot })
-                    .Where(c => c.GetSources().Single() == target.asVf()).ToArray();
+                    .Where(c => c.GetSources().Single() == pathRoot).ToArray();
                 Assert.That(constraints.Length, Is.EqualTo(1));
-                Assert.That(constraints.All(c => c.GetSources().Single() == target.asVf()), Is.True);
+                Assert.That(constraints.All(c => c.GetSources().Single() == pathRoot), Is.True);
                 Assert.That(contacts[i].collisionTags, Does.Contain("SPS/SocketPath/custom"));
                 Assert.That(contacts[i].collisionTags, Does.Contain("SPS/SocketPath/_nothips"));
             }
@@ -295,7 +296,7 @@ namespace VF.Tests {
             CheckVector(guide.transform.lossyScale, expected);
             Assert.That(guide.transform.lossyScale.y, Is.EqualTo(1).Within(0.000001));
             var constraint = VFConstraint.GetConstraintsInSelfAndChildren(new[] { guide.owner() }).Single();
-            Assert.That(constraint.GetSources().Single(), Is.EqualTo(stop.asVf()));
+            Assert.That(constraint.GetSources().Single(), Is.EqualTo(stop.asVf().Children().Single(child => child.name == "BakedSpsPath")));
             result.bakeRoot.active = false;
             Assert.That(guide.gameObject.activeInHierarchy, Is.False);
         }

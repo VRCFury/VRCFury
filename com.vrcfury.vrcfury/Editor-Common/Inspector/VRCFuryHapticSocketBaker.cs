@@ -135,7 +135,7 @@ namespace VF.Inspector {
                 }
             }
 
-            ConfigureSpsSenders(socket, lightType, channels, rootSender);
+            var pathRoots = ConfigureSpsSenders(socket, lightType, channels, rootSender);
 
             if (EditorApplication.isPlaying) {
                 var gizmo = socket.owner().AddComponent<VRCFurySocketGizmo>();
@@ -145,6 +145,7 @@ namespace VF.Inspector {
 
             return new BakeResult {
                 bakeRoot = bakeRoot,
+                pathRoots = pathRoots,
                 worldSpace = worldSpace,
                 legacyLights = legacyLights,
                 legacyFrontSender = legacyFrontSender
@@ -179,10 +180,10 @@ namespace VF.Inspector {
             return ShouldSupportOgbTouch(socket, closestBone);
         }
 
-        internal void ConfigureSpsSenders(VRCFuryHapticSocket socket,
+        internal VFGameObject[] ConfigureSpsSenders(VRCFuryHapticSocket socket,
             VRCFuryHapticSocket.AddLight type, IReadOnlyCollection<string> channels, VFGameObject rootSender) {
-            if (rootSender == null || type == VRCFuryHapticSocket.AddLight.None) return;
-            if (channels.Count == 0) return;
+            if (rootSender == null || type == VRCFuryHapticSocket.AddLight.None) return Array.Empty<VFGameObject>();
+            if (channels.Count == 0) return Array.Empty<VFGameObject>();
             var rootTags = channels.Select(SpsTags.FormatSocket).ToArray();
             var pathTags = channels.Select(SpsTags.FormatSocketPath).ToArray();
 
@@ -191,11 +192,13 @@ namespace VF.Inspector {
 
             var stops = socket.guidedPathStops;
             var stopCount = Math.Min(stops.Count, SpsTags.MaxUserPathStops);
+            var pathRoots = new VFGameObject[stopCount];
             AddNode(rootSender, GetEntranceType(socket, type), 0);
 
             for (var i = 0; i < stopCount; i++) {
                 var sender = GameObjects.Create($"Sender - Path Stop {i + 1}", rootSender.parent);
-                var target = stops[i].transform.asVf();
+                var target = GameObjects.Create("BakedSpsPath", stops[i].transform.asVf());
+                pathRoots[i] = target;
                 sender.worldPosition = target.worldPosition;
                 sender.worldRotation = target.worldRotation;
                 VFConstraint.CreateParent(sender).AddSource(target, 1);
@@ -205,6 +208,7 @@ namespace VF.Inspector {
                     : stops[i + 1].shrink ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay;
                 AddNode(sender, nodeType, i + 1);
             }
+            return pathRoots;
 
             void AddNode(VFGameObject sender, VRCFuryHapticSocket.AddLight nodeType, int pathIndex) {
                 var tags = (pathIndex == 0 ? rootTags : pathTags).ToList();

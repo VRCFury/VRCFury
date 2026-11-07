@@ -410,6 +410,7 @@ namespace VF.Inspector {
 
         public class BakeResult {
             public VFGameObject bakeRoot;
+            public VFGameObject[] pathRoots;
             public VFGameObject legacyFrontSender;
             public VFGameObject worldSpace;
             public VFGameObject legacyLights;

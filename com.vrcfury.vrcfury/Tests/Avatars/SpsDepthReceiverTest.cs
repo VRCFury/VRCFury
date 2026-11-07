@@ -253,14 +253,19 @@ namespace VF.Tests {
             injector.GetService<BakeHapticSocketsService>().Apply();
             var exclusions = added.OfType<ShowInFirstPerson>().ToArray();
             var baked = socket.owner().Children().Single(child => child.name == "BakedSpsSocket");
-            Assert.That(exclusions.Select(e => e.objOverride), Is.EquivalentTo(new GameObject[] { baked, stop, outsideHead }));
+            var paths = new[] { stop, outsideHead }.Select(source => source.Children().Single(child => child.name == "BakedSpsPath")).ToArray();
+            Assert.That(exclusions.Select(e => e.objOverride), Is.EquivalentTo(new[] { baked }.Concat(paths).Select(obj => (GameObject)obj)));
+            Assert.That(paths.All(path => path.localPosition == Vector3.zero && path.localRotation == Quaternion.identity
+                && path.localScale == Vector3.one), Is.True);
+            Assert.That(exclusions.Any(e => e.objOverride == (GameObject)stop || e.objOverride == (GameObject)outsideHead), Is.False,
+                "Authored stop objects must retain their own head-chop behavior");
             Assert.That(exclusions.All(e => e.useObjOverride && e.onlyIfChildOfHead), Is.True,
                 "Only stop sources under the avatar head should receive first-person exclusions");
             var guideSenders = baked.GetComponentsInSelfAndChildren<VRCContactSender>()
                 .Where(sender => sender.name.StartsWith("Sender - Path Stop")).ToArray();
             Assert.That(guideSenders, Has.Length.EqualTo(2));
             Assert.That(guideSenders.SelectMany(sender => sender.owner().GetConstraints().Single(c => c.IsParent()).GetSources()),
-                Is.EquivalentTo(new[] { stop, outsideHead }));
+                Is.EquivalentTo(paths));
         }
 
         [Test]
