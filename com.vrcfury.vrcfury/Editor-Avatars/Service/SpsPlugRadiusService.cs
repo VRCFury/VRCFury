@@ -39,6 +39,11 @@ namespace VF.Service {
                 clip.SetScale(bake.mainSender, new Vector3(bake.mainSender.localScale.x,
                     Mathf.Clamp(key.value, bake.localMinimumRadius, bake.localLength),
                     bake.mainSender.localScale.z));
+                foreach (var renderer in bake.renderers) {
+                    if (renderer.spsBlendshapes == null) continue;
+                    clip.SetCurve(renderer.renderer, "material." + SpsConfigurer.SpsRadiusOffsetMultiplier,
+                        bake.localRadius > 0 ? Mathf.Clamp(key.value, 0, bake.localLength) / bake.localRadius : 0);
+                }
                 sampler.Add(key.time, clip);
             }
             return sampler;

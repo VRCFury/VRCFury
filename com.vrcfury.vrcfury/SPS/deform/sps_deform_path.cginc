@@ -89,7 +89,7 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
     path.plugUp = sps_nearest_normal(sps_path_forwards[0], frame._m01_m11_m21);
     path.bakeScale = frameScale;
     path.worldLength = _SPS_BakedLength * path.bakeScale;
-    float worldRadius = _SPS_BakedRadius * path.bakeScale;
+    float worldRadius = _SPS_BakedRadius * path.bakeScale * max(_SPS_RadiusOffsetMultiplier, 0);
     if (!(path.worldLength > 0)) return false;
 
     SpsSocketCandidate sockets[SPS_CONTACT_COUNT + 4];
