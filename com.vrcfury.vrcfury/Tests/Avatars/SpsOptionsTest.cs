@@ -242,8 +242,6 @@ namespace VF.Tests {
         [TestCase(true, VRCFuryHapticPlugEditor.SpsParamInteractingWithOthers)]
         [TestCase(false, VRCFuryHapticPlugEditor.SpsParamSocketIsHole)]
         [TestCase(true, VRCFuryHapticPlugEditor.SpsParamSocketIsHole)]
-        [TestCase(false, VRCFuryHapticPlugEditor.SpsParamSocketIsTwoWay)]
-        [TestCase(true, VRCFuryHapticPlugEditor.SpsParamSocketIsTwoWay)]
         public void InjectParametersOffersPlugEntryRadiusForSockets(bool socketSource, string unitlessParameter) {
             var unitless = unitlessParameter != null;
             var root = new GameObject("Inject parameters");

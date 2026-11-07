@@ -152,7 +152,6 @@ namespace VF.Service {
                             return othersOutput;
                         }
                         if (parameter == SpsParamSocketIsHole) return entranceType.Value == VRCFuryHapticSocket.AddLight.Hole ? fx.One() : fx.Zero();
-                        if (parameter == SpsParamSocketIsTwoWay) return entranceType.Value == VRCFuryHapticSocket.AddLight.Ring ? fx.One() : fx.Zero();
                         if (parameter == SpsParamInteractingWithLegacy) {
                             if (!legacy) return fx.Zero();
                             var legacyOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithLegacy");

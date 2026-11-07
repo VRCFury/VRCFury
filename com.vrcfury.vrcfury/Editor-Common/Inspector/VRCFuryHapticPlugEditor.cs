@@ -28,7 +28,6 @@ namespace VF.Inspector {
         public const string SpsParamInteractingWithLegacy = "Interacting With Legacy";
         public const string SpsParamInteractingWithOthers = "Interacting With Others";
         public const string SpsParamSocketIsHole = "Socket Is Hole";
-        public const string SpsParamSocketIsTwoWay = "Socket Is Two-Way";
         public const string SpsUnitsMeters = "Meters";
         public const string SpsUnitsLocal = "Local";
         public const string SpsUnitsPlugLengths = "Plug Lengths";
@@ -50,7 +49,6 @@ namespace VF.Inspector {
         public const string SpsInteractingWithLegacy = "__sps_interacting_with_legacy";
         public const string SpsInteractingWithOthers = "__sps_interacting_with_others";
         public const string SpsSocketIsHole = "__sps_socket_is_hole";
-        public const string SpsSocketIsTwoWay = "__sps_socket_is_two_way";
 
         public static readonly string[] SpsParams = {
             SpsParamDepth,
@@ -59,8 +57,7 @@ namespace VF.Inspector {
             SpsParamPlugRadius,
             SpsParamInteractingWithLegacy,
             SpsParamInteractingWithOthers,
-            SpsParamSocketIsHole,
-            SpsParamSocketIsTwoWay
+            SpsParamSocketIsHole
         };
         public static readonly string[] SpsUnits = {
             SpsUnitsMeters,
@@ -72,7 +69,6 @@ namespace VF.Inspector {
             if (param == SpsParamInteractingWithLegacy) return SpsInteractingWithLegacy;
             if (param == SpsParamInteractingWithOthers) return SpsInteractingWithOthers;
             if (param == SpsParamSocketIsHole) return SpsSocketIsHole;
-            if (param == SpsParamSocketIsTwoWay) return SpsSocketIsTwoWay;
             if (param == SpsParamDepth && units == SpsUnitsMeters) return SpsDepthMeters;
             if (param == SpsParamDepth && units == SpsUnitsLocal) return SpsDepthLocal;
             if (param == SpsParamDepth && units == SpsUnitsPlugLengths) return SpsDepthPlugLengths;
@@ -96,7 +92,6 @@ namespace VF.Inspector {
                 case SpsInteractingWithLegacy: return (SpsParamInteractingWithLegacy, null);
                 case SpsInteractingWithOthers: return (SpsParamInteractingWithOthers, null);
                 case SpsSocketIsHole: return (SpsParamSocketIsHole, null);
-                case SpsSocketIsTwoWay: return (SpsParamSocketIsTwoWay, null);
                 case SpsDepthMeters: return (SpsParamDepth, SpsUnitsMeters);
                 case SpsDepthLocal: return (SpsParamDepth, SpsUnitsLocal);
                 case SpsDepthPlugLengths: return (SpsParamDepth, SpsUnitsPlugLengths);

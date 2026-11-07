@@ -88,11 +88,10 @@ namespace VF.Service {
                             presence.Value.whenFalse.Add(legacyOutput.MakeSetter(0));
                             return legacyOutput;
                         }
-                        if (parameter == SpsParamSocketIsHole || parameter == SpsParamSocketIsTwoWay) {
-                            var hole = parameter == SpsParamSocketIsHole;
-                            var flag = (int)(hole ? HapticUtils.SocketScaleFlags.Collapse : HapticUtils.SocketScaleFlags.Twoway);
+                        if (parameter == SpsParamSocketIsHole) {
+                            var flag = (int)HapticUtils.SocketScaleFlags.Collapse;
                             var packed = Field("SenderLossyScaleX");
-                            var flagOutput = fx.CreateUniqueFloat(prefix + (hole ? "/SocketIsHole" : "/SocketIsTwoWay"));
+                            var flagOutput = fx.CreateUniqueFloat(prefix + "/SocketIsHole");
                             var nativeFlag = VFBlendTree1D.Create(flagOutput.name + "/NativeFlag", packed);
                             var off = flagOutput.MakeSetter(0);
                             var on = flagOutput.MakeSetter(1);
@@ -109,7 +108,7 @@ namespace VF.Service {
                             if (legacy) {
                                 var holeTag = BlendtreeMath.GreaterThan(Field("CollisionTag_" + SpsTags.LegacySocketHole), 0);
                                 var ringTag = BlendtreeMath.GreaterThan(Field("CollisionTag_" + SpsTags.LegacySocketRing), 0);
-                                var legacyFlag = hole ? holeTag.And(ringTag.Not()) : ringTag.And(holeTag.Not());
+                                var legacyFlag = holeTag.And(ringTag.Not());
                                 encoding.Value.whenFalse.Add(legacyFlag.create(flagOutput.MakeSetter(1), flagOutput.MakeSetter(0)));
                             }
                             presence.Value.whenFalse.Add(flagOutput.MakeSetter(0));
