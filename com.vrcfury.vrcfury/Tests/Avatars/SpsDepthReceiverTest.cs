@@ -172,6 +172,72 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void PlugSocketFlagsDecodeNativeScaleAndLegacyTags(
+            [Values(true, false)] bool shared, [Values(0, 1, 2)] int partyIndex) {
+            var party = (Party)partyIndex;
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.05f;
+            plug.useSharedTag = shared;
+            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "test", allowSelf = true, allowOthers = true });
+            var outputs = PlugMeasurements(plug)(party);
+            var hole = outputs(SpsSocketIsHole);
+            var twoWay = outputs(SpsSocketIsTwoWay);
+            var isLegacy = outputs(SpsInteractingWithLegacy);
+            Assert.That(outputs(SpsSocketIsHole), Is.SameAs(hole));
+            var flagTrees = new AnimatorIterator.Trees().From(fx).Where(t => t.name.EndsWith("/NativeFlag")).ToArray();
+            Assert.That(flagTrees, Has.Length.EqualTo(2));
+            Assert.That(flagTrees.All(t => t.children.All(child => child.motion is VFClip)), Is.True,
+                "Each native socket flag must decode directly to clips in a single 1D tree");
+            var receiver = party == Party.Merged ? Merged() : root.GetComponentsInChildren<VRCContactReceiver>(true)
+                .Single(r => r.allowSelf == (party == Party.Self));
+            Start();
+            foreach (var packed in new[] { 1, 8191, 8192, 16383, 16384, 24575, 24576, 32767 }) {
+                Set(receiver, 0.9f, 0.2f, radius: packed, native: true);
+                Evaluate();
+                Assert.That(playable.GetFloat(hole), Is.EqualTo((packed & (int)HapticUtils.SocketScaleFlags.Collapse) != 0 ? 1 : 0));
+                Assert.That(playable.GetFloat(twoWay), Is.EqualTo((packed & (int)HapticUtils.SocketScaleFlags.Twoway) != 0 ? 1 : 0));
+                Assert.That(playable.GetFloat(isLegacy), Is.Zero);
+            }
+            if (shared && party != Party.Self) {
+                foreach (var (holeTag, ringTag) in new[] { (0, 0), (1, 0), (0, 1), (1, 1) }) {
+                    Set(receiver, 0.9f, 0.2f, radius: 32767, native: false);
+                    playable.SetFloat(receiver.parameter + "_CollisionTag_" + SpsTags.LegacySocketHole, holeTag);
+                    playable.SetFloat(receiver.parameter + "_CollisionTag_" + SpsTags.LegacySocketRing, ringTag);
+                    Evaluate();
+                    Assert.That(playable.GetFloat(hole), Is.EqualTo(holeTag == 1 && ringTag == 0 ? 1 : 0));
+                    Assert.That(playable.GetFloat(twoWay), Is.EqualTo(ringTag == 1 && holeTag == 0 ? 1 : 0));
+                    Assert.That(playable.GetFloat(isLegacy), Is.EqualTo(1));
+                }
+            }
+            Set(receiver, 0, -1, radius: 32767, native: true);
+            Evaluate();
+            Assert.That(playable.GetFloat(hole), Is.Zero);
+            Assert.That(playable.GetFloat(twoWay), Is.Zero);
+        }
+
+        [TestCase(0, false, false)]
+        [TestCase(1, true, false)]
+        [TestCase(2, false, true)]
+        [TestCase(3, false, true)]
+        [TestCase(4, false, false)]
+        [TestCase(2, true, false, true)]
+        [TestCase(1, false, false, false)]
+        public void SocketFlagsAreConstantsMatchingEntranceType(int type, bool hole, bool twoWay, bool? shrink = null) {
+            var factory = Socket(false);
+            var socket = root.GetComponent<VRCFuryHapticSocket>();
+            socket.addLight = (VRCFuryHapticSocket.AddLight)type;
+            if (shrink != null) socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { shrink = shrink.Value });
+            foreach (var party in new[] { Party.Self, Party.Others, Party.Merged }) {
+                Assert.That(factory(party)(SpsSocketIsHole).GetDefault(), Is.EqualTo(hole ? 1 : 0));
+                Assert.That(factory(party)(SpsSocketIsTwoWay).GetDefault(), Is.EqualTo(twoWay ? 1 : 0));
+            }
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
+        }
+
+        [Test]
         public void DepthOnlyConsumersActivateTheOverlapWorkaround() {
             _ = Socket(false)(Party.Self)(SpsDepthMeters);
             Assert.That(fx.parameters.Any(p => p.name.StartsWith("Test/Self/Length")), Is.False,

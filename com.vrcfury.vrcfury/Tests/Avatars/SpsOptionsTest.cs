@@ -108,11 +108,16 @@ namespace VF.Tests {
             }
         }
 
-        [TestCase(false, false)]
-        [TestCase(true, false)]
-        [TestCase(false, true)]
-        [TestCase(true, true)]
-        public void InjectParametersOffersPlugEntryRadiusForSockets(bool socketSource, bool unitless) {
+        [TestCase(false, null)]
+        [TestCase(true, null)]
+        [TestCase(false, VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy)]
+        [TestCase(true, VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy)]
+        [TestCase(false, VRCFuryHapticPlugEditor.SpsParamSocketIsHole)]
+        [TestCase(true, VRCFuryHapticPlugEditor.SpsParamSocketIsHole)]
+        [TestCase(false, VRCFuryHapticPlugEditor.SpsParamSocketIsTwoWay)]
+        [TestCase(true, VRCFuryHapticPlugEditor.SpsParamSocketIsTwoWay)]
+        public void InjectParametersOffersPlugEntryRadiusForSockets(bool socketSource, string unitlessParameter) {
+            var unitless = unitlessParameter != null;
             var root = new GameObject("Inject parameters");
             try {
                 if (socketSource) root.AddComponent<VRCFuryHapticSocket>();
@@ -120,7 +125,7 @@ namespace VF.Tests {
                 var component = root.AddComponent<VF.Model.VRCFury>();
                 var model = new FullController();
                 model.injectParams.Add(new FullController.InjectParamEntry {
-                    sourceObject = root, sourceParam = unitless ? VRCFuryHapticPlugEditor.SpsInteractingWithLegacy
+                    sourceObject = root, sourceParam = unitless ? VRCFuryHapticPlugEditor.GetSpsMagicParam(unitlessParameter, null)
                         : socketSource ? VRCFuryHapticPlugEditor.SpsPlugEntryRadiusLocal : VRCFuryHapticPlugEditor.SpsDepthMeters
                 });
                 component.content = model;
@@ -131,14 +136,14 @@ namespace VF.Tests {
                 Assert.That(parameter.choices.Contains(VRCFuryHapticPlugEditor.SpsParamPlugEntryRadius), Is.EqualTo(socketSource));
                 Assert.That(parameter.choices, Does.Contain(VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy));
                 if (unitless) {
-                    Assert.That(parameter.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy));
-                    Assert.That(parameter.formatSelectedValueCallback(parameter.value), Is.EqualTo(socketSource ? "Plug Is Legacy" : "Socket Is Legacy"));
-                    Assert.That(parameter.formatListItemCallback(parameter.value), Is.EqualTo(socketSource ? "Plug Is Legacy" : "Socket Is Legacy"));
+                    Assert.That(parameter.value, Is.EqualTo(unitlessParameter));
+                    var label = unitlessParameter == VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy
+                        ? socketSource ? "Plug Is Legacy" : "Socket Is Legacy" : unitlessParameter;
+                    Assert.That(parameter.formatSelectedValueCallback(parameter.value), Is.EqualTo(label));
+                    Assert.That(parameter.formatListItemCallback(parameter.value), Is.EqualTo(label));
                     var units = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Units");
                     Assert.That(units.style.display.value, Is.EqualTo(DisplayStyle.None));
-                    Assert.That(VRCFuryHapticPlugEditor.ParseSpsMagicParam(VRCFuryHapticPlugEditor.SpsInteractingWithLegacy, socketSource)?.units, Is.Null);
-                    Assert.That(VRCFuryHapticPlugEditor.GetSpsMagicParam(VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy, null),
-                        Is.EqualTo(VRCFuryHapticPlugEditor.SpsInteractingWithLegacy));
+                    Assert.That(VRCFuryHapticPlugEditor.ParseSpsMagicParam(model.injectParams[0].sourceParam, socketSource)?.units, Is.Null);
                 } else if (socketSource) {
                     Assert.That(parameter.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsParamPlugEntryRadius));
                     var units = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Units");

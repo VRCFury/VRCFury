@@ -191,9 +191,7 @@ namespace VF.Inspector {
 
             var stops = socket.guidedPathStops;
             var stopCount = Math.Min(stops.Count, SpsTags.MaxUserPathStops);
-            var rootType = stopCount == 0 ? type : stops[0].shrink
-                ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay;
-            AddNode(rootSender, rootType, 0);
+            AddNode(rootSender, GetEntranceType(socket, type), 0);
 
             for (var i = 0; i < stopCount; i++) {
                 var sender = GameObjects.Create($"Sender - Path Stop {i + 1}", rootSender.parent);
@@ -227,6 +225,15 @@ namespace VF.Inspector {
                 sender.worldScale = HapticUtils.EncodeSocketScale(group, pathIndex, flags);
                 sender.GetComponent<VRCContactSender>().radius = 0;
             }
+        }
+
+        internal VRCFuryHapticSocket.AddLight GetEntranceType(VRCFuryHapticSocket socket) =>
+            GetEntranceType(socket, GetSocketTransform(socket, autoChannelGenerator?.GetClosestBone(socket.owner())).Item1);
+
+        private static VRCFuryHapticSocket.AddLight GetEntranceType(VRCFuryHapticSocket socket, VRCFuryHapticSocket.AddLight type) {
+            if (type == VRCFuryHapticSocket.AddLight.None || socket.guidedPathStops.Count == 0) return type;
+            return socket.guidedPathStops[0].shrink
+                ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay;
         }
 
         private static void AddTags(VFGameObject obj, IEnumerable<string> tags) {

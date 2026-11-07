@@ -18,6 +18,7 @@ namespace VF.Service {
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
+        [VFAutowired] private readonly VF.Inspector.VRCFuryHapticSocketBaker socketBaker;
 
         private HashSet<string> GetChannels(VRCFuryHapticSocket socket, bool self) =>
             configurer.GetSocketChannels(socket, self
@@ -41,6 +42,7 @@ namespace VF.Service {
                 socket.owner(), name));
             var worldRadius = main.request.worldRadius;
             var includeLegacy = main.request.othersTags.Contains(SpsTags.LegacyPlugSphere);
+            var entranceType = new Lazy<VRCFuryHapticSocket.AddLight>(() => socketBaker.GetEntranceType(socket));
 
             var byParty = new Dictionary<Party, Func<string, VFAParam>>();
             return party => byParty.GetOrCreate(party, () => {
@@ -140,6 +142,8 @@ namespace VF.Service {
 
                 VFAParam GetOutput(string parameter, string units) {
                     return outputs.GetOrCreate((parameter, units), () => {
+                        if (parameter == SpsParamSocketIsHole) return entranceType.Value == VRCFuryHapticSocket.AddLight.Hole ? fx.One() : fx.Zero();
+                        if (parameter == SpsParamSocketIsTwoWay) return entranceType.Value == VRCFuryHapticSocket.AddLight.Ring ? fx.One() : fx.Zero();
                         if (parameter == SpsParamInteractingWithLegacy) {
                             if (!legacy) return fx.Zero();
                             var legacyOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithLegacy");

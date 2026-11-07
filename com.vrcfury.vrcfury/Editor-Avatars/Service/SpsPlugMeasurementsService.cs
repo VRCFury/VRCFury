@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using VF.Builder.Haptics;
 using VF.Injector;
+using VF.Inspector;
 using BakeResult = VF.Inspector.VRCFuryHapticPlugEditor.BakeResult;
 using VF.Utils;
 using VF.Utils.Controller;
@@ -40,6 +41,17 @@ namespace VF.Service {
                     .And(BlendtreeMath.GreaterThan(Field("PointSeparation"), 0, true)));
                 var presence = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
                     present.Value.CreateBranches(tree, prefix + "/Present"));
+                var legacy = party != Party.Self && main.request.othersTags.Contains(SpsTags.LegacySocket);
+                var native = new Lazy<BlendtreeMath.Condition>(() => {
+                    if (!legacy) return BlendtreeMath.True();
+                    var tags = party == Party.Merged
+                        ? main.request.selfTags.Union(main.request.othersTags) : main.request.othersTags;
+                    return tags.Where(tag => tag.StartsWith(SpsTags.FormatSocket("")))
+                        .Aggregate(BlendtreeMath.False(), (condition, tag) =>
+                            condition.Or(BlendtreeMath.GreaterThan(Field("CollisionTag_" + tag), 0)));
+                });
+                var encoding = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
+                    native.Value.CreateBranches(presence.Value.whenTrue, prefix + "/Native"));
                 var distance = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Dist/Meters", 100);
                     presence.Value.whenTrue.Add(BlendtreeMath.Add(prefix + "/Dist/Socket", output,
@@ -60,16 +72,39 @@ namespace VF.Service {
                     var (parameter, units) = parsed.Value;
                     return outputs.GetOrCreate((parameter, units), () => {
                         if (parameter == SpsParamInteractingWithLegacy) {
-                            if (party == Party.Self || !main.request.othersTags.Contains(SpsTags.LegacySocket)) return fx.Zero();
-                            var tags = party == Party.Merged
-                                ? main.request.selfTags.Union(main.request.othersTags) : main.request.othersTags;
-                            var native = tags.Where(tag => tag.StartsWith(SpsTags.FormatSocket("")))
-                                .Aggregate(BlendtreeMath.False(), (condition, tag) =>
-                                    condition.Or(BlendtreeMath.GreaterThan(Field("CollisionTag_" + tag), 0)));
+                            if (!legacy) return fx.Zero();
                             var legacyOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithLegacy");
-                            presence.Value.whenTrue.Add(native.create(legacyOutput.MakeSetter(0), legacyOutput.MakeSetter(1)));
+                            encoding.Value.whenTrue.Add(legacyOutput.MakeSetter(0));
+                            encoding.Value.whenFalse.Add(legacyOutput.MakeSetter(1));
                             presence.Value.whenFalse.Add(legacyOutput.MakeSetter(0));
                             return legacyOutput;
+                        }
+                        if (parameter == SpsParamSocketIsHole || parameter == SpsParamSocketIsTwoWay) {
+                            var hole = parameter == SpsParamSocketIsHole;
+                            var flag = (int)(hole ? HapticUtils.SocketScaleFlags.Collapse : HapticUtils.SocketScaleFlags.Twoway);
+                            var packed = Field("SenderLossyScaleX");
+                            var flagOutput = fx.CreateUniqueFloat(prefix + (hole ? "/SocketIsHole" : "/SocketIsTwoWay"));
+                            var nativeFlag = VFBlendTree1D.Create(flagOutput.name + "/NativeFlag", packed);
+                            var off = flagOutput.MakeSetter(0);
+                            var on = flagOutput.MakeSetter(1);
+                            // Decode all intervals for this bit in one tree, rounding the packed word first.
+                            for (var start = flag; start < 32768; start += flag * 2) {
+                                var first = start - 0.5f;
+                                var end = start + flag - 0.5f;
+                                nativeFlag.Add(VRCFuryEditorUtils.NextFloatDown(first), off);
+                                nativeFlag.Add(first, on);
+                                nativeFlag.Add(VRCFuryEditorUtils.NextFloatDown(end), on);
+                                nativeFlag.Add(end, off);
+                            }
+                            encoding.Value.whenTrue.Add(nativeFlag);
+                            if (legacy) {
+                                var holeTag = BlendtreeMath.GreaterThan(Field("CollisionTag_" + SpsTags.LegacySocketHole), 0);
+                                var ringTag = BlendtreeMath.GreaterThan(Field("CollisionTag_" + SpsTags.LegacySocketRing), 0);
+                                var legacyFlag = hole ? holeTag.And(ringTag.Not()) : ringTag.And(holeTag.Not());
+                                encoding.Value.whenFalse.Add(legacyFlag.create(flagOutput.MakeSetter(1), flagOutput.MakeSetter(0)));
+                            }
+                            presence.Value.whenFalse.Add(flagOutput.MakeSetter(0));
+                            return flagOutput;
                         }
                         if (parameter == SpsParamPlugLength && units == SpsUnitsPlugLengths) return fx.One();
                         if (parameter == SpsParamPlugLength && units == SpsUnitsLocal) return localLengthParam.Value;

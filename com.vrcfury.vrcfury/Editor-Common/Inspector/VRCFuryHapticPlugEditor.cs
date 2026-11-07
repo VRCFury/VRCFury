@@ -26,6 +26,8 @@ namespace VF.Inspector {
         public const string SpsParamPlugRadius = "Plug Radius";
         public const string SpsParamPlugEntryRadius = "Plug Entry Radius";
         public const string SpsParamInteractingWithLegacy = "Interacting With Legacy";
+        public const string SpsParamSocketIsHole = "Socket Is Hole";
+        public const string SpsParamSocketIsTwoWay = "Socket Is Two-Way";
         public const string SpsUnitsMeters = "Meters";
         public const string SpsUnitsLocal = "Local";
         public const string SpsUnitsPlugLengths = "Plug Lengths";
@@ -45,13 +47,17 @@ namespace VF.Inspector {
         public const string SpsPlugEntryRadiusLocal = "__sps_plug_entry_radius_local";
         public const string SpsPlugEntryRadiusPlugLengths = "__sps_plug_entry_radius_plug_lengths";
         public const string SpsInteractingWithLegacy = "__sps_interacting_with_legacy";
+        public const string SpsSocketIsHole = "__sps_socket_is_hole";
+        public const string SpsSocketIsTwoWay = "__sps_socket_is_two_way";
 
         public static readonly string[] SpsParams = {
             SpsParamDepth,
             SpsParamVelocity,
             SpsParamPlugLength,
             SpsParamPlugRadius,
-            SpsParamInteractingWithLegacy
+            SpsParamInteractingWithLegacy,
+            SpsParamSocketIsHole,
+            SpsParamSocketIsTwoWay
         };
         public static readonly string[] SpsUnits = {
             SpsUnitsMeters,
@@ -61,6 +67,8 @@ namespace VF.Inspector {
 
         public static string GetSpsMagicParam(string param, string units) {
             if (param == SpsParamInteractingWithLegacy) return SpsInteractingWithLegacy;
+            if (param == SpsParamSocketIsHole) return SpsSocketIsHole;
+            if (param == SpsParamSocketIsTwoWay) return SpsSocketIsTwoWay;
             if (param == SpsParamDepth && units == SpsUnitsMeters) return SpsDepthMeters;
             if (param == SpsParamDepth && units == SpsUnitsLocal) return SpsDepthLocal;
             if (param == SpsParamDepth && units == SpsUnitsPlugLengths) return SpsDepthPlugLengths;
@@ -82,6 +90,8 @@ namespace VF.Inspector {
         public static (string param, string units)? ParseSpsMagicParam(string sourceParam, bool isSocket) {
             switch (sourceParam) {
                 case SpsInteractingWithLegacy: return (SpsParamInteractingWithLegacy, null);
+                case SpsSocketIsHole: return (SpsParamSocketIsHole, null);
+                case SpsSocketIsTwoWay: return (SpsParamSocketIsTwoWay, null);
                 case SpsDepthMeters: return (SpsParamDepth, SpsUnitsMeters);
                 case SpsDepthLocal: return (SpsParamDepth, SpsUnitsLocal);
                 case SpsDepthPlugLengths: return (SpsParamDepth, SpsUnitsPlugLengths);
@@ -123,8 +133,9 @@ namespace VF.Inspector {
             unitsField.style.display = selectedUnits == null ? DisplayStyle.None : DisplayStyle.Flex;
 
             void Save() {
-                unitsField.style.display = paramField.value == SpsParamInteractingWithLegacy ? DisplayStyle.None : DisplayStyle.Flex;
                 sourceParamProp.stringValue = GetSpsMagicParam(paramField.value, unitsField.value);
+                unitsField.style.display = ParseSpsMagicParam(sourceParamProp.stringValue, isSocket)?.units == null
+                    ? DisplayStyle.None : DisplayStyle.Flex;
                 sourceParamProp.serializedObject.ApplyModifiedProperties();
             }
 
