@@ -219,6 +219,7 @@ namespace VF.Service {
                 var value = measurements.Value(Party.Merged)(inject.sourceParam);
                 if (value != null) {
                     math.Value.CopyInPlace(value, inject.resolvedParam);
+                    parameterInjectService.MarkResolved(inject);
                 }
             }
 

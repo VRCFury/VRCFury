@@ -20,6 +20,61 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     public class SpsOptionsTest {
+        [TestCase(true, "__sps_unknown_meters")]
+        [TestCase(true, "__sps_depth_unknown")]
+        [TestCase(true, "")]
+        [TestCase(false, VRCFuryHapticPlugEditor.SpsPlugEntryRadiusLocal)]
+        public void UnsupportedInjectedParametersUseTextFieldWithoutChangingValue(bool socketSource, string sourceParam) {
+            var root = new GameObject("Inject parameters");
+            try {
+                if (socketSource) root.AddComponent<VRCFuryHapticSocket>();
+                else root.AddComponent<VRCFuryHapticPlug>();
+                var component = root.AddComponent<VF.Model.VRCFury>();
+                component.content = new FullController {
+                    injectParams = { new FullController.InjectParamEntry { sourceObject = root, sourceParam = sourceParam } }
+                };
+                var serialized = new UnityEditor.SerializedObject(component);
+                var inject = serialized.FindProperty("content").FindPropertyRelative("injectParams").GetArrayElementAtIndex(0);
+                var editor = new VF.Feature.FullControllerBuilder.InjectParamDrawer().CreatePropertyGUI(inject);
+                Assert.That(editor.Query<PopupField<string>>().ToList(), Is.Empty);
+                Assert.That(editor.Query<UnityEditor.UIElements.PropertyField>().ToList()
+                    .Any(field => field.bindingPath == inject.FindPropertyRelative("sourceParam").propertyPath), Is.True);
+                Assert.That(inject.FindPropertyRelative("sourceParam").stringValue, Is.EqualTo(sourceParam));
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void InjectParametersOffersPlugEntryRadiusForSockets(bool socketSource) {
+            var root = new GameObject("Inject parameters");
+            try {
+                if (socketSource) root.AddComponent<VRCFuryHapticSocket>();
+                else root.AddComponent<VRCFuryHapticPlug>();
+                var component = root.AddComponent<VF.Model.VRCFury>();
+                var model = new FullController();
+                model.injectParams.Add(new FullController.InjectParamEntry {
+                    sourceObject = root, sourceParam = socketSource
+                        ? VRCFuryHapticPlugEditor.SpsPlugEntryRadiusLocal : VRCFuryHapticPlugEditor.SpsDepthMeters
+                });
+                component.content = model;
+                var serialized = new UnityEditor.SerializedObject(component);
+                var inject = serialized.FindProperty("content").FindPropertyRelative("injectParams").GetArrayElementAtIndex(0);
+                var editor = new VF.Feature.FullControllerBuilder.InjectParamDrawer().CreatePropertyGUI(inject);
+                var parameter = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Parameter");
+                Assert.That(parameter.choices.Contains(VRCFuryHapticPlugEditor.SpsParamPlugEntryRadius), Is.EqualTo(socketSource));
+                if (socketSource) {
+                    Assert.That(parameter.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsParamPlugEntryRadius));
+                    var units = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Units");
+                    Assert.That(units.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsUnitsLocal));
+                    Assert.That(units.choices, Is.EqualTo(VRCFuryHapticPlugEditor.SpsUnits));
+                }
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void PlugEntryRadiusEditorRendersSliderAndPreservesEditableRange(bool existingPlugUnits) {

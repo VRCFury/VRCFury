@@ -75,7 +75,7 @@ namespace VF.Inspector {
             return "";
         }
 
-        public static (string param, string units)? ParseSpsMagicParam(string sourceParam) {
+        public static (string param, string units)? ParseSpsMagicParam(string sourceParam, bool isSocket) {
             switch (sourceParam) {
                 case SpsDepthMeters: return (SpsParamDepth, SpsUnitsMeters);
                 case SpsDepthLocal: return (SpsParamDepth, SpsUnitsLocal);
@@ -89,21 +89,29 @@ namespace VF.Inspector {
                 case SpsPlugRadiusMeters: return (SpsParamPlugRadius, SpsUnitsMeters);
                 case SpsPlugRadiusLocal: return (SpsParamPlugRadius, SpsUnitsLocal);
                 case SpsPlugRadiusPlugLengths: return (SpsParamPlugRadius, SpsUnitsPlugLengths);
-                case SpsPlugEntryRadiusMeters: return (SpsParamPlugEntryRadius, SpsUnitsMeters);
-                case SpsPlugEntryRadiusLocal: return (SpsParamPlugEntryRadius, SpsUnitsLocal);
-                case SpsPlugEntryRadiusPlugLengths: return (SpsParamPlugEntryRadius, SpsUnitsPlugLengths);
+                case SpsPlugEntryRadiusMeters when isSocket: return (SpsParamPlugEntryRadius, SpsUnitsMeters);
+                case SpsPlugEntryRadiusLocal when isSocket: return (SpsParamPlugEntryRadius, SpsUnitsLocal);
+                case SpsPlugEntryRadiusPlugLengths when isSocket: return (SpsParamPlugEntryRadius, SpsUnitsPlugLengths);
                 default: return null;
             }
         }
 
         public static VisualElement RenderSpsInjectParamEditor(SerializedProperty injectProp) {
             var sourceParamProp = injectProp.FindPropertyRelative("sourceParam");
-            var parsed = ParseSpsMagicParam(sourceParamProp.stringValue);
-            var selectedParam = parsed?.param ?? SpsParamDepth;
-            var selectedUnits = parsed?.units ?? SpsUnitsMeters;
 
             var content = new VisualElement();
-            var paramField = new PopupField<string>("Parameter", SpsParams.ToList(), selectedParam);
+            var parameters = SpsParams.ToList();
+            var sourceObject = injectProp.FindPropertyRelative("sourceObject").objectReferenceValue as GameObject;
+            var isSocket = sourceObject != null && sourceObject.GetComponent<VRCFuryHapticSocket>() != null;
+            var parsed = ParseSpsMagicParam(sourceParamProp.stringValue, isSocket);
+            if (isSocket) {
+                parameters.Add(SpsParamPlugEntryRadius);
+            }
+            if (parsed == null) {
+                return VRCFuryEditorUtils.Prop(sourceParamProp, "Source Param");
+            }
+            var (selectedParam, selectedUnits) = parsed.Value;
+            var paramField = new PopupField<string>("Parameter", parameters, selectedParam);
             var unitsField = new PopupField<string>("Units", SpsUnits.ToList(), selectedUnits);
 
             void Save() {

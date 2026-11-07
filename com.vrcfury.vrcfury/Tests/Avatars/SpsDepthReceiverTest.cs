@@ -1255,6 +1255,42 @@ namespace VF.Tests {
             Assert.That(receivers.All(r => !r.gameObject.activeSelf), Is.True);
         }
 
+        [TestCase("socket", "__sps_unknown_meters")]
+        [TestCase("socket", "__sps_depth_unknown")]
+        [TestCase("plug", "__sps_unknown_meters")]
+        [TestCase("plug", SpsPlugEntryRadiusMeters)]
+        [TestCase("none", SpsDepthMeters)]
+        public void UnsupportedParameterInjectionsFailBuild(string sourceType, string parameter) {
+            if (sourceType == "socket") root.AddComponent<VRCFuryHapticSocket>().addMenuItem = false;
+            if (sourceType == "plug") {
+                var plug = root.AddComponent<VRCFuryHapticPlug>();
+                plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+                plug.length = 0.4f;
+                plug.radius = 0.05f;
+            }
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> { new SpsOptions { autoModeAvailable = false } };
+            globals.addOtherFeature = _ => { };
+            var injections = injector.GetService<ParameterInjectService>();
+            injections.Register(new ParameterInjectService.Request {
+                sourceObject = root, sourceParam = parameter, resolvedParam = "Injected output"
+            });
+            var error = Assert.Catch<Exception>(() => {
+                if (sourceType == "plug") {
+                    var baker = injector.GetService<BakeHapticPlugsService>();
+                    baker.ApplyEarlyBake();
+                    baker.Apply();
+                } else {
+                    injector.GetService<BakeHapticSocketsService>().Apply();
+                }
+                injections.Validate();
+            });
+            Assert.That(error.Message, Does.Contain(parameter).And.Contain("Injected output")
+                .And.Contain(root.name).And.Contain("does not support"));
+        }
+
         [Test]
         public void SocketBakeSharesDepthActionsAndInjectedDimensions() {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
@@ -1277,20 +1313,30 @@ namespace VF.Tests {
                 sourceObject = root, sourceParam = VF.Inspector.VRCFuryHapticPlugEditor.SpsDepthMeters,
                 resolvedParam = "InjectedDepth"
             });
+            foreach (var source in new[] { SpsPlugEntryRadiusMeters, SpsPlugEntryRadiusLocal, SpsPlugEntryRadiusPlugLengths }) {
+                injector.GetService<ParameterInjectService>().Register(new ParameterInjectService.Request {
+                    sourceObject = root, sourceParam = source, resolvedParam = "Injected" + source
+                });
+            }
             injector.GetService<BakeHapticSocketsService>().Apply();
             var mainReceivers = root.GetComponentsInChildren<VRCContactReceiver>(true)
                 .Where(r => r.collisionTags.Contains(SpsTags.FormatPlug("test"))).ToArray();
             Assert.That(mainReceivers, Has.Length.EqualTo(4));
+            Assert.DoesNotThrow(() => injector.GetService<ParameterInjectService>().Validate());
             Start();
             foreach (var receiver in mainReceivers) {
                 Set(receiver, 1, receiver.allowSelf ? 0.2f : 0.4f,
                     receiver.allowSelf ? 0.6f : 0.4f, receiver.allowSelf ? 0.06f : 0.04f, native: true);
             }
             Set(Merged(), 1, 0.2f, 0.6f, 0.06f, native: true);
+            playable.SetFloat(Merged().parameter + "_SenderLossyScaleY", 0.03f);
             Evaluate(40);
             Assert.That(playable.GetFloat("InjectedLength"), Is.EqualTo(0.6f).Within(0.002f));
             Assert.That(playable.GetFloat("InjectedRadius"), Is.EqualTo(0.06f).Within(0.002f));
             Assert.That(playable.GetFloat("InjectedDepth"), Is.EqualTo(-0.4f).Within(0.002f));
+            Assert.That(playable.GetFloat("Injected" + SpsPlugEntryRadiusMeters), Is.EqualTo(0.03f).Within(0.0001f));
+            Assert.That(playable.GetFloat("Injected" + SpsPlugEntryRadiusLocal), Is.EqualTo(0.03f).Within(0.0001f));
+            Assert.That(playable.GetFloat("Injected" + SpsPlugEntryRadiusPlugLengths), Is.EqualTo(0.05f).Within(0.0001f));
         }
 
         [Test]

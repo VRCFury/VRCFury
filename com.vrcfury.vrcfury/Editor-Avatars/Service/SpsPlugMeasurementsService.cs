@@ -54,7 +54,7 @@ namespace VF.Service {
                 });
                 var outputs = new Dictionary<(string parameter, string units), VFAParam>();
                 return source => {
-                    var parsed = ParseSpsMagicParam(source);
+                    var parsed = ParseSpsMagicParam(source, isSocket: false);
                     if (parsed == null) return null;
                     var (parameter, units) = parsed.Value;
                     return outputs.GetOrCreate((parameter, units), () => {

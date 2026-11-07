@@ -662,17 +662,21 @@ namespace VF.Feature {
                 var content = new VisualElement();
                 var sourceObjectProp = prop.FindPropertyRelative("sourceObject");
                 var sourceParamProp = prop.FindPropertyRelative("sourceParam");
-                void OnSourceObjectChange() {
+                void SelectDefaultIfInvalid() {
                     var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
                     if (sourceObject == null) return;
                     if (sourceObject.GetComponent<VRCFuryHapticPlug>() == null
                         && sourceObject.GetComponent<VRCFuryHapticSocket>() == null) return;
-                    if (VRCFuryHapticPlugEditor.ParseSpsMagicParam(sourceParamProp.stringValue) != null) return;
+                    if (VRCFuryHapticPlugEditor.ParseSpsMagicParam(sourceParamProp.stringValue,
+                        isSocket: sourceObject.GetComponent<VRCFuryHapticSocket>() != null) != null) return;
                     sourceParamProp.stringValue = VRCFuryHapticPlugEditor.SpsDepthMeters;
                     sourceParamProp.serializedObject.ApplyModifiedProperties();
                 }
                 content.Add(VRCFuryEditorUtils.Prop(sourceObjectProp, "Source Object"));
-                content.Add(VRCFuryEditorUtils.OnChange(sourceObjectProp, OnSourceObjectChange));
+                content.Add(VRCFuryEditorUtils.OnChange(sourceObjectProp, SelectDefaultIfInvalid));
+                content.Add(VRCFuryEditorUtils.OnChange(sourceParamProp, () => {
+                    if (string.IsNullOrEmpty(sourceParamProp.stringValue)) SelectDefaultIfInvalid();
+                }));
                 content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                     var wrapper = new VisualElement();
                     var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
@@ -682,12 +686,13 @@ namespace VF.Feature {
                             wrapper.Add(VRCFuryHapticPlugEditor.RenderSpsInjectParamEditor(prop));
                         } else {
                             wrapper.Add(VRCFuryEditorUtils.Warn("This object doesn't contain any injectable parameters"));
+                            wrapper.Add(VRCFuryEditorUtils.Prop(sourceParamProp, "Source Param"));
                         }
                     } else {
                         wrapper.Add(VRCFuryEditorUtils.Prop(sourceParamProp, "Source Param"));
                     }
                     return wrapper;
-                }, sourceObjectProp));
+                }, sourceObjectProp, sourceParamProp));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("targetParam"), "Target Param"));
                 return content;
             }

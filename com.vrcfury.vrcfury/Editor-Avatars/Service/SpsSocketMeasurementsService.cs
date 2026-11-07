@@ -134,7 +134,7 @@ namespace VF.Service {
                     return output;
                 }
                 return source => {
-                    var parsed = ParseSpsMagicParam(source);
+                    var parsed = ParseSpsMagicParam(source, isSocket: true);
                     return parsed == null ? null : GetOutput(parsed.Value.param, parsed.Value.units);
                 };
 
