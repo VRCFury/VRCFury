@@ -20,6 +20,45 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     public class SpsOptionsTest {
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        public void AnimationFilterEditorKeepsEachPairEnabled(bool plug, bool radius) {
+            var root = new GameObject("Animation filters");
+            try {
+                UnityEngine.Component owner;
+                if (plug) {
+                    var component = root.AddComponent<VRCFuryHapticPlug>();
+                    component.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew());
+                    owner = component;
+                } else {
+                    var component = root.AddComponent<VRCFuryHapticSocket>();
+                    component.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew());
+                    component.plugEntryRadiusActions.Add(new VRCFuryHapticSocket.PlugEntryRadiusAction());
+                    owner = component;
+                }
+                var serialized = new UnityEditor.SerializedObject(owner);
+                var action = serialized.FindProperty(radius ? "plugEntryRadiusActions" : "depthActions2").GetArrayElementAtIndex(0);
+                var editor = radius ? new VRCFuryHapticSocketEditor.PlugEntryRadiusActionDrawer().CreatePropertyGUI(action)
+                    : new VRCFuryHapticSocketEditor.DepthActionDrawer().CreatePropertyGUI(action);
+                var toggles = editor.Query<UnityEngine.UIElements.Toggle>().ToList();
+                foreach (var (first, second) in new[] { ("Allow Self", "Allow Others"), ("Allow Hole", "Allow Ring") }) {
+                    var a = toggles.SingleOrDefault(t => t.name == first);
+                    var b = toggles.SingleOrDefault(t => t.name == second);
+                    if (first != "Allow Self" && !plug) {
+                        Assert.That(a, Is.Null);
+                        Assert.That(b, Is.Null);
+                        continue;
+                    }
+                    Assert.That(a.value && b.value, Is.True);
+                    a.value = false;
+                    b.value = false;
+                    var field = first == "Allow Self" ? "enableSelf" : "allowHole";
+                    Assert.That(action.FindPropertyRelative(field).boolValue, Is.True, "Disabling the last option must enable its partner");
+                }
+            } finally { Object.DestroyImmediate(root); }
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void CanHandleRejectsMissingOrUnsupportedSource(bool missing) {
@@ -260,7 +299,7 @@ namespace VF.Tests {
                 var serialized = new UnityEditor.SerializedObject(socket);
                 var action = serialized.FindProperty("plugEntryRadiusActions").GetArrayElementAtIndex(0);
                 var editor = new VRCFuryHapticSocketEditor.PlugEntryRadiusActionDrawer().CreatePropertyGUI(action);
-                Assert.That(editor.Query<Label>().ToList().Any(label => label.text == "Reverse clip (unusual)"), Is.False);
+                Assert.That(editor.Query<Label>().ToList().Any(label => label.text == "Reverse clip (Deprecated, Do not use)"), Is.False);
                 var unitField = editor.Query<PopupField<string>>().ToList()
                     .Single(field => field.choices.SequenceEqual(new[] { "Local", "Meters" }));
                 Assert.That(unitField.value, Is.EqualTo(existingPlugUnits ? "Plugs" : "Local"));

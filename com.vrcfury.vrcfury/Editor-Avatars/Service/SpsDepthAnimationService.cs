@@ -28,14 +28,31 @@ namespace VF.Service {
         ) {
             var calculations = objectTrees.Get(bakeRoot);
             var increasing = measurement == SpsParamPlugEntryRadius;
-            var controls = new Dictionary<(string input, float off, float on, float seconds, float initial), VFAParam>();
+            var controls = new Dictionary<(string input, float off, float on, float seconds, float initial, string filters), VFAParam>();
             var actionNum = 0;
             foreach (var depthAction in actions) {
+                if (!depthAction.enableSelf && !depthAction.enableOthers) continue;
+                var plugDepth = spsComponentOwner.GetComponent<VRCFuryHapticPlug>() != null;
+                if (plugDepth && !depthAction.allowHole && !depthAction.allowRing) continue;
                 var reverseClip = !increasing && depthAction.reverseClip;
                 actionNum++;
                 var prefix = $"{name}/Anim/{actionNum}";
 
-                var measurements = getMeasurements(depthAction.enableSelf ? Party.Merged : Party.Others);
+                var measurements = getMeasurements(!depthAction.enableOthers ? Party.Self : depthAction.enableSelf ? Party.Merged : Party.Others);
+                var filters = new List<(VFAParam input, bool expected)>();
+                if (plugDepth) {
+                    if (!depthAction.allowHole || !depthAction.allowRing) filters.Add((measurements(SpsSocketIsHole), depthAction.allowHole));
+                }
+                var allowed = BlendtreeMath.True();
+                var allowedInState = fx.Always();
+                var filterKey = "";
+                foreach (var (input, expected) in filters) {
+                    var condition = BlendtreeMath.GreaterThan(input, 0.5f);
+                    var stateCondition = input.IsGreaterThan(0.5f);
+                    allowed = allowed.And(expected ? condition : condition.Not());
+                    allowedInState = allowedInState.And(expected ? stateCondition : stateCondition.Not());
+                    filterKey += input.name + "=" + expected + ";";
+                }
                 var units = depthAction.units == VRCFuryHapticSocket.DepthActionUnits.Plugs ? SpsUnitsPlugLengths
                     : depthAction.units == VRCFuryHapticSocket.DepthActionUnits.Meters ? SpsUnitsMeters : SpsUnitsLocal;
                 var unsmoothed = measurements(GetSpsMagicParam(measurement, units));
@@ -48,9 +65,9 @@ namespace VF.Service {
                 if (!useRawInput) {
                     var initial = action.useMotionTime && reverseClip ? 1f : 0f;
                     var seconds = Math.Max(0, Math.Min(10, depthAction.smoothingSeconds));
-                    parameter = controls.GetOrCreate((unsmoothed.name, offThreshold, onThreshold, seconds, initial), () =>
+                    parameter = controls.GetOrCreate((unsmoothed.name, offThreshold, onThreshold, seconds, initial, filterKey), () =>
                         smoothing.Smooth(calculations, prefix + (seconds > 0 ? "/Smoothed" : "/Mapped"), seconds, initial,
-                            output => BlendtreeMath.Map(output, unsmoothed, offThreshold, onThreshold, 0, 1),
+                            output => allowed.create(BlendtreeMath.Map(output, unsmoothed, offThreshold, onThreshold, 0, 1), output.MakeSetter(initial)),
                             minSupported: 0, maxSupported: 1));
                     offThreshold = 0;
                     onThreshold = 1;
@@ -65,7 +82,7 @@ namespace VF.Service {
                         tree.Add(offThreshold, clipFactory.GetEmptyClip());
                         tree.Add(onThreshold, action.onClip);
                     }
-                    calculations.Add(tree);
+                    calculations.Add(useRawInput ? allowed.create(tree, null) : tree);
                     continue;
                 }
                 var layer = fx.NewLayer($"{name} - {(increasing ? "Plug Entry Radius" : "Depth")} Animations - {actionNum} - Action");
@@ -77,7 +94,8 @@ namespace VF.Service {
                 }
 
                 if (reverseClip) {
-                    off.TransitionsTo(on).When(fx.Always());
+                    off.TransitionsTo(on).When(allowedInState);
+                    on.TransitionsTo(off).When(allowedInState.Not());
                 } else {
                     var onWhen = parameter.IsGreaterThan(0);
                     off.TransitionsTo(on).When(onWhen);

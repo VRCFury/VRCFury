@@ -2020,6 +2020,65 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.01f));
         }
 
+        [TestCase("party")]
+        [TestCase("shape")]
+        public void AnimationWithNoAllowedInteractionsIsSkipped(string pair) {
+            root.AddComponent<VRCFuryHapticPlug>();
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var action = new VRCFuryHapticSocket.DepthActionNew {
+                enableSelf = pair != "party", enableOthers = pair != "party",
+                allowHole = pair != "shape", allowRing = pair != "shape"
+            };
+            var parameters = fx.parameters.Length;
+            var layers = fx.GetLayers().Count();
+            Assert.DoesNotThrow(() => injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root,
+                "Skipped", _ => throw new Exception("Skipped animations must not request measurements"), root));
+            Assert.That(fx.parameters.Length, Is.EqualTo(parameters));
+            Assert.That(fx.GetLayers().Count(), Is.EqualTo(layers));
+        }
+
+        [Test]
+        public void PlugDepthAnimationFiltersBeforeSmoothing(
+            [Values(false, true)] bool motionTime, [Values(0f, 0.1f)] float seconds,
+            [Values(false, true)] bool selfOnly, [Values(false, true)] bool holeAllowed,
+            [Values(false, true)] bool reverse) {
+            root.AddComponent<VRCFuryHapticPlug>();
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var depth = fx.CreateUniqueFloat("Filtered depth", -0.125f);
+            var hole = fx.CreateUniqueFloat("Filtered hole");
+            var output = fx.GetOrCreateFloat("Filtered output");
+            var action = new VRCFuryHapticSocket.DepthActionNew {
+                range = new Vector2(-0.25f, 0), units = VRCFuryHapticSocket.DepthActionUnits.Meters,
+                enableSelf = selfOnly, enableOthers = !selfOnly,
+                allowHole = holeAllowed, allowRing = !holeAllowed,
+                smoothingSeconds = seconds, reverseClip = reverse
+            };
+            if (motionTime) {
+                var clip = VFClip.Create("Filtered motion");
+                clip.SetAap(output, AnimationCurve.Linear(0, 0, 1, 1));
+                action.actionSet.actions.Add(new VF.Model.StateAction.AnimationClipAction { vfClip = clip });
+            } else action.actionSet.actions.Add(new VF.Model.StateAction.FxFloatAction { name = output.name, value = 1 });
+            injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Filtered", party => {
+                Assert.That(party, Is.EqualTo(selfOnly ? Party.Self : Party.Others));
+                return source => source == SpsSocketIsHole ? hole : depth;
+            }, root);
+            Start();
+            foreach (var isHole in new[] { false, true }) {
+                playable.SetFloat(hole, isHole ? 1 : 0);
+                Evaluate(120);
+                Assert.That(playable.GetFloat(output), Is.EqualTo(isHole == holeAllowed ? 0.5f : 0).Within(0.001f));
+            }
+            if (seconds > 0 && !reverse) {
+                playable.SetFloat(hole, holeAllowed ? 1 : 0);
+                Evaluate(120);
+                playable.SetFloat(hole, holeAllowed ? 0 : 1);
+                Evaluate(3);
+                Assert.That(playable.GetFloat(output), Is.GreaterThan(0.001f), "Filters feed smoothing instead of snapping the animation off");
+                Evaluate(120);
+                Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
+            }
+        }
+
         [TestCase(0f, false)]
         [TestCase(0.1f, false)]
         [TestCase(0f, true)]

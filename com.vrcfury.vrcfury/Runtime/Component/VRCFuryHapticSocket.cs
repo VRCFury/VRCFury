@@ -108,7 +108,10 @@ namespace VF.Component {
             public State actionSet = new State();
             public Vector2 range = new Vector2(-0.25f, 0);
             public DepthActionUnits units = DepthActionUnits.Local;
-            public bool enableSelf;
+            public bool enableSelf = true;
+            public bool enableOthers = true;
+            public bool allowHole = true;
+            public bool allowRing = true;
             public float smoothingSeconds = 0;
             public bool reverseClip = false;
         }

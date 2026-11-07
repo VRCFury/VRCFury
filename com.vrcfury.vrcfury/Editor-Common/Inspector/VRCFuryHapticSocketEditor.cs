@@ -350,7 +350,29 @@ namespace VF.Inspector {
                     (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex == VRCFuryHapticSocket.DepthActionUnits.Meters
                         ? VRCFuryEditorUtils.Warn("Usually you should use Local rather than Meters. Ranges in Meters stay fixed in world space and do not scale with the avatar.")
                         : new VisualElement(), units));
-                c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("enableSelf"), "Allow avatar to trigger its own animation?"));
+                void AddPair(string first, string firstLabel, string second, string secondLabel) {
+                    var row = new VisualElement().Row();
+                    var a = prop.FindPropertyRelative(first);
+                    var b = prop.FindPropertyRelative(second);
+                    void Add(SerializedProperty value, SerializedProperty other, string label) {
+                        var toggle = new UnityEngine.UIElements.Toggle { name = label };
+                        toggle.SetValueWithoutNotify(value.boolValue);
+                        toggle.TrackProperty(value, p => toggle.SetValueWithoutNotify(p.boolValue));
+                        toggle.RegisterValueChangedCallback(evt => {
+                            value.boolValue = evt.newValue;
+                            if (!evt.newValue) other.boolValue = true;
+                            prop.serializedObject.ApplyModifiedProperties();
+                        });
+                        row.Add(VRCFuryEditorUtils.BetterProp(null, label, fieldOverride: toggle));
+                    }
+                    Add(a, b, firstLabel);
+                    Add(b, a, secondLabel);
+                    c.Add(row);
+                }
+                AddPair("enableSelf", "Allow Self", "enableOthers", "Allow Others");
+                if (prop.serializedObject.targetObject is VRCFuryHapticPlug) {
+                    AddPair("allowHole", "Allow Hole", "allowRing", "Allow Ring");
+                }
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target value. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
                 if (!IsRadius) c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("reverseClip"), "Reverse clip (unusual)"));
                 return c;

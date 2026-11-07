@@ -118,7 +118,8 @@ namespace VF.Builder.Haptics {
                                 actionSet = new State { actions = { action } },
                                 range = new Vector2(-frames.Last().depth * radius, -frames.First().depth * radius),
                                 units = VRCFuryHapticSocket.DepthActionUnits.Local,
-                                enableSelf = receiver.allowSelf
+                                enableSelf = receiver.allowSelf,
+                                enableOthers = receiver.allowOthers
                             });
                         }
                         result.layers.Add(layer.name);
