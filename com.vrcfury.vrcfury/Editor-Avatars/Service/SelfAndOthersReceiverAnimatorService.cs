@@ -72,7 +72,7 @@ namespace VF.Service {
             var parameter = GetParameter(receivers, party, advancedParameters: flag);
             return parameter.Controller.GetOrCreateFloat(parameter.name + fullSuffix);
 #else
-            throw new InvalidOperationException("Advanced contact parameters require VRCSDK 3.10.6 or newer.");
+            throw new InvalidOperationException(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
 #endif
         }
 

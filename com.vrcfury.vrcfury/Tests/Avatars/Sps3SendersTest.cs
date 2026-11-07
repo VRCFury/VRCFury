@@ -750,7 +750,7 @@ namespace VF.Tests {
                 if (BuildTargetUtils.IsDesktop()) {
                     var error = Assert.Throws<Exception>(() => injector.GetService<VRCFuryHapticPlugBaker>()
                         .Bake(plug, deferMaterialConfig: !withMaterial));
-                    Assert.That(error.Message, Does.Contain("Update the VRCSDK"));
+                    Assert.That(error.Message, Is.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
                     return;
                 }
 #endif

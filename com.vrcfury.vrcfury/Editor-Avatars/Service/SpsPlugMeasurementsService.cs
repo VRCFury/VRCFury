@@ -136,7 +136,7 @@ namespace VF.Service {
                 };
             });
 #else
-            throw new Exception("SPS depth measurements require VRCSDK 3.10.6 or newer. Update the VRCSDK to use SPS.");
+            throw new Exception(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
 #endif
         }
     }

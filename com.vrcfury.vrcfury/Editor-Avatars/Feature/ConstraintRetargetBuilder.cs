@@ -39,7 +39,7 @@ namespace VF.Feature {
                 else c.TargetTransform = newTarget;
             }
 #else
-            throw new Exception("This version of the VRCSDK does not support VRC constraints");
+            throw new Exception(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
 #endif
         }
 

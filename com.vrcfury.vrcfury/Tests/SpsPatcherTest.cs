@@ -1100,7 +1100,7 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
 
 #if !VRCSDK_HAS_MATERIAL_CONTACTS
             Assert.That(Assert.Throws<Exception>(() => SpsPatcher.Patch(material, keepImports, hasBlendshapes)).Message,
-                Does.Contain("Update the VRCSDK"));
+                Is.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
 #else
             SpsPatcher.Patch(material, keepImports: keepImports, hasBlendshapes: hasBlendshapes);
             for (var pass = 0; pass < material.passCount; pass++) ShaderUtil.CompilePass(material, pass, true);
@@ -1138,7 +1138,7 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
         try {
 #if !VRCSDK_HAS_MATERIAL_CONTACTS
             Assert.That(Assert.Throws<Exception>(() => SpsPatcher.Patch(material, keepImports, true)).Message,
-                Does.Contain("Update the VRCSDK"));
+                Is.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
 #else
             SpsPatcher.Patch(material, keepImports, hasBlendshapes: true);
             // Error checks alone can pass when Unity's upgrader has excluded the graphics API.

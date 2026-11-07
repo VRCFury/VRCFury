@@ -70,7 +70,7 @@ namespace VF.Service {
                 receiver.rotation = req.rotation;
                 receiver.useFaceProximity = req.useFaceProximity;
 #else
-                throw new InvalidOperationException("Box contact receivers require VRCSDK 3.10.6 or newer.");
+                throw new InvalidOperationException(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
 #endif
             } else if (req.height > 0) {
                 receiver.shapeType = ContactBase.ShapeType.Capsule;

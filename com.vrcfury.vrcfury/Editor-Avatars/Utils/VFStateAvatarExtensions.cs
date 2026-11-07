@@ -49,7 +49,7 @@ namespace VF.Utils {
         }
         public static VFState DrivesCopy(this VFState state, string from, string to, float fromMin = 0, float fromMax = 0, float toMin = 0, float toMax = 0) {
 #if ! VRCSDK_HAS_DRIVER_COPY
-            throw new Exception("VRCFury feature failed to build because VRCSDK is outdated");
+            throw new Exception(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
 #else
             return state.AddDriverParameter(to, p => {
                 p.source = from;

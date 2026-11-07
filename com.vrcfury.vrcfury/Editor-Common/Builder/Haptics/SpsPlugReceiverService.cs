@@ -58,7 +58,7 @@ namespace VF.Builder.Haptics {
 
         internal static void RequireMaterialContacts() {
 #if !VRCSDK_HAS_MATERIAL_CONTACTS
-            throw new Exception("SPS deformation requires a VRCSDK with material contact support. Update the VRCSDK to use SPS.");
+            throw new Exception(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
 #endif
         }
 

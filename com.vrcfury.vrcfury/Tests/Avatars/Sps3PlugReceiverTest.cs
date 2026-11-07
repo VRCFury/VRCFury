@@ -245,7 +245,7 @@ namespace VF.Tests {
         [Test]
         public void RejectsSdksWithoutMaterialContacts() {
             var error = Assert.Throws<Exception>(() => service.Create(plug, Array.Empty<Renderer>()));
-            Assert.That(error.Message, Does.Contain("Update the VRCSDK"));
+            Assert.That(error.Message, Is.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
         }
 #endif
 
@@ -256,7 +256,7 @@ namespace VF.Tests {
             try {
 #if !VRCSDK_HAS_MATERIAL_CONTACTS
                 Assert.That(Assert.Throws<Exception>(() => SpsPatcher.Patch(material, false, false)).Message,
-                    Does.Contain("Update the VRCSDK"));
+                    Is.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
 #else
                 SpsPatcher.Patch(material, false, false);
                 service.ConfigureMaterial(material, plug, compatibility);

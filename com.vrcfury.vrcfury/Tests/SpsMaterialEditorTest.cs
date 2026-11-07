@@ -72,7 +72,7 @@ Shader ""Hidden/VRCFury/Tests/SpsInspector"" {
                 unpatched = new Material(shader);
 #if !VRCSDK_HAS_MATERIAL_CONTACTS
                 Assert.That(Assert.Throws<Exception>(() => SpsPatcher.Patch(material, keepImports, false)).Message,
-                    Does.Contain("Update the VRCSDK"));
+                    Is.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
 #else
                 SpsPatcher.Patch(material, keepImports, false);
                 patchedPath = AssetDatabase.GetAssetPath(material.shader);
