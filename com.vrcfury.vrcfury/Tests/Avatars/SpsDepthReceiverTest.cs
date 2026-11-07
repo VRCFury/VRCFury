@@ -1215,7 +1215,7 @@ namespace VF.Tests {
             var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).Single(r => r.gameObject.name == "SpsAutoDistance");
             Assert.That(receiver.collisionTags, Is.EqualTo(new[] { SpsTags.PlugClose }));
             Assert.That(receiver.radius, Is.EqualTo(0.18f).Within(0.0001f));
-            Assert.That(receiver.allowOthers && !receiver.allowSelf && receiver.localOnly, Is.True);
+            Assert.That(receiver.allowOthers && receiver.allowSelf && receiver.localOnly, Is.True);
             Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.None));
             Assert.That(receiver.owner().GetConstraints().Single(c => c.IsParent()).GetSources(), Has.Length.EqualTo(2));
             Assert.That(fx.parameters.Any(p => p.name.EndsWith("_AutoActiveDist") || p.name.EndsWith("_AutoCloser")

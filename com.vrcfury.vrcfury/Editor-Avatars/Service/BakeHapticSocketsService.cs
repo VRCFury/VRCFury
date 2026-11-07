@@ -300,7 +300,7 @@ namespace VF.Service {
                 receiver.receiverType = ContactReceiver.ReceiverType.Proximity;
                 receiver.collisionTags.Add(SpsTags.PlugClose);
                 receiver.allowOthers = true;
-                receiver.allowSelf = false;
+                receiver.allowSelf = true;
                 receiver.localOnly = true;
                 receiver.shapeType = ContactBase.ShapeType.Sphere;
 
