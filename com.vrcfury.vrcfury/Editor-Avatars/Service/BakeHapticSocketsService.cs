@@ -114,11 +114,16 @@ namespace VF.Service {
 
                     var bakeResult = socketBaker.Bake(socket, legacyPlugCompatibility: options.legacyModeAvailable,
                         tpsDepthAnimationCompatibility: options.tpsDepthAnimationCompatibility, avatarRoot: avatarObject);
-                    globals.addOtherFeature(new ShowInFirstPerson {
-                        useObjOverride = true,
-                        objOverride = bakeResult.bakeRoot,
-                        onlyIfChildOfHead = true
-                    });
+                    // Guide senders follow the original stop transforms, which must not be head-chopped either.
+                    foreach (var visible in new[] { bakeResult.bakeRoot }.Concat(socket.guidedPathStops
+                                 .Take(SpsTags.MaxUserPathStops).Where(stop => stop?.transform != null)
+                                 .Select(stop => stop.transform.asVf())).Distinct()) {
+                        globals.addOtherFeature(new ShowInFirstPerson {
+                            useObjOverride = true,
+                            objOverride = visible,
+                            onlyIfChildOfHead = true
+                        });
+                    }
 
                     var mainReceivers = socketMeasurements.GetReceivers(socket, bakeResult.worldSpace, oscId);
 

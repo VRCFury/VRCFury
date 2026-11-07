@@ -232,6 +232,37 @@ namespace VF.Tests {
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SocketBakeProtectsGuidedPathSourcesFromHeadChop(bool disabled) {
+            var head = GameObjects.Create("Head", root);
+            var socket = GameObjects.Create("Socket", head).AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.addMenuItem = false;
+            var stop = GameObjects.Create("Stop", head);
+            stop.active = !disabled;
+            var outsideHead = GameObjects.Create("Other Stop", root);
+            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
+            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = outsideHead });
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> { new SpsOptions { autoModeAvailable = false } };
+            var added = new List<FeatureModel>();
+            globals.addOtherFeature = added.Add;
+            injector.GetService<BakeHapticSocketsService>().Apply();
+            var exclusions = added.OfType<ShowInFirstPerson>().ToArray();
+            var baked = socket.owner().Children().Single(child => child.name == "BakedSpsSocket");
+            Assert.That(exclusions.Select(e => e.objOverride), Is.EquivalentTo(new GameObject[] { baked, stop, outsideHead }));
+            Assert.That(exclusions.All(e => e.useObjOverride && e.onlyIfChildOfHead), Is.True,
+                "Only stop sources under the avatar head should receive first-person exclusions");
+            var guideSenders = baked.GetComponentsInSelfAndChildren<VRCContactSender>()
+                .Where(sender => sender.name.StartsWith("Sender - Path Stop")).ToArray();
+            Assert.That(guideSenders, Has.Length.EqualTo(2));
+            Assert.That(guideSenders.SelectMany(sender => sender.owner().GetConstraints().Single(c => c.IsParent()).GetSources()),
+                Is.EquivalentTo(new[] { stop, outsideHead }));
+        }
+
         [Test]
         public void DepthOnlyConsumersActivateTheOverlapWorkaround() {
             _ = Socket(false)(Party.Self)(SpsDepthMeters);
