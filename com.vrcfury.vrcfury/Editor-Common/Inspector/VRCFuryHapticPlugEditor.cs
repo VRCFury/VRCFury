@@ -111,19 +111,26 @@ namespace VF.Inspector {
             }
         }
 
+        public static bool CanHandle(SerializedProperty injectProp) {
+            var sourceObject = injectProp.FindPropertyRelative("sourceObject").objectReferenceValue as GameObject;
+            if (sourceObject == null) return false;
+            var isSocket = sourceObject.GetComponent<VRCFuryHapticSocket>() != null;
+            if (!isSocket && sourceObject.GetComponent<VRCFuryHapticPlug>() == null) return false;
+            return ParseSpsMagicParam(injectProp.FindPropertyRelative("sourceParam").stringValue,
+                isSocket) != null;
+        }
+
         public static VisualElement RenderSpsInjectParamEditor(SerializedProperty injectProp) {
             var sourceParamProp = injectProp.FindPropertyRelative("sourceParam");
 
+            var sourceObject = injectProp.FindPropertyRelative("sourceObject").objectReferenceValue as GameObject;
+            var isSocket = sourceObject.GetComponent<VRCFuryHapticSocket>() != null;
+            var parsed = ParseSpsMagicParam(sourceParamProp.stringValue, isSocket);
+            if (parsed == null) return null;
             var content = new VisualElement();
             var parameters = SpsParams.ToList();
-            var sourceObject = injectProp.FindPropertyRelative("sourceObject").objectReferenceValue as GameObject;
-            var isSocket = sourceObject != null && sourceObject.GetComponent<VRCFuryHapticSocket>() != null;
-            var parsed = ParseSpsMagicParam(sourceParamProp.stringValue, isSocket);
             if (isSocket) {
                 parameters.Add(SpsParamPlugEntryRadius);
-            }
-            if (parsed == null) {
-                return VRCFuryEditorUtils.Prop(sourceParamProp, "Source Param");
             }
             var (selectedParam, selectedUnits) = parsed.Value;
             string ParameterLabel(string parameter) => parameter == SpsParamInteractingWithLegacy
@@ -141,6 +148,13 @@ namespace VF.Inspector {
 
             paramField.RegisterValueChangedCallback(_ => Save());
             unitsField.RegisterValueChangedCallback(_ => Save());
+            content.TrackProperty(sourceParamProp, p => {
+                var current = ParseSpsMagicParam(p.stringValue, isSocket);
+                if (current == null) return;
+                paramField.SetValueWithoutNotify(current.Value.param);
+                unitsField.SetValueWithoutNotify(current.Value.units ?? SpsUnitsMeters);
+                unitsField.style.display = current.Value.units == null ? DisplayStyle.None : DisplayStyle.Flex;
+            });
 
             content.Add(paramField);
             content.Add(unitsField);

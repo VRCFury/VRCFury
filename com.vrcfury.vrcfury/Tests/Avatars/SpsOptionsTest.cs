@@ -20,6 +20,28 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     public class SpsOptionsTest {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CanHandleRejectsMissingOrUnsupportedSource(bool missing) {
+            var root = new GameObject("Unsupported source");
+            try {
+                var component = root.AddComponent<VF.Model.VRCFury>();
+                component.content = new FullController {
+                    injectParams = { new FullController.InjectParamEntry {
+                        sourceObject = missing ? null : root, sourceParam = VRCFuryHapticPlugEditor.SpsDepthMeters
+                    } }
+                };
+                var serialized = new UnityEditor.SerializedObject(component);
+                var inject = serialized.FindProperty("content").FindPropertyRelative("injectParams").GetArrayElementAtIndex(0);
+                Assert.That(VRCFuryHapticPlugEditor.CanHandle(inject), Is.False);
+                var editor = new VF.Feature.FullControllerBuilder.InjectParamDrawer().CreatePropertyGUI(inject);
+                Assert.That(editor.Query<PopupField<string>>().ToList(), Is.Empty);
+                Assert.That(editor.Q<TextField>("SourceParam")?.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthMeters));
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+
         [Test]
         public void EditingUnsupportedInjectedParameterPreservesFieldAndFocus() {
             var root = new GameObject("Inject parameters");
@@ -54,7 +76,10 @@ namespace VF.Tests {
                 panel.visualTree.Add(editor);
                 UnityEditor.UIElements.BindingExtensions.Bind(editor, serialized);
                 Pump();
-                TextField SourceField() => editor.Query<TextField>().ToList().Single(field => field.bindingPath == sourceParam.propertyPath);
+                UnityEditor.UIElements.BindingExtensions.Unbind(editor);
+                UnityEditor.UIElements.BindingExtensions.Bind(editor, serialized);
+                Pump();
+                TextField SourceField() => editor.Q<TextField>("SourceParam");
                 var field = SourceField();
                 field.Focus();
                 var focused = panel.focusController.focusedElement;
@@ -72,10 +97,71 @@ namespace VF.Tests {
                 sourceParam.stringValue = "unknown";
                 serialized.ApplyModifiedProperties();
                 Pump();
+                UnityEditor.Undo.IncrementCurrentGroup();
                 SourceField().value = "";
+                // Advancing the group must not split the edit and its automatic default selection.
+                UnityEditor.Undo.IncrementCurrentGroup();
                 Pump();
                 Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthMeters));
                 Assert.That(editor.Query<PopupField<string>>().ToList(), Has.Count.EqualTo(2));
+                UnityEditor.Undo.FlushUndoRecordObjects();
+                UnityEditor.Undo.PerformUndo();
+                serialized.Update();
+                Pump();
+                Assert.That(sourceParam.stringValue, Is.EqualTo("unknown"), "Clearing and selecting the default must be one undo operation");
+                UnityEditor.Undo.PerformRedo();
+                serialized.Update();
+                Pump();
+                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthMeters));
+                var plug = GameObjects.Create("Plug", root).AddComponent<VRCFuryHapticPlug>();
+                sourceParam.stringValue = VRCFuryHapticPlugEditor.SpsPlugEntryRadiusLocal;
+                serialized.ApplyModifiedProperties();
+                Pump();
+                UnityEditor.Undo.IncrementCurrentGroup();
+                editor.Q<UnityEditor.UIElements.ObjectField>("SourceObject").value = plug.gameObject;
+                Pump();
+                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthMeters));
+                UnityEditor.Undo.FlushUndoRecordObjects();
+                UnityEditor.Undo.PerformUndo();
+                serialized.Update();
+                Pump();
+                Assert.That(inject.FindPropertyRelative("sourceObject").objectReferenceValue, Is.SameAs(root));
+                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsPlugEntryRadiusLocal),
+                    "Changing the source and selecting a supported default must be one undo operation");
+                sourceParam.stringValue = VRCFuryHapticPlugEditor.SpsDepthLocal;
+                serialized.ApplyModifiedProperties();
+                Pump();
+                editor.Q<UnityEditor.UIElements.ObjectField>("SourceObject").value = plug.gameObject;
+                Pump();
+                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthLocal),
+                    "Changing sources must preserve a supported parameter and its units");
+                var unitsField = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Units");
+                UnityEditor.Undo.IncrementCurrentGroup();
+                unitsField.value = VRCFuryHapticPlugEditor.SpsUnitsMeters;
+                Pump();
+                UnityEditor.Undo.FlushUndoRecordObjects();
+                UnityEditor.Undo.PerformUndo();
+                serialized.Update();
+                Pump();
+                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthLocal));
+                Assert.That(unitsField.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsUnitsLocal), "Units must follow Undo");
+                var parameterField = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Parameter");
+                UnityEditor.Undo.IncrementCurrentGroup();
+                parameterField.value = VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy;
+                Pump();
+                Assert.That(unitsField.style.display.value, Is.EqualTo(DisplayStyle.None));
+                UnityEditor.Undo.FlushUndoRecordObjects();
+                UnityEditor.Undo.PerformUndo();
+                serialized.Update();
+                Pump();
+                Assert.That(parameterField.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsParamDepth), "Parameter selection must follow Undo");
+                Assert.That(unitsField.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsUnitsLocal));
+                Assert.That(unitsField.style.display.value, Is.EqualTo(DisplayStyle.Flex));
+                UnityEditor.Undo.PerformRedo();
+                serialized.Update();
+                Pump();
+                Assert.That(parameterField.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy));
+                Assert.That(unitsField.style.display.value, Is.EqualTo(DisplayStyle.None));
             } finally {
                 (panel as IDisposable)?.Dispose();
                 Object.DestroyImmediate(panelOwner);
@@ -100,8 +186,9 @@ namespace VF.Tests {
                 var inject = serialized.FindProperty("content").FindPropertyRelative("injectParams").GetArrayElementAtIndex(0);
                 var editor = new VF.Feature.FullControllerBuilder.InjectParamDrawer().CreatePropertyGUI(inject);
                 Assert.That(editor.Query<PopupField<string>>().ToList(), Is.Empty);
-                Assert.That(editor.Query<UnityEditor.UIElements.PropertyField>().ToList()
-                    .Any(field => field.bindingPath == inject.FindPropertyRelative("sourceParam").propertyPath), Is.True);
+                Assert.That(VRCFuryHapticPlugEditor.RenderSpsInjectParamEditor(inject), Is.Null);
+                Assert.That(VRCFuryHapticPlugEditor.CanHandle(inject), Is.False);
+                Assert.That(editor.Q<TextField>("SourceParam")?.value, Is.EqualTo(sourceParam));
                 Assert.That(inject.FindPropertyRelative("sourceParam").stringValue, Is.EqualTo(sourceParam));
             } finally {
                 Object.DestroyImmediate(root);
@@ -133,6 +220,7 @@ namespace VF.Tests {
                 var inject = serialized.FindProperty("content").FindPropertyRelative("injectParams").GetArrayElementAtIndex(0);
                 var editor = new VF.Feature.FullControllerBuilder.InjectParamDrawer().CreatePropertyGUI(inject);
                 var parameter = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Parameter");
+                Assert.That(VRCFuryHapticPlugEditor.CanHandle(inject), Is.True);
                 Assert.That(parameter.choices.Contains(VRCFuryHapticPlugEditor.SpsParamPlugEntryRadius), Is.EqualTo(socketSource));
                 Assert.That(parameter.choices, Does.Contain(VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy));
                 if (unitless) {
