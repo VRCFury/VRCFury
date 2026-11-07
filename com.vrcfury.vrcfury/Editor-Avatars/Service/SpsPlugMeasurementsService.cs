@@ -2,6 +2,7 @@ using static VF.Inspector.VRCFuryHapticPlugEditor;
 using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using VF.Builder.Haptics;
 using VF.Injector;
 using BakeResult = VF.Inspector.VRCFuryHapticPlugEditor.BakeResult;
@@ -58,6 +59,18 @@ namespace VF.Service {
                     if (parsed == null) return null;
                     var (parameter, units) = parsed.Value;
                     return outputs.GetOrCreate((parameter, units), () => {
+                        if (parameter == SpsParamInteractingWithLegacy) {
+                            if (party == Party.Self || !main.request.othersTags.Contains(SpsTags.LegacySocket)) return fx.Zero();
+                            var tags = party == Party.Merged
+                                ? main.request.selfTags.Union(main.request.othersTags) : main.request.othersTags;
+                            var native = tags.Where(tag => tag.StartsWith(SpsTags.FormatSocket("")))
+                                .Aggregate(BlendtreeMath.False(), (condition, tag) =>
+                                    condition.Or(BlendtreeMath.GreaterThan(Field("CollisionTag_" + tag), 0)));
+                            var legacyOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithLegacy");
+                            presence.Value.whenTrue.Add(native.create(legacyOutput.MakeSetter(0), legacyOutput.MakeSetter(1)));
+                            presence.Value.whenFalse.Add(legacyOutput.MakeSetter(0));
+                            return legacyOutput;
+                        }
                         if (parameter == SpsParamPlugLength && units == SpsUnitsPlugLengths) return fx.One();
                         if (parameter == SpsParamPlugLength && units == SpsUnitsLocal) return localLengthParam.Value;
                         if (parameter == SpsParamPlugRadius && units == SpsUnitsPlugLengths) return normalizedRadius.Value;

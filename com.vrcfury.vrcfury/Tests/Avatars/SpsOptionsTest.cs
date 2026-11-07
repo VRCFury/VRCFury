@@ -20,6 +20,69 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     public class SpsOptionsTest {
+        [Test]
+        public void EditingUnsupportedInjectedParameterPreservesFieldAndFocus() {
+            var root = new GameObject("Inject parameters");
+            var panelOwner = ScriptableObject.CreateInstance<PanelSettings>();
+            IPanel panel = null;
+            try {
+                root.AddComponent<VRCFuryHapticSocket>();
+                var component = root.AddComponent<VF.Model.VRCFury>();
+                component.content = new FullController {
+                    injectParams = { new FullController.InjectParamEntry { sourceObject = root, sourceParam = "custom" } }
+                };
+                var serialized = new UnityEditor.SerializedObject(component);
+                var inject = serialized.FindProperty("content").FindPropertyRelative("injectParams").GetArrayElementAtIndex(0);
+                var sourceParam = inject.FindPropertyRelative("sourceParam");
+                var editor = new VF.Feature.FullControllerBuilder.InjectParamDrawer().CreatePropertyGUI(inject);
+                var panelType = typeof(VisualElement).Assembly.GetType("UnityEngine.UIElements.Panel");
+                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+                panel = (IPanel)panelType.GetMethod("CreateEditorPanel", flags | System.Reflection.BindingFlags.Static)
+                    .Invoke(null, new object[] { panelOwner });
+                var update = panelType.GetMethod("UpdateBindings", flags | System.Reflection.BindingFlags.Instance);
+                var updateData = panelType.GetMethod("UpdateDataBinding", flags | System.Reflection.BindingFlags.Instance);
+                var scheduler = panelType.GetProperty("scheduler", flags | System.Reflection.BindingFlags.Instance).GetValue(panel);
+                var tick = scheduler.GetType().GetMethod("UpdateScheduledEvents", flags | System.Reflection.BindingFlags.Instance);
+                void Pump() {
+                    for (var i = 0; i < 3; i++) {
+                        System.Threading.Thread.Sleep(110);
+                        update.Invoke(panel, null);
+                        updateData?.Invoke(panel, null);
+                        tick.Invoke(scheduler, null);
+                    }
+                }
+                panel.visualTree.Add(editor);
+                UnityEditor.UIElements.BindingExtensions.Bind(editor, serialized);
+                Pump();
+                TextField SourceField() => editor.Query<TextField>().ToList().Single(field => field.bindingPath == sourceParam.propertyPath);
+                var field = SourceField();
+                field.Focus();
+                var focused = panel.focusController.focusedElement;
+                Assert.That(focused, Is.Not.Null);
+                foreach (var value in new[] { "custom1", "custom12", "custom123" }) {
+                    field.value = value;
+                    Pump();
+                    Assert.That(sourceParam.stringValue, Is.EqualTo(value));
+                    Assert.That(SourceField(), Is.SameAs(field));
+                    Assert.That(panel.focusController.focusedElement, Is.SameAs(focused));
+                }
+                field.value = VRCFuryHapticPlugEditor.SpsDepthLocal;
+                Pump();
+                Assert.That(editor.Query<PopupField<string>>().ToList(), Has.Count.EqualTo(2));
+                sourceParam.stringValue = "unknown";
+                serialized.ApplyModifiedProperties();
+                Pump();
+                SourceField().value = "";
+                Pump();
+                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthMeters));
+                Assert.That(editor.Query<PopupField<string>>().ToList(), Has.Count.EqualTo(2));
+            } finally {
+                (panel as IDisposable)?.Dispose();
+                Object.DestroyImmediate(panelOwner);
+                Object.DestroyImmediate(root);
+            }
+        }
+
         [TestCase(true, "__sps_unknown_meters")]
         [TestCase(true, "__sps_depth_unknown")]
         [TestCase(true, "")]
@@ -45,9 +108,11 @@ namespace VF.Tests {
             }
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void InjectParametersOffersPlugEntryRadiusForSockets(bool socketSource) {
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void InjectParametersOffersPlugEntryRadiusForSockets(bool socketSource, bool unitless) {
             var root = new GameObject("Inject parameters");
             try {
                 if (socketSource) root.AddComponent<VRCFuryHapticSocket>();
@@ -55,8 +120,8 @@ namespace VF.Tests {
                 var component = root.AddComponent<VF.Model.VRCFury>();
                 var model = new FullController();
                 model.injectParams.Add(new FullController.InjectParamEntry {
-                    sourceObject = root, sourceParam = socketSource
-                        ? VRCFuryHapticPlugEditor.SpsPlugEntryRadiusLocal : VRCFuryHapticPlugEditor.SpsDepthMeters
+                    sourceObject = root, sourceParam = unitless ? VRCFuryHapticPlugEditor.SpsInteractingWithLegacy
+                        : socketSource ? VRCFuryHapticPlugEditor.SpsPlugEntryRadiusLocal : VRCFuryHapticPlugEditor.SpsDepthMeters
                 });
                 component.content = model;
                 var serialized = new UnityEditor.SerializedObject(component);
@@ -64,7 +129,17 @@ namespace VF.Tests {
                 var editor = new VF.Feature.FullControllerBuilder.InjectParamDrawer().CreatePropertyGUI(inject);
                 var parameter = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Parameter");
                 Assert.That(parameter.choices.Contains(VRCFuryHapticPlugEditor.SpsParamPlugEntryRadius), Is.EqualTo(socketSource));
-                if (socketSource) {
+                Assert.That(parameter.choices, Does.Contain(VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy));
+                if (unitless) {
+                    Assert.That(parameter.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy));
+                    Assert.That(parameter.formatSelectedValueCallback(parameter.value), Is.EqualTo(socketSource ? "Plug Is Legacy" : "Socket Is Legacy"));
+                    Assert.That(parameter.formatListItemCallback(parameter.value), Is.EqualTo(socketSource ? "Plug Is Legacy" : "Socket Is Legacy"));
+                    var units = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Units");
+                    Assert.That(units.style.display.value, Is.EqualTo(DisplayStyle.None));
+                    Assert.That(VRCFuryHapticPlugEditor.ParseSpsMagicParam(VRCFuryHapticPlugEditor.SpsInteractingWithLegacy, socketSource)?.units, Is.Null);
+                    Assert.That(VRCFuryHapticPlugEditor.GetSpsMagicParam(VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy, null),
+                        Is.EqualTo(VRCFuryHapticPlugEditor.SpsInteractingWithLegacy));
+                } else if (socketSource) {
                     Assert.That(parameter.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsParamPlugEntryRadius));
                     var units = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Units");
                     Assert.That(units.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsUnitsLocal));

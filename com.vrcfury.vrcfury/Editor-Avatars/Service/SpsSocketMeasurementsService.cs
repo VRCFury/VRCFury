@@ -140,6 +140,14 @@ namespace VF.Service {
 
                 VFAParam GetOutput(string parameter, string units) {
                     return outputs.GetOrCreate((parameter, units), () => {
+                        if (parameter == SpsParamInteractingWithLegacy) {
+                            if (!legacy) return fx.Zero();
+                            var legacyOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithLegacy");
+                            encoding.Value.whenTrue.Add(legacyOutput.MakeSetter(0));
+                            encoding.Value.whenFalse.Add(legacyOutput.MakeSetter(1));
+                            presence.Value.whenFalse.Add(legacyOutput.MakeSetter(0));
+                            return legacyOutput;
+                        }
                         if (parameter == SpsParamPlugLength && units == SpsUnitsPlugLengths) return fx.One();
                         var input = parameter switch {
                             SpsParamDepth => distance.Value,

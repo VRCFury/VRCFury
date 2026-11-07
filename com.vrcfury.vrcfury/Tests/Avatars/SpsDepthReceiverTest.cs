@@ -182,6 +182,48 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void InteractingWithLegacyTracksPresenceAndNativeTags(
+            [Values(true, false)] bool socket, [Values(true, false)] bool shared,
+            [Values(0, 1, 2)] int partyIndex) {
+            var party = (Party)partyIndex;
+            Func<Party, Func<string, VFAParam>> factory;
+            if (socket) {
+                factory = Socket(shared);
+            } else {
+                var plug = root.AddComponent<VRCFuryHapticPlug>();
+                plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+                plug.unitsInMeters = true;
+                plug.length = 0.4f;
+                plug.radius = 0.05f;
+                plug.useSharedTag = shared;
+                plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "test", allowSelf = true, allowOthers = true });
+                factory = PlugMeasurements(plug);
+            }
+            var measurements = factory(party);
+            var output = measurements(SpsInteractingWithLegacy);
+            Assert.That(measurements(SpsInteractingWithLegacy), Is.SameAs(output));
+            _ = measurements(SpsDepthMeters);
+            var receiver = party == Party.Merged ? Merged() : root.GetComponentsInChildren<VRCContactReceiver>(true)
+                .Single(r => r.allowSelf == (party == Party.Self));
+            Start();
+            Set(receiver, 0, -1);
+            Evaluate();
+            Assert.That(playable.GetFloat(output), Is.Zero, "No contact");
+            Set(receiver, 0.8f, 0.2f, native: false);
+            Evaluate();
+            Assert.That(playable.GetFloat(output), Is.EqualTo(shared && party != Party.Self ? 1 : 0), "Legacy remote contact");
+            Set(receiver, 0.8f, 0.2f, native: true);
+            Evaluate();
+            Assert.That(playable.GetFloat(output), Is.Zero, "Native tags take precedence, even when legacy tags also exist");
+            Set(receiver, 0.8f, -1, native: false);
+            Evaluate();
+            Assert.That(playable.GetFloat(output), Is.Zero, "Invalid separation must not count as a contact");
+            Set(receiver, 0, 0.2f, native: false);
+            Evaluate();
+            Assert.That(playable.GetFloat(output), Is.Zero, "Stale advanced outputs must not count as a contact");
+        }
+
+        [Test]
         public void ReceiversAreLazyAndMeasurementsShareOneMainPerParty() {
             var factory = Socket();
             var self = factory(Party.Self);

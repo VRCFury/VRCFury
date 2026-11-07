@@ -677,7 +677,16 @@ namespace VF.Feature {
                 content.Add(VRCFuryEditorUtils.OnChange(sourceParamProp, () => {
                     if (string.IsNullOrEmpty(sourceParamProp.stringValue)) SelectDefaultIfInvalid();
                 }));
-                content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                bool ShouldShowSpsEditor() {
+                    var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
+                    if (sourceObject == null) return false;
+                    var isSocket = sourceObject.GetComponent<VRCFuryHapticSocket>() != null;
+                    return (isSocket || sourceObject.GetComponent<VRCFuryHapticPlug>() != null)
+                        && VRCFuryHapticPlugEditor.ParseSpsMagicParam(sourceParamProp.stringValue, isSocket) != null;
+                }
+                var showingSpsEditor = false;
+                content.Add(VRCFuryEditorUtils.RefreshOnTrigger(() => {
+                    showingSpsEditor = ShouldShowSpsEditor();
                     var wrapper = new VisualElement();
                     var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
                     if (sourceObject != null) {
@@ -692,7 +701,11 @@ namespace VF.Feature {
                         wrapper.Add(VRCFuryEditorUtils.Prop(sourceParamProp, "Source Param"));
                     }
                     return wrapper;
-                }, sourceObjectProp, sourceParamProp));
+                }, prop.serializedObject, out var refresh));
+                content.Add(VRCFuryEditorUtils.OnChange(sourceObjectProp, () => content.schedule.Execute(refresh)));
+                content.Add(VRCFuryEditorUtils.OnChange(sourceParamProp, () => {
+                    if (ShouldShowSpsEditor() != showingSpsEditor) content.schedule.Execute(refresh);
+                }));
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("targetParam"), "Target Param"));
                 return content;
             }
