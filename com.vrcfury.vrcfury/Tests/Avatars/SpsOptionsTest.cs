@@ -199,6 +199,8 @@ namespace VF.Tests {
         [TestCase(true, null)]
         [TestCase(false, VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy)]
         [TestCase(true, VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy)]
+        [TestCase(false, VRCFuryHapticPlugEditor.SpsParamInteractingWithOthers)]
+        [TestCase(true, VRCFuryHapticPlugEditor.SpsParamInteractingWithOthers)]
         [TestCase(false, VRCFuryHapticPlugEditor.SpsParamSocketIsHole)]
         [TestCase(true, VRCFuryHapticPlugEditor.SpsParamSocketIsHole)]
         [TestCase(false, VRCFuryHapticPlugEditor.SpsParamSocketIsTwoWay)]
@@ -225,8 +227,11 @@ namespace VF.Tests {
                 Assert.That(parameter.choices, Does.Contain(VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy));
                 if (unitless) {
                     Assert.That(parameter.value, Is.EqualTo(unitlessParameter));
-                    var label = unitlessParameter == VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy
-                        ? socketSource ? "Plug Is Legacy" : "Socket Is Legacy" : unitlessParameter;
+                    var label = unitlessParameter switch {
+                        VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy => socketSource ? "Plug Is Legacy" : "Socket Is Legacy",
+                        VRCFuryHapticPlugEditor.SpsParamInteractingWithOthers => socketSource ? "Plug is Other Player" : "Socket is Other Player",
+                        _ => unitlessParameter
+                    };
                     Assert.That(parameter.formatSelectedValueCallback(parameter.value), Is.EqualTo(label));
                     Assert.That(parameter.formatListItemCallback(parameter.value), Is.EqualTo(label));
                     var units = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Units");

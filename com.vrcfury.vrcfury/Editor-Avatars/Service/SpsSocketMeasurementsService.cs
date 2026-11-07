@@ -142,6 +142,15 @@ namespace VF.Service {
 
                 VFAParam GetOutput(string parameter, string units) {
                     return outputs.GetOrCreate((parameter, units), () => {
+                        if (parameter == SpsParamInteractingWithOthers) {
+                            if (self) return fx.Zero();
+                            var othersOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithOthers");
+                            // SDK SenderType: 0 = none, 1 = self, 2 = another avatar, 3 = world.
+                            var others = party == Party.Others ? BlendtreeMath.True() : BlendtreeMath.GreaterThan(Field("SenderType"), 1);
+                            presence.Value.whenTrue.Add(others.create(othersOutput.MakeSetter(1), othersOutput.MakeSetter(0)));
+                            presence.Value.whenFalse.Add(othersOutput.MakeSetter(0));
+                            return othersOutput;
+                        }
                         if (parameter == SpsParamSocketIsHole) return entranceType.Value == VRCFuryHapticSocket.AddLight.Hole ? fx.One() : fx.Zero();
                         if (parameter == SpsParamSocketIsTwoWay) return entranceType.Value == VRCFuryHapticSocket.AddLight.Ring ? fx.One() : fx.Zero();
                         if (parameter == SpsParamInteractingWithLegacy) {

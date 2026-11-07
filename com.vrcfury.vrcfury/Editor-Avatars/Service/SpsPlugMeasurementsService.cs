@@ -71,6 +71,15 @@ namespace VF.Service {
                     if (parsed == null) return null;
                     var (parameter, units) = parsed.Value;
                     return outputs.GetOrCreate((parameter, units), () => {
+                        if (parameter == SpsParamInteractingWithOthers) {
+                            if (party == Party.Self) return fx.Zero();
+                            var othersOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithOthers");
+                            // SDK SenderType: 0 = none, 1 = self, 2 = another avatar, 3 = world.
+                            var others = party == Party.Others ? BlendtreeMath.True() : BlendtreeMath.GreaterThan(Field("SenderType"), 1);
+                            presence.Value.whenTrue.Add(others.create(othersOutput.MakeSetter(1), othersOutput.MakeSetter(0)));
+                            presence.Value.whenFalse.Add(othersOutput.MakeSetter(0));
+                            return othersOutput;
+                        }
                         if (parameter == SpsParamInteractingWithLegacy) {
                             if (!legacy) return fx.Zero();
                             var legacyOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithLegacy");

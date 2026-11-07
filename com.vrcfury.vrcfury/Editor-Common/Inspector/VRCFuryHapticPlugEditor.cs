@@ -26,6 +26,7 @@ namespace VF.Inspector {
         public const string SpsParamPlugRadius = "Plug Radius";
         public const string SpsParamPlugEntryRadius = "Plug Entry Radius";
         public const string SpsParamInteractingWithLegacy = "Interacting With Legacy";
+        public const string SpsParamInteractingWithOthers = "Interacting With Others";
         public const string SpsParamSocketIsHole = "Socket Is Hole";
         public const string SpsParamSocketIsTwoWay = "Socket Is Two-Way";
         public const string SpsUnitsMeters = "Meters";
@@ -47,6 +48,7 @@ namespace VF.Inspector {
         public const string SpsPlugEntryRadiusLocal = "__sps_plug_entry_radius_local";
         public const string SpsPlugEntryRadiusPlugLengths = "__sps_plug_entry_radius_plug_lengths";
         public const string SpsInteractingWithLegacy = "__sps_interacting_with_legacy";
+        public const string SpsInteractingWithOthers = "__sps_interacting_with_others";
         public const string SpsSocketIsHole = "__sps_socket_is_hole";
         public const string SpsSocketIsTwoWay = "__sps_socket_is_two_way";
 
@@ -56,6 +58,7 @@ namespace VF.Inspector {
             SpsParamPlugLength,
             SpsParamPlugRadius,
             SpsParamInteractingWithLegacy,
+            SpsParamInteractingWithOthers,
             SpsParamSocketIsHole,
             SpsParamSocketIsTwoWay
         };
@@ -67,6 +70,7 @@ namespace VF.Inspector {
 
         public static string GetSpsMagicParam(string param, string units) {
             if (param == SpsParamInteractingWithLegacy) return SpsInteractingWithLegacy;
+            if (param == SpsParamInteractingWithOthers) return SpsInteractingWithOthers;
             if (param == SpsParamSocketIsHole) return SpsSocketIsHole;
             if (param == SpsParamSocketIsTwoWay) return SpsSocketIsTwoWay;
             if (param == SpsParamDepth && units == SpsUnitsMeters) return SpsDepthMeters;
@@ -90,6 +94,7 @@ namespace VF.Inspector {
         public static (string param, string units)? ParseSpsMagicParam(string sourceParam, bool isSocket) {
             switch (sourceParam) {
                 case SpsInteractingWithLegacy: return (SpsParamInteractingWithLegacy, null);
+                case SpsInteractingWithOthers: return (SpsParamInteractingWithOthers, null);
                 case SpsSocketIsHole: return (SpsParamSocketIsHole, null);
                 case SpsSocketIsTwoWay: return (SpsParamSocketIsTwoWay, null);
                 case SpsDepthMeters: return (SpsParamDepth, SpsUnitsMeters);
@@ -133,8 +138,11 @@ namespace VF.Inspector {
                 parameters.Add(SpsParamPlugEntryRadius);
             }
             var (selectedParam, selectedUnits) = parsed.Value;
-            string ParameterLabel(string parameter) => parameter == SpsParamInteractingWithLegacy
-                ? isSocket ? "Plug Is Legacy" : "Socket Is Legacy" : parameter;
+            string ParameterLabel(string parameter) => parameter switch {
+                SpsParamInteractingWithLegacy => isSocket ? "Plug Is Legacy" : "Socket Is Legacy",
+                SpsParamInteractingWithOthers => isSocket ? "Plug is Other Player" : "Socket is Other Player",
+                _ => parameter
+            };
             var paramField = new PopupField<string>("Parameter", parameters, selectedParam, ParameterLabel, ParameterLabel);
             var unitsField = new PopupField<string>("Units", SpsUnits.ToList(), selectedUnits ?? SpsUnitsMeters);
             unitsField.style.display = selectedUnits == null ? DisplayStyle.None : DisplayStyle.Flex;

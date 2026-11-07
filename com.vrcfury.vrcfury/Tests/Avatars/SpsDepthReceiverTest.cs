@@ -248,6 +248,53 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void InteractingWithOthersUsesSelectedContact(
+            [Values(true, false)] bool socket, [Values(0, 1, 2)] int partyIndex,
+            [Values(true, false)] bool measurementsFirst) {
+            var party = (Party)partyIndex;
+            Func<Party, Func<string, VFAParam>> factory;
+            if (socket) {
+                factory = Socket();
+            } else {
+                var plug = root.AddComponent<VRCFuryHapticPlug>();
+                plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+                plug.unitsInMeters = true;
+                plug.length = 0.4f;
+                plug.radius = 0.05f;
+                factory = PlugMeasurements(plug);
+            }
+            var measurements = factory(party);
+            if (measurementsFirst) _ = measurements(SpsDepthMeters);
+            var output = measurements(SpsInteractingWithOthers);
+            Assert.That(measurements(SpsInteractingWithOthers), Is.SameAs(output));
+            _ = factory(Party.Self)(SpsDepthMeters);
+            _ = factory(Party.Others)(SpsDepthMeters);
+            var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
+            var self = contacts.Single(r => r.allowSelf && !r.name.Contains("Merged"));
+            var others = contacts.Single(r => r.allowOthers && !r.name.Contains("Merged"));
+            Assert.That(fx.parameters.Any(p => p.name.EndsWith("_SenderType")), Is.EqualTo(party == Party.Merged));
+            Start();
+            foreach (var (selfDistance, othersDistance, proximity) in new[] {
+                         (-1f, -1f, 0f), (-1f, 0f, 1f), (0f, -1f, 0f),
+                         (0.1f, 0.2f, 1f), (0.2f, 0.1f, 1f), (0.1f, 0.1f, 1f),
+                         (-1f, 0.1f, 0f), (-1f, -1f, 1f) }) {
+                Set(self, selfDistance >= 0 ? 1 : 0, selfDistance, native: true);
+                Set(others, proximity, othersDistance, native: true);
+                if (party == Party.Merged) {
+                    var selectSelf = selfDistance >= 0 && (othersDistance < 0 || selfDistance < othersDistance);
+                    var merged = Merged();
+                    Set(merged, selectSelf ? 1 : proximity, selectSelf ? selfDistance : othersDistance, native: true);
+                    playable.SetFloat(merged.parameter + "_SenderType", selectSelf ? 1 : othersDistance < 0 ? 0 : othersDistance == 0 ? 3 : 2);
+                }
+                Evaluate();
+                var expected = party != Party.Self && proximity > 0 && othersDistance >= 0
+                    && (party == Party.Others || selfDistance < 0 || othersDistance <= selfDistance);
+                Assert.That(playable.GetFloat(output), Is.EqualTo(expected ? 1 : 0).Within(0.000001f),
+                    $"{party}: self={selfDistance}, others={othersDistance}, proximity={proximity}");
+            }
+        }
+
+        [Test]
         public void InteractingWithLegacyTracksPresenceAndNativeTags(
             [Values(true, false)] bool socket, [Values(true, false)] bool shared,
             [Values(0, 1, 2)] int partyIndex) {
