@@ -147,6 +147,37 @@ namespace VF.Tests {
             } finally { Object.DestroyImmediate(owner); }
         }
 
+        [Test]
+        public void ManualFieldTrackingSurvivesRebindingAndReattachment() {
+            var owner = ScriptableObject.CreateInstance<Fields>();
+            try {
+                using (var serialized = new SerializedObject(owner))
+                using (var panel = new Panel(owner)) {
+                    var property = serialized.FindProperty("number");
+                    var field = new IntegerField();
+                    field.TrackProperty(property, p => field.SetValueWithoutNotify(p.intValue));
+                    panel.root.Add(field);
+                    panel.root.Bind(serialized);
+                    panel.Pump();
+                    for (var value = 1; value <= 3; value++) {
+                        if (value == 2) {
+                            panel.root.Unbind();
+                            panel.root.Bind(serialized);
+                        }
+                        if (value == 3) {
+                            field.RemoveFromHierarchy();
+                            panel.root.Add(field);
+                        }
+                        panel.Pump();
+                        property.intValue = value;
+                        serialized.ApplyModifiedProperties();
+                        panel.Pump();
+                        Assert.That(field.value, Is.EqualTo(value));
+                    }
+                }
+            } finally { Object.DestroyImmediate(owner); }
+        }
+
         // A detached editor panel exercises real bindings without opening a window.
         private sealed class Panel : IDisposable {
             public readonly IPanel panel;

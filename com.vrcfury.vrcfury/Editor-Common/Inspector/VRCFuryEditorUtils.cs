@@ -462,6 +462,12 @@ namespace VF.Inspector {
             watcher.RegisterCallback<DetachFromPanelEvent>(_ => watcher.Unbind());
             return watcher;
         }
+
+        // Keep manual UI synchronization on a separate tracker so rebinding the owner
+        // does not replace its property tracking with Unity's field binding.
+        public static void TrackProperty(this VisualElement owner, SerializedProperty prop, Action<SerializedProperty> changed) {
+            owner.Add(OnChange(prop, () => changed(prop)));
+        }
         
         public static VisualElement RefreshOnTrigger(Func<VisualElement> content, SerializedObject obj, out Action triggerRefresh) {
             var inner = new VisualElement();

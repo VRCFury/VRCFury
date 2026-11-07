@@ -672,48 +672,49 @@ namespace VF.Feature {
                         isSocket: sourceObject.GetComponent<VRCFuryHapticSocket>() != null) != null) {
                         if (sourceObject.GetComponent<VRCFuryHapticPlug>() == null && sourceParamProp.stringValue != unfiltered) {
                             sourceParamProp.stringValue = unfiltered;
-                            sourceParamProp.serializedObject.ApplyModifiedProperties();
                         }
                         return;
                     }
                     sourceParamProp.stringValue = VRCFuryHapticPlugEditor.SpsDepthMeters;
-                    sourceParamProp.serializedObject.ApplyModifiedProperties();
                 }
-                content.Add(VRCFuryEditorUtils.Prop(sourceObjectProp, "Source Object"));
-                content.Add(VRCFuryEditorUtils.OnChange(sourceObjectProp, SelectDefaultIfInvalid));
-                content.Add(VRCFuryEditorUtils.OnChange(sourceParamProp, () => {
-                    if (string.IsNullOrEmpty(sourceParamProp.stringValue)) SelectDefaultIfInvalid();
-                }));
-                bool ShouldShowSpsEditor() {
-                    var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
-                    if (sourceObject == null) return false;
-                    var isSocket = sourceObject.GetComponent<VRCFuryHapticSocket>() != null;
-                    VRCFuryHapticPlugEditor.ParseDepthSocketModes(sourceParamProp.stringValue, out var unfiltered);
-                    return (isSocket || sourceObject.GetComponent<VRCFuryHapticPlug>() != null)
-                        && VRCFuryHapticPlugEditor.ParseSpsMagicParam(unfiltered, isSocket) != null;
-                }
+                var sourceField = new ObjectField { objectType = typeof(GameObject), name = "SourceObject" };
+                sourceField.SetValueWithoutNotify(sourceObjectProp.objectReferenceValue);
+                sourceField.RegisterValueChangedCallback(evt => {
+                    sourceObjectProp.objectReferenceValue = evt.newValue;
+                    SelectDefaultIfInvalid();
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+                content.Add(VRCFuryEditorUtils.Prop(null, "Source Object", fieldOverride: sourceField));
+                sourceField.TrackProperty(sourceObjectProp,
+                    p => sourceField.SetValueWithoutNotify(p.objectReferenceValue));
                 var showingSpsEditor = false;
                 content.Add(VRCFuryEditorUtils.RefreshOnTrigger(() => {
-                    showingSpsEditor = ShouldShowSpsEditor();
-                    var wrapper = new VisualElement();
                     var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
-                    if (sourceObject != null) {
-                        if (sourceObject.GetComponent<VRCFuryHapticPlug>() != null
-                            || sourceObject.GetComponent<VRCFuryHapticSocket>() != null) {
-                            wrapper.Add(VRCFuryHapticPlugEditor.RenderSpsInjectParamEditor(prop));
-                        } else {
-                            wrapper.Add(VRCFuryEditorUtils.Warn("This object doesn't contain any injectable parameters"));
-                            wrapper.Add(VRCFuryEditorUtils.Prop(sourceParamProp, "Source Param"));
-                        }
-                    } else {
-                        wrapper.Add(VRCFuryEditorUtils.Prop(sourceParamProp, "Source Param"));
+                    var spsEditor = VRCFuryHapticPlugEditor.CanHandle(prop)
+                        ? VRCFuryHapticPlugEditor.RenderSpsInjectParamEditor(prop) : null;
+                    showingSpsEditor = spsEditor != null;
+                    if (spsEditor != null) return spsEditor;
+                    var wrapper = new VisualElement();
+                    if (sourceObject != null && sourceObject.GetComponent<VRCFuryHapticPlug>() == null
+                        && sourceObject.GetComponent<VRCFuryHapticSocket>() == null) {
+                        wrapper.Add(VRCFuryEditorUtils.Warn("This object doesn't contain any injectable parameters"));
                     }
+                    var field = new TextField { name = "SourceParam" };
+                    field.SetValueWithoutNotify(sourceParamProp.stringValue);
+                    field.RegisterValueChangedCallback(evt => {
+                        sourceParamProp.stringValue = evt.newValue;
+                        if (string.IsNullOrEmpty(evt.newValue)) SelectDefaultIfInvalid();
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                    wrapper.Add(VRCFuryEditorUtils.Prop(null, "Source Param", fieldOverride: field));
+                    field.TrackProperty(sourceParamProp, p => field.SetValueWithoutNotify(p.stringValue));
                     return wrapper;
                 }, prop.serializedObject, out var refresh));
-                content.Add(VRCFuryEditorUtils.OnChange(sourceObjectProp, () => content.schedule.Execute(refresh)));
-                content.Add(VRCFuryEditorUtils.OnChange(sourceParamProp, () => {
-                    if (ShouldShowSpsEditor() != showingSpsEditor) content.schedule.Execute(refresh);
-                }));
+                content.TrackProperty(sourceObjectProp, _ => refresh());
+                content.TrackProperty(sourceParamProp, _ => {
+                    var handled = VRCFuryHapticPlugEditor.CanHandle(prop);
+                    if (handled != showingSpsEditor) refresh();
+                });
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("targetParam"), "Target Param"));
                 return content;
             }
