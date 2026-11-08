@@ -10,7 +10,6 @@ using VF.Builder;
 using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
-using VF.Inspector;
 using VF.Menu;
 using VF.Model.Feature;
 using VF.Utils;
@@ -22,7 +21,6 @@ namespace VF.Service {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService layerControlService;
         [VFAutowired] private readonly FixWriteDefaultsService fixWriteDefaults;
-        [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ControllersService controllers;
         private VFAvatarController fx => controllers.GetFx();
@@ -187,27 +185,58 @@ namespace VF.Service {
             var state0 = states[0];
             var state1 = states[1];
 
-            var state0Condition = GetSingleCondition(GetTransitionsTo(layer, state0));
-            var state1Condition = GetSingleCondition(GetTransitionsTo(layer, state1));
-            if (state0Condition == null || state1Condition == null) {
-                throw new DoNotOptimizeException($"State conditions are not basic");
+            var to0 = GetTransitionsTo(layer, state0).Select(t => t.conditions).ToArray();
+            var to1 = GetTransitionsTo(layer, state1).Select(t => t.conditions).ToArray();
+            // Negate the smaller expression to avoid expanding an already-expanded opposite.
+            var (toCheck, toNegate) = to0.Sum(t => t.Length) >= to1.Sum(t => t.Length) ? (to0, to1) : (to1, to0);
+            if (toNegate.Sum(t => t.Length) > 6) {
+                throw new DoNotOptimizeException("Contains more than six conditions before negation");
             }
-            if (state0Condition.Value.parameter != state1Condition.Value.parameter) {
-                throw new DoNotOptimizeException($"State conditions do not use same parameter");
+            var conditions = new HashSet<HashSet<AnimatorCondition>>(
+                toCheck.Select(t => t.ToHashSet()), HashSet<AnimatorCondition>.CreateSetComparer());
+            if (!conditions.SetEquals(AnimatorConditionLogic.Not(toNegate).Select(t => t.ToHashSet()))) {
+                // Allow some not-exactly-opposite conditions to still be optimized
+                // These are some common cases that creators make toggles which aren't exactly "opposite"
+                var state0Condition = GetSingleCondition(GetTransitionsTo(layer, state0));
+                var state1Condition = GetSingleCondition(GetTransitionsTo(layer, state1));
+                if (state0Condition == null || state1Condition == null
+                    || state0Condition.Value.parameter != state1Condition.Value.parameter) {
+                    throw new DoNotOptimizeException("State conditions are not opposites");
+                }
+                var param = GetExistingParameter(state0Condition.Value.parameter);
+                if (FullControllerBuilder.VRChatGlobalParams.Contains(param) && param.type == AnimatorControllerParameterType.Int) {
+                    throw new DoNotOptimizeException("Uses an int VRC built-in, which means >1 is likely");
+                }
             }
-            
-            var param = GetExistingParameter(state0Condition.Value.parameter);
-            if (FullControllerBuilder.VRChatGlobalParams.Contains(param) && param.type == AnimatorControllerParameterType.Int) {
-                throw new DoNotOptimizeException($"Uses an int VRC built-in, which means >1 is likely");
-            }
-            
-            // TODO: Might want to verify that state1Condition is the opposite of state0Condition
-            // But we already verify that they use the same parameter, so it's /extremely/ unlikely for this to not be the case
-            
-            var state0Clip = Make0LengthClipForState(layer, state0);
-            var state1Clip = Make0LengthClipForState(layer, state1);
 
-            Optimize(state0Condition.Value, state0Clip, state1Clip, directTree);
+            var condition = BlendtreeMath.False();
+            foreach (var transition in to0) {
+                var all = BlendtreeMath.True();
+                foreach (var c in transition) {
+                    var input = GetExistingParameter(c.parameter);
+                    var test = c.mode switch {
+                        AnimatorConditionMode.If => BlendtreeMath.Equals(input, 0).Not(),
+                        AnimatorConditionMode.IfNot => BlendtreeMath.Equals(input, 0),
+                        AnimatorConditionMode.Greater => BlendtreeMath.GreaterThan(input, c.threshold),
+                        AnimatorConditionMode.Less => BlendtreeMath.LessThan(input, c.threshold),
+                        AnimatorConditionMode.Equals => BlendtreeMath.Equals(input, c.threshold),
+                        AnimatorConditionMode.NotEqual => BlendtreeMath.Equals(input, c.threshold).Not(),
+                        _ => throw new DoNotOptimizeException("Unknown condition type")
+                    };
+                    all = all.And(test);
+                }
+                condition = condition.Or(all);
+            }
+            var motion0 = Make0LengthClipForState(layer, state0);
+            var motion1 = Make0LengthClipForState(layer, state1);
+            var valid0 = validateBindingsService.HasValidBinding(motion0, avatarObject);
+            var valid1 = validateBindingsService.HasValidBinding(motion1, avatarObject);
+            if (!valid0 && !valid1) throw new DoNotOptimizeException("Contains no valid bindings");
+            var candidate = condition.create(motion0, motion1);
+            var trees = new AnimatorIterator.Trees();
+            var addedTrees = trees.From(candidate).Count - trees.From(state0.motion).Count() - trees.From(state1.motion).Count();
+            if (addedTrees > 6) throw new DoNotOptimizeException($"Optimized logic would add {addedTrees} trees, which is more expensive than a separate layer");
+            directTree.Value.Add(candidate);
         }
         
         private static bool IsEntryOnlyState(VFLayer layer, VFState state) {
@@ -236,42 +265,6 @@ namespace VF.Service {
                 }
             }
             return output.ToArray();
-        }
-
-        private void Optimize(AnimatorCondition condition, VFMotion on, VFMotion off, Lazy<VFBlendTreeDirect> directTree) {
-            if (on == null) on = clipFactory.GetEmptyClip();
-            if (off == null) off = clipFactory.GetEmptyClip();
-            
-            if (condition.mode == AnimatorConditionMode.IfNot) {
-                condition.mode = AnimatorConditionMode.If;
-                (on, off) = (off, on);
-            } else if (condition.mode == AnimatorConditionMode.Less) {
-                condition.mode = AnimatorConditionMode.Greater;
-                condition.threshold = VRCFuryEditorUtils.NextFloatDown(condition.threshold);
-                (on, off) = (off, on);
-            } else if (condition.mode == AnimatorConditionMode.NotEqual) {
-                condition.mode = AnimatorConditionMode.Equals;
-                (on, off) = (off, on);
-            }
-
-            var onValid = validateBindingsService.HasValidBinding(on, avatarObject);
-            var offValid = validateBindingsService.HasValidBinding(off, avatarObject);
-            if (!onValid && !offValid) throw new DoNotOptimizeException($"Contains no valid bindings");
-
-            var param = GetExistingParameter(condition.parameter);
-            if (condition.mode == AnimatorConditionMode.If) {
-                if (!offValid) {
-                    directTree.Value.Add(param, on);
-                } else {
-                    directTree.Value.Add(BlendtreeMath.GreaterThan(param, 0).create(on, off));
-                }
-            } else if (condition.mode == AnimatorConditionMode.Equals) {
-                directTree.Value.Add(BlendtreeMath.Equals(param, condition.threshold).create(on, off));
-            } else if (condition.mode == AnimatorConditionMode.Greater) {
-                directTree.Value.Add(BlendtreeMath.GreaterThan(param, condition.threshold).create(on, off));
-            } else {
-                throw new DoNotOptimizeException($"Unknown condition type");
-            }
         }
 
         [CanBeNull]

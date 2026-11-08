@@ -17,6 +17,7 @@ namespace VF.Service {
         private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ObjectTreeService objectTrees;
+        [VFAutowired] private readonly IsObjectEnabledService objectEnabled;
 
         public void CreateAnims(
             IEnumerable<VRCFuryHapticSocket.DepthActionNew> actions,
@@ -73,6 +74,9 @@ namespace VF.Service {
                     onThreshold = 1;
                 }
 
+                var layer = fx.NewLayer($"{name} - {(increasing ? "Plug Entry Radius" : "Depth")} Animations - {actionNum} - Action");
+                var off = layer.NewState("Off");
+                var on = layer.NewState("On");
                 if (!action.useMotionTime) {
                     var tree = VFBlendTree1D.Create(prefix + " tree", parameter);
                     if (useRawInput && !increasing) {
@@ -82,22 +86,30 @@ namespace VF.Service {
                         tree.Add(offThreshold, clipFactory.GetEmptyClip());
                         tree.Add(onThreshold, action.onClip);
                     }
-                    calculations.Add(useRawInput ? allowed.create(tree, null) : tree);
-                    continue;
-                }
-                var layer = fx.NewLayer($"{name} - {(increasing ? "Plug Entry Radius" : "Depth")} Animations - {actionNum} - Action");
-                var off = layer.NewState("Off");
-                var on = layer.NewState("On");
-                on.WithAnimation(action.onClip).MotionTime(parameter);
-                if (reverseClip) {
-                    foreach (var clip in new AnimatorIterator.Clips().From(action.onClip)) clip.Reverse();
+                    // Keep inactive actions in an empty state so lower layers can drive shared properties.
+                    // LayerToTree may still merge this layer when its bindings are independent.
+                    on.WithAnimation(tree);
+                } else {
+                    on.WithAnimation(action.onClip).MotionTime(parameter);
+                    if (reverseClip) {
+                        foreach (var clip in new AnimatorIterator.Clips().From(action.onClip)) clip.Reverse();
+                    }
                 }
 
-                if (reverseClip) {
+                if (action.useMotionTime && reverseClip) {
                     off.TransitionsTo(on).When(allowedInState);
                     on.TransitionsTo(off).When(allowedInState.Not());
                 } else {
-                    var onWhen = parameter.IsGreaterThan(0);
+                    var onWhen = (useRawInput && !increasing
+                        ? parameter.IsLessThan(offThreshold)
+                        // Smoothing can settle at the smallest positive float instead of exactly zero.
+                        : parameter.IsGreaterThan(useRawInput ? offThreshold : float.Epsilon));
+                    if (useRawInput) {
+                        if (filters.Count > 0) onWhen = onWhen.And(allowedInState);
+                    }
+                    if (!action.useMotionTime) {
+                        onWhen = onWhen.And(objectEnabled.Get(bakeRoot).IsGreaterThan(0));
+                    }
                     off.TransitionsTo(on).When(onWhen);
                     on.TransitionsTo(off).When(onWhen.Not());
                 }
