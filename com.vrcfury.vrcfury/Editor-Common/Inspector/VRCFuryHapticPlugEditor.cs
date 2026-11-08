@@ -140,12 +140,16 @@ namespace VF.Inspector {
             };
             var paramField = new PopupField<string>("Parameter", parameters, selectedParam, ParameterLabel, ParameterLabel);
             var unitsField = new PopupField<string>("Units", SpsUnits.ToList(), selectedUnits ?? SpsUnitsMeters);
-            unitsField.style.display = selectedUnits == null ? DisplayStyle.None : DisplayStyle.Flex;
+            var metersWarning = SpsEditorUtils.MetersWarning();
+            void UpdateUnitsVisibility(string units) {
+                unitsField.style.display = units == null ? DisplayStyle.None : DisplayStyle.Flex;
+                metersWarning.style.display = units == SpsUnitsMeters ? DisplayStyle.Flex : DisplayStyle.None;
+            }
+            UpdateUnitsVisibility(selectedUnits);
 
             void Save() {
                 sourceParamProp.stringValue = GetSpsMagicParam(paramField.value, unitsField.value);
-                unitsField.style.display = ParseSpsMagicParam(sourceParamProp.stringValue, isSocket)?.units == null
-                    ? DisplayStyle.None : DisplayStyle.Flex;
+                UpdateUnitsVisibility(ParseSpsMagicParam(sourceParamProp.stringValue, isSocket)?.units);
                 sourceParamProp.serializedObject.ApplyModifiedProperties();
             }
 
@@ -156,11 +160,12 @@ namespace VF.Inspector {
                 if (current == null) return;
                 paramField.SetValueWithoutNotify(current.Value.param);
                 unitsField.SetValueWithoutNotify(current.Value.units ?? SpsUnitsMeters);
-                unitsField.style.display = current.Value.units == null ? DisplayStyle.None : DisplayStyle.Flex;
+                UpdateUnitsVisibility(current.Value.units);
             });
 
             content.Add(paramField);
             content.Add(unitsField);
+            content.Add(metersWarning);
             return content;
         }
 

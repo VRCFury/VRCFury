@@ -7,6 +7,12 @@ using VF.Utils;
 
 namespace VF.Inspector {
     internal static class SpsEditorUtils {
+        public static VisualElement MetersWarning() {
+            var warning = VRCFuryEditorUtils.Warn("Usually you should use Local rather than Meters. Values in Meters stay fixed in world space and do not scale with the avatar.");
+            warning.name = "spsMetersWarning";
+            return warning;
+        }
+
         public static VisualElement AutoHapticIdProp<T>(
             SerializedProperty prop,
             string label,

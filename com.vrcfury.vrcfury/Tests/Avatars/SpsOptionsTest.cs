@@ -178,12 +178,14 @@ namespace VF.Tests {
                 UnityEditor.Undo.IncrementCurrentGroup();
                 unitsField.value = VRCFuryHapticPlugEditor.SpsUnitsMeters;
                 Pump();
+                Assert.That(editor.Q("spsMetersWarning").style.display.value, Is.EqualTo(DisplayStyle.Flex));
                 UnityEditor.Undo.FlushUndoRecordObjects();
                 UnityEditor.Undo.PerformUndo();
                 serialized.Update();
                 Pump();
                 Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthLocal));
                 Assert.That(unitsField.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsUnitsLocal), "Units must follow Undo");
+                Assert.That(editor.Q("spsMetersWarning").style.display.value, Is.EqualTo(DisplayStyle.None));
                 var parameterField = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Parameter");
                 UnityEditor.Undo.IncrementCurrentGroup();
                 parameterField.value = VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy;
@@ -262,6 +264,10 @@ namespace VF.Tests {
                 Assert.That(VRCFuryHapticPlugEditor.CanHandle(inject), Is.True);
                 Assert.That(parameter.choices.Contains(VRCFuryHapticPlugEditor.SpsParamPlugEntryRadius), Is.EqualTo(socketSource));
                 Assert.That(parameter.choices, Does.Contain(VRCFuryHapticPlugEditor.SpsParamInteractingWithLegacy));
+                var metersWarning = editor.Q("spsMetersWarning");
+                var selectedUnits = VRCFuryHapticPlugEditor.ParseSpsMagicParam(model.injectParams[0].sourceParam, socketSource)?.units;
+                Assert.That(metersWarning.style.display.value, Is.EqualTo(selectedUnits == VRCFuryHapticPlugEditor.SpsUnitsMeters
+                    ? DisplayStyle.Flex : DisplayStyle.None));
                 if (unitless) {
                     Assert.That(parameter.value, Is.EqualTo(unitlessParameter));
                     var label = unitlessParameter switch {
@@ -312,8 +318,8 @@ namespace VF.Tests {
                 Assert.That(slider.value, Is.EqualTo(control.value));
                 control.SetValueWithoutNotify(new Vector2(0.025f, 0.075f));
                 Assert.That(slider.value, Is.EqualTo(control.value));
-                Assert.That(control.Query<Label>().ToList().Any(label =>
-                    label.text == $"Min: {0.05f:G4} m    Max: {0.15f:G4} m"), Is.EqualTo(!existingPlugUnits));
+                Assert.That(control.Q<Label>("rangeMetersMin")?.text, Is.EqualTo(existingPlugUnits ? null : $"{0.05f:G4} m"));
+                Assert.That(control.Q<Label>("rangeMetersMax")?.text, Is.EqualTo(existingPlugUnits ? null : $"{0.15f:G4} m"));
             } finally {
                 Object.DestroyImmediate(root);
             }

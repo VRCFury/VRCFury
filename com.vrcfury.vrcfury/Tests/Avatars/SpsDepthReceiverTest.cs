@@ -2141,6 +2141,130 @@ namespace VF.Tests {
             }
         }
 
+        [Test]
+        public void SocketDepthAnimationWeightsByLocalPlugRadius(
+            [Values(false, true)] bool motionTime,
+            [Values(false, true)] bool optimize,
+            [Values(0f, 0.1f)] float smoothingSeconds) {
+            optimizeTrees = optimize;
+            root.AddComponent<VRCFuryHapticSocket>();
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var depth = fx.CreateUniqueFloat("Raw depth", -0.125f);
+            var radius = fx.CreateUniqueFloat("Local plug radius", 0.125f);
+            var output = fx.GetOrCreateFloat("Weighted depth output");
+            var action = new VRCFuryHapticSocket.DepthActionNew {
+                range = new Vector2(-0.25f, 0), plugRadiusForFullWeight = 0.25f,
+                smoothingSeconds = smoothingSeconds
+            };
+            if (motionTime) {
+                var clip = VFClip.Create("Weighted motion time");
+                clip.SetAap(output, AnimationCurve.Linear(0, 0, 1, 1));
+                action.actionSet.actions.Add(new VF.Model.StateAction.AnimationClipAction { vfClip = clip });
+            } else {
+                action.actionSet.actions.Add(new VF.Model.StateAction.FxFloatAction { name = output.name, value = 1 });
+            }
+            injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Weighted",
+                _ => measurement => measurement == SpsPlugRadiusLocal ? radius : depth, root);
+            Start();
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.25f).Within(0.01f), "Half depth times half radius weight");
+            playable.SetFloat(radius, 0.5f);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.5f).Within(0.01f), "Radius weight must cap at one");
+            playable.SetFloat(radius, 0);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
+        }
+
+        [Test]
+        public void ZeroPlugWidthLetsLowerLayersDriveTheDepthAction(
+            [Values(false, true)] bool motionTime,
+            [Values(false, true)] bool optimize,
+            [Values(false, true)] bool reverse) {
+            optimizeTrees = optimize;
+            root.AddComponent<VRCFuryHapticSocket>();
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var depth = fx.CreateUniqueFloat("Raw depth", -0.0625f);
+            var radius = fx.CreateUniqueFloat("Local plug radius");
+            var output = fx.GetOrCreateFloat("Shared weighted output");
+            fx.NewLayer("Lower output").NewState("Lower output").WithAnimation(output.MakeSetter(0.6f));
+            var action = new VRCFuryHapticSocket.DepthActionNew {
+                range = new Vector2(-0.25f, 0), plugRadiusForFullWeight = 0.25f, reverseClip = reverse
+            };
+            var clip = VFClip.Create("Weighted depth action");
+            clip.SetAap(output, motionTime ? AnimationCurve.Linear(0, 0, 1, 1) : AnimationCurve.Constant(0, 0, 1));
+            action.actionSet.actions.Add(new VF.Model.StateAction.AnimationClipAction { vfClip = clip });
+            injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Shared weighted",
+                _ => measurement => measurement == SpsPlugRadiusLocal ? radius : depth, root);
+            Start();
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.6f).Within(0.001f));
+            playable.SetFloat(radius, 0.125f);
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(motionTime && reverse ? 0.375f : 0.125f).Within(0.001f));
+            foreach (var value in new[] { 0, -0.125f }) {
+                playable.SetFloat(radius, value);
+                Evaluate(120);
+                Assert.That(playable.GetFloat(output), Is.EqualTo(0.6f).Within(0.001f), "Zero width must release the shared property");
+            }
+        }
+
+        [Test]
+        public void WidthMultiplierUsesSharedReceiversAndSocketLocalUnits(
+            [Values(0, 1, 2)] int unitsIndex,
+            [Values(0, 1, 2)] int partyIndex) {
+            var units = (VRCFuryHapticSocket.DepthActionUnits)unitsIndex;
+            var party = (Party)partyIndex;
+            var measurements = Socket(legacy: false);
+            _ = measurements(party)(SpsDepthMeters);
+            var receiverCount = root.GetComponentsInChildren<VRCContactReceiver>(true).Length;
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var output = fx.GetOrCreateFloat("Local width output");
+            var action = new VRCFuryHapticSocket.DepthActionNew {
+                range = new Vector2(-0.5f, 0), units = units, plugRadiusForFullWeight = 0.2f,
+                enableSelf = party != Party.Others, enableOthers = party != Party.Self
+            };
+            action.actionSet.actions.Add(new VF.Model.StateAction.FxFloatAction { name = output.name, value = 1 });
+            injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Local width", measurements, root);
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(receiverCount),
+                "Width weighting must reuse the depth/deformation receivers");
+            var receiver = party == Party.Merged ? Merged() : Main(party == Party.Self);
+            Start();
+            foreach (var resize in new[] { 0.5f, 1, 2 }) {
+                root.transform.localScale = Vector3.one * resize;
+                playable.SetFloat(scale, resize);
+                Set(receiver, 1, 0.35f * resize, length: 0.6f * resize, radius: 0.1f * resize, native: true);
+                Evaluate(120);
+                var depthWeight = units == VRCFuryHapticSocket.DepthActionUnits.Local ? 0.5f
+                    : units == VRCFuryHapticSocket.DepthActionUnits.Meters ? Mathf.Clamp01(0.5f * resize)
+                    : 0.25f / 0.6f / 0.5f;
+                Assert.That(playable.GetFloat(output), Is.EqualTo(depthWeight * 0.5f).Within(0.003f),
+                    "Width weight must use local units independently of depth units, party, and live avatar scale");
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void WidthMultiplierIsIgnoredForPlugDepthAndSocketRadius(bool plug) {
+            if (plug) root.AddComponent<VRCFuryHapticPlug>();
+            else root.AddComponent<VRCFuryHapticSocket>();
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var input = fx.CreateUniqueFloat("Input", plug ? -0.125f : 0.125f);
+            var output = fx.GetOrCreateFloat("Output");
+            var action = new VRCFuryHapticSocket.DepthActionNew {
+                range = plug ? new Vector2(-0.25f, 0) : new Vector2(0, 0.25f), plugRadiusForFullWeight = 0.25f
+            };
+            action.actionSet.actions.Add(new VF.Model.StateAction.FxFloatAction { name = output.name, value = 1 });
+            injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Unsupported width",
+                _ => source => {
+                    Assert.That(source, Is.Not.EqualTo(SpsPlugRadiusLocal), "Unsupported actions must not request width measurements");
+                    return input;
+                }, root, plug ? SpsParamDepth : SpsParamPlugEntryRadius);
+            Start();
+            Evaluate(120);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(0.5f).Within(0.001f));
+        }
+
         [TestCase(0f, false)]
         [TestCase(0.1f, false)]
         [TestCase(0f, true)]

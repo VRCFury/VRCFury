@@ -99,6 +99,10 @@ namespace VF.Utils {
             el.style.paddingLeft = v;
             return el;
         }
+        public static T PaddingRight<T>(this T el, StyleLength v) where T : VisualElement {
+            el.style.paddingRight = v;
+            return el;
+        }
         
         public static T Border<T>(this T el, StyleFloat topbottom, StyleFloat leftright) where T : VisualElement {
             el.style.borderTopWidth = el.style.borderBottomWidth = topbottom;

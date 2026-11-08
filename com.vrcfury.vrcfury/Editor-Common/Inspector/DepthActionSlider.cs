@@ -11,7 +11,8 @@ namespace VF.Inspector {
         private readonly MinMaxSlider slider;
         private readonly FloatField xField;
         private readonly FloatField yField;
-        private readonly Label meters;
+        private readonly Label minMeters;
+        private readonly Label maxMeters;
         private readonly UnityEngine.Component owner;
         private readonly bool radius;
         
@@ -93,7 +94,15 @@ namespace VF.Inspector {
             if (units == VRCFuryHapticSocket.DepthActionUnits.Local
                 && prop.serializedObject.targetObject is UnityEngine.Component component) {
                 owner = component;
-                meters = VRCFuryEditorUtils.WrappedLabel("");
+                var meters = new VisualElement().Row();
+                meters.style.justifyContent = Justify.SpaceBetween;
+                minMeters = VRCFuryEditorUtils.WrappedLabel("");
+                minMeters.name = "rangeMetersMin";
+                maxMeters = VRCFuryEditorUtils.WrappedLabel("");
+                maxMeters.name = "rangeMetersMax";
+                maxMeters.style.unityTextAlign = TextAnchor.UpperRight;
+                meters.Add(minMeters);
+                meters.Add(maxMeters);
                 Add(meters);
                 meters.schedule.Execute(UpdateMeters).Every(100);
                 UpdateMeters();
@@ -101,11 +110,10 @@ namespace VF.Inspector {
         }
 
         private void UpdateMeters() {
-            if (meters == null || owner == null) return;
+            if (minMeters == null || owner == null) return;
             var scale = owner.transform.lossyScale.x;
-            meters.text = radius
-                ? $"Min: {value.x * scale:G4} m    Max: {value.y * scale:G4} m"
-                : $"In: {value.x * scale:G4} m    Out: {value.y * scale:G4} m";
+            minMeters.text = $"{value.x * scale:G4} m";
+            maxMeters.text = $"{value.y * scale:G4} m";
         }
 
         private void Changed(Vector2 newValue) {

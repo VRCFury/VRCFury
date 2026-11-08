@@ -39,6 +39,9 @@ namespace VF.Tests {
                     Assert.That(slider.value, Is.EqualTo(control.value));
                     Assert.That(slider.lowLimit, Is.EqualTo(radius ? 0 : -10));
                     Assert.That(slider.highLimit, Is.EqualTo(25));
+                    Assert.That(control.Q<Label>("rangeMetersMin").text, Is.EqualTo(radius ? "0 m" : "-10 m"));
+                    Assert.That(control.Q<Label>("rangeMetersMax").text, Is.EqualTo("25 m"));
+                    Assert.That(control.Q<Label>("rangeMetersMax").resolvedStyle.unityTextAlign, Is.EqualTo(TextAnchor.UpperRight));
                 }
             } finally {
                 Object.DestroyImmediate(obj);
@@ -102,6 +105,89 @@ namespace VF.Tests {
                 }
             } finally {
                 Object.DestroyImmediate(parent);
+                Object.DestroyImmediate(panelOwner);
+            }
+        }
+
+        [Test]
+        public void SocketPlugRadiusFieldStoresLocalUnitsAndUsesOneField() {
+            var panelOwner = ScriptableObject.CreateInstance<Fields>();
+            var obj = new GameObject("Weighted socket");
+            obj.transform.localScale = Vector3.one * 2;
+            try {
+                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                socket.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew());
+                using (var serialized = new SerializedObject(socket))
+                using (var panel = new Panel(panelOwner)) {
+                    var action = serialized.FindProperty("depthActions2").GetArrayElementAtIndex(0);
+                    var editor = new VRCFuryHapticSocketEditor.DepthActionDrawer().CreatePropertyGUI(action);
+                    panel.root.Add(editor);
+                    panel.root.Bind(serialized);
+                    panel.Pump();
+                    var toggle = editor.Q<UnityEngine.UIElements.Toggle>("multiplyPlugRadius");
+                    var field = editor.Q<FloatField>("plugRadiusForFullWeight");
+                    Assert.That(editor.Query<UnityEngine.UIElements.Slider>().ToList(), Is.Empty);
+                    Assert.That(editor.Q("plugRadiusControls").Query<FloatField>().ToList(), Has.Count.EqualTo(1));
+                    Assert.That(field.isDelayed, Is.True);
+                    var radius = action.FindPropertyRelative("plugRadiusForFullWeight");
+                    Assert.That(toggle.value, Is.False);
+                    toggle.value = true;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.125f));
+                    Assert.That(field.value, Is.EqualTo(0.125f));
+                    Assert.That(editor.Q<Label>("plugRadiusMeters").text, Is.EqualTo("0.25 m"));
+                    obj.transform.localScale = Vector3.one * 4;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.125f));
+                    Assert.That(field.value, Is.EqualTo(0.125f), "Scale changes must not modify the local radius");
+                    Assert.That(editor.Q<Label>("plugRadiusMeters").text, Is.EqualTo("0.5 m"));
+                    field.value = 2;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(2), "Typing must not clamp to the old slider range");
+                    Assert.That(editor.Q<Label>("plugRadiusMeters").text, Is.EqualTo("8 m"));
+                    field.value = -1;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.Zero);
+                    Assert.That(field.value, Is.Zero);
+                    Assert.That(toggle.value, Is.False);
+                    toggle.value = true;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.0625f));
+                    toggle.value = false;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.Zero);
+                    panel.root.Unbind();
+                    panel.root.Bind(serialized);
+                    panel.Pump();
+                    Undo.IncrementCurrentGroup();
+                    toggle.value = true;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.0625f));
+                    Undo.PerformUndo();
+                    serialized.Update();
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.Zero);
+                    Assert.That(toggle.value, Is.False);
+                    Assert.That(editor.Q("plugRadiusControls").resolvedStyle.display, Is.EqualTo(DisplayStyle.None));
+                    Undo.PerformRedo();
+                    serialized.Update();
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.0625f));
+                    Assert.That(toggle.value, Is.True);
+                    Assert.That(field.value, Is.EqualTo(0.0625f));
+                    Assert.That(editor.Q("plugRadiusControls").resolvedStyle.display, Is.EqualTo(DisplayStyle.Flex));
+                    Undo.IncrementCurrentGroup();
+                    field.value = 0.125f;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.125f));
+                    Undo.PerformUndo();
+                    serialized.Update();
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.0625f), "One numeric edit must undo in one step");
+                    Assert.That(field.value, Is.EqualTo(0.0625f));
+                }
+            } finally {
+                Object.DestroyImmediate(obj);
                 Object.DestroyImmediate(panelOwner);
             }
         }
@@ -200,9 +286,12 @@ namespace VF.Tests {
             public void Pump() {
                 var update = panel.GetType().GetMethod("UpdateBindings", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 var updateData = panel.GetType().GetMethod("UpdateDataBinding", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var scheduler = panel.GetType().GetProperty("scheduler", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).GetValue(panel);
+                var tick = scheduler.GetType().GetMethod("UpdateScheduledEvents", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 // Advance Unity's UI test clock instead of sleeping through binding throttles.
                 for (var i = 0; i < 3; i++) {
                     time += 110;
+                    tick.Invoke(scheduler, null);
                     update.Invoke(panel, null);
                     // Unity 6 advances the binding frame in a separate data-binding phase.
                     updateData?.Invoke(panel, null);

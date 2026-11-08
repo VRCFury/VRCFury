@@ -350,14 +350,14 @@ namespace VF.Inspector {
                 c.Add(VRCFuryEditorUtils.BetterProp(null, "Range Units", fieldOverride: unitField));
                 c.Add(VRCFuryEditorUtils.RefreshOnChange(() =>
                     (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex == VRCFuryHapticSocket.DepthActionUnits.Meters
-                        ? VRCFuryEditorUtils.Warn("Usually you should use Local rather than Meters. Ranges in Meters stay fixed in world space and do not scale with the avatar.")
+                        ? SpsEditorUtils.MetersWarning()
                         : new VisualElement(), units));
                 void AddPair(string first, string firstLabel, string second, string secondLabel) {
                     var row = new VisualElement().Row();
                     var a = prop.FindPropertyRelative(first);
                     var b = prop.FindPropertyRelative(second);
                     void Add(SerializedProperty value, SerializedProperty other, string label) {
-                        var toggle = new UnityEngine.UIElements.Toggle { name = label };
+                        var toggle = new Toggle { name = label };
                         toggle.SetValueWithoutNotify(value.boolValue);
                         toggle.TrackProperty(value, p => toggle.SetValueWithoutNotify(p.boolValue));
                         toggle.RegisterValueChangedCallback(evt => {
@@ -365,7 +365,7 @@ namespace VF.Inspector {
                             if (!evt.newValue) other.boolValue = true;
                             prop.serializedObject.ApplyModifiedProperties();
                         });
-                        row.Add(VRCFuryEditorUtils.BetterProp(null, label, fieldOverride: toggle));
+                        row.Add(VRCFuryEditorUtils.BetterProp(null, label, fieldOverride: toggle).PaddingRight(5));
                     }
                     Add(a, b, firstLabel);
                     Add(b, a, secondLabel);
@@ -376,7 +376,46 @@ namespace VF.Inspector {
                     AddPair("allowHole", "Allow Hole", "allowRing", "Allow Ring");
                 }
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target value. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
-                if (!IsRadius) c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("reverseClip"), "Reverse clip (unusual)"));
+                if (!IsRadius) c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("reverseClip"), "Reverse clip (Deprecated, DO NOT USE)"));
+                if (!IsRadius && prop.serializedObject.targetObject is VRCFuryHapticSocket socket) {
+                    var radius = prop.FindPropertyRelative("plugRadiusForFullWeight");
+                    float WorldScale() => Mathf.Max(Mathf.Abs(socket.transform.lossyScale.x), 0.000001f);
+                    var toggle = new Toggle { name = "multiplyPlugRadius" };
+                    var field = new FloatField { name = "plugRadiusForFullWeight", isDelayed = true };
+                    field.style.width = 80;
+                    field.style.flexShrink = 0;
+                    var radiusControls = new VisualElement { name = "plugRadiusControls" };
+                    var row = new VisualElement().Row();
+                    row.Add(field);
+                    var meters = VRCFuryEditorUtils.WrappedLabel("");
+                    meters.name = "plugRadiusMeters";
+                    meters.style.marginLeft = 5;
+                    row.Add(meters);
+                    radiusControls.Add(VRCFuryEditorUtils.BetterProp(null, "Local plug radius for max (1.0) weight:", fieldOverride: row));
+                    void UpdateMeters() => meters.text = $"{radius.floatValue * WorldScale():G4} m";
+                    void UpdateRadius() {
+                        field.SetValueWithoutNotify(radius.floatValue);
+                        toggle.SetValueWithoutNotify(radius.floatValue > 0);
+                        radiusControls.style.display = radius.floatValue > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+                        UpdateMeters();
+                    }
+                    field.RegisterValueChangedCallback(evt => {
+                        radius.floatValue = Mathf.Max(0, evt.newValue);
+                        radius.serializedObject.ApplyModifiedProperties();
+                        UpdateRadius();
+                    });
+                    toggle.RegisterValueChangedCallback(evt => {
+                        radius.floatValue = evt.newValue ? 0.25f / WorldScale() : 0;
+                        radius.serializedObject.ApplyModifiedProperties();
+                        UpdateRadius();
+                    });
+                    c.Add(VRCFuryEditorUtils.BetterProp(null, "Weight by local plug radius", fieldOverride: toggle,
+                        tooltip: "Scales the animation weight using the plug's average radius in socket-local units. Full weight is reached at the configured radius."));
+                    c.Add(radiusControls);
+                    toggle.TrackProperty(radius, _ => UpdateRadius());
+                    meters.schedule.Execute(UpdateMeters).Every(100);
+                    UpdateRadius();
+                }
                 return c;
             }
         }

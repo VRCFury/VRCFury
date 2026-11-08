@@ -96,11 +96,22 @@ namespace VF.Service {
                     }
                 }
 
+                VFAParam weightedRadius = null;
+                if (!plugDepth && !increasing && depthAction.plugRadiusForFullWeight > 0) {
+                    // The measurement is radius in socket-local units. A 1D tree clamps
+                    // at both endpoints and weights the entire motion, including motion-time clips.
+                    weightedRadius = measurements(SpsPlugRadiusLocal);
+                    on.WithAnimation(VFBlendTree1D.CreateWithData(prefix + "/Plug width weight",
+                        weightedRadius,
+                        (0, clipFactory.GetEmptyClip()),
+                        (depthAction.plugRadiusForFullWeight, on.motion)));
+                }
+
+                VFCondition onWhen;
                 if (action.useMotionTime && reverseClip) {
-                    off.TransitionsTo(on).When(allowedInState);
-                    on.TransitionsTo(off).When(allowedInState.Not());
+                    onWhen = allowedInState;
                 } else {
-                    var onWhen = (useRawInput && !increasing
+                    onWhen = (useRawInput && !increasing
                         ? parameter.IsLessThan(offThreshold)
                         // Smoothing can settle at the smallest positive float instead of exactly zero.
                         : parameter.IsGreaterThan(useRawInput ? offThreshold : float.Epsilon));
@@ -110,9 +121,10 @@ namespace VF.Service {
                     if (!action.useMotionTime) {
                         onWhen = onWhen.And(objectEnabled.Get(bakeRoot).IsGreaterThan(0));
                     }
-                    off.TransitionsTo(on).When(onWhen);
-                    on.TransitionsTo(off).When(onWhen.Not());
                 }
+                if (weightedRadius != null) onWhen = onWhen.And(weightedRadius.IsGreaterThan(0));
+                off.TransitionsTo(on).When(onWhen);
+                on.TransitionsTo(off).When(onWhen.Not());
             }
         }
     }

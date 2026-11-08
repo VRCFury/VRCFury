@@ -113,6 +113,8 @@ namespace VF.Component {
             public bool allowRing = true;
             public float smoothingSeconds = 0;
             public bool reverseClip = false;
+            // Socket-local plug radius for full clip weight; zero disables weighting.
+            public float plugRadiusForFullWeight = 0;
         }
 
         [Serializable]
