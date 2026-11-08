@@ -1225,6 +1225,37 @@ namespace VF.Tests {
             public bool boolVal { get => inner.boolVal; set => inner.boolVal = value; }
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AutoSelectionHonorsPerSocketSetting(bool includeAnotherSocket) {
+            var excluded = GameObjects.Create("Excluded", root).AddComponent<VRCFuryHapticSocket>();
+            excluded.name = "Excluded";
+            excluded.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            excluded.enableAuto = false;
+            VRCFuryHapticSocket included = null;
+            if (includeAnotherSocket) {
+                included = GameObjects.Create("Included", root).AddComponent<VRCFuryHapticSocket>();
+                included.name = "Included";
+                included.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            }
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> { new SpsOptions { autoModeAvailable = true, legacyModeAvailable = false } };
+            globals.addOtherFeature = _ => { };
+            injector.GetService<BakeHapticSocketsService>().Apply();
+            Assert.That(fx.parameters.Any(p => p.name.EndsWith("_Excluded")), Is.True, "Disabling auto must preserve the manual menu toggle");
+            var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).SingleOrDefault(r => r.name == "SpsAutoDistance");
+            if (included == null) {
+                Assert.That(receiver, Is.Null);
+                Assert.That(fx.parameters.Any(p => p.name.EndsWith("_autoMode")), Is.False);
+            } else {
+                Assert.That(receiver, Is.Not.Null);
+                var bakeRoot = included.owner().Children().Single(child => child.name == "BakedSpsSocket");
+                Assert.That(receiver.owner().GetConstraints().Single(c => c.IsParent()).GetSources(), Is.EqualTo(new[] { bakeRoot }));
+            }
+        }
+
         [TestCase(false, false)]
         [TestCase(true, false)]
         [TestCase(false, true)]

@@ -34,7 +34,6 @@ namespace VF.Component {
         [Obsolete, HideInInspector] public bool unitsInMeters = true;
         public bool addMenuItem = true;
         public GuidTexture2d menuIcon;
-        [Obsolete("Configure Auto Mode sockets in SPS Options instead."), HideInInspector]
         public bool enableAuto = true;
         public Vector3 position;
         public Vector3 rotation;

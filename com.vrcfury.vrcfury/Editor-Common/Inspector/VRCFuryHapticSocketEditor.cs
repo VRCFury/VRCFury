@@ -227,6 +227,8 @@ namespace VF.Inspector {
                     GetMenuName,
                     isOgbId: false
                 ));
+                toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?",
+                    tooltip: "If checked, this socket will be eligible to be automatically enabled during Auto Mode."));
                 toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("menuIcon"), "Menu Icon", tooltip: "Override the menu icon used for this socket's individual toggle. Looking to move or change the icon of the main SPS menu? Add a VRCFury 'SPS Options' component to the avatar root."));
                 return toggles;
             }, addMenuItemProp));

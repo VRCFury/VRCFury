@@ -66,7 +66,7 @@ namespace VF.Service {
             var saved = options.saveSockets;
 
             var enableAuto = options.autoModeAvailable
-                && avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any(socket => socket.addMenuItem);
+                && avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any(socket => socket.addMenuItem && socket.enableAuto);
             VFAParam autoOn = null;
             VFClip autoOnClip = null;
             if (enableAuto) {
@@ -259,7 +259,7 @@ namespace VF.Service {
                             onClip.SetCurve(gizmo, "show", 1);
                         }
 
-                        if (autoOnClip != null) {
+                        if (autoOnClip != null && socket.enableAuto) {
                             autoSockets.Add(Tuple.Create(oscId, toggleParam, bakeResult.bakeRoot));
                         }
                     }
