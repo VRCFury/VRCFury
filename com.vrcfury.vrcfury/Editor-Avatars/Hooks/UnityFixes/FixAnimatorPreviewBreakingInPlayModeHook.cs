@@ -6,6 +6,7 @@ using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEditor.Playables;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
@@ -66,18 +67,21 @@ namespace VF.Hooks.UnityFixes {
                 return false;
             }
             public static bool IsParameterControlledByCurve(ref bool __result, string __0, Animator __instance) {
+                if (IsPreview(__instance)) return true;
                 var animator = GetAnimator(__instance);
                 __result = GetPreviewedPlayable(animator)?.IsParameterControlledByCurve(__0)
                            ?? (TryGetParameterNameHash(animator, __0, out var hash) ? animator.IsParameterControlledByCurve(hash) : false);
                 return false;
             }
             public static bool GetFloat(ref float __result, string __0, Animator __instance) {
+                if (IsPreview(__instance)) return true;
                 var animator = GetAnimator(__instance);
                 __result = GetPreviewedPlayable(animator)?.GetFloat(__0)
                            ?? (TryGetParameterNameHash(animator, __0, out var hash) ? animator.GetFloat(hash) : 0);
                 return false;
             }
             public static bool SetFloat(string __0, float __1, Animator __instance) {
+                if (IsPreview(__instance)) return true;
                 var animator = GetAnimator(__instance);
                 var playables = GetPlayables(animator);
                 if (playables.Any()) {
@@ -92,12 +96,14 @@ namespace VF.Hooks.UnityFixes {
                 return false;
             }
             public static bool GetInteger(ref int __result, string __0, Animator __instance) {
+                if (IsPreview(__instance)) return true;
                 var animator = GetAnimator(__instance);
                 __result = GetPreviewedPlayable(animator)?.GetInteger(__0)
                            ?? (TryGetParameterNameHash(animator, __0, out var hash) ? animator.GetInteger(hash) : 0);
                 return false;
             }
             public static bool SetInteger(string __0, int __1, Animator __instance) {
+                if (IsPreview(__instance)) return true;
                 var animator = GetAnimator(__instance);
                 var playables = GetPlayables(animator);
                 if (playables.Any()) {
@@ -112,12 +118,14 @@ namespace VF.Hooks.UnityFixes {
                 return false;
             }
             public static bool GetBool(ref bool __result, string __0, Animator __instance) {
+                if (IsPreview(__instance)) return true;
                 var animator = GetAnimator(__instance);
                 __result = GetPreviewedPlayable(animator)?.GetBool(__0)
                            ?? (TryGetParameterNameHash(animator, __0, out var hash) ? animator.GetBool(hash) : false);
                 return false;
             }
             public static bool SetBool(string __0, bool __1, Animator __instance) {
+                if (IsPreview(__instance)) return true;
                 var animator = GetAnimator(__instance);
                 var playables = GetPlayables(animator);
                 if (playables.Any()) {
@@ -150,6 +158,11 @@ namespace VF.Hooks.UnityFixes {
         private static Animator GetAnimator(object obj) {
             return obj as Animator;
         }
+
+        // Blend tree nodes each own a hidden preview Animator with its own controller.
+        // Forwarding their parameter calls scans every PlayableGraph for every node and parameter.
+        private static bool IsPreview(Animator animator) =>
+            !animator.gameObject.scene.IsValid() || EditorSceneManager.IsPreviewSceneObject(animator);
 
         private static IList<AnimatorControllerPlayable> GetPlayables(Animator animator) {
             if (animator == null) return null;
