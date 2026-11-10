@@ -150,6 +150,7 @@ namespace VF.Inspector {
             var style = new GUIStyle(GUI.skin.label);
             style.alignment = left ? TextAnchor.UpperLeft : TextAnchor.UpperCenter;
             style.normal.textColor = color;
+            style.hover.textColor = color;
             //style.fontSize = 12;
             if (worldSize) {
                 style.fontSize = (int)(1.5 / HandleUtility.GetHandleSize(worldPos));

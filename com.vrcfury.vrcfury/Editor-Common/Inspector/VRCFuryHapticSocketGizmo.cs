@@ -85,7 +85,14 @@ namespace VF.Inspector {
             return text;
         }
 
-        static void DrawSocketGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, Color primaryColor, Color secondaryColor) {
+        static void DrawSocketGizmo(
+            Vector3 worldPos,
+            Quaternion worldRot,
+            VRCFuryHapticSocket.AddLight type,
+            Color primaryColor,
+            Color secondaryColor,
+            Color? ringArrowColor = null
+        ) {
             var orange = new Color(1f, 0.5f, 0);
             var discColor = primaryColor;
             if (!BuildTargetUtils.IsDesktop() || type == VRCFuryHapticSocket.AddLight.None) {
@@ -105,7 +112,7 @@ namespace VF.Inspector {
                 VRCFuryGizmoUtils.DrawArrow(
                     worldPos,
                     worldPos + worldForward * -0.05f,
-                    primaryColor
+                    ringArrowColor ?? primaryColor
                 );
                 VRCFuryGizmoUtils.DrawArrow(
                     worldPos,
@@ -246,12 +253,19 @@ namespace VF.Inspector {
 
             if (showLegacyOffset) {
                 var legacyOrigin = socketTransformWorld.TransformPoint(data.legacyOffsetLocal);
-                DrawGizmo(legacyOrigin, worldRotation, data.legacyType, false, Color.yellow, Color.yellow);
+                DrawSocketGizmo(
+                    legacyOrigin,
+                    worldRotation,
+                    data.legacyType,
+                    Color.gray,
+                    Color.gray,
+                    new Color(1f, 0.5f, 0)
+                );
                 if (owner.IsSelected()) {
                     VRCFuryGizmoUtils.DrawText(
                         legacyOrigin,
                         "\nLegacy " + GetSocketText(data.legacyType, "", "SPS1/SPS2").Replace("SPS Socket", "SPS Socket Override"),
-                        Color.yellow,
+                        Color.gray,
                         true,
                         true
                     );
