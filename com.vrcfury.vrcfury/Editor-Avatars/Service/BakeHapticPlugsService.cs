@@ -33,6 +33,8 @@ namespace VF.Service {
         [VFAutowired] private readonly AvatarBindingStateService avatarBindingStateService;
         [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
         [VFAutowired] private readonly ObjectTreeService objectTrees;
+        [VFAutowired] private readonly IsObjectEnabledService objectEnabled;
+        [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ExpressionParamsService expressionParams;
         [VFAutowired] private readonly VRCFuryHapticPlugBaker plugBaker;
@@ -171,7 +173,11 @@ namespace VF.Service {
 
             // SPS
             if (plug.enableSps) {
+                var on = VFClip.Create("SPS Plug Object On");
+                var off = VFClip.Create("SPS Plug Object Off");
                 foreach (var r in renderers) {
+                    on.SetCurve(r.renderer, "material." + SpsConfigurer.SpsObjectEnabled, 1);
+                    off.SetCurve(r.renderer, "material." + SpsConfigurer.SpsObjectEnabled, 0);
                     spsRewritesToDo.Add(new SpsRewriteToDo {
                         plugObject = plug.owner(),
                         skin = r.renderer,
@@ -180,6 +186,11 @@ namespace VF.Service {
                         spsBlendshapes = r.spsBlendshapes
                     });
                 }
+                // Disabled contacts leave their material data intact, even on a visible renderer.
+                // Keep this writer outside the plug's guarded calculation tree so it writes zero when off.
+                directTreeService.Create($"{name} - Plug Object Enabled").Add(
+                    BlendtreeMath.GreaterThan(objectEnabled.Get(bakeRoot), 0).create(on, off)
+                );
             }
             
             // DPS Tip Light

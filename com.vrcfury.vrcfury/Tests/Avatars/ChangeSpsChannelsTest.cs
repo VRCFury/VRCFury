@@ -1123,6 +1123,107 @@ namespace VF.Tests {
         }
 
 #if VRCSDK_HAS_MATERIAL_CONTACTS
+        [Test]
+        public void DisabledPlugHierarchyIgnoresStaleContactMaterialData(
+            [Values] bool toggleParent,
+            [Values] bool initiallyActive,
+            [Values] bool writeDefaults,
+            [Values] bool animatedObject
+        ) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            GameObject parent = GameObjects.Create("Plug parent", root);
+            GameObject obj = GameObjects.Create("Plug", parent);
+            var target = toggleParent ? parent : obj;
+            target.SetActive(initiallyActive);
+            var plug = Plug(obj, false);
+            plug.enableSps = true;
+            plug.spsAutorig = false;
+            var mesh = new Mesh {
+                vertices = new[] {
+                    new Vector3(-0.015f, 0, 0),
+                    new Vector3(0.015f, 0, 0),
+                    new Vector3(-0.015f, 0, 0.4f),
+                    new Vector3(0.015f, 0, 0.4f)
+                },
+                triangles = new[] { 0, 2, 1, 1, 2, 3 },
+                uv = new[] { Vector2.zero, Vector2.right, Vector2.up, Vector2.one }
+            };
+            assets.Add(mesh);
+            mesh.RecalculateNormals();
+            GameObject meshObject = GameObjects.Create("Visible mesh", root);
+            meshObject.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = meshObject.AddComponent<MeshRenderer>();
+            var material = new Material(Shader.Find("Unlit/Color"));
+            assets.Add(material);
+            renderer.sharedMaterial = material;
+            plug.configureTpsMesh.Add(renderer);
+
+            injector.Set("componentObject", new System.Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.addOtherFeature = _ => { };
+            globals.allFeaturesInRun.Add(new FixWriteDefaults {
+                mode = writeDefaults ? FixWriteDefaults.FixWriteDefaultsMode.ForceOn : FixWriteDefaults.FixWriteDefaultsMode.ForceOff
+            });
+            var defaults = injector.GetService<FixWriteDefaultsService>();
+            defaults.DetermineWriteDefaultsStrategy();
+            var deformOn = Track(VFClip.Create("Deformation on"));
+            var deformOff = Track(VFClip.Create("Deformation off"));
+            deformOn.SetCurve(plug, "spsAnimatedEnabled", 1);
+            deformOff.SetCurve(plug, "spsAnimatedEnabled", 0);
+            var fx = injector.GetService<ControllersService>().GetFx();
+            var objectOn = fx.CreateUniqueFloat("Plug object on", initiallyActive);
+            var deformationOn = fx.CreateUniqueFloat("Deformation on", true);
+            var controls = VFBlendTreeDirect.Create("Plug controls");
+            if (animatedObject) {
+                var on = Track(VFClip.Create("Plug object on"));
+                var off = Track(VFClip.Create("Plug object off"));
+                on.SetEnabled(target, true);
+                off.SetEnabled(target, false);
+                controls.Add(VFBlendTree1D.CreateWithData("Object", objectOn, (0, off), (1, on)));
+            }
+            controls.Add(VFBlendTree1D.CreateWithData("Deformation", deformationOn, (0, deformOff), (1, deformOn)));
+            var plugs = injector.GetService<BakeHapticPlugsService>();
+            plugs.ApplyEarlyBake();
+            plugs.Apply();
+            plugs.ApplySpsRewrites();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
+            injector.GetService<IsObjectEnabledService>().Apply();
+            injector.GetService<ObjectTreeService>().Apply();
+            animatorPrepared = true;
+            defaults.RecordAllDefaults();
+            defaults.AdjustWriteDefaults();
+            injector.GetService<FixEmptyMotionService>().Apply();
+
+            Assert.That(renderer.sharedMaterial.HasProperty("_SPS_ObjectEnabled"), Is.True);
+            var contactProperty = "_VRChatContact_Data_SPS_Self";
+            var properties = new MaterialPropertyBlock();
+            properties.SetVectorArray(contactProperty, new[] { new Vector4(1, 2, 3, 4) });
+            renderer.SetPropertyBlock(properties);
+            RunAnimation(controls, (graph, playable) => {
+                foreach (var (active, deformation) in new[] {
+                    (initiallyActive, true),
+                    (false, true),
+                    (true, true),
+                    (true, false),
+                    (false, false),
+                    (false, true),
+                    (true, true)
+                }) {
+                    playable.SetFloat(objectOn, active ? 1 : 0);
+                    playable.SetFloat(deformationOn, deformation ? 1 : 0);
+                    for (var i = 0; i < 10; i++) graph.Evaluate(1f / 60);
+                    renderer.GetPropertyBlock(properties);
+                    var expected = animatedObject ? active : initiallyActive;
+                    Assert.That(obj.activeInHierarchy, Is.EqualTo(expected));
+                    Assert.That(renderer.gameObject.activeInHierarchy, Is.True);
+                    Assert.That(properties.GetFloat("_SPS_ObjectEnabled"), Is.EqualTo(expected && deformation ? 1 : 0));
+                    Assert.That(properties.GetFloat("_SPS_Enabled"), Is.EqualTo(deformation ? 1 : 0));
+                    Assert.That(properties.GetVectorArray(contactProperty)[0], Is.EqualTo(new Vector4(1, 2, 3, 4)),
+                        "Contact data stays populated while deformation is independently disabled");
+                }
+            });
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void MaterialSwapsPreserveChannelSettingsWithoutChannelActions(bool shared) {

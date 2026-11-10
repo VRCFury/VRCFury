@@ -19,7 +19,7 @@ void sps_apply_real(
 	inout SPS_STRUCT_TANGENT_TYPE tangent,
 	uint vertexId
 ) {
-	if (!sps_to_bool(_SPS_Enabled)) return;
+	if (!sps_to_bool(_SPS_Enabled) || !sps_to_bool(_SPS_ObjectEnabled)) return;
 	const float3 origVertex = vertex.xyz;
 	const float3 origNormal = normal.xyz;
 	const float3 origTangent = tangent.xyz;

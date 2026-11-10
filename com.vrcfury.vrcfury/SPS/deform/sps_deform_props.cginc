@@ -20,6 +20,7 @@
 
 [Header(SPS Bake)]
 [HideInInspector] _SPS_Enabled("Enabled", Float) = 1
+[HideInInspector] _SPS_ObjectEnabled("Plug object enabled", Float) = 1
 [HideInInspector] _SPS_BakedLength("Baked length", Float) = 0
 [HideInInspector] _SPS_BakedRadius("Baked radius", Float) = 0
 [HideInInspector] _SPS_RadiusOffsetMultiplier("Radius offset multiplier", Float) = 1

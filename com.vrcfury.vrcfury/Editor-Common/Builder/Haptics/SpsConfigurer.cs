@@ -16,6 +16,7 @@ namespace VF.Builder.Haptics {
     [VFService]
     internal class SpsConfigurer {
         public const string SpsEnabled = "_SPS_Enabled";
+        public const string SpsObjectEnabled = "_SPS_ObjectEnabled";
         public const string SpsBakedLength = "_SPS_BakedLength";
         public const string SpsBakedRadius = "_SPS_BakedRadius";
         public const string SpsRadiusOffsetMultiplier = "_SPS_RadiusOffsetMultiplier";
@@ -69,6 +70,7 @@ namespace VF.Builder.Haptics {
             if (plug.spsAnimatedEnabled == 0) bakeRoot.active = false;
             m.SetTextureFast(SpsBake, spsBaked);
             m.SetFloatFast(SpsEnabled, plug.spsAnimatedEnabled);
+            m.SetFloatFast(SpsObjectEnabled, 1);
             m.SetFloatFast(SpsBakedLength, worldLength);
             m.SetFloatFast(SpsBakedRadius, worldRadius);
             m.SetFloatFast(SpsRadiusOffsetMultiplier, 1);

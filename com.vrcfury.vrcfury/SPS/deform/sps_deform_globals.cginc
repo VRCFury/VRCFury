@@ -16,6 +16,7 @@ float _SPS_UseLegacyLights;
 
 UNITY_INSTANCING_BUFFER_START(SpsDeformProps)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_Enabled)
+    UNITY_DEFINE_INSTANCED_PROP(float, _SPS_ObjectEnabled)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_Overrun)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_RadiusOffsetMultiplier)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_DisableShadows)
@@ -42,6 +43,7 @@ UNITY_INSTANCING_BUFFER_END(SpsDeformProps)
 
 #define SPS_DEFORM_PROP(name) UNITY_ACCESS_INSTANCED_PROP(SpsDeformProps, name)
 #define _SPS_Enabled SPS_DEFORM_PROP(_SPS_Enabled)
+#define _SPS_ObjectEnabled SPS_DEFORM_PROP(_SPS_ObjectEnabled)
 #define _SPS_Overrun SPS_DEFORM_PROP(_SPS_Overrun)
 #define _SPS_RadiusOffsetMultiplier SPS_DEFORM_PROP(_SPS_RadiusOffsetMultiplier)
 #define _SPS_DisableShadows SPS_DEFORM_PROP(_SPS_DisableShadows)
