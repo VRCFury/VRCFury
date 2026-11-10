@@ -25,6 +25,7 @@ namespace VF.Builder.Haptics {
         private const string SpsBake = "_SPS_Bake";
 
         [VFAutowired] [CanBeNull] private readonly SpsAutoChannelGenerator autoChannelGenerator;
+        internal readonly string selfTagSuffix = "/self/" + BitConverter.ToUInt32(Guid.NewGuid().ToByteArray(), 0);
 
         public static void ExtendBoundsForSps(Renderer renderer, VFGameObject bakeRoot, float worldLength) {
             if (renderer == null || bakeRoot == null) return;
@@ -86,7 +87,7 @@ namespace VF.Builder.Haptics {
 
         internal HashSet<string> GetChannels(VFGameObject obj, bool isPlug, Party party, SpsChannelSettings settings) {
             HashSet<string> ForParty(bool self) => GetLogicalChannels(obj, isPlug, self, settings)
-                .Select(c => self ? c + "/self" : c).ToHashSet();
+                .Select(c => self ? c + selfTagSuffix : c).ToHashSet();
             return party switch {
                 Party.Self => ForParty(true),
                 Party.Others => ForParty(false),

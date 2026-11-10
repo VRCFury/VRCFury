@@ -32,6 +32,8 @@ namespace VF.Tests {
     public class SpsDepthReceiverTest {
         private GameObject root;
         private VRCFuryInjector injector;
+
+        private string SelfTag(string tag) => tag + injector.GetService<SpsConfigurer>().selfTagSuffix;
         private SelfAndOthersReceiverAnimatorService receiverAnimator;
         private VFAvatarController fx;
         private VFBlendTreeDirect tree;
@@ -568,7 +570,7 @@ namespace VF.Tests {
                 measurements(SpsDepthMeters), measurements(SpsDepthLocal) };
             injector.GetService<ChangeSpsChannelsService>().Apply();
             var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).Single();
-            Assert.That(receiver.collisionTags, Does.Contain(SpsTags.FormatSocket("test/self")));
+            Assert.That(receiver.collisionTags, Does.Contain(SpsTags.FormatSocket(SelfTag("test"))));
             Assert.That(receiver.collisionTags.Any(tag => tag.StartsWith("SPS/SocketPath/")), Is.False);
             Assert.That(receiver.radius * receiver.transform.lossyScale.x, Is.EqualTo(0.64f).Within(0.0001f));
             Start();
@@ -1131,7 +1133,7 @@ namespace VF.Tests {
                 var sender = senderObject.AddComponent<VRCContactSender>();
                 sender.radius = 1;
                 sender.playerId = 1;
-                sender.collisionTags = new List<string> { SpsTags.FormatPlug("test/self") };
+                sender.collisionTags = new List<string> { SpsTags.FormatPlug(SelfTag("test")) };
                 Field(sender.GetType(), "_assignedUsage").SetValue(sender, DynamicsUsage.Avatar);
                 sender.allowInit = true;
                 Call(sender, "Start");
@@ -1694,7 +1696,7 @@ namespace VF.Tests {
             injector.GetService<BakeHapticSocketsService>().Apply();
             injector.GetService<ChangeSpsChannelsService>().Apply();
             var mainReceivers = root.GetComponentsInChildren<VRCContactReceiver>(true)
-                .Where(r => r.collisionTags.Contains(SpsTags.FormatPlug(r.allowSelf ? "test/self" : "test"))).ToArray();
+                .Where(r => r.collisionTags.Contains(SpsTags.FormatPlug(r.allowSelf ? SelfTag("test") : "test"))).ToArray();
             Assert.That(mainReceivers, Has.Length.EqualTo(4));
             Assert.DoesNotThrow(() => injector.GetService<ParameterInjectService>().Validate());
             Start();
@@ -2032,7 +2034,7 @@ namespace VF.Tests {
                 Assert.That(depthRadius.saved, Is.False);
                 Assert.That(socketSelf.radius * socketSelf.transform.lossyScale.x, Is.EqualTo(depthRadius.defaultValue));
                 Assert.That(socketOthers.radius * socketOthers.transform.lossyScale.x, Is.EqualTo(depthRadius.defaultValue));
-                Assert.That(receivers.Count(r => !r.name.Contains("Merged") && r.collisionTags.Contains(SpsTags.FormatPlug(r.allowSelf ? "test/self" : "test"))), Is.EqualTo(2),
+                Assert.That(receivers.Count(r => !r.name.Contains("Merged") && r.collisionTags.Contains(SpsTags.FormatPlug(r.allowSelf ? SelfTag("test") : "test"))), Is.EqualTo(2),
                     "Socket OGB and depth measurements must share the native receivers");
                 var plugSelf = receivers.Single(r => r.parameter == "OGB/Plug/Plug/DepthSelf");
                 var plugOthers = receivers.Single(r => r.parameter == "OGB/Plug/Plug/DepthOthers");

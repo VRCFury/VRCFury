@@ -19,6 +19,8 @@ namespace VF.Tests {
         private GameObject root;
         private VRCFuryHapticPlug plug;
         private VRCFuryInjector injector;
+
+        private string SelfTag(string tag) => tag + injector.GetService<SpsConfigurer>().selfTagSuffix;
         private SpsPlugReceiverService service;
 
         [SetUp]
@@ -126,15 +128,15 @@ namespace VF.Tests {
             plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "first", allowSelf = true, allowOthers = false });
             plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "second", allowSelf = false, allowOthers = true });
             Assert.That(SocketTags(true), Is.EqualTo(new[] {
-                SpsTags.FormatSocket("first/self"), SpsTags.FormatSocket(SpsTags.NotHipsChannel + "/self")
+                SpsTags.FormatSocket(SelfTag("first")), SpsTags.FormatSocket(SelfTag(SpsTags.NotHipsChannel))
             }));
             Assert.That(SocketTags(false), Is.EqualTo(new[] {
                 SpsTags.FormatSocket(SpsTags.PublicChannel), SpsTags.FormatSocket("second"),
                 SpsTags.LegacySocketHole, SpsTags.LegacySocketRing, SpsTags.LegacySocket
             }));
             Assert.That(PathTags(), Is.EquivalentTo(new[] {
-                SpsTags.FormatSocketPath(SpsTags.PublicChannel), SpsTags.FormatSocketPath(SpsTags.NotHipsChannel + "/self"),
-                SpsTags.FormatSocketPath("first/self"), SpsTags.FormatSocketPath("second")
+                SpsTags.FormatSocketPath(SpsTags.PublicChannel), SpsTags.FormatSocketPath(SelfTag(SpsTags.NotHipsChannel)),
+                SpsTags.FormatSocketPath(SelfTag("first")), SpsTags.FormatSocketPath("second")
             }));
         }
 
@@ -143,9 +145,9 @@ namespace VF.Tests {
             plug.channelSettings.useSharedTag = false;
             plug.channelSettings.channels.Clear();
             plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "private" });
-            Assert.That(SocketTags(true), Is.EqualTo(new[] { SpsTags.FormatSocket("private/self") }));
+            Assert.That(SocketTags(true), Is.EqualTo(new[] { SpsTags.FormatSocket(SelfTag("private")) }));
             Assert.That(SocketTags(false), Is.EqualTo(new[] { SpsTags.FormatSocket("private") }));
-            Assert.That(PathTags(), Is.EquivalentTo(new[] { SpsTags.FormatSocketPath("private"), SpsTags.FormatSocketPath("private/self") }));
+            Assert.That(PathTags(), Is.EquivalentTo(new[] { SpsTags.FormatSocketPath("private"), SpsTags.FormatSocketPath(SelfTag("private")) }));
         }
 
 #if VRCSDK_HAS_MATERIAL_CONTACTS

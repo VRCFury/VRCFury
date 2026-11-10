@@ -32,6 +32,8 @@ namespace VF.Tests {
         private VFAvatarController fx;
         private SpsPlugRadiusService service;
         private VRCFuryInjector injector;
+
+        private string SelfTag(string tag) => tag + injector.GetService<SpsConfigurer>().selfTagSuffix;
         private SelfAndOthersReceiverAnimatorService receiverAnimator;
         private PlayableGraph graph;
         private AnimatorControllerPlayable playable;
@@ -381,7 +383,7 @@ namespace VF.Tests {
             Start();
             var self = SourceReceiver(true);
             var other = SourceReceiver(false);
-            Assert.That(self.collisionTags, Is.EqualTo(new[] { "SPS/Socket/first/self" }));
+            Assert.That(self.collisionTags, Is.EqualTo(new[] { SelfTag("SPS/Socket/first") }));
             Assert.That(other.collisionTags, Is.EqualTo(new[] { "SPS/Socket/second" }));
             var quarterRadius = Mathf.Lerp(0.06f, MinimumRadius, 0.25f);
             foreach (var values in new[] { (0.75f, 0.25f, quarterRadius), (0.25f, 0.75f, quarterRadius), (2f, 2f, 0f) }) {
@@ -622,7 +624,7 @@ namespace VF.Tests {
                     Call(sender, "Start");
                     return sender;
                 }
-                var self = Sender("SPS/Socket/first/self", 1);
+                var self = Sender(SelfTag("SPS/Socket/first"), 1);
                 var other = Sender("SPS/Socket/second", 2);
                 void Tick() {
                     var method = typeof(ContactManager).GetMethod("ScheduleUpdateReceiversJob", flags);

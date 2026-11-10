@@ -29,6 +29,8 @@ namespace VF.Tests {
     public class ChangeSpsChannelsTest {
         private GameObject root;
         private VRCFuryInjector injector;
+
+        private string SelfTag(string tag) => tag + injector.GetService<SpsConfigurer>().selfTagSuffix;
         private readonly List<Object> assets = new();
         private bool animatorPrepared;
 
@@ -352,11 +354,11 @@ namespace VF.Tests {
             foreach (var (motion, self) in new[] { (clip, true), (off, false), (clip, true) }) {
                 Sample(motion);
                 var sender = obj.GetComponentsInChildren<VRCContactSender>().Single();
-                Assert.That(sender.collisionTags, Does.Contain(SpsTags.FormatSocket(self ? "hipsback/self" : "hipsback")));
-                Assert.That(sender.collisionTags, Does.Not.Contain(SpsTags.FormatSocket(self ? "hipsback" : "hipsback/self")));
+                Assert.That(sender.collisionTags, Does.Contain(SpsTags.FormatSocket(self ? SelfTag("hipsback") : "hipsback")));
+                Assert.That(sender.collisionTags, Does.Not.Contain(SpsTags.FormatSocket(self ? "hipsback" : SelfTag("hipsback"))));
                 var receivers = obj.GetComponentsInChildren<VRCContactReceiver>();
                 Assert.That(receivers.Single(r => r.allowSelf).collisionTags,
-                    Is.EquivalentTo(self ? new[] { SpsTags.FormatPlug("hipsback/self") } : System.Array.Empty<string>()));
+                    Is.EquivalentTo(self ? new[] { SpsTags.FormatPlug(SelfTag("hipsback")) } : System.Array.Empty<string>()));
                 Assert.That(receivers.Single(r => r.allowOthers).collisionTags,
                     Is.EquivalentTo(self ? System.Array.Empty<string>() : new[] { SpsTags.FormatPlug("hipsback") }));
             }
@@ -956,7 +958,7 @@ namespace VF.Tests {
             Assert.That(contacts.All(r => r.advancedParameters == VRC.Dynamics.ContactReceiver.AdvancedParameter.All), Is.True);
             var outputs = contacts.SelectMany(receiver => receiver.GetParameterNames()).Where(name => name != raw.name).Distinct().ToArray();
             foreach (var tag in new[] { "old", "new" }) {
-                Assert.That(outputs, Does.Contain(raw.name + "_CollisionTag_" + SpsTags.FormatSocket(tag + (self ? "/self" : ""))));
+                Assert.That(outputs, Does.Contain(raw.name + "_CollisionTag_" + SpsTags.FormatSocket(self ? SelfTag(tag) : tag)));
             }
             foreach (var name in outputs) {
                 Assert.That(fx.TryGetParam(name, out _), Is.False, "OSC-only outputs must not create unused animator parameters: " + name);
