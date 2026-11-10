@@ -28,20 +28,9 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         private VFAvatarController fx => controllers.GetFx();
 
-        private bool RecordAllForFaceTracking =>
-#if VRCSDK_HAS_FACE_TRACKING
-            avatar.enableFaceTracking;
-#else
-            false;
-#endif
-
         public void RecordDefaultNow(VFBinding binding, bool isFloat, bool force = false) {
             if (binding.IsAnimatorBinding()) return;
             if (GetDefaultClip().GetCurve(binding, isFloat) != null) return;
-
-            // Temporarily record all defaults, including WD-on states and blend trees, for
-            // https://feedback.vrchat.com/bug-reports/p/animator-defaults-are-improperly-changed-only-on-remote-clients-when-native-ft-i
-            force |= RecordAllForFaceTracking;
 
             var shouldRecord = force;
             if (!shouldRecord) {
@@ -109,7 +98,7 @@ namespace VF.Service {
                 }
             }
 
-            var bindings = (RecordAllForFaceTracking ? fx.GetLayers() : GetMaintainedLayers(fx))
+            var bindings = GetMaintainedLayers(fx)
                 .SelectMany(layer => new AnimatorIterator.States().From(layer))
                 .Where(state => state.writeDefaultValues)
                 .SelectMany(state => new AnimatorIterator.Clips().From(state))
