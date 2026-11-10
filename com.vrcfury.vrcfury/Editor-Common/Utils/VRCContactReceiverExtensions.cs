@@ -8,9 +8,9 @@ using AdvancedParameter = VRC.Dynamics.ContactReceiver.AdvancedParameter;
 #endif
 
 namespace VF.Utils {
-    internal static class ContactReceiverUtils {
-        public static void RebindAdvancedParameters(ContactReceiver receiver, Func<string, IAnimParameterAccess> makeAccess) {
-            foreach (var name in GetParameterNames(receiver).Skip(1)) {
+    internal static class VRCContactReceiverExtensions {
+        public static void RebindAdvancedParameters(this ContactReceiver receiver, Func<string, IAnimParameterAccess> makeAccess) {
+            foreach (var name in receiver.GetParameterNames().Skip(1)) {
                 var suffix = name.Substring(receiver.parameter.Length);
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
                 if (suffix.StartsWith(ContactReceiver.PARAM_COLLISION_TAG_PREFIX, StringComparison.Ordinal)) {
@@ -51,7 +51,7 @@ namespace VF.Utils {
         }
 #endif
 
-        public static IEnumerable<string> GetParameterNames(ContactReceiver receiver) {
+        public static IEnumerable<string> GetParameterNames(this ContactReceiver receiver) {
             if (string.IsNullOrWhiteSpace(receiver.parameter)) yield break;
             yield return receiver.parameter;
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS

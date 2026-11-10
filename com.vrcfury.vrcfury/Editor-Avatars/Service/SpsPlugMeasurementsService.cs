@@ -41,15 +41,8 @@ namespace VF.Service {
                     .And(BlendtreeMath.GreaterThan(Field("PointSeparation"), 0, true)));
                 var presence = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
                     present.Value.CreateBranches(tree, prefix + "/Present"));
-                var legacy = party != Party.Self && main.request.othersTags.Contains(SpsTags.LegacySocket);
-                var native = new Lazy<BlendtreeMath.Condition>(() => {
-                    if (!legacy) return BlendtreeMath.True();
-                    var tags = party == Party.Merged
-                        ? main.request.selfTags.Union(main.request.othersTags) : main.request.othersTags;
-                    return tags.Where(tag => tag.StartsWith(SpsTags.FormatSocket("")))
-                        .Aggregate(BlendtreeMath.False(), (condition, tag) =>
-                            condition.Or(BlendtreeMath.GreaterThan(Field("CollisionTag_" + tag), 0)));
-                });
+                var legacy = party != Party.Self && main.request.supportsLegacy;
+                var native = new Lazy<BlendtreeMath.Condition>(() => receiverAnimator.GetNative(main, party));
                 var encoding = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
                     native.Value.CreateBranches(presence.Value.whenTrue, prefix + "/Native"));
                 var distance = new Lazy<VFAParam>(() => {

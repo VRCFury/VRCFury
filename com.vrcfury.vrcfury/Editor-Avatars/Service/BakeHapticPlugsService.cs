@@ -36,6 +36,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ExpressionParamsService expressionParams;
         [VFAutowired] private readonly VRCFuryHapticPlugBaker plugBaker;
+        [VFAutowired] private readonly SpsChannelsService channels;
         [VFAutowired] private readonly SpsPlugRadiusService plugRadiusService;
         [VFAutowired] private readonly SpsPlugMeasurementsService plugMeasurements;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
@@ -59,6 +60,7 @@ namespace VF.Service {
                     if (BuildTargetUtils.IsDesktop()) {
                         bakeResults[plug] = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true,
                             legacySocketCompatibility: spsOptions.GetOptions().legacySocketCompatibility);
+                        channels.Register(plug, new Lazy<VFBlendTreeDirect>(() => objectTrees.Get(bakeResults[plug].bakeRoot)));
                     }
 
                     var postBakeClip = actionClipService.LoadStateAdv("sps_postbake", plug.postBakeActions, plug.owner());
@@ -104,7 +106,6 @@ namespace VF.Service {
             var localLength = bakeInfo.localLength;
             var worldLength = bakeInfo.worldLength;
             var worldRadius = bakeInfo.worldRadius;
-            var propsToScale = new List<(UnityEngine.Component, string, float)>();
 
             globals.addOtherFeature(new ShowInFirstPerson {
                 useObjOverride = true,
@@ -182,19 +183,24 @@ namespace VF.Service {
             }
             
             // DPS Tip Light
-            if (addDpsTipLight && plug.useSharedTag) {
-                var tip = GameObjects.Create("Light - Legacy DPS Trigger", bakeRoot);
-                spsOptions.RegisterLegacyObject(tip);
-                var light = tip.AddComponent<Light>();
-                light.type = LightType.Point;
-                light.color = Color.black;
-                light.range = 0.49f;
-                light.shadows = LightShadows.None;
-                light.renderMode = LightRenderMode.ForceVertex;
-                light.intensity = worldLength;
+            if (addDpsTipLight) {
+                bakeInfo.channelContacts.OnAllSetsAvailable(sets => {
+                    var publicSets = sets.Where(s => s.isPublic).ToArray();
+                    if (publicSets.Length == 0) return;
+                    var tip = GameObjects.Create("Light - Legacy DPS Trigger", bakeRoot);
+                    var light = tip.AddComponent<Light>();
+                    light.type = LightType.Point;
+                    light.color = Color.black;
+                    light.range = 0.49f;
+                    light.shadows = LightShadows.None;
+                    light.renderMode = LightRenderMode.ForceVertex;
+                    light.intensity = worldLength;
 
-                propsToScale.Add((light, "m_Intensity", localLength));
-
+                    scaleCompensationService.AddScaledProp(bakeRoot,
+                        new[] { ((UnityEngine.Component)light, "m_Intensity", localLength) });
+                    spsOptions.RegisterLegacyObject(tip);
+                    foreach (var set in publicSets) set.Register(tip);
+                });
             }
 
             var injectRequests = parameterInjectService.GetRequests()
@@ -221,10 +227,6 @@ namespace VF.Service {
                     math.Value.CopyInPlace(value, inject.resolvedParam);
                     parameterInjectService.MarkResolved(inject);
                 }
-            }
-
-            if (propsToScale.Count > 0) {
-                scaleCompensationService.AddScaledProp(bakeRoot, propsToScale);
             }
         }
         

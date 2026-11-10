@@ -9,6 +9,10 @@ using UnityEditor;
 using UnityEditor.Animations;
 
 namespace VF.Hooks.UnityFixes {
+    /**
+     * Unity's blendtree graph editor recalculates the same ranges for every slider, and it's really expensive.
+     * Caching them cuts the render time by a lot.
+     */
     internal static class CacheBlendTreeEditorParameterRangesHook {
         private abstract class Reflection : ReflectionHelper {
             public static readonly Func<BlendTree, int, string> Name = (Func<BlendTree, int, string>)typeof(BlendTree)

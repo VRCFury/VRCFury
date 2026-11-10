@@ -5,7 +5,7 @@ namespace VF.Builder.Haptics {
 
         public const string Prefix = "SPS/";
         public const string PublicChannel = "_public";
-        public const string NotHipsChannel = "_nothips";
+        public const string NotHipsChannel = "nothips";
 
         // SPS3 Plug
         // At the plug base, +Z toward the tip, radius = plug length

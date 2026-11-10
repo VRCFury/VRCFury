@@ -23,7 +23,7 @@ namespace VF.Hooks.GestureManagerFixes {
             // Gesture Manager replaces only the main SDK parameter access. Advanced outputs
             // must write through the same bridge to reach its playable controllers as well.
             var accessType = receiver.paramAccess.GetType();
-            ContactReceiverUtils.RebindAdvancedParameters(receiver,
+            receiver.RebindAdvancedParameters(
                 name => (IAnimParameterAccess)Activator.CreateInstance(accessType, __instance, name));
         }
     }

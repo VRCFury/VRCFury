@@ -23,6 +23,7 @@ namespace VF.Service {
         public void Optimize() {
             var alwaysOneParams = GetAlwaysOneParams();
             foreach (var state in new AnimatorIterator.States().From(fx).Where(VFLayer.Created)) {
+                state.motion = FoldConstantComparison(state.motion, alwaysOneParams);
                 if (state.motion is VFTree tree) {
                     Optimize(tree, alwaysOneParams);
                     if (tree.blendType == BlendTreeType.Direct
@@ -61,6 +62,8 @@ namespace VF.Service {
             var vrcControlled = expressionParams
                 .Select(p => p.name);
             animatedParams.UnionWith(vrcControlled);
+            animatedParams.UnionWith(avatarObject.GetComponentsInSelfAndChildren<MonoBehaviour>()
+                .SelectMany(component => component.GetVrcParameterNames()));
             var driven = controllers.GetAllUsedControllers()
                 .SelectMany(c => c.layers)
                 .SelectMany(l => l.GetBehaviours<VRCAvatarParameterDriver>())
@@ -76,6 +79,10 @@ namespace VF.Service {
         }
 
         private void Optimize(VFTree tree, ISet<string> alwaysOneParams) {
+            tree.RewriteChildren(child => {
+                child.motion = FoldConstantComparison(child.motion, alwaysOneParams);
+                return child;
+            });
             foreach (var child in tree.children) {
                 if (child.motion is VFTree t) Optimize(t, alwaysOneParams);
             }
@@ -83,6 +90,20 @@ namespace VF.Service {
             ClaimSubtreesWithOneChild(tree, alwaysOneParams);
             MergeSubtreesWithOneWeight(tree, alwaysOneParams);
             MergeClipsWithSameWeight(tree, alwaysOneParams);
+        }
+
+        private static VFMotion FoldConstantComparison(VFMotion motion, ISet<string> alwaysOneParams) {
+            while (motion is VFTree tree && tree.blendType == BlendTreeType.Simple1D
+                && alwaysOneParams.Contains(tree.BlendParameter) && tree.children.Count > 0) {
+                var ordered = tree.children.OrderBy(c => c.threshold).ToArray();
+                var selected = 1 <= ordered[0].threshold ? ordered[0]
+                    : 1 >= ordered.Last().threshold ? ordered.Last() : null;
+                // Interior values still blend. Preserve child playback modifiers by leaving those trees intact.
+                if (selected == null || selected.timeScale != 1 || selected.mirror || selected.cycleOffset != 0
+                    || ordered.Count(c => c.threshold == selected.threshold) > 1) break;
+                motion = selected.motion;
+            }
+            return motion;
         }
 
         private void MergeSubtreesWithOneWeight(VFTree tree, ISet<string> alwaysOneParams) {

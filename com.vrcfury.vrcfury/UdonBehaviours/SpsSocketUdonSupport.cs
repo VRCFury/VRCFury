@@ -7,7 +7,7 @@ namespace com.vrcfury.udon {
     [AddComponentMenu("VRCFury/SPS Socket Udon Support (VRCFury)")]
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class SpsSocketUdonSupport : UdonSharpBehaviour {
-        [SerializeField, HideInInspector] internal VRCContactReceiver[] plugs;
+        [SerializeField, HideInInspector] internal VRCContactReceiver plugRoot;
         [SerializeField, HideInInspector] internal VRCContactReceiver width;
         [SerializeField, HideInInspector] internal string[] nativeTags;
         private Component[] callbacks = new Component[0];
@@ -84,15 +84,11 @@ namespace com.vrcfury.udon {
         }
 
         private float GetReceiverRadius() {
-            return plugs[0].radius * Mathf.Abs(plugs[0].transform.lossyScale.x);
+            return plugRoot.radius * Mathf.Abs(plugRoot.transform.lossyScale.x);
         }
 
         private float GetProximity(ContactSenderProxy sender) {
-            var proximity = 0f;
-            for (var i = 0; i < plugs.Length; i++) {
-                if (plugs[i].isActiveAndEnabled) proximity = Mathf.Max(proximity, plugs[i].CalculateProximity(sender));
-            }
-            return proximity;
+            return plugRoot.isActiveAndEnabled ? plugRoot.CalculateProximity(sender) : 0;
         }
 
         private void UpdateMeasurements() {
@@ -112,7 +108,7 @@ namespace com.vrcfury.udon {
                 if (proximity <= 0) continue;
                 var radius = GetReceiverRadius();
                 if (proximity < 1 || !measuredLengths[i]) {
-                    var distance = Vector3.Distance(plugs[0].transform.position, sender.position);
+                    var distance = Vector3.Distance(plugRoot.transform.position, sender.position);
                     var length = distance - radius * (1 - proximity);
                     if (length > 0 && length <= 3) {
                         cachedPlugSizes[i].x = length;
@@ -136,14 +132,14 @@ namespace com.vrcfury.udon {
                     measuredWidths[i] = true;
                 }
             }
-            var nearest = VrcfuryUtils.GetNearestSender(plugs, plugContacts);
+            var nearest = VrcfuryUtils.GetNearestSender(plugRoot, plugContacts);
             nearestPlug = nearest == null ? -1 : plugContacts.IndexOf(nearest);
             cachedProximity = float.PositiveInfinity;
             if (nearestPlug < 0) return;
             var nearestProximity = GetProximity(nearest);
             cachedProximity = !nativePlugs[nearestPlug] && nearestProximity < 1
                 ? GetReceiverRadius() * (1 - nearestProximity)
-                : Vector3.Distance(plugs[0].transform.position, nearest.position) - cachedPlugSizes[nearestPlug].x;
+                : Vector3.Distance(plugRoot.transform.position, nearest.position) - cachedPlugSizes[nearestPlug].x;
         }
     }
 }

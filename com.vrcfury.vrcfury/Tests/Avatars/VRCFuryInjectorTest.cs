@@ -9,6 +9,7 @@ using UnityEditor;
 using VF.Actions;
 using VF.Builder;
 using VF.Builder.Haptics;
+using VF.Component;
 using VF.Feature.Base;
 using VF.Inspector;
 using VF.Service;
@@ -129,9 +130,11 @@ namespace VF.Injector {
                 var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
                 var controllers = injector.GetService<ControllersService>();
                 controllers.ClearCache(applyBaseMask: false);
+                var channels = injector.GetService<SpsChannelsService>();
+                var data = channels.Get(root.AddComponent<VRCFuryHapticPlug>());
                 var receivers = injector.GetService<SelfAndOthersReceiverService>().Create(
                     new SelfAndOthersReceiverService.Request {
-                        frame = root, name = "Build", worldRadius = 1
+                        frame = root, name = "Build", worldRadius = 1, channels = data
                     });
                 var receiverAnimator = injector.GetService<SelfAndOthersReceiverAnimatorService>();
                 receiverAnimator.GetParameter(receivers, Party.Self);
@@ -139,11 +142,12 @@ namespace VF.Injector {
                 var parameter = receiverAnimator.GetParameter(receivers, Party.Merged);
                 Assert.That(controllers.GetFx().GetLayers(), Is.Not.Empty);
                 Assert.That(controllers.GetFx().parameters.FirstOrDefault(p => p.name == parameter.name), Is.Not.Null);
-                Assert.That(root.GetComponentsInChildren<VRC.SDK3.Dynamics.Contact.Components.VRCContactReceiver>(true),
-                    Has.Length.EqualTo(4));
                 var layers = controllers.GetFx().GetLayers().Count();
                 Assert.That(receiverAnimator.GetParameter(receivers, Party.Merged).name, Is.EqualTo(parameter.name));
                 Assert.That(controllers.GetFx().GetLayers().Count(), Is.EqualTo(layers));
+                channels.Apply(data);
+                Assert.That(root.GetComponentsInChildren<VRC.SDK3.Dynamics.Contact.Components.VRCContactReceiver>(true),
+                    Has.Length.EqualTo(4));
             } finally {
                 UnityEngine.Object.DestroyImmediate(root);
             }

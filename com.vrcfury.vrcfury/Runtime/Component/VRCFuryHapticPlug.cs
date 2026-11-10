@@ -36,12 +36,14 @@ namespace VF.Component {
         [Obsolete] public bool enableDepthAnimations = false;
         [Obsolete] public List<LegacyPlugDepthAction> depthActions = new List<LegacyPlugDepthAction>();
         public List<VRCFuryHapticSocket.DepthActionNew> depthActions2 = new List<VRCFuryHapticSocket.DepthActionNew>();
-        public bool useHipAvoidance = true;
-        public bool useSharedTag = true;
+        [Obsolete, HideInInspector] public bool useHipAvoidance = true;
+        [Obsolete, HideInInspector] public bool useSharedTag = true;
         [Obsolete("Per-plug Legacy Compatibility is no longer configurable."), HideInInspector]
         public bool useLights = true;
-        public List<TagRule> includeTags = new List<TagRule>();
-        public List<TagRule> excludeTags = new List<TagRule>();
+        [Obsolete, HideInInspector] public List<TagRule> includeTags = new();
+        [Obsolete, HideInInspector] public List<TagRule> excludeTags = new();
+        public SpsChannelSettings channelSettings = new();
+        [SerializeField] private bool tagsUpgradedToChannels;
 
         [Obsolete] public bool configureSps = false;
         [Obsolete] public bool spsBoneMask = true;
@@ -59,11 +61,15 @@ namespace VF.Component {
             [Obsolete] public float smoothing;
         }
 
-        [Serializable]
+        [Serializable, Obsolete]
         public class TagRule {
             public string tag;
             public bool allowSelf = true;
             public bool allowOthers = true;
+        }
+
+        private void Reset() {
+            tagsUpgradedToChannels = true;
         }
 
         public override bool Upgrade(int fromVersion) {
@@ -123,6 +129,17 @@ namespace VF.Component {
                     }
                 }
                 depthActions.Clear();
+            }
+            if (!tagsUpgradedToChannels) {
+                tagsUpgradedToChannels = true;
+                channelSettings.useSharedTag = useSharedTag;
+                channelSettings.useHipAvoidance = useHipAvoidance;
+                foreach (var rule in includeTags) {
+                    channelSettings.channels.Add(rule == null ? null : new SpsChannelSettings.Channel {
+                        id = rule.tag, allowSelf = rule.allowSelf, allowOthers = rule.allowOthers
+                    });
+                }
+                return true;
             }
 #pragma warning restore 0612
             return false;

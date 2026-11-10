@@ -8,7 +8,9 @@ using VF.Hooks;
 using VF.Injector;
 using VF.Inspector;
 using VF.Menu;
+using VF.Model;
 using VF.Utils;
+using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 
 namespace VF.Builder.Haptics {
     [VFService]
@@ -82,64 +84,44 @@ namespace VF.Builder.Haptics {
             }
         }
 
-        internal enum ChannelMode {
-            Sender,
-            ReceiverSelf,
-            ReceiverOthers
+        internal HashSet<string> GetChannels(VFGameObject obj, bool isPlug, Party party, SpsChannelSettings settings) {
+            HashSet<string> ForParty(bool self) => GetLogicalChannels(obj, isPlug, self, settings)
+                .Select(c => self ? c + "/self" : c).ToHashSet();
+            return party switch {
+                Party.Self => ForParty(true),
+                Party.Others => ForParty(false),
+                Party.Merged => ForParty(true).Union(ForParty(false)).ToHashSet(),
+                _ => throw new ArgumentOutOfRangeException(nameof(party))
+            };
         }
 
-        internal HashSet<string> GetPlugChannels(VRCFuryHapticPlug plug, ChannelMode mode) {
-            var channels = plug.includeTags.Take(SpsTags.MaxUserChannels)
-                .Where(rule => rule != null && (mode == ChannelMode.ReceiverSelf ? rule.allowSelf
-                    : mode == ChannelMode.ReceiverOthers ? rule.allowOthers : rule.allowSelf || rule.allowOthers))
-                .Select(rule => NormalizeUserChannel(rule.tag))
-                .Where(channel => !string.IsNullOrWhiteSpace(channel)).ToHashSet();
-            if (plug.useSharedTag) channels.Add(SpsTags.PublicChannel);
-            var isOnHips = autoChannelGenerator?.GetClosestBone(plug.owner()) == HumanBodyBones.Hips;
-            if (mode == ChannelMode.ReceiverSelf && isOnHips && plug.useHipAvoidance && channels.Remove(SpsTags.PublicChannel)) {
-                channels.Add(SpsTags.NotHipsChannel);
-            }
-            if (mode == ChannelMode.Sender && channels.Contains(SpsTags.PublicChannel) && (!isOnHips || !plug.useHipAvoidance)) {
-                channels.Add(SpsTags.NotHipsChannel);
+        internal HashSet<string> GetLogicalChannels(VFGameObject obj, bool isPlug, bool self, SpsChannelSettings settings) {
+            var channels = GetRuleChannels(settings.channels, self);
+            if (settings.useSharedTag) {
+                if (!isPlug) channels.UnionWith(GetAutoSocketChannels(obj));
+                channels.Add(self && isPlug && settings.useHipAvoidance
+                    && autoChannelGenerator?.GetClosestBone(obj) == HumanBodyBones.Hips
+                    ? SpsTags.NotHipsChannel : SpsTags.PublicChannel);
             }
             return channels;
         }
 
-        internal HashSet<string> GetSocketChannels(VRCFuryHapticSocket socket, ChannelMode mode) {
-            var channels = new HashSet<string>();
-            channels.UnionWith(socket.tags.Take(SpsTags.MaxUserChannels)
-                .Select(NormalizeUserChannel)
-                .Where(channel => !string.IsNullOrWhiteSpace(channel)));
-            if (socket.useSharedTag) {
-                channels.UnionWith(GetAutoSocketChannels(socket));
-                channels.Add(SpsTags.PublicChannel);
-            }
-            var isOnHips = autoChannelGenerator?.GetClosestBone(socket.owner()) == HumanBodyBones.Hips;
-            if (mode == ChannelMode.ReceiverSelf && isOnHips && channels.Remove(SpsTags.PublicChannel)) {
-                channels.Add(SpsTags.NotHipsChannel);
-            }
-            if (mode == ChannelMode.Sender && !isOnHips && channels.Contains(SpsTags.PublicChannel)) {
-                channels.Add(SpsTags.NotHipsChannel);
-            }
-            return channels;
-        }
+        private static HashSet<string> GetRuleChannels(IEnumerable<SpsChannelSettings.Channel> rules, bool self) =>
+            rules.Take(SpsTags.MaxUserChannels).Where(rule => rule != null && (self ? rule.allowSelf : rule.allowOthers))
+                .Select(rule => NormalizeUserChannel(rule.id)).Where(channel => !string.IsNullOrWhiteSpace(channel)).ToHashSet();
 
-        private static string NormalizeUserChannel(string channel) {
-            channel = channel?.Trim().ToLowerInvariant() ?? "";
-            while (channel.StartsWith("_")) channel = channel.TrimStart('_').TrimStart();
-            return channel;
-        }
+        private static string NormalizeUserChannel(string channel) => channel?.Trim().ToLowerInvariant() ?? "";
 
         private string GetAutoHipFrontBackChannel(
-            VRCFuryHapticSocket socket,
+            VFGameObject socket,
             HumanBodyBones? closestBone
         ) {
             if (closestBone != HumanBodyBones.Hips) return null;
             if (autoChannelGenerator == null) return null;
 
-            var root = socket.owner().root;
-            var hips = autoChannelGenerator.GetBone(socket.owner(), HumanBodyBones.Hips);
-            var rightHand = autoChannelGenerator.GetBone(socket.owner(), HumanBodyBones.RightHand);
+            var root = socket.root;
+            var hips = autoChannelGenerator.GetBone(socket, HumanBodyBones.Hips);
+            var rightHand = autoChannelGenerator.GetBone(socket, HumanBodyBones.RightHand);
             if (hips == null || rightHand == null) return null;
 
             var right = rightHand.worldPosition - hips.worldPosition;
@@ -167,13 +149,13 @@ namespace VF.Builder.Haptics {
                 .ThenBy(other => other.owner().GetPath(root))
                 .ToList();
 
-            if (hipSockets[0] == socket) return "hipsback";
-            if (hipSockets[1] == socket) return "hipsfront";
+            if (hipSockets[0].owner() == socket) return "hipsback";
+            if (hipSockets[1].owner() == socket) return "hipsfront";
             return null;
         }
 
-        internal HashSet<string> GetAutoSocketChannels(VRCFuryHapticSocket socket) {
-            var bone = autoChannelGenerator?.GetClosestBone(socket.owner());
+        internal HashSet<string> GetAutoSocketChannels(VFGameObject socket) {
+            var bone = autoChannelGenerator?.GetClosestBone(socket);
             var channels = bone switch {
                 HumanBodyBones.Hips => new[] { "hips", GetAutoHipFrontBackChannel(socket, bone) },
                 HumanBodyBones.Head or HumanBodyBones.Jaw => new[] { "head" },
@@ -184,7 +166,9 @@ namespace VF.Builder.Haptics {
                 HumanBodyBones.RightFoot or HumanBodyBones.RightToes => new[] { "foot", "footright" },
                 _ => Array.Empty<string>()
             };
-            return channels.Where(channel => !string.IsNullOrWhiteSpace(channel)).ToHashSet();
+            var result = channels.Where(channel => !string.IsNullOrWhiteSpace(channel)).ToHashSet();
+            if (bone != HumanBodyBones.Hips) result.Add(SpsTags.NotHipsChannel);
+            return result;
         }
     }
 }

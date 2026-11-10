@@ -20,6 +20,149 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     public class SpsOptionsTest {
+        [Test]
+        public void SocketMigratesTagsOnceWithoutChangingVersionOrRemovingOriginals() {
+            var root = new GameObject("Socket channel migration");
+            try {
+                var socket = root.AddComponent<VRCFuryHapticSocket>();
+#pragma warning disable 0612
+                socket.tags.AddRange(new[] { "first", "second" });
+                socket.useSharedTag = socket.useHipAvoidance = false;
+                typeof(VRCFuryHapticSocket).VFField("tagsUpgradedToChannels").SetValue(socket, false);
+                socket.Upgrade(8);
+                Assert.That(socket.GetLatestVersion(), Is.EqualTo(8));
+                Assert.That(socket.tags, Is.EqualTo(new[] { "first", "second" }));
+                Assert.That(socket.channelSettings.channels.Select(r => r.id), Is.EqualTo(socket.tags));
+                Assert.That(socket.channelSettings.channels.All(r => r.allowSelf && r.allowOthers), Is.True);
+                Assert.That(socket.channelSettings.useSharedTag || socket.channelSettings.useHipAvoidance, Is.False);
+                socket.channelSettings.channels.Clear();
+                UnityEditor.EditorJsonUtility.FromJsonOverwrite(UnityEditor.EditorJsonUtility.ToJson(socket), socket);
+                socket.Upgrade(8);
+                Assert.That(socket.channelSettings.channels, Is.Empty, "Deleted rules must not be restored by another upgrade");
+                Assert.That(socket.tags, Is.EqualTo(new[] { "first", "second" }));
+#pragma warning restore 0612
+            } finally { Object.DestroyImmediate(root); }
+        }
+
+        [Test]
+        public void PlugMigratesSettingsOnceAndKeepsLegacyDataIndependent() {
+            var root = new GameObject("Plug channel migration");
+            try {
+                var plug = root.AddComponent<VRCFuryHapticPlug>();
+#pragma warning disable 0612
+                plug.useSharedTag = plug.useHipAvoidance = false;
+                plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "legacy", allowSelf = false });
+#pragma warning restore 0612
+                typeof(VRCFuryHapticPlug).VFField("tagsUpgradedToChannels").SetValue(plug, false);
+                plug.Upgrade(10);
+                Assert.That(plug.GetLatestVersion(), Is.EqualTo(10));
+                var rule = plug.channelSettings.channels.Single();
+                Assert.That(rule.id, Is.EqualTo("legacy"));
+                Assert.That(rule.allowSelf, Is.False);
+                Assert.That(rule.allowOthers, Is.True);
+                Assert.That(plug.channelSettings.useSharedTag || plug.channelSettings.useHipAvoidance, Is.False);
+                rule.id = "new";
+#pragma warning disable 0612
+                Assert.That(plug.includeTags.Single().tag, Is.EqualTo("legacy"));
+#pragma warning restore 0612
+                plug.channelSettings.channels.Clear();
+                plug.channelSettings.useSharedTag = true;
+                UnityEditor.EditorJsonUtility.FromJsonOverwrite(UnityEditor.EditorJsonUtility.ToJson(plug), plug);
+                plug.Upgrade(10);
+                Assert.That(plug.channelSettings.channels, Is.Empty);
+                Assert.That(plug.channelSettings.useSharedTag, Is.True, "Later edits must survive repeated upgrades");
+            } finally { Object.DestroyImmediate(root); }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void FreshChannelSettingsAreNotOverwrittenByLegacyDefaults(bool isPlug) {
+            var root = new GameObject("Fresh channels");
+            try {
+                VRCFuryComponent component = isPlug ? (VRCFuryComponent)root.AddComponent<VRCFuryHapticPlug>()
+                    : root.AddComponent<VRCFuryHapticSocket>();
+                var settings = isPlug ? ((VRCFuryHapticPlug)component).channelSettings : ((VRCFuryHapticSocket)component).channelSettings;
+                settings.useSharedTag = settings.useHipAvoidance = false;
+                settings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "fresh" });
+                component.Upgrade(component.GetLatestVersion());
+                Assert.That(settings.useSharedTag || settings.useHipAvoidance, Is.False);
+                Assert.That(settings.channels.Single().id, Is.EqualTo("fresh"));
+            } finally { Object.DestroyImmediate(root); }
+        }
+
+        private class ChannelPreviewBones : SpsAutoChannelGenerator {
+            public HumanBodyBones? GetClosestBone(VFGameObject obj) => HumanBodyBones.Head;
+            public VFGameObject GetBone(VFGameObject obj, HumanBodyBones bone) => null;
+            public Vector3? GetAvatarViewPosition(VFGameObject obj) => null;
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChannelEditorUsesSuppliedSettingsWithoutAPlugOrSocketComponent(bool isPlug) {
+            var root = new GameObject("Supplied channel settings");
+            try {
+                var component = root.AddComponent<VF.Model.VRCFury>();
+                component.content = new VF.Model.Feature.Toggle {
+                    state = new VF.Model.State {
+                        actions = { new VF.Model.StateAction.ChangeSpsChannelsAction {
+                            channelSettings = new VF.Model.SpsChannelSettings {
+                                useSharedTag = false,
+                                channels = { new VF.Model.SpsChannelSettings.Channel { id = "custom" } }
+                            }
+                        } }
+                    }
+                };
+                var settings = new UnityEditor.SerializedObject(component).FindProperty("content")
+                    .FindPropertyRelative("state").FindPropertyRelative("actions").GetArrayElementAtIndex(0)
+                    .FindPropertyRelative("channelSettings");
+                var editor = VRCFuryHapticPlugEditor.SpsChannelsEditor(root, isPlug, settings);
+                Assert.That(editor.Query<Label>().ToList().Single(l => l.text.StartsWith("Final channel list:")).text,
+                    Is.EqualTo("Final channel list:\ncustom"));
+            } finally { Object.DestroyImmediate(root); }
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void ChannelPreviewIncludesCalculatedChannelsAndActionOverrides(bool socket, bool action) {
+            var root = new GameObject("Channel preview");
+            try {
+                var injector = VRCFuryPerFrameInjector.GetPerFrameInjector(root);
+                injector.Set("autoChannelGenerator", new ChannelPreviewBones());
+                UnityEngine.Component target;
+                if (socket) target = root.AddComponent<VRCFuryHapticSocket>();
+                else {
+                    var plug = root.AddComponent<VRCFuryHapticPlug>();
+                    plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "selfonly", allowOthers = false });
+                    plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "othersonly", allowSelf = false });
+                    target = plug;
+                }
+                VisualElement preview;
+                if (action) {
+                    var component = root.AddComponent<VF.Model.VRCFury>();
+                    component.content = new VF.Model.Feature.Toggle {
+                        state = new VF.Model.State {
+                            actions = { new VF.Model.StateAction.ChangeSpsChannelsAction {
+                                target = root, channelSettings = new VF.Model.SpsChannelSettings {
+                                    useSharedTag = false, channels = { new VF.Model.SpsChannelSettings.Channel { id = "override", allowOthers = false } }
+                                }
+                            } }
+                        }
+                    };
+                    var serialized = new UnityEditor.SerializedObject(component);
+                    var prop = serialized.FindProperty("content").FindPropertyRelative("state")
+                        .FindPropertyRelative("actions").GetArrayElementAtIndex(0);
+                    preview = VF.Actions.ChangeSpsChannelsActionBuilder.Editor(prop);
+                } else preview = VRCFuryHapticPlugEditor.SpsChannelsEditor(target.owner(), !socket, new UnityEditor.SerializedObject(target).FindProperty("channelSettings"));
+                var text = preview.Query<Label>().ToList().Single(l => l.text.StartsWith("Final channel list:")).text;
+                Assert.That(text, Is.EqualTo(action
+                    ? "Final channel list:\noverride (Self)"
+                    : socket ? "Final channel list:\n_public\nhead\nnothips"
+                    : "Final channel list:\n_public\nothersonly (Others)\nselfonly (Self)"));
+            } finally { Object.DestroyImmediate(root); }
+        }
+
         [TestCase(false, false)]
         [TestCase(true, false)]
         [TestCase(false, true)]
@@ -384,6 +527,7 @@ namespace VF.Tests {
                 var injector = new VRCFuryInjector();
                 injector.ImportScan(typeof(VFServiceAttribute));
                 var result = injector.GetService<VF.Inspector.VRCFuryHapticSocketBaker>().Bake(socket, legacyPlugCompatibility: available);
+                injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
                 Assert.That(result.legacyLights != null, Is.EqualTo(available));
             } finally {
                 Object.DestroyImmediate(root);
@@ -411,11 +555,12 @@ namespace VF.Tests {
                 plug.unitsInMeters = true;
                 plug.length = 0.4f;
                 plug.radius = 0.03f;
-                plug.useSharedTag = shared;
-                plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "custom" });
+                plug.channelSettings.useSharedTag = shared;
+                plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "custom" });
                 var injector = new VRCFuryInjector();
                 injector.ImportScan(typeof(VFServiceAttribute));
                 var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug, legacySocketCompatibility: enabled);
+                injector.GetService<SpsChannelsService>().Apply(bake.channelContacts);
                 var senders = bake.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>();
                 Assert.That(senders.Count, Is.EqualTo(2 + (enabled && shared ? 2 : 0)));
                 var main = senders.Single(s => s.name == "Sender - Sphere");
@@ -444,6 +589,7 @@ namespace VF.Tests {
                 injector.ImportScan(typeof(VFServiceAttribute));
                 var result = injector.GetService<VF.Inspector.VRCFuryHapticSocketBaker>().Bake(socket,
                     legacyPlugCompatibility: legacy, tpsDepthAnimationCompatibility: enabled);
+                injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
                 var fronts = result.bakeRoot.GetComponentsInSelfAndChildren<VRC.SDK3.Dynamics.Contact.Components.VRCContactSender>()
                     .Where(sender => sender.collisionTags.Contains(SpsTags.LegacySocketFront)).ToArray();
                 Assert.That(fronts.Length, Is.EqualTo(enabled && legacy ? 1 : 0));

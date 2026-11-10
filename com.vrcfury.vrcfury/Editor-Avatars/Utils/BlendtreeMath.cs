@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -168,6 +169,25 @@ namespace VF.Utils {
                     (inMin, minClip), (inMax, maxClip))
                 : VFBlendTree1D.CreateWithData($"{input} ({inMin}-{inMax}) -> ({outMin}-{outMax})", input,
                     (inMax, maxClip), (inMin, minClip));
+        }
+
+        // Interpolate static endpoint clips whose values are affine in the input.
+        // An omitted fallback clamps to that endpoint instead of rejecting the input.
+        public static VFMotion MapWithFallback(VFAParam input, float min, float max,
+            Func<float, VFClip> createClip, VFMotion below = null, VFMotion above = null,
+            bool includeMin = true, bool includeMax = true) {
+            var first = includeMin ? min : Up(min);
+            var last = includeMax ? max : Down(max);
+            if (float.IsNaN(min) || float.IsNaN(max) || float.IsInfinity(min)
+                || float.IsInfinity(max) || first > last) {
+                throw new ArgumentException("Mapping requires a finite, nonempty range");
+            }
+            var tree = VFBlendTree1D.Create($"{input} mapped in {min}..{max}", input);
+            if (below != null && first > float.MinValue) tree.Add(Down(first), below);
+            tree.Add(first, createClip(first));
+            if (last > first) tree.Add(last, createClip(last));
+            if (above != null && last < float.MaxValue) tree.Add(Up(last), above);
+            return tree;
         }
 
         /**

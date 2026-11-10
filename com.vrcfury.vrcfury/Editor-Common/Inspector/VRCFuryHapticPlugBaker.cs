@@ -11,11 +11,12 @@ using VF.Injector;
 using VF.Utils;
 using BakeResult = VF.Inspector.VRCFuryHapticPlugEditor.BakeResult;
 using RendererResult = VF.Inspector.VRCFuryHapticPlugEditor.RendererResult;
+using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Inspector {
     [VFService]
     internal class VRCFuryHapticPlugBaker {
-        [VFAutowired] private readonly SpsConfigurer spsConfigurer;
+        [VFAutowired] private readonly SpsChannelsService channels;
         [VFAutowired] private readonly SpsPlugReceiverService spsPlugReceiverService;
         [VFAutowired] private readonly PlugSizeService plugSizes;
         [VFAutowired] private readonly PlugFrameService plugFrames;
@@ -27,6 +28,7 @@ namespace VF.Inspector {
             bool legacySocketCompatibility = true
         ) {
             var transform = plug.owner();
+            var contacts = channels.Get(plug);
             HapticUtils.AssertValidScale(transform);
 
             var size = plugSizes.GetWorldSize(plug);
@@ -61,30 +63,51 @@ namespace VF.Inspector {
 
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
-            var channels = spsConfigurer.GetPlugChannels(plug, SpsConfigurer.ChannelMode.Sender);
-            var legacySuffixes = new List<string>();
-            if (legacySocketCompatibility && channels.Contains(SpsTags.PublicChannel)) legacySuffixes.Add("");
-            var mainSender = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                obj = localSpace,
-                objName = "Sender - Sphere",
-                radius = worldLength,
-                worldScale = HapticUtils.EncodePlugScale(worldLength, worldRadius),
-                tags = channels.Select(SpsTags.FormatPlug)
-                    .Concat(legacySuffixes.Select(suffix => SpsTags.LegacyPlugSphere + suffix)).ToArray()
-            });
-            if (legacySuffixes.Count > 0) {
-                HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                    obj = localSpace,
-                    objName = "Sender - Legacy Width",
-                    radius = Mathf.Max(0.01f, worldLength - worldRadius*2),
-                    tags = legacySuffixes.Select(suffix => SpsTags.LegacyPlugWidth + suffix).ToArray()
+            var mainSender = GameObjects.Create("Sender - Sphere", localSpace);
+            if (BuildTargetUtils.IsDesktop()) {
+                var senderScale = HapticUtils.EncodePlugScale(worldLength, worldRadius);
+                mainSender.worldScale = senderScale;
+                var senderRadius = worldLength / Mathf.Max(senderScale.x, senderScale.y, senderScale.z);
+                contacts.OnAllSetsAvailable(sets => {
+                    var senders = new Dictionary<string, VFGameObject>();
+                    foreach (var set in sets) {
+                        var tags = set.sender.Select(SpsTags.FormatPlug)
+                            .Concat(set.isPublic && legacySocketCompatibility ? new[] { SpsTags.LegacyPlugSphere } : Array.Empty<string>()).ToArray();
+                        if (tags.Length == 0) continue;
+                        var owner = senders.GetOrCreate(string.Join("\n", tags), () => {
+                            var obj = sets.Count == 1 ? mainSender : GameObjects.Create(
+                                "Channel (" + string.Join(", ", set.sender) + ")", mainSender);
+                            var sender = obj.AddComponent<VRCContactSender>();
+                            sender.radius = senderRadius;
+                            sender.collisionTags = tags.ToList();
+                            return obj;
+                        });
+                        set.Register(owner);
+                    }
                 });
-                HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                    obj = localSpace,
-                    objName = "Sender - Legacy Root",
-                    radius = 0,
-                    tags = legacySuffixes.Select(suffix => SpsTags.LegacyPlugRoot + suffix).ToArray()
-                });
+                if (legacySocketCompatibility) {
+                    contacts.OnAllSetsAvailable(sets => {
+                        var publicSets = sets.Where(s => s.isPublic).ToArray();
+                        if (publicSets.Length == 0) return;
+                        var width = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+                            obj = localSpace,
+                            objName = "Sender - Legacy Width",
+                            radius = Mathf.Max(0.01f, worldLength - worldRadius*2) / scale,
+                            useWorldUnits = false,
+                            tags = new[] { SpsTags.LegacyPlugWidth }
+                        });
+                        var root = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+                            obj = localSpace,
+                            objName = "Sender - Legacy Root",
+                            radius = 0,
+                            tags = new[] { SpsTags.LegacyPlugRoot }
+                        });
+                        foreach (var set in publicSets) {
+                            set.Register(width);
+                            set.Register(root);
+                        }
+                    });
+                }
             }
             HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
                 obj = localSpace,
@@ -179,6 +202,7 @@ namespace VF.Inspector {
             var oscId = VRCFuryHapticPlugEditor.GetOscId(plug);
 
             return new BakeResult {
+                channelContacts = contacts,
                 bakeRoot = localSpace,
                 renderers = rendererResults,
                 localLength = localLength,

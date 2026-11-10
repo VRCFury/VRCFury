@@ -14,15 +14,10 @@ namespace VF.Service {
     internal class SpsSocketMeasurementsService {
         [VFAutowired] private readonly SelfAndOthersReceiverAnimatorService receiverAnimator;
         [VFAutowired] private readonly SpsSocketReceiverService contacts;
-        [VFAutowired] private readonly SpsConfigurer configurer;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
         [VFAutowired] private readonly VF.Inspector.VRCFuryHapticSocketBaker socketBaker;
-
-        private HashSet<string> GetChannels(VRCFuryHapticSocket socket, bool self) =>
-            configurer.GetSocketChannels(socket, self
-                ? SpsConfigurer.ChannelMode.ReceiverSelf : SpsConfigurer.ChannelMode.ReceiverOthers);
 
         public SelfAndOthersReceiverService.Receivers GetReceivers(VRCFuryHapticSocket socket, VFGameObject frame, string name) =>
             contacts.GetReceivers(socket, frame, name, spsOptions.GetOptions().legacyModeAvailable);
@@ -41,7 +36,7 @@ namespace VF.Service {
             var inverseWorldScale = new Lazy<VFAParam>(() => worldScaleService.GetInverseWorldScale(
                 socket.owner(), name));
             var worldRadius = main.request.worldRadius;
-            var includeLegacy = main.request.othersTags.Contains(SpsTags.LegacyPlugSphere);
+            var includeLegacy = main.request.supportsLegacy;
             var entranceType = new Lazy<VRCFuryHapticSocket.AddLight>(() => socketBaker.GetEntranceType(socket));
 
             var byParty = new Dictionary<Party, Func<string, VFAParam>>();
@@ -54,12 +49,7 @@ namespace VF.Service {
                 VFAParam Field(string suffix) => receiverAnimator.GetAdvancedParam(main, party, suffix);
                 var present = new Lazy<BlendtreeMath.Condition>(() => BlendtreeMath.GreaterThan(proximity.Value, 0)
                     .And(BlendtreeMath.GreaterThan(Field("PointSeparation"), 0, true)));
-                var channels = party == Party.Merged
-                    ? GetChannels(socket, true).Union(GetChannels(socket, false))
-                    : GetChannels(socket, self);
-                var native = new Lazy<BlendtreeMath.Condition>(() => !legacy ? BlendtreeMath.True()
-                    : channels.Select(SpsTags.FormatPlug).Aggregate(BlendtreeMath.False(),
-                        (condition, tag) => condition.Or(BlendtreeMath.GreaterThan(Field("CollisionTag_" + tag), 0))));
+                var native = new Lazy<BlendtreeMath.Condition>(() => receiverAnimator.GetNative(main, party));
                 var presence = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
                     present.Value.CreateBranches(tree, prefix + "/Present"));
                 var encoding = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
@@ -88,7 +78,7 @@ namespace VF.Service {
                         var measurable = BlendtreeMath.GreaterThan(helperRadius, 0.01001f)
                             .And(BlendtreeMath.LessThan(helper, 1));
                         AddSize("Radius", output, nativeInput, 0.03f, estimate, helperPresent, measurable,
-                            BlendtreeMath.GreaterThan(proximity.Value, 1, true).Or(BlendtreeMath.GreaterThan(helper, 1, true)));
+                            BlendtreeMath.GreaterThan(helper, 1, true));
                     } else {
                         AddSize("Radius", output, nativeInput, 0.03f);
                     }
@@ -185,18 +175,24 @@ namespace VF.Service {
 
                 void AddSize(string label, VFAParam output, VFAParam nativeInput, float assumed,
                     VFAParam estimate = null, BlendtreeMath.Condition extraPresent = null,
-                    BlendtreeMath.Condition extraMeasurable = null, BlendtreeMath.Condition saturated = null) {
+                    BlendtreeMath.Condition extraMeasurable = null, BlendtreeMath.Condition extraSaturated = null) {
                     if (!legacy) {
                         encoding.Value.whenTrue.Add(output.MakeCopier(nativeInput));
                         presence.Value.whenFalse.Add(output.MakeSetter(assumed));
                         return;
                     }
                     var confidence = fx.CreateUniqueFloat(prefix + "/Legacy" + label + "Valid");
-                    // Check helper/bounds before the OR to avoid repeating the cache fallback.
-                    var measurable = (extraMeasurable ?? BlendtreeMath.True())
-                        .And(BlendtreeMath.InRange(estimate, 0, 3, includeMin: false))
-                        .And(BlendtreeMath.LessThan(proximity.Value, 1)
-                            .Or(BlendtreeMath.GreaterThan(confidence, 0).Not()));
+                    // Buffer the validated value together, so stale validity cannot approve a newer
+                    // invalid estimate. Complex bounds/helper checks only wrap this small writer.
+                    var sample = fx.CreateUniqueFloat(prefix + "/Legacy" + label + "Sample");
+                    var valid = (extraPresent ?? BlendtreeMath.True())
+                        .And(extraMeasurable ?? BlendtreeMath.True());
+                    var clearSample = sample.MakeSetter(0);
+                    var candidate = BlendtreeMath.MapWithFallback(estimate, 0, 3, value => sample.MakeSetter(value),
+                        below: clearSample, above: clearSample, includeMin: false);
+                    encoding.Value.whenFalse.Add(valid.create(candidate, clearSample));
+                    encoding.Value.whenTrue.Add(clearSample);
+                    presence.Value.whenFalse.Add(clearSample);
                     VFBlendTreeDirect WithConfidence(VFMotion motion, float value) {
                         var result = VFBlendTreeDirect.Create(prefix + "/Legacy" + label);
                         result.Add(motion);
@@ -204,10 +200,23 @@ namespace VF.Service {
                         return result;
                     }
                     var fallback = WithConfidence(output.MakeSetter(assumed), 0);
-                    var measured = measurable.create(WithConfidence(output.MakeCopier(estimate), 1),
-                        (saturated ?? BlendtreeMath.GreaterThan(proximity.Value, 1, true))
-                        .And(BlendtreeMath.GreaterThan(confidence, 0)).create(
-                            WithConfidence(output.MakeCopier(output), 1), fallback));
+                    var keepCached = WithConfidence(output.MakeCopier(output), 1);
+                    VFMotion SampleOr(VFMotion otherwise) {
+                        // The validated sample is already bounded to 3m. Write its value and
+                        // confidence in the same endpoint clips, without a nested copier.
+                        return BlendtreeMath.MapWithFallback(sample, 0, 3, value => {
+                            var clip = output.MakeSetter(value);
+                            clip.SetAap(confidence, 1);
+                            return clip;
+                        }, below: otherwise, includeMin: false);
+                    }
+                    var uncached = SampleOr(fallback);
+                    // Check confidence once. Helper saturation only preserves the cache when
+                    // there is no pending valid sample; main saturation always preserves it.
+                    var outside = extraSaturated == null ? uncached
+                        : SampleOr(extraSaturated.create(keepCached, fallback));
+                    var cached = BlendtreeMath.LessThan(proximity.Value, 1).create(outside, keepCached);
+                    var measured = BlendtreeMath.GreaterThan(confidence, 0).create(cached, uncached);
                     if (extraPresent != null) measured = extraPresent.create(measured, fallback);
                     encoding.Value.whenTrue.Add(WithConfidence(output.MakeCopier(nativeInput), 0));
                     encoding.Value.whenFalse.Add(measured);

@@ -252,7 +252,8 @@ namespace VF.Inspector {
                 }
             }
 
-            if (data.useLegacyLights && data.overrideLegacyOffset) {
+            if (data.useLegacyLights && data.overrideLegacyOffset
+                && (!EditorApplication.isPlaying || (data.legacyLights != null && data.legacyLights.activeInHierarchy))) {
                 var legacyOrigin = socketTransformWorld.TransformPoint(data.legacyOffsetLocal);
                 DrawGizmo(legacyOrigin, worldRotation, data.legacyType, false, Color.yellow, Color.yellow);
                 if (owner.IsSelected()) {

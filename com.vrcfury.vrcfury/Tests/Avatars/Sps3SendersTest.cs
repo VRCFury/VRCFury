@@ -8,6 +8,7 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Injector;
 using VF.Inspector;
+using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
@@ -16,6 +17,7 @@ using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
 using Flags = VF.Component.VRCFuryHapticSocket.AddLight;
 using ScaleFlags = VF.Builder.Haptics.HapticUtils.SocketScaleFlags;
+using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 
 namespace VF.Tests {
     [Category("VRCFury")]
@@ -38,7 +40,7 @@ namespace VF.Tests {
 
         [Test]
         public void FormatsNativeSenderTags() {
-            Assert.That(SpsTags.FormatPlug("_nothips"), Is.EqualTo("SPS/Plug/_nothips"));
+            Assert.That(SpsTags.FormatPlug("nothips"), Is.EqualTo("SPS/Plug/nothips"));
             Assert.That(SpsTags.FormatSocket("_public"), Is.EqualTo("SPS/Socket/_public"));
             Assert.That(SpsTags.FormatSocketPath("custom"), Is.EqualTo("SPS/SocketPath/custom"));
         }
@@ -123,6 +125,7 @@ namespace VF.Tests {
             plug.length = 0.4f;
             plug.radius = 0.03f;
             var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(bake.channelContacts);
             var contacts = root.GetComponentsInChildren<VRCContactSender>(true);
             if (!BuildTargetUtils.IsDesktop()) {
                 Assert.That(contacts, Is.Empty);
@@ -183,6 +186,7 @@ namespace VF.Tests {
             socket.addLight = type;
             socket.useRadiusOffset = true;
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             if (!BuildTargetUtils.IsDesktop()) {
                 Assert.That(NativeSocketSenders(result.bakeRoot), Is.Empty);
                 return;
@@ -225,7 +229,7 @@ namespace VF.Tests {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Ring;
             socket.useLights = false;
-            socket.tags.Add("  CuStOm  ");
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "  CuStOm  " });
             for (var i = 0; i < 3; i++) {
                 var stop = new GameObject("Guide " + i).transform;
                 stop.SetParent(root.transform, false);
@@ -237,6 +241,7 @@ namespace VF.Tests {
                 });
             }
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             if (!BuildTargetUtils.IsDesktop()) return;
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
             var contacts = NativeSocketSenders(result.bakeRoot);
@@ -258,7 +263,7 @@ namespace VF.Tests {
                 Assert.That(constraints.Length, Is.EqualTo(1));
                 Assert.That(constraints.All(c => c.GetSources().Single() == pathRoot), Is.True);
                 Assert.That(contacts[i].collisionTags, Does.Contain("SPS/SocketPath/custom"));
-                Assert.That(contacts[i].collisionTags, Does.Contain("SPS/SocketPath/_nothips"));
+                Assert.That(contacts[i].collisionTags, Does.Contain("SPS/SocketPath/nothips/self"));
             }
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>().Length, Is.EqualTo(4));
             Assert.That(VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot }).Count(), Is.EqualTo(5));
@@ -274,9 +279,16 @@ namespace VF.Tests {
             var other = new GameObject("Other");
             other.transform.SetParent(root.transform, false);
             var socketB = other.AddComponent<VRCFuryHapticSocket>();
-            CheckNode(ConfigureSocket(service, root, socketA), 1, 0, Flags.Hole);
-            CheckNode(ConfigureSocket(service, other, socketB), 2, 0, Flags.Hole);
-            CheckNode(ConfigureSocket(service, root, socketA), 3, 0, Flags.Hole);
+            socketA.addLight = socketB.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            var a = service.Bake(socketA);
+            var b = service.Bake(socketB);
+            var c = service.Bake(socketA);
+            var channels = injector.GetService<SpsChannelsService>();
+            channels.Apply(channels.Get(socketA));
+            channels.Apply(channels.Get(socketB));
+            CheckNode(NativeSocketSenders(a.bakeRoot).Single(), 1, 0, Flags.Hole);
+            CheckNode(NativeSocketSenders(b.bakeRoot).Single(), 2, 0, Flags.Hole);
+            CheckNode(NativeSocketSenders(c.bakeRoot).Single(), 3, 0, Flags.Hole);
         }
 
         [Test]
@@ -289,6 +301,7 @@ namespace VF.Tests {
             stop.localScale = Vector3.one * 3;
             socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             var guide = NativeSocketSenders(result.bakeRoot).Last();
             var expected = new Vector3(129 | (1 << 14), 1f, 1);
             CheckVector(guide.transform.lossyScale, expected);
@@ -301,20 +314,22 @@ namespace VF.Tests {
             Assert.That(guide.gameObject.activeInHierarchy, Is.False);
         }
 
-        [Test]
-        public void RoutingPreservesSharedOptOutNormalizationAndHipVariants() {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RoutingPreservesSharedOptOutAndNormalization(bool custom) {
             if (!BuildTargetUtils.IsDesktop()) return;
             var socket = root.AddComponent<VRCFuryHapticSocket>();
-            socket.useSharedTag = false;
-            var service = injector.GetService<VRCFuryHapticSocketBaker>();
-            Assert.That(NativeSocketSenders(ConfigureSocket(service, root, socket).owner()), Is.Empty);
-            socket.tags.Add("  CuStOm ");
-            socket.tags.Add("custom");
-            var tags = ConfigureSocket(service, root, socket).collisionTags;
-            var tag = "SPS/Socket/custom";
-            Assert.That(tags.Where(t => t.StartsWith("SPS/Socket/")), Is.EquivalentTo(new[] { tag }));
-            tags = ConfigureSocket(service, root, socket, true).collisionTags;
-            Assert.That(tags.Where(t => t.StartsWith("SPS/Socket/")), Is.EquivalentTo(new[] { tag }));
+            socket.channelSettings.useSharedTag = false;
+            if (custom) socket.channelSettings.channels.AddRange(new[] { "  CuStOm ", "custom" }.Select(tag => new VF.Model.SpsChannelSettings.Channel { id = tag }));
+            if (!custom) {
+                Assert.Throws<Exception>(() => injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket));
+                return;
+            }
+            var bake = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(bake.channelContacts);
+            var tags = NativeSocketSenders(bake.bakeRoot).SelectMany(s => s.collisionTags)
+                .Where(t => t.StartsWith("SPS/Socket/"));
+            Assert.That(tags, Is.EquivalentTo(custom ? new[] { "SPS/Socket/custom", "SPS/Socket/custom/self" } : Array.Empty<string>()));
         }
 
         [Test]
@@ -323,22 +338,18 @@ namespace VF.Tests {
             injector.Set("autoChannelGenerator", new AutoChannels(HumanBodyBones.LeftHand));
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
-            socket.tags.AddRange(new[] { "  My Channel  ", "Other", "Ignored Third" });
+            socket.channelSettings.channels.AddRange(new[] { "  My Channel  ", "Other", "Ignored Third" }.Select(tag => new VF.Model.SpsChannelSettings.Channel { id = tag }));
             var configurer = injector.GetService<SpsConfigurer>();
-            var expected = new[] { "my channel", "other", "hand", "handleft", "_nothips", "_public" };
-            Assert.That(configurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender), Is.EquivalentTo(expected));
+            var expected = new[] { "my channel", "other", "hand", "handleft", "_public" }
+                .SelectMany(c => new[] { c, c + "/self" }).Concat(new[] { "nothips", "nothips/self" }).ToArray();
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings), Is.EquivalentTo(expected));
 
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             var tags = NativeSocketSenders(result.bakeRoot).Single().collisionTags;
-            Assert.That(tags.Where(tag => tag.StartsWith("SPS/Socket/")), Is.EquivalentTo(new[] {
-                "SPS/Socket/my channel",
-                "SPS/Socket/other",
-                "SPS/Socket/hand",
-                "SPS/Socket/handleft",
-                "SPS/Socket/_public", "SPS/Socket/_nothips"
-            }));
-            Assert.That(configurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender), Is.EquivalentTo(expected));
-            socket.tags[0] = "Changed Later";
+            Assert.That(tags.Where(tag => tag.StartsWith("SPS/Socket/")), Is.EquivalentTo(expected.Select(SpsTags.FormatSocket)));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings), Is.EquivalentTo(expected));
+            socket.channelSettings.channels[0].id = "Changed Later";
             Assert.That(tags, Does.Contain("SPS/Socket/my channel"));
             Assert.That(tags, Does.Not.Contain("SPS/Socket/changed later"));
         }
@@ -346,14 +357,15 @@ namespace VF.Tests {
         [TestCase(HumanBodyBones.Hips, false)]
         [TestCase(HumanBodyBones.Head, true)]
         [TestCase(HumanBodyBones.LastBone, true)]
-        public void SocketSenderAddsNotHipsOutsideHips(HumanBodyBones bone, bool expected) {
+        public void SocketAutoChannelsAddNotHipsOutsideHips(HumanBodyBones bone, bool expected) {
             injector.Set("autoChannelGenerator", new AutoChannels(bone));
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             var configurer = injector.GetService<SpsConfigurer>();
-            Assert.That(configurer.GetAutoSocketChannels(socket), Does.Not.Contain("_nothips"));
-            Assert.That(configurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender).Contains("_nothips"), Is.EqualTo(expected));
-            socket.useSharedTag = false;
-            Assert.That(configurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender), Does.Not.Contain("_nothips"));
+            Assert.That(configurer.GetAutoSocketChannels(socket.owner()).Contains("nothips"), Is.EqualTo(expected));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings).Contains("nothips/self"), Is.EqualTo(expected));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Others, socket.channelSettings).Contains("nothips"), Is.EqualTo(expected));
+            socket.channelSettings.useSharedTag = false;
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings), Does.Not.Contain("nothips/self"));
         }
 
         [TestCase(true, false)]
@@ -365,20 +377,22 @@ namespace VF.Tests {
             injector.Set("autoChannelGenerator", new AutoChannels(onHips ? HumanBodyBones.Hips : HumanBodyBones.LeftHand));
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
-            socket.useSharedTag = global;
-            socket.tags.Add("custom");
+            socket.channelSettings.useSharedTag = global;
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "custom" });
             var stop = new GameObject("Stop").transform;
             stop.SetParent(root.transform, false);
             stop.localPosition = Vector3.forward;
             socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             var contacts = NativeSocketSenders(result.bakeRoot);
             var entrance = contacts[0].collisionTags;
             var guide = contacts[1].collisionTags;
             Assert.That(entrance.Contains("TPS_Orf_Root"), Is.EqualTo(global));
             Assert.That(entrance.Contains("TPS_Orf_Root_SelfNotOnHips"), Is.False);
             Assert.That(entrance.Contains("SPS/Socket/_public"), Is.EqualTo(global));
-            Assert.That(entrance.Contains("SPS/Socket/_nothips"), Is.EqualTo(global && !onHips));
+            Assert.That(entrance.Contains("SPS/Socket/nothips/self"), Is.EqualTo(global && !onHips));
+            Assert.That(entrance.Contains("SPS/Socket/nothips"), Is.EqualTo(global && !onHips));
             Assert.That(entrance, Does.Not.Contain("SPSN1/Socket"));
             Assert.That(entrance, Does.Not.Contain("SPSN1/Socket_SelfNotOnHips"));
             Assert.That(entrance.Any(t => t.StartsWith("SPS/Socket/00000539")), Is.False);
@@ -386,7 +400,8 @@ namespace VF.Tests {
             Assert.That(guide.Any(t => t.StartsWith("SPS/Socket/_public")), Is.False);
             Assert.That(contacts.SelectMany(c => c.collisionTags).Any(t => t.Contains("SCALE_DATA")), Is.False);
             Assert.That(guide.Contains("SPS/SocketPath/_public"), Is.EqualTo(global));
-            Assert.That(guide.Contains("SPS/SocketPath/_nothips"), Is.EqualTo(global && !onHips));
+            Assert.That(guide.Contains("SPS/SocketPath/nothips/self"), Is.EqualTo(global && !onHips));
+            Assert.That(guide.Contains("SPS/SocketPath/nothips"), Is.EqualTo(global && !onHips));
             Assert.That(entrance, Does.Contain("SPS/Socket/custom"));
             Assert.That(guide, Does.Contain("SPS/SocketPath/custom"));
         }
@@ -403,23 +418,24 @@ namespace VF.Tests {
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.03f;
-            plug.useHipAvoidance = avoidHips;
+            plug.channelSettings.useHipAvoidance = avoidHips;
             injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(injector.GetService<SpsChannelsService>().Get(plug));
             var sender = root.GetComponentsInChildren<VRCContactSender>()
                 .Single(c => c.collisionTags.Contains("TPS_Pen_Penetrating"));
             Assert.That(sender.collisionTags.Contains("TPS_Pen_Penetrating_SelfNotOnHips"),
                 Is.False);
             Assert.That(sender.collisionTags, Does.Contain("SPS/Plug/_public"));
-            Assert.That(sender.collisionTags.Contains("SPS/Plug/_nothips"),
-                Is.EqualTo(!onHips || !avoidHips));
+            Assert.That(sender.collisionTags.Contains("SPS/Plug/nothips/self"),
+                Is.EqualTo(onHips && avoidHips));
             Assert.That(sender.collisionTags, Does.Not.Contain("SPSN1/LegacyPlug/Main"));
             Assert.That(sender.collisionTags, Does.Not.Contain("SPSN1/LegacyPlug/Main_SelfNotOnHips"));
             Assert.That(sender.collisionTags.Any(t => t.StartsWith("SPSN1/Plug/")), Is.False);
             Assert.That(sender.collisionTags.Any(t => t.Contains("SCALE_DATA")), Is.False);
             Assert.That(sender.collisionTags.Where(t => t.StartsWith("SPS/Plug/")), Is.EquivalentTo(
                 !onHips || !avoidHips
-                    ? new[] { "SPS/Plug/_public", "SPS/Plug/_nothips" }
-                    : new[] { "SPS/Plug/_public" }));
+                    ? new[] { "SPS/Plug/_public", "SPS/Plug/_public/self" }
+                    : new[] { "SPS/Plug/_public", "SPS/Plug/nothips/self" }));
             CheckVector(sender.transform.lossyScale, new Vector3(0.03f, 0.03f, 0.4f));
         }
 
@@ -429,10 +445,11 @@ namespace VF.Tests {
             injector.Set("autoChannelGenerator", new AutoChannels(HumanBodyBones.LeftHand));
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.RingOneWay;
-            socket.tags.AddRange(new[] { "custom1", "custom2" });
+            socket.channelSettings.channels.AddRange(new[] { "custom1", "custom2" }.Select(tag => new VF.Model.SpsChannelSettings.Channel { id = tag }));
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             var sender = NativeSocketSenders(result.bakeRoot).Single();
-            Assert.That(sender.collisionTags.Count, Is.EqualTo(8));
+            Assert.That(sender.collisionTags.Count, Is.EqualTo(14));
             foreach (var legacyTag in new[] { SpsTags.LegacySocket, SpsTags.LegacySocket2 }) {
                 Assert.That(sender.collisionTags, Does.Contain(legacyTag));
                 Assert.That(sender.collisionTags, Does.Not.Contain(legacyTag + "_SelfNotOnHips"));
@@ -441,40 +458,44 @@ namespace VF.Tests {
                 Assert.That(sender.collisionTags, Does.Not.Contain(removedTag));
                 Assert.That(sender.collisionTags, Does.Not.Contain(removedTag + "_SelfNotOnHips"));
             }
-            var channels = new[] { "custom1", "custom2", "hand", "handleft" }
-                .Append("_public").Append("_nothips");
+            var channels = new[] { "custom1", "custom2", "hand", "handleft", "_public" }
+                .SelectMany(c => new[] { c, c + "/self" }).Concat(new[] { "nothips", "nothips/self" });
             Assert.That(sender.collisionTags.Where(t => t.StartsWith("SPS/Socket/")),
                 Is.EquivalentTo(channels.Select(channel => $"SPS/Socket/{channel}")));
         }
 
         [TestCase(false)]
         [TestCase(true)]
-        public void PlugAndSocketPublishTheSameConfiguredChannels(bool shared) {
+        public void PlugAndSocketPublishConfiguredChannels(bool shared) {
             if (!BuildTargetUtils.IsDesktop()) return;
             var plug = root.AddComponent<VRCFuryHapticPlug>();
             plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.03f;
-            plug.useSharedTag = shared;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "  My Channel  ", allowSelf = true, allowOthers = false });
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "OTHER", allowSelf = false, allowOthers = true });
+            plug.channelSettings.useSharedTag = shared;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "  My Channel  ", allowSelf = true, allowOthers = false });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "OTHER", allowSelf = false, allowOthers = true });
             injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(injector.GetService<SpsChannelsService>().Get(plug));
             var main = root.GetComponentsInChildren<VRCContactSender>()
                 .Single(c => c.name == "Sender - Sphere");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
-            socket.useSharedTag = shared;
-            socket.tags.AddRange(new[] { "my channel", " other " });
+            socket.channelSettings.useSharedTag = shared;
+            socket.channelSettings.channels.AddRange(plug.channelSettings.channels.Select(rule => new VF.Model.SpsChannelSettings.Channel {
+                id = rule.id, allowSelf = rule.allowSelf, allowOthers = rule.allowOthers
+            }));
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             var entrance = NativeSocketSenders(result.bakeRoot).Single();
             Assert.That(result.legacyLights != null, Is.EqualTo(shared));
-            var expected = new[] { "my channel", "other" }
-                .Concat(shared ? new[] { "_public", "_nothips" } : Array.Empty<string>()).ToArray();
+            var expected = new[] { "my channel/self", "other" }
+                .Concat(shared ? new[] { "_public", "_public/self" } : Array.Empty<string>()).ToArray();
             Assert.That(main.collisionTags.Where(t => t.StartsWith("SPS/Plug/")),
                 Is.EquivalentTo(expected.Select(SpsTags.FormatPlug)));
             Assert.That(entrance.collisionTags.Where(t => t.StartsWith("SPS/Socket/")),
-                Is.EquivalentTo(expected.Select(SpsTags.FormatSocket)));
+                Is.EquivalentTo(expected.Concat(shared ? new[] { "nothips", "nothips/self" } : Array.Empty<string>()).Select(SpsTags.FormatSocket)));
             Assert.That(main.collisionTags.Contains(SpsTags.LegacyPlugSphere + "_SelfNotOnHips"), Is.False);
             var legacyTags = root.GetComponentsInChildren<VRCContactSender>()
                 .SelectMany(c => c.collisionTags).Where(t => t.StartsWith("TPS_") || t.StartsWith("SPSLL_")).ToArray();
@@ -492,19 +513,21 @@ namespace VF.Tests {
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.03f;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "  " + channel.ToUpperInvariant() + "  " });
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = channel });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "  " + channel.ToUpperInvariant() + "  " });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = channel });
             injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(injector.GetService<SpsChannelsService>().Get(plug));
             var main = root.GetComponentsInChildren<VRCContactSender>().Single(c => c.name == "Sender - Sphere");
             Assert.That(main.collisionTags, Is.Unique);
             Assert.That(main.collisionTags.Count(t => t == SpsTags.FormatPlug(channel)), Is.EqualTo(1));
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
-            socket.tags.AddRange(new[] { "  " + channel.ToUpperInvariant() + "  ", channel });
+            socket.channelSettings.channels.AddRange(new[] { "  " + channel.ToUpperInvariant() + "  ", channel }.Select(tag => new VF.Model.SpsChannelSettings.Channel { id = tag }));
             var stop = new GameObject("Stop").transform;
             stop.SetParent(root.transform, false);
             socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             var senders = NativeSocketSenders(result.bakeRoot);
             Assert.That(senders, Has.Length.EqualTo(2));
             Assert.That(senders[0].collisionTags.Count(t => t == SpsTags.FormatSocket(channel)), Is.EqualTo(1));
@@ -512,44 +535,47 @@ namespace VF.Tests {
             foreach (var sender in senders) Assert.That(sender.collisionTags, Is.Unique);
         }
 
-        [TestCase("_public", "public")]
-        [TestCase("  __NoThips  ", "nothips")]
-        [TestCase(" __ \t _NoThips  ", "nothips")]
-        [TestCase("___custom", "custom")]
-        [TestCase("___", "")]
-        public void UserChannelsCannotPublishReservedChannels(string input, string expected) {
+        [TestCase("_public", "_public")]
+        [TestCase("  __NoThips  ", "__nothips")]
+        [TestCase("___custom", "___custom")]
+        [TestCase("___", "___")]
+        [TestCase("Custom_Channel_", "custom_channel_")]
+        public void UserChannelsPreserveUnderscores(string input, string expected) {
             if (!BuildTargetUtils.IsDesktop()) return;
             var plug = root.AddComponent<VRCFuryHapticPlug>();
             plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.03f;
-            plug.useSharedTag = false;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = input });
+            plug.channelSettings.useSharedTag = false;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = input });
             var configurer = injector.GetService<SpsConfigurer>();
-            var expectedChannels = expected == "" ? Array.Empty<string>() : new[] { expected };
-            foreach (SpsConfigurer.ChannelMode mode in Enum.GetValues(typeof(SpsConfigurer.ChannelMode))) {
-                Assert.That(configurer.GetPlugChannels(plug, mode), Is.EquivalentTo(expectedChannels));
+            foreach (Party party in Enum.GetValues(typeof(Party))) {
+                Assert.That(configurer.GetChannels(plug.owner(), true, party, plug.channelSettings), Does.Contain(expected + (party == Party.Self ? "/self" : "")));
             }
-            var plugResult = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
-            var plugTags = plugResult.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
-                .SelectMany(c => c.collisionTags).ToArray();
-            Assert.That(plugTags.Where(tag => tag.StartsWith("TPS_")), Is.EquivalentTo(new[] { SpsTags.PlugClose }));
-            Assert.That(plugTags.Where(tag => tag.StartsWith("SPS/Plug/")),
-                Is.EquivalentTo(expectedChannels.Select(SpsTags.FormatPlug)));
+            var plugBake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(plugBake.channelContacts);
+            Assert.That(plugBake.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
+                .SelectMany(s => s.collisionTags), Does.Contain(SpsTags.FormatPlug(expected)));
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
-            socket.useSharedTag = false;
-            socket.tags.Add(input);
-            foreach (SpsConfigurer.ChannelMode mode in Enum.GetValues(typeof(SpsConfigurer.ChannelMode))) {
-                Assert.That(configurer.GetSocketChannels(socket, mode), Is.EquivalentTo(expectedChannels));
+            socket.channelSettings.useSharedTag = false;
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = input });
+            foreach (Party party in Enum.GetValues(typeof(Party))) {
+                Assert.That(configurer.GetChannels(socket.owner(), false, party, socket.channelSettings), Does.Contain(expected + (party == Party.Self ? "/self" : "")));
             }
-            var socketResult = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
-            var socketTags = socketResult.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
-                .SelectMany(c => c.collisionTags).ToArray();
-            Assert.That(socketTags.Where(tag => tag.StartsWith("TPS_") || tag.StartsWith("SPSLL_")), Is.Empty);
-            Assert.That(socketTags.Where(tag => tag.StartsWith("SPS/Socket/")),
-                Is.EquivalentTo(expectedChannels.Select(SpsTags.FormatSocket)));
+            var socketBake = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(socketBake.channelContacts);
+            Assert.That(socketBake.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
+                .SelectMany(s => s.collisionTags), Does.Contain(SpsTags.FormatSocket(expected)));
+            var action = new ChangeSpsChannelsAction {
+                channelSettings = new VF.Model.SpsChannelSettings {
+                    useSharedTag = false, channels = { new VF.Model.SpsChannelSettings.Channel { id = input } }
+                }
+            };
+            Assert.That(configurer.GetChannels(plug.owner(), true, Party.Merged, action.channelSettings), Does.Contain(expected));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, action.channelSettings), Does.Contain(expected));
+            Assert.That(VRCFuryHapticPlugEditor.SanitizeSpsChannel(input), Is.EqualTo(expected));
         }
 
         [TestCase(false, false)]
@@ -563,69 +589,114 @@ namespace VF.Tests {
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.03f;
-            plug.useSharedTag = false;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule {
-                tag = "  Custom  ", allowSelf = allowSelf, allowOthers = allowOthers
+            plug.channelSettings.useSharedTag = false;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel {
+                id = "  Custom  ", allowSelf = allowSelf, allowOthers = allowOthers
             });
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = " " });
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "Outside Authoring Limit" });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = " " });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "Outside Authoring Limit" });
             var configurer = injector.GetService<SpsConfigurer>();
-            Assert.That(configurer.GetPlugChannels(plug, SpsConfigurer.ChannelMode.Sender), Is.EquivalentTo(
-                allowSelf || allowOthers ? new[] { "custom" } : Array.Empty<string>()));
+            var expected = (allowSelf ? new[] { "custom/self" } : Array.Empty<string>())
+                .Concat(allowOthers ? new[] { "custom" } : Array.Empty<string>()).ToArray();
+            Assert.That(configurer.GetChannels(plug.owner(), true, Party.Merged, plug.channelSettings), Is.EquivalentTo(expected));
+            if (!allowSelf && !allowOthers) {
+                Assert.Throws<Exception>(() => injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug));
+                return;
+            }
             injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(injector.GetService<SpsChannelsService>().Get(plug));
             var main = root.GetComponentsInChildren<VRCContactSender>()
-                .Single(c => c.name == "Sender - Sphere");
-            Assert.That(main.collisionTags.Where(t => t.StartsWith("SPS/Plug/")), Is.EquivalentTo(
-                allowSelf || allowOthers ? new[] { "SPS/Plug/custom" } : Array.Empty<string>()));
-            Assert.That(root.GetComponentsInChildren<VRCContactSender>(), Has.Length.EqualTo(2));
+                .SingleOrDefault(c => c.name == "Sender - Sphere");
+            Assert.That(main == null ? Array.Empty<string>() : main.collisionTags.Where(t => t.StartsWith("SPS/Plug/")), Is.EquivalentTo(
+                expected.Select(SpsTags.FormatPlug)));
+            Assert.That(root.GetComponentsInChildren<VRCContactSender>(), Has.Length.EqualTo(allowSelf || allowOthers ? 2 : 1));
             var close = root.GetComponentsInChildren<VRCContactSender>()
                 .Single(c => c.collisionTags.Contains(SpsTags.PlugClose));
             Assert.That(close.collisionTags, Is.EquivalentTo(new[] { SpsTags.PlugClose }));
             Assert.That(close.radius * MaxScale(close.transform), Is.EqualTo(0.03f).Within(0.000001));
             Assert.That(close.height * MaxScale(close.transform), Is.EqualTo(0.4f).Within(0.000001));
-            Assert.That(main.collisionTags.Any(t => t.StartsWith("TPS_")), Is.False);
-            Assert.That(main.collisionTags, Does.Not.Contain("SPS/Flag/ScaleV1"));
+            if (main != null) {
+                Assert.That(main.collisionTags.Any(t => t.StartsWith("TPS_")), Is.False);
+                Assert.That(main.collisionTags, Does.Not.Contain("SPS/Flag/ScaleV1"));
+            }
+        }
+
+        [Test]
+        public void PublicHipAvoidanceMatchesInBothDirections(
+            [Values] bool plugOnHips, [Values] bool socketOnHips, [Values] bool avoidHips) {
+            var bones = new AutoChannels(HumanBodyBones.Hips);
+            injector.Set("autoChannelGenerator", bones);
+            var configurer = injector.GetService<SpsConfigurer>();
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            plug.channelSettings.useHipAvoidance = avoidHips;
+            bones.bone = plugOnHips ? HumanBodyBones.Hips : HumanBodyBones.Head;
+            var plugSelf = configurer.GetChannels(plug.owner(), true, Party.Self, plug.channelSettings);
+            var plugOthers = configurer.GetChannels(plug.owner(), true, Party.Others, plug.channelSettings);
+            var plugSender = configurer.GetChannels(plug.owner(), true, Party.Merged, plug.channelSettings);
+            Assert.That(plugSender, Is.EquivalentTo(plugSelf.Union(plugOthers)));
+            bones.bone = socketOnHips ? HumanBodyBones.Hips : HumanBodyBones.Head;
+            var socketSelf = configurer.GetChannels(socket.owner(), false, Party.Self, socket.channelSettings);
+            var socketOthers = configurer.GetChannels(socket.owner(), false, Party.Others, socket.channelSettings);
+            var socketSender = configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings);
+            Assert.That(socketSender, Is.EquivalentTo(socketSelf.Union(socketOthers)));
+            var matchesSelf = !(plugOnHips && socketOnHips && avoidHips);
+            Assert.That(plugSender.Overlaps(socketSelf), Is.EqualTo(matchesSelf), "Plug sender to self socket");
+            Assert.That(socketSender.Overlaps(plugSelf), Is.EqualTo(matchesSelf), "Socket sender to self plug");
+            Assert.That(plugSender.Overlaps(socketOthers), Is.True, "Other avatars must be unaffected");
+            Assert.That(socketSender.Overlaps(plugOthers), Is.True, "Other avatars must be unaffected");
         }
 
         [TestCase(HumanBodyBones.Hips, true)]
         [TestCase(HumanBodyBones.Hips, false)]
         [TestCase(HumanBodyBones.Head, true)]
         [TestCase(HumanBodyBones.Head, false)]
-        public void ChannelModesRespectPartyRulesAndHipAvoidance(HumanBodyBones bone, bool avoidHips) {
+        public void ChannelsRespectPartyRulesAndHipAvoidance(HumanBodyBones bone, bool avoidHips) {
             injector.Set("autoChannelGenerator", new AutoChannels(bone));
             var configurer = injector.GetService<SpsConfigurer>();
             var plug = root.AddComponent<VRCFuryHapticPlug>();
-            plug.useHipAvoidance = avoidHips;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "self", allowSelf = true, allowOthers = false });
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "others", allowSelf = false, allowOthers = true });
+            plug.channelSettings.useHipAvoidance = avoidHips;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "self", allowSelf = true, allowOthers = false });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "others", allowSelf = false, allowOthers = true });
             var socket = root.AddComponent<VRCFuryHapticSocket>();
-            socket.tags.Add("custom");
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "custom" });
 
-            foreach (SpsConfigurer.ChannelMode mode in Enum.GetValues(typeof(SpsConfigurer.ChannelMode))) {
+            foreach (Party party in Enum.GetValues(typeof(Party))) {
                 var plugExpected = new List<string>();
-                if (mode != SpsConfigurer.ChannelMode.ReceiverOthers) plugExpected.Add("self");
-                if (mode != SpsConfigurer.ChannelMode.ReceiverSelf) plugExpected.Add("others");
-                var socketExpected = new List<string> { "custom" };
+                if (party != Party.Others) plugExpected.Add("self/self");
+                if (party != Party.Self) plugExpected.Add("others");
+                var socketExpected = party == Party.Merged ? new List<string> { "custom", "custom/self" }
+                    : new List<string> { party == Party.Self ? "custom/self" : "custom" };
                 AssertChannels(false);
                 AssertChannels(true);
 
                 void AssertChannels(bool shared) {
-                    plug.useSharedTag = socket.useSharedTag = shared;
+                    plug.channelSettings.useSharedTag = socket.channelSettings.useSharedTag = shared;
                     var expectedPlug = plugExpected.ToList();
                     var expectedSocket = socketExpected.ToList();
                     if (shared) {
-                        expectedPlug.Add(mode == SpsConfigurer.ChannelMode.ReceiverSelf && bone == HumanBodyBones.Hips && avoidHips
-                            ? "_nothips" : "_public");
-                        expectedSocket.Add(mode == SpsConfigurer.ChannelMode.ReceiverSelf && bone == HumanBodyBones.Hips
-                            ? "_nothips" : "_public");
-                        expectedSocket.Add(bone == HumanBodyBones.Hips ? "hips" : "head");
-                        if (mode == SpsConfigurer.ChannelMode.Sender) {
-                            if (bone != HumanBodyBones.Hips || !avoidHips) expectedPlug.Add("_nothips");
-                            if (bone != HumanBodyBones.Hips) expectedSocket.Add("_nothips");
+                        var auto = bone == HumanBodyBones.Hips ? "hips" : "head";
+                        if (party != Party.Self) {
+                            expectedPlug.Add("_public");
+                            expectedSocket.Add("_public");
+                            expectedSocket.Add(auto);
+                            if (bone != HumanBodyBones.Hips) expectedSocket.Add("nothips");
+                        }
+                        if (party != Party.Others) {
+                            expectedPlug.Add(bone == HumanBodyBones.Hips && avoidHips ? "nothips/self" : "_public/self");
+                            expectedSocket.Add("_public/self");
+                            expectedSocket.Add(auto + "/self");
+                            if (bone != HumanBodyBones.Hips) expectedSocket.Add("nothips/self");
                         }
                     }
-                    Assert.That(configurer.GetPlugChannels(plug, mode), Is.EquivalentTo(expectedPlug), "Plug " + mode);
-                    Assert.That(configurer.GetSocketChannels(socket, mode), Is.EquivalentTo(expectedSocket), "Socket " + mode);
+                    Assert.That(configurer.GetChannels(plug.owner(), true, party, plug.channelSettings), Is.EquivalentTo(expectedPlug), "Plug " + party);
+                    Assert.That(configurer.GetChannels(socket.owner(), false, party, socket.channelSettings), Is.EquivalentTo(expectedSocket), "Socket " + party);
+                    Assert.That(configurer.GetChannels(plug.owner(), true, party, new VF.Model.SpsChannelSettings {
+                        useSharedTag = shared, useHipAvoidance = avoidHips, channels = plug.channelSettings.channels
+                    }), Is.EquivalentTo(expectedPlug), "Plug action " + party);
+                    Assert.That(configurer.GetChannels(socket.owner(), false, party, new VF.Model.SpsChannelSettings {
+                        useSharedTag = shared, channels = socket.channelSettings.channels
+                    }), Is.EquivalentTo(expectedSocket), "Socket action " + party);
                 }
             }
         }
@@ -638,43 +709,43 @@ namespace VF.Tests {
             injector.Set("autoChannelGenerator", new AutoChannels(HumanBodyBones.Hips));
             var configurer = injector.GetService<SpsConfigurer>();
             var plug = root.AddComponent<VRCFuryHapticPlug>();
-            plug.useSharedTag = shared;
-            plug.useHipAvoidance = avoidHips;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "  PUBLIC  " });
+            plug.channelSettings.useSharedTag = shared;
+            plug.channelSettings.useHipAvoidance = avoidHips;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "  PUBLIC  " });
             var socket = root.AddComponent<VRCFuryHapticSocket>();
-            socket.useSharedTag = shared;
-            socket.tags.Add("  PUBLIC  ");
+            socket.channelSettings.useSharedTag = shared;
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "  PUBLIC  " });
             var plugSelf = new[] { "public" }.Concat(shared
-                ? new[] { avoidHips ? "_nothips" : "_public" } : Array.Empty<string>());
-            var socketSelf = new[] { "public" }.Concat(shared ? new[] { "_nothips", "hips" } : Array.Empty<string>());
+                ? new[] { avoidHips ? "nothips" : "_public" } : Array.Empty<string>());
+            var socketSelf = new[] { "public" }.Concat(shared ? new[] { "_public", "hips" } : Array.Empty<string>());
             var others = new[] { "public" }.Concat(shared ? new[] { "_public" } : Array.Empty<string>());
-            Assert.That(configurer.GetPlugChannels(plug, SpsConfigurer.ChannelMode.ReceiverSelf), Is.EquivalentTo(plugSelf));
-            Assert.That(configurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.ReceiverSelf), Is.EquivalentTo(socketSelf));
-            Assert.That(configurer.GetPlugChannels(plug, SpsConfigurer.ChannelMode.ReceiverOthers), Is.EquivalentTo(others));
-            Assert.That(configurer.GetSocketChannels(socket, SpsConfigurer.ChannelMode.ReceiverOthers),
+            Assert.That(configurer.GetChannels(plug.owner(), true, Party.Self, plug.channelSettings), Is.EquivalentTo(plugSelf.Select(c => c + "/self")));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Self, socket.channelSettings), Is.EquivalentTo(socketSelf.Select(c => c + "/self")));
+            Assert.That(configurer.GetChannels(plug.owner(), true, Party.Others, plug.channelSettings), Is.EquivalentTo(others));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Others, socket.channelSettings),
                 Is.EquivalentTo(others.Concat(shared ? new[] { "hips" } : Array.Empty<string>())));
         }
 
         [Test]
-        public void DisabledSocketDoesNotAdvertiseNativeData() {
+        public void DisabledSocketCreatesNoSendersOrLights([Values] bool legacy, [Values] bool tpsDepth) {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.None;
-            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
-            Assert.That(NativeSocketSenders(result.bakeRoot), Is.Empty);
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket,
+                legacyPlugCompatibility: legacy, tpsDepthAnimationCompatibility: tpsDepth);
+            result.plugReceivers.Find(false, false);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>(), Is.Empty);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Light>(), Is.Empty);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>(), Is.Not.Empty);
+            Assert.That(result.pathRoots, Is.Empty);
         }
 
         [Test]
-        public void SocketWithNoNativeRoutesDoesNotPublishLegacyTags() {
+        public void SocketWithNoChannelsRejectsBaking() {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
-            socket.useSharedTag = false;
-            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
-            Assert.That(NativeSocketSenders(result.bakeRoot), Is.Empty);
-            if (!BuildTargetUtils.IsDesktop()) return;
-            var legacy = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
-                .Single();
-            Assert.That(legacy.collisionTags, Is.Empty);
-            Assert.That(legacy.radius, Is.Zero);
+            socket.channelSettings.useSharedTag = false;
+            Assert.Throws<Exception>(() => injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket));
         }
 
         [TestCase(false, false)]
@@ -756,6 +827,7 @@ namespace VF.Tests {
                 }
 #endif
                 var result = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug, deferMaterialConfig: !withMaterial);
+                injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
                 Assert.That(root.GetComponentsInChildren<Renderer>(true), Is.EquivalentTo(new[] { renderer }));
                 Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Animator>(), Is.Empty);
                 if (!withMaterial) Assert.That(renderer.sharedMaterials, Is.Empty);
@@ -799,6 +871,7 @@ namespace VF.Tests {
                 socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
             }
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             if (!BuildTargetUtils.IsDesktop()) return;
             Assert.That(socket.guidedPathStops.All(stop => stop.transform != null), Is.True);
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
@@ -815,6 +888,7 @@ namespace VF.Tests {
             socket.legacySocketType = VRCFuryHapticSocket.LegacySocketType.Hole;
             socket.legacyOffsetLocal = new Vector3(0.1f, 0.2f, 0.3f);
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             if (!BuildTargetUtils.IsDesktop()) return;
             var native = NativeSocketSenders(result.bakeRoot).Single();
             CheckNode(native, 1, 0, Flags.Ring);
@@ -832,6 +906,7 @@ namespace VF.Tests {
             socket.overrideLegacyOffset = overrideOffset;
             socket.legacyOffsetLocal = new Vector3(0.1f, 0.2f, 0.3f);
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket, tpsDepthAnimationCompatibility: true);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             if (!BuildTargetUtils.IsDesktop()) return;
             var offset = overrideOffset ? socket.legacyOffsetLocal : Vector3.up * VRCFuryHapticSocketEditor.LegacyRadiusOffset;
             var main = result.legacyLights.Children().Single(obj => obj.name == "Light - Legacy Root");
@@ -861,6 +936,7 @@ namespace VF.Tests {
             stop.localScale = new Vector3(1, 2, 3);
             socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             if (!BuildTargetUtils.IsDesktop()) return;
             var native = NativeSocketSenders(result.bakeRoot).Last();
             CheckNode(native, 1, 1, Flags.Hole);
@@ -903,6 +979,7 @@ namespace VF.Tests {
                 ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.Ring));
             Assert.That(main == null && front == null, Is.True, "Authored lights must be removed during upgrade");
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
             if (!BuildTargetUtils.IsDesktop()) return;
             Assert.That(NativeSocketSenders(result.bakeRoot), Has.Length.EqualTo(1));
@@ -1006,18 +1083,6 @@ namespace VF.Tests {
             Assert.That(contact.height * MaxScale(sender), Is.EqualTo(useWorldUnits ? 0.3f : 0.24f).Within(0.000001));
         }
 
-        private VRCContactSender ConfigureSocket(VRCFuryHapticSocketBaker service, VFGameObject parent,
-            VRCFuryHapticSocket socket, bool isOnHips = false) {
-            var sender = GameObjects.Create("Root", parent);
-            var contact = sender.AddComponent<VRCContactSender>();
-            contact.collisionTags.Add(SpsTags.LegacySocket2);
-            var channels = injector.GetService<SpsConfigurer>().GetSocketChannels(socket, SpsConfigurer.ChannelMode.Sender);
-            if (isOnHips) channels.Remove("_nothips");
-            service.ConfigureSpsSenders(socket, VRCFuryHapticSocket.AddLight.Hole,
-                channels, sender);
-            return contact;
-        }
-
         private static VRCContactSender[] NativeSocketSenders(VFGameObject parent) =>
             parent.GetComponentsInSelfAndChildren<VRCContactSender>()
                 .Where(c => c.collisionTags.Any(t => t == SpsTags.FormatSocket("_public")
@@ -1025,7 +1090,7 @@ namespace VF.Tests {
                 .ToArray();
 
         private class AutoChannels : SpsAutoChannelGenerator {
-            private readonly HumanBodyBones bone;
+            public HumanBodyBones bone;
             public AutoChannels(HumanBodyBones bone) => this.bone = bone;
             public HumanBodyBones? GetClosestBone(VFGameObject obj) => bone;
             public VFGameObject GetBone(VFGameObject obj, HumanBodyBones bone) => null;

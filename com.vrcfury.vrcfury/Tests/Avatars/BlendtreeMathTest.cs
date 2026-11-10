@@ -12,6 +12,8 @@ using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Dynamics.Contact.Components;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
@@ -72,6 +74,73 @@ namespace VF.Tests {
             for (var i = 0; i < frames; i++) graph.Evaluate(1f / 60);
         }
 
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void ConstantOneComparisonsFoldAtRootsAndInSubtrees(bool external, bool atRoot) {
+            var input = fx.CreateUniqueFloat("Constant comparison input", 1);
+            if (external) input.MakeExpressionFloat(synced: false);
+            var output = fx.CreateUniqueFloat("Comparison output");
+            var motion = BlendtreeMath.GreaterThan(input, 0).create(output.MakeSetter(1), output.MakeSetter(0));
+            if (atRoot) fx.GetLayers().Single().allStates.Single().WithAnimation(motion);
+            else tree.Add(motion);
+            injector.GetService<TreeFlatteningService>().Optimize();
+            Assert.That(new AnimatorIterator.Trees().From(fx).Any(t => t.BlendParameter == input.name), Is.EqualTo(external));
+            Start();
+            Evaluate();
+            Assert.That(playable.GetFloat(output), Is.EqualTo(1));
+            if (external) {
+                playable.SetFloat(input, 0);
+                Evaluate();
+                Assert.That(playable.GetFloat(output), Is.Zero);
+            }
+        }
+
+        [TestCase("Contact")]
+        [TestCase("Bone_Angle")]
+        [TestCase("Bone_Stretch")]
+        [TestCase("Bone_Squish")]
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+        [TestCase("Contact_PointSeparation")]
+        [TestCase("Contact_SenderVelocityMagnitude")]
+        [TestCase("Contact_CollisionTag_Test")]
+#endif
+        public void DynamicsDefaultOneComparisonsStillUpdate(string parameter) {
+            // Include inactive objects: they may be enabled by an animation at runtime.
+            var dynamics = new GameObject("Dynamics");
+            dynamics.transform.SetParent(root.transform, false);
+            dynamics.SetActive(false);
+            var contact = dynamics.AddComponent<VRCContactReceiver>();
+            contact.parameter = "Contact";
+            contact.collisionTags = new List<string> { "Test" };
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            contact.advancedParameters = VRC.Dynamics.ContactReceiver.AdvancedParameter.All;
+#endif
+            dynamics.AddComponent<VRCPhysBone>().parameter = "Bone";
+            var input = fx.GetOrCreateFloat(parameter, 1);
+            var output = fx.CreateUniqueFloat("Comparison output");
+            tree.Add(BlendtreeMath.GreaterThan(input, 0).create(output.MakeSetter(1), output.MakeSetter(0)));
+            injector.GetService<TreeFlatteningService>().Optimize();
+            Start();
+            Evaluate();
+            Assert.That(playable.GetFloat(output), Is.EqualTo(1));
+            playable.SetFloat(input, 0);
+            Evaluate();
+            Assert.That(playable.GetFloat(output), Is.Zero);
+        }
+
+        [Test]
+        public void ConstantOneInsideMappingRangeStillInterpolates() {
+            var input = fx.CreateUniqueFloat("Constant mapping input", 1);
+            var output = math.Map("Mapped constant", input, -1, 3, 0, 4);
+            injector.GetService<TreeFlatteningService>().Optimize();
+            Assert.That(new AnimatorIterator.Trees().From(fx).Any(t => t.BlendParameter == input.name), Is.True);
+            Start();
+            Evaluate();
+            Assert.That(playable.GetFloat(output), Is.EqualTo(2));
+        }
+
         [TestCase(0f, 3f, false, true)]
         [TestCase(-2f, 3f, true, true)]
         [TestCase(-2f, 3f, false, false)]
@@ -98,6 +167,67 @@ namespace VF.Tests {
                 Assert.That(playable.GetFloat(actual), Is.EqualTo(playable.GetFloat(expected)).Within(0.0001f),
                     "Input " + value);
             }
+        }
+
+        [TestCase(0f, 3f, false, true, true, true)]
+        [TestCase(0f, 3f, false, true, true, false)]
+        [TestCase(-2f, 3f, true, true, true, true)]
+        [TestCase(-2f, 3f, true, false, false, true)]
+        [TestCase(1f, 1f, true, true, true, true)]
+        [TestCase(0f, 3f, true, true, false, false)]
+        public void BoundedMappingCombinesValueAndValidationWithoutDelay(float min, float max,
+            bool includeMin, bool includeMax, bool rejectBelow, bool rejectAbove) {
+            var input = fx.CreateUniqueFloat("Input");
+            var actual = fx.CreateUniqueFloat("Mapped");
+            var actualValid = fx.CreateUniqueFloat("Mapped valid");
+            var expected = fx.CreateUniqueFloat("Separate copy");
+            var expectedValid = fx.CreateUniqueFloat("Separate validation");
+            VFClip ValueClip(VFAParam output, VFAParam valid, float value, bool accepted) {
+                var clip = output.MakeSetter(value);
+                clip.SetAap(valid, accepted ? 1 : 0);
+                return clip;
+            }
+            var fallback = ValueClip(actual, actualValid, -7, false);
+            var motion = BlendtreeMath.MapWithFallback(input, min, max,
+                value => ValueClip(actual, actualValid, 2 * value + 1, true),
+                rejectBelow ? fallback : null, rejectAbove ? fallback : null, includeMin, includeMax);
+            var mapping = new AnimatorIterator.Trees().From(motion).Single();
+            Assert.That(mapping.children.All(child => child.motion is VFClip), Is.True);
+            tree.Add(motion);
+
+            var copy = VFBlendTreeDirect.Create("Separate copy and validation");
+            copy.Add(expected.MakeCopier(input, minSupported: -10, maxSupported: 10, multiplier: 2));
+            copy.Add(expected.MakeSetter(1));
+            copy.Add(expectedValid.MakeSetter(1));
+            var first = includeMin ? min : VF.Inspector.VRCFuryEditorUtils.NextFloatUp(min);
+            var last = includeMax ? max : VF.Inspector.VRCFuryEditorUtils.NextFloatDown(max);
+            var below = ValueClip(expected, expectedValid, rejectBelow ? -7 : 2 * first + 1, !rejectBelow);
+            var above = ValueClip(expected, expectedValid, rejectAbove ? -7 : 2 * last + 1, !rejectAbove);
+            tree.Add(BlendtreeMath.GreaterThan(input, min, includeMin).create(
+                BlendtreeMath.LessThan(input, max, includeMax).create(copy, above), below));
+            Start();
+            foreach (var value in new[] { min - 1, VF.Inspector.VRCFuryEditorUtils.NextFloatDown(min), min,
+                         VF.Inspector.VRCFuryEditorUtils.NextFloatUp(min), 0.00000001f, 0.0001f,
+                         (min + max) / 2, VF.Inspector.VRCFuryEditorUtils.NextFloatDown(max), max,
+                         VF.Inspector.VRCFuryEditorUtils.NextFloatUp(max), max + 1 }) {
+                playable.SetFloat(input, value);
+                Evaluate();
+                Assert.That(playable.GetFloat(actual), Is.EqualTo(playable.GetFloat(expected)).Within(0.00001f),
+                    "Mapped input " + value);
+                Assert.That(playable.GetFloat(actualValid), Is.EqualTo(playable.GetFloat(expectedValid)).Within(0.00001f),
+                    "Validation at input " + value);
+            }
+        }
+
+        [TestCase(float.NaN, 3f, true)]
+        [TestCase(0f, float.PositiveInfinity, true)]
+        [TestCase(float.NegativeInfinity, 3f, false)]
+        [TestCase(3f, 0f, true)]
+        [TestCase(1f, 1f, false)]
+        public void BoundedMappingRejectsInvalidIntervals(float min, float max, bool includeMin) {
+            var input = fx.CreateUniqueFloat("Input");
+            Assert.Throws<ArgumentException>(() => BlendtreeMath.MapWithFallback(input, min, max,
+                value => input.MakeSetter(value), includeMin: includeMin));
         }
 
         [Test]

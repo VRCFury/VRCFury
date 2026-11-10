@@ -9,24 +9,21 @@ namespace VF.Builder.Haptics {
     [VFService]
     internal class SpsSocketReceiverService {
         [VFAutowired] private readonly SelfAndOthersReceiverService receivers;
-        [VFAutowired] private readonly SpsConfigurer configurer;
+        [VFAutowired] private readonly SpsChannelsService channels;
         private readonly Dictionary<VRCFuryHapticSocket, SelfAndOthersReceiverService.Receivers> cache = new();
         private readonly Dictionary<SelfAndOthersReceiverService.Receivers, SelfAndOthersReceiverService.Receivers> widths = new();
 
         public SelfAndOthersReceiverService.Receivers GetReceivers(
             VRCFuryHapticSocket socket, VFGameObject frame, string name, bool includeLegacy = true
         ) => cache.GetOrCreate(socket, () => {
-            string[] Tags(bool self) {
-                var tags = configurer.GetSocketChannels(socket, self
-                        ? SpsConfigurer.ChannelMode.ReceiverSelf : SpsConfigurer.ChannelMode.ReceiverOthers)
-                    .OrderBy(c => c, StringComparer.Ordinal).Select(SpsTags.FormatPlug).ToList();
-                if (!self && socket.useSharedTag && includeLegacy) tags.Add(SpsTags.LegacyPlugSphere);
-                return tags.ToArray();
-            }
+            var data = channels.Get(socket);
             return receivers.Create(new SelfAndOthersReceiverService.Request {
-                frame = frame, name = name + "/Depth", worldRadius = includeLegacy ? 1 : 0.2f,
+                frame = frame, name = name + "/Depth", worldRadius = includeLegacy ? 1 : 0.2f, channels = data,
                 objectName = (self, merged) => "Receiver - Plugs (" + (self ? "Self" : "Others") + (merged ? " Merged" : "") + ")",
-                selfTags = Tags(true), othersTags = Tags(false)
+                supportsLegacy = includeLegacy,
+                getTags = (set, self) => (self ? set.self : set.others)
+                    .Select(SpsTags.FormatPlug).Concat(!self && set.isPublic && includeLegacy
+                        ? new[] { SpsTags.LegacyPlugSphere } : Array.Empty<string>())
             });
         });
 
@@ -34,7 +31,9 @@ namespace VF.Builder.Haptics {
             widths.GetOrCreate(main, () => receivers.Create(new SelfAndOthersReceiverService.Request {
                 frame = main.request.frame, name = main.request.name + "/LegacyWidth",
                 objectName = (self, merged) => "Receiver - Legacy Plug Width (Others)",
-                worldRadius = main.request.worldRadius, othersTags = new[] { SpsTags.LegacyPlugWidth }
+                worldRadius = main.request.worldRadius, supportsLegacy = true,
+                channels = main.request.channels, omitEmpty = true,
+                getTags = (set, self) => set.isPublic ? new[] { SpsTags.LegacyPlugWidth } : Array.Empty<string>()
             }));
     }
 }

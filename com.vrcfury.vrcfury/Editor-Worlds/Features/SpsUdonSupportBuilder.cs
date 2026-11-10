@@ -13,26 +13,32 @@ namespace VF.Features {
     [VFService]
     internal class SpsUdonSupportBuilder {
         [VFAutowired] private readonly SpsSocketReceiverService socketReceivers;
+        [VFAutowired] private readonly SpsChannelsService channels;
 
         internal void Apply(
             SpsSocketUdonSupport udonSupport,
             VRCFuryHapticSocket socket,
             VRCFuryHapticSocketEditor.BakeResult bakeResult
         ) {
-            var main = socketReceivers.GetReceivers(socket, bakeResult.worldSpace, socket.name);
-            udonSupport.plugs = new[] { main.Find(true, false), main.Find(false, false) };
-            udonSupport.nativeTags = udonSupport.plugs.SelectMany(r => r.collisionTags)
+            var main = bakeResult.plugReceivers;
+            var plugs = main.Find(false, false);
+            var width = main.request.supportsLegacy
+                ? socketReceivers.GetLegacyWidthReceiver(main).Find(false, false) : null;
+            channels.Apply(bakeResult.channelContacts);
+            plugs.component.allowSelf = true;
+            udonSupport.plugRoot = plugs.component;
+            udonSupport.width = width?.component;
+            udonSupport.nativeTags = udonSupport.plugRoot.collisionTags
                 .Where(tag => tag.StartsWith(SpsTags.FormatPlug(""))).Distinct().ToArray();
-            foreach (var receiver in udonSupport.plugs) AddForwarder(receiver,
+            AddForwarder(udonSupport.plugRoot,
                 udonSupport,
                 nameof(SpsSocketUdonSupport.contactEnterInfo),
                 nameof(SpsSocketUdonSupport.contactExitInfo),
                 nameof(SpsSocketUdonSupport._OnEnter),
                 nameof(SpsSocketUdonSupport._OnExit)
             );
-            udonSupport.width = null;
-            if (main.request.othersTags.Contains(SpsTags.LegacyPlugSphere)) {
-                udonSupport.width = socketReceivers.GetLegacyWidthReceiver(main).Find(false, false);
+            if (udonSupport.width != null) {
+                udonSupport.width.allowSelf = true;
                 AddForwarder(udonSupport.width, udonSupport,
                     nameof(SpsSocketUdonSupport.contactEnterInfo),
                     nameof(SpsSocketUdonSupport.contactExitInfo),
@@ -48,11 +54,11 @@ namespace VF.Features {
             udonSupport.plugRoot = bakeResult.bakeRoot;
             udonSupport.plugLengthLocal = bakeResult.localLength;
             udonSupport.plugWidthLocal = bakeResult.localRadius;
-            udonSupport.socketRoots = new[] {
-                bakeResult.socketReceivers.Find(true, false),
-                bakeResult.socketReceivers.Find(false, false)
-            };
-            foreach (var receiver in udonSupport.socketRoots) AddForwarder(receiver,
+            var receiver = bakeResult.socketReceivers.Find(false, false);
+            channels.Apply(bakeResult.channelContacts);
+            receiver.component.allowSelf = true;
+            udonSupport.socketRoot = receiver.component;
+            AddForwarder(receiver.component,
                 udonSupport,
                 nameof(SpsPlugUdonSupport.contactEnterInfo),
                 nameof(SpsPlugUdonSupport.contactExitInfo),

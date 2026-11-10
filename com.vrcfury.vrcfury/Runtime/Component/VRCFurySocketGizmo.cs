@@ -18,6 +18,7 @@ namespace VF.Component {
             public Quaternion rot;
             public bool useRadiusOffset;
             public bool useLegacyLights;
+            public GameObject legacyLights;
             public bool overrideLegacyOffset;
             public Vector3 legacyOffsetLocal;
             public string name;

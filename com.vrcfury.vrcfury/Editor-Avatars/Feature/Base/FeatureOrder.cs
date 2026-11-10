@@ -81,6 +81,8 @@ namespace VF.Feature.Base {
         // Needs to run after toggles are in place
         // Needs to run after HapticsAnimationRewrites
         TpsScaleFix,
+        // Finalize SPS contacts after all action builders have requested channels.
+        ChangeSpsChannels,
 
         // Needs the final hierarchy and activation curves, including rewritten SPS toggles.
         // TPS scale fixes can also register enabled-state consumers.

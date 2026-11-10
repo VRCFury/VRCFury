@@ -34,6 +34,7 @@ namespace VF.Builder.Haptics {
                 try {
                     var result = socketBaker.Bake(socket);
                     onSocketBaked?.Invoke(socket, result);
+                    injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
                     foreach (var component in result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                         saveSession.SaveAssetAndChildren(component);
                     }
@@ -49,6 +50,7 @@ namespace VF.Builder.Haptics {
                 try {
                     var result = plugBaker.Bake(plug);
                     onPlugBaked?.Invoke(plug, result);
+                    injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
                     Unity6RendererFixHook.Register(result.bakeRoot);
                     foreach (var component in result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                         saveSession.SaveAssetAndChildren(component);

@@ -39,6 +39,7 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VRCFuryHapticSocketBaker socketBaker;
+        [VFAutowired] private readonly SpsChannelsService channels;
         [VFAutowired] private readonly SpsAutoChannelGenerator autoChannelGenerator;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
         private VFAvatarController fx => controllers.GetFx();
@@ -84,7 +85,7 @@ namespace VF.Service {
             var legacyOnClip = hasSockets ? spsOptions.GetLegacyOnClip() : null;
 
             var autoSockets = new List<Tuple<string, VFAParam, VFGameObject>>();
-            var exclusiveTriggers = new List<(string,VFAParam)>();
+            var exclusiveTriggers = new List<(string name, VFAParam on)>();
             var usedMenuNames = new HashSet<string>();
             var usedOscIds = new HashSet<string>();
             foreach (var socket in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
@@ -114,6 +115,7 @@ namespace VF.Service {
 
                     var bakeResult = socketBaker.Bake(socket, legacyPlugCompatibility: options.legacyModeAvailable,
                         tpsDepthAnimationCompatibility: options.tpsDepthAnimationCompatibility, avatarRoot: avatarObject);
+                    channels.Register(socket, new Lazy<VFBlendTreeDirect>(() => objectTrees.Get(bakeResult.worldSpace)));
                     foreach (var visible in new[] { bakeResult.bakeRoot }.Concat(bakeResult.pathRoots)) {
                         globals.addOtherFeature(new ShowInFirstPerson {
                             useObjOverride = true,
@@ -204,17 +206,19 @@ namespace VF.Service {
                     }
 
                     if (legacyOnClip != null) {
-                        foreach (var child in new[] { bakeResult.legacyLights, bakeResult.legacyFrontSender }.NotNull()) {
-                            spsOptions.RegisterLegacyObject(child);
-                        }
-                        var legacyGizmo = obj.GetComponent<VRCFurySocketGizmo>();
-                        if (legacyGizmo != null) {
-                            legacyGizmo.data.useLegacyLights = false;
-                            legacyOnClip.SetCurve(legacyGizmo, "data.useLegacyLights", bakeResult.legacyLights != null ? 1 : 0);
-                        }
+                        bakeResult.channelContacts.OnAllSetsAvailable(_ => {
+                            foreach (var child in new[] { bakeResult.legacyLights, bakeResult.legacyFrontSender }.NotNull()) {
+                                spsOptions.RegisterLegacyObject(child);
+                            }
+                            var legacyGizmo = obj.GetComponent<VRCFurySocketGizmo>();
+                            if (legacyGizmo != null) {
+                                legacyGizmo.data.useLegacyLights = false;
+                                legacyOnClip.SetCurve(legacyGizmo, "data.useLegacyLights", bakeResult.legacyLights != null ? 1 : 0);
+                            }
+                        });
                     }
 
-                    if (toggleParam != null && bakeResult.legacyLights != null) {
+                    if (toggleParam != null) {
                         exclusiveTriggers.Add((oscId, toggleParam));
                     }
 
@@ -268,22 +272,18 @@ namespace VF.Service {
                 }
             }
 
-            if (exclusiveTriggers.Count >= 2) {
+            if (legacyOn != null && exclusiveTriggers.Count >= 2) {
                 var exclusiveLayer = actionController.NewLayer("SPS - Socket Exclusivity");
                 exclusiveLayer.NewState("Start");
-                legacyOn?.CopyTo(actionController);
-                foreach (var i in Enumerable.Range(0, exclusiveTriggers.Count)) {
+                legacyOn.CopyTo(actionController);
+                for (var i = 0; i < exclusiveTriggers.Count; i++) {
                     var (name, on) = exclusiveTriggers[i];
-                    on?.CopyTo(actionController);
+                    on.CopyTo(actionController);
                     var state = exclusiveLayer.NewState(name);
-                    var when = on.IsTrue();
-                    when = when.And(actionController.IsLocal().IsTrue());
-                    if (legacyOn != null) when = when.And(legacyOn.IsTrue());
-                    state.TransitionsFromAny().When(when);
-                    foreach (var j in Enumerable.Range(0, exclusiveTriggers.Count)) {
-                        if (i == j) continue;
-                        var (_, otherOn) = exclusiveTriggers[j];
-                        state.Drives(otherOn, false);
+                    state.TransitionsFromAny().When(on.IsTrue()
+                        .And(actionController.IsLocal().IsTrue()).And(legacyOn.IsTrue()));
+                    for (var j = 0; j < exclusiveTriggers.Count; j++) {
+                        if (i != j) state.Drives(exclusiveTriggers[j].on, false);
                     }
                 }
             }

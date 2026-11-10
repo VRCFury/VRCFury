@@ -26,7 +26,7 @@ namespace VF.Hooks.Av3EmuFixes {
                 // Only bridge contacts assigned by this runtime; Av3Emu skips some remote contacts.
                 if (runtime == null || !ReferenceEquals(runtime.GetValue(receiver.paramAccess), __instance)) continue;
                 var paramName = accessType.VFField("paramName");
-                ContactReceiverUtils.RebindAdvancedParameters(receiver, name => {
+                receiver.RebindAdvancedParameters(name => {
                     var access = (IAnimParameterAccess)Activator.CreateInstance(accessType);
                     runtime.SetValue(access, __instance);
                     paramName.SetValue(access, name);

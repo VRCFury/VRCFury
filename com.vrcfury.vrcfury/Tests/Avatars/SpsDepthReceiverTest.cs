@@ -83,8 +83,8 @@ namespace VF.Tests {
 
         private Func<Party, Func<string, VFAParam>> Socket(bool legacy = true) {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
-            socket.useSharedTag = legacy;
-            socket.tags.Add("test");
+            socket.channelSettings.useSharedTag = legacy;
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test" });
             var service = injector.GetService<SpsSocketMeasurementsService>();
             var contacts = service.GetReceivers(socket, root, "Test");
             var detector = injector.GetService<WorldScaleDetectorService>();
@@ -97,6 +97,7 @@ namespace VF.Tests {
         private Func<Party, Func<string, VFAParam>> PlugMeasurements(VRCFuryHapticPlug plug) {
             var bakeRoot = injector.GetService<PlugFrameService>().Get(plug);
             var bake = new VRCFuryHapticPlugEditor.BakeResult {
+                channelContacts = injector.GetService<SpsChannelsService>().Get(plug),
                 bakeRoot = bakeRoot,
                 socketReceivers = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug),
                 localLength = 0.4f, localRadius = 0.05f
@@ -109,7 +110,7 @@ namespace VF.Tests {
         }
 
         private VRCContactReceiver Main(bool self = true) => root.GetComponentsInChildren<VRCContactReceiver>(true)
-            .Single(r => r.allowSelf == self && !r.name.Contains("Merged") && r.collisionTags.Contains(SpsTags.FormatPlug("test")));
+            .Single(r => r.allowSelf == self && !r.name.Contains("Merged") && r.collisionTags.Any(t => t.StartsWith(SpsTags.FormatPlug(""))));
 
         private VRCContactReceiver Width(bool self = true) => root.GetComponentsInChildren<VRCContactReceiver>(true)
             .Single(r => r.allowSelf == self && r.collisionTags.Contains(SpsTags.LegacyPlugWidth));
@@ -118,6 +119,7 @@ namespace VF.Tests {
             .First(r => r.name.Contains("Merged"));
 
         private void Start() {
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var counts = new Dictionary<VFMotion, long>();
             long CountLeaves(VFMotion motion) {
                 if (motion == null) return 0;
@@ -180,8 +182,8 @@ namespace VF.Tests {
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.05f;
-            plug.useSharedTag = shared;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "test", allowSelf = true, allowOthers = true });
+            plug.channelSettings.useSharedTag = shared;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test", allowSelf = true, allowOthers = true });
             var outputs = PlugMeasurements(plug)(party);
             var hole = outputs(SpsSocketIsHole);
             var isLegacy = outputs(SpsInteractingWithLegacy);
@@ -190,9 +192,9 @@ namespace VF.Tests {
             Assert.That(flagTrees, Has.Length.EqualTo(1));
             Assert.That(flagTrees.All(t => t.children.All(child => child.motion is VFClip)), Is.True,
                 "Each native socket flag must decode directly to clips in a single 1D tree");
+            Start();
             var receiver = party == Party.Merged ? Merged() : root.GetComponentsInChildren<VRCContactReceiver>(true)
                 .Single(r => r.allowSelf == (party == Party.Self));
-            Start();
             foreach (var packed in new[] { 1, 8191, 8192, 16383, 16384, 24575, 24576, 32767 }) {
                 Set(receiver, 0.9f, 0.2f, radius: packed, native: true);
                 Evaluate();
@@ -261,6 +263,7 @@ namespace VF.Tests {
                 "Authored stop objects must retain their own head-chop behavior");
             Assert.That(exclusions.All(e => e.useObjOverride && e.onlyIfChildOfHead), Is.True,
                 "Only stop sources under the avatar head should receive first-person exclusions");
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var guideSenders = baked.GetComponentsInSelfAndChildren<VRCContactSender>()
                 .Where(sender => sender.name.StartsWith("Sender - Path Stop")).ToArray();
             Assert.That(guideSenders, Has.Length.EqualTo(2));
@@ -269,10 +272,35 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void PrivateOnlyMeasurementsRemoveNativeComparisonAndLegacyCacheBranches() {
+            optimizeTrees = true;
+            var outputs = Socket(false)(Party.Others);
+            var depth = outputs(SpsDepthLocal);
+            var radius = outputs(SpsPlugRadiusLocal);
+            _ = outputs(SpsPlugEntryRadiusLocal);
+            new BlendtreeMath(fx, receiverAnimator.GetTree(
+                injector.GetService<SpsSocketMeasurementsService>().GetReceivers(
+                    root.GetComponent<VRCFuryHapticSocket>(), root, "Test")))
+                .CopyInPlace(depth, "Injected depth");
+            Start();
+            Assert.That(new AnimatorIterator.Trees().From(fx)
+                .Any(t => t.BlendParameter?.EndsWith("/Native") == true), Is.False);
+            Assert.That(new AnimatorIterator.Trees().From(fx)
+                .Any(t => t.BlendParameter?.EndsWith("/LegacyLengthValid") == true || t.BlendParameter?.EndsWith("/LegacyRadiusValid") == true
+                    || t.BlendParameter?.EndsWith("/LegacyLengthSample") == true || t.BlendParameter?.EndsWith("/LegacyRadiusSample") == true), Is.False);
+            Set(Main(false), 1, 0.2f, length: 0.4f, radius: 0.05f);
+            Evaluate();
+            Assert.That(playable.GetFloat(depth), Is.EqualTo(-0.2f).Within(0.001f));
+            Assert.That(playable.GetFloat("Injected depth"), Is.EqualTo(-0.2f).Within(0.001f));
+            Assert.That(playable.GetFloat(radius), Is.EqualTo(0.05f).Within(0.001f));
+        }
+
+        [Test]
         public void DepthOnlyConsumersActivateTheOverlapWorkaround() {
             _ = Socket(false)(Party.Self)(SpsDepthMeters);
             Assert.That(fx.parameters.Any(p => p.name.StartsWith("Test/Self/Length")), Is.False,
                 "Native depth must read sender Z directly without generating an unused length output");
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             injector.GetService<OverlappingContactsFixService>().Fix();
             Assert.That(new AnimatorIterator.Clips().From(fx).Any(clip => clip.GetAllBindings()
                 .Any(binding => binding.type == typeof(VRCContactReceiver) && binding.propertyName == "m_Enabled")), Is.True);
@@ -300,11 +328,11 @@ namespace VF.Tests {
             Assert.That(measurements(SpsInteractingWithOthers), Is.SameAs(output));
             _ = factory(Party.Self)(SpsDepthMeters);
             _ = factory(Party.Others)(SpsDepthMeters);
+            Start();
             var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
             var self = contacts.Single(r => r.allowSelf && !r.name.Contains("Merged"));
             var others = contacts.Single(r => r.allowOthers && !r.name.Contains("Merged"));
             Assert.That(fx.parameters.Any(p => p.name.EndsWith("_SenderType")), Is.EqualTo(party == Party.Merged));
-            Start();
             foreach (var (selfDistance, othersDistance, proximity) in new[] {
                          (-1f, -1f, 0f), (-1f, 0f, 1f), (0f, -1f, 0f),
                          (0.1f, 0.2f, 1f), (0.2f, 0.1f, 1f), (0.1f, 0.1f, 1f),
@@ -339,17 +367,17 @@ namespace VF.Tests {
                 plug.unitsInMeters = true;
                 plug.length = 0.4f;
                 plug.radius = 0.05f;
-                plug.useSharedTag = shared;
-                plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "test", allowSelf = true, allowOthers = true });
+                plug.channelSettings.useSharedTag = shared;
+                plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test", allowSelf = true, allowOthers = true });
                 factory = PlugMeasurements(plug);
             }
             var measurements = factory(party);
             var output = measurements(SpsInteractingWithLegacy);
             Assert.That(measurements(SpsInteractingWithLegacy), Is.SameAs(output));
             _ = measurements(SpsDepthMeters);
+            Start();
             var receiver = party == Party.Merged ? Merged() : root.GetComponentsInChildren<VRCContactReceiver>(true)
                 .Single(r => r.allowSelf == (party == Party.Self));
-            Start();
             Set(receiver, 0, -1);
             Evaluate();
             Assert.That(playable.GetFloat(output), Is.Zero, "No contact");
@@ -380,15 +408,15 @@ namespace VF.Tests {
             Assert.That(self(SpsDepthLocal), Is.SameAs(self(SpsDepthLocal)));
             Assert.That(self(SpsDepthPlugLengths), Is.SameAs(self(SpsDepthPlugLengths)));
             Assert.That(self(SpsDepthLocal), Is.Not.SameAs(self(SpsDepthPlugLengths)));
-            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(1));
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
             _ = others(SpsDepthMeters);
-            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(2));
             _ = self(SpsPlugRadiusMeters);
-            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(2));
+            _ = others(SpsPlugRadiusMeters);
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             Assert.That(Main(true).collisionTags, Is.All.StartsWith(SpsTags.Prefix));
             Assert.That(Main(false).collisionTags, Does.Contain(SpsTags.LegacyPlugSphere));
             Assert.That(fx.parameters.Any(p => p.name.StartsWith("Test/Self/Legacy")), Is.False);
-            _ = others(SpsPlugRadiusMeters);
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(3));
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true)
                 .Any(r => r.collisionTags.Contains(SpsTags.LegacyPlugRoot)), Is.False);
@@ -413,6 +441,7 @@ namespace VF.Tests {
                 _ = outputs(SpsPlugLengthMeters);
                 _ = outputs(SpsPlugRadiusMeters);
             }
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
             foreach (var receiver in contacts) {
                 Assert.That(receiver.radius * receiver.transform.lossyScale.x,
@@ -522,7 +551,7 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(length), Is.EqualTo(includeLegacy ? 0.2f : 0.4f).Within(0.001f));
             Assert.That(playable.GetFloat(radius), Is.EqualTo(includeLegacy ? 0.03f : 0.05f).Within(0.001f));
             Assert.That(playable.GetFloat(velocity), Is.EqualTo(0.6f).Within(0.001f));
-            Assert.That(Main(self).advancedParameters.HasFlag(ContactReceiver.AdvancedParameter.CollisionTags), Is.EqualTo(includeLegacy));
+            Assert.That(Main(self).advancedParameters.HasFlag(ContactReceiver.AdvancedParameter.CollisionTags), Is.EqualTo(!self && legacyAvailable));
         }
 
         [Test]
@@ -532,12 +561,13 @@ namespace VF.Tests {
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.05f;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "test", allowSelf = true, allowOthers = true });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test", allowSelf = true, allowOthers = true });
             measurements = PlugMeasurements(plug)(Party.Self);
             var outputs = new[] { measurements(SpsPlugLengthMeters), measurements(SpsPlugRadiusMeters),
                 measurements(SpsDepthMeters), measurements(SpsDepthLocal) };
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).Single();
-            Assert.That(receiver.collisionTags, Does.Contain(SpsTags.FormatSocket("test")));
+            Assert.That(receiver.collisionTags, Does.Contain(SpsTags.FormatSocket("test/self")));
             Assert.That(receiver.collisionTags.Any(tag => tag.StartsWith("SPS/SocketPath/")), Is.False);
             Assert.That(receiver.radius * receiver.transform.lossyScale.x, Is.EqualTo(0.64f).Within(0.0001f));
             Start();
@@ -561,11 +591,12 @@ namespace VF.Tests {
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.05f;
-            plug.useSharedTag = shared;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "test" });
+            plug.channelSettings.useSharedTag = shared;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test" });
             var factory = PlugMeasurements(plug);
             var depth = factory(Party.Others)(SpsDepthMeters);
             _ = factory(Party.Self)(SpsDepthMeters);
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var receivers = root.GetComponentsInChildren<VRCContactReceiver>(true);
             var others = receivers.Single(r => r.allowOthers);
             var self = receivers.Single(r => r.allowSelf);
@@ -574,6 +605,7 @@ namespace VF.Tests {
             var sender = socket.AddComponent<VRCContactSender>();
             sender.radius = 0.01f;
             sender.collisionTags = new List<string> { SpsTags.LegacySocket };
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var matches = sender.collisionTags.Intersect(others.collisionTags).Any();
             Assert.That(matches, Is.EqualTo(shared), "TPS sockets publish the root tag without SPS channel or hole/ring tags");
             Assert.That(sender.collisionTags.Intersect(self.collisionTags), Is.Empty,
@@ -603,13 +635,16 @@ namespace VF.Tests {
             _ = factory(Party.Self)(SpsDepthMeters);
             _ = factory(Party.Others)(SpsDepthMeters);
             if (!materialsFirst) visual.Create(plug, new[] { renderer });
+            var parameters = new[] { true, false }.ToDictionary(self => self,
+                self => receiverAnimator.GetParameter(visual.GetReceivers(plug), self).name);
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
             Assert.That(contacts, Has.Length.EqualTo(3));
             foreach (var self in new[] { true, false }) {
                 var contact = contacts.Single(r => r.separateShaderParameter == (self ? "SPS_Self" : "SPS_Others"));
                 Assert.That(contact.writeToMaterials, Is.True);
                 Assert.That(contact.shaderTargetRenderers, Is.EqualTo(new[] { renderer }));
-                Assert.That(contact.parameter, Is.EqualTo(receiverAnimator.GetParameter(visual.GetReceivers(plug), self).name));
+                Assert.That(contact.parameter, Is.EqualTo(parameters[self]));
                 Assert.That(contact.advancedParameters.HasFlag(VRC.Dynamics.ContactReceiver.AdvancedParameter.PointSeparation), Is.True);
             }
             Assert.That(contacts.Single(r => r.separateShaderParameter == "SPS_Path").parameter, Is.Empty);
@@ -627,6 +662,7 @@ namespace VF.Tests {
             Assert.That(outputs(SpsPlugEntryRadiusMeters), Is.SameAs(meters));
             Assert.That(fx.parameters.Count(p => p.name.Contains("/PlugEntryRadius") && !p.name.Contains("/Local")
                 && !p.name.Contains("/PlugLengths")), Is.EqualTo(1));
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true)
                 .Any(r => r.collisionTags.Contains(SpsTags.LegacyPlugWidth)), Is.False);
             Start();
@@ -723,6 +759,112 @@ namespace VF.Tests {
             Evaluate();
             Assert.That(playable.GetFloat(length), Is.EqualTo(0.1f).Within(0.001f),
                 "Native contact must clear the previous legacy estimate's confidence");
+        }
+
+        [Test]
+        public void LegacySizeValidationDoesNotDuplicateTheCacheFallback() {
+            var outputs = Socket()(Party.Others);
+            _ = outputs(SpsPlugLengthMeters);
+            _ = outputs(SpsPlugRadiusMeters);
+            var ranges = new AnimatorIterator.Trees().From(fx).Where(t => t.children.Count == 4
+                && (t.BlendParameter?.Contains("LegacyLengthEstimate") == true
+                    || t.BlendParameter?.Contains("LegacyRadiusEstimate") == true)).ToArray();
+            Assert.That(ranges, Has.Length.EqualTo(2));
+            foreach (var range in ranges) {
+                Assert.That(new AnimatorIterator.Trees().From(range).Count, Is.EqualTo(1),
+                    "The range check and sampled value should be written by one tree");
+                Assert.That(range.children.All(child => child.motion is VFClip), Is.True);
+            }
+        }
+
+        [Test]
+        public void LegacyCacheChecksConfidenceOncePerSize() {
+            var outputs = Socket()(Party.Others);
+            _ = outputs(SpsPlugLengthMeters);
+            _ = outputs(SpsPlugRadiusMeters);
+            var confidence = fx.parameters.Where(p => p.name.EndsWith("/LegacyLengthValid")
+                || p.name.EndsWith("/LegacyRadiusValid")).ToArray();
+            Assert.That(confidence, Has.Length.EqualTo(2));
+            foreach (var parameter in confidence) Assert.That(new AnimatorIterator.Trees().From(fx)
+                .Count(t => t.BlendParameter == parameter.name), Is.EqualTo(1),
+                "Choose the cached/uncached case once, before testing saturation and the sample");
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void LegacyCachePreservesSampleRetainAndFallbackPriorityOnEveryFrame(bool optimize) {
+            optimizeTrees = optimize;
+            var outputs = Socket()(Party.Others);
+            var length = outputs(SpsPlugLengthMeters);
+            var radius = outputs(SpsPlugRadiusMeters);
+            var lengthSample = fx.parameters.Single(p => p.name.EndsWith("/LegacyLengthSample"));
+            var radiusSample = fx.parameters.Single(p => p.name.EndsWith("/LegacyRadiusSample"));
+            var lengthConfidence = fx.parameters.Single(p => p.name.EndsWith("/LegacyLengthValid"));
+            var radiusConfidence = fx.parameters.Single(p => p.name.EndsWith("/LegacyRadiusValid"));
+            Start();
+            var native = fx.parameters.Single(p => p.name.EndsWith(Main(false).parameter + "/Native"));
+            var expectedLength = 0.3f;
+            var expectedRadius = 0.03f;
+            var lengthKnown = false;
+            var radiusKnown = false;
+            void Frame(float proximity, float separation, float helper, bool isNative = false) {
+                Set(Main(false), proximity, separation, length: 0.7f, radius: 0.08f, native: isNative);
+                Set(Width(false), helper, separation);
+                // Model the prior policy using the inputs visible at this Animator evaluation.
+                void Update(ref float value, ref bool known, VFAParam sample, bool width) {
+                    var candidate = playable.GetFloat(sample);
+                    var assumed = width ? 0.03f : 0.3f;
+                    if (proximity <= 0 || separation < 0) { value = assumed; known = false; }
+                    else if (playable.GetFloat(native) > 0) { value = width ? 0.08f : 0.7f; known = false; }
+                    else if (width && helper <= 0) { value = assumed; known = false; }
+                    else if (candidate > 0 && (proximity < 1 || !known)) { value = candidate; known = true; }
+                    else if (!(known && (proximity >= 1 || width && helper >= 1))) { value = assumed; known = false; }
+                }
+                Update(ref expectedLength, ref lengthKnown, lengthSample, false);
+                Update(ref expectedRadius, ref radiusKnown, radiusSample, true);
+                Evaluate(1);
+                Assert.That(playable.GetFloat(length), Is.EqualTo(expectedLength).Within(0.00001f));
+                Assert.That(playable.GetFloat(radius), Is.EqualTo(expectedRadius).Within(0.00001f));
+                Assert.That(playable.GetFloat(lengthConfidence), Is.EqualTo(lengthKnown ? 1 : 0));
+                Assert.That(playable.GetFloat(radiusConfidence), Is.EqualTo(radiusKnown ? 1 : 0));
+            }
+            for (var i = 0; i < 12; i++) Frame(0.8f, 0.8f, 0.68f);
+            // A valid pending radius sample must still win when the helper first saturates.
+            Frame(0.8f, 0.8f, 0.64f);
+            Frame(0.8f, 0.8f, 0.64f);
+            Frame(0.8f, 0.8f, 1);
+            foreach (var proximity in new[] { 0f, 0.8f, VRCFuryEditorUtils.NextFloatDown(1), 1f, VRCFuryEditorUtils.NextFloatUp(1) })
+                foreach (var helper in new[] { 0f, 0.7f, 1f })
+                    foreach (var separation in new[] { -1f, 0.1f, 0.8f, 4f })
+                        foreach (var isNative in new[] { false, true }) Frame(proximity, separation, helper, isNative);
+        }
+
+        [Test]
+        public void LegacySizeSamplesKeepValidationAndValueTogetherWhileDepthAndVelocityStayLive() {
+            var outputs = Socket()(Party.Others);
+            var length = outputs(SpsPlugLengthMeters);
+            var radius = outputs(SpsPlugRadiusMeters);
+            var depth = outputs(SpsDepthMeters);
+            var velocity = outputs(SpsVelocityMeters);
+            Start();
+            var samples = new (float distance, float helper)[] {
+                (0.8f, 0.68f), (1f, 0.72f), (4f, 0.68f),
+                (0.1f, 0.68f), (0.8f, 0.9f), (0.8f, 0.21f), (0.8f, 0f)
+            };
+            for (var frame = 0; frame < 70; frame++) {
+                var sample = samples[frame % samples.Length];
+                Set(Main(false), 0.8f, sample.distance);
+                Set(Width(false), sample.helper, sample.distance);
+                var speed = frame % 2 == 0 ? -0.4f : 0.7f;
+                playable.SetFloat(Main(false).parameter + "_SenderVelocityZ", speed);
+                Evaluate(1);
+                Assert.That(new[] { 0.3f, 0.6f, 0.8f }.Any(v => Mathf.Abs(v - playable.GetFloat(length)) < 0.001f), Is.True,
+                    "A stale validity decision must not accept a negative or oversized length");
+                Assert.That(new[] { 0.03f, 0.04f, 0.06f }.Any(v => Mathf.Abs(v - playable.GetFloat(radius)) < 0.001f), Is.True,
+                    "A stale validity decision must not accept a negative radius or the helper's minimum-radius artifact");
+                Assert.That(playable.GetFloat(depth), Is.EqualTo(0.2f).Within(0.001f));
+                Assert.That(playable.GetFloat(velocity), Is.EqualTo(speed).Within(0.001f));
+            }
         }
 
         [TestCase(false)]
@@ -825,11 +967,11 @@ namespace VF.Tests {
             var receivers = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
             var mergedName = receiverAnimator.GetParameter(receivers, Party.Merged).name;
             var otherName = receiverAnimator.GetParameter(receivers, false).name;
+            Start();
             var all = root.GetComponentsInChildren<VRCContactReceiver>(true);
             var merged = all.First(r => r.parameter == mergedName);
             var other = all.Single(r => r.parameter == otherName);
             Assert.That(fx.parameters.Any(p => p.name.Contains("/Closest/IsSelf") || p.name.Contains("/Closest/IsOthers")), Is.False);
-            Start();
             Set(other, 0.9f, 0.7f);
             Set(merged, 0.8f, 0.1f);
             playable.SetFloat(mergedName + "_SenderVelocityZ", -0.8f);
@@ -865,14 +1007,18 @@ namespace VF.Tests {
         [TestCase((int)Party.Merged)]
         public void AdvancedParameterRequestsSelectTheCorrectReceiversAndUnionFlags(int selection) {
             var party = (Party)selection;
+            var channels = injector.GetService<SpsChannelsService>();
+            var data = channels.Get(root.AddComponent<VRCFuryHapticSocket>());
             var receivers = injector.GetService<SelfAndOthersReceiverService>().Create(new SelfAndOthersReceiverService.Request {
-                frame = root, name = "Advanced", worldRadius = 3, selfTags = new[] { "tag" }, othersTags = new[] { "tag" }
+                frame = root, name = "Advanced", worldRadius = 3, getTags = (_, _) => new[] { "tag" }, channels = data
             });
             var velocity = receiverAnimator.GetAdvancedParam(receivers, party, "SenderVelocityZ");
             var parameter = receiverAnimator.GetParameter(receivers, party);
             Assert.That(velocity.name, Is.EqualTo(parameter.name + "_SenderVelocityZ"));
             var scale = receiverAnimator.GetAdvancedParam(receivers, party, "SenderLossyScaleX");
             Assert.That(scale.name, Is.EqualTo(parameter.name + "_SenderLossyScaleX"));
+            var tag = receiverAnimator.GetAdvancedParam(receivers, party, "CollisionTag_tag");
+            channels.Apply(data);
             var writers = root.GetComponentsInChildren<VRCContactReceiver>(true).Where(r => r.parameter == parameter.name).ToArray();
             Assert.That(writers, Has.Length.EqualTo(party == Party.Merged ? 2 : 1));
             foreach (var writer in writers) {
@@ -880,7 +1026,6 @@ namespace VF.Tests {
                 Assert.That(writer.advancedParameters.HasFlag(VRC.Dynamics.ContactReceiver.AdvancedParameter.SenderLossyScale), Is.True);
                 Assert.That(writer.advancedParameters.HasFlag(VRC.Dynamics.ContactReceiver.AdvancedParameter.SenderLocalPosition), Is.False);
             }
-            var tag = receiverAnimator.GetAdvancedParam(receivers, party, "CollisionTag_tag");
             Assert.That(fx.TryGetParam(tag.name, out _), Is.True);
             Assert.That(writers.All(r => r.advancedParameters.HasFlag(VRC.Dynamics.ContactReceiver.AdvancedParameter.CollisionTags)), Is.True);
         }
@@ -976,7 +1121,7 @@ namespace VF.Tests {
                 var ordinaryAnimator = new Dictionary<string, float>();
                 // Reproduce Gesture Manager replacing the main bridge while advanced SDK
                 // accessors still write to a different Animator parameter store.
-                ContactReceiverUtils.RebindAdvancedParameters(receiver, name => new TestParameterAccess(
+                receiver.RebindAdvancedParameters(name => new TestParameterAccess(
                     () => ordinaryAnimator.TryGetValue(name, out var value) ? value : 0,
                     value => ordinaryAnimator[name] = value));
                 var senderObject = GameObjects.Create("Native plug", root);
@@ -985,7 +1130,7 @@ namespace VF.Tests {
                 var sender = senderObject.AddComponent<VRCContactSender>();
                 sender.radius = 1;
                 sender.playerId = 1;
-                sender.collisionTags = new List<string> { SpsTags.FormatPlug("test") };
+                sender.collisionTags = new List<string> { SpsTags.FormatPlug("test/self") };
                 Field(sender.GetType(), "_assignedUsage").SetValue(sender, DynamicsUsage.Avatar);
                 sender.allowInit = true;
                 Call(sender, "Start");
@@ -1064,6 +1209,7 @@ namespace VF.Tests {
             var owner = GameObjects.Create("Owner", root);
             owner.localScale = Vector3.one * 2;
             var enabled = fx.CreateUniqueFloat("Owner enabled", 1);
+            enabled.MakeExpressionFloat(synced: false);
             var objectTrees = injector.GetService<ObjectTreeService>();
             var calculations = objectTrees.Get(owner);
             var on = VFClip.Create("Owner on"); on.SetEnabled(owner, true);
@@ -1403,6 +1549,7 @@ namespace VF.Tests {
                 socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             }
             injector.GetService<BakeHapticSocketsService>().Apply();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var outputs = root.GetComponentsInChildren<VRCContactReceiver>(true)
                 .Select(r => r.parameter).Where(p => p.StartsWith("OGB/Socket/")).ToArray();
             Assert.That(outputs, Does.Contain("OGB/Socket/Front_Socket/DepthSelf"));
@@ -1513,7 +1660,7 @@ namespace VF.Tests {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             socket.addMenuItem = false;
-            socket.tags.Add("test");
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test" });
             socket.enablePlugLengthParameter = socket.enablePlugWidthParameter = true;
             socket.plugLengthParameterName = "InjectedLength";
             socket.plugWidthParameterName = "InjectedRadius";
@@ -1536,8 +1683,9 @@ namespace VF.Tests {
                 });
             }
             injector.GetService<BakeHapticSocketsService>().Apply();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var mainReceivers = root.GetComponentsInChildren<VRCContactReceiver>(true)
-                .Where(r => r.collisionTags.Contains(SpsTags.FormatPlug("test"))).ToArray();
+                .Where(r => r.collisionTags.Contains(SpsTags.FormatPlug(r.allowSelf ? "test/self" : "test"))).ToArray();
             Assert.That(mainReceivers, Has.Length.EqualTo(4));
             Assert.DoesNotThrow(() => injector.GetService<ParameterInjectService>().Validate());
             Start();
@@ -1573,7 +1721,7 @@ namespace VF.Tests {
             socket.name = "Test";
             socket.addMenuItem = false;
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
-            socket.tags.Add("test");
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test" });
             socket.useRadiusOffset = true;
             var stop = GameObjects.Create("Guide", root);
             stop.localPosition = Vector3.forward;
@@ -1589,10 +1737,11 @@ namespace VF.Tests {
                 });
             }
             injector.GetService<BakeHapticSocketsService>().Apply();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var bakeRoot = root.asVf().Children().Single(obj => obj.name == "BakedSpsSocket");
             var worldSpace = bakeRoot.Children().Single(obj => obj.name == "WorldSpace");
-            var legacyLights = bakeRoot.Children().Single(obj => obj.name == "LegacyLights");
-            Assert.That(bakeRoot.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "WorldSpace", "LegacyLights" }));
+            var legacyLights = bakeRoot.Children().Single(obj => obj.name == "Legacy Mode").Children().Single();
+            Assert.That(bakeRoot.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "WorldSpace", "Legacy Mode" }));
             Assert.That(worldSpace.Children().All(obj => obj.Children().Length == 0), Is.True);
             Assert.That(bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Animations.ScaleConstraint>(), Has.Length.EqualTo(2));
             var contacts = bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>();
@@ -1606,7 +1755,7 @@ namespace VF.Tests {
             var lights = bakeRoot.GetComponentsInSelfAndChildren<Light>();
             Assert.That(haptics, Has.Length.EqualTo(2));
             Assert.That(haptics.All(r => !r.gameObject.activeSelf), Is.True);
-            Assert.That(!legacyLights.active, Is.True);
+            Assert.That(legacyLights.activeInHierarchy, Is.False);
             var legacy = injector.GetService<SpsOptionsService>().GetLegacyParameter();
             Start();
             foreach (var resize in new[] { 0.5f, 1f, 3f }) {
@@ -1668,11 +1817,12 @@ namespace VF.Tests {
             plug.length = 0.4f;
             plug.radius = 0.04f;
             injector.GetService<BakeHapticPlugsService>().ApplyEarlyBake();
+            var main = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
+            receiverAnimator.GetParameter(main, Party.Merged);
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var senders = root.GetComponentsInChildren<VRCContactSender>(true);
             Assert.That(senders.Single(s => s.name == "Sender - Sphere").collisionTags.Contains(SpsTags.LegacyPlugSphere), Is.EqualTo(enabled));
             Assert.That(senders.Count(s => s.name == "Sender - Legacy Width" || s.name == "Sender - Legacy Root"), Is.EqualTo(enabled ? 2 : 0));
-            var main = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
-            receiverAnimator.GetParameter(main, Party.Merged);
             foreach (var receiver in root.GetComponentsInChildren<VRCContactReceiver>(true)) {
                 foreach (var tag in new[] { SpsTags.LegacySocketHole, SpsTags.LegacySocketRing, SpsTags.LegacySocket }) {
                     Assert.That(receiver.collisionTags.Contains(tag), Is.EqualTo(enabled && receiver.allowOthers), receiver.name + ": " + tag);
@@ -1704,13 +1854,15 @@ namespace VF.Tests {
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.04f;
-            plug.useSharedTag = shared;
+            plug.channelSettings.useSharedTag = shared;
+            if (!shared) plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "private" });
             if (withSocket) {
                 var socket = GameObjects.Create("Socket", root).AddComponent<VRCFuryHapticSocket>();
                 socket.name = "Socket";
                 socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
                 socket.addMenuItem = true;
-                socket.useSharedTag = shared;
+                socket.channelSettings.useSharedTag = shared;
+                if (!shared) socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "private" });
             }
             var serviceTypes = injector.GetServices<object>().Select(service => service.GetType()).ToArray();
             int SortPosition<T>() => Array.IndexOf(serviceTypes, typeof(T)) + 1;
@@ -1720,10 +1872,12 @@ namespace VF.Tests {
             globals.currentMenuSortPosition = SortPosition<BakeHapticSocketsService>();
             injector.GetService<BakeHapticSocketsService>().Apply();
             var options = injector.GetService<SpsOptionsService>();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             globals.currentMenuSortPosition = legacyServiceFirst ? 0 : SortPosition<SpsOptionsService>();
             options.MoveMenus();
             var menus = injector.GetService<MenuService>();
             if (menus.GetReadOnlyMenu() != null) menus.GetMenu().SortMenu();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var legacyObjects = root.transform.GetComponentsInChildren<Transform>(true)
                 .Where(t => t.name == "LegacyLights" || t.name == "Light - Legacy DPS Trigger" || t.name == "Sender - Legacy Front").ToArray();
             Assert.That(legacyObjects, Has.Length.EqualTo(!available || !shared ? 0 : withSocket ? 3 : 1));
@@ -1740,14 +1894,14 @@ namespace VF.Tests {
             Assert.That(controls.Count(c => c.parameter?.name == legacy.name), Is.EqualTo(1));
             Assert.That(controls.Last().parameter.name, Is.EqualTo(legacy.name), "Legacy is created after the socket menu items");
             if (withSocket) Assert.That(controls.First().parameter.name, Is.EqualTo(options.GetAutoParameter().name));
-            Assert.That(legacyObjects.All(t => !t.gameObject.activeSelf), Is.True);
+            Assert.That(legacyObjects.All(t => t.parent.name == "Legacy Mode" && !t.parent.gameObject.activeSelf), Is.True);
             Start();
             Evaluate(5);
-            Assert.That(legacyObjects.All(t => t.gameObject.activeSelf == defaultOn), Is.True, "Legacy default on avatar load");
+            Assert.That(legacyObjects.All(t => t.parent.gameObject.activeSelf == defaultOn), Is.True, "Legacy default on avatar load");
             foreach (var enabled in new[] { true, false, true, false }) {
                 playable.SetFloat(legacy, enabled ? 1 : 0);
                 Evaluate(3);
-                Assert.That(legacyObjects.All(t => t.gameObject.activeSelf == enabled), Is.True);
+                Assert.That(legacyObjects.All(t => t.parent.gameObject.activeSelf == enabled), Is.True);
                 Assert.That(root.GetComponentsInChildren<VRCContactSender>(true)
                     .Where(sender => sender.name == "Sender - Root" || sender.name == "Sender - Sphere")
                     .All(sender => sender.gameObject.activeSelf), Is.True, "Main senders remain available in both legacy modes");
@@ -1785,6 +1939,7 @@ namespace VF.Tests {
             injector.GetService<BakeHapticPlugsService>().ApplyEarlyBake();
             injector.GetService<BakeHapticPlugsService>().Apply();
             injector.GetService<BakeHapticSocketsService>().Apply();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var transforms = root.GetComponentsInChildren<Transform>(true);
             Assert.That(transforms.Any(t => t.name == "LegacyLights"), Is.EqualTo(legacyPlugs));
             Assert.That(transforms.Any(t => t.name == "Sender - Legacy Front"), Is.EqualTo(legacyPlugs && tpsAnimations));
@@ -1801,10 +1956,10 @@ namespace VF.Tests {
                 || t.name == "Sender - Legacy Front" || t.name == "Light - Legacy DPS Trigger").ToArray();
             Start();
             Evaluate(5);
-            Assert.That(legacyObjects.All(t => t.gameObject.activeSelf), Is.True);
+            Assert.That(legacyObjects.All(t => t.parent.gameObject.activeSelf), Is.True);
             playable.SetFloat(legacy, 0);
             Evaluate(3);
-            Assert.That(legacyObjects.All(t => !t.gameObject.activeSelf), Is.True);
+            Assert.That(legacyObjects.All(t => !t.parent.gameObject.activeSelf), Is.True);
         }
 
         [Test]
@@ -1816,7 +1971,7 @@ namespace VF.Tests {
                 socket.name = "Socket";
                 socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
                 socket.addMenuItem = false;
-                socket.tags.Add("test");
+                socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test" });
                 socket.enablePlugLengthParameter = true;
                 socket.plugLengthParameterName = "InjectedLength";
                 var plug = root.AddComponent<VRCFuryHapticPlug>();
@@ -1838,13 +1993,17 @@ namespace VF.Tests {
                 injector.GetService<BakeHapticPlugsService>().ApplyEarlyBake();
                 injector.GetService<BakeHapticPlugsService>().Apply();
                 injector.GetService<VF.Feature.VRCFuryHapticTouchReceiverBuilder>().Apply();
+                var plugReceivers = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
+                var plugSelfParameter = receiverAnimator.GetParameter(plugReceivers, true);
+                var plugOthersParameter = receiverAnimator.GetParameter(plugReceivers, false);
+                injector.GetService<ChangeSpsChannelsService>().Apply();
                 var receivers = root.GetComponentsInChildren<VRCContactReceiver>(true);
                 Assert.That(receivers.Where(r => r.allowSelf).SelectMany(r => r.collisionTags)
                     .Any(tag => (tag.StartsWith("TPS_") && tag != SpsTags.PlugClose) || tag.StartsWith("SPSLL_")), Is.False);
                 foreach (var receiver in receivers.Where(r => r.localOnly)) {
                     Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderVelocity));
                     Assert.That(fx.TryGetParam(receiver.parameter, out _), Is.True);
-                    foreach (var output in ContactReceiverUtils.GetParameterNames(receiver).Skip(1)) {
+                    foreach (var output in receiver.GetParameterNames().Skip(1)) {
                         Assert.That(fx.TryGetParam(output, out _), Is.False, output);
                     }
                 }
@@ -1860,7 +2019,7 @@ namespace VF.Tests {
                 Assert.That(depthRadius.saved, Is.False);
                 Assert.That(socketSelf.radius * socketSelf.transform.lossyScale.x, Is.EqualTo(depthRadius.defaultValue));
                 Assert.That(socketOthers.radius * socketOthers.transform.lossyScale.x, Is.EqualTo(depthRadius.defaultValue));
-                Assert.That(receivers.Count(r => !r.name.Contains("Merged") && r.collisionTags.Contains(SpsTags.FormatPlug("test"))), Is.EqualTo(2),
+                Assert.That(receivers.Count(r => !r.name.Contains("Merged") && r.collisionTags.Contains(SpsTags.FormatPlug(r.allowSelf ? "test/self" : "test"))), Is.EqualTo(2),
                     "Socket OGB and depth measurements must share the native receivers");
                 var plugSelf = receivers.Single(r => r.parameter == "OGB/Plug/Plug/DepthSelf");
                 var plugOthers = receivers.Single(r => r.parameter == "OGB/Plug/Plug/DepthOthers");
@@ -1907,16 +2066,16 @@ namespace VF.Tests {
                 Assert.That(lengthMult.IsNetworkSynced(), Is.False);
                 Assert.That(lengthMult.saved, Is.False);
                 Assert.That(fx.parameters.Any(p => p.name == lengthMult.name), Is.False);
-                var plugReceivers = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
-                Assert.That(receiverAnimator.GetParameter(plugReceivers, true).name, Is.EqualTo(plugSelf.parameter));
-                Assert.That(receiverAnimator.GetParameter(plugReceivers, false).name, Is.EqualTo(plugOthers.parameter));
+                Assert.That(plugSelfParameter.name, Is.EqualTo(plugSelf.parameter));
+                Assert.That(plugOthersParameter.name, Is.EqualTo(plugOthers.parameter));
                 Assert.That(receivers.Any(r => r.parameter.EndsWith("NewRoot") || r.parameter.EndsWith("NewTip")
                     || r.parameter.EndsWith("/PenOthersClose")), Is.False);
                 foreach (var receiver in new[] { socketSelf, socketOthers, plugSelf, plugOthers }) {
                     Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.All));
                     Assert.That(fx.TryGetParam(receiver.parameter + "_PointSeparation", out _), Is.True);
-                    Assert.That(fx.TryGetParam(receiver.parameter + "_SenderLossyScaleZ", out _), Is.True);
-                    Assert.That(fx.TryGetParam(receiver.parameter + "_SenderVelocityZ", out _), Is.True);
+                    Assert.That(fx.TryGetParam(receiver.parameter + "_SenderLossyScaleZ", out _), Is.False,
+                        "The length consumer reads the merged receiver, not these raw OGB outputs");
+                    Assert.That(fx.TryGetParam(receiver.parameter + "_SenderVelocityZ", out _), Is.False);
                 }
                 Assert.That(plugSelf.collisionTags, Is.All.StartsWith(SpsTags.Prefix));
                 Assert.That(plugSelf.radius * plugSelf.transform.lossyScale.x, Is.EqualTo(0.64f).Within(0.001f));
@@ -1937,7 +2096,6 @@ namespace VF.Tests {
                 Evaluate();
                 Assert.That(playable.GetFloat(socketSelf.parameter), Is.EqualTo(0.8f));
                 Assert.That(playable.GetFloat(socketSelf.parameter + "_PointSeparation"), Is.EqualTo(0.6f));
-                Assert.That(playable.GetFloat(socketSelf.parameter + "_SenderLossyScaleZ"), Is.EqualTo(0.4f));
                 Assert.That(playable.GetFloat(plugSelf.parameter), Is.EqualTo(0.6875f));
                 Assert.That(playable.GetFloat(plugSelf.parameter + "_PointSeparation"), Is.EqualTo(0.2f));
                 Assert.That(playable.GetFloat(measuredScale), Is.EqualTo(1).Within(0.001f));
@@ -2018,8 +2176,8 @@ namespace VF.Tests {
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addMenuItem = true;
             socket.name = "RadiusTest";
-            socket.useSharedTag = false;
-            socket.tags.Add("test");
+            socket.channelSettings.useSharedTag = false;
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test" });
             var output = fx.GetOrCreateFloat("Radius action output");
             var action = new VRCFuryHapticSocket.PlugEntryRadiusAction {
                 range = new Vector2(0, 0.1f), smoothingSeconds = smoothingSeconds, enableSelf = self, reverseClip = savedReverseClip
@@ -2217,7 +2375,7 @@ namespace VF.Tests {
             var party = (Party)partyIndex;
             var measurements = Socket(legacy: false);
             _ = measurements(party)(SpsDepthMeters);
-            var receiverCount = root.GetComponentsInChildren<VRCContactReceiver>(true).Length;
+            var receiverCount = party == Party.Merged ? 4 : 1;
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var output = fx.GetOrCreateFloat("Local width output");
             var action = new VRCFuryHapticSocket.DepthActionNew {
@@ -2226,10 +2384,10 @@ namespace VF.Tests {
             };
             action.actionSet.actions.Add(new VF.Model.StateAction.FxFloatAction { name = output.name, value = 1 });
             injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Local width", measurements, root);
+            Start();
+            var receiver = party == Party.Merged ? Merged() : Main(party == Party.Self);
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(receiverCount),
                 "Width weighting must reuse the depth/deformation receivers");
-            var receiver = party == Party.Merged ? Merged() : Main(party == Party.Self);
-            Start();
             foreach (var resize in new[] { 0.5f, 1, 2 }) {
                 root.transform.localScale = Vector3.one * resize;
                 playable.SetFloat(scale, resize);
@@ -2551,6 +2709,7 @@ namespace VF.Tests {
         private void CheckConditionGateLimit(VFCondition condition, VFAParam[] inputs, bool shouldOptimize, bool largePayload,
             VFCondition opposite = null) {
             optimizeTrees = true;
+            foreach (var input in inputs) input.MakeExpressionFloat(synced: false);
             var output = fx.GetOrCreateFloat("Budget output");
             var baseline = VFClip.Create("Budget baseline");
             baseline.SetAap(output, 0);
@@ -2734,7 +2893,7 @@ namespace VF.Tests {
             var obj = GameObjects.Create("Socket", parent);
             var socket = obj.AddComponent<VRCFuryHapticSocket>();
             socket.name = "Test";
-            socket.tags.Add("test");
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test" });
             socket.addMenuItem = useMenu;
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             socket.enablePlugLengthParameter = socket.enablePlugWidthParameter = true;
@@ -2753,6 +2912,7 @@ namespace VF.Tests {
                 sourceObject = obj, sourceParam = SpsDepthMeters, resolvedParam = "Injected depth"
             });
             var parentEnabled = fx.CreateUniqueFloat("Parent enabled", 1);
+            parentEnabled.MakeExpressionFloat(synced: false);
             var parentOn = VFClip.Create("Parent on"); parentOn.SetEnabled(parent, true);
             var parentOff = VFClip.Create("Parent off"); parentOff.SetEnabled(parent, false);
             fx.NewLayer("Parent toggle").NewState("Parent toggle").WithAnimation(
@@ -2853,6 +3013,7 @@ namespace VF.Tests {
                 });
             }
             var parentEnabled = fx.CreateUniqueFloat("Parent enabled", 1);
+            parentEnabled.MakeExpressionFloat(synced: false);
             var parentOn = VFClip.Create("Parent on");
             var parentOff = VFClip.Create("Parent off");
             if (spsToggle) {
@@ -2888,11 +3049,11 @@ namespace VF.Tests {
             var receivers = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
             var othersName = receiverAnimator.GetParameter(receivers, false).name;
             var mergedName = receiverAnimator.GetParameter(receivers, Party.Merged).name;
+            Start();
             var others = root.GetComponentsInChildren<VRCContactReceiver>(true).Single(r => r.parameter == othersName);
             var merged = root.GetComponentsInChildren<VRCContactReceiver>(true).First(r => r.parameter == mergedName);
             var position = fx.parameters.Single(p => p.name.EndsWith("Test - Socket position"));
             var smoothingValues = fx.parameters.Where(p => p.name.Contains("/Mapped") || p.name.Contains("/Smoothed")).ToArray();
-            Start();
             void Contact(float proximity, float separation) {
                 Set(others, proximity, separation);
                 Set(merged, proximity, separation);

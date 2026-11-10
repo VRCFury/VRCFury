@@ -63,22 +63,19 @@ namespace com.vrcfury.udon {
         }
 
         public static ContactSenderProxy GetNearestSender(
-            VRCContactReceiver[] receivers,
+            VRCContactReceiver receiver,
             ContactSenderProxy[] candidates
         ) {
+            if (receiver == null || !receiver.isActiveAndEnabled) return null;
             var nearestProximity = 0f;
             var nearestDistance = float.PositiveInfinity;
             ContactSenderProxy nearest = null;
             for (var i = 0; i < candidates.Length; i++) {
                 var candidate = candidates[i];
                 if (candidate == null || !candidate.isValid) continue;
-                var proximity = 0f;
-                for (var r = 0; r < receivers.Length; r++) {
-                    if (receivers[r] != null && receivers[r].isActiveAndEnabled)
-                        proximity = Mathf.Max(proximity, receivers[r].CalculateProximity(candidate));
-                }
+                var proximity = receiver.CalculateProximity(candidate);
                 if (proximity <= 0 || proximity < nearestProximity) continue;
-                var distance = Vector3.Distance(receivers[0].transform.position, candidate.position);
+                var distance = Vector3.Distance(receiver.transform.position, candidate.position);
                 if (proximity == nearestProximity && (proximity < 1 || distance >= nearestDistance)) continue;
                 nearestProximity = proximity;
                 nearestDistance = distance;

@@ -41,8 +41,8 @@ namespace VF.Component {
         public List<DepthActionNew> depthActions2 = new List<DepthActionNew>();
         public List<PlugEntryRadiusAction> plugEntryRadiusActions = new List<PlugEntryRadiusAction>();
         public State activeActions = new State();
-        public bool useHipAvoidance = true;
-        public bool useSharedTag = true;
+        [Obsolete, HideInInspector] public bool useHipAvoidance = true;
+        [Obsolete, HideInInspector] public bool useSharedTag = true;
         [Obsolete("Configure Legacy Compatibility in SPS Options instead."), HideInInspector]
         public bool useLights = true;
         public bool overrideLegacySocketType = false;
@@ -52,7 +52,9 @@ namespace VF.Component {
         [Obsolete] public Vector3 legacyOffset = Vector3.zero;
         public Vector3 legacyOffsetLocal = Vector3.zero;
         [SerializeField] private bool offsetsInLocalUnits;
-        public List<string> tags = new List<string>();
+        [Obsolete, HideInInspector] public List<string> tags = new List<string>();
+        public SpsChannelSettings channelSettings = new();
+        [SerializeField] private bool tagsUpgradedToChannels;
         [Serializable]
         public class GuidedPathStop {
             public Transform transform;
@@ -100,6 +102,7 @@ namespace VF.Component {
 
         private void Reset() {
             offsetsInLocalUnits = true;
+            tagsUpgradedToChannels = true;
         }
 
         [Serializable]
@@ -180,6 +183,13 @@ namespace VF.Component {
                 if (!enableActiveAnimation) {
                     activeActions.actions.Clear();
                 }
+            }
+            if (!tagsUpgradedToChannels) {
+                tagsUpgradedToChannels = true;
+                channelSettings.useSharedTag = useSharedTag;
+                channelSettings.useHipAvoidance = useHipAvoidance;
+                foreach (var tag in tags) channelSettings.channels.Add(new SpsChannelSettings.Channel { id = tag });
+                changed = true;
             }
             if (!offsetsInLocalUnits) {
                 var previousWorldScale = transform.lossyScale.x;

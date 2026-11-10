@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VF.Builder.Haptics;
+using VF.Component;
 using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
 using VF.Utils.Controller;
-using VRC.SDK3.Dynamics.Contact.Components;
 using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
 using AdvancedParameter = VRC.Dynamics.ContactReceiver.AdvancedParameter;
@@ -20,14 +21,50 @@ namespace VF.Service {
         [VFAutowired] private readonly OverlappingContactsFixService overlapping;
         private readonly HashSet<SelfAndOthersReceiverService.Receivers> selectors = new();
 
+        private readonly Dictionary<string, VFAParam> nativeParameters = new();
+
+        // Classification can settle a frame later; keep all-channel tag checks out of each measurement branch.
+        public BlendtreeMath.Condition GetNative(SelfAndOthersReceiverService.Receivers main, Party party) {
+            main.request.channels.CheckOpen();
+            if (party == Party.Self) return BlendtreeMath.True();
+            if (party != Party.Others && party != Party.Merged) throw new ArgumentOutOfRangeException(nameof(party));
+            var data = main.request.channels;
+            if (!main.request.supportsLegacy) return BlendtreeMath.True();
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            var source = GetParameter(main, party, advancedParameters: AdvancedParameter.CollisionTags);
+            var parameter = nativeParameters.GetOrCreate(source.name, () => {
+                var fx = controllers.GetFx();
+                var output = fx.CreateUniqueFloat(source.name + "/Native");
+                data.OnAllSetsAvailable(sets => {
+                    if (!sets.Any(s => s.isPublic)) {
+                        output.SetDefault(1);
+                        return;
+                    }
+                    var tree = GetTree(main);
+                    var tags = sets.SelectMany(s => party == Party.Merged ? s.self.Union(s.others)
+                        : s.others).Distinct();
+                    tree.Add(output.MakeSetter(0));
+                    foreach (var tag in tags) {
+                        var formatted = data.component is VRCFuryHapticPlug ? SpsTags.FormatSocket(tag) : SpsTags.FormatPlug(tag);
+                        var input = fx.GetOrCreateFloat(source.name + "_CollisionTag_" + formatted);
+                        tree.Add(input, output.MakeSetter(1));
+                    }
+                });
+                return output;
+            });
+            return BlendtreeMath.GreaterThan(parameter, 0);
+#else
+            throw new Exception(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
+#endif
+        }
+
         public VFBlendTreeDirect GetTree(SelfAndOthersReceiverService.Receivers receivers) =>
             objectTrees.Get(receivers.request.frame);
 
-        private VFAParam RegisterParameter(VRCContactReceiver receiver, string suggestedName) {
+        private VFAParam RegisterParameter(SelfAndOthersReceiverService.Receiver receiver, string suggestedName) {
             overlapping.Activate();
             var fx = controllers.GetFx();
             if (string.IsNullOrEmpty(receiver.parameter)) receiver.parameter = fx.CreateUniqueFloat(suggestedName);
-            foreach (var name in ContactReceiverUtils.GetParameterNames(receiver)) fx.GetOrCreateFloat(name);
             return fx.GetOrCreateFloat(receiver.parameter);
         }
 
@@ -68,7 +105,7 @@ namespace VF.Service {
         public VFAParam GetAdvancedParam(SelfAndOthersReceiverService.Receivers receivers, Party party, string suffix) {
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             var fullSuffix = "_" + suffix;
-            var flag = ContactReceiverUtils.GetAdvancedParameterFlag(suffix);
+            var flag = VRCContactReceiverExtensions.GetAdvancedParameterFlag(suffix);
             var parameter = GetParameter(receivers, party, advancedParameters: flag);
             return parameter.Controller.GetOrCreateFloat(parameter.name + fullSuffix);
 #else
@@ -97,11 +134,11 @@ namespace VF.Service {
         }
 
         private VFMotion CreateSelector(SelfAndOthersReceiverService.Receivers receivers,
-            VRCContactReceiver mergedSelf, VRCContactReceiver mergedOthers) {
+            SelfAndOthersReceiverService.Receiver mergedSelf, SelfAndOthersReceiverService.Receiver mergedOthers) {
             VFClip Select(bool selectSelf) {
                 var clip = VFClip.Create(receivers.request.name + (selectSelf ? " select self" : " select others"));
-                clip.SetEnabled(mergedSelf.owner(), selectSelf);
-                clip.SetEnabled(mergedOthers.owner(), !selectSelf);
+                clip.SetEnabled(mergedSelf.obj, selectSelf);
+                clip.SetEnabled(mergedOthers.obj, !selectSelf);
                 return clip;
             }
             var chooseSelf = Select(true);

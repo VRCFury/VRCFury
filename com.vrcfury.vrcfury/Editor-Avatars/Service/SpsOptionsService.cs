@@ -47,8 +47,10 @@ namespace VF.Service {
         }
 
         public void RegisterLegacyObject(VFGameObject obj) {
-            obj.active = false;
-            GetLegacyOnClip()?.SetEnabled(obj, true);
+            var gate = GameObjects.Create("Legacy Mode", obj.parent);
+            obj.SetParent(gate, false);
+            gate.active = false;
+            GetLegacyOnClip()?.SetEnabled(gate, true);
         }
 
         [FeatureBuilderAction(FeatureOrder.MoveSpsMenus)]

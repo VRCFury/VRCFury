@@ -43,40 +43,6 @@ namespace VF.Inspector {
             );
         }
 
-        private static SerializedProperty AddSpsChannel(SerializedProperty listProp) {
-            if (listProp.arraySize >= SpsTags.MaxUserChannels) return null;
-            var index = listProp.arraySize;
-            listProp.InsertArrayElementAtIndex(index);
-            var item = listProp.GetArrayElementAtIndex(index);
-            item.stringValue = "";
-            listProp.serializedObject.ApplyModifiedProperties();
-            return item;
-        }
-
-        private static VisualElement SpsChannelList(SerializedProperty listProp) {
-            return VRCFuryEditorUtils.RefreshOnChange(() => {
-                var container = new VisualElement();
-                for (var i = 0; i < Math.Min(listProp.arraySize, SpsTags.MaxUserChannels); i++) {
-                    var index = i;
-                    var row = new VisualElement();
-                    row.Add(VRCFuryHapticPlugEditor.SpsChannelProp(listProp.GetArrayElementAtIndex(index), $"Channel #{index + 1}"));
-                    row.Add(new Button(() => {
-                        listProp.DeleteArrayElementAtIndex(index);
-                        listProp.serializedObject.ApplyModifiedProperties();
-                    }) {
-                        text = "Remove"
-                    });
-                    container.Add(row);
-                }
-                if (listProp.arraySize < SpsTags.MaxUserChannels) {
-                    container.Add(new Button(() => AddSpsChannel(listProp)) {
-                        text = "Add Channel"
-                    });
-                }
-                return container;
-            }, listProp);
-        }
-
         private static SerializedProperty AddGuidedPath(SerializedProperty listProp) {
             if (listProp.arraySize >= SpsTags.MaxUserPathStops) return null;
             return VRCFuryEditorUtils.AddToList(listProp);
@@ -272,24 +238,7 @@ namespace VF.Inspector {
                 ));
             }));
 
-            var channels = VRCFuryEditorUtils.Section("Channels", "Filter which plugs can target this socket");
-            channels.Add(SpsChannelList(serializedObject.FindProperty("tags")));
-            var useSharedTag = serializedObject.FindProperty("useSharedTag");
-            channels.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Public SPS Channel",
-                tooltip: "Allows all SPS2 plugs (which are configured using the defaults) to target this socket."));
-            channels.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (!useSharedTag.boolValue) {
-                    return VRCFuryEditorUtils.Warn("This socket does not have the public SPS channel, so most plugs will not target it.");
-                }
-                var autoChannels = VRCFuryPerFrameInjector.GetPerFrameInjector(target.owner())
-                    .GetService<SpsConfigurer>()
-                    .GetAutoSocketChannels(target);
-                if (autoChannels.Count > 0) {
-                    return VRCFuryEditorUtils.Info("Additional automatic channels included: " + autoChannels.Join(", "));
-                }
-                return new VisualElement();
-            }, useSharedTag));
-            container.Add(channels);
+            container.Add(VRCFuryHapticPlugEditor.SpsChannelsEditor(target.owner(), false, serializedObject.FindProperty("channelSettings")));
             
             var adv = new Foldout {
                 text = "Deprecated Options",
@@ -352,28 +301,11 @@ namespace VF.Inspector {
                     (VRCFuryHapticSocket.DepthActionUnits)units.enumValueIndex == VRCFuryHapticSocket.DepthActionUnits.Meters
                         ? SpsEditorUtils.MetersWarning()
                         : new VisualElement(), units));
-                void AddPair(string first, string firstLabel, string second, string secondLabel) {
-                    var row = new VisualElement().Row();
-                    var a = prop.FindPropertyRelative(first);
-                    var b = prop.FindPropertyRelative(second);
-                    void Add(SerializedProperty value, SerializedProperty other, string label) {
-                        var toggle = new Toggle { name = label };
-                        toggle.SetValueWithoutNotify(value.boolValue);
-                        toggle.TrackProperty(value, p => toggle.SetValueWithoutNotify(p.boolValue));
-                        toggle.RegisterValueChangedCallback(evt => {
-                            value.boolValue = evt.newValue;
-                            if (!evt.newValue) other.boolValue = true;
-                            prop.serializedObject.ApplyModifiedProperties();
-                        });
-                        row.Add(VRCFuryEditorUtils.BetterProp(null, label, fieldOverride: toggle).PaddingRight(5));
-                    }
-                    Add(a, b, firstLabel);
-                    Add(b, a, secondLabel);
-                    c.Add(row);
-                }
-                AddPair("enableSelf", "Allow Self", "enableOthers", "Allow Others");
+                c.Add(VRCFuryEditorUtils.CheckboxPair(prop.FindPropertyRelative("enableSelf"), "Allow Self",
+                    prop.FindPropertyRelative("enableOthers"), "Allow Others"));
                 if (prop.serializedObject.targetObject is VRCFuryHapticPlug) {
-                    AddPair("allowHole", "Allow Hole", "allowRing", "Allow Ring");
+                    c.Add(VRCFuryEditorUtils.CheckboxPair(prop.FindPropertyRelative("allowHole"), "Allow Hole",
+                        prop.FindPropertyRelative("allowRing"), "Allow Ring"));
                 }
                 c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("smoothingSeconds"), "Smoothing Seconds", tooltip: "It will take approximately this many seconds to smoothly blend to the target value. Beware that this smoothing is based on framerate, so higher FPS will result in faster smoothing."));
                 if (!IsRadius) c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("reverseClip"), "Reverse clip (Deprecated, DO NOT USE)"));
@@ -450,6 +382,8 @@ namespace VF.Inspector {
         ) => Tuple.Create(socket.addLight, new TransformData(socket.position, Quaternion.Euler(socket.rotation)));
 
         public class BakeResult {
+            public SpsChannelContacts channelContacts;
+            public SelfAndOthersReceiverService.Receivers plugReceivers;
             public VFGameObject bakeRoot;
             public VFGameObject[] pathRoots;
             public VFGameObject legacyFrontSender;

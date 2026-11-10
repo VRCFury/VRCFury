@@ -92,14 +92,14 @@ namespace VF.Tests {
                 var receiver = obj.AddComponent<VRCContactReceiver>();
                 receiver.parameter = "Contact";
                 receiver.collisionTags = new List<string> { "Test_Tag", "", " ", null };
-                Assert.That(ContactReceiverUtils.GetParameterNames(receiver), Is.EqualTo(new[] { "Contact" }));
+                Assert.That(receiver.GetParameterNames(), Is.EqualTo(new[] { "Contact" }));
                 EnableAdvanced(receiver);
-                Assert.That(ContactReceiverUtils.GetParameterNames(receiver),
+                Assert.That(receiver.GetParameterNames(),
                     Is.EquivalentTo(Outputs.Select(suffix => "Contact" + suffix)));
                 receiver.collisionTags = null;
-                Assert.That(ContactReceiverUtils.GetParameterNames(receiver).Count(), Is.EqualTo(Outputs.Length - 1));
+                Assert.That(receiver.GetParameterNames().Count(), Is.EqualTo(Outputs.Length - 1));
                 receiver.parameter = "";
-                Assert.That(ContactReceiverUtils.GetParameterNames(receiver), Is.Empty);
+                Assert.That(receiver.GetParameterNames(), Is.Empty);
             } finally {
                 Object.DestroyImmediate(obj);
             }
@@ -121,7 +121,7 @@ namespace VF.Tests {
                 receiver.parameter = "Contact";
                 receiver.collisionTags = new List<string> { "Test_Tag" };
                 receiver.advancedParameters = flags;
-                Assert.That(ContactReceiverUtils.GetParameterNames(receiver), Is.EquivalentTo(
+                Assert.That(receiver.GetParameterNames(), Is.EquivalentTo(
                     new[] { "Contact" }.Concat(suffixes.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                         .Select(suffix => "Contact" + suffix))));
             } finally {

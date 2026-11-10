@@ -7,7 +7,7 @@ namespace com.vrcfury.udon {
     [AddComponentMenu("VRCFury/SPS Plug Udon Support (VRCFury)")]
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class SpsPlugUdonSupport : UdonSharpBehaviour {
-        [SerializeField, HideInInspector] internal VRCContactReceiver[] socketRoots;
+        [SerializeField, HideInInspector] internal VRCContactReceiver socketRoot;
         [SerializeField, HideInInspector] internal Transform plugRoot;
         [SerializeField, HideInInspector] internal float plugLengthLocal;
         [SerializeField, HideInInspector] internal float plugWidthLocal;
@@ -49,7 +49,7 @@ namespace com.vrcfury.udon {
             if (lastMeasurementFrame == Time.frameCount) return cachedProximity;
             lastMeasurementFrame = Time.frameCount;
 
-            var nearestSocket = VrcfuryUtils.GetNearestSender(socketRoots, contacts);
+            var nearestSocket = VrcfuryUtils.GetNearestSender(socketRoot, contacts);
             cachedProximity = nearestSocket == null
                 ? float.PositiveInfinity
                 : Vector3.Distance(plugRoot.position, nearestSocket.position) - _GetPlugLength();

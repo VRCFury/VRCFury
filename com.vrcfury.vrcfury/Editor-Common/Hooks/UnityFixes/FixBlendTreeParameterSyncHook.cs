@@ -6,6 +6,11 @@ using HarmonyLib;
 using VF.Utils;
 
 namespace VF.Hooks.UnityFixes {
+    /**
+     * Unity's blendtree graph editor copies every param value into every subtree on every render,
+     * even if it's unchanged, which is really expensive. Skipping that when they're not changed
+     * makes it a lot faster.
+     */
     internal static class FixBlendTreeParameterSyncHook {
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type Graph = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.AnimationBlendTree.Graph");

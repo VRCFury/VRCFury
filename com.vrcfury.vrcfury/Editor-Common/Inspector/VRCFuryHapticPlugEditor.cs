@@ -191,52 +191,52 @@ namespace VF.Inspector {
             var chars = input
                 .Trim()
                 .ToLowerInvariant()
-                .Where(c => c >= 'a' && c <= 'z' || c >= '0' && c <= '9')
+                .Where(c => c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_')
                 .ToArray();
             return new string(chars);
         }
 
-        private static SerializedProperty AddSpsChannelRule(SerializedProperty listProp) {
-            if (listProp.arraySize >= SpsTags.MaxUserChannels) return null;
-            var index = listProp.arraySize;
-            listProp.InsertArrayElementAtIndex(index);
-            var item = listProp.GetArrayElementAtIndex(index);
-            item.FindPropertyRelative("tag").stringValue = "";
-            item.FindPropertyRelative("allowSelf").boolValue = true;
-            item.FindPropertyRelative("allowOthers").boolValue = true;
-            listProp.serializedObject.ApplyModifiedProperties();
-            return item;
-        }
-
-        private static VisualElement SpsChannelRuleProp(SerializedProperty listProp, int index, string label) {
-            var prop = listProp.GetArrayElementAtIndex(index);
-            var row = new VisualElement();
-            row.Add(SpsChannelProp(prop.FindPropertyRelative("tag"), label));
-            row.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("allowSelf"), "Self"));
-            row.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("allowOthers"), "Others"));
-            var remove = new Button(() => {
-                listProp.DeleteArrayElementAtIndex(index);
-                listProp.serializedObject.ApplyModifiedProperties();
-            }) {
-                text = "Remove"
-            };
-            row.Add(remove);
-            return row;
-        }
-
-        private static VisualElement SpsChannelRuleList(SerializedProperty listProp, string labelPrefix) {
+        private static VisualElement FinalSpsChannels(VFGameObject target, bool isPlug, SerializedProperty settings) {
             return VRCFuryEditorUtils.RefreshOnChange(() => {
-                var container = new VisualElement();
-                for (var i = 0; i < Math.Min(listProp.arraySize, SpsTags.MaxUserChannels); i++) {
-                    container.Add(SpsChannelRuleProp(listProp, i, $"{labelPrefix} #{i + 1}"));
-                }
-                if (listProp.arraySize < SpsTags.MaxUserChannels) {
-                    container.Add(new Button(() => AddSpsChannelRule(listProp)) {
-                        text = $"Add {labelPrefix}"
-                    });
-                }
-                return container;
-            }, listProp);
+                var configurer = VRCFuryPerFrameInjector.GetPerFrameInjector(target).GetService<SpsConfigurer>();
+                var value = (SpsChannelSettings)settings.GetObject();
+                var self = configurer.GetLogicalChannels(target, isPlug, true, value);
+                var others = configurer.GetLogicalChannels(target, isPlug, false, value);
+                var channels = self.Union(others).OrderBy(c => c, StringComparer.Ordinal)
+                    .Select(c => c + (self.Contains(c) && others.Contains(c) ? "" : self.Contains(c) ? " (Self)" : " (Others)"));
+                return VRCFuryEditorUtils.Info("Final channel list:\n" + string.Join("\n", channels.DefaultIfEmpty("none")));
+            }, settings);
+        }
+
+        internal static VisualElement SpsChannelsEditor(VFGameObject target, bool isPlug, SerializedProperty settings) {
+            SerializedProperty Prop(string name) => settings.FindPropertyRelative(name);
+            var content = VRCFuryEditorUtils.Section("Channels", isPlug
+                ? "Filter which sockets this plug will target" : "Filter which plugs can target this socket");
+            var listProp = Prop("channels");
+            content.Add(VRCFuryEditorUtils.List(listProp, onPlus: () => {
+                if (listProp.arraySize >= SpsTags.MaxUserChannels) return;
+                VRCFuryEditorUtils.AddToList(listProp);
+            }, renderItem: (item, _) => {
+                var entry = new VisualElement();
+                entry.Add(SpsChannelProp(item.FindPropertyRelative("id"), null));
+                entry.Add(VRCFuryEditorUtils.CheckboxPair(item.FindPropertyRelative("allowSelf"), "Allow Self",
+                    item.FindPropertyRelative("allowOthers"), "Allow Others"));
+                return entry;
+            }));
+            var useSharedTag = Prop("useSharedTag");
+            content.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Include Public SPS Channel",
+                tooltip: "Includes the public SPS channel for compatibility with most plugs and sockets."));
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => useSharedTag.boolValue ? new VisualElement()
+                : VRCFuryEditorUtils.Warn(isPlug ? "This plug does not include the public SPS channel, so it will not target most sockets!"
+                    : "This socket does not have the public SPS channel, so most plugs will not target it."), useSharedTag));
+            if (isPlug) {
+                content.Add(VRCFuryEditorUtils.RefreshOnChange(() => useSharedTag.boolValue
+                    ? VRCFuryEditorUtils.BetterProp(Prop("useHipAvoidance"), "Exclude sockets on own Hips",
+                        tooltip: "If this plug is on your hips, its public channel excludes sockets on your hips. Custom channels can still match them.")
+                    : new VisualElement(), useSharedTag));
+            }
+            content.Add(FinalSpsChannels(target, isPlug, settings));
+            return content;
         }
 
         internal static string GetOscId(VRCFuryHapticPlug plug) {
@@ -440,31 +440,7 @@ namespace VF.Inspector {
                 ));
             }));
 
-            var channels = VRCFuryEditorUtils.Section("Channels", "Filter which sockets this plug will target");
-            var includeChannels = serializedObject.FindProperty("includeTags");
-            channels.Add(SpsChannelRuleList(includeChannels, "Include"));
-            var useSharedTag = serializedObject.FindProperty("useSharedTag");
-            channels.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Include Public SPS Channel",
-                tooltip: "Adds the public SPS channel so this plug can target most normal sockets."));
-            channels.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (useSharedTag.boolValue) return new VisualElement();
-                return VRCFuryEditorUtils.Warn("This plug does not include the public SPS channel, so it will not target most sockets!");
-            }, useSharedTag));
-            var useHipAvoidance = serializedObject.FindProperty("useHipAvoidance");
-            channels.Add(VRCFuryEditorUtils.BetterProp(
-                useHipAvoidance,
-                "Exclude sockets on own Hips",
-                tooltip: "If this plug is on your hips, its public channel excludes sockets on your hips. Custom channels can still match them."
-            ));
-            channels.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var selfChannels = VRCFuryPerFrameInjector.GetPerFrameInjector(target.owner())
-                    .GetService<SpsConfigurer>().GetPlugChannels(target, SpsConfigurer.ChannelMode.ReceiverSelf);
-                if (!selfChannels.Contains(SpsTags.NotHipsChannel)) {
-                    return new VisualElement();
-                }
-                return VRCFuryEditorUtils.Info("The public channel excludes sockets on your hips. Custom channels can still match them.");
-            }, useHipAvoidance, useSharedTag, includeChannels));
-            container.Add(channels);
+            container.Add(SpsChannelsEditor(target.owner(), true, serializedObject.FindProperty("channelSettings")));
 
             var adv = new Foldout {
                 text = "Deprecated Options",
@@ -655,6 +631,7 @@ namespace VF.Inspector {
         }
 
         public class BakeResult {
+            public SpsChannelContacts channelContacts;
             public VFGameObject mainSender;
             public AnimationCurve radiusCurve; // Normalized plug length -> local radius.
             public SelfAndOthersReceiverService.Receivers socketReceivers;

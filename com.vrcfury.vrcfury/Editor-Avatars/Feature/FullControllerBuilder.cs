@@ -169,28 +169,22 @@ namespace VF.Feature {
                 avatarMenu.MergeMenu(prefix, copy);
             }
 
-            foreach (var receiver in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                if (ContactReceiverUtils.GetParameterNames(receiver).Any(rewrittenParams.ContainsKey)) {
-                    receiver.parameter = RewriteParamName(receiver.parameter);
-                }
-            }
+            foreach (var component in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<MonoBehaviour>()) {
+                if (!component.GetVrcParameterNames().Any(rewrittenParams.ContainsKey)) continue;
+                switch (component) {
+                    case VRCContactReceiver receiver:
+                        receiver.parameter = RewriteParamName(receiver.parameter);
+                        break;
+                    case VRCPhysBone physbone:
+                        physbone.parameter = RewriteParamName(physbone.parameter);
+                        break;
 #if VRCSDK_HAS_VRCRAYCAST
-            foreach (var raycast in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCRaycast>()) {
-                if (rewrittenParams.ContainsKey(raycast.Parameter + "_Hit") 
-                    || rewrittenParams.ContainsKey(raycast.Parameter + "_Ratio")
-                    || rewrittenParams.ContainsKey(raycast.Parameter + "_Distance")) {
-                    raycast.Parameter = RewriteParamName(raycast.Parameter);
-                }
-            }
+                    case VRCRaycast raycast:
+                        raycast.Parameter = RewriteParamName(raycast.Parameter);
+                        break;
 #endif
-            foreach (var physbone in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCPhysBone>()) {
-                if (rewrittenParams.ContainsKey(physbone.parameter + "_IsGrabbed")
-                    || rewrittenParams.ContainsKey(physbone.parameter + "_Angle")
-                    || rewrittenParams.ContainsKey(physbone.parameter + "_Stretch")
-                    || rewrittenParams.ContainsKey(physbone.parameter + "_Squish")
-                    || rewrittenParams.ContainsKey(physbone.parameter + "_IsPosed")
-                ) {
-                    physbone.parameter = RewriteParamName(physbone.parameter);
+                    default:
+                        throw new Exception("No VRC parameter rename handler for " + component.GetType().FullName);
                 }
             }
 

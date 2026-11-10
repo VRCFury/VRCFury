@@ -3,14 +3,13 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
+using UnityEngine;
 using VF.Exceptions;
 using VF.Injector;
 using VF.Menu;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
-using VRC.SDK3.Dynamics.Contact.Components;
-using VRC.SDK3.Dynamics.PhysBone.Components;
 using VRC.SDKBase;
 
 namespace VF.Service.Compressor {
@@ -100,24 +99,8 @@ namespace VF.Service.Compressor {
                 }, includeWrites: false);
             }
 
-            var contactParams = new HashSet<string>();
-            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                contactParams.UnionWith(ContactReceiverUtils.GetParameterNames(c));
-            }
-#if VRCSDK_HAS_VRCRAYCAST
-            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCRaycast>()) {
-                contactParams.Add(c.Parameter + "_Hit");
-                contactParams.Add(c.Parameter + "_Ratio");
-                contactParams.Add(c.Parameter + "_Distance");
-            }
-#endif
-            foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()) {
-                contactParams.Add(c.parameter + "_IsGrabbed");
-                contactParams.Add(c.parameter + "_Angle");
-                contactParams.Add(c.parameter + "_Stretch");
-                contactParams.Add(c.parameter + "_Squish");
-                contactParams.Add(c.parameter + "_IsPosed");
-            }
+            var contactParams = avatarObject.GetComponentsInSelfAndChildren<MonoBehaviour>()
+                .SelectMany(component => component.GetVrcParameterNames()).ToImmutableHashSet();
 
             var allMenuParamsStr = GetParamsUsedInMenu(null);
             var buttonMenuParamsStr = GetParamsUsedInMenu(new [] {VRCExpressionsMenu.Control.ControlType.Button,VRCExpressionsMenu.Control.ControlType.SubMenu}.ToImmutableHashSet());

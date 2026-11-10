@@ -1393,7 +1393,7 @@ namespace VF.Tests {
             plug.length = 0.3f;
             plug.radius = 0.02f;
             plug.spsAnimatedEnabled = 0.25f;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "Custom Channel", allowOthers = false });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "Custom Channel", allowOthers = false });
             Apply(true);
             Assert.That(owner.GetComponent<VRCFuryHapticPlug>(), Is.SameAs(plug));
             Assert.That(owner.transform.Find("SPS Plug"), Is.Null);
@@ -1416,8 +1416,8 @@ namespace VF.Tests {
             Assert.That(moved.length, Is.EqualTo(0.3f));
             Assert.That(moved.radius, Is.EqualTo(0.02f));
             Assert.That(moved.spsAnimatedEnabled, Is.EqualTo(0.25f));
-            Assert.That(moved.includeTags.Single().tag, Is.EqualTo("Custom Channel"));
-            Assert.That(moved.includeTags.Single().allowOthers, Is.False);
+            Assert.That(moved.channelSettings.channels.Single().id, Is.EqualTo("Custom Channel"));
+            Assert.That(moved.channelSettings.channels.Single().allowOthers, Is.False);
             Apply();
             Assert.That(Plugs.Single(), Is.SameAs(moved));
             Assert.That(owner.transform.childCount, Is.EqualTo(hasChildren ? 1 : 0));
@@ -1488,6 +1488,7 @@ namespace VF.Tests {
             var context = new VRCFuryInjector();
             context.ImportScan(typeof(VFServiceAttribute));
             var result = context.GetService<VF.Inspector.VRCFuryHapticSocketBaker>().Bake(socket);
+            context.GetService<SpsChannelsService>().Apply(result.channelContacts);
             Vector(result.bakeRoot.localPosition, socket.position);
             Assert.That(Quaternion.Angle(result.bakeRoot.localRotation, Quaternion.Euler(socket.rotation)), Is.LessThan(0.001f));
             Assert.That(main != null && front != null, Is.True);

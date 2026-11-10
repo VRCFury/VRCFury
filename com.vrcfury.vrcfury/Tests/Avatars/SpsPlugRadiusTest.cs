@@ -54,9 +54,9 @@ namespace VF.Tests {
             plug.unitsInMeters = true;
             plug.length = 0.4f;
             plug.radius = 0.06f;
-            plug.useSharedTag = false;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "first", allowSelf = true, allowOthers = false });
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "second", allowSelf = false, allowOthers = true });
+            plug.channelSettings.useSharedTag = false;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "first", allowSelf = true, allowOthers = false });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "second", allowSelf = false, allowOthers = true });
             var mesh = new Mesh {
                 vertices = new[] { new Vector3(0.03f, 0, 0), new Vector3(0, 0.03f, 0),
                     new Vector3(-0.03f, 0, 0), new Vector3(0, -0.03f, 0), new Vector3(0, 0, 0.2f) },
@@ -92,12 +92,14 @@ namespace VF.Tests {
             assets.Clear();
         }
 
-        private void Start() {
+        private void Start(Action beforeFinalize = null) {
 #if !VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             Assert.Ignore("SPS radius sampling requires advanced contact parameters from VRCSDK 3.10.6 or newer.");
 #endif
             service.Create(bake, "Test");
             mergedParameterName = receiverAnimator.GetParameter(bake.socketReceivers, Party.Merged).name;
+            beforeFinalize?.Invoke();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             injector.GetService<IsObjectEnabledService>().Apply();
             injector.GetService<ObjectTreeService>().Apply();
             var context = new VFSaveContext(root, false);
@@ -112,8 +114,8 @@ namespace VF.Tests {
         }
 
         private VRCContactReceiver SourceReceiver(bool self) {
-            var parameter = receiverAnimator.GetParameter(bake.socketReceivers, self).name;
-            return root.GetComponentsInChildren<VRCContactReceiver>(true).Single(r => r.parameter == parameter);
+            return root.GetComponentsInChildren<VRCContactReceiver>(true)
+                .Single(r => r.allowSelf == self && !r.name.Contains("Merged") && !string.IsNullOrEmpty(r.parameter));
         }
 
         private VRCContactReceiver MergedReceiver(bool self) => root.GetComponentsInChildren<VRCContactReceiver>(true)
@@ -177,15 +179,17 @@ namespace VF.Tests {
             Assert.That(ogb.name, Is.EqualTo(parameterName));
             Assert.That(depth.name, Is.EqualTo(parameterName));
             Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameterName), Is.Not.Null);
-            var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).Single();
+            receiverAnimator.GetParameter(receivers, Party.Merged);
+            Assert.That(receiverAnimator.GetParameter(receivers, self, parameterName).name, Is.EqualTo(parameterName));
+            receiverAnimator.GetParameter(receivers, Party.Merged);
+            injector.GetService<ChangeSpsChannelsService>().Apply();
+            var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).Single(r => r.parameter == parameterName);
             Assert.That(receiver.parameter, Is.EqualTo(parameterName));
             Assert.That(receiver.writeToMaterials, Is.True);
             Assert.That(receiver.shaderTargetRenderers, Is.EqualTo(new[] { renderer }));
             Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderType
                 | ContactReceiver.AdvancedParameter.PointSeparation));
             Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameterName + "_PointSeparation"), Is.Not.Null);
-            Assert.That(receiverAnimator.GetParameter(receivers, self, parameterName).name, Is.EqualTo(parameterName));
-            receiverAnimator.GetParameter(receivers, Party.Merged);
             Assert.That(SourceReceiver(self), Is.SameAs(receiver));
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(4));
         }
@@ -199,6 +203,7 @@ namespace VF.Tests {
             Assert.That(second.name, Is.EqualTo("OGB/Second"));
             Assert.That(receiverAnimator.GetParameter(receivers, true).name, Is.EqualTo(first.name));
             Assert.That(receiverAnimator.GetParameter(receivers, true, "OGB/Second").name, Is.EqualTo(second.name));
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true).Select(r => r.parameter),
                 Is.EquivalentTo(new[] { "OGB/First", "OGB/Second" }));
         }
@@ -217,6 +222,12 @@ namespace VF.Tests {
             if (!shaderFirst) Materials();
             var again = receiverAnimator.GetParameter(receivers, self, advancedParameters: ContactReceiver.AdvancedParameter.SenderLossyScale);
             Assert.That(again.name, Is.EqualTo(parameter.name));
+            var requested = receiverAnimator.GetAdvancedParam(receivers, self ? Party.Self : Party.Others, "SenderLossyScaleY");
+            Assert.That(requested.name, Is.EqualTo(parameter.name + "_SenderLossyScaleY"));
+            var parameterCount = fx.parameters.Length;
+            receiverAnimator.GetParameter(receivers, self);
+            Assert.That(fx.parameters, Has.Length.EqualTo(parameterCount));
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             var all = root.GetComponentsInChildren<VRCContactReceiver>(true);
             Assert.That(all, Has.Length.EqualTo(3));
             Assert.That(all.All(r => r.allowSelf == self && r.allowOthers != self && r.writeToMaterials), Is.True);
@@ -226,11 +237,9 @@ namespace VF.Tests {
                 | ContactReceiver.AdvancedParameter.SenderLossyScale));
             foreach (var suffix in new[] { "_SenderLocalPositionX", "_SenderLocalPositionY", "_SenderLocalPositionZ",
                          "_SenderLossyScaleX", "_SenderLossyScaleY", "_SenderLossyScaleZ" }) {
-                Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameter.name + suffix), Is.Not.Null);
+                Assert.That(fx.TryGetParam(parameter.name + suffix, out _), Is.EqualTo(suffix == "_SenderLossyScaleY"),
+                    "Enabling an SDK output group must not declare its unused animator fields");
             }
-            var parameterCount = fx.parameters.Length;
-            receiverAnimator.GetParameter(receivers, self);
-            Assert.That(fx.parameters, Has.Length.EqualTo(parameterCount));
             Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderLocalPosition
                 | ContactReceiver.AdvancedParameter.SenderLossyScale));
         }
@@ -243,7 +252,9 @@ namespace VF.Tests {
             var layers = fx.GetLayers().Count();
             var again = receiverAnimator.GetParameter(receivers, Party.Merged, advancedParameters: ContactReceiver.AdvancedParameter.SenderLossyScale);
             Assert.That(again.name, Is.EqualTo(parameter.name));
+            _ = receiverAnimator.GetAdvancedParam(receivers, Party.Merged, "SenderType");
             Assert.That(fx.GetLayers().Count(), Is.EqualTo(layers));
+            injector.GetService<ChangeSpsChannelsService>().Apply();
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(4));
             foreach (var self in new[] { true, false }) {
                 Assert.That(MergedReceiver(self).advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderType
@@ -251,7 +262,7 @@ namespace VF.Tests {
                 Assert.That(SourceReceiver(self).advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.PointSeparation));
             }
             Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameter.name + "_SenderType"), Is.Not.Null);
-            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameter.name + "_SenderLossyScaleY"), Is.Not.Null);
+            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameter.name + "_SenderLossyScaleY"), Is.Null);
         }
 #endif
 
@@ -370,7 +381,7 @@ namespace VF.Tests {
             Start();
             var self = SourceReceiver(true);
             var other = SourceReceiver(false);
-            Assert.That(self.collisionTags, Is.EqualTo(new[] { "SPS/Socket/first" }));
+            Assert.That(self.collisionTags, Is.EqualTo(new[] { "SPS/Socket/first/self" }));
             Assert.That(other.collisionTags, Is.EqualTo(new[] { "SPS/Socket/second" }));
             var quarterRadius = Mathf.Lerp(0.06f, MinimumRadius, 0.25f);
             foreach (var values in new[] { (0.75f, 0.25f, quarterRadius), (0.25f, 0.75f, quarterRadius), (2f, 2f, 0f) }) {
@@ -449,11 +460,11 @@ namespace VF.Tests {
                 new[] { plug.configureTpsMesh.Single() });
             if (shaderFirst) {
                 Shader();
-                Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(3));
-                Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true).All(r => r.writeToMaterials), Is.True);
+                Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty,
+                    "Material requests reserve receivers without creating SDK components before finalization");
             }
-            Start();
-            if (!shaderFirst) Shader();
+            var merged = receiverAnimator.GetParameter(bake.socketReceivers, Party.Merged);
+            Start(shaderFirst ? null : Shader);
             var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
             Assert.That(contacts, Has.Length.EqualTo(5)); // Quartet plus shader-only path buffer.
             Assert.That(contacts.All(c => c.transform.parent == (Transform)bake.bakeRoot), Is.True);
@@ -461,14 +472,12 @@ namespace VF.Tests {
                 "Receiver - Sockets (Self)", "Receiver - Sockets (Others)", "Receiver - Socket Paths",
                 "Receiver - Sockets (Self Merged)", "Receiver - Sockets (Others Merged)"
             }));
-            var r = bake.socketReceivers;
             Assert.That(SourceReceiver(true).writeToMaterials && SourceReceiver(false).writeToMaterials, Is.True);
             Assert.That(MergedReceiver(true).writeToMaterials || MergedReceiver(false).writeToMaterials, Is.False);
             Assert.That(SourceReceiver(true).parameter, Is.Not.EqualTo(SourceReceiver(false).parameter));
             Assert.That(MergedReceiver(true).parameter, Is.EqualTo(MergedReceiver(false).parameter));
             Assert.That(MergedReceiver(true).parameter, Is.Not.EqualTo(SourceReceiver(true).parameter).And.Not.EqualTo(SourceReceiver(false).parameter));
-            var again = receiverAnimator.GetParameter(r, Party.Merged);
-            Assert.That(again.name, Is.EqualTo(MergedReceiver(true).parameter));
+            Assert.That(merged.name, Is.EqualTo(MergedReceiver(true).parameter));
         }
 #endif
 
@@ -538,11 +547,11 @@ namespace VF.Tests {
 #if VRCSDK_HAS_MATERIAL_CONTACTS
         [Test]
         public void ExtraMaterialReceiversHaveNoParametersOrMergedCopies() {
-            Start();
             var renderers = new List<Renderer> { plug.configureTpsMesh.Single() };
             for (var i = 1; i < 9; i++) renderers.Add(GameObjects.Create("Extra renderer " + i, root).AddComponent<MeshRenderer>());
             var receiverService = injector.GetService<SpsPlugReceiverService>();
             receiverService.Create(plug, renderers);
+            Start();
             var receivers = root.GetComponentsInChildren<VRCContactReceiver>(true);
             Assert.That(receivers, Has.Length.EqualTo(11)); // Six entrance writers, two merged, three path writers.
             Assert.That(receivers.Count(r => !r.writeToMaterials), Is.EqualTo(2));
@@ -613,7 +622,7 @@ namespace VF.Tests {
                     Call(sender, "Start");
                     return sender;
                 }
-                var self = Sender("SPS/Socket/first", 1);
+                var self = Sender("SPS/Socket/first/self", 1);
                 var other = Sender("SPS/Socket/second", 2);
                 void Tick() {
                     var method = typeof(ContactManager).GetMethod("ScheduleUpdateReceiversJob", flags);

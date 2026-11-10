@@ -40,6 +40,22 @@ namespace VF.Tests {
         [TearDown]
         public void TearDown() => Object.DestroyImmediate(root);
 
+        private IEnumerable<string> SocketTags(bool self) {
+            var channels = injector.GetService<SpsChannelsService>();
+            var main = service.GetReceivers(plug);
+            return main.request.getTags(channels.Get(plug).Default, self);
+        }
+
+        private IEnumerable<string> PathTags() {
+            var channels = injector.GetService<SpsChannelsService>();
+            return channels.Get(plug).Default.paths.Select(SpsTags.FormatSocketPath);
+        }
+
+        private void FinalizeChannels() {
+            var channels = injector.GetService<SpsChannelsService>();
+            channels.Apply(channels.Get(plug));
+        }
+
         private class HipsChannels : SpsAutoChannelGenerator {
             public HumanBodyBones? GetClosestBone(VFGameObject obj) => HumanBodyBones.Hips;
             public VFGameObject GetBone(VFGameObject obj, HumanBodyBones bone) => null;
@@ -108,32 +124,52 @@ namespace VF.Tests {
 
         [Test]
         public void SeparateChannelListsAndLegacyTagOrder() {
-            plug.useSharedTag = plug.useHipAvoidance = true;
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "first", allowSelf = true, allowOthers = false });
-            plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "second", allowSelf = false, allowOthers = true });
-            Assert.That(service.GetSocketTags(plug, true), Is.EqualTo(new[] {
-                SpsTags.FormatSocket(SpsTags.NotHipsChannel), SpsTags.FormatSocket("first")
+            plug.channelSettings.useSharedTag = plug.channelSettings.useHipAvoidance = true;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "first", allowSelf = true, allowOthers = false });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "second", allowSelf = false, allowOthers = true });
+            Assert.That(SocketTags(true), Is.EqualTo(new[] {
+                SpsTags.FormatSocket("first/self"), SpsTags.FormatSocket(SpsTags.NotHipsChannel + "/self")
             }));
-            Assert.That(service.GetSocketTags(plug, false), Is.EqualTo(new[] {
+            Assert.That(SocketTags(false), Is.EqualTo(new[] {
                 SpsTags.FormatSocket(SpsTags.PublicChannel), SpsTags.FormatSocket("second"),
                 SpsTags.LegacySocketHole, SpsTags.LegacySocketRing, SpsTags.LegacySocket
             }));
-            Assert.That(service.GetPathTags(plug), Is.EquivalentTo(new[] {
-                SpsTags.FormatSocketPath(SpsTags.PublicChannel), SpsTags.FormatSocketPath(SpsTags.NotHipsChannel),
-                SpsTags.FormatSocketPath("first"), SpsTags.FormatSocketPath("second")
+            Assert.That(PathTags(), Is.EquivalentTo(new[] {
+                SpsTags.FormatSocketPath(SpsTags.PublicChannel), SpsTags.FormatSocketPath(SpsTags.NotHipsChannel + "/self"),
+                SpsTags.FormatSocketPath("first/self"), SpsTags.FormatSocketPath("second")
             }));
         }
 
         [Test]
         public void PrivateChannelsDoNotSubscribeToLegacyMetadataOrLights() {
-            plug.useSharedTag = false;
-            plug.includeTags.Clear();
-            Assert.That(service.GetSocketTags(plug, true), Is.Empty);
-            Assert.That(service.GetSocketTags(plug, false), Is.Empty);
-            Assert.That(service.GetPathTags(plug), Is.Empty);
+            plug.channelSettings.useSharedTag = false;
+            plug.channelSettings.channels.Clear();
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "private" });
+            Assert.That(SocketTags(true), Is.EqualTo(new[] { SpsTags.FormatSocket("private/self") }));
+            Assert.That(SocketTags(false), Is.EqualTo(new[] { SpsTags.FormatSocket("private") }));
+            Assert.That(PathTags(), Is.EquivalentTo(new[] { SpsTags.FormatSocketPath("private"), SpsTags.FormatSocketPath("private/self") }));
         }
 
 #if VRCSDK_HAS_MATERIAL_CONTACTS
+        [Test]
+        public void FinalizationDoesNotModifyUnconfiguredSharedMaterials() {
+            var material = new Material(Shader.Find("Unlit/Color"));
+            try {
+                SpsPatcher.Patch(material, false, false);
+                material.SetFloat("_SPS_OthersChannelTagCount", 73);
+                material.SetFloat("_SPS_OthersLegacyTags", 74);
+                material.SetFloat("_SPS_UseLegacyLights", 75);
+                var renderer = GameObjects.Create("Unconfigured material slot", root).AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = material;
+                var original = UnityEditor.EditorJsonUtility.ToJson(material);
+                service.Create(plug, new[] { renderer });
+                FinalizeChannels();
+                Assert.That(renderer.sharedMaterial, Is.SameAs(material));
+                Assert.That(UnityEditor.EditorJsonUtility.ToJson(material), Is.EqualTo(original),
+                    "Only the baker's configured SPS copies may be modified, not other shared material slots");
+            } finally { Object.DestroyImmediate(material); }
+        }
+
         [TestCase(true, true)]
         [TestCase(true, false)]
         [TestCase(false, true)]
@@ -144,24 +180,23 @@ namespace VF.Tests {
             Assert.That(receivers.IsCreated, Is.False);
             var renderer = GameObjects.Create("Material target", root).AddComponent<MeshRenderer>();
             receivers.SetMaterials(new[] { renderer }, self, false, "Reserved");
-            var reserved = root.GetComponentInChildren<VRCContactReceiver>();
+            var reservedRequest = receivers.Find(self, false);
             // Even an inactive material output with room must not lose its assigned shader parameter.
-            reserved.writeToMaterials = false;
+            reservedRequest.shaderTargetRenderers.Clear();
             receivers.SetMaterials(new[] { renderer, renderer }, self, needsTags, "Requested");
+            receivers.SetMaterials(new[] { renderer }, self, true, "Requested");
+            receivers.SetMaterials(new[] { renderer }, self, false, "Requested");
+            receivers.SetMaterials(new[] { renderer }, self, needsTags, "Another");
+            FinalizeChannels();
             var all = root.GetComponentsInChildren<VRCContactReceiver>(true);
-            Assert.That(all, Has.Length.EqualTo(2));
+            Assert.That(all, Has.Length.EqualTo(3));
+            var reserved = reservedRequest.component;
             var writer = all.Single(r => r.separateShaderParameter == "Requested");
             Assert.That(reserved.separateShaderParameter, Is.EqualTo("Reserved"));
             Assert.That(writer.allowSelf, Is.EqualTo(self));
             Assert.That(writer.allowOthers, Is.EqualTo(!self));
-            Assert.That(writer.writeToMaterialsContactTags, Is.EqualTo(needsTags));
-            Assert.That(writer.shaderTargetRenderers, Is.EqualTo(new[] { renderer }));
-            receivers.SetMaterials(new[] { renderer }, self, true, "Requested");
-            receivers.SetMaterials(new[] { renderer }, self, false, "Requested");
             Assert.That(writer.writeToMaterialsContactTags, Is.True);
-            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(2));
-            receivers.SetMaterials(new[] { renderer }, self, needsTags, "Another");
-            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(3));
+            Assert.That(writer.shaderTargetRenderers, Is.EqualTo(new[] { renderer }));
             Assert.That(writer.separateShaderParameter, Is.EqualTo("Requested"));
         }
 
@@ -173,7 +208,9 @@ namespace VF.Tests {
             var frame = injector.GetService<PlugFrameService>().Get(plug);
             var renderer = GameObjects.Create("Renderer", root).AddComponent<MeshRenderer>();
             service.Create(plug, new[] { renderer });
+            FinalizeChannels();
             var receivers = root.GetComponentsInChildren<VRCContactReceiver>().Where(r => r.writeToMaterials).ToArray();
+            Assert.That(receivers, Has.Length.EqualTo(3));
             var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
             var type = typeof(ContactReceiver);
             foreach (var receiver in receivers) {
@@ -214,6 +251,7 @@ namespace VF.Tests {
             var renderers = Enumerable.Range(0, rendererCount)
                 .Select(i => (Renderer)GameObjects.Create("Renderer " + i, root).AddComponent<MeshRenderer>()).ToArray();
             service.Create(plug, renderers.Concat(renderers));
+            FinalizeChannels();
             var receivers = root.GetComponentsInChildren<VRCContactReceiver>().Where(r => r.writeToMaterials).ToArray();
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true).Length, Is.EqualTo(receiverCount));
             foreach (var group in receivers.GroupBy(r => r.separateShaderParameter)) {
@@ -238,7 +276,7 @@ namespace VF.Tests {
                 Assert.That(receiver.allowOthers, Is.EqualTo(receiver.separateShaderParameter != "SPS_Self"));
                 Assert.That(receiver.receiverType, Is.EqualTo(ContactReceiver.ReceiverType.Proximity));
                 Assert.That(receiver.collisionTags, Is.EqualTo(receiver.separateShaderParameter == "SPS_Path"
-                    ? service.GetPathTags(plug) : service.GetSocketTags(plug, receiver.separateShaderParameter == "SPS_Self")));
+                    ? PathTags() : SocketTags(receiver.separateShaderParameter == "SPS_Self")));
             }
         }
 #else
@@ -249,38 +287,32 @@ namespace VF.Tests {
         }
 #endif
 
-        [TestCase(true)]
-        [TestCase(false)]
-        public void MaterialSettingsUseOthersChannelCountAndLegacySwitches(bool compatibility) {
+#if VRCSDK_HAS_MATERIAL_CONTACTS
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void MaterialSettingsUseOthersChannelCountAndLegacySwitches(bool compatibility, bool shared) {
             var material = new Material(Shader.Find("Unlit/Color"));
             try {
-#if !VRCSDK_HAS_MATERIAL_CONTACTS
-                Assert.That(Assert.Throws<Exception>(() => SpsPatcher.Patch(material, false, false)).Message,
-                    Is.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
-#else
                 SpsPatcher.Patch(material, false, false);
+                plug.channelSettings.useSharedTag = shared;
+                plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "self", allowOthers = false });
+                plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "both" });
+                var renderer = GameObjects.Create("Mesh", root).AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = material;
                 service.ConfigureMaterial(material, plug, compatibility);
-                Assert.That(material.GetFloat("_SPS_OthersChannelTagCount"), Is.EqualTo(1));
-                Assert.That(material.GetFloat("_SPS_OthersLegacyTags"), Is.EqualTo(compatibility ? 1 : 0));
-                Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
+                service.Create(plug, new[] { renderer }, compatibility);
+                FinalizeChannels();
+                Assert.That(SocketTags(true).Count(), Is.EqualTo(shared ? 3 : 2));
+                Assert.That(material.GetFloat("_SPS_OthersChannelTagCount"), Is.EqualTo(shared ? 2 : 1));
+                Assert.That(material.GetFloat("_SPS_OthersLegacyTags"), Is.EqualTo(compatibility && shared ? 1 : 0));
+                Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility && shared ? 1 : 0));
                 Assert.That(material.HasProperty("_SPS_BakeRootScale"), Is.False);
                 Assert.That(material.HasProperty("_SPS_PlugOrigin"), Is.False);
-                plug.useLights = false;
-                service.ConfigureMaterial(material, plug, compatibility);
-                Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
-                plug.useSharedTag = false;
-                plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "self", allowSelf = true, allowOthers = false });
-                plug.includeTags.Add(new VRCFuryHapticPlug.TagRule { tag = "both", allowSelf = true, allowOthers = true });
-                service.ConfigureMaterial(material, plug, compatibility);
-                Assert.That(service.GetSocketTags(plug, true).Count, Is.EqualTo(2));
-                Assert.That(material.GetFloat("_SPS_OthersChannelTagCount"), Is.EqualTo(1));
-                Assert.That(material.GetFloat("_SPS_OthersLegacyTags"), Is.Zero);
-                Assert.That(material.GetFloat("_SPS_UseLegacyLights"), Is.Zero);
-#endif
-            } finally {
-                Object.DestroyImmediate(material);
-            }
+            } finally { Object.DestroyImmediate(material); }
         }
+#endif
 
         [TestCase(true, true)]
         [TestCase(true, false)]
@@ -320,6 +352,7 @@ namespace VF.Tests {
                         result.renderer.sharedMaterials = result.renderer.sharedMaterials.Select((material, slot) => result.configureMaterial(slot, material)).ToArray();
                     }
                 }
+                FinalizeChannels();
                 var first = plug.configureTpsMesh[0].sharedMaterial;
                 var second = plug.configureTpsMesh[1].sharedMaterial;
                 Assert.That(first, Is.Not.SameAs(source));

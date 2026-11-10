@@ -207,6 +207,24 @@ namespace VF.Inspector {
             return output;
         }
 
+        public static VisualElement CheckboxPair(SerializedProperty first, string firstLabel, SerializedProperty second, string secondLabel) {
+            var row = new VisualElement().Row();
+            void Add(SerializedProperty value, SerializedProperty other, string label) {
+                var toggle = new Toggle { name = label };
+                toggle.SetValueWithoutNotify(value.boolValue);
+                toggle.TrackProperty(value, p => toggle.SetValueWithoutNotify(p.boolValue));
+                toggle.RegisterValueChangedCallback(evt => {
+                    value.boolValue = evt.newValue;
+                    if (!evt.newValue) other.boolValue = true;
+                    value.serializedObject.ApplyModifiedProperties();
+                });
+                row.Add(BetterProp(null, label, fieldOverride: toggle).PaddingRight(5));
+            }
+            Add(first, second, firstLabel);
+            Add(second, first, secondLabel);
+            return row;
+        }
+
         public static SerializedProperty AddToList(SerializedProperty list, Action<SerializedProperty> doWith = null) {
             list.serializedObject.Update();
             list.InsertArrayElementAtIndex(list.arraySize);
