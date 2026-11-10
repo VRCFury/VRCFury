@@ -7,11 +7,13 @@ using HarmonyLib;
 using VF.Utils;
 using UnityEditor;
 using UnityEditor.Animations;
+using UnityEngine;
 
 namespace VF.Hooks.UnityFixes {
     /**
      * Unity's blendtree graph editor recalculates the same ranges for every slider, and it's really expensive.
      * Caching them cuts the render time by a lot.
+     * It also repeatedly measures and shortens identical slot labels across shared nodes and GUI events.
      */
     internal static class CacheBlendTreeEditorParameterRangesHook {
         private abstract class Reflection : ReflectionHelper {
@@ -27,20 +29,40 @@ namespace VF.Hooks.UnityFixes {
             public static readonly HarmonyUtils.PatchObj Rebuild = HarmonyUtils.Patch(
                 typeof(CacheBlendTreeEditorParameterRangesHook), nameof(Clear),
                 "UnityEditor.Graphs.AnimationBlendTree.Graph", "BuildFromBlendTree");
+            public static readonly HarmonyUtils.PatchObj LabelPrefix = HarmonyUtils.Patch(
+                typeof(CacheBlendTreeEditorParameterRangesHook), nameof(LabelPrefix),
+                "UnityEditor.Graphs.AnimationBlendTree.GraphGUI", "LimitStringWidth");
+            public static readonly HarmonyUtils.PatchObj LabelPostfix = HarmonyUtils.Patch(
+                typeof(CacheBlendTreeEditorParameterRangesHook), nameof(LabelPostfix),
+                "UnityEditor.Graphs.AnimationBlendTree.GraphGUI", "LimitStringWidth", HarmonyUtils.PatchMode.Postfix);
         }
 
         private static ConditionalWeakTable<BlendTree, Dictionary<int, (string name, float min, float max)>> cache = new();
+        private static ConditionalWeakTable<GUIStyle, Dictionary<(string text, float width, float dpi), string>> labels = new();
 
         [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Reflection.Draw.apply();
             Reflection.Rebuild.apply();
+            Reflection.LabelPrefix.apply();
+            Reflection.LabelPostfix.apply();
             Undo.undoRedoPerformed += Clear;
             EditorApplication.projectChanged += Clear;
         }
 
-        private static void Clear() => cache = new();
+        private static void Clear() {
+            cache = new();
+            labels = new();
+        }
+
+        private static bool LabelPrefix(string __0, float __1, GUIStyle __2, ref string __result) =>
+            !labels.GetOrCreateValue(__2).TryGetValue((__0, __1, EditorGUIUtility.pixelsPerPoint), out __result);
+
+        private static void LabelPostfix(string __0, float __1, GUIStyle __2, string __result) {
+            // Slot titles repeat across shared nodes and GUI events. Keep Unity's original shortening algorithm.
+            labels.GetOrCreateValue(__2)[(__0, __1, EditorGUIUtility.pixelsPerPoint)] = __result;
+        }
 
         private static (string name, float min, float max) Get(BlendTree tree, int index) {
             // Shared subtrees repeat these expensive recursive native queries on every GUI event.

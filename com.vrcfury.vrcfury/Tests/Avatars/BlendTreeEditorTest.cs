@@ -171,5 +171,36 @@ namespace VF.Tests {
                 }
             } finally { graph.Destroy(); }
         }
+
+        [Test]
+        public void ShortenedLabelsCacheByTextWidthAndStyleAndClearOnGraphRebuild() {
+            var graphType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.AnimationBlendTree.Graph");
+            var guiType = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.Graphs.AnimationBlendTree.GraphGUI");
+            var graph = Own(ScriptableObject.CreateInstance(graphType));
+            var gui = Own(ScriptableObject.CreateInstance(guiType));
+            var method = guiType.VFMethod("LimitStringWidth");
+            var prefix = typeof(CacheBlendTreeEditorParameterRangesHook).VFStaticMethod("LabelPrefix");
+            var style = new GUIStyle(EditorGUIUtility.GetBuiltinSkin(EditorSkin.Inspector).label);
+            var otherStyle = new GUIStyle(style) { fontSize = 24 };
+            var root = Own(new BlendTree());
+            root.AddChild(Own(new AnimationClip()));
+            const string title = "A long blendtree node title that needs shortening to fit";
+            void Rebuild() => graphType.VFMethod("BuildFromBlendTree").Invoke(graph, new object[] { root });
+            try {
+                Rebuild();
+                foreach (var (text, width, currentStyle) in new[] {
+                             (title, 80f, style), (title + " edited", 80f, style),
+                             (title, 160f, style), (title, 80f, otherStyle) }) {
+                    var lookup = new object[] { text, width, currentStyle, null };
+                    Assert.That(prefix.Invoke(null, lookup), Is.True, "Changed text, width, or style must be measured");
+                    var result = (string)method.Invoke(gui, new object[] { text, width, currentStyle });
+                    Assert.That(prefix.Invoke(null, lookup), Is.False, "Repeated labels should use the cache");
+                    Assert.That(lookup[3], Is.EqualTo(result));
+                    Rebuild();
+                    Assert.That(prefix.Invoke(null, lookup), Is.True, "Rebuilding must invalidate label measurements");
+                    Assert.That(method.Invoke(gui, new object[] { text, width, currentStyle }), Is.EqualTo(result));
+                }
+            } finally { graphType.VFMethod("Clear").Invoke(graph, new object[] { true }); }
+        }
     }
 }
