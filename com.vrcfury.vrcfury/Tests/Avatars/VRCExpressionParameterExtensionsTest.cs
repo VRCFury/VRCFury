@@ -123,13 +123,40 @@ namespace VF.Tests {
                 var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
                 var controllers = injector.GetService<ControllersService>();
                 controllers.ClearCache(applyBaseMask: false);
-                var parameter = controllers.GetFx().GetOrCreateBool("OGB_ENABLED", true);
+                var parameter = controllers.GetFx().GetOrCreateBool("OGB/Enabled", true);
                 if (expressionAlreadyExists) parameter.MakeExpressionBool(synced: false);
                 injector.GetService<OgbEnabledService>().Register(root);
                 Assert.That(parameter.GetDefault(), Is.Zero);
-                var expression = avatar.expressionParameters.FindParameter("OGB_ENABLED");
+                var expression = avatar.expressionParameters.FindParameter("OGB/Enabled");
                 Assert.That(expression.defaultValue, Is.Zero);
                 Assert.That(expression.IsNetworkSynced(), Is.False);
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [TestCase("plug", true)]
+        [TestCase("socket", true)]
+        [TestCase("touch", true)]
+        [TestCase("none", false)]
+        public void DisabledHapticsMarkerRequiresARequestedHapticFeature(string feature, bool requested) {
+            var root = new GameObject("Haptics availability");
+            try {
+                var avatar = root.AddComponent<VRCAvatarDescriptor>();
+                if (feature == "plug") root.AddComponent<VF.Component.VRCFuryHapticPlug>();
+                if (feature == "socket") root.AddComponent<VF.Component.VRCFuryHapticSocket>();
+                if (feature == "touch") root.AddComponent<VF.Component.VRCFuryHapticTouchReceiver>();
+                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+                injector.GetService<BakeHapticVersionsService>().Apply();
+                var marker = avatar.expressionParameters?.FindParameter("OGB/HapticsDisabled");
+                Assert.That(marker != null, Is.EqualTo(requested && !VF.Menu.HapticsToggleMenuItem.Get()));
+                if (marker != null) {
+                    Assert.That(marker.valueType, Is.EqualTo(VRCExpressionParameters.ValueType.Bool));
+                    Assert.That(marker.defaultValue, Is.EqualTo(1));
+                    Assert.That(marker.IsNetworkSynced(), Is.False);
+                    Assert.That(marker.saved, Is.False);
+                }
+                Assert.That(avatar.expressionParameters?.FindParameter("OGB/Version/11") != null, Is.EqualTo(requested));
             } finally {
                 Object.DestroyImmediate(root);
             }
@@ -403,31 +430,6 @@ namespace VF.Tests {
             }
         }
 
-        [Test]
-        public void SpsRandomParametersAreDeclaredAsIntsInFxAndDrivenFromAction() {
-            var root = new GameObject("SPS cross-controller types");
-            try {
-                var avatar = root.AddComponent<VRCAvatarDescriptor>();
-                avatar.baseAnimationLayers = new[] {
-                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX }
-                };
-                avatar.specialAnimationLayers = new[] {
-                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.Action }
-                };
-                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
-                var controllers = injector.GetService<ControllersService>();
-                controllers.ClearCache(applyBaseMask: false);
-                injector.GetService<SpsPlayerIdService>().Register(root.AddComponent<MeshRenderer>());
-                injector.GetService<NoBadControllerParamsService>().Apply();
-                var random = controllers.GetFx().parameters.Where(p => p.name.EndsWith("_RANDOM")).ToArray();
-                Assert.That(random, Has.Length.EqualTo(2));
-                Assert.That(random.All(p => p.type == AnimatorControllerParameterType.Int), Is.True);
-                Assert.That(controllers.GetAction().parameters.All(p => !p.name.EndsWith("_RANDOM")), Is.True,
-                    "Repair must not need duplicate declarations in the driver's controller");
-            } finally {
-                Object.DestroyImmediate(root);
-            }
-        }
 
         [Test]
         public void CompressorBooleanIndicesDoNotMultiplyTransitionsDuringRepair() {

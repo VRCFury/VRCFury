@@ -23,6 +23,8 @@ namespace VF.Service {
             = new Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController>();
         private bool applyBaseMask = true;
         private bool controllerLoadingAllowed;
+        private readonly Dictionary<VFAvatarController, (HashSet<VFLayer> layers, HashSet<string> parameters)> originals
+            = new Dictionary<VFAvatarController, (HashSet<VFLayer>, HashSet<string>)>();
 
         public ControllersService() {
             // The allocator also depends on this service, so resolve it only when allocating a name.
@@ -34,7 +36,7 @@ namespace VF.Service {
         }
 
         private VFAvatarController MakeController(VRCAvatarDescriptor.AnimLayerType type) {
-            if (applyBaseMask && !controllerLoadingAllowed) {
+            if (!globals.useOriginalAssets && applyBaseMask && !controllerLoadingAllowed) {
                 throw new System.InvalidOperationException(
                     "A playable-layer controller was loaded before the Load All Controllers build phase."
                 );
@@ -51,7 +53,7 @@ namespace VF.Service {
                     ObjectPaths = objectPaths,
                     ReverseObjectPaths = true
                 };
-                ctrl = applyBaseMask
+                ctrl = applyBaseMask && !globals.useOriginalAssets
                     ? VFControllerWithVrcType.Load(existingController, type, context)
                     : VFController.Load(existingController, context);
             }
@@ -73,12 +75,16 @@ namespace VF.Service {
                         isDefault ? LayerSourceService.VrcDefaultSource : LayerSourceService.AvatarDescriptorSource);
                 }
             }
+            if (globals.useOriginalAssets) {
+                originals[output] = (new HashSet<VFLayer>(output.GetLayers()), new HashSet<string>(output.parameters.Select(p => p.name)));
+            }
             return output;
         }
 
         public void ClearCache(bool applyBaseMask = true) {
             this.applyBaseMask = applyBaseMask;
             _controllers.Clear();
+            originals.Clear();
         }
 
         public void LoadAllControllers() {
@@ -102,6 +108,24 @@ namespace VF.Service {
                 .Concat(_controllers.Values)
                 .Distinct()
                 .ToArray();
+        }
+
+        public void CommitRemovals() {
+            if (!globals.useOriginalAssets) return;
+            foreach (var pair in originals) {
+                var controller = pair.Key;
+                var source = controller.GetSourceAsset() as AnimatorController;
+                if (source == null) continue;
+                var removedLayers = new HashSet<string>(pair.Value.layers.Except(controller.GetLayers())
+                    .Select(layer => layer.name));
+                var removedParams = new HashSet<string>(pair.Value.parameters.Except(controller.parameters.Select(p => p.name)));
+                if (removedLayers.Count == 0 && removedParams.Count == 0) continue;
+                // Cleanup only removes layers/declarations. Preserve all authored data on the surviving entries,
+                // rather than running build finalization (which normalizes types, defaults, and ordering).
+                source.layers = source.layers.Where(layer => !removedLayers.Contains(layer.name)).ToArray();
+                source.parameters = source.parameters.Where(parameter => !removedParams.Contains(parameter.name)).ToArray();
+                source.Dirty();
+            }
         }
 
     }

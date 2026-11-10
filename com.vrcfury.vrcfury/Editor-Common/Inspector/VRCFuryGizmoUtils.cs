@@ -5,6 +5,34 @@ using UnityEngine.Rendering;
 
 namespace VF.Inspector {
     internal static class VRCFuryGizmoUtils {
+        public static void DrawTransformHandle(Transform target, string undoName = "Transform") {
+            if (target == null || Tools.hidden || EditorUtility.IsPersistent(target)) return;
+            var position = target.position;
+            var rotation = target.rotation;
+            var scale = target.localScale;
+            var handleRotation = Tools.pivotRotation == PivotRotation.Local ? rotation : Quaternion.identity;
+            EditorGUI.BeginChangeCheck();
+            switch (Tools.current) {
+                case Tool.Move:
+                    position = Handles.PositionHandle(position, handleRotation);
+                    break;
+                case Tool.Rotate:
+                    var rotatedHandle = Handles.RotationHandle(handleRotation, position);
+                    rotation = rotatedHandle * Quaternion.Inverse(handleRotation) * rotation;
+                    break;
+                case Tool.Scale:
+                    scale = Handles.ScaleHandle(scale, position, rotation, HandleUtility.GetHandleSize(position));
+                    break;
+                case Tool.Transform:
+                    Handles.TransformHandle(ref position, ref rotation, ref scale);
+                    break;
+            }
+            if (!EditorGUI.EndChangeCheck()) return;
+            Undo.RecordObject(target, undoName);
+            target.SetPositionAndRotation(position, rotation);
+            target.localScale = scale;
+            PrefabUtility.RecordPrefabInstancePropertyModifications(target);
+        }
 
         public static void DrawDisc(
             Vector3 worldCenter,

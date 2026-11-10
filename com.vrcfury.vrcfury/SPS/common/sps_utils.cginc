@@ -3,9 +3,6 @@
 
 #include "UnityShaderVariables.cginc"
 
-#define SPS_SPLIT_ID_BASE (1u << 16)
-#define SPS_MERGE_SPLIT(name) sps_join_id(name##Low, name##High)
-
 inline float sps_map(float value, float min1, float max1, float min2, float max2) {
     return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
@@ -22,9 +19,10 @@ inline bool sps_is_zero(float4 v) {
     return !any(v != 0);
 }
 
-// normalize fails fatally and discards the vert if length == 0
+// Guard the squared length used by rsqrt, including vectors whose length underflows to zero.
 inline float3 sps_normalize(float3 a) {
-    return sps_is_zero(a) ? float3(0,0,1) : normalize(a);
+    float lengthSquared = dot(a, a);
+    return lengthSquared == 0 ? float3(0,0,1) : a * rsqrt(lengthSquared);
 }
 
 inline float3 sps_nearest_normal(float3 forward, float3 approximate) {
@@ -41,19 +39,6 @@ inline bool sps_to_bool(float v) {
 
 inline uint sps_to_uint(float v) {
     return (uint)round(v);
-}
-
-inline uint sps_join_id(float low, float high) {
-    return sps_to_uint(low) | (sps_to_uint(high) << 16);
-}
-
-inline void sps_clip_rect(int2 local, int2 size) {
-    clip(float4(
-        local.x,
-        local.y,
-        size.x - 1 - local.x,
-        size.y - 1 - local.y
-    ) + 0.5);
 }
 
 inline float3 sps_object_origin_world() {

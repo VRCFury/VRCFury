@@ -6,8 +6,14 @@ namespace VF.Component {
     [AddComponentMenu("")]
     [ExecuteAlways]
     internal class VRCFuryHideGizmoUnlessSelected : MonoBehaviour, IVrcfEditorOnly {
-        public void OnSelectionChanged(bool isSelected) {
-            if (isSelected)
+        public static Func<GameObject, bool> IsSelected;
+
+        private void OnEnable() {
+            OnSelectionChanged();
+        }
+
+        public void OnSelectionChanged() {
+            if (!isActiveAndEnabled || IsSelected?.Invoke(gameObject) == true)
                 Show();
             else
                 Hide();

@@ -24,18 +24,22 @@ namespace VF.Builder {
         }
         
         public static VRCFuryInjector GetInjector(VRCAvatarDescriptor avatar) {
-            return cached.GetOrCreate(avatar, () => MakeInjector(avatar));
+            return cached.GetOrCreate(avatar, () => MakeInjector(avatar.owner(), false));
         }
 
-        private static VRCFuryInjector MakeInjector(VRCAvatarDescriptor avatar) {
+        public static VRCFuryInjector CreateForManualEditing(VFGameObject avatarObject) => MakeInjector(avatarObject, true);
+
+        private static VRCFuryInjector MakeInjector(VFGameObject avatarObject, bool useOriginalAssets) {
             var injector = new VRCFuryInjector();
             injector.ImportScan(typeof(VFServiceAttribute));
             injector.ImportScan(typeof(ActionBuilder));
-            injector.Set(avatar);
-            injector.Set("avatarObject", avatar.owner());
+            var avatar = avatarObject.GetComponent<VRCAvatarDescriptor>();
+            if (avatar != null) injector.Set(avatar);
+            injector.Set("avatarObject", avatarObject);
             
             var globals = new GlobalsService {
-                avatarObject = avatar.owner(),
+                avatarObject = avatarObject,
+                useOriginalAssets = useOriginalAssets,
             };
             injector.Set(globals);
             return injector;

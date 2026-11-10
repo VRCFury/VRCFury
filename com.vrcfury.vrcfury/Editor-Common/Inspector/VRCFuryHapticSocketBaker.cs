@@ -8,314 +8,220 @@ using VF.Builder.Haptics;
 using VF.Component;
 using VF.Injector;
 using VF.Utils;
+using VRC.SDK3.Dynamics.Contact.Components;
 using static VF.Inspector.VRCFuryHapticSocketEditor;
 using BakeResult = VF.Inspector.VRCFuryHapticSocketEditor.BakeResult;
-using ScreenMarkerResult = VF.Inspector.VRCFuryHapticSocketEditor.ScreenMarkerResult;
 
 namespace VF.Inspector {
     [VFService]
     internal class VRCFuryHapticSocketBaker {
-        [VFAutowired] private readonly SpsMarkersService spsMarkers;
-        [VFAutowired] [CanBeNull] private readonly SpsAutoTagGenerator autoTagGenerator;
-        [VFAutowired] private readonly SpsSocketMarkerService socketMarkers;
+        [VFAutowired] [CanBeNull] private readonly SpsAutoChannelGenerator autoChannelGenerator;
+        [VFAutowired] private readonly SpsChannelsService channels;
+        [VFAutowired] private readonly SpsSocketReceiverService socketReceivers;
+        private int nextGroupId = 1;
+        private readonly Dictionary<VFGameObject, VFGameObject> nonUniformRoots = new();
 
-        [CanBeNull]
-        public BakeResult Bake(VRCFuryHapticSocket socket) {
-            var closestBone = autoTagGenerator?.GetClosestBone(socket.owner());
-            var isOnHips = closestBone == HumanBodyBones.Hips;
+        public BakeResult Bake(VRCFuryHapticSocket socket, bool legacyPlugCompatibility = true,
+            bool tpsDepthAnimationCompatibility = false, VFGameObject avatarRoot = null) {
+            if (!BuildTargetUtils.IsDesktop()) return null;
+            var closestBone = autoChannelGenerator?.GetClosestBone(socket.owner());
+            var contacts = channels.Get(socket);
+            var result = new BakeResult { channelContacts = contacts };
             var transform = socket.owner();
-            if (!HapticUtils.AssertValidScale(transform, "socket", shouldThrow: !socket.fromSpsForAll)) {
-                return null;
+            var relocate = false;
+            try {
+                HapticUtils.AssertValidScale(transform);
+            } catch (Exception) when (avatarRoot != null) {
+                relocate = true;
             }
 
-            var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket, closestBone);
+            var (lightType, localPosition, localRotation) = GetSocketTransform(socket, closestBone);
 
             var bakeRoot = GameObjects.Create("BakedSpsSocket", transform);
             bakeRoot.localPosition = localPosition;
             bakeRoot.localRotation = localRotation;
 
-            var socketScale = bakeRoot.worldScale.x;
-            var oneSpace = GameObjects.Create("OneSpace", bakeRoot);
-            oneSpace.worldScale = Vector3.one;
+            if (relocate) {
+                var target = bakeRoot;
+                target.name = "SPS Socket Target";
+                var root = nonUniformRoots.GetOrCreate(avatarRoot,
+                    () => GameObjects.Create("Nonuniform SPS Sockets", avatarRoot));
+                bakeRoot = GameObjects.Create("BakedSpsSocket", root);
+                bakeRoot.worldPosition = target.worldPosition;
+                bakeRoot.worldRotation = target.worldRotation;
+                VFConstraint.CreateParent(bakeRoot).AddSource(target, weight: 1);
+            }
 
             var worldSpace = GameObjects.Create("WorldSpace", bakeRoot);
             ConstraintUtils.MakeWorldSpace(worldSpace);
 
-            var senders = GameObjects.Create("Senders", worldSpace);
-
             var legacyLightType = GetLegacyLightType(socket, lightType);
+            var pathRoots = Array.Empty<VFGameObject>();
 
             // Senders
-            {
-                var rootTags = new List<string>();
-                rootTags.Add(HapticUtils.TagTpsOrfRoot);
-                rootTags.Add(HapticUtils.TagSpsSocketRoot);
-                if (legacyLightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
-                    switch (legacyLightType) {
-                        case VRCFuryHapticSocket.AddLight.Ring:
-                            rootTags.Add(HapticUtils.TagSpsSocketIsRing);
-                            break;
-                        case VRCFuryHapticSocket.AddLight.RingOneWay:
-                            rootTags.Add(HapticUtils.TagSpsSocketIsRing);
-                            rootTags.Add(HapticUtils.TagSpsSocketIsHole);
-                            break;
-                        default:
-                            rootTags.Add(HapticUtils.TagSpsSocketIsHole);
-                            break;
-                    }
+            var enableDeformation = lightType != VRCFuryHapticSocket.AddLight.None;
+            if (enableDeformation) {
+                var rootSender = GameObjects.Create("Sender - Root", worldSpace);
+                var stops = socket.guidedPathStops;
+                for (var i = 0; i < stops.Count; i++) {
+                    var stop = stops[i];
+                    if (stop == null || stop.transform == null)
+                        throw new Exception($"SPS guided path stop {i + 1} is missing its transform.");
                 }
-                HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                    obj = senders,
-                    objName = "Root",
-                    radius = 0.001f,
-                    tags = rootTags.ToArray(),
-                    useHipAvoidance = true,
-                    isOnHips = isOnHips
-                });
-                HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                    obj = senders,
-                    pos = Vector3.forward * 0.01f,
-                    objName = "Front",
-                    radius = 0.001f,
-                    tags = new[] { HapticUtils.TagTpsOrfFront, HapticUtils.TagSpsSocketFront },
-                    useHipAvoidance = true,
-                    isOnHips = isOnHips
-                });
-            }
-
-            VFGameObject lights = null;
-            var screenMarkers = new List<VFGameObject>();
-            var screenMarkerResults = new List<ScreenMarkerResult>();
-            if (lightType != VRCFuryHapticSocket.AddLight.None && !socket.fromSpsForAll) {
-                ForEachPossibleLight(transform, false, light => {
-                    light.Destroy();
-                });
-
-                if (BuildTargetUtils.IsDesktop()) {
-                    var guidedPathStops = socket.guidedPathStops.ToList();
-                    for (var i = 0; i < guidedPathStops.Count; i++) {
-                        var stop = guidedPathStops[i];
-                        if (stop == null || stop.transform == null) {
-                            throw new Exception($"SPS guided path stop {i + 1} is missing its transform.");
+                foreach (var stop in stops) {
+                    if (stop.transform.asVf().GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any())
+                        throw new Exception("SPS guided path stops should not contain their own sockets. Invalid stop: "
+                            + stop.transform.asVf().GetDebugPath());
+                }
+                var group = nextGroupId++;
+                if (group > HapticUtils.GroupCount)
+                    throw new Exception($"SPS3 supports at most {HapticUtils.GroupCount} sockets per build.");
+                pathRoots = new VFGameObject[Math.Min(stops.Count, SpsTags.MaxUserPathStops)];
+                for (var index = 0; index <= pathRoots.Length; index++) {
+                    var pathIndex = index;
+                    var sender = rootSender;
+                    var nodeType = GetEntranceType(socket, lightType);
+                    if (pathIndex > 0) {
+                        sender = GameObjects.Create($"Sender - Path Stop {pathIndex}", worldSpace);
+                        var target = GameObjects.Create("BakedSpsPath", stops[pathIndex - 1].transform.asVf());
+                        pathRoots[pathIndex - 1] = target;
+                        sender.worldPosition = target.worldPosition;
+                        sender.worldRotation = target.worldRotation;
+                        VFConstraint.CreateParent(sender).AddSource(target, 1);
+                        nodeType = pathIndex == stops.Count
+                            ? GetGuidedPathTerminalType(lightType)
+                            : stops[pathIndex].shrink ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay;
+                    }
+                    var tags = new List<string>();
+                    var flags = HapticUtils.SocketScaleFlags.None;
+                    if (pathIndex == 0 && socket.useRadiusOffset) {
+                        tags.Add(SpsTags.SocketRadiusOffset);
+                        flags |= HapticUtils.SocketScaleFlags.RadiusOffset;
+                    }
+                    if (nodeType == VRCFuryHapticSocket.AddLight.Hole) {
+                        tags.Add(SpsTags.SocketCollapse);
+                        flags |= HapticUtils.SocketScaleFlags.Collapse;
+                    } else if (nodeType == VRCFuryHapticSocket.AddLight.Ring) {
+                        tags.Add(SpsTags.SocketTwoway);
+                        flags |= HapticUtils.SocketScaleFlags.Twoway;
+                    }
+                    // WorldSpace keeps metadata scale independent of avatar/stop scaling.
+                    sender.worldScale = HapticUtils.EncodeSocketScale(group, pathIndex, flags);
+                    contacts.OnAllSetsAvailable(sets => {
+                        var variants = new Dictionary<string, VFGameObject>();
+                        foreach (var set in sets) {
+                            var channelTags = new List<string>();
+                            if (set.sender.Length > 0) {
+                                channelTags.AddRange(pathIndex == 0 ? set.sender.Select(SpsTags.FormatSocket)
+                                    : set.sender.Select(SpsTags.FormatSocketPath));
+                                channelTags.AddRange(tags);
+                            }
+                            if (pathIndex == 0 && set.isPublic && legacyPlugCompatibility)
+                                channelTags.AddRange(new[] { SpsTags.LegacySocket2, SpsTags.LegacySocket });
+                            if (channelTags.Count == 0) continue;
+                            if (channelTags.Count > 16) throw new Exception("SPS3 sender exceeds the 16 contact tag limit.");
+                            var owner = variants.GetOrCreate(string.Join("\n", channelTags), () => {
+                                var owner = sets.Count == 1 ? sender : GameObjects.Create(
+                                    "Channel (" + string.Join(", ", set.sender) + ")", sender);
+                                var contact = owner.AddComponent<VRCContactSender>();
+                                contact.collisionTags = channelTags;
+                                contact.radius = 0;
+                                return owner;
+                            });
+                            set.Register(owner);
                         }
-                    }
-                    foreach (var stop in guidedPathStops) {
-                        var stopObj = stop.transform.asVf();
-                        if (stopObj.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any()) {
-                            throw new Exception(
-                                "SPS guided path stops should not contain their own sockets. Invalid stop: "
-                                + stopObj.GetDebugPath());
-                        }
-                    }
-                    var guidedPath = guidedPathStops
-                        .Select(stop => stop.transform.asVf())
-                        .ToList();
-                    var hasGuidedPath = guidedPath.Count > 0;
+                    });
+                }
 
-                    void AddScreenMarker(ScreenMarkerResult result) {
-                        if (result == null) return;
-                        screenMarkerResults.Add(result);
-                        screenMarkers.Add(result.obj);
+                if (legacyPlugCompatibility) {
+                    Vector3 legacyOffset;
+                    if (socket.overrideLegacyOffset) {
+                        legacyOffset = socket.legacyOffsetLocal;
+                    } else {
+                        legacyOffset = socket.useRadiusOffset
+                            ? Vector3.up * VRCFuryHapticSocketEditor.LegacyRadiusOffset
+                            : Vector3.zero;
                     }
-
-                    void ConstrainToStop(VFGameObject obj, VFGameObject target) {
-                        obj.worldPosition = target.worldPosition;
-                        obj.worldRotation = target.worldRotation;
-                        obj.worldScale = target.worldScale;
-                        var scaleConstraint = VFConstraint.CreateScale(obj);
-                        scaleConstraint.AddSource(target, 1);
-                        var parentConstraint = VFConstraint.CreateParent(obj);
-                        parentConstraint.AddSource(target, 1);
-                    }
-
-                    ScreenMarkerResult CreateGuidedPathScreenMarker(
-                        int stopIndex,
-                        VFGameObject target,
-                        VRCFuryHapticSocket.AddLight markerType,
-                        uint socketId,
-                        bool useTangentIn,
-                        Vector3 tangentIn,
-                        bool useTangentOut,
-                        Vector3 tangentOut,
-                        uint nextSocketId
-                    ) {
-                        var markerTransform = GameObjects.Create($"Stop #{stopIndex + 1}", bakeRoot);
-                        ConstrainToStop(markerTransform, target);
-                        var markerScale = markerTransform.worldScale.x;
-                        var markerOneSpace = GameObjects.Create("OneSpace", markerTransform);
-                        markerOneSpace.worldScale = Vector3.one;
-                        return socketMarkers.Create(
-                            markerOneSpace,
-                            socket,
-                            markerScale,
-                            markerType,
-                            socketId,
-                            false,
-                            useTangentIn,
-                            tangentIn,
-                            useTangentOut,
-                            tangentOut,
-                            nextSocketId,
-                            includeTags: false,
-                            objectName: "SPS Socket Path"
-                        );
-                    }
-
-                    if (socket.useLights) {
-                        Vector3 legacyOffset;
-                        if (socket.overrideLegacyOffset) {
-                            legacyOffset = socket.legacyOffsetLocal;
-                        } else {
-                            legacyOffset = socket.useRadiusOffset
-                                ? Vector3.up * VRCFuryHapticSocketEditor.LegacyRadiusOffset
-                                : Vector3.zero;
-                        }
-                        if (legacyOffset == Vector3.zero) {
-                            lights = GameObjects.Create("Lights", worldSpace);
-                        } else {
-                            // If the lights are offset, we need to normalize the scale separately from WorldSpace so the offset
-                            // can remain in local-units.
-                            lights = GameObjects.Create("Lights", bakeRoot);
-                            lights.localPosition = legacyOffset;
-                            ConstraintUtils.MakeWorldSpace(lights);
-                        }
-                        var main = GameObjects.Create("Root", lights);
-                        main.localPosition = Vector3.zero;
+                    contacts.OnAllSetsAvailable(sets => {
+                        var publicSets = sets.Where(s => s.isPublic).ToArray();
+                        if (publicSets.Length == 0) return;
+                        var legacyLights = GameObjects.Create("LegacyLights", bakeRoot);
+                        result.legacyLights = legacyLights;
+                        // Keep the offset in socket-local units while light spacing stays in meters.
+                        legacyLights.localPosition = legacyOffset;
+                        ConstraintUtils.MakeWorldSpace(legacyLights);
+                        var main = GameObjects.Create("Light - Legacy Root", legacyLights);
                         var mainLight = main.AddComponent<Light>();
                         mainLight.type = LightType.Point;
                         mainLight.color = Color.black;
                         mainLight.range =
                             (legacyLightType == VRCFuryHapticSocket.AddLight.Ring || legacyLightType == VRCFuryHapticSocket.AddLight.RingOneWay)
-                                ? 0.4206f
-                                : 0.4106f;
+                                ? 0.4204f
+                                : 0.4104f;
                         mainLight.shadows = LightShadows.None;
                         mainLight.renderMode = LightRenderMode.ForceVertex;
 
-                        var front = GameObjects.Create("Front", lights);
-                        front.localPosition = Vector3.forward * 0.01f / lights.worldScale.x;
+                        var front = GameObjects.Create("Light - Legacy Front", legacyLights);
+                        front.localPosition = Vector3.forward * 0.01f;
                         var frontLight = front.AddComponent<Light>();
                         frontLight.type = LightType.Point;
                         frontLight.color = Color.black;
-                        frontLight.range = 0.4506f;
+                        frontLight.range = 0.4504f;
                         frontLight.shadows = LightShadows.None;
                         frontLight.renderMode = LightRenderMode.ForceVertex;
-                    }
+                        foreach (var set in publicSets) set.Register(legacyLights);
+                    });
 
-                    if (hasGuidedPath) {
-                        var pathIds = guidedPath
-                            .Select(_ => spsMarkers.NewMarkerId())
-                            .ToList();
-                        var firstStop = guidedPathStops[0];
-                        var rootMarker = socketMarkers.Create(
-                            oneSpace,
-                            socket,
-                            socketScale,
-                            firstStop.shrink ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay,
-                            spsMarkers.NewMarkerId(),
-                            socket.useRadiusOffset,
-                            false,
-                            Vector3.zero,
-                            firstStop.customizeTangentOut,
-                            firstStop.tangentOutLocal,
-                            pathIds[0]
-                        );
-                        AddScreenMarker(rootMarker);
-                        for (var i = 0; i < guidedPath.Count; i++) {
-                            var isLast = i == guidedPath.Count - 1;
-                            var nextStop = isLast ? null : guidedPathStops[i + 1];
-                            var pathType = isLast
-                                ? GetGuidedPathTerminalType(lightType)
-                                : nextStop.shrink
-                                    ? VRCFuryHapticSocket.AddLight.Hole
-                                    : VRCFuryHapticSocket.AddLight.RingOneWay;
-                            var nextSocketId = isLast ? 0 : pathIds[i + 1];
-                            var stop = guidedPathStops[i];
-
-                            AddScreenMarker(CreateGuidedPathScreenMarker(
-                                i,
-                                guidedPath[i],
-                                pathType,
-                                pathIds[i],
-                                stop.customizeTangentIn,
-                                stop.tangentInLocal,
-                                nextStop?.customizeTangentOut ?? false,
-                                nextStop == null
-                                    ? Vector3.zero
-                                    : nextStop.tangentOutLocal,
-                                nextSocketId
-                            ));
-                        }
-                    } else {
-                        AddScreenMarker(socketMarkers.Create(
-                            oneSpace,
-                            socket,
-                            socketScale,
-                            lightType,
-                            spsMarkers.NewMarkerId(),
-                            socket.useRadiusOffset,
-                            false,
-                            Vector3.zero,
-                            false,
-                            Vector3.zero
-                        ));
+                    if (tpsDepthAnimationCompatibility) {
+                        var frontPosition = Vector3.forward * 0.01f / worldSpace.worldScale.x;
+                        var frontRadius = 0.001f / worldSpace.worldScale.x;
+                        contacts.OnAllSetsAvailable(sets => {
+                            var publicSets = sets.Where(s => s.isPublic).ToArray();
+                            if (publicSets.Length == 0) return;
+                            result.legacyFrontSender = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest {
+                                obj = worldSpace, objName = "Sender - Legacy Front", pos = frontPosition,
+                                radius = frontRadius, useWorldUnits = false, tags = new[] { SpsTags.LegacySocketFront }
+                            });
+                            foreach (var set in publicSets) set.Register(result.legacyFrontSender);
+                        });
                     }
                 }
             }
-            
-            if (EditorApplication.isPlaying && !socket.fromSpsForAll) {
+
+            if (EditorApplication.isPlaying) {
                 var gizmo = socket.owner().AddComponent<VRCFurySocketGizmo>();
                 gizmo.data = GetGizmoData(socket);
+                contacts.OnAllSetsAvailable(_ => {
+                    gizmo.data.useLegacyLights = result.legacyLights != null;
+                    gizmo.data.legacyLights = result.legacyLights;
+                });
             }
 
-            return new BakeResult {
-                bakeRoot = bakeRoot,
-                oneSpace = oneSpace,
-                worldSpace = worldSpace,
-                screenMarkers = screenMarkers,
-                screenMarkerResults = screenMarkerResults,
-                lights = lights,
-                senders = senders
-            };
+            result.plugReceivers = socketReceivers.GetReceivers(socket, worldSpace, socket.name, legacyPlugCompatibility);
+            result.bakeRoot = bakeRoot;
+            result.pathRoots = pathRoots;
+            result.worldSpace = worldSpace;
+            return result;
         }
 
         public VRCFurySocketGizmo.SocketGizmoData GetGizmoData(VRCFuryHapticSocket socket) {
-            var closestBone = autoTagGenerator?.GetClosestBone(socket.owner());
-            var (lightType, localPosition, localRotation) = GetInfoFromLightsOrComponent(socket, closestBone);
+            var closestBone = autoChannelGenerator?.GetClosestBone(socket.owner());
+            var (lightType, localPosition, localRotation) = GetSocketTransform(socket, closestBone);
             return VRCFuryHapticSocketGizmo.BuildGizmoData(
                 socket,
                 lightType,
-                GetHandTouchZoneSize(socket),
                 localPosition,
                 localRotation
             );
         }
 
-        internal static bool ShouldProbablyHaveTouchZone(
+        internal static bool ShouldSupportOgbTouch(
             VRCFuryHapticSocket socket,
             HumanBodyBones? closestBone
         ) {
             if (closestBone != HumanBodyBones.Hips) return false;
-
             var name = GetMenuName(socket).ToLower();
             return !name.Contains("rubbing") && !name.Contains("job");
-        }
-
-        public Tuple<float, float> GetHandTouchZoneSize(VRCFuryHapticSocket socket) {
-            var enableHandTouchZone = socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.On
-                || (socket.enableHandTouchZone2 == VRCFuryHapticSocket.EnableTouchZone.Auto
-                    && ShouldProbablyHaveTouchZone(
-                        socket,
-                        autoTagGenerator?.GetClosestBone(socket.owner())
-                    ));
-            if (!enableHandTouchZone) return null;
-
-            var length = socket.length * (socket.unitsInMeters ? 1f : socket.owner().worldScale.z);
-            if (length <= 0) {
-                var viewPosition = autoTagGenerator?.GetAvatarViewPosition(socket.owner());
-                if (viewPosition == null || viewPosition.Value.y <= 0) return null;
-                length = viewPosition.Value.y * 0.05f;
-            }
-            return Tuple.Create(length, length / 2.5f);
         }
 
         private static bool ShouldProbablyBeHole(
@@ -323,10 +229,20 @@ namespace VF.Inspector {
             HumanBodyBones? closestBone
         ) {
             if (closestBone == HumanBodyBones.Head || closestBone == HumanBodyBones.Jaw) return true;
-            return ShouldProbablyHaveTouchZone(socket, closestBone);
+            return ShouldSupportOgbTouch(socket, closestBone);
         }
 
-        private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetInfoFromLightsOrComponent(
+
+        internal VRCFuryHapticSocket.AddLight GetEntranceType(VRCFuryHapticSocket socket) =>
+            GetEntranceType(socket, GetSocketTransform(socket, autoChannelGenerator?.GetClosestBone(socket.owner())).Item1);
+
+        private static VRCFuryHapticSocket.AddLight GetEntranceType(VRCFuryHapticSocket socket, VRCFuryHapticSocket.AddLight type) {
+            if (type == VRCFuryHapticSocket.AddLight.None || socket.guidedPathStops.Count == 0) return type;
+            return socket.guidedPathStops[0].shrink
+                ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay;
+        }
+
+        private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetSocketTransform(
             VRCFuryHapticSocket socket,
             HumanBodyBones? closestBone
         ) {

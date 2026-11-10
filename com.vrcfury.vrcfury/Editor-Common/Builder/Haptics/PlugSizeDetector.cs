@@ -4,7 +4,6 @@ using System.Linq;
 using UnityEngine;
 using VF.Component;
 using VF.Exceptions;
-using VF.Inspector;
 using VF.Utils;
 
 namespace VF.Builder.Haptics {
@@ -18,22 +17,16 @@ namespace VF.Builder.Haptics {
             public VFMultimapSet<VFGameObject, int> matSlots;
         }
         
-        public static SizeResult GetWorldSize(VRCFuryHapticPlug plug) {
-            var transform = plug.owner();
-            var renderers = VRCFuryHapticPlugEditor.GetRenderers(plug);
+        public static SizeResult GetWorldSize(VRCFuryHapticPlug plug) =>
+            GetWorldSize(plug, PlugRendererFinder.GetRenderers(plug));
 
-            Quaternion worldRotation = transform.worldRotation;
-            Vector3 worldPosition = transform.worldPosition;
-            if (!plug.configureTps && !plug.enableSps && plug.autoPosition && renderers.Count > 0) {
-                var firstRenderer = renderers.First();
-                worldRotation = GetAutoWorldRotation(firstRenderer);
-                worldPosition = GetAutoWorldPosition(firstRenderer);
-            }
-            var testBase = transform.Find("OGBTestBase");
-            if (testBase != null) {
-                worldPosition = testBase.worldPosition;
-                worldRotation = testBase.worldRotation;
-            }
+        public static SizeResult GetWorldSize(VRCFuryHapticPlug plug, ICollection<Renderer> renderers) {
+            var transform = plug.owner();
+
+            var localRotation = Quaternion.Euler(plug.rotation);
+            var localPosition = plug.position;
+            var worldRotation = transform.worldRotation * localRotation;
+            var worldPosition = transform.TransformPoint(localPosition);
 
             float worldLength = 0;
             float worldRadius = 0;
@@ -62,8 +55,6 @@ namespace VF.Builder.Haptics {
             if (worldLength <= 0) throw new VRCFBuilderException("Failed to detect plug length");
             if (worldRadius <= 0) throw new VRCFBuilderException("Failed to detect plug radius");
             if (worldRadius > worldLength / 2) worldRadius = worldLength / 2;
-            var localRotation = Quaternion.Inverse(transform.worldRotation) * worldRotation;
-            var localPosition = transform.InverseTransformPoint(worldPosition);
             return new SizeResult {
                 renderers = renderers,
                 worldLength = worldLength,
@@ -72,23 +63,6 @@ namespace VF.Builder.Haptics {
                 localPosition = localPosition,
                 matSlots = matSlots
             };
-        }
-
-        public static Quaternion GetAutoWorldRotation(Renderer renderer) {
-            var localRotation = GetMaterialDpsRotation(renderer) ?? Quaternion.identity;
-            return renderer.GetRootBone().worldRotation * localRotation;
-        }
-        
-        public static Vector3 GetAutoWorldPosition(Renderer renderer) {
-            return renderer.GetRootBone().worldPosition;
-        }
-
-        public static Tuple<float, float, VFMultimapSet<VFGameObject,int>> GetAutoWorldSize(Renderer renderer) {
-            return GetAutoWorldSize(
-                new[] { renderer },
-                GetAutoWorldPosition(renderer),
-                GetAutoWorldRotation(renderer)
-            );
         }
 
         public static Tuple<float, float, VFMultimapSet<VFGameObject,int>> GetAutoWorldSize(
@@ -157,18 +131,6 @@ namespace VF.Builder.Haptics {
             return Tuple.Create(length, radius, matsUsed);
         }
 
-        private static Quaternion? GetMaterialDpsRotation(Renderer r) {
-            return r.sharedMaterials.Select(GetMaterialDpsRotation).FirstOrDefault(c => c != null);
-        }
 
-        private static Quaternion? GetMaterialDpsRotation(Material mat) {
-            if (DpsConfigurer.IsDps(mat)) {
-                return Quaternion.identity;
-            }
-            if (TpsConfigurer.IsTps(mat)) {
-                return TpsConfigurer.GetTpsRotation(mat);
-            }
-            return null;
-        }
     }
 }

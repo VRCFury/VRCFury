@@ -22,15 +22,15 @@ namespace VF.Feature {
         public void Apply() {
             var usedNames = new HashSet<string>();
             foreach (var receiver in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticTouchReceiver>()) {
-                var name = HapticUtils.MakeUniqueId(usedNames, HapticUtils.GetPreferredId(receiver, r => r.name, r => HapticUtils.GetFallbackId(r.owner())));
-                var paramPrefix = "VFH/Zone/Touch/" + name.Replace('/','_');
+                var name = HapticUtils.MakeUniqueOgbId(usedNames, HapticUtils.GetPreferredId(receiver, r => r.name, r => HapticUtils.GetFallbackId(r.owner())));
+                var paramPrefix = "OGB/Touch/" + name;
                 
                 hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
                     obj = receiver.owner(),
                     paramName = paramPrefix + "/Self",
                     objName = "Self",
                     radius = receiver.radius,
-                    tags = HapticUtils.SelfContacts.Concat(new [] { HapticUtils.CONTACT_PEN_CLOSE }).ToArray(),
+                    tags = HapticUtils.SelfContacts.Concat(new [] { SpsTags.PlugClose }).ToArray(),
                     party = HapticUtils.ReceiverParty.Self,
                     worldScale = false,
                     usePrefix = false,
@@ -41,7 +41,7 @@ namespace VF.Feature {
                     paramName = paramPrefix + "/Others",
                     objName = "Others",
                     radius = receiver.radius,
-                    tags = HapticUtils.BodyContacts.Concat(new [] { HapticUtils.CONTACT_PEN_CLOSE }).ToArray(),
+                    tags = HapticUtils.BodyContacts.Concat(new [] { SpsTags.PlugClose }).ToArray(),
                     party = HapticUtils.ReceiverParty.Others,
                     worldScale = false,
                     usePrefix = false,

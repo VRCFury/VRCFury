@@ -1,14 +1,23 @@
 #ifndef SPS_INC_DEFORM_GLOBALS
 #define SPS_INC_DEFORM_GLOBALS
 
-#include "../common/sps_cell_layout.cginc"
-#include "../common/sps_id.cginc"
+#include "UnityShaderVariables.cginc"
+#include "UnityShaderUtilities.cginc"
+#include "UnityInstancing.cginc"
+#include "../common/sps_utils.cginc"
 
 Texture2D _SPS_Bake;
 float4 _SPS_Bake_TexelSize;
+float _SPS_BakedLength;
+float _SPS_BakedRadius;
+float _SPS_OthersChannelTagCount;
+float _SPS_OthersLegacyTags;
+float _SPS_UseLegacyLights;
 
 UNITY_INSTANCING_BUFFER_START(SpsDeformProps)
+    UNITY_DEFINE_INSTANCED_PROP(float, _SPS_Enabled)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_Overrun)
+    UNITY_DEFINE_INSTANCED_PROP(float, _SPS_RadiusOffsetMultiplier)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_DisableShadows)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_DisableDepth)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_BlendshapeVertCount)
@@ -32,7 +41,9 @@ UNITY_INSTANCING_BUFFER_START(SpsDeformProps)
 UNITY_INSTANCING_BUFFER_END(SpsDeformProps)
 
 #define SPS_DEFORM_PROP(name) UNITY_ACCESS_INSTANCED_PROP(SpsDeformProps, name)
+#define _SPS_Enabled SPS_DEFORM_PROP(_SPS_Enabled)
 #define _SPS_Overrun SPS_DEFORM_PROP(_SPS_Overrun)
+#define _SPS_RadiusOffsetMultiplier SPS_DEFORM_PROP(_SPS_RadiusOffsetMultiplier)
 #define _SPS_DisableShadows SPS_DEFORM_PROP(_SPS_DisableShadows)
 #define _SPS_DisableDepth SPS_DEFORM_PROP(_SPS_DisableDepth)
 #define _SPS_BlendshapeVertCount SPS_DEFORM_PROP(_SPS_BlendshapeVertCount)
@@ -53,7 +64,5 @@ UNITY_INSTANCING_BUFFER_END(SpsDeformProps)
 #define _SPS_Blendshape14 SPS_DEFORM_PROP(_SPS_Blendshape14)
 #define _SPS_Blendshape15 SPS_DEFORM_PROP(_SPS_Blendshape15)
 #define _SPS_BlendshapeCount SPS_DEFORM_PROP(_SPS_BlendshapeCount)
-
-SPS_INIT_TEX(_VFGridFinal)
 
 #endif

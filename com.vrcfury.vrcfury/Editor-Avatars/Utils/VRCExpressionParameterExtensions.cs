@@ -38,7 +38,7 @@ namespace VF.Utils {
             param.networkSynced = networkSynced;
 #else
             if (!networkSynced) {
-                throw new Exception("Your VRCSDK is too old to support non-synced parameters. Please update the VRCSDK.");
+                throw new Exception(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
             }
 #endif
         }

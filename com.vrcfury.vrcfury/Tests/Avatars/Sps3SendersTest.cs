@@ -1,0 +1,1133 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using UnityEngine;
+using VF.Builder;
+using VF.Builder.Haptics;
+using VF.Component;
+using VF.Injector;
+using VF.Inspector;
+using VF.Model.StateAction;
+using VF.Service;
+using VF.Utils;
+using VF.Utils.Controller;
+using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Dynamics.Contact.Components;
+using Object = UnityEngine.Object;
+using Flags = VF.Component.VRCFuryHapticSocket.AddLight;
+using ScaleFlags = VF.Builder.Haptics.HapticUtils.SocketScaleFlags;
+using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
+
+namespace VF.Tests {
+    [Category("VRCFury")]
+    public class Sps3SendersTest {
+        private GameObject root;
+        private VRCFuryInjector injector;
+
+        [SetUp]
+        public void SetUp() {
+            root = new GameObject("SPS3 Test");
+            root.transform.position = new Vector3(1, 2, 3);
+            root.transform.rotation = Quaternion.Euler(31, 47, 13);
+            root.transform.localScale = Vector3.one * 2;
+            injector = new VRCFuryInjector();
+            injector.ImportScan(typeof(VFServiceAttribute));
+        }
+
+        [TearDown]
+        public void TearDown() => Object.DestroyImmediate(root);
+
+        [Test]
+        public void FormatsNativeSenderTags() {
+            Assert.That(SpsTags.FormatPlug("nothips"), Is.EqualTo("SPS/Plug/nothips"));
+            Assert.That(SpsTags.FormatSocket("_public"), Is.EqualTo("SPS/Socket/_public"));
+            Assert.That(SpsTags.FormatSocketPath("custom"), Is.EqualTo("SPS/SocketPath/custom"));
+        }
+
+        [TestCase(2, 1, 1)]
+        [TestCase(0, 1, 1)]
+        [TestCase(-1, 1, 1)]
+        public void StandaloneSocketBakeStillRejectsInvalidScale(float x, float y, float z) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var obj = GameObjects.Create("World socket", root);
+            obj.localScale = new Vector3(x, y, z);
+            var socket = obj.AddComponent<VRCFuryHapticSocket>();
+            Assert.Throws<Exception>(() => injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket));
+            Assert.That(obj.childCount, Is.Zero, "Validation must fail before creating a placeholder or baked objects");
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeSpsTagActionNoLongerGeneratesAnimation(bool debugMode) {
+            var builder = new VF.Actions.ChangeSpsTagActionBuilder();
+            var clip = builder.Build(new VF.Model.StateAction.ChangeSpsTagAction { target = root.transform }, debugMode);
+            Assert.That(clip.GetFloatBindings(), Is.Empty);
+        }
+
+        [Test]
+        public void ScaleProtocolRoundTripsEveryGroupAndPathIndex() {
+            foreach (var scale in new[] { 0.001f, 0.1f, 1, 100f }) {
+                for (var group = 1; group <= HapticUtils.GroupCount; group++) {
+                    for (var pathIndex = 0; pathIndex < 8; pathIndex++) {
+                        for (var flagBits = 0; flagBits < 32; flagBits++) {
+                            var encoded = HapticUtils.EncodeSocketScale(group, pathIndex, (ScaleFlags)(flagBits << 10)) * scale;
+                            var packed = Mathf.RoundToInt(encoded.x / encoded.z);
+                            Assert.That(packed & 127, Is.EqualTo(group));
+                            Assert.That((packed >> 7) & 7, Is.EqualTo(pathIndex));
+                            Assert.That((packed >> 10) & 31, Is.EqualTo(flagBits));
+                            Assert.That(encoded.y / encoded.z, Is.EqualTo(1f).Within(0.000001));
+                        }
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void ScaleProtocolKeepsGroupAndIndexSeparateFromCollisionFlags() {
+            Assert.That((int)ScaleFlags.UnlockAll, Is.EqualTo(1 << 10));
+            Assert.That((int)ScaleFlags.UnlockLocalX, Is.EqualTo(1 << 11));
+            Assert.That((int)ScaleFlags.RadiusOffset, Is.EqualTo(1 << 12));
+            Assert.That((int)ScaleFlags.Twoway, Is.EqualTo(1 << 13));
+            Assert.That((int)ScaleFlags.Collapse, Is.EqualTo(1 << 14));
+            Assert.Throws<ArgumentOutOfRangeException>(() => HapticUtils.EncodeSocketScale(1, 0, (ScaleFlags)1));
+            Assert.That(HapticUtils.EncodeSocketScale(1, 0), Is.EqualTo(new Vector3(1, 1f, 1)));
+            Assert.That(HapticUtils.EncodeSocketScale(37, 2), Is.EqualTo(new Vector3(293, 1f, 1)));
+            Assert.That(HapticUtils.EncodeSocketScale(127, 7), Is.EqualTo(new Vector3(1023, 1f, 1)));
+            var allFlags = ScaleFlags.Collapse | ScaleFlags.Twoway | ScaleFlags.RadiusOffset | ScaleFlags.UnlockLocalX | ScaleFlags.UnlockAll;
+            Assert.That(HapticUtils.EncodeSocketScale(127, 7, allFlags), Is.EqualTo(new Vector3(32767, 1f, 1)));
+            var sender = GameObjects.Create("Encoded", root);
+            sender.worldScale = HapticUtils.EncodeSocketScale(127, 7, allFlags);
+            root.transform.localScale *= 3;
+            var matrix = sender.localToWorldMatrix;
+            CheckVector(matrix.GetColumn(0).normalized, root.transform.right);
+            CheckVector(matrix.GetColumn(1).normalized, root.transform.up);
+            CheckVector(matrix.GetColumn(2).normalized, root.transform.forward);
+            var normalization = matrix.GetColumn(2).magnitude;
+            Assert.That(Mathf.RoundToInt(matrix.GetColumn(0).magnitude / normalization), Is.EqualTo(32767));
+            Assert.That(matrix.GetColumn(1).magnitude / normalization, Is.EqualTo(1f).Within(0.000001));
+        }
+
+        [TestCase(-1, 0)]
+        [TestCase(0, 0)]
+        [TestCase(128, 0)]
+        [TestCase(1, -1)]
+        [TestCase(1, 8)]
+        public void RejectsUnrepresentableProtocolValues(int group, int pathIndex) {
+            Assert.Throws<ArgumentOutOfRangeException>(() => HapticUtils.EncodeSocketScale(group, pathIndex));
+        }
+
+        [Test]
+        public void PlugBakerReusesLengthSenderAndPreservesLegacyGeometry() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = false;
+            plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.03f;
+            var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(bake.channelContacts);
+            var contacts = root.GetComponentsInChildren<VRCContactSender>(true);
+
+            Assert.That(contacts.Length, Is.EqualTo(4));
+            CheckVector(bake.bakeRoot.worldScale, Vector3.one);
+            Assert.That(contacts.All(c => c.transform.parent == (Transform)bake.bakeRoot), Is.True);
+            Assert.That(contacts.Select(c => c.name), Is.EquivalentTo(new[] {
+                "Sender - Sphere", "Sender - Legacy Width", "Sender - Legacy Root", "Sender - Envelope"
+            }));
+            var main = contacts.Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugSphere));
+            var width = contacts.Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugWidth));
+            var envelope = contacts.Single(c => c.collisionTags.Contains(SpsTags.PlugClose));
+            var legacyRoot = contacts.Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugRoot));
+            Assert.That(main.collisionTags, Does.Contain(SpsTags.FormatPlug("_public")));
+            Assert.That(main.collisionTags, Does.Not.Contain("SPS/Flag/ScaleV1"));
+            Assert.That(envelope.collisionTags, Is.EqualTo(new[] { SpsTags.PlugClose }));
+            foreach (var tag in new[] { SpsTags.LegacyPlugWidth,
+                         SpsTags.LegacyPlugRoot }) {
+                Assert.That(contacts.Single(c => c.collisionTags.Contains(tag)).collisionTags,
+                    Is.EquivalentTo(new[] { tag }));
+                Assert.That(contacts.Single(c => c.collisionTags.Contains(tag)).collisionTags,
+                    Does.Not.Contain("SPS/Flag/ScaleV1"));
+            }
+            Assert.That(contacts.SelectMany(c => c.collisionTags).Any(t => t.StartsWith("SPSN1/Legacy")), Is.False);
+            Assert.That(main.radius * MaxScale(main.transform), Is.EqualTo(0.4f).Within(0.00001));
+            Assert.That(width.radius * MaxScale(width.transform), Is.EqualTo(0.34f).Within(0.00001));
+            Assert.That(envelope.radius * MaxScale(envelope.transform), Is.EqualTo(0.03f).Within(0.00001));
+            Assert.That(legacyRoot.radius * MaxScale(legacyRoot.transform), Is.Zero.Within(0.00001));
+            Assert.That(envelope.position.z * envelope.transform.lossyScale.z, Is.EqualTo(0.2f).Within(0.00001));
+
+            var native = main;
+            Assert.That(native.radius, Is.EqualTo(1).Within(0.000001));
+            Assert.That(native.collisionTags, Does.Not.Contain(SpsTags.LegacyPlugSphere + "_SelfNotOnHips"));
+            Assert.That(native.collisionTags.Any(t => t.StartsWith("SPSN1/Plug/")), Is.False);
+            Assert.That(native.position, Is.EqualTo(Vector3.zero));
+            CheckVector(native.transform.lossyScale, new Vector3(0.03f, 0.03f, 0.4f));
+            Assert.That(VFConstraint.GetConstraintsInSelfAndChildren(new[] { native.owner() }), Is.Empty);
+            CheckVector(native.transform.position, root.transform.position);
+            CheckVector(native.transform.forward, root.transform.forward);
+            root.transform.localScale *= 3;
+            Assert.That(native.transform.lossyScale.x, Is.EqualTo(0.09f).Within(0.00001));
+            Assert.That(native.transform.lossyScale.y, Is.EqualTo(0.09f).Within(0.00001));
+            Assert.That(native.transform.lossyScale.z, Is.EqualTo(1.2f).Within(0.00001));
+            Assert.That(main.radius * MaxScale(main.transform), Is.EqualTo(1.2f).Within(0.00001));
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
+        }
+
+        [TestCase((int)VRCFuryHapticSocket.AddLight.Hole, (int)Flags.Hole)]
+        [TestCase((int)VRCFuryHapticSocket.AddLight.Ring, (int)Flags.Ring)]
+        [TestCase((int)VRCFuryHapticSocket.AddLight.RingOneWay, (int)Flags.RingOneWay)]
+        public void SocketBakerKeepsLightsAndLegacyContactsWithoutMarkers(int typeValue, int flagValue) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var type = (VRCFuryHapticSocket.AddLight)typeValue;
+            var flags = (Flags)flagValue;
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = type;
+            socket.useRadiusOffset = true;
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Animator>(), Is.Empty);
+            var lights = result.legacyLights.GetComponentsInSelfAndChildren<Light>();
+            Assert.That(lights.Select(l => l.range), Is.EquivalentTo(new[] {
+                type == VRCFuryHapticSocket.AddLight.Hole ? 0.4104f : 0.4204f, 0.4504f
+            }));
+            var legacy = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>();
+            Assert.That(legacy.Length, Is.EqualTo(1));
+            CheckVector(legacy.Single(c => c.collisionTags.Contains(SpsTags.LegacySocket2)).transform.position,
+                result.bakeRoot.worldPosition);
+            Assert.That(legacy.SelectMany(c => c.collisionTags).Any(t => t.StartsWith("SPSN1/Legacy")), Is.False);
+            var contact = NativeSocketSenders(result.bakeRoot).Single();
+            CheckNode(contact, 1, 0, flags, radiusOffset: true);
+            Assert.That(contact, Is.SameAs(legacy.Single(c => c.collisionTags.Contains(SpsTags.LegacySocket2))));
+            Assert.That(contact.transform.parent.asVf(), Is.EqualTo(result.worldSpace));
+            CheckVector(result.worldSpace.worldScale, Vector3.one);
+            Assert.That(result.worldSpace.GetComponent<UnityEngine.Animations.ScaleConstraint>(), Is.Not.Null);
+            Assert.That(result.bakeRoot.Children().Select(child => child.name), Is.EquivalentTo(new[] { "WorldSpace", "LegacyLights" }));
+            var typeBits = flags == Flags.Hole ? 1 << 14 : flags == Flags.Ring ? 1 << 13 : 0;
+            Assert.That(contact.transform.lossyScale.x, Is.EqualTo(1 | typeBits | (1 << 12)).Within(0.01));
+            Assert.That(legacy.All(c => c.radius == 0), Is.True);
+            Assert.That(legacy.SelectMany(c => c.collisionTags).Any(t => t.StartsWith("TPS_Orf_Norm")), Is.False);
+            CheckVector(contact.transform.position, result.bakeRoot.worldPosition);
+            CheckVector(contact.transform.forward, result.bakeRoot.TransformDirection(Vector3.forward));
+            Assert.That(Vector3.Distance(contact.transform.position, lights.First().transform.position), Is.GreaterThan(0.05));
+            root.transform.localScale *= 3;
+            CheckNode(contact, 1, 0, flags, 3, radiusOffset: true);
+            result.bakeRoot.active = false;
+            Assert.That(contact.gameObject.activeInHierarchy, Is.False);
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
+        }
+
+        [Test]
+        public void GuidedRecordsKeepOrderShrinkTerminalAndStopTransforms() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Ring;
+            socket.useLights = false;
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "  CuStOm  " });
+            for (var i = 0; i < 3; i++) {
+                var stop = new GameObject("Guide " + i).transform;
+                stop.SetParent(root.transform, false);
+                stop.localPosition = new Vector3(i + 1, i * 0.1f, 0.2f);
+                stop.localRotation = Quaternion.Euler(i * 20, 10, 30);
+                stop.localScale = Vector3.one * (i + 1);
+                socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop {
+                    transform = stop, shrink = i != 1
+                });
+            }
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            if (!BuildTargetUtils.IsDesktop()) return;
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
+            var contacts = NativeSocketSenders(result.bakeRoot);
+            Assert.That(contacts.Length, Is.EqualTo(4));
+            CheckNode(contacts[0], 1, 0, Flags.Hole);
+            CheckNode(contacts[1], 1, 1, Flags.RingOneWay);
+            CheckNode(contacts[2], 1, 2, Flags.Hole);
+            CheckNode(contacts[3], 1, 3, Flags.RingOneWay);
+            for (var i = 1; i < contacts.Length; i++) {
+                var target = socket.guidedPathStops[i - 1].transform;
+                var pathRoot = target.asVf().Children().Single(child => child.name == "BakedSpsPath");
+                CheckVector(contacts[i].transform.position, target.position);
+                CheckVector(contacts[i].transform.forward, target.forward);
+                Assert.That(contacts[i].transform.lossyScale.x, Is.EqualTo(1 | (i << 7) | (i == 2 ? 1 << 14 : 0)).Within(0.01));
+                Assert.That(contacts[i].radius, Is.Zero);
+                Assert.That(contacts[i].transform.parent.asVf(), Is.EqualTo(result.worldSpace));
+                var constraints = VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot })
+                    .Where(c => c.GetSources().Single() == pathRoot).ToArray();
+                Assert.That(constraints.Length, Is.EqualTo(1));
+                Assert.That(constraints.All(c => c.GetSources().Single() == pathRoot), Is.True);
+                Assert.That(contacts[i].collisionTags, Does.Contain("SPS/SocketPath/custom"));
+                Assert.That(contacts[i].collisionTags, Does.Contain("SPS/SocketPath/nothips/self"));
+            }
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>().Length, Is.EqualTo(4));
+            Assert.That(VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot }).Count(), Is.EqualTo(5));
+            result.bakeRoot.active = false;
+            Assert.That(contacts.All(c => !c.gameObject.activeInHierarchy), Is.True);
+        }
+
+        [Test]
+        public void EachBakeGetsAUniqueGroupId() {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            var service = injector.GetService<VRCFuryHapticSocketBaker>();
+            var socketA = root.AddComponent<VRCFuryHapticSocket>();
+            var other = new GameObject("Other");
+            other.transform.SetParent(root.transform, false);
+            var socketB = other.AddComponent<VRCFuryHapticSocket>();
+            socketA.addLight = socketB.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            var a = service.Bake(socketA);
+            var b = service.Bake(socketB);
+            var c = service.Bake(socketA);
+            var channels = injector.GetService<SpsChannelsService>();
+            channels.Apply(channels.Get(socketA));
+            channels.Apply(channels.Get(socketB));
+            CheckNode(NativeSocketSenders(a.bakeRoot).Single(), 1, 0, Flags.Hole);
+            CheckNode(NativeSocketSenders(b.bakeRoot).Single(), 2, 0, Flags.Hole);
+            CheckNode(NativeSocketSenders(c.bakeRoot).Single(), 3, 0, Flags.Hole);
+        }
+
+        [Test]
+        public void GuideMetadataScaleIsIndependentOfAuthoredStopScale() {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            var stop = new GameObject("Stop").transform;
+            stop.SetParent(root.transform, false);
+            stop.localScale = Vector3.one * 3;
+            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            var guide = NativeSocketSenders(result.bakeRoot).Last();
+            var expected = new Vector3(129 | (1 << 14), 1f, 1);
+            CheckVector(guide.transform.lossyScale, expected);
+            stop.localScale *= 10;
+            CheckVector(guide.transform.lossyScale, expected);
+            Assert.That(guide.transform.lossyScale.y, Is.EqualTo(1).Within(0.000001));
+            var constraint = VFConstraint.GetConstraintsInSelfAndChildren(new[] { guide.owner() }).Single();
+            Assert.That(constraint.GetSources().Single(), Is.EqualTo(stop.asVf().Children().Single(child => child.name == "BakedSpsPath")));
+            result.bakeRoot.active = false;
+            Assert.That(guide.gameObject.activeInHierarchy, Is.False);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RoutingPreservesSharedOptOutAndNormalization(bool custom) {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.channelSettings.useSharedTag = false;
+            if (custom) socket.channelSettings.channels.AddRange(new[] { "  CuStOm ", "custom" }.Select(tag => new VF.Model.SpsChannelSettings.Channel { id = tag }));
+            if (!custom) {
+                Assert.Throws<Exception>(() => injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket));
+                return;
+            }
+            var bake = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(bake.channelContacts);
+            var tags = NativeSocketSenders(bake.bakeRoot).SelectMany(s => s.collisionTags)
+                .Where(t => t.StartsWith("SPS/Socket/"));
+            Assert.That(tags, Is.EquivalentTo(custom ? new[] { "SPS/Socket/custom", "SPS/Socket/custom/self" } : Array.Empty<string>()));
+        }
+
+        [Test]
+        public void ContactTagsUseConfiguredChannels() {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            injector.Set("autoChannelGenerator", new AutoChannels(HumanBodyBones.LeftHand));
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.channelSettings.channels.AddRange(new[] { "  My Channel  ", "Other", "Ignored Third" }.Select(tag => new VF.Model.SpsChannelSettings.Channel { id = tag }));
+            var configurer = injector.GetService<SpsConfigurer>();
+            var expected = new[] { "my channel", "other", "hand", "handleft", "_public" }
+                .SelectMany(c => new[] { c, c + "/self" }).Concat(new[] { "nothips", "nothips/self" }).ToArray();
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings), Is.EquivalentTo(expected));
+
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            var tags = NativeSocketSenders(result.bakeRoot).Single().collisionTags;
+            Assert.That(tags.Where(tag => tag.StartsWith("SPS/Socket/")), Is.EquivalentTo(expected.Select(SpsTags.FormatSocket)));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings), Is.EquivalentTo(expected));
+            socket.channelSettings.channels[0].id = "Changed Later";
+            Assert.That(tags, Does.Contain("SPS/Socket/my channel"));
+            Assert.That(tags, Does.Not.Contain("SPS/Socket/changed later"));
+        }
+
+        [TestCase(HumanBodyBones.Hips, false)]
+        [TestCase(HumanBodyBones.Head, true)]
+        [TestCase(HumanBodyBones.LastBone, true)]
+        public void SocketAutoChannelsAddNotHipsOutsideHips(HumanBodyBones bone, bool expected) {
+            injector.Set("autoChannelGenerator", new AutoChannels(bone));
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            var configurer = injector.GetService<SpsConfigurer>();
+            Assert.That(configurer.GetAutoSocketChannels(socket.owner()).Contains("nothips"), Is.EqualTo(expected));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings).Contains("nothips/self"), Is.EqualTo(expected));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Others, socket.channelSettings).Contains("nothips"), Is.EqualTo(expected));
+            socket.channelSettings.useSharedTag = false;
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings), Does.Not.Contain("nothips/self"));
+        }
+
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        public void PublicSocketRouteUsesLegacyTpsTagAndNeverMatchesGuides(bool global, bool onHips) {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            injector.Set("autoChannelGenerator", new AutoChannels(onHips ? HumanBodyBones.Hips : HumanBodyBones.LeftHand));
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.channelSettings.useSharedTag = global;
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "custom" });
+            var stop = new GameObject("Stop").transform;
+            stop.SetParent(root.transform, false);
+            stop.localPosition = Vector3.forward;
+            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            var contacts = NativeSocketSenders(result.bakeRoot);
+            var entrance = contacts[0].collisionTags;
+            var guide = contacts[1].collisionTags;
+            Assert.That(entrance.Contains("TPS_Orf_Root"), Is.EqualTo(global));
+            Assert.That(entrance.Contains("TPS_Orf_Root_SelfNotOnHips"), Is.False);
+            Assert.That(entrance.Contains("SPS/Socket/_public"), Is.EqualTo(global));
+            Assert.That(entrance.Contains("SPS/Socket/nothips/self"), Is.EqualTo(global && !onHips));
+            Assert.That(entrance.Contains("SPS/Socket/nothips"), Is.EqualTo(global && !onHips));
+            Assert.That(entrance, Does.Not.Contain("SPSN1/Socket"));
+            Assert.That(entrance, Does.Not.Contain("SPSN1/Socket_SelfNotOnHips"));
+            Assert.That(entrance.Any(t => t.StartsWith("SPS/Socket/00000539")), Is.False);
+            Assert.That(guide.Any(t => t.StartsWith("TPS_Orf_Root")), Is.False);
+            Assert.That(guide.Any(t => t.StartsWith("SPS/Socket/_public")), Is.False);
+            Assert.That(contacts.SelectMany(c => c.collisionTags).Any(t => t.Contains("SCALE_DATA")), Is.False);
+            Assert.That(guide.Contains("SPS/SocketPath/_public"), Is.EqualTo(global));
+            Assert.That(guide.Contains("SPS/SocketPath/nothips/self"), Is.EqualTo(global && !onHips));
+            Assert.That(guide.Contains("SPS/SocketPath/nothips"), Is.EqualTo(global && !onHips));
+            Assert.That(entrance, Does.Contain("SPS/Socket/custom"));
+            Assert.That(guide, Does.Contain("SPS/SocketPath/custom"));
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        public void PublicPlugRouteKeepsLegacyTpsTagAndHipPolicy(bool onHips, bool avoidHips) {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            injector.Set("autoChannelGenerator", new AutoChannels(onHips ? HumanBodyBones.Hips : HumanBodyBones.LeftHand));
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.03f;
+            plug.channelSettings.useHipAvoidance = avoidHips;
+            injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(injector.GetService<SpsChannelsService>().Get(plug));
+            var sender = root.GetComponentsInChildren<VRCContactSender>()
+                .Single(c => c.collisionTags.Contains("TPS_Pen_Penetrating"));
+            Assert.That(sender.collisionTags.Contains("TPS_Pen_Penetrating_SelfNotOnHips"),
+                Is.False);
+            Assert.That(sender.collisionTags, Does.Contain("SPS/Plug/_public"));
+            Assert.That(sender.collisionTags.Contains("SPS/Plug/nothips/self"),
+                Is.EqualTo(onHips && avoidHips));
+            Assert.That(sender.collisionTags, Does.Not.Contain("SPSN1/LegacyPlug/Main"));
+            Assert.That(sender.collisionTags, Does.Not.Contain("SPSN1/LegacyPlug/Main_SelfNotOnHips"));
+            Assert.That(sender.collisionTags.Any(t => t.StartsWith("SPSN1/Plug/")), Is.False);
+            Assert.That(sender.collisionTags.Any(t => t.Contains("SCALE_DATA")), Is.False);
+            Assert.That(sender.collisionTags.Where(t => t.StartsWith("SPS/Plug/")), Is.EquivalentTo(
+                !onHips || !avoidHips
+                    ? new[] { "SPS/Plug/_public", "SPS/Plug/_public/self" }
+                    : new[] { "SPS/Plug/_public", "SPS/Plug/nothips/self" }));
+            CheckVector(sender.transform.lossyScale, new Vector3(0.03f, 0.03f, 0.4f));
+        }
+
+        [Test]
+        public void ReusedRootFitsAllLegacyAndNativeChannelsWithinTagLimit() {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            injector.Set("autoChannelGenerator", new AutoChannels(HumanBodyBones.LeftHand));
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.RingOneWay;
+            socket.channelSettings.channels.AddRange(new[] { "custom1", "custom2" }.Select(tag => new VF.Model.SpsChannelSettings.Channel { id = tag }));
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            var sender = NativeSocketSenders(result.bakeRoot).Single();
+            Assert.That(sender.collisionTags.Count, Is.EqualTo(14));
+            foreach (var legacyTag in new[] { SpsTags.LegacySocket, SpsTags.LegacySocket2 }) {
+                Assert.That(sender.collisionTags, Does.Contain(legacyTag));
+                Assert.That(sender.collisionTags, Does.Not.Contain(legacyTag + "_SelfNotOnHips"));
+            }
+            foreach (var removedTag in new[] { "SPSLL_Socket_Ring", "SPSLL_Socket_Hole" }) {
+                Assert.That(sender.collisionTags, Does.Not.Contain(removedTag));
+                Assert.That(sender.collisionTags, Does.Not.Contain(removedTag + "_SelfNotOnHips"));
+            }
+            var channels = new[] { "custom1", "custom2", "hand", "handleft", "_public" }
+                .SelectMany(c => new[] { c, c + "/self" }).Concat(new[] { "nothips", "nothips/self" });
+            Assert.That(sender.collisionTags.Where(t => t.StartsWith("SPS/Socket/")),
+                Is.EquivalentTo(channels.Select(channel => $"SPS/Socket/{channel}")));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void PlugAndSocketPublishConfiguredChannels(bool shared) {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.03f;
+            plug.channelSettings.useSharedTag = shared;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "  My Channel  ", allowSelf = true, allowOthers = false });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "OTHER", allowSelf = false, allowOthers = true });
+            injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(injector.GetService<SpsChannelsService>().Get(plug));
+            var main = root.GetComponentsInChildren<VRCContactSender>()
+                .Single(c => c.name == "Sender - Sphere");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.channelSettings.useSharedTag = shared;
+            socket.channelSettings.channels.AddRange(plug.channelSettings.channels.Select(rule => new VF.Model.SpsChannelSettings.Channel {
+                id = rule.id, allowSelf = rule.allowSelf, allowOthers = rule.allowOthers
+            }));
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            var entrance = NativeSocketSenders(result.bakeRoot).Single();
+            Assert.That(result.legacyLights != null, Is.EqualTo(shared));
+            var expected = new[] { "my channel/self", "other" }
+                .Concat(shared ? new[] { "_public", "_public/self" } : Array.Empty<string>()).ToArray();
+            Assert.That(main.collisionTags.Where(t => t.StartsWith("SPS/Plug/")),
+                Is.EquivalentTo(expected.Select(SpsTags.FormatPlug)));
+            Assert.That(entrance.collisionTags.Where(t => t.StartsWith("SPS/Socket/")),
+                Is.EquivalentTo(expected.Concat(shared ? new[] { "nothips", "nothips/self" } : Array.Empty<string>()).Select(SpsTags.FormatSocket)));
+            Assert.That(main.collisionTags.Contains(SpsTags.LegacyPlugSphere + "_SelfNotOnHips"), Is.False);
+            var legacyTags = root.GetComponentsInChildren<VRCContactSender>()
+                .SelectMany(c => c.collisionTags).Where(t => t.StartsWith("TPS_") || t.StartsWith("SPSLL_")).ToArray();
+            if (!shared) Assert.That(legacyTags, Is.EquivalentTo(new[] {
+                SpsTags.PlugClose
+            }));
+        }
+
+        [TestCase("public")]
+        [TestCase("nothips")]
+        public void UserChannelsAreNotDuplicated(string channel) {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.03f;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "  " + channel.ToUpperInvariant() + "  " });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = channel });
+            injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(injector.GetService<SpsChannelsService>().Get(plug));
+            var main = root.GetComponentsInChildren<VRCContactSender>().Single(c => c.name == "Sender - Sphere");
+            Assert.That(main.collisionTags, Is.Unique);
+            Assert.That(main.collisionTags.Count(t => t == SpsTags.FormatPlug(channel)), Is.EqualTo(1));
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.channelSettings.channels.AddRange(new[] { "  " + channel.ToUpperInvariant() + "  ", channel }.Select(tag => new VF.Model.SpsChannelSettings.Channel { id = tag }));
+            var stop = new GameObject("Stop").transform;
+            stop.SetParent(root.transform, false);
+            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            var senders = NativeSocketSenders(result.bakeRoot);
+            Assert.That(senders, Has.Length.EqualTo(2));
+            Assert.That(senders[0].collisionTags.Count(t => t == SpsTags.FormatSocket(channel)), Is.EqualTo(1));
+            Assert.That(senders[1].collisionTags.Count(t => t == SpsTags.FormatSocketPath(channel)), Is.EqualTo(1));
+            foreach (var sender in senders) Assert.That(sender.collisionTags, Is.Unique);
+        }
+
+        [TestCase("_public", "_public")]
+        [TestCase("  __NoThips  ", "__nothips")]
+        [TestCase("___custom", "___custom")]
+        [TestCase("___", "___")]
+        [TestCase("Custom_Channel_", "custom_channel_")]
+        public void UserChannelsPreserveUnderscores(string input, string expected) {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.03f;
+            plug.channelSettings.useSharedTag = false;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = input });
+            var configurer = injector.GetService<SpsConfigurer>();
+            foreach (Party party in Enum.GetValues(typeof(Party))) {
+                Assert.That(configurer.GetChannels(plug.owner(), true, party, plug.channelSettings), Does.Contain(expected + (party == Party.Self ? "/self" : "")));
+            }
+            var plugBake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(plugBake.channelContacts);
+            Assert.That(plugBake.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
+                .SelectMany(s => s.collisionTags), Does.Contain(SpsTags.FormatPlug(expected)));
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.channelSettings.useSharedTag = false;
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = input });
+            foreach (Party party in Enum.GetValues(typeof(Party))) {
+                Assert.That(configurer.GetChannels(socket.owner(), false, party, socket.channelSettings), Does.Contain(expected + (party == Party.Self ? "/self" : "")));
+            }
+            var socketBake = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(socketBake.channelContacts);
+            Assert.That(socketBake.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
+                .SelectMany(s => s.collisionTags), Does.Contain(SpsTags.FormatSocket(expected)));
+            var action = new ChangeSpsChannelsAction {
+                channelSettings = new VF.Model.SpsChannelSettings {
+                    useSharedTag = false, channels = { new VF.Model.SpsChannelSettings.Channel { id = input } }
+                }
+            };
+            Assert.That(configurer.GetChannels(plug.owner(), true, Party.Merged, action.channelSettings), Does.Contain(expected));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, action.channelSettings), Does.Contain(expected));
+            Assert.That(VRCFuryHapticPlugEditor.SanitizeSpsChannel(input), Is.EqualTo(expected));
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void PlugChannelsRespectDisabledRulesAndAuthoringLimit(bool allowSelf, bool allowOthers) {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.03f;
+            plug.channelSettings.useSharedTag = false;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel {
+                id = "  Custom  ", allowSelf = allowSelf, allowOthers = allowOthers
+            });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = " " });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "Outside Authoring Limit" });
+            var configurer = injector.GetService<SpsConfigurer>();
+            var expected = (allowSelf ? new[] { "custom/self" } : Array.Empty<string>())
+                .Concat(allowOthers ? new[] { "custom" } : Array.Empty<string>()).ToArray();
+            Assert.That(configurer.GetChannels(plug.owner(), true, Party.Merged, plug.channelSettings), Is.EquivalentTo(expected));
+            if (!allowSelf && !allowOthers) {
+                Assert.Throws<Exception>(() => injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug));
+                return;
+            }
+            injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
+            injector.GetService<SpsChannelsService>().Apply(injector.GetService<SpsChannelsService>().Get(plug));
+            var main = root.GetComponentsInChildren<VRCContactSender>()
+                .SingleOrDefault(c => c.name == "Sender - Sphere");
+            Assert.That(main == null ? Array.Empty<string>() : main.collisionTags.Where(t => t.StartsWith("SPS/Plug/")), Is.EquivalentTo(
+                expected.Select(SpsTags.FormatPlug)));
+            Assert.That(root.GetComponentsInChildren<VRCContactSender>(), Has.Length.EqualTo(allowSelf || allowOthers ? 2 : 1));
+            var close = root.GetComponentsInChildren<VRCContactSender>()
+                .Single(c => c.collisionTags.Contains(SpsTags.PlugClose));
+            Assert.That(close.collisionTags, Is.EquivalentTo(new[] { SpsTags.PlugClose }));
+            Assert.That(close.radius * MaxScale(close.transform), Is.EqualTo(0.03f).Within(0.000001));
+            Assert.That(close.height * MaxScale(close.transform), Is.EqualTo(0.4f).Within(0.000001));
+            if (main != null) {
+                Assert.That(main.collisionTags.Any(t => t.StartsWith("TPS_")), Is.False);
+                Assert.That(main.collisionTags, Does.Not.Contain("SPS/Flag/ScaleV1"));
+            }
+        }
+
+        [Test]
+        public void PublicHipAvoidanceMatchesInBothDirections(
+            [Values] bool plugOnHips, [Values] bool socketOnHips, [Values] bool avoidHips) {
+            var bones = new AutoChannels(HumanBodyBones.Hips);
+            injector.Set("autoChannelGenerator", bones);
+            var configurer = injector.GetService<SpsConfigurer>();
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            plug.channelSettings.useHipAvoidance = avoidHips;
+            bones.bone = plugOnHips ? HumanBodyBones.Hips : HumanBodyBones.Head;
+            var plugSelf = configurer.GetChannels(plug.owner(), true, Party.Self, plug.channelSettings);
+            var plugOthers = configurer.GetChannels(plug.owner(), true, Party.Others, plug.channelSettings);
+            var plugSender = configurer.GetChannels(plug.owner(), true, Party.Merged, plug.channelSettings);
+            Assert.That(plugSender, Is.EquivalentTo(plugSelf.Union(plugOthers)));
+            bones.bone = socketOnHips ? HumanBodyBones.Hips : HumanBodyBones.Head;
+            var socketSelf = configurer.GetChannels(socket.owner(), false, Party.Self, socket.channelSettings);
+            var socketOthers = configurer.GetChannels(socket.owner(), false, Party.Others, socket.channelSettings);
+            var socketSender = configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings);
+            Assert.That(socketSender, Is.EquivalentTo(socketSelf.Union(socketOthers)));
+            var matchesSelf = !(plugOnHips && socketOnHips && avoidHips);
+            Assert.That(plugSender.Overlaps(socketSelf), Is.EqualTo(matchesSelf), "Plug sender to self socket");
+            Assert.That(socketSender.Overlaps(plugSelf), Is.EqualTo(matchesSelf), "Socket sender to self plug");
+            Assert.That(plugSender.Overlaps(socketOthers), Is.True, "Other avatars must be unaffected");
+            Assert.That(socketSender.Overlaps(plugOthers), Is.True, "Other avatars must be unaffected");
+        }
+
+        [TestCase(HumanBodyBones.Hips, true)]
+        [TestCase(HumanBodyBones.Hips, false)]
+        [TestCase(HumanBodyBones.Head, true)]
+        [TestCase(HumanBodyBones.Head, false)]
+        public void ChannelsRespectPartyRulesAndHipAvoidance(HumanBodyBones bone, bool avoidHips) {
+            injector.Set("autoChannelGenerator", new AutoChannels(bone));
+            var configurer = injector.GetService<SpsConfigurer>();
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.channelSettings.useHipAvoidance = avoidHips;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "self", allowSelf = true, allowOthers = false });
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "others", allowSelf = false, allowOthers = true });
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "custom" });
+
+            foreach (Party party in Enum.GetValues(typeof(Party))) {
+                var plugExpected = new List<string>();
+                if (party != Party.Others) plugExpected.Add("self/self");
+                if (party != Party.Self) plugExpected.Add("others");
+                var socketExpected = party == Party.Merged ? new List<string> { "custom", "custom/self" }
+                    : new List<string> { party == Party.Self ? "custom/self" : "custom" };
+                AssertChannels(false);
+                AssertChannels(true);
+
+                void AssertChannels(bool shared) {
+                    plug.channelSettings.useSharedTag = socket.channelSettings.useSharedTag = shared;
+                    var expectedPlug = plugExpected.ToList();
+                    var expectedSocket = socketExpected.ToList();
+                    if (shared) {
+                        var auto = bone == HumanBodyBones.Hips ? "hips" : "head";
+                        if (party != Party.Self) {
+                            expectedPlug.Add("_public");
+                            expectedSocket.Add("_public");
+                            expectedSocket.Add(auto);
+                            if (bone != HumanBodyBones.Hips) expectedSocket.Add("nothips");
+                        }
+                        if (party != Party.Others) {
+                            expectedPlug.Add(bone == HumanBodyBones.Hips && avoidHips ? "nothips/self" : "_public/self");
+                            expectedSocket.Add("_public/self");
+                            expectedSocket.Add(auto + "/self");
+                            if (bone != HumanBodyBones.Hips) expectedSocket.Add("nothips/self");
+                        }
+                    }
+                    Assert.That(configurer.GetChannels(plug.owner(), true, party, plug.channelSettings), Is.EquivalentTo(expectedPlug), "Plug " + party);
+                    Assert.That(configurer.GetChannels(socket.owner(), false, party, socket.channelSettings), Is.EquivalentTo(expectedSocket), "Socket " + party);
+                    Assert.That(configurer.GetChannels(plug.owner(), true, party, new VF.Model.SpsChannelSettings {
+                        useSharedTag = shared, useHipAvoidance = avoidHips, channels = plug.channelSettings.channels
+                    }), Is.EquivalentTo(expectedPlug), "Plug action " + party);
+                    Assert.That(configurer.GetChannels(socket.owner(), false, party, new VF.Model.SpsChannelSettings {
+                        useSharedTag = shared, channels = socket.channelSettings.channels
+                    }), Is.EquivalentTo(expectedSocket), "Socket action " + party);
+                }
+            }
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void SelfHipFilteringDoesNotTreatUserPublicAsReserved(bool shared, bool avoidHips) {
+            injector.Set("autoChannelGenerator", new AutoChannels(HumanBodyBones.Hips));
+            var configurer = injector.GetService<SpsConfigurer>();
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.channelSettings.useSharedTag = shared;
+            plug.channelSettings.useHipAvoidance = avoidHips;
+            plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "  PUBLIC  " });
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.channelSettings.useSharedTag = shared;
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "  PUBLIC  " });
+            var plugSelf = new[] { "public" }.Concat(shared
+                ? new[] { avoidHips ? "nothips" : "_public" } : Array.Empty<string>());
+            var socketSelf = new[] { "public" }.Concat(shared ? new[] { "_public", "hips" } : Array.Empty<string>());
+            var others = new[] { "public" }.Concat(shared ? new[] { "_public" } : Array.Empty<string>());
+            Assert.That(configurer.GetChannels(plug.owner(), true, Party.Self, plug.channelSettings), Is.EquivalentTo(plugSelf.Select(c => c + "/self")));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Self, socket.channelSettings), Is.EquivalentTo(socketSelf.Select(c => c + "/self")));
+            Assert.That(configurer.GetChannels(plug.owner(), true, Party.Others, plug.channelSettings), Is.EquivalentTo(others));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Others, socket.channelSettings),
+                Is.EquivalentTo(others.Concat(shared ? new[] { "hips" } : Array.Empty<string>())));
+        }
+
+        [Test]
+        public void DisabledSocketCreatesNoSendersOrLights([Values] bool legacy, [Values] bool tpsDepth) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.None;
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket,
+                legacyPlugCompatibility: legacy, tpsDepthAnimationCompatibility: tpsDepth);
+            result.plugReceivers.Find(false, false);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>(), Is.Empty);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Light>(), Is.Empty);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>(), Is.Not.Empty);
+            Assert.That(result.pathRoots, Is.Empty);
+        }
+
+        [Test]
+        public void SocketWithNoChannelsRejectsBaking() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.channelSettings.useSharedTag = false;
+            Assert.Throws<Exception>(() => injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket));
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void EnableAnimationsReachPlugRendererAndBakeRoot(bool componentBinding, bool skinned) {
+            var avatar = root.AddComponent<VRCAvatarDescriptor>();
+            avatar.baseAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+            avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+            injector.Set("avatarObject", root.asVf());
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            injector.Set(typeof(VRCAvatarDescriptor), avatar);
+            injector.Set(new GlobalsService { avatarObject = root });
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            var rendererObject = GameObjects.Create("Renderer", root);
+            Renderer renderer = skinned
+                ? (Renderer)rendererObject.AddComponent<SkinnedMeshRenderer>()
+                : rendererObject.AddComponent<MeshRenderer>();
+            var bakeRoot = GameObjects.Create("Baked", root);
+            var sourceCurve = AnimationCurve.Linear(0, 0, 1, 1);
+            var clip = VFClip.Create("SPS Enable Test");
+            clip.SetCurve(componentBinding ? (UnityEngine.Object)plug : renderer,
+                componentBinding ? "spsAnimatedEnabled" : "material._TPS_AnimatedToggle", sourceCurve);
+            injector.GetService<AllClipsService>().AddAdditionalManagedClip(clip);
+            var service = injector.GetService<BakeHapticPlugsService>();
+            var rewrites = (List<BakeHapticPlugsService.SpsRewriteToDo>)typeof(BakeHapticPlugsService)
+                .GetField("spsRewritesToDo", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .GetValue(service);
+            rewrites.Add(new BakeHapticPlugsService.SpsRewriteToDo {
+                plugObject = root,
+                skin = renderer,
+                bakeRoot = bakeRoot,
+                spsBlendshapes = Array.Empty<string>(),
+                configureMaterial = (_, material) => material
+            });
+            service.ApplySpsRewrites();
+            var curves = clip.GetFloatCurves();
+            var enabledCurve = curves.Single(pair => pair.Item1.Targets(rendererObject)
+                && pair.Item1.type == renderer.GetType() && pair.Item1.propertyName == "material._SPS_Enabled").Item2;
+            var activeCurve = curves.Single(pair => pair.Item1.Targets(bakeRoot)
+                && pair.Item1.propertyName == "m_IsActive").Item2;
+            foreach (var time in new[] { 0f, 0.5f, 1f }) {
+                Assert.That(enabledCurve.Evaluate(time), Is.EqualTo(sourceCurve.Evaluate(time)));
+                Assert.That(activeCurve.Evaluate(time), Is.EqualTo(sourceCurve.Evaluate(time)));
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void DeformingPlugKeepsItsBakeWithoutCreatingMarkers(bool withMaterial) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var mesh = new Mesh {
+                vertices = new[] {
+                    new Vector3(-0.015f, 0, 0), new Vector3(0.015f, 0, 0),
+                    new Vector3(-0.015f, 0, 0.2f), new Vector3(0.015f, 0, 0.2f)
+                },
+                triangles = new[] { 0, 2, 1, 1, 2, 3 },
+                uv = new[] { Vector2.zero, Vector2.right, Vector2.up, Vector2.one }
+            };
+            mesh.RecalculateNormals();
+            Material originalMaterial = null;
+            try {
+                root.AddComponent<MeshFilter>().sharedMesh = mesh;
+                var renderer = root.AddComponent<MeshRenderer>();
+                if (withMaterial) originalMaterial = new Material(Shader.Find("Unlit/Color"));
+                renderer.sharedMaterials = withMaterial ? new[] { originalMaterial } : Array.Empty<Material>();
+                var plug = root.AddComponent<VRCFuryHapticPlug>();
+                plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.spsAutorig = false;
+                plug.configureTpsMesh.Add(renderer);
+                plug.unitsInMeters = true;
+                plug.length = 0.4f;
+                plug.radius = 0.03f;
+#if !VRCSDK_HAS_MATERIAL_CONTACTS
+                if (BuildTargetUtils.IsDesktop()) {
+                    var error = Assert.Throws<Exception>(() => injector.GetService<VRCFuryHapticPlugBaker>()
+                        .Bake(plug, deferMaterialConfig: !withMaterial));
+                    Assert.That(error.Message, Is.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
+                    return;
+                }
+#endif
+                var result = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug, deferMaterialConfig: !withMaterial);
+                injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+                Assert.That(root.GetComponentsInChildren<Renderer>(true), Is.EquivalentTo(new[] { renderer }));
+                Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Animator>(), Is.Empty);
+                if (!withMaterial) Assert.That(renderer.sharedMaterials, Is.Empty);
+                if (BuildTargetUtils.IsDesktop()) {
+                    if (withMaterial) {
+                        Assert.That(renderer.sharedMaterial, Is.Not.SameAs(originalMaterial));
+                        Assert.That(renderer.sharedMaterial.GetTexture("_SPS_Bake"), Is.Not.Null);
+                        Assert.That(renderer.sharedMaterial.GetFloat("_SPS_BakedLength"), Is.EqualTo(0.4f));
+                        Assert.That(renderer.sharedMaterial.GetFloat("_SPS_BakedRadius"), Is.EqualTo(0.03f));
+                        Assert.That(renderer.sharedMaterial.HasProperty("_SPS_IdLow"), Is.False);
+                    }
+                    var sender = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()
+                        .Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugSphere));
+                    CheckVector(sender.transform.lossyScale, new Vector3(0.03f, 0.03f, 0.4f));
+                    var receivers = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>();
+                    Assert.That(receivers.Length, Is.EqualTo(3));
+                    foreach (var receiver in receivers) {
+                        Assert.That(receiver.transform.parent, Is.EqualTo((Transform)result.bakeRoot));
+                        CheckVector(receiver.transform.lossyScale, Vector3.one);
+                        CheckVector(receiver.transform.position, result.bakeRoot.worldPosition);
+                    }
+                    root.transform.localScale *= 3;
+                    foreach (var receiver in receivers) {
+                        CheckVector(receiver.transform.lossyScale, Vector3.one * 3);
+                    }
+                }
+            } finally {
+                if (originalMaterial != null) Object.DestroyImmediate(originalMaterial);
+                Object.DestroyImmediate(mesh);
+            }
+        }
+
+        [Test]
+        public void LongPathsAdvertiseBoundedPrefixWithoutChangingAuthoredStops() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            for (var i = 0; i < 7; i++) {
+                var stop = new GameObject("Stop " + i).transform;
+                stop.SetParent(root.transform, false);
+                stop.localPosition = Vector3.forward * (i + 1);
+                socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
+            }
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            if (!BuildTargetUtils.IsDesktop()) return;
+            Assert.That(socket.guidedPathStops.All(stop => stop.transform != null), Is.True);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
+            var contacts = NativeSocketSenders(result.bakeRoot);
+            Assert.That(contacts.Length, Is.EqualTo(SpsTags.MaxUserPathStops + 1));
+            CheckNode(contacts.Last(), 1, SpsTags.MaxUserPathStops, Flags.RingOneWay);
+        }
+
+        [Test]
+        public void LegacyOverridesDoNotReplaceNativePoseOrType() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Ring;
+            socket.overrideLegacySocketType = socket.overrideLegacyOffset = true;
+            socket.legacySocketType = VRCFuryHapticSocket.LegacySocketType.Hole;
+            socket.legacyOffsetLocal = new Vector3(0.1f, 0.2f, 0.3f);
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            if (!BuildTargetUtils.IsDesktop()) return;
+            var native = NativeSocketSenders(result.bakeRoot).Single();
+            CheckNode(native, 1, 0, Flags.Ring);
+            CheckVector(native.transform.position, result.bakeRoot.worldPosition);
+            Assert.That(result.legacyLights.GetComponentsInSelfAndChildren<Light>().Select(l => l.range),
+                Does.Contain(0.4104f));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SeparateSocketFramesPreserveTheAuthoredOffsetAndFrontSpacing(bool overrideOffset) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.useRadiusOffset = true;
+            socket.overrideLegacyOffset = overrideOffset;
+            socket.legacyOffsetLocal = new Vector3(0.1f, 0.2f, 0.3f);
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket, tpsDepthAnimationCompatibility: true);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            if (!BuildTargetUtils.IsDesktop()) return;
+            var offset = overrideOffset ? socket.legacyOffsetLocal : Vector3.up * VRCFuryHapticSocketEditor.LegacyRadiusOffset;
+            var main = result.legacyLights.Children().Single(obj => obj.name == "Light - Legacy Root");
+            var front = result.legacyLights.Children().Single(obj => obj.name == "Light - Legacy Front");
+            CheckVector(main.worldPosition, result.bakeRoot.worldPosition + result.bakeRoot.worldRotation * (offset * 2));
+            CheckVector(front.worldPosition - main.worldPosition, result.bakeRoot.worldRotation * Vector3.forward * 0.01f);
+            Assert.That(result.bakeRoot.Children().Select(obj => obj.name), Is.EquivalentTo(new[] {
+                "WorldSpace", "LegacyLights"
+            }));
+            Assert.That(result.worldSpace.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "Sender - Root", "Sender - Legacy Front" }));
+            Assert.That(result.legacyLights.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "Light - Legacy Root", "Light - Legacy Front" }));
+            Assert.That(result.worldSpace.Children().All(obj => obj.Children().Length == 0), Is.True);
+            Assert.That(result.legacyLights.Children().All(obj => obj.Children().Length == 0), Is.True);
+            CheckVector(result.legacyLights.localPosition, offset);
+            Assert.That(result.bakeRoot.GetComponent<UnityEngine.Animations.ScaleConstraint>(), Is.Null);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Animations.ScaleConstraint>(), Has.Length.EqualTo(2));
+        }
+
+        [Test]
+        public void StaticNonuniformStopScaleDoesNotCorruptPayload() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            var stop = new GameObject("Nonuniform stop").transform;
+            stop.SetParent(root.transform, false);
+            stop.localPosition = Vector3.forward;
+            stop.localRotation = Quaternion.Euler(10, 20, 30);
+            stop.localScale = new Vector3(1, 2, 3);
+            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            if (!BuildTargetUtils.IsDesktop()) return;
+            var native = NativeSocketSenders(result.bakeRoot).Last();
+            CheckNode(native, 1, 1, Flags.Hole);
+            Assert.That(native.transform.lossyScale.x, Is.EqualTo(129 | (1 << 14)).Within(0.01));
+            CheckVector(native.transform.forward, stop.forward);
+            root.transform.localScale *= 2;
+            CheckNode(native, 1, 1, Flags.Hole, 2);
+            Assert.That(native.transform.lossyScale.x, Is.EqualTo((129 | (1 << 14)) * 2).Within(0.01));
+        }
+
+        private SpsUpgrader CreateUpgrader() {
+            var avatar = root.AddComponent<VRCAvatarDescriptor>();
+            avatar.baseAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+            avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+            return VRCFuryInjectorBuilder.CreateForManualEditing(root).GetService<SpsUpgrader>();
+        }
+
+        [TestCase(0.41f)]
+        [TestCase(0.42f)]
+        public void AutomaticLegacyUpgradeReplacesLightsWithFullSocket(float rootRange) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var upgrader = CreateUpgrader();
+            var main = new GameObject("Existing DPS Root").AddComponent<Light>();
+            main.transform.SetParent(root.transform, false);
+            main.color = Color.black;
+            main.range = rootRange;
+            var front = new GameObject("Existing DPS Front").AddComponent<Light>();
+            front.transform.SetParent(root.transform, false);
+            front.transform.localPosition = Vector3.forward * 0.005f;
+            front.color = Color.black;
+            front.range = 0.45f;
+            var expectedPosition = main.transform.position;
+            var expectedForward = (front.transform.position - main.transform.position).normalized;
+            upgrader.Apply(root, true);
+            Assert.That(root.GetComponent<VRCFuryHapticSocket>(), Is.Null, "Dry run must not add components");
+            Assert.That(main != null && front != null, Is.True, "Dry run must preserve authored lights");
+            upgrader.Apply(root, false);
+            var socket = root.GetComponent<VRCFuryHapticSocket>();
+            Assert.That(socket, Is.Not.Null);
+            Assert.That(socket.addLight, Is.EqualTo(rootRange == 0.41f
+                ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.Ring));
+            Assert.That(main == null && front == null, Is.True, "Authored lights must be removed during upgrade");
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
+            if (!BuildTargetUtils.IsDesktop()) return;
+            Assert.That(NativeSocketSenders(result.bakeRoot), Has.Length.EqualTo(1));
+            Assert.That(result.legacyLights.GetComponentsInSelfAndChildren<Light>().Select(light => light.range),
+                Is.EquivalentTo(new[] { rootRange == 0.41f ? 0.4104f : 0.4204f, 0.4504f }));
+            var legacy = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>().Single();
+            Assert.That(legacy.collisionTags, Does.Contain(SpsTags.LegacySocket));
+            Assert.That(legacy.collisionTags, Does.Contain(SpsTags.LegacySocket2));
+            Assert.That(legacy.collisionTags, Does.Contain(SpsTags.FormatSocket(SpsTags.PublicChannel)));
+            CheckVector(legacy.transform.position, expectedPosition);
+            CheckVector(legacy.transform.forward, expectedForward);
+        }
+
+        [TestCase("Legacy Contact", "TPSVF_Depth")]
+        [TestCase("OGB_Legacy Contact", "Finger")]
+        public void AutomaticLegacyUpgradeRemovesLegacyContacts(string objectName, string tag) {
+            var upgrader = CreateUpgrader();
+            var legacy = GameObjects.Create(objectName, root);
+            legacy.active = false;
+            var sender = legacy.AddComponent<VRCContactSender>();
+            sender.collisionTags = new List<string> { tag };
+            var receiver = legacy.AddComponent<VRCContactReceiver>();
+            receiver.collisionTags = new List<string> { tag };
+            var unrelated = GameObjects.Create("Unrelated Contact", root);
+            var unrelatedSender = unrelated.AddComponent<VRCContactSender>();
+            unrelatedSender.collisionTags = new List<string> { "Finger" };
+            var unrelatedReceiver = unrelated.AddComponent<VRCContactReceiver>();
+            unrelatedReceiver.collisionTags = new List<string> { "Finger" };
+
+            upgrader.Apply(root, true);
+            Assert.That(sender != null && receiver != null, Is.True, "Dry run must preserve contacts");
+            upgrader.Apply(root, false);
+            Assert.That(sender == null && receiver == null, Is.True, "Legacy senders and receivers must be removed");
+            Assert.That(unrelatedSender != null && unrelatedReceiver != null, Is.True, "Unrelated contacts must remain");
+        }
+
+        [TestCase("OGB_Baked_Pen", true)]
+        [TestCase("BakedSpsPlug", true)]
+        [TestCase("OGB_Marker_Pen", true)]
+        [TestCase("OGB_Baked_Orf", false)]
+        [TestCase("BakedSpsSocket", false)]
+        [TestCase("OGB_Marker_Hole", false)]
+        public void AutomaticLegacyUpgradeDeletesReplacedObjects(string objectName, bool isPlug) {
+            var upgrader = CreateUpgrader();
+            var replaced = GameObjects.Create(objectName, root);
+            var child = GameObjects.Create("Old Child", replaced).AddComponent<BoxCollider>();
+            var unrelated = GameObjects.Create("Unrelated", root).AddComponent<BoxCollider>();
+
+            upgrader.Apply(root, true);
+            Assert.That(replaced != null && child != null, Is.True, "Dry run must preserve replaced hierarchies");
+            upgrader.Apply(root, false);
+            Assert.That(replaced == null && child == null, Is.True, "Replaced objects and their children must be removed");
+            Assert.That(unrelated != null, Is.True);
+            Assert.That(isPlug ? (UnityEngine.Component)root.GetComponent<VRCFuryHapticPlug>()
+                : root.GetComponent<VRCFuryHapticSocket>(), Is.Not.Null, "Replacement component must remain");
+        }
+
+        [TestCase(0f, 0.03f)]
+        [TestCase(float.NaN, 0.03f)]
+        [TestCase(float.PositiveInfinity, 0.03f)]
+        [TestCase(0.4f, 0f)]
+        [TestCase(0.4f, float.NaN)]
+        [TestCase(0.4f, float.PositiveInfinity)]
+        public void EncodedPlugRequiresFinitePositiveDimensions(float length, float radius) {
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                HapticUtils.EncodePlugScale(length, radius));
+        }
+
+        [TestCase(0.03f, 0.03f)]
+        [TestCase(0.4f, 0.4f)]
+        [TestCase(0.5f, 0.4f)]
+        public void EncodedPlugClampsRadiusToLength(float radius, float expectedRadius) {
+            Assert.That(HapticUtils.EncodePlugScale(0.4f, radius),
+                Is.EqualTo(new Vector3(expectedRadius, expectedRadius, 0.4f)));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void SenderFactoryAcceptsWorldScaleWithWorldOrLocalShapeUnits(bool useWorldUnits) {
+            var sender = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest {
+                obj = root,
+                objName = "Scaled Capsule",
+                pos = new Vector3(0.02f, 0.04f, 0.08f),
+                radius = 0.03f,
+                height = 0.3f,
+                rotation = Quaternion.Euler(90, 0, 0),
+                worldScale = new Vector3(0.2f, 0.4f, 0.8f),
+                useWorldUnits = useWorldUnits,
+                tags = new[] { "Finger", SpsTags.FormatPlug("_public") }
+            });
+            if (!BuildTargetUtils.IsDesktop()) {
+                Assert.That(sender, Is.Null);
+                return;
+            }
+            var contact = sender.GetComponent<VRCContactSender>();
+            Assert.That(contact.collisionTags, Is.EquivalentTo(new[] { "Finger", SpsTags.FormatPlug("_public") }));
+            CheckVector(sender.worldScale, new Vector3(0.2f, 0.4f, 0.8f));
+            CheckVector(Vector3.Scale(contact.position, sender.worldScale),
+                useWorldUnits ? new Vector3(0.02f, 0.04f, 0.08f) : new Vector3(0.004f, 0.016f, 0.064f));
+            Assert.That(contact.radius * MaxScale(sender), Is.EqualTo(useWorldUnits ? 0.03f : 0.024f).Within(0.000001));
+            Assert.That(contact.height * MaxScale(sender), Is.EqualTo(useWorldUnits ? 0.3f : 0.24f).Within(0.000001));
+        }
+
+        private static VRCContactSender[] NativeSocketSenders(VFGameObject parent) =>
+            parent.GetComponentsInSelfAndChildren<VRCContactSender>()
+                .Where(c => c.collisionTags.Any(t => t == SpsTags.FormatSocket("_public")
+                    || t.StartsWith("SPS/Socket/") || t.StartsWith("SPS/SocketPath/")))
+                .ToArray();
+
+        private class AutoChannels : SpsAutoChannelGenerator {
+            public HumanBodyBones bone;
+            public AutoChannels(HumanBodyBones bone) => this.bone = bone;
+            public HumanBodyBones? GetClosestBone(VFGameObject obj) => bone;
+            public VFGameObject GetBone(VFGameObject obj, HumanBodyBones bone) => null;
+            public Vector3? GetAvatarViewPosition(VFGameObject obj) => null;
+        }
+
+        private static float MaxScale(Transform transform) {
+            var scale = transform.lossyScale;
+            return Mathf.Max(scale.x, scale.y, scale.z);
+        }
+
+        private static void CheckVector(Vector3 actual, Vector3 expected) =>
+            Assert.That(Vector3.Distance(actual, expected), Is.LessThan(Mathf.Max(0.0001f, expected.magnitude * 0.000001f)));
+
+        private static void CheckNode(VRCContactSender sender, int group, int pathIndex, Flags flags, float inheritedScale = 1, bool radiusOffset = false) {
+            var scale = sender.transform.lossyScale / inheritedScale;
+            var packed = Mathf.RoundToInt(scale.x / scale.z);
+            Assert.That(packed & 127, Is.EqualTo(group));
+            Assert.That((packed >> 7) & 7, Is.EqualTo(pathIndex));
+            Assert.That(scale.y / scale.z, Is.EqualTo(1f).Within(0.000001));
+            var expectedFlags = flags == Flags.Hole
+                ? new[] { SpsTags.SocketCollapse }
+                : flags == Flags.Ring
+                    ? new[] { SpsTags.SocketTwoway }
+                    : Array.Empty<string>();
+            var expectedTags = expectedFlags.AsEnumerable();
+            if (radiusOffset) expectedTags = expectedTags.Append("SPS/Flag/RadiusOffset");
+            Assert.That(sender.collisionTags.Where(tag => tag.Contains("/Flag/")), Is.EquivalentTo(expectedTags));
+            var expectedBits = flags == Flags.Hole ? 1 << 14 : flags == Flags.Ring ? 1 << 13 : 0;
+            Assert.That(packed & 0x7C00, Is.EqualTo(expectedBits | (radiusOffset ? 1 << 12 : 0)));
+            Assert.That(NativeSocketSenders(sender.owner()), Does.Contain(sender));
+            Assert.That(sender.collisionTags.Count, Is.LessThanOrEqualTo(16));
+            Assert.That(sender.radius, Is.Zero);
+        }
+    }
+}

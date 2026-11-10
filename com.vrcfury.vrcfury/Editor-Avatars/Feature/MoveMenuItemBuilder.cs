@@ -51,7 +51,8 @@ namespace VF.Feature {
             string selectLabel = "Select",
             string tooltip = null,
             bool immediate = false,
-            Vector2? pos = null
+            Vector2? pos = null,
+            string placeholder = null
         ) {
             void Apply(string path) {
                 if (append != null) {
@@ -116,7 +117,7 @@ namespace VF.Feature {
             }
 
             var row = new VisualElement().Row();
-            row.Add(VRCFuryEditorUtils.Prop(prop, label, tooltip: tooltip).FlexGrow(1));
+            row.Add(VRCFuryEditorUtils.Prop(prop, label, tooltip: tooltip, placeholder: placeholder).FlexGrow(1));
             row.Add(new Button(OnClick) { text = selectLabel });
             return row;
         }

@@ -28,6 +28,87 @@ float4 frag() : SV_Target {
 
     private const string SpsStub = "void sps_apply(inout SpsInputs input) {}";
 
+    [TestCase("PenetratorReshape")]
+    [TestCase("applyRalivDynamicPenetrationSystem")]
+    [TestCase("ApplyTPSPenetrator")]
+    public void MakesLegacyDeformationInputOnlyEvenWhenLockedOn(string function) {
+        var program = Common + @"
+#pragma vertex vert
+#define LOCKED_TPS_ENABLED 1
+void " + function + @"(inout float4 vertex) {
+    // A closing brace in a comment must not terminate the function: }
+    if (LOCKED_TPS_ENABLED) { vertex.x += 100; }
+    /* Nor should this: } */
+}
+VertexOutput vert(AppData data) {
+    " + function + @"(data.vertex);
+    VertexOutput output;
+    output.position = data.vertex;
+    return output;
+}
+";
+        var patched = SpsPatcher.DisableLegacyDeformation(program);
+        Assert.That(patched, Does.Contain("#define inout in\nvoid " + function));
+        Assert.That(patched, Does.Contain("vertex.x += 100"));
+        Assert.That(patched, Does.Contain(function + "(data.vertex)"));
+        AssertShaderCompiles(SpsPatcher.PatchProgram(patched, true, SpsStub, "", false), "CGPROGRAM", "ENDCG");
+    }
+
+    [Test]
+    public void PreservesUnrelatedShaderCodeAndCommentedFunctions() {
+        const string source = @"
+// void ApplyTPSPenetrator() {
+/* void PenetratorReshape() { */
+void OrificeReshape(inout float4 vertex) { vertex.x += 1; }
+void ApplyTPSOrifice(inout float4 vertex) { vertex.y += 1; }
+";
+        Assert.That(SpsPatcher.DisableLegacyDeformation(source), Is.EqualTo(source));
+    }
+
+    [TestCase("XSVert.cginc")]
+    [TestCase("RalivDPS_Functions.cginc")]
+    [TestCase("PenetratorFunctions.cginc")]
+    public void DisablesLegacyIncludesUsingOnlyScopedDefines(string fileName) {
+        var folder = "Assets/SpsLegacyIncludes_" + Guid.NewGuid().ToString("N");
+        AssetDatabase.CreateFolder("Assets", Path.GetFileName(folder));
+        var legacy = folder + "/" + fileName;
+        const string legacySource = "void PenetratorReshape(inout float4 vertex) { vertex.x += 100; }";
+        try {
+            File.WriteAllText(legacy, legacySource);
+            var include = "#include_with_pragmas \"" + legacy + "\"";
+            var patched = SpsPatcher.DisableLegacyDeformation(include);
+            Assert.That(patched, Does.Contain("#define inout in\n" + include + "\n#undef inout"));
+            Assert.That(patched, Does.Not.Contain("void PenetratorReshape"));
+            Assert.That(Directory.GetFiles(folder), Has.Length.EqualTo(1));
+            Assert.That(File.ReadAllText(legacy), Is.EqualTo(legacySource));
+            AssertShaderCompiles(Common + "\n" + patched + @"
+#pragma vertex vert
+void Unrelated(inout float4 vertex) { vertex.y += 1; }
+VertexOutput vert(AppData data) {
+    PenetratorReshape(data.vertex);
+    Unrelated(data.vertex);
+    VertexOutput output;
+    output.position = data.vertex;
+    return output;
+}", "CGPROGRAM", "ENDCG");
+        } finally {
+            FileUtil.DeleteFileOrDirectory(folder);
+            FileUtil.DeleteFileOrDirectory(folder + ".meta");
+        }
+    }
+
+    [TestCase("", "4.5")]
+    [TestCase("#pragma target 2.0", "4.5")]
+    [TestCase("#pragma target 4.0", "4.5")]
+    [TestCase("#pragma target 5.0", "5.0")]
+    public void RaisesShaderTargetForNativeContactPathWithoutLoweringHigherTargets(string pragma, string expected) {
+        var patched = SpsPatcher.PatchProgram(pragma + @"
+#pragma vertex vert
+float4 vert(float4 vertex : POSITION) : SV_POSITION { return vertex; }
+", false, SpsStub, "", false);
+        Assert.That(patched, Does.Contain("#pragma target " + expected));
+    }
+
     private static IEnumerable<TestCaseData> VertexPrograms() {
         yield return Case("StructOnly", @"
 #pragma vertex vert
@@ -969,8 +1050,11 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/PreprocessorBraces"" {
         Assert.That(output, Does.Contain("PATCHED"));
     }
 
-    [Test]
-    public void PatchesBuiltInSubShaderWithoutPatchingUrpSubShader() {
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public void PatchesBuiltInSubShaderWithoutPatchingUrpSubShader(bool keepImports, bool hasBlendshapes) {
         var source = @"
 Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
     Properties {}
@@ -1014,14 +1098,63 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
             var shader = AssetDatabase.LoadAssetAtPath<Shader>(sourcePath);
             material = new Material(shader);
 
-            SpsPatcher.Patch(material, keepImports: false, hasBlendshapes: false);
+#if !VRCSDK_HAS_MATERIAL_CONTACTS
+            Assert.That(Assert.Throws<Exception>(() => SpsPatcher.Patch(material, keepImports, hasBlendshapes)).Message,
+                Is.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
+#else
+            SpsPatcher.Patch(material, keepImports: keepImports, hasBlendshapes: hasBlendshapes);
+            for (var pass = 0; pass < material.passCount; pass++) ShaderUtil.CompilePass(material, pass, true);
+            Assert.That(ShaderUtil.ShaderHasError(material.shader), Is.False);
 
             patchedPath = AssetDatabase.GetAssetPath(material.shader);
             Assert.That(patchedPath, Does.Contain("SPS/"));
+            var patchedSource = File.ReadAllText(patchedPath);
+            Assert.That(patchedSource, Does.Not.Contain("_VFGrid"));
+            Assert.That(patchedSource, Does.Not.Contain("GrabPass"));
+            Assert.That(patchedSource, Does.Not.Contain("_SPS_PlayerId"));
+#endif
         } finally {
             if (material != null) UnityEngine.Object.DestroyImmediate(material);
             AssetDatabase.DeleteAsset(sourcePath);
             if (!string.IsNullOrEmpty(patchedPath)) AssetDatabase.DeleteAsset(patchedPath);
+        }
+    }
+
+    [Test]
+    public void DeformIncludesDoNotExcludeD3d11() {
+        var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(SpsPatcher).Assembly);
+        Assert.That(package, Is.Not.Null);
+        foreach (var file in Directory.GetFiles(Path.Combine(package.resolvedPath, "SPS"), "*.cginc", SearchOption.AllDirectories)) {
+            Assert.That(File.ReadAllText(file), Does.Not.Match(@"(?m)^\s*#pragma\s+exclude_renderers\b[^\r\n]*\bd3d11\b"), file);
+        }
+    }
+
+    [TestCase("Unlit/Color", false)]
+    [TestCase("Unlit/Color", true)]
+    [TestCase("Standard", false)]
+    [TestCase("Standard", true)]
+    public void NativeContactPathCompilesInBuiltinShaders(string shaderName, bool keepImports) {
+        var material = new Material(Shader.Find(shaderName));
+        try {
+#if !VRCSDK_HAS_MATERIAL_CONTACTS
+            Assert.That(Assert.Throws<Exception>(() => SpsPatcher.Patch(material, keepImports, true)).Message,
+                Is.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
+#else
+            SpsPatcher.Patch(material, keepImports, hasBlendshapes: true);
+            // Error checks alone can pass when Unity's upgrader has excluded the graphics API.
+            var compiled = ShaderUtil.GetShaderData(material.shader).GetSerializedSubshader(0).GetPass(0)
+                .CompileVariant(ShaderType.Vertex, Array.Empty<string>(), ShaderCompilerPlatform.D3D,
+                    BuildTarget.StandaloneWindows64);
+            Assert.That(compiled.Success, Is.True, string.Join("\n", compiled.Messages.Select(message => message.message)));
+            Assert.That(compiled.ShaderData, Is.Not.Null.And.Not.Empty, "Expected actual DX11 vertex bytecode");
+            for (var pass = 0; pass < material.passCount; pass++) ShaderUtil.CompilePass(material, pass, true);
+            var errors = ShaderUtil.GetShaderMessages(material.shader)
+                .Where(message => message.severity == ShaderCompilerMessageSeverity.Error)
+                .Select(message => message.message).ToArray();
+            Assert.That(errors, Is.Empty, string.Join("\n", errors));
+#endif
+        } finally {
+            UnityEngine.Object.DestroyImmediate(material);
         }
     }
 

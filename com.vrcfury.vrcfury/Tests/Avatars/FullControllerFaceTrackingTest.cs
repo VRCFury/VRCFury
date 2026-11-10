@@ -83,6 +83,7 @@ namespace VF.Tests {
                 Inject(controllers, "globals", globals);
                 var parameters = new ExpressionParamsService();
                 Inject(parameters, "avatar", avatar);
+                Inject(parameters, "globals", globals);
                 Inject(controllers, "uniqueParams", new System.Lazy<UniqueParamService>(() => uniqueParams));
                 Inject(controllers, "expressionParams", parameters);
                 Inject(uniqueParams, "controllers", controllers);

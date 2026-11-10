@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
 
@@ -19,6 +21,20 @@ namespace VF.Service {
 
         public IEnumerable<Request> GetRequests() {
             return requests;
+        }
+
+        public void MarkResolved(Request request) {
+            requests.Remove(request);
+        }
+
+        [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
+        public void Validate() {
+            if (!BuildTargetUtils.IsDesktop()) return;
+            foreach (var request in requests) {
+                throw new Exception($"Cannot inject parameter '{request.sourceParam}' from "
+                    + $"'{request.sourceObject?.GetDebugPath() ?? "(missing object)"}' into '{request.resolvedParam}': "
+                    + "the source does not support this parameter.");
+            }
         }
     }
 }

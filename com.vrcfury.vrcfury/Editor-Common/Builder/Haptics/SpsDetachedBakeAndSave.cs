@@ -17,7 +17,13 @@ namespace VF.Builder.Haptics {
             Action<VRCFuryHapticSocket, VRCFuryHapticSocketEditor.BakeResult> onSocketBaked = null,
             Action<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> onPlugBaked = null
         ) {
+            if (!BuildTargetUtils.IsDesktop()) return;
             if (sockets.Count == 0 && plugs.Count == 0) return;
+
+            foreach (var socket in sockets) socket.Upgrade();
+            foreach (var plug in plugs) plug.Upgrade();
+            SpsPlugPreparation.ImportSettingsFromLegacySystems(plugs);
+            SpsSocketPreparation.ImportSettingsFromLegacySystems(sockets, deleteLights: true);
 
             var injector = new VRCFuryInjector();
             injector.ImportScan(typeof(VFServiceAttribute));
@@ -26,20 +32,11 @@ namespace VF.Builder.Haptics {
             var saveSession = new SaveAssetsSession("SPS");
 
             foreach (var socket in sockets) {
-                socket.Upgrade();
                 try {
                     var result = socketBaker.Bake(socket);
-                    if (result == null) continue;
                     onSocketBaked?.Invoke(socket, result);
-                    SpsConfigurer.AddMaterialPropertyAnimator(
-                        result.screenMarkerResults.Select(marker => marker.materialProperties).SelectMany(properties => properties),
-                        saveSession
-                    );
-                    Unity6RendererFixHook.Register(result.bakeRoot);
+                    injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
                     foreach (var component in result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
-                        saveSession.SaveAssetAndChildren(component);
-                    }
-                    foreach (var component in result.screenMarkers.SelectMany(marker => marker.GetComponentsInSelfAndChildren<UnityEngine.Component>())) {
                         saveSession.SaveAssetAndChildren(component);
                     }
                     VRCFuryHideGizmoUnlessSelectedExtensions.Hide(result.bakeRoot);
@@ -51,14 +48,10 @@ namespace VF.Builder.Haptics {
             }
 
             foreach (var plug in plugs) {
-                plug.Upgrade();
                 try {
                     var result = plugBaker.Bake(plug);
-                    if (result == null) continue;
                     onPlugBaked?.Invoke(plug, result);
-                    if (result.resolverMaterialProperties != null) {
-                        SpsConfigurer.AddMaterialPropertyAnimator(result.resolverMaterialProperties, saveSession);
-                    }
+                    injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
                     Unity6RendererFixHook.Register(result.bakeRoot);
                     foreach (var component in result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                         saveSession.SaveAssetAndChildren(component);

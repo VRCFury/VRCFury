@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using JetBrains.Annotations;
 using UnityEngine;
+using UnityEngine.Animations;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
@@ -11,34 +11,31 @@ using VF.Injector;
 using VF.Utils;
 using BakeResult = VF.Inspector.VRCFuryHapticPlugEditor.BakeResult;
 using RendererResult = VF.Inspector.VRCFuryHapticPlugEditor.RendererResult;
+using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace VF.Inspector {
     [VFService]
     internal class VRCFuryHapticPlugBaker {
-        [VFAutowired] private readonly SpsMarkersService spsMarkers;
-        [VFAutowired] [CanBeNull] private readonly SpsAutoTagGenerator autoTagGenerator;
-        [VFAutowired] private readonly SpsConfigurer spsConfigurer;
+        [VFAutowired] private readonly SpsChannelsService channels;
+        [VFAutowired] private readonly SpsPlugReceiverService spsPlugReceiverService;
+        [VFAutowired] private readonly PlugSizeService plugSizes;
+        [VFAutowired] private readonly PlugFrameService plugFrames;
 
-        [CanBeNull]
         public BakeResult Bake(
             VRCFuryHapticPlug plug,
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
-            bool deferMaterialConfig = false
+            bool deferMaterialConfig = false,
+            bool legacySocketCompatibility = true
         ) {
-            var isOnHips = autoTagGenerator?.GetClosestBone(plug.owner()) == HumanBodyBones.Hips;
+            if (!BuildTargetUtils.IsDesktop()) return null;
             var transform = plug.owner();
-            if (!HapticUtils.AssertValidScale(transform, "plug", shouldThrow: !plug.fromSpsForAll)) {
-                return null;
-            }
+            var contacts = channels.Get(plug);
+            HapticUtils.AssertValidScale(transform);
 
-            var resolverHash = spsMarkers.NewMarkerId();
-
-            var size = PlugSizeDetector.GetWorldSize(plug);
+            var size = plugSizes.GetWorldSize(plug);
             var renderers = size.renderers;
             var worldLength = size.worldLength;
             var worldRadius = size.worldRadius;
-            var localRotation = size.localRotation;
-            var localPosition = size.localPosition;
 
             if (usedRenderers != null) {
                 foreach (var r in renderers) {
@@ -58,67 +55,80 @@ namespace VF.Inspector {
             // This is *90 because capsule length is actually "height", so we have to rotate it to make it a length
             var capsuleRotation = Quaternion.Euler(90,0,0);
 
-            var localSpace = GameObjects.Create("BakedSpsPlug", transform);
-            localSpace.localPosition = localPosition;
-            localSpace.localRotation = localRotation;
-
-            var oneSpace = GameObjects.Create("OneSpace", localSpace);
-            oneSpace.worldScale = Vector3.one;
-
-            var worldSpace = GameObjects.Create("WorldSpace", localSpace);
-            ConstraintUtils.MakeWorldSpace(worldSpace);
+            var localSpace = plugFrames.Get(plug);
+            var scale = localSpace.worldScale.x;
+            var localLength = worldLength / scale;
+            // Measure before auto-rigging or post-bake actions change the renderer.
+            var radiusCurve = PlugRadiusCurve.GetRadiusCurve(plug, size, scale);
+            var socketReceivers = spsPlugReceiverService.GetReceivers(plug, legacySocketCompatibility);
 
             // Senders
             var halfWay = Vector3.forward * (worldLength / 2);
-            var senders = GameObjects.Create("Senders", localSpace);
+            var mainSender = GameObjects.Create("Sender - Sphere", localSpace);
+            if (BuildTargetUtils.IsDesktop()) {
+                var senderScale = HapticUtils.EncodePlugScale(worldLength, worldRadius);
+                mainSender.worldScale = senderScale;
+                var senderRadius = worldLength / Mathf.Max(senderScale.x, senderScale.y, senderScale.z);
+                contacts.OnAllSetsAvailable(sets => {
+                    var senders = new Dictionary<string, VFGameObject>();
+                    foreach (var set in sets) {
+                        var tags = set.sender.Select(SpsTags.FormatPlug)
+                            .Concat(set.isPublic && legacySocketCompatibility ? new[] { SpsTags.LegacyPlugSphere } : Array.Empty<string>()).ToArray();
+                        if (tags.Length == 0) continue;
+                        var owner = senders.GetOrCreate(string.Join("\n", tags), () => {
+                            var obj = sets.Count == 1 ? mainSender : GameObjects.Create(
+                                "Channel (" + string.Join(", ", set.sender) + ")", mainSender);
+                            var sender = obj.AddComponent<VRCContactSender>();
+                            sender.radius = senderRadius;
+                            sender.collisionTags = tags.ToList();
+                            return obj;
+                        });
+                        set.Register(owner);
+                    }
+                });
+                if (legacySocketCompatibility) {
+                    contacts.OnAllSetsAvailable(sets => {
+                        var publicSets = sets.Where(s => s.isPublic).ToArray();
+                        if (publicSets.Length == 0) return;
+                        var width = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+                            obj = localSpace,
+                            objName = "Sender - Legacy Width",
+                            radius = Mathf.Max(0.01f, worldLength - worldRadius*2) / scale,
+                            useWorldUnits = false,
+                            tags = new[] { SpsTags.LegacyPlugWidth }
+                        });
+                        var root = HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
+                            obj = localSpace,
+                            objName = "Sender - Legacy Root",
+                            radius = 0,
+                            tags = new[] { SpsTags.LegacyPlugRoot }
+                        });
+                        foreach (var set in publicSets) {
+                            set.Register(width);
+                            set.Register(root);
+                        }
+                    });
+                }
+            }
             HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                obj = senders,
-                objName = "Length",
-                radius = worldLength,
-                tags = new [] { HapticUtils.CONTACT_PEN_MAIN },
-                useHipAvoidance = plug.useHipAvoidance,
-                isOnHips = isOnHips
-            });
-            HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                obj = senders,
-                objName = "WidthHelper",
-                radius = Mathf.Max(0.01f, worldLength - worldRadius*2),
-                tags = new [] { HapticUtils.CONTACT_PEN_WIDTH },
-                useHipAvoidance = plug.useHipAvoidance,
-                isOnHips = isOnHips
-            });
-            HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                obj = senders,
+                obj = localSpace,
                 pos = halfWay,
-                objName = "Envelope",
+                objName = "Sender - Envelope",
                 radius = worldRadius,
-                tags = new [] { HapticUtils.CONTACT_PEN_CLOSE },
+                tags = new[] { SpsTags.PlugClose },
                 rotation = capsuleRotation,
-                height = worldLength,
-                useHipAvoidance = plug.useHipAvoidance,
-                isOnHips = isOnHips
-            });
-            HapticSenderFactory.AddSender(new HapticSenderFactory.SenderRequest() {
-                obj = worldSpace,
-                objName = "Sender - Root",
-                radius = 0.01f,
-                tags = new [] { HapticUtils.CONTACT_PEN_ROOT },
-                useHipAvoidance = plug.useHipAvoidance,
-                isOnHips = isOnHips
+                height = worldLength
             });
 
             // TODO: Check if there are 0 renderers,
             // or if there are 0 materials on any of the renderers
 
             RendererResult[] rendererResults;
-            MeshRenderer resolverRenderer = null;
-            List<SpsConfigurer.MaterialProperty> resolverMaterialProperties = null;
 
-            if (plug.configureTps || plug.enableSps) {
-                var checkboxName = plug.enableSps ? "Enable Deformation" : "Auto-Configure TPS";
+            if (plug.enableSps) {
                 if (renderers.Count == 0) {
                     throw new Exception(
-                        $"VRCFury SPS Plug has '{checkboxName}' checked, but no renderer was found.");
+                        "VRCFury SPS Plug has 'Enable Deformation' checked, but no renderer was found.");
                 }
 
                 rendererResults = renderers.Select(renderer => {
@@ -131,42 +141,31 @@ namespace VF.Inspector {
                             .ToArray();
 
                         var activeFromMask = PlugMaskGenerator.GetMask(renderer, plug);
-                        if (plug.enableSps && plug.spsAutorig) {
+                        if (plug.spsAutorig) {
                             renderer = SpsAutoRigger.AutoRig(renderer, localSpace, worldLength, worldRadius, activeFromMask);
                         }
-                        if (plug.enableSps) {
-                            SpsConfigurer.ExtendBoundsForSps(renderer, localSpace, worldLength);
-                        }
+                        SpsConfigurer.ExtendBoundsForSps(renderer, localSpace, worldLength);
 
-                        var spsBaked = plug.enableSps ? SpsBaker.Bake(renderer, localSpace, activeFromMask, false, spsBlendshapes) : null;
+                        var spsBaked = SpsBaker.Bake(renderer, localSpace, activeFromMask, spsBlendshapes);
 
-                        var finishedCopies = new HashSet<Material>();
+                        var spsCopies = new Dictionary<Material, Material>();
                         Material ConfigureMaterial(int slotNum, Material mat) {
                             var shouldPatch = size.matSlots.Get(renderer.owner()).Contains(slotNum);
                             if (!shouldPatch) return mat;
 
                             try {
                                 if (mat == null) return null;
-                                if (!BuildTargetUtils.IsDesktop()) return mat;
 
-                                if (plug.enableSps) {
-                                    var copy = mat.Clone("Needed to swap shader to SPS");
-                                    if (finishedCopies.Contains(copy)) return copy;
-                                    finishedCopies.Add(copy);
-                                    SpsConfigurer.ConfigureSpsMaterial(renderer, copy, worldLength,
-                                        spsBaked,
-                                        plug, localSpace, spsBlendshapes, resolverHash);
-                                    return copy;
-                                }
-                                if (plug.configureTps && TpsConfigurer.IsTps(mat)) {
-                                    var copy = mat.Clone("Needed to change properties for TPS autoconfiguration");
-                                    if (finishedCopies.Contains(copy)) return copy;
-                                    finishedCopies.Add(copy);
-                                    TpsConfigurer.ConfigureTpsMaterial(renderer, localSpace, copy, worldLength, activeFromMask);
-                                    return copy;
-                                }
-
-                                return mat;
+                                if (spsCopies.TryGetValue(mat, out var configured)) return configured;
+                                // Bake data belongs to this renderer, even if another
+                                // feature already made the source material mutable.
+                                var copy = mat.Clone("Needed to swap shader to SPS", forceClone: true);
+                                SpsConfigurer.ConfigureSpsMaterial(renderer, copy, worldLength, worldRadius,
+                                    spsBaked,
+                                    plug, localSpace, spsBlendshapes);
+                                spsPlugReceiverService.ConfigureMaterial(copy, plug, legacySocketCompatibility);
+                                spsCopies[mat] = copy;
+                                return copy;
                             } catch (Exception e) {
                                 throw new ExceptionWithCause($"Failed to configure material: {mat.name}", e);
                             }
@@ -190,51 +189,29 @@ namespace VF.Inspector {
                 }).ToArray();
             }
 
+            if (plug.enableSps) {
+                spsPlugReceiverService.Create(plug, rendererResults.Select(r => r.renderer), legacySocketCompatibility);
+            }
+
             if (!deferMaterialConfig) {
                 foreach (var r in rendererResults) {
                     r.renderer.sharedMaterials = r.renderer.sharedMaterials.Select((mat,slotNum) => r.configureMaterial(slotNum, mat)).ToArray();
                 }
             }
 
-            if (plug.enableSps) {
-                var bakedRadiusSamples = SpsBaker.GetPackedResolverRadiusSamples(
-                    rendererResults.Select(r => new SpsBaker.RendererBakeInput {
-                        renderer = r.renderer,
-                        activeFromMask = r.activeFromMask
-                    }),
-                    localSpace,
-                    worldLength
-                );
-                var metadataColor = SpsColorSampler.GetColor(rendererResults.Select(r => r.renderer));
-                var resolverObj = GameObjects.Create("SpsResolver", oneSpace);
-                resolverObj.AddComponent<MeshFilter>();
-                var meshRenderer = resolverObj.AddComponent<MeshRenderer>();
-                spsMarkers.ConfigureResolverRenderer(meshRenderer);
-                resolverMaterialProperties = spsConfigurer.GetResolverProperties(
-                    meshRenderer,
-                    worldLength,
-                    worldRadius,
-                    bakedRadiusSamples,
-                    metadataColor,
-                    resolverHash,
-                    plug
-                );
-                resolverObj.AddComponent<VRCFuryHideGizmoUnlessSelected>();
-                resolverObj.AddComponent<VRCFurySpsGreenScreenFix>();
-                resolverRenderer = meshRenderer;
-            }
-
             var oscId = VRCFuryHapticPlugEditor.GetOscId(plug);
 
             return new BakeResult {
+                channelContacts = contacts,
                 bakeRoot = localSpace,
-                oneSpace = oneSpace,
-                worldSpace = worldSpace,
                 renderers = rendererResults,
-                resolverRenderer = resolverRenderer,
-                worldLength = worldLength,
-                worldRadius = worldRadius,
-                resolverMaterialProperties = resolverMaterialProperties,
+                localLength = localLength,
+                localRadius = worldRadius / scale,
+                // A 1mm floor at bake time, capped by length, follows subsequent resizing.
+                localMinimumRadius = Mathf.Min(0.001f, worldLength) / scale,
+                mainSender = mainSender,
+                radiusCurve = radiusCurve,
+                socketReceivers = socketReceivers,
                 oscId = oscId,
             };
         }

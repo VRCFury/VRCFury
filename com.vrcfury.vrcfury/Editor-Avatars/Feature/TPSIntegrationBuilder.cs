@@ -10,9 +10,7 @@ namespace VF.Feature {
     internal class TPSIntegrationBuilder : FeatureBuilder<TPSIntegration2> {
         [FeatureEditor]
         public static VisualElement Editor() {
-            var content = new VisualElement();
-            content.Add(VRCFuryEditorUtils.Error("This feature is deprecated and now does nothing. Use SPS instead! See vrcfury.com/sps"));
-            return content;
+            return VRCFuryEditorUtils.Error("This feature is deprecated and now does nothing. Use SPS instead! See vrcfury.com/sps");
         }
     }
 }

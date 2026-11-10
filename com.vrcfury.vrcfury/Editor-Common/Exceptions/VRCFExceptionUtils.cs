@@ -9,6 +9,8 @@ using Debug = UnityEngine.Debug;
 
 namespace VF.Exceptions {
     internal static class VRCFExceptionUtils {
+        public const string NewerVrcsdkRequired = "This feature requires a newer version of the VRCSDK. Please update to the latest VRCSDK release.";
+
         public static Exception GetGoodCause(Exception e) {
             while (e is TargetInvocationException && e.InnerException != null) {
                 e = e.InnerException;

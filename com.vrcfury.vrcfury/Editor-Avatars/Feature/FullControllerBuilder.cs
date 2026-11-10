@@ -169,28 +169,22 @@ namespace VF.Feature {
                 avatarMenu.MergeMenu(prefix, copy);
             }
 
-            foreach (var receiver in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCContactReceiver>()) {
-                if (ContactReceiverUtils.GetParameterNames(receiver).Any(rewrittenParams.ContainsKey)) {
-                    receiver.parameter = RewriteParamName(receiver.parameter);
-                }
-            }
+            foreach (var component in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<MonoBehaviour>()) {
+                if (!component.GetVrcParameterNames().Any(rewrittenParams.ContainsKey)) continue;
+                switch (component) {
+                    case VRCContactReceiver receiver:
+                        receiver.parameter = RewriteParamName(receiver.parameter);
+                        break;
+                    case VRCPhysBone physbone:
+                        physbone.parameter = RewriteParamName(physbone.parameter);
+                        break;
 #if VRCSDK_HAS_VRCRAYCAST
-            foreach (var raycast in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCRaycast>()) {
-                if (rewrittenParams.ContainsKey(raycast.Parameter + "_Hit") 
-                    || rewrittenParams.ContainsKey(raycast.Parameter + "_Ratio")
-                    || rewrittenParams.ContainsKey(raycast.Parameter + "_Distance")) {
-                    raycast.Parameter = RewriteParamName(raycast.Parameter);
-                }
-            }
+                    case VRCRaycast raycast:
+                        raycast.Parameter = RewriteParamName(raycast.Parameter);
+                        break;
 #endif
-            foreach (var physbone in GetBaseObject(model, featureBaseObject).GetComponentsInSelfAndChildren<VRCPhysBone>()) {
-                if (rewrittenParams.ContainsKey(physbone.parameter + "_IsGrabbed")
-                    || rewrittenParams.ContainsKey(physbone.parameter + "_Angle")
-                    || rewrittenParams.ContainsKey(physbone.parameter + "_Stretch")
-                    || rewrittenParams.ContainsKey(physbone.parameter + "_Squish")
-                    || rewrittenParams.ContainsKey(physbone.parameter + "_IsPosed")
-                ) {
-                    physbone.parameter = RewriteParamName(physbone.parameter);
+                    default:
+                        throw new Exception("No VRC parameter rename handler for " + component.GetType().FullName);
                 }
             }
 
@@ -662,32 +656,53 @@ namespace VF.Feature {
                 var content = new VisualElement();
                 var sourceObjectProp = prop.FindPropertyRelative("sourceObject");
                 var sourceParamProp = prop.FindPropertyRelative("sourceParam");
-                void OnSourceObjectChange() {
+                void SelectDefaultIfInvalid() {
                     var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
                     if (sourceObject == null) return;
                     if (sourceObject.GetComponent<VRCFuryHapticPlug>() == null
                         && sourceObject.GetComponent<VRCFuryHapticSocket>() == null) return;
-                    if (VRCFuryHapticPlugEditor.ParseSpsMagicParam(sourceParamProp.stringValue) != null) return;
+                    if (VRCFuryHapticPlugEditor.ParseSpsMagicParam(sourceParamProp.stringValue,
+                        isSocket: sourceObject.GetComponent<VRCFuryHapticSocket>() != null) != null) return;
                     sourceParamProp.stringValue = VRCFuryHapticPlugEditor.SpsDepthMeters;
-                    sourceParamProp.serializedObject.ApplyModifiedProperties();
                 }
-                content.Add(VRCFuryEditorUtils.Prop(sourceObjectProp, "Source Object"));
-                content.Add(VRCFuryEditorUtils.OnChange(sourceObjectProp, OnSourceObjectChange));
-                content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                    var wrapper = new VisualElement();
+                var sourceField = new ObjectField { objectType = typeof(GameObject), name = "SourceObject" };
+                sourceField.SetValueWithoutNotify(sourceObjectProp.objectReferenceValue);
+                sourceField.RegisterValueChangedCallback(evt => {
+                    sourceObjectProp.objectReferenceValue = evt.newValue;
+                    SelectDefaultIfInvalid();
+                    prop.serializedObject.ApplyModifiedProperties();
+                });
+                content.Add(VRCFuryEditorUtils.Prop(null, "Source Object", fieldOverride: sourceField));
+                sourceField.TrackProperty(sourceObjectProp,
+                    p => sourceField.SetValueWithoutNotify(p.objectReferenceValue));
+                var showingSpsEditor = false;
+                content.Add(VRCFuryEditorUtils.RefreshOnTrigger(() => {
                     var sourceObject = sourceObjectProp.objectReferenceValue as GameObject;
-                    if (sourceObject != null) {
-                        if (sourceObject.GetComponent<VRCFuryHapticPlug>() != null
-                            || sourceObject.GetComponent<VRCFuryHapticSocket>() != null) {
-                            wrapper.Add(VRCFuryHapticPlugEditor.RenderSpsInjectParamEditor(prop));
-                        } else {
-                            wrapper.Add(VRCFuryEditorUtils.Warn("This object doesn't contain any injectable parameters"));
-                        }
-                    } else {
-                        wrapper.Add(VRCFuryEditorUtils.Prop(sourceParamProp, "Source Param"));
+                    var spsEditor = VRCFuryHapticPlugEditor.CanHandle(prop)
+                        ? VRCFuryHapticPlugEditor.RenderSpsInjectParamEditor(prop) : null;
+                    showingSpsEditor = spsEditor != null;
+                    if (spsEditor != null) return spsEditor;
+                    var wrapper = new VisualElement();
+                    if (sourceObject != null && sourceObject.GetComponent<VRCFuryHapticPlug>() == null
+                        && sourceObject.GetComponent<VRCFuryHapticSocket>() == null) {
+                        wrapper.Add(VRCFuryEditorUtils.Warn("This object doesn't contain any injectable parameters"));
                     }
+                    var field = new TextField { name = "SourceParam" };
+                    field.SetValueWithoutNotify(sourceParamProp.stringValue);
+                    field.RegisterValueChangedCallback(evt => {
+                        sourceParamProp.stringValue = evt.newValue;
+                        if (string.IsNullOrEmpty(evt.newValue)) SelectDefaultIfInvalid();
+                        prop.serializedObject.ApplyModifiedProperties();
+                    });
+                    wrapper.Add(VRCFuryEditorUtils.Prop(null, "Source Param", fieldOverride: field));
+                    field.TrackProperty(sourceParamProp, p => field.SetValueWithoutNotify(p.stringValue));
                     return wrapper;
-                }, sourceObjectProp));
+                }, prop.serializedObject, out var refresh));
+                content.TrackProperty(sourceObjectProp, _ => refresh());
+                content.TrackProperty(sourceParamProp, _ => {
+                    var handled = VRCFuryHapticPlugEditor.CanHandle(prop);
+                    if (handled != showingSpsEditor) refresh();
+                });
                 content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("targetParam"), "Target Param"));
                 return content;
             }

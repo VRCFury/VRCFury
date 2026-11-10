@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -11,14 +10,17 @@ using VF.Utils;
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFurySocketGizmo), true)]
     internal class VRCFuryHapticPlaySocketEditor : UnityEditor.Editor {
+        private void OnSceneGUI() {
+            if (!(target is VRCFurySocketGizmo gizmo) || !gizmo.show || gizmo.data?.guidedPathStops == null) return;
+            VRCFuryHapticSocketGizmo.DrawEditableStops(gizmo.data.guidedPathStops
+                .Where(stop => stop != null).Select(stop => stop.transform));
+        }
+
         [VFInit]
         private static void Init() {
-            VRCFurySocketGizmo.EnableSceneLighting = () => {
+            VRCFurySocketGizmo.EnableSceneGizmos = () => {
                 var sv = EditorWindowFinder.GetWindows<SceneView>().FirstOrDefault();
-                if (sv != null) {
-                    sv.sceneLighting = true;
-                    sv.drawGizmos = true;
-                }
+                if (sv != null) sv.drawGizmos = true;
             };
         }
 
@@ -31,6 +33,12 @@ namespace VF.Inspector {
     }
 
     internal static class VRCFuryHapticSocketGizmo {
+        internal static void DrawEditableStops(IEnumerable<Transform> stops) {
+            foreach (var stop in stops.Take(SpsTags.MaxUserPathStops).Where(stop => stop != null).Distinct()) {
+                VRCFuryGizmoUtils.DrawTransformHandle(stop, "Transform SPS Path Stop");
+            }
+        }
+
         static Vector3 DrawColoredHandle(Vector3 position, Color color) {
             var oldColor = Handles.color;
             Handles.color = color;
@@ -140,7 +148,6 @@ namespace VF.Inspector {
         internal static VRCFurySocketGizmo.SocketGizmoData BuildGizmoData(
             VRCFuryHapticSocket socket,
             VRCFuryHapticSocket.AddLight lightType,
-            Tuple<float, float> handTouchZoneSize,
             Vector3 localPosition,
             Quaternion localRotation
         ) {
@@ -150,30 +157,24 @@ namespace VF.Inspector {
                 pos = localPosition,
                 rot = localRotation,
                 useRadiusOffset = socket.useRadiusOffset,
-                useLegacyLights = socket.useLights,
+                useLegacyLights = true,
                 overrideLegacyOffset = socket.overrideLegacyOffset,
                 legacyOffsetLocal = socket.legacyOffsetLocal,
                 name = HapticUtils.GetPreferredId(
                     socket,
                     s => s.name,
                     s => HapticUtils.GetFallbackId(s.owner())
-                ),
-                hasHandTouchZone = handTouchZoneSize != null,
-                handTouchZoneLength = handTouchZoneSize?.Item1 ?? 0,
-                handTouchZoneRadius = handTouchZoneSize?.Item2 ?? 0
+                )
             };
 
             var guidedPathStops = socket.guidedPathStops
+                .Take(SpsTags.MaxUserPathStops)
                 .Where(stop => stop != null && stop.transform != null)
                 .ToList();
             for (var i = 0; i < guidedPathStops.Count; i++) {
                 var stop = guidedPathStops[i];
                 data.guidedPathStops.Add(new VRCFurySocketGizmo.GuidedPathStopData {
-                    transform = stop.transform,
-                    customizeTangentIn = stop.customizeTangentIn,
-                    customizeTangentOut = stop.customizeTangentOut,
-                    tangentInLocal = stop.tangentInLocal,
-                    tangentOutLocal = stop.tangentOutLocal
+                    transform = stop.transform
                 });
             }
 
@@ -181,23 +182,11 @@ namespace VF.Inspector {
         }
 
         public static void DrawGizmo(VFGameObject owner, VRCFurySocketGizmo.SocketGizmoData data) {
-            var guidedPathStops = data.guidedPathStops ?? new List<VRCFurySocketGizmo.GuidedPathStopData>();
+            var guidedPathStops = (data.guidedPathStops ?? new List<VRCFurySocketGizmo.GuidedPathStopData>())
+                .Take(SpsTags.MaxUserPathStops).ToList();
             var socketTransformWorld = new TransformData(owner) * new TransformData(data.pos, data.rot);
             var worldStart = socketTransformWorld.position;
             var worldRotation = owner.worldRotation * data.rot;
-            var localForward = data.rot * Vector3.forward;
-
-            if (data.hasHandTouchZone) {
-                var worldForward = owner.worldRotation * localForward;
-                var worldEnd = worldStart - worldForward * data.handTouchZoneLength;
-                VRCFuryGizmoUtils.DrawCapsule(
-                    worldStart,
-                    worldEnd,
-                    data.handTouchZoneRadius,
-                    Color.gray
-                );
-            }
-
             if (guidedPathStops.Count > 0 && data.type != VRCFuryHapticSocket.AddLight.None) {
                 DrawGizmo(
                     worldStart,
@@ -229,12 +218,8 @@ namespace VF.Inspector {
                     var stopType = isLast && data.type == VRCFuryHapticSocket.AddLight.Hole
                         ? VRCFuryHapticSocket.AddLight.Hole
                         : VRCFuryHapticSocket.AddLight.RingOneWay;
-                    var previousOut = stop.customizeTangentOut
-                        ? previousTransformWorld.TransformPoint(stop.tangentOutLocal)
-                        : GetDefaultTangentOut(previousTransformWorld, stopTransformWorld);
-                    var currentIn = stop.customizeTangentIn
-                        ? stopTransformWorld.TransformPoint(stop.tangentInLocal)
-                        : GetDefaultTangentIn(previousTransformWorld, stopTransformWorld);
+                    var previousOut = GetDefaultTangentOut(previousTransformWorld, stopTransformWorld);
+                    var currentIn = GetDefaultTangentIn(previousTransformWorld, stopTransformWorld);
                     Handles.DrawBezier(
                         previousTransformWorld.position,
                         stopTransformWorld.position,
@@ -267,7 +252,8 @@ namespace VF.Inspector {
                 }
             }
 
-            if (data.useLegacyLights && data.overrideLegacyOffset) {
+            if (data.useLegacyLights && data.overrideLegacyOffset
+                && (!EditorApplication.isPlaying || (data.legacyLights != null && data.legacyLights.activeInHierarchy))) {
                 var legacyOrigin = socketTransformWorld.TransformPoint(data.legacyOffsetLocal);
                 DrawGizmo(legacyOrigin, worldRotation, data.legacyType, false, Color.yellow, Color.yellow);
                 if (owner.IsSelected()) {
@@ -282,52 +268,8 @@ namespace VF.Inspector {
             }
         }
 
-        internal static void DrawEditableTangents(VRCFuryHapticSocket socket) {
-            if (socket == null) return;
-            var guidedPathStops = socket.guidedPathStops ?? new List<VRCFuryHapticSocket.GuidedPathStop>();
-            var owner = socket.owner();
-            var socketTransformWorld = new TransformData(owner)
-                                       * VRCFuryHapticSocketEditor.GetSocketTransformLocal(socket).Item2;
-            var previousTransformWorld = socketTransformWorld.WithPosition(
-                socketTransformWorld.position
-                + (socket.useRadiusOffset
-                    ? socketTransformWorld.TransformDirection(
-                        Vector3.up * VRCFuryHapticSocketEditor.GizmoRadiusOffset
-                    )
-                    : Vector3.zero)
-            );
-            for (var i = 0; i < guidedPathStops.Count; i++) {
-                var stop = guidedPathStops[i];
-                if (stop == null || stop.transform == null) continue;
-                if (stop.customizeTangentOut) {
-                    EditorGUI.BeginChangeCheck();
-                    var tangentOutWorld = previousTransformWorld.TransformPoint(stop.tangentOutLocal);
-                    var newTangentOutWorld = DrawColoredHandle(tangentOutWorld, new Color(0.7f, 0.3f, 1f));
-                    if (EditorGUI.EndChangeCheck()) {
-                        Undo.RecordObject(socket, "Move SPS Tangent Out");
-                        stop.tangentOutLocal = previousTransformWorld.InverseTransformPoint(newTangentOutWorld);
-                        EditorUtility.SetDirty(socket);
-                    }
-                }
-
-                if (stop.customizeTangentIn) {
-                    EditorGUI.BeginChangeCheck();
-                    var tangentInWorld = stop.transform.TransformPoint(stop.tangentInLocal);
-                    var newTangentInWorld = DrawColoredHandle(tangentInWorld, new Color(0.7f, 0.3f, 1f));
-                    if (EditorGUI.EndChangeCheck()) {
-                        Undo.RecordObject(socket, "Move SPS Tangent In");
-                        stop.tangentInLocal = stop.transform.InverseTransformPoint(newTangentInWorld);
-                        EditorUtility.SetDirty(socket);
-                    }
-                }
-
-                previousTransformWorld = stop.transform;
-            }
-        }
-
         internal static void DrawEditableLegacyOffset(VRCFuryHapticSocket socket) {
             if (socket == null) return;
-            if (!socket.useLights) return;
             if (!socket.overrideLegacyOffset) return;
 
             var owner = socket.owner();

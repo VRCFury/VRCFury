@@ -14,6 +14,7 @@ namespace VF.Component {
             RingOneWay
         }
 
+        [Obsolete]
         public enum EnableTouchZone {
             Auto,
             On,
@@ -22,27 +23,27 @@ namespace VF.Component {
 
         public enum LegacySocketType {
             Hole,
-            Ring,
-            RingOneWay
+            Ring
         }
 
         public AddLight addLight = AddLight.Auto;
         public new string name;
         public string oscId;
-        public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
-        public float length;
-        public bool unitsInMeters = true;
+        [Obsolete, HideInInspector] public EnableTouchZone enableHandTouchZone2 = EnableTouchZone.Auto;
+        [Obsolete, HideInInspector] public float length;
+        [Obsolete, HideInInspector] public bool unitsInMeters = true;
         public bool addMenuItem = true;
         public GuidTexture2d menuIcon;
         public bool enableAuto = true;
         public Vector3 position;
         public Vector3 rotation;
-        [NonSerialized] public bool fromSpsForAll = false;
         
         public List<DepthActionNew> depthActions2 = new List<DepthActionNew>();
+        public List<PlugEntryRadiusAction> plugEntryRadiusActions = new List<PlugEntryRadiusAction>();
         public State activeActions = new State();
-        public bool useHipAvoidance = true;
-        public bool useSharedTag = true;
+        [Obsolete, HideInInspector] public bool useHipAvoidance = true;
+        [Obsolete, HideInInspector] public bool useSharedTag = true;
+        [Obsolete("Configure Legacy Compatibility in SPS Options instead."), HideInInspector]
         public bool useLights = true;
         public bool overrideLegacySocketType = false;
         public LegacySocketType legacySocketType = LegacySocketType.Hole;
@@ -51,7 +52,9 @@ namespace VF.Component {
         [Obsolete] public Vector3 legacyOffset = Vector3.zero;
         public Vector3 legacyOffsetLocal = Vector3.zero;
         [SerializeField] private bool offsetsInLocalUnits;
-        public List<string> tags = new List<string>();
+        [Obsolete, HideInInspector] public List<string> tags = new List<string>();
+        public SpsChannelSettings channelSettings = new();
+        [SerializeField] private bool tagsUpgradedToChannels;
         [Serializable]
         public class GuidedPathStop {
             public Transform transform;
@@ -99,16 +102,29 @@ namespace VF.Component {
 
         private void Reset() {
             offsetsInLocalUnits = true;
+            tagsUpgradedToChannels = true;
         }
 
         [Serializable]
         public class DepthActionNew {
             public State actionSet = new State();
             public Vector2 range = new Vector2(-0.25f, 0);
-            public DepthActionUnits units = DepthActionUnits.Meters;
-            public bool enableSelf;
+            public DepthActionUnits units = DepthActionUnits.Local;
+            public bool enableSelf = true;
+            public bool enableOthers = true;
+            public bool allowHole = true;
+            public bool allowRing = true;
             public float smoothingSeconds = 0;
             public bool reverseClip = false;
+            // Socket-local plug radius for full clip weight; zero disables weighting.
+            public float plugRadiusForFullWeight = 0;
+        }
+
+        [Serializable]
+        public class PlugEntryRadiusAction : DepthActionNew {
+            public PlugEntryRadiusAction() {
+                range = new Vector2(0, 0.1f);
+            }
         }
 
         public override bool Upgrade(int fromVersion) {
@@ -167,6 +183,13 @@ namespace VF.Component {
                 if (!enableActiveAnimation) {
                     activeActions.actions.Clear();
                 }
+            }
+            if (!tagsUpgradedToChannels) {
+                tagsUpgradedToChannels = true;
+                channelSettings.useSharedTag = useSharedTag;
+                channelSettings.useHipAvoidance = useHipAvoidance;
+                foreach (var tag in tags) channelSettings.channels.Add(new SpsChannelSettings.Channel { id = tag });
+                changed = true;
             }
             if (!offsetsInLocalUnits) {
                 var previousWorldScale = transform.lossyScale.x;

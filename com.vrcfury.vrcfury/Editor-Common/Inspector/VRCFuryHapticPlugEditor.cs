@@ -13,16 +13,21 @@ using VF.Component;
 using VF.Exceptions;
 using VF.Injector;
 using VF.Menu;
+using VF.Model;
 using VF.Utils;
+using SpsOptions = VF.Model.Feature.SpsOptions;
 
 namespace VF.Inspector {
     [CustomEditor(typeof(VRCFuryHapticPlug), true)]
     internal class VRCFuryHapticPlugEditor : VRCFuryComponentEditor<VRCFuryHapticPlug> {
-        internal const int SpsTagRuleCount = 2;
         public const string SpsParamDepth = "Depth";
         public const string SpsParamVelocity = "Velocity";
         public const string SpsParamPlugLength = "Plug Length";
         public const string SpsParamPlugRadius = "Plug Radius";
+        public const string SpsParamPlugEntryRadius = "Plug Entry Radius";
+        public const string SpsParamInteractingWithLegacy = "Interacting With Legacy";
+        public const string SpsParamInteractingWithOthers = "Interacting With Others";
+        public const string SpsParamSocketIsHole = "Socket Is Hole";
         public const string SpsUnitsMeters = "Meters";
         public const string SpsUnitsLocal = "Local";
         public const string SpsUnitsPlugLengths = "Plug Lengths";
@@ -38,12 +43,21 @@ namespace VF.Inspector {
         public const string SpsPlugRadiusMeters = "__sps_plug_radius_meters";
         public const string SpsPlugRadiusLocal = "__sps_plug_radius_local";
         public const string SpsPlugRadiusPlugLengths = "__sps_plug_radius_plug_lengths";
+        public const string SpsPlugEntryRadiusMeters = "__sps_plug_entry_radius_meters";
+        public const string SpsPlugEntryRadiusLocal = "__sps_plug_entry_radius_local";
+        public const string SpsPlugEntryRadiusPlugLengths = "__sps_plug_entry_radius_plug_lengths";
+        public const string SpsInteractingWithLegacy = "__sps_interacting_with_legacy";
+        public const string SpsInteractingWithOthers = "__sps_interacting_with_others";
+        public const string SpsSocketIsHole = "__sps_socket_is_hole";
 
         public static readonly string[] SpsParams = {
             SpsParamDepth,
             SpsParamVelocity,
             SpsParamPlugLength,
-            SpsParamPlugRadius
+            SpsParamPlugRadius,
+            SpsParamInteractingWithLegacy,
+            SpsParamInteractingWithOthers,
+            SpsParamSocketIsHole
         };
         public static readonly string[] SpsUnits = {
             SpsUnitsMeters,
@@ -52,6 +66,9 @@ namespace VF.Inspector {
         };
 
         public static string GetSpsMagicParam(string param, string units) {
+            if (param == SpsParamInteractingWithLegacy) return SpsInteractingWithLegacy;
+            if (param == SpsParamInteractingWithOthers) return SpsInteractingWithOthers;
+            if (param == SpsParamSocketIsHole) return SpsSocketIsHole;
             if (param == SpsParamDepth && units == SpsUnitsMeters) return SpsDepthMeters;
             if (param == SpsParamDepth && units == SpsUnitsLocal) return SpsDepthLocal;
             if (param == SpsParamDepth && units == SpsUnitsPlugLengths) return SpsDepthPlugLengths;
@@ -64,11 +81,17 @@ namespace VF.Inspector {
             if (param == SpsParamPlugRadius && units == SpsUnitsMeters) return SpsPlugRadiusMeters;
             if (param == SpsParamPlugRadius && units == SpsUnitsLocal) return SpsPlugRadiusLocal;
             if (param == SpsParamPlugRadius && units == SpsUnitsPlugLengths) return SpsPlugRadiusPlugLengths;
+            if (param == SpsParamPlugEntryRadius && units == SpsUnitsMeters) return SpsPlugEntryRadiusMeters;
+            if (param == SpsParamPlugEntryRadius && units == SpsUnitsLocal) return SpsPlugEntryRadiusLocal;
+            if (param == SpsParamPlugEntryRadius && units == SpsUnitsPlugLengths) return SpsPlugEntryRadiusPlugLengths;
             return "";
         }
 
-        public static (string param, string units)? ParseSpsMagicParam(string sourceParam) {
+        public static (string param, string units)? ParseSpsMagicParam(string sourceParam, bool isSocket) {
             switch (sourceParam) {
+                case SpsInteractingWithLegacy: return (SpsParamInteractingWithLegacy, null);
+                case SpsInteractingWithOthers: return (SpsParamInteractingWithOthers, null);
+                case SpsSocketIsHole: return (SpsParamSocketIsHole, null);
                 case SpsDepthMeters: return (SpsParamDepth, SpsUnitsMeters);
                 case SpsDepthLocal: return (SpsParamDepth, SpsUnitsLocal);
                 case SpsDepthPlugLengths: return (SpsParamDepth, SpsUnitsPlugLengths);
@@ -81,40 +104,78 @@ namespace VF.Inspector {
                 case SpsPlugRadiusMeters: return (SpsParamPlugRadius, SpsUnitsMeters);
                 case SpsPlugRadiusLocal: return (SpsParamPlugRadius, SpsUnitsLocal);
                 case SpsPlugRadiusPlugLengths: return (SpsParamPlugRadius, SpsUnitsPlugLengths);
+                case SpsPlugEntryRadiusMeters when isSocket: return (SpsParamPlugEntryRadius, SpsUnitsMeters);
+                case SpsPlugEntryRadiusLocal when isSocket: return (SpsParamPlugEntryRadius, SpsUnitsLocal);
+                case SpsPlugEntryRadiusPlugLengths when isSocket: return (SpsParamPlugEntryRadius, SpsUnitsPlugLengths);
                 default: return null;
             }
         }
 
+        public static bool CanHandle(SerializedProperty injectProp) {
+            var sourceObject = injectProp.FindPropertyRelative("sourceObject").objectReferenceValue as GameObject;
+            if (sourceObject == null) return false;
+            var isSocket = sourceObject.GetComponent<VRCFuryHapticSocket>() != null;
+            if (!isSocket && sourceObject.GetComponent<VRCFuryHapticPlug>() == null) return false;
+            return ParseSpsMagicParam(injectProp.FindPropertyRelative("sourceParam").stringValue,
+                isSocket) != null;
+        }
+
         public static VisualElement RenderSpsInjectParamEditor(SerializedProperty injectProp) {
             var sourceParamProp = injectProp.FindPropertyRelative("sourceParam");
-            var parsed = ParseSpsMagicParam(sourceParamProp.stringValue);
-            var selectedParam = parsed?.param ?? SpsParamDepth;
-            var selectedUnits = parsed?.units ?? SpsUnitsMeters;
 
+            var sourceObject = injectProp.FindPropertyRelative("sourceObject").objectReferenceValue as GameObject;
+            var isSocket = sourceObject.GetComponent<VRCFuryHapticSocket>() != null;
+            var parsed = ParseSpsMagicParam(sourceParamProp.stringValue, isSocket);
+            if (parsed == null) return null;
             var content = new VisualElement();
-            var paramField = new PopupField<string>("Parameter", SpsParams.ToList(), selectedParam);
-            var unitsField = new PopupField<string>("Units", SpsUnits.ToList(), selectedUnits);
+            var parameters = SpsParams.ToList();
+            if (isSocket) {
+                parameters.Add(SpsParamPlugEntryRadius);
+            }
+            var (selectedParam, selectedUnits) = parsed.Value;
+            string ParameterLabel(string parameter) => parameter switch {
+                SpsParamInteractingWithLegacy => isSocket ? "Plug Is Legacy" : "Socket Is Legacy",
+                SpsParamInteractingWithOthers => isSocket ? "Plug is Other Player" : "Socket is Other Player",
+                _ => parameter
+            };
+            var paramField = new PopupField<string>("Parameter", parameters, selectedParam, ParameterLabel, ParameterLabel);
+            var unitsField = new PopupField<string>("Units", SpsUnits.ToList(), selectedUnits ?? SpsUnitsMeters);
+            var metersWarning = SpsEditorUtils.MetersWarning();
+            void UpdateUnitsVisibility(string units) {
+                unitsField.style.display = units == null ? DisplayStyle.None : DisplayStyle.Flex;
+                metersWarning.style.display = units == SpsUnitsMeters ? DisplayStyle.Flex : DisplayStyle.None;
+            }
+            UpdateUnitsVisibility(selectedUnits);
 
             void Save() {
                 sourceParamProp.stringValue = GetSpsMagicParam(paramField.value, unitsField.value);
+                UpdateUnitsVisibility(ParseSpsMagicParam(sourceParamProp.stringValue, isSocket)?.units);
                 sourceParamProp.serializedObject.ApplyModifiedProperties();
             }
 
             paramField.RegisterValueChangedCallback(_ => Save());
             unitsField.RegisterValueChangedCallback(_ => Save());
+            content.TrackProperty(sourceParamProp, p => {
+                var current = ParseSpsMagicParam(p.stringValue, isSocket);
+                if (current == null) return;
+                paramField.SetValueWithoutNotify(current.Value.param);
+                unitsField.SetValueWithoutNotify(current.Value.units ?? SpsUnitsMeters);
+                UpdateUnitsVisibility(current.Value.units);
+            });
 
             content.Add(paramField);
             content.Add(unitsField);
+            content.Add(metersWarning);
             return content;
         }
 
-        public static VisualElement SpsTagProp(SerializedProperty prop, string label) {
+        public static VisualElement SpsChannelProp(SerializedProperty prop, string label) {
             var field = new TextField {
                 isDelayed = true
             };
-            field.SetValueWithoutNotify(SanitizeSpsTag(prop.stringValue));
+            field.SetValueWithoutNotify(SanitizeSpsChannel(prop.stringValue));
             field.RegisterValueChangedCallback(cb => {
-                var sanitized = SanitizeSpsTag(cb.newValue);
+                var sanitized = SanitizeSpsChannel(cb.newValue);
                 if (field.value != sanitized) {
                     field.SetValueWithoutNotify(sanitized);
                 }
@@ -124,58 +185,58 @@ namespace VF.Inspector {
             return VRCFuryEditorUtils.Prop(prop, label, fieldOverride: field);
         }
 
-        public static string SanitizeSpsTag(string input) {
+        public static string SanitizeSpsChannel(string input) {
             if (string.IsNullOrEmpty(input)) return "";
 
             var chars = input
                 .Trim()
                 .ToLowerInvariant()
-                .Where(c => c >= 'a' && c <= 'z' || c >= '0' && c <= '9')
+                .Where(c => c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_')
                 .ToArray();
             return new string(chars);
         }
 
-        private static SerializedProperty AddSpsTagRule(SerializedProperty listProp) {
-            if (listProp.arraySize >= SpsTagRuleCount) return null;
-            var index = listProp.arraySize;
-            listProp.InsertArrayElementAtIndex(index);
-            var item = listProp.GetArrayElementAtIndex(index);
-            item.FindPropertyRelative("tag").stringValue = "";
-            item.FindPropertyRelative("allowSelf").boolValue = true;
-            item.FindPropertyRelative("allowOthers").boolValue = true;
-            listProp.serializedObject.ApplyModifiedProperties();
-            return item;
-        }
-
-        private static VisualElement SpsTagRuleProp(SerializedProperty listProp, int index, string label) {
-            var prop = listProp.GetArrayElementAtIndex(index);
-            var row = new VisualElement();
-            row.Add(SpsTagProp(prop.FindPropertyRelative("tag"), label));
-            row.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("allowSelf"), "Self"));
-            row.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("allowOthers"), "Others"));
-            var remove = new Button(() => {
-                listProp.DeleteArrayElementAtIndex(index);
-                listProp.serializedObject.ApplyModifiedProperties();
-            }) {
-                text = "Remove"
-            };
-            row.Add(remove);
-            return row;
-        }
-
-        private static VisualElement SpsTagRuleList(SerializedProperty listProp, string labelPrefix) {
+        private static VisualElement FinalSpsChannels(VFGameObject target, bool isPlug, SerializedProperty settings) {
             return VRCFuryEditorUtils.RefreshOnChange(() => {
-                var container = new VisualElement();
-                for (var i = 0; i < Math.Min(listProp.arraySize, SpsTagRuleCount); i++) {
-                    container.Add(SpsTagRuleProp(listProp, i, $"{labelPrefix} #{i + 1}"));
-                }
-                if (listProp.arraySize < SpsTagRuleCount) {
-                    container.Add(new Button(() => AddSpsTagRule(listProp)) {
-                        text = $"Add {labelPrefix}"
-                    });
-                }
-                return container;
-            }, listProp);
+                var configurer = VRCFuryPerFrameInjector.GetPerFrameInjector(target).GetService<SpsConfigurer>();
+                var value = (SpsChannelSettings)settings.GetObject();
+                var self = configurer.GetLogicalChannels(target, isPlug, true, value);
+                var others = configurer.GetLogicalChannels(target, isPlug, false, value);
+                var channels = self.Union(others).OrderBy(c => c, StringComparer.Ordinal)
+                    .Select(c => c + (self.Contains(c) && others.Contains(c) ? "" : self.Contains(c) ? " (Self)" : " (Others)"));
+                return VRCFuryEditorUtils.Info("Final channel list:\n" + string.Join("\n", channels.DefaultIfEmpty("none")));
+            }, settings);
+        }
+
+        internal static VisualElement SpsChannelsEditor(VFGameObject target, bool isPlug, SerializedProperty settings) {
+            SerializedProperty Prop(string name) => settings.FindPropertyRelative(name);
+            var content = VRCFuryEditorUtils.Section("Channels", isPlug
+                ? "Filter which sockets this plug will target" : "Filter which plugs can target this socket");
+            var listProp = Prop("channels");
+            content.Add(VRCFuryEditorUtils.List(listProp, onPlus: () => {
+                if (listProp.arraySize >= SpsTags.MaxUserChannels) return;
+                VRCFuryEditorUtils.AddToList(listProp);
+            }, renderItem: (item, _) => {
+                var entry = new VisualElement();
+                entry.Add(SpsChannelProp(item.FindPropertyRelative("id"), null));
+                entry.Add(VRCFuryEditorUtils.CheckboxPair(item.FindPropertyRelative("allowSelf"), "Allow Self",
+                    item.FindPropertyRelative("allowOthers"), "Allow Others"));
+                return entry;
+            }));
+            var useSharedTag = Prop("useSharedTag");
+            content.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Include Public SPS Channel",
+                tooltip: "Includes the public SPS channel for compatibility with most plugs and sockets."));
+            content.Add(VRCFuryEditorUtils.RefreshOnChange(() => useSharedTag.boolValue ? new VisualElement()
+                : VRCFuryEditorUtils.Warn(isPlug ? "This plug does not include the public SPS channel, so it will not target most sockets!"
+                    : "This socket does not have the public SPS channel, so most plugs will not target it."), useSharedTag));
+            if (isPlug) {
+                content.Add(VRCFuryEditorUtils.RefreshOnChange(() => useSharedTag.boolValue
+                    ? VRCFuryEditorUtils.BetterProp(Prop("useHipAvoidance"), "Exclude sockets on own Hips",
+                        tooltip: "If this plug is on your hips, its public channel excludes sockets on your hips. Custom channels can still match them.")
+                    : new VisualElement(), useSharedTag));
+            }
+            content.Add(FinalSpsChannels(target, isPlug, settings));
+            return content;
         }
 
         internal static string GetOscId(VRCFuryHapticPlug plug) {
@@ -183,7 +244,7 @@ namespace VF.Inspector {
                 plug,
                 p => p.name,
                 p => {
-                    var renderers = GetRenderers(p);
+                    var renderers = PlugRendererFinder.GetRenderers(p);
                     if (renderers.Count > 0) {
                         return HapticUtils.GetFallbackId(renderers.First().owner());
                     }
@@ -195,7 +256,6 @@ namespace VF.Inspector {
 
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticPlug target) {
             var container = new VisualElement();
-            var configureTps = serializedObject.FindProperty("configureTps");
             var enableSps = serializedObject.FindProperty("enableSps");
 
             if (DexProtectUtils.IsDexProtectPresent()) {
@@ -213,6 +273,11 @@ namespace VF.Inspector {
             boneWarning.SetVisible(false);
             container.Add(boneWarning);
 
+            var legacyMaterialWarning = VRCFuryEditorUtils.Warn(
+                "This plug's renderer uses DPS or TPS materials. There is no reason to do this with SPS. Replace the material with a normal non-deforming shader.");
+            legacyMaterialWarning.SetVisible(false);
+            container.Add(legacyMaterialWarning);
+
             var sizeSection = VRCFuryEditorUtils.Section("Size and Masking");
             container.Add(sizeSection);
             
@@ -225,15 +290,6 @@ namespace VF.Inspector {
                 }
                 return c;
             }, autoMesh));
-
-            sizeSection.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                var c = new VisualElement();
-                if (!configureTps.boolValue && !enableSps.boolValue) {
-                    c.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("autoPosition"),
-                        "Detect position/rotation from mesh"));
-                }
-                return c;
-            }, configureTps, enableSps));
 
             var autoLength = serializedObject.FindProperty("autoLength");
             sizeSection.Add(VRCFuryEditorUtils.BetterProp(autoLength, "Detect length from mesh"));
@@ -288,6 +344,8 @@ namespace VF.Inspector {
                 var isInsideBone = bones.Any(bone => target.owner().IsSameOrChildOf(bone));
                 var displayWarning = bones.Length > 0 && !isInsideBone;
                 boneWarning.SetVisible(displayWarning);
+
+                legacyMaterialWarning.SetVisible(size.renderers.Any(TpsUtils.HasDpsOrTpsMaterial));
                 
                 return text.Join('\n');
             }));
@@ -296,7 +354,7 @@ namespace VF.Inspector {
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var c = new VisualElement();
                 if (enableSps.boolValue) {
-                    var spsBox = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "This plug will deform toward SPS/TPS/DPS sockets\nCheck out vrcfury.com/sps for details");
+                    var spsBox = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "This plug will deform toward sockets\nCheck out vrcfury.com/sps for details");
                     c.Add(spsBox);
                     spsBox.Add(VRCFuryEditorUtils.BetterProp(
                         serializedObject.FindProperty("spsAutorig"),
@@ -342,6 +400,19 @@ namespace VF.Inspector {
                 return c;
             }, enableSps));
 
+            container.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
+                if (target == null) return null;
+                var options = target.owner().GetComponentsInUploadRoot<VRCFury>()
+                    .SelectMany(component => component.GetAllFeatures())
+                    .OfType<SpsOptions>()
+                    .FirstOrDefault();
+                if (options == null || options.legacySocketCompatibility) return null;
+                var legacySupport = VRCFuryEditorUtils.Section("Legacy Compatibility",
+                    "Compatibility with DPS/TPS/SPS1/SPS2 sockets");
+                legacySupport.Add(VRCFuryEditorUtils.Warn("Legacy socket compatibility is disabled in SPS Options. This plug will not target legacy sockets. Enable 'DPS/TPS/SPS1/SPS2 Sockets' under Legacy Compatibility to use them."));
+                return legacySupport;
+            }));
+
             // Depth Animations
             var list = serializedObject.FindProperty("depthActions2");
             container.Add(VRCFuryEditorUtils.CheckboxList(
@@ -353,7 +424,7 @@ namespace VF.Inspector {
                     VRCFuryEditorUtils.AddToList(list, newAction => {
                         newAction.FindPropertyRelative("range").vector2Value = new Vector2(-1, 0);
                         newAction.FindPropertyRelative("units").enumValueIndex =
-                            (int)VRCFuryHapticSocket.DepthActionUnits.Plugs;
+                            (int)VRCFuryHapticSocket.DepthActionUnits.Local;
                     });
                 })
             ));
@@ -369,47 +440,21 @@ namespace VF.Inspector {
                 ));
             }));
 
-            var tags = VRCFuryEditorUtils.Section("Tags", "Filter which sockets this plug will target");
-            var includeTags = serializedObject.FindProperty("includeTags");
-            var excludeTags = serializedObject.FindProperty("excludeTags");
-            tags.Add(SpsTagRuleList(includeTags, "Include"));
-            tags.Add(SpsTagRuleList(excludeTags, "Exclude"));
-            var useSharedTag = serializedObject.FindProperty("useSharedTag");
-            tags.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Include 'Global' SPS2 Tag",
-                tooltip: "Adds the global SPS tag so this plug can target most normal sockets."));
-            tags.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (useSharedTag.boolValue) return new VisualElement();
-                return VRCFuryEditorUtils.Warn("This plug does not include the global SPS2 tag, so it will not target most sockets!");
-            }, useSharedTag));
-            tags.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLights"), "Include 'Global' SPS1/DPS/TPS Tag",
-                tooltip: "Allows this plug to target SPS1/DPS/TPS sockets (looking for lights)."));
-            var useHipAvoidance = serializedObject.FindProperty("useHipAvoidance");
-            tags.Add(VRCFuryEditorUtils.BetterProp(
-                useHipAvoidance,
-                "Exclude sockets on own Hips",
-                tooltip: "If this plug is on your hips, it will not target sockets on your hips."
-            ));
-            tags.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                if (!useHipAvoidance.boolValue) return new VisualElement();
-                var autoTagGenerator = VRCFuryPerFrameInjector.GetPerFrameInjector(target.owner())
-                    .GetServices<SpsAutoTagGenerator>()
-                    .FirstOrDefault();
-                if (autoTagGenerator?.GetClosestBone(target.owner()) != HumanBodyBones.Hips) {
-                    return new VisualElement();
-                }
-                return VRCFuryEditorUtils.Info("This plug will exclude sockets on your hips.");
-            }, useHipAvoidance));
-            container.Add(tags);
+            container.Add(SpsChannelsEditor(target.owner(), true, serializedObject.FindProperty("channelSettings")));
 
             var adv = new Foldout {
-                text = "Advanced Plug Options",
+                text = "Deprecated Options",
                 value = false
             };
             container.Add(adv);
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"), "(Deprecated) Units are in world-space"));
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLegacyRendererFinder"), "(Deprecated) Use legacy renderer search"));
-            adv.Add(VRCFuryEditorUtils.BetterProp(configureTps, "(Deprecated) Auto-configure Poiyomi TPS"));
-            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("addDpsTipLight"), "(Deprecated) Add legacy DPS tip light (must enable in menu)"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("position"), "Position (Deprecated, move the object instead)"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("rotation"), "Rotation (Deprecated, move the object instead)"));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("unitsInMeters"),
+                "Length and radius are in world-space meters (Deprecated, specifying these in world units breaks if you resize the plug in the editor)",
+                tooltip: "When checked, manually entered length and radius ignore the plug object's scale at build time. " +
+                         "When unchecked, they use local units and are multiplied by the object's scale. " +
+                         "Automatically detected dimensions are unaffected."));
+            adv.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("useLegacyRendererFinder"), "Use legacy renderer search (Deprecated)"));
 
             return container;
         }
@@ -444,58 +489,37 @@ namespace VF.Inspector {
             
             return VRCFuryEditorUtils.Debug(refreshElement: () => {
                 var output = new VisualElement();
-                var legacyRendererPaths = new List<string>();
                 var tipLightPaths = new List<string>();
                 var orificeLightPaths = new List<string>();
 
                 foreach (var light in c.owner().GetComponentsInUploadRoot<Light>()) {
                     if (light.type != LightType.Point && light.type != LightType.Spot) continue;
                     var path = light.owner().GetDebugPath();
-                    var type = VRCFuryHapticSocketEditor.GetLegacyDpsLightType(light);
-                    if (type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Tip)
+                    var type = DpsUtils.GetLegacyDpsLightType(light);
+                    if (type == DpsUtils.LegacyDpsLightType.Tip)
                         tipLightPaths.Add(path);
-                    else if (type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Hole ||
-                             type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Ring ||
-                             type == VRCFuryHapticSocketEditor.LegacyDpsLightType.Front)
+                    else if (type == DpsUtils.LegacyDpsLightType.Hole ||
+                             type == DpsUtils.LegacyDpsLightType.Ring ||
+                             type == DpsUtils.LegacyDpsLightType.Front)
                         orificeLightPaths.Add(path);
                 }
-                foreach (var renderer in c.owner().GetComponentsInUploadRoot<Renderer>()) {
-                    foreach (var m in renderer.sharedMaterials) {
-                        if (DpsConfigurer.IsDps(m) || TpsConfigurer.IsTps(m)) {
-                            legacyRendererPaths.Add($"{m.name} in {renderer.owner().GetDebugPath()}");
-                        }
-                    }
-                }
-
                 output.Clear();
                 if (tipLightPaths.Any()) {
                     var warning = VRCFuryEditorUtils.Warn(
-                        "This avatar still contains a DPS tip light! This means your avatar has not been fully converted to SPS," +
-                        " and your DPS penetrator may cause issues if too many sockets are on nearby." +
-                        " Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
+                        "Your avatar still contains legacy DPS tip lights!" +
+                        " Run Tools > VRCFury > SPS > Upgrade to SPS to finish upgrading this avatar to SPS.\n\n" +
                         tipLightPaths.Join('\n')
                     );
                     output.Add(warning);
                 }
                 if (orificeLightPaths.Any()) {
                     var warning = VRCFuryEditorUtils.Warn(
-                        "This avatar still contains un-upgraded DPS orifice lights! This means your avatar has not been fully converted to SPS," +
-                        " and your DPS orifices may cause issues if too many are active at the same time." +
-                        " Check out https://vrcfury.com/sps for details about how to upgrade DPS orifices to SPS sockets.\n\n" +
+                        "This avatar still contains legacy DPS orifice lights!" +
+                        " Run Tools > VRCFury > SPS > Upgrade to SPS to finish upgrading this avatar to SPS.\n\n" +
                         orificeLightPaths.Join('\n')
                     );
                     output.Add(warning);
                 }
-                if (legacyRendererPaths.Any()) {
-                    var warning = VRCFuryEditorUtils.Warn(
-                        "This avatar still contains a legacy DPS or TPS penetrator! This means your avatar has not been fully converted to SPS," +
-                        " and your legacy penetrator may cause issues if too many sockets are on nearby." +
-                        " Check out https://vrcfury.com/sps for details about how to fully upgrade a DPS penetrator to an SPS plug.\n\n" +
-                        legacyRendererPaths.Join('\n')
-                    );
-                    output.Add(warning);
-                }
-
                 var inConstraints = c.owner().GetConstraints(true).Any();
                 if (inConstraints) {
                     var warning = VRCFuryEditorUtils.Warn(
@@ -534,7 +558,6 @@ namespace VF.Inspector {
         private class GizmoCache {
             public double time = 0;
             public PlugSizeDetector.SizeResult size;
-            public float[] radiusSamples;
             public string error;
             public Vector3 position;
             public Quaternion rotation;
@@ -554,23 +577,9 @@ namespace VF.Inspector {
                 cache.position = transform.worldPosition;
                 cache.rotation = transform.worldRotation;
                 cache.size = null;
-                cache.radiusSamples = null;
                 cache.error = null;
                 try {
                     cache.size = PlugSizeDetector.GetWorldSize(plug);
-                    if (cache.size != null) {
-                        var worldPosition = transform.TransformPoint(cache.size.localPosition);
-                        var worldRotation = transform.worldRotation * cache.size.localRotation;
-                        cache.radiusSamples = SpsBaker.GetResolverRadiusSamples(
-                            cache.size.renderers.Select(renderer => new SpsBaker.RendererBakeInput {
-                                renderer = renderer,
-                                activeFromMask = PlugMaskGenerator.GetMask(renderer, plug)
-                            }),
-                            worldPosition,
-                            worldRotation,
-                            cache.size.worldLength
-                        );
-                    }
                 } catch (Exception e) {
                     cache.error = e.Message;
                 }
@@ -602,14 +611,6 @@ namespace VF.Inspector {
 
             var worldEnd = worldRoot + worldForward * worldLength;
             VRCFuryGizmoUtils.DrawCappedCylinder(worldRoot, worldEnd, worldRadius, color);
-            if (isSelected && size != null && cache.radiusSamples != null) {
-                var sampleCount = cache.radiusSamples.Length;
-                for (var i = 0; i < sampleCount; i++) {
-                    var distance = worldLength * ((i + 0.5f) / sampleCount);
-                    var sampleWorld = worldRoot + worldForward * distance;
-                    VRCFuryGizmoUtils.DrawDisc(sampleWorld, worldForward, cache.radiusSamples[i], new Color(0.5f,0.5f,0.5f,0.4f));
-                }
-            }
 
             if (isSelected) {
                 VRCFuryGizmoUtils.DrawText(
@@ -629,25 +630,18 @@ namespace VF.Inspector {
             }
         }
 
-        public static ICollection<Renderer> GetRenderers(VRCFuryHapticPlug plug) {
-            var renderers = new List<Renderer>();
-            if (plug.autoRenderer) {
-                renderers.AddRange(PlugRendererFinder.GetAutoRenderer(plug.owner(), !plug.useLegacyRendererFinder));
-            } else {
-                renderers.AddRange(plug.configureTpsMesh.Where(r => r != null));
-            }
-            return renderers;
-        }
-
         public class BakeResult {
+            public SpsChannelContacts channelContacts;
+            public VFGameObject mainSender;
+            public AnimationCurve radiusCurve; // Normalized plug length -> local radius.
+            public SelfAndOthersReceiverService.Receivers socketReceivers;
             public VFGameObject bakeRoot;
-            public VFGameObject oneSpace;
-            public VFGameObject worldSpace;
             public ICollection<RendererResult> renderers;
-            public MeshRenderer resolverRenderer;
-            public float worldLength;
-            public float worldRadius;
-            public List<SpsConfigurer.MaterialProperty> resolverMaterialProperties;
+            public float localLength;
+            public float localRadius;
+            public float localMinimumRadius;
+            public float worldLength => localLength * bakeRoot.worldScale.x;
+            public float worldRadius => localRadius * bakeRoot.worldScale.x;
             public string oscId;
         }
 

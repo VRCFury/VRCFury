@@ -15,7 +15,8 @@ namespace VF.Service {
     internal class HapticContactsService {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
-        [VFAutowired] private readonly ClosestBoneUtils closestBoneUtils;
+        [VFAutowired] private readonly OgbEnabledService ogbEnabled;
+
 
         public class ReceiverRequest {
             public VFGameObject obj;
@@ -27,11 +28,13 @@ namespace VF.Service {
             public HapticUtils.ReceiverParty party;
             public bool usePrefix = true;
             public bool localOnly = false;
+            public bool enableWithOgb;
             public float height = 0;
+            public Vector3? size;
+            public bool useFaceProximity;
             public Quaternion rotation = default;
             public ContactReceiver.ReceiverType type = ContactReceiver.ReceiverType.Proximity;
             public bool worldScale = true;
-            public bool useHipAvoidance = true;
 
             public ReceiverRequest Clone() {
                 return (ReceiverRequest)MemberwiseClone();
@@ -57,7 +60,19 @@ namespace VF.Service {
             receiver.allowOthers = req.party == HapticUtils.ReceiverParty.Others;
             receiver.allowSelf = req.party == HapticUtils.ReceiverParty.Self;
             receiver.localOnly = req.localOnly;
-            if (req.height > 0) {
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            receiver.advancedParameters = ContactReceiver.AdvancedParameter.SenderVelocity;
+#endif
+            if (req.size.HasValue) {
+#if VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS
+                receiver.shapeType = ContactBase.ShapeType.Box;
+                receiver.size = req.size.Value;
+                receiver.rotation = req.rotation;
+                receiver.useFaceProximity = req.useFaceProximity;
+#else
+                throw new InvalidOperationException(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
+#endif
+            } else if (req.height > 0) {
                 receiver.shapeType = ContactBase.ShapeType.Capsule;
                 receiver.height = req.height;
                 receiver.rotation = req.rotation;
@@ -66,14 +81,12 @@ namespace VF.Service {
                 receiver.position /= child.worldScale.x;
                 receiver.radius /= child.worldScale.x;
                 receiver.height /= child.worldScale.x;
+#if VRCSDK_HAS_ADVANCED_CONTACT_PARAMETERS
+                receiver.size /= child.worldScale.x;
+#endif
             }
 
-            var tags = req.tags;
-            if (req.party == HapticUtils.ReceiverParty.Self && req.useHipAvoidance && closestBoneUtils.GetClosestHumanoidBone(req.obj) == HumanBodyBones.Hips) {
-                tags = HapticSenderFactory.AddSuffixes(tags, "_SelfNotOnHips");
-            }
-            receiver.collisionTags = tags.ToList();
-
+            if (req.enableWithOgb) ogbEnabled.Register(child);
             return param;
         }
     }

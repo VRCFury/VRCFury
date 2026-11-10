@@ -76,7 +76,7 @@ namespace VF.Menu {
         public const int constrainedProportionsPriority = settingsPriority + 100;
         public const string hapticToggle = settings + "Enable SPS Haptics";
         public const int hapticTogglePriority = settingsPriority + 101;
-        public const string dpsAutoUpgrade = settings + "Auto-Upgrade DPS with contacts";
+        public const string dpsAutoUpgrade = settings + "Automatically upgrade DPS and TPS to SPS";
         public const int dpsAutoUpgradePriority = settingsPriority + 102;
         public const string boundingBoxFix = settings + "Automatically fix bounding boxes";
         public const int boundingBoxFixPriority = settingsPriority + 103;

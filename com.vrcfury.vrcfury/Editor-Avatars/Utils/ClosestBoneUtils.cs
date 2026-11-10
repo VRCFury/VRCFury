@@ -115,7 +115,7 @@ namespace VF.Utils {
     }
 
     [VFService]
-    internal class SpsAvatarAutoTagGenerator : SpsAutoTagGenerator {
+    internal class SpsAvatarAutoChannelGenerator : SpsAutoChannelGenerator {
         [VFAutowired] private readonly ClosestBoneUtils closestBoneUtils;
         [VFAutowired] [CanBeNull] private readonly VRCAvatarDescriptor avatar;
 

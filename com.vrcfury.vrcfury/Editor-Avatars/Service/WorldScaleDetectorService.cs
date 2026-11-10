@@ -13,7 +13,7 @@ using Random = UnityEngine.Random;
 namespace VF.Service {
     /**
      * "Fixes" https://feedback.vrchat.com/bug-reports/p/scalefactor-is-not-synchronized-to-late-joiners-or-existing-players-in-newly-joi
-     * by placing a contact receiver at an upload-scale-normalized local offset, then using the synced proximity
+     * by placing a contact receiver at an upload-scale-normalized local offset, then using its proximity
      * value to reconstruct the target's live world scale.
      */
     [VFService]
@@ -27,13 +27,13 @@ namespace VF.Service {
 
         private const string Tag = "VRCF_WSD";
         private const float ContactRadius = 1f;
-        private const float MaxDetectedScale = 100f;
+        internal const float MaxDetectedScale = 100f;
 
         private readonly Lazy<VFBlendTreeDirect> directTree;
         private readonly Lazy<BlendtreeMath> math;
         private readonly Lazy<Vector3> offset;
         private readonly Lazy<VFGameObject> senderObject;
-        private readonly Dictionary<VFGameObject, VFAParam> cache = new Dictionary<VFGameObject, VFAParam>();
+        private readonly Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)> cache = new();
 
         public WorldScaleDetectorService() {
             directTree = new Lazy<VFBlendTreeDirect>(() => dbtLayerService.Create());
@@ -48,14 +48,29 @@ namespace VF.Service {
 
         [CanBeNull]
         // Returns the live absolute world scale of localSpace.
-        public VFAParam GetWorldScale(VFGameObject localSpace, string name) {
-            return cache.GetOrCreate(localSpace, () => Create(localSpace, name));
+        // An explicit receiver parameter name must be supplied on the first request.
+        public VFAParam GetWorldScale(VFGameObject localSpace, string name, string parameterName = null) {
+            return GetDetector(localSpace, name, parameterName).scale?.Value;
         }
 
         [CanBeNull]
-        private VFAParam Create(VFGameObject localSpace, string name) {
+        public VFAParam GetRawWorldScale(VFGameObject localSpace, string name, string parameterName = null) {
+            return GetDetector(localSpace, name, parameterName).raw;
+        }
+
+        [CanBeNull]
+        public VFAParam GetInverseWorldScale(VFGameObject localSpace, string name) {
+            return GetDetector(localSpace, name).inverse?.Value;
+        }
+
+        private (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse) GetDetector(
+            VFGameObject localSpace, string name, string parameterName = null) =>
+            cache.GetOrCreate(localSpace, () => Create(localSpace, name, parameterName));
+
+        private (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse) Create(
+            VFGameObject localSpace, string name, string parameterName) {
             if (!BuildTargetUtils.IsDesktop()) {
-                return null;
+                return default;
             }
 
             var outerObj = GameObjects.Create(name, senderObject.Value.parent);
@@ -81,7 +96,9 @@ namespace VF.Service {
             localReceiver.receiverType = ContactReceiver.ReceiverType.Proximity;
             localReceiver.collisionTags.Add(Tag);
             localReceiver.radius = ContactRadius;
-            var receiverParam = fx.CreateUniqueFloat($"WSD - {name} - Rcv", def: 1 / MaxDetectedScale);
+            var receiverParam = parameterName == null
+                ? fx.CreateUniqueFloat($"WSD - {name} - Rcv", 1 / MaxDetectedScale)
+                : fx.GetOrCreateFloat(parameterName, 1 / MaxDetectedScale);
             localReceiver.parameter = receiverParam;
 
             var receiverOn = VFClip.Create($"WSD - {name} - On");
@@ -89,7 +106,12 @@ namespace VF.Service {
             directTree.Value.Add(BlendtreeMath.GreaterThan(isObjectEnabledService.Get(localSpace), 0)
                 .create(receiverOn, null));
 
-            return math.Value.Multiply($"WSD - {name} - Final", receiverParam, MaxDetectedScale * localSpace.worldScale.x);
+            var multiplier = MaxDetectedScale * localSpace.worldScale.x;
+            return (
+                receiverParam,
+                new Lazy<VFAParam>(() => math.Value.Multiply($"WSD - {name} - Final", receiverParam, multiplier)),
+                new Lazy<VFAParam>(() => math.Value.Invert($"WSD - {name} - Inverse", receiverParam, multiplier))
+            );
         }
 
         private VFGameObject CreateSender() {

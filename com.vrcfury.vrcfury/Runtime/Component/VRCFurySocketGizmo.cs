@@ -8,10 +8,6 @@ namespace VF.Component {
         [Serializable]
         public class GuidedPathStopData {
             public Transform transform;
-            public bool customizeTangentIn;
-            public bool customizeTangentOut;
-            public Vector3 tangentInLocal;
-            public Vector3 tangentOutLocal;
         }
 
         [Serializable]
@@ -22,12 +18,10 @@ namespace VF.Component {
             public Quaternion rot;
             public bool useRadiusOffset;
             public bool useLegacyLights;
+            public GameObject legacyLights;
             public bool overrideLegacyOffset;
             public Vector3 legacyOffsetLocal;
             public string name;
-            public bool hasHandTouchZone;
-            public float handTouchZoneLength;
-            public float handTouchZoneRadius;
             public List<GuidedPathStopData> guidedPathStops = new List<GuidedPathStopData>();
         }
 
@@ -38,11 +32,11 @@ namespace VF.Component {
 
         private void Update() {
             if (show && !lastShow) {
-                try { EnableSceneLighting?.Invoke(); } catch (Exception) {}
+                try { EnableSceneGizmos?.Invoke(); } catch (Exception) {}
             }
             lastShow = show;
         }
 
-        public static Action EnableSceneLighting;
+        public static Action EnableSceneGizmos;
     }
 }

@@ -22,7 +22,8 @@
         "VRCSDKBase.dll",
         "VRCSDK3A.dll",
         "VRC.Dynamics.dll",
-        "VRC.SDK3.Dynamics.Contact.dll"
+        "VRC.SDK3.Dynamics.Contact.dll",
+        "VRC.SDK3.Dynamics.PhysBone.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [
@@ -30,6 +31,11 @@
         "VRCF_AVATARS"
     ],
     "versionDefines": [
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.10.6",
+            "define": "VRCSDK_HAS_MATERIAL_CONTACTS"
+        },
         {
             "name": "com.vrchat.avatars",
             "expression": "3.10.6",

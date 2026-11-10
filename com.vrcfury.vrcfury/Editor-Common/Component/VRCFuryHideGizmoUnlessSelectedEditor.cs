@@ -7,9 +7,9 @@ namespace VF.Component {
     internal static class VRCFuryHideGizmoUnlessSelectedEditor {
         [VFInit]
         private static void Init() {
+            VRCFuryHideGizmoUnlessSelected.IsSelected = obj => Selection.gameObjects.Contains(obj);
             UpdateAll();
             Selection.selectionChanged += UpdateAll;
-            EditorApplication.hierarchyChanged += UpdateAll;
         }
 
         private static void UpdateAll() {
@@ -23,7 +23,7 @@ namespace VF.Component {
             var objs = UnityEngine.Object.FindObjectsOfType<VRCFuryHideGizmoUnlessSelected>();
 #endif
             foreach (var c in objs) {
-                c.OnSelectionChanged(Selection.gameObjects.Contains(c.gameObject));
+                c.OnSelectionChanged();
             }
         }
     }

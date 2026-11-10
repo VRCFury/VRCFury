@@ -10,17 +10,6 @@ using Random = System.Random;
 
 namespace VF.Builder.Haptics {
     internal static class HapticUtils {
-        public const string CONTACT_PEN_MAIN = "TPS_Pen_Penetrating";
-        public const string CONTACT_PEN_WIDTH = "TPS_Pen_Width";
-        public const string CONTACT_PEN_CLOSE = "TPS_Pen_Close";
-        public const string CONTACT_PEN_ROOT = "TPS_Pen_Root";
-        public const string TagTpsOrfRoot = "TPS_Orf_Root";
-        public const string TagTpsOrfFront = "TPS_Orf_Norm";
-
-        public const string TagSpsSocketRoot = "SPSLL_Socket_Root";
-        public const string TagSpsSocketFront = "SPSLL_Socket_Front";
-        public const string TagSpsSocketIsRing = "SPSLL_Socket_Ring";
-        public const string TagSpsSocketIsHole = "SPSLL_Socket_Hole";
 
         public static readonly string[] SelfContacts = {
             "Hand",
@@ -33,11 +22,38 @@ namespace VF.Builder.Haptics {
             "Foot",
             "Finger"
         };
-        
-        private static readonly Random rand = new Random();
 
-        public static string RandomTag() {
-            return "TPSVF_" + rand.Next(100_000_000, 999_999_999);
+        public const int GroupCount = 127;
+
+        [Flags]
+        public enum SocketScaleFlags {
+            None = 0,
+            UnlockAll = 1 << 10,
+            UnlockLocalX = 1 << 11,
+            RadiusOffset = 1 << 12,
+            Twoway = 1 << 13,
+            Collapse = 1 << 14
+        }
+
+        public static Vector3 EncodeSocketScale(int group, int pathIndex, SocketScaleFlags flags = SocketScaleFlags.None) {
+            if (group < 1 || group > GroupCount) throw new ArgumentOutOfRangeException(nameof(group));
+            if (pathIndex < 0 || pathIndex >= 8) throw new ArgumentOutOfRangeException(nameof(pathIndex));
+            if (((int)flags & ~0x7C00) != 0) throw new ArgumentOutOfRangeException(nameof(flags));
+            // X: group ID 0-6 (nonzero), path index 7-9, flags 10-14.
+            // Y/Z are unit scale; emitted flags are also collision tags.
+            return new Vector3(group | (pathIndex << 7) | (int)flags, 1, 1);
+        }
+
+        public static Vector3 EncodePlugScale(float worldLength, float worldRadius) {
+            if (!(worldLength > 0) || float.IsInfinity(worldLength)) {
+                throw new ArgumentOutOfRangeException(nameof(worldLength), "Plug length must be finite and positive.");
+            }
+            if (!(worldRadius > 0) || float.IsInfinity(worldRadius)) {
+                throw new ArgumentOutOfRangeException(nameof(worldRadius), "Encoded plug radius must be finite and positive.");
+            }
+            // Y starts at the overall radius, then follows the radius curve at the nearest socket.
+            var radius = Mathf.Min(worldRadius, worldLength);
+            return new Vector3(radius, radius, worldLength);
         }
 
         public enum ReceiverParty {
@@ -58,23 +74,21 @@ namespace VF.Builder.Haptics {
             return Math.Abs(scale.x - scale.y) / scale.x > 0.05
                    || Math.Abs(scale.x - scale.z) / scale.x > 0.05;
         }
-        public static bool AssertValidScale(VFGameObject obj, string type, bool shouldThrow = true) {
+        public static void AssertValidScale(VFGameObject obj) {
             var current = obj;
             var nonUniformScales = new List<string>();
             while (true) {
                 if (IsZeroScale(current)) {
-                    if (shouldThrow) throw new Exception(
+                    throw new Exception(
                         "SPS cannot be used on an object with zero scale.\n\n" +
                         "Component path: " + obj.GetDebugPath() + "\n" +
                         "Offending object: " + current.GetDebugPath());
-                    return false;
                 }
                 if (IsNegativeScale(current)) {
-                    if (shouldThrow) throw new Exception(
+                    throw new Exception(
                         "SPS cannot be used on an object with negative scale.\n\n" +
                         "Component path: " + obj.GetDebugPath() + "\n" +
                         "Offending object: " + current.GetDebugPath());
-                    return false;
                 }
                 if (IsNonUniformScale(current)) {
                     var scale = current.localScale;
@@ -88,15 +102,12 @@ namespace VF.Builder.Haptics {
 
             var bypass = obj.Find("ItsOkayThatOgbMightBeBroken") != null;
             if (nonUniformScales.Any() && !bypass) {
-                if (shouldThrow) throw new Exception(
+                throw new Exception(
                     "SPS cannot be used on an object with non-uniform scale." +
                     " This object (and all parents) must have a scale where X=Y=Z, such as 1,1,1, or 1.5,1.5,1.5, etc.\n\n" +
                     "Component path: " + obj.GetDebugPath() + "\n" +
                     "Offending objects:\n" + nonUniformScales.Join('\n'));
-                return false;
             }
-
-            return true;
         }
 
         private static string GetActualId<T>(IEnumerable<T> items, T target, Func<T, string> getPreferredId) {
@@ -138,6 +149,11 @@ namespace VF.Builder.Haptics {
             usedIds.Add(id);
             return id;
         }
+
+        public static string NormalizeOgbId(string id) => id.Replace('/', '_');
+
+        public static string MakeUniqueOgbId(ISet<string> usedIds, string prefix) =>
+            MakeUniqueId(usedIds, NormalizeOgbId(prefix));
 
         public static string GetPreferredId<T>(
             T component,

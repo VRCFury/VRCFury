@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -22,7 +23,16 @@ namespace VF.Builder.Haptics {
             public static readonly FieldInfo ShaderLibsPath = LilShaderContainer?.VFStaticField("shaderLibsPath");
         }
 
-        private const string HashBuster = "17";
+        [ReflectionHelperOptional]
+        private abstract class ShaderGraphReflection : ReflectionHelper {
+            public static readonly MethodInfo GetShaderText = ReflectionUtils
+                .GetTypeFromAnyAssembly("UnityEditor.ShaderGraph.ShaderGraphImporter")
+                ?.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .FirstOrDefault(m => m.Name == "GetShaderText" && m.GetParameters().Length == 4
+                    && m.GetParameters()[3].IsOut);
+        }
+
+        private const string HashBuster = "22";
         private static readonly Regex ProgramStartRegex = GetRegex(@"\G(?:^|\n)[ \t]*(CGPROGRAM|HLSLPROGRAM)[ \t]*(?:\n|$)");
         private static readonly Regex CgProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDCG[ \t]*(?:\n|$)");
         private static readonly Regex HlslProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDHLSL[ \t]*(?:\n|$)");
@@ -30,6 +40,7 @@ namespace VF.Builder.Haptics {
         public static void Patch(Material mat, bool keepImports, bool hasBlendshapes) {
             if (!mat.shader) return;
             if (mat.shader.name == "VRChat/Mobile/Particles/Additive") return;
+            SpsPlugReceiverService.RequireMaterialContacts();
             try {
                 var renderQueue = mat.renderQueue;
                 PatchUnsafe(mat, keepImports, hasBlendshapes);
@@ -102,6 +113,7 @@ namespace VF.Builder.Haptics {
 
             var contents = ReadFile(sourcePath, true);
             contents = ApplyPcssFix(shader, contents);
+            contents = DisableLegacyDeformation(contents);
 
             void Replace(string pattern, string replacement, int count) {
                 var startLen = contents.Length + "" + contents.GetHashCode();
@@ -117,15 +129,11 @@ namespace VF.Builder.Haptics {
 
             if (parentHash == null) {
                 var propertiesContent = ReadAndFlattenPath($"{pathToSps}/deform/sps_deform_props.cginc");
-                if (GetRegex(@"(?:^|\n)\s*Properties\s*{\s*}").IsMatch(contents)) {
-                    propertiesContent = propertiesContent.Replace("[Header(Original Shader Follows)]\n", "");
-                }
                 Replace(
                     @"((?:^|\n)\s*Properties\s*{)",
                     $"$1\n{propertiesContent}\n",
                     1
                 );
-                contents = GetRegex(@"(?:^|\n)[ \t]*CustomEditor[ \t]+[^\n]+").Replace(contents, "");
             }
 
             string spsMain;
@@ -253,7 +261,13 @@ namespace VF.Builder.Haptics {
         }
 
         internal static string PatchProgram(string originalProgram, bool isCgProgram, string spsMain, string cgIncludes, bool isSurfaceShader) {
-            var program = originalProgram;
+            // The native contact path uses dynamic indexing/loops and integer bit fields.
+            // Low-target shaders otherwise try to unroll the entire path builder.
+            var target = GetRegex(@"(#pragma[ \t]+target[ \t]+)([0-9.]+)");
+            var program = target.Replace(originalProgram, match =>
+                float.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture) < 4.5f
+                    ? match.Groups[1].Value + "4.5" : match.Value);
+            if (!target.IsMatch(program)) program = "#pragma target 4.5\n" + program;
             var newVertFunctionName = "spsVert";
             var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
             string vanillaVertFunctionName = null;
@@ -1021,6 +1035,30 @@ namespace VF.Builder.Haptics {
             });
         }
 
+        internal static string DisableLegacyDeformation(string content) {
+            // Poiyomi's optimizer retains enabled #ifdef branches even when it bakes properties into constants.
+            const string disableKeywords = "\n#undef TPS_Penetrator\n#undef RALIV_PENETRATION\n";
+            content = GetRegex(@"(?m)^(\s*(?:CGPROGRAM|HLSLPROGRAM|CGINCLUDE|HLSLINCLUDE)[ \t]*\r?\n)")
+                .Replace(content, "$1" + disableKeywords);
+            content = GetRegex(@"(?m)^[ \t]*#define[ \t]+(TPS_Penetrator|RALIV_PENETRATION)\b[^\r\n]*")
+                .Replace(content, "#undef $1");
+
+            // These includes contain DPS deformation and its helpers, without unrelated inout functions.
+            // Make their parameters input-only so deformation cannot modify the caller's vertex/normal.
+            content = GetRegex(@"(?m)^[ \t]*#(?:include|include_with_pragmas)[ \t]+""(?:[^""\r\n]*[/\\])?(?:RalivDPS_Functions|XSVert|PenetratorFunctions)\.cginc""[^\r\n]*")
+                .Replace(content, match => "\n#define inout in\n" + match.Value + "\n#undef inout\n");
+
+            // Locked/combined shaders can contain these definitions directly instead of including them.
+            var functions = GetRegex(@"(?s:/\*.*?\*/)|//[^\r\n]*|""(?:\\.|[^""\\])*""|(?<function>\bvoid\s+(?:PenetratorReshape|applyRalivDynamicPenetrationSystem|ApplyTPSPenetrator)\s*\([^;{}]*\)\s*\{)");
+            foreach (var match in functions.Matches(content).Cast<Match>()
+                         .Where(m => m.Groups["function"].Success).Reverse()) {
+                var close = IndexOfEndOfNextContext(content, match.Index + match.Length - 1);
+                content = content.Substring(0, close + 1) + "\n#undef inout\n" + content.Substring(close + 1);
+                content = content.Substring(0, match.Index) + "\n#define inout in\n" + content.Substring(match.Index);
+            }
+            return content;
+        }
+
         private static string ReadAndFlattenPath(string path, HashSet<string> included = null, bool includeLibraryFiles = false) {
             if (included == null) {
                 included = new HashSet<string>();
@@ -1114,6 +1152,11 @@ namespace VF.Builder.Haptics {
                 var sourceAsset = AssetDatabase.LoadAllAssetsAtPath(path).OfType<TextAsset>().FirstOrDefault();
                 if (sourceAsset != null) {
                     content = sourceAsset.text;
+                } else if (path.EndsWith(".shadergraph", StringComparison.OrdinalIgnoreCase)) {
+                    if (!ReflectionHelper.IsReady<ShaderGraphReflection>()) {
+                        throw new Exception("Failed to access Shader Graph's shader source generator: " + path);
+                    }
+                    content = (string)ShaderGraphReflection.GetShaderText.Invoke(null, new object[] { path, null, null, null });
                 } else if (path.EndsWith(".lilcontainer")) {
                     if (!ReflectionHelper.IsReady<LilReflection>()) {
                         throw new Exception("Failed to access lilToon shader container internals");

@@ -1,41 +1,27 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
-using VF.Builder;
+using VF.Injector;
+using VF.Service;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
-using Object = UnityEngine.Object;
 
 namespace VF.Utils {
-    internal static class AvatarCleaner {
-        public static List<string> Cleanup(
+    [VFService]
+    internal class AvatarCleaner {
+        [VFAutowired] private readonly VRCFuryInjector injector;
+
+        public List<string> Cleanup(
             VFGameObject avatarObj,
             bool perform = false,
             Func<VFGameObject, bool> ShouldRemoveObj = null,
             Func<UnityEngine.Component, bool> ShouldRemoveComponent = null,
-            Func<Object, bool> ShouldRemoveAsset = null,
             Func<string, bool> ShouldRemoveLayer = null,
             Func<string, bool> ShouldRemoveParam = null
         ) {
             var removeItems = new List<string>();
-
-            if (ShouldRemoveAsset != null) {
-                var animators = avatarObj.GetComponentsInSelfAndChildren<Animator>();
-                foreach (var animator in animators) {
-                    if (animator.runtimeAnimatorController != null &&
-                        ShouldRemoveAsset(animator.runtimeAnimatorController)) {
-                        removeItems.Add("Animator Controller at path " + animator.owner().GetPath(avatarObj));
-                        if (perform) {
-                            animator.runtimeAnimatorController = null;
-                            animator.Dirty();
-                        }
-                    }
-                }
-            }
 
             if (ShouldRemoveObj != null || ShouldRemoveComponent != null) {
                 var checkStack = new Stack<VFGameObject>();
@@ -78,135 +64,115 @@ namespace VF.Utils {
                 }
             }
 
+            // Scene-only cleanup must not load, clone, or dirty any assets.
+            if (ShouldRemoveLayer == null && ShouldRemoveParam == null) return removeItems;
+
             var avatar = avatarObj.GetComponent<VRCAvatarDescriptor>();
             if (avatar != null) {
-                foreach (var c in VRCAvatarUtils.GetAllControllers(avatar)) {
-                    var controller_ = c.controller as AnimatorController;
-                    if (controller_ == null) continue;
-                    var controller = VFController.Load(controller_, new VFLoadContext());
-                    var typeName = VRCFEnumUtils.GetName(c.type);
-                    if (ShouldRemoveAsset != null && ShouldRemoveAsset(controller_)) {
-                        removeItems.Add("Avatar Controller: " + typeName);
-                        if (perform) c.setToDefault();
-                    } else {
-                        var removedLayerNames = new HashSet<string>();
-                        if (ShouldRemoveLayer != null) {
-                            foreach (var layer in controller_.layers) {
-                                if (!ShouldRemoveLayer(layer.name)) continue;
-                                removeItems.Add(typeName + " Layer: " + layer.name);
-                                removedLayerNames.Add(layer.name);
-                            }
-                            if (perform) {
-                                controller_.layers = controller_.layers
-                                    .Where(layer => !removedLayerNames.Contains(layer.name))
-                                    .ToArray();
-                            }
+                // Scene-only cleanup also supports roots without an avatar descriptor.
+                // Resolve avatar services only when their assets are actually being inspected.
+                var controllers = injector.GetService<ControllersService>();
+                foreach (var controller in controllers.GetAllUsedControllers()) {
+                    var typeName = VRCFEnumUtils.GetName(controller.vrcType);
+                    var removedLayers = new HashSet<VFLayer>();
+                    if (ShouldRemoveLayer != null) {
+                        foreach (var layer in controller.GetLayers()) {
+                            if (!ShouldRemoveLayer(layer.name)) continue;
+                            removeItems.Add(typeName + " Layer: " + layer.name);
+                            removedLayers.Add(layer);
                         }
-
-                        if (ShouldRemoveParam != null) {
-                            var removedParams = new HashSet<string>();
-                            foreach (var parameter in controller_.parameters) {
-                                var prm = parameter.name;
-                                if (!ShouldRemoveParam(prm)) continue;
-
-                                var prmUsed = controller.GetLayers()
-                                    .Where(layer => !removedLayerNames.Contains(layer.name))
-                                    .Any(layer => IsParamUsed(layer, prm));
-                                if (prmUsed) continue;
-
-                                removeItems.Add(typeName + " Parameter: " + prm);
-                                removedParams.Add(prm);
-                            }
-                            if (perform) {
-                                controller_.parameters = controller_.parameters
-                                    .Where(parameter => !removedParams.Contains(parameter.name))
-                                    .ToArray();
-                            }
-                        }
-
-                        if (perform) controller_.Dirty();
-                    }
-                }
-
-                var syncParams = VRCAvatarUtils.GetAvatarParams(avatar);
-                if (syncParams != null) {
-                    if (ShouldRemoveAsset != null && ShouldRemoveAsset(syncParams)) {
-                        removeItems.Add("All Synced Params");
-                        if (perform) VRCAvatarUtils.SetAvatarParams(avatar, null);
-                    } else {
-                        var prms = new List<VRCExpressionParameters.Parameter>(syncParams.parameters);
-                        for (var i = 0; i < prms.Count; i++) {
-                            if (ShouldRemoveParam != null && ShouldRemoveParam(prms[i].name)) {
-                                removeItems.Add("Synced Param: " + prms[i].name);
-                                if (perform) {
-                                    prms.RemoveAt(i);
-                                    i--;
-                                }
-                            }
-                        }
-
                         if (perform) {
-                            syncParams.parameters = prms.ToArray();
-                            syncParams.Dirty();
+                            foreach (var layer in removedLayers) layer.Remove();
+                        }
+                    }
+
+                    if (ShouldRemoveParam != null) {
+                        var removedParams = new HashSet<string>();
+                        foreach (var parameter in controller.parameters) {
+                            var prm = parameter.name;
+                            if (!ShouldRemoveParam(prm)) continue;
+
+                            var prmUsed = controller.GetLayers()
+                                .Where(layer => !removedLayers.Contains(layer))
+                                .Any(layer => IsParamUsed(layer, prm));
+                            if (prmUsed) continue;
+
+                            removeItems.Add(typeName + " Parameter: " + prm);
+                            removedParams.Add(prm);
+                        }
+                        if (perform) {
+                            foreach (var parameter in removedParams) controller.RemoveParameter(parameter);
                         }
                     }
                 }
+                if (perform) controllers.CommitRemovals();
 
-                var m = VRCAvatarUtils.GetAvatarMenu(avatar);
-                if (m != null) {
-                    if (ShouldRemoveAsset != null && ShouldRemoveAsset(m)) {
-                        removeItems.Add("All Avatar Menus");
-                        if (perform) VRCAvatarUtils.SetAvatarMenu(avatar, null);
-                    } else {
-                        // Note: This is laid out strangely to avoid issues with menus that have recursive loops
-
-                        var removeControls = new HashSet<VRCExpressionsMenu.Control>();
-                        bool ShouldRemoveMenuItem(VRCExpressionsMenu.Control item) {
-                            var shouldRemove =
-                                item.type == VRCExpressionsMenu.Control.ControlType.SubMenu
-                                && item.subMenu != null
-                                && ShouldRemoveAsset != null
-                                && ShouldRemoveAsset(item.subMenu);
-                            shouldRemove |=
-                                item.type == VRCExpressionsMenu.Control.ControlType.SubMenu
-                                && item.subMenu != null
-                                && item.subMenu.controls.Count > 0
-                                && item.subMenu.controls.All(control => removeControls.Contains(control));
-                            shouldRemove |=
-                                item.type == VRCExpressionsMenu.Control.ControlType.Toggle
-                                && item.parameter != null
-                                && ShouldRemoveParam != null
-                                && ShouldRemoveParam(item.parameter.name);
-                            return shouldRemove;
-                        }
-                        while (true) {
-                            var startRemoveCount = removeControls.Count;
-                            m.ForEachMenu(ForEachItem: (item, path) => {
-                                if (removeControls.Contains(item)) {
-                                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
-                                }
-
-                                if (ShouldRemoveMenuItem(item)) {
-                                    removeControls.Add(item);
-                                    return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
-                                }
-
-                                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
-                            });
-                            var endRemoveCount = removeControls.Count;
-                            if (startRemoveCount == endRemoveCount) break;
-                        }
-
-                        m.ForEachMenu(ForEachItem: (item, path) => {
-                            if (removeControls.Contains(item)) {
-                                removeItems.Add("Menu Item: " + path.Join('/'));
-                                return perform
-                                    ? VRCExpressionsMenuExtensions.ForEachMenuItemResult.Delete
-                                    : VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
+                if (ShouldRemoveParam != null) {
+                    var expressionParams = injector.GetService<ExpressionParamsService>();
+                    var prms = new List<VRCExpressionParameters.Parameter>(expressionParams.GetSnapshot());
+                    var originalCount = prms.Count;
+                    for (var i = 0; i < prms.Count; i++) {
+                        if (ShouldRemoveParam(prms[i].name)) {
+                            removeItems.Add("Synced Param: " + prms[i].name);
+                            if (perform) {
+                                prms.RemoveAt(i);
+                                i--;
                             }
+                        }
+                    }
+
+                    if (perform && prms.Count != originalCount) {
+                        var retainedNames = new HashSet<string>(prms.Select(p => p.name));
+                        expressionParams.SetParameters(expressionParams.Where(p => retainedNames.Contains(p.name)));
+                    }
+                }
+
+                var menuService = ShouldRemoveParam != null ? injector.GetService<MenuService>() : null;
+                var m = menuService?.GetReadOnlyMenu();
+                if (m != null && perform) {
+                    m = menuService.GetMenu().GetRaw();
+                }
+                if (m != null) {
+                    var removeControls = new HashSet<VRCExpressionsMenu.Control>();
+                    bool ShouldRemoveMenuItem(VRCExpressionsMenu.Control item) {
+                        var shouldRemove =
+                            item.type == VRCExpressionsMenu.Control.ControlType.SubMenu
+                            && item.subMenu != null
+                            && item.subMenu.controls.Count > 0
+                            && item.subMenu.controls.All(control => removeControls.Contains(control));
+                        shouldRemove |=
+                            item.type == VRCExpressionsMenu.Control.ControlType.Toggle
+                            && item.parameter != null
+                            && ShouldRemoveParam(item.parameter.name);
+                        return shouldRemove;
+                    }
+                    while (true) {
+                        var startRemoveCount = removeControls.Count;
+                        m.ForEachMenu(dirtyAll: false, ForEachItem: (item, path) => {
+                            if (removeControls.Contains(item)) {
+                                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
+                            }
+
+                            if (ShouldRemoveMenuItem(item)) {
+                                removeControls.Add(item);
+                                return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
+                            }
+
                             return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
                         });
+                        var endRemoveCount = removeControls.Count;
+                        if (startRemoveCount == endRemoveCount) break;
                     }
+
+                    m.ForEachMenu(dirtyAll: false, ForEachItem: (item, path) => {
+                        if (removeControls.Contains(item)) {
+                            removeItems.Add("Menu Item: " + path.Join('/'));
+                            return perform
+                                ? VRCExpressionsMenuExtensions.ForEachMenuItemResult.Delete
+                                : VRCExpressionsMenuExtensions.ForEachMenuItemResult.Skip;
+                        }
+                        return VRCExpressionsMenuExtensions.ForEachMenuItemResult.Continue;
+                    });
                 }
             }
 

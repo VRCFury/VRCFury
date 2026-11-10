@@ -31,7 +31,7 @@ namespace VF.Feature {
             chop.targetBones[0].transform =
                 armatureCache.FindBoneOnArmatureOrException(HumanBodyBones.Head);
 #else
-            throw new Exception("This version of the VRCSDK does not support head chop");
+            throw new Exception(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
 #endif
         }
 
