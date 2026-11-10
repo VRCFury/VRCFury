@@ -203,7 +203,9 @@ namespace VF.Builder {
                     if (first.GetType().GetCustomAttribute<FeatureOnlyOneAllowedAttribute>() != null) {
                         var title = first.GetType().GetCustomAttribute<FeatureTitleAttribute>().Title;
                         throw new Exception(
-                            $"This avatar contains multiple VRCFury '{title}' components, but only one is allowed.");
+                            $"This avatar contains multiple VRCFury '{title}' components, but only one is allowed.\n\n"
+                            + string.Join("\n", buildersOfType.Select(builder => builder.featureBaseObject.GetDebugPath()))
+                        );
                     }
                 }
             }
