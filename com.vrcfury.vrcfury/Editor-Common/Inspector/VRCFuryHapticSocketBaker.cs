@@ -23,6 +23,7 @@ namespace VF.Inspector {
 
         public BakeResult Bake(VRCFuryHapticSocket socket, bool legacyPlugCompatibility = true,
             bool tpsDepthAnimationCompatibility = false, VFGameObject avatarRoot = null) {
+            if (!BuildTargetUtils.IsDesktop()) return null;
             var closestBone = autoChannelGenerator?.GetClosestBone(socket.owner());
             var contacts = channels.Get(socket);
             var result = new BakeResult { channelContacts = contacts };
@@ -59,7 +60,7 @@ namespace VF.Inspector {
 
             // Senders
             var enableDeformation = lightType != VRCFuryHapticSocket.AddLight.None;
-            if (enableDeformation && BuildTargetUtils.IsDesktop()) {
+            if (enableDeformation) {
                 var rootSender = GameObjects.Create("Sender - Root", worldSpace);
                 var stops = socket.guidedPathStops;
                 for (var i = 0; i < stops.Count; i++) {

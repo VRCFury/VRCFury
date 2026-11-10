@@ -20,6 +20,7 @@ using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 
@@ -50,6 +51,95 @@ namespace VF.Tests {
             Object.DestroyImmediate(root);
             foreach (var asset in assets) if (asset != null) Object.DestroyImmediate(asset);
             assets.Clear();
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void NonDesktopSpsOnlyCreatesMenusAndParameters(bool configuredRenderer) {
+            if (BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires a non-desktop build target");
+            injector.Set("componentObject", new System.Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> {
+                new SpsOptions { addDpsTipLight = true, tpsDepthAnimationCompatibility = true, saveSockets = true }
+            };
+            globals.addOtherFeature = _ => Assert.Fail("Non-desktop SPS must not add runtime features");
+            var plug = GameObjects.Create("Plug", root).AddComponent<VRCFuryHapticPlug>();
+            var socket = GameObjects.Create("Socket", root).AddComponent<VRCFuryHapticSocket>();
+            socket.name = "Socket One";
+            var secondSocket = GameObjects.Create("Second Socket", root).AddComponent<VRCFuryHapticSocket>();
+            secondSocket.name = "Socket Two";
+            var untouched = GameObjects.Create("Animation target", root);
+            var animation = new State {
+                actions = { new ObjectToggleAction { obj = untouched, mode = ObjectToggleAction.Mode.TurnOff } }
+            };
+            plug.postBakeActions = animation;
+            plug.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew { actionSet = animation });
+            socket.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew { actionSet = animation });
+            socket.plugEntryRadiusActions.Add(new VRCFuryHapticSocket.PlugEntryRadiusAction { actionSet = animation });
+            socket.activeActions = animation;
+            MeshFilter filter = null;
+            MeshRenderer renderer = null;
+            Mesh mesh = null;
+            Material material = null;
+            string materialBefore = null;
+            if (configuredRenderer) {
+                mesh = new Mesh { vertices = new[] { Vector3.zero, Vector3.right, Vector3.forward }, triangles = new[] { 0, 1, 2 } };
+                material = new Material(Shader.Find("Unlit/Color"));
+                assets.Add(mesh);
+                assets.Add(material);
+                filter = plug.gameObject.AddComponent<MeshFilter>();
+                filter.sharedMesh = mesh;
+                renderer = plug.gameObject.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = material;
+                plug.autoRenderer = false;
+                plug.configureTpsMesh.Add(renderer);
+                materialBefore = EditorJsonUtility.ToJson(material);
+            }
+            var physbone = root.AddComponent<VRCPhysBone>();
+            // Neither a missing deformation renderer nor invalid scale should reach the bakers.
+            plug.owner().localScale = socket.owner().localScale = new Vector3(1, 2, 3);
+            var channels = injector.GetService<SpsChannelsService>();
+            var fx = injector.GetService<ControllersService>().GetFx();
+            var layers = fx.GetLayers().Count();
+            var controllers = injector.GetService<ControllersService>();
+            var allLayers = controllers.GetAllUsedControllers().Sum(c => c.GetLayers().Count());
+            var components = root.GetComponentsInChildren<UnityEngine.Component>(true);
+            var initialParams = fx.parameters.Select(p => p.name).ToArray();
+            Assert.That(injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug), Is.Null);
+            Assert.That(injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket), Is.Null);
+            injector.GetService<BakeHapticPlugsService>().ApplyEarlyBake();
+            injector.GetService<BakeHapticPlugsService>().Apply();
+            injector.GetService<BakeHapticSocketsService>().Apply();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
+            injector.GetService<SpsOptionsService>().MoveMenus();
+            Assert.That(fx.GetLayers().Count(), Is.EqualTo(layers));
+            Assert.That(controllers.GetAllUsedControllers().Sum(c => c.GetLayers().Count()), Is.EqualTo(allLayers),
+                "No calculation, toggle, or socket exclusivity layers in any controller");
+            Assert.That(root.GetComponentsInChildren<UnityEngine.Component>(true), Is.EquivalentTo(components));
+            Assert.That(root.GetComponentsInChildren<VRCContactSender>(true), Is.Empty);
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
+            Assert.That(root.GetComponentsInChildren<Light>(true), Is.Empty);
+            Assert.That(untouched.active, Is.True, "Post-bake and depth actions must not run");
+            if (configuredRenderer) {
+                Assert.That(filter.sharedMesh, Is.SameAs(mesh), "No mesh baking or autorigging");
+                Assert.That(renderer.sharedMaterial, Is.SameAs(material), "No deformation material replacement");
+                Assert.That(EditorJsonUtility.ToJson(material), Is.EqualTo(materialBefore), "No shader patching or material changes");
+            }
+            Assert.That(channels.Baked, Is.Empty);
+            Assert.That(physbone.ignoreTransforms, Does.Contain((Transform)plug.owner()));
+            Assert.That(physbone.ignoreTransforms, Does.Contain((Transform)socket.owner()));
+            Assert.That(physbone.ignoreTransforms, Does.Contain((Transform)secondSocket.owner()));
+            var menu = injector.GetService<MenuService>().GetReadOnlyMenu().controls.Single(c => c.name == "SPS").subMenu;
+            Assert.That(menu.controls.Count, Is.EqualTo(4), "Both sockets, Auto, and Legacy must remain");
+            Assert.That(menu.controls.Count(c => c.name == "Socket One" || c.name == "Socket Two"), Is.EqualTo(2));
+            Assert.That(menu.controls.Count(c => c.name.Contains("Auto")), Is.EqualTo(1));
+            Assert.That(menu.controls.Count(c => c.name.Contains("Legacy Support")), Is.EqualTo(1));
+            var menuParams = menu.controls.Select(c => c.parameter.name).ToArray();
+            Assert.That(injector.GetService<ExpressionParamsService>().Select(p => p.name), Is.EquivalentTo(menuParams),
+                "Only menu expression parameters should be created, with no OGB outputs");
+            Assert.That(fx.parameters.Select(p => p.name).Except(initialParams), Is.EquivalentTo(menuParams),
+                "No measurement, haptic, smoothing, or deformation parameters");
         }
 
         private void Sample(VFClip clip, float time = 0) {

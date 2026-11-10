@@ -27,6 +27,7 @@ namespace VF.Inspector {
             bool deferMaterialConfig = false,
             bool legacySocketCompatibility = true
         ) {
+            if (!BuildTargetUtils.IsDesktop()) return null;
             var transform = plug.owner();
             var contacts = channels.Get(plug);
             HapticUtils.AssertValidScale(transform);
@@ -154,7 +155,6 @@ namespace VF.Inspector {
 
                             try {
                                 if (mat == null) return null;
-                                if (!BuildTargetUtils.IsDesktop()) return mat;
 
                                 if (spsCopies.TryGetValue(mat, out var configured)) return configured;
                                 // Bake data belongs to this renderer, even if another
@@ -189,7 +189,7 @@ namespace VF.Inspector {
                 }).ToArray();
             }
 
-            if (plug.enableSps && BuildTargetUtils.IsDesktop()) {
+            if (plug.enableSps) {
                 spsPlugReceiverService.Create(plug, rendererResults.Select(r => r.renderer), legacySocketCompatibility);
             }
 

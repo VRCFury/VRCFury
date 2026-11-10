@@ -17,6 +17,7 @@ namespace VF.Builder.Haptics {
             Action<VRCFuryHapticSocket, VRCFuryHapticSocketEditor.BakeResult> onSocketBaked = null,
             Action<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> onPlugBaked = null
         ) {
+            if (!BuildTargetUtils.IsDesktop()) return;
             if (sockets.Count == 0 && plugs.Count == 0) return;
 
             foreach (var socket in sockets) socket.Upgrade();

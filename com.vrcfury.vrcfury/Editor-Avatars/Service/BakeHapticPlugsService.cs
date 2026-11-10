@@ -56,12 +56,11 @@ namespace VF.Service {
             foreach (var plug in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>()) {
                 try {
                     PhysboneUtils.RemoveFromPhysbones(plug.owner());
+                    if (!BuildTargetUtils.IsDesktop()) continue;
 
-                    if (BuildTargetUtils.IsDesktop()) {
-                        bakeResults[plug] = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true,
-                            legacySocketCompatibility: spsOptions.GetOptions().legacySocketCompatibility);
-                        channels.Register(plug, new Lazy<VFBlendTreeDirect>(() => objectTrees.Get(bakeResults[plug].bakeRoot)));
-                    }
+                    bakeResults[plug] = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true,
+                        legacySocketCompatibility: spsOptions.GetOptions().legacySocketCompatibility);
+                    channels.Register(plug, new Lazy<VFBlendTreeDirect>(() => objectTrees.Get(bakeResults[plug].bakeRoot)));
 
                     var postBakeClip = actionClipService.LoadStateAdv("sps_postbake", plug.postBakeActions, plug.owner());
                     restingState.ApplyClipToRestingState(
@@ -76,6 +75,7 @@ namespace VF.Service {
 
         [FeatureBuilderAction]
         public void Apply() {
+            if (!BuildTargetUtils.IsDesktop()) return;
             var usedNames = new HashSet<string>();
 
             var plugs = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>();

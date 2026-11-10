@@ -37,7 +37,8 @@ namespace VF.Service {
             legacyParameter = controllers.GetFx().CreateUniqueBool("legacy", def: options.legacyModeEnabledOnAvatarLoad);
             legacyParameter.MakeExpressionBool(saved: options.legacyModeSaved);
             legacyOnClip = VFClip.Create("Turn on SPS Legacy compatibility");
-            trees.Create("SPS Legacy").Add(BlendtreeMath.GreaterThan(legacyParameter, 0).create(legacyOnClip, null));
+            if (BuildTargetUtils.IsDesktop())
+                trees.Create("SPS Legacy").Add(BlendtreeMath.GreaterThan(legacyParameter, 0).create(legacyOnClip, null));
             return legacyParameter;
         }
 

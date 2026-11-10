@@ -72,12 +72,14 @@ namespace VF.Service {
             VFClip autoOnClip = null;
             if (enableAuto) {
                 autoOn = spsOptions.GetAutoParameter();
-                autoOnClip = clipFactory.NewClip("Enable SPS Auto Contacts");
-                var directTree = directTreeService.Create($"Auto Mode Toggle");
-                directTree.Add(
-                    BlendtreeMath.GreaterThan(fx.IsLocal(), 0, name: "SPS: Auto Contacts").And(
-                    BlendtreeMath.GreaterThan(autoOn, 0, name: "When Local")
-                ).create(autoOnClip, null));
+                if (BuildTargetUtils.IsDesktop()) {
+                    autoOnClip = clipFactory.NewClip("Enable SPS Auto Contacts");
+                    var directTree = directTreeService.Create($"Auto Mode Toggle");
+                    directTree.Add(
+                        BlendtreeMath.GreaterThan(fx.IsLocal(), 0, name: "SPS: Auto Contacts").And(
+                            BlendtreeMath.GreaterThan(autoOn, 0, name: "When Local")
+                        ).create(autoOnClip, null));
+                }
             }
 
             var hasSockets = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any();

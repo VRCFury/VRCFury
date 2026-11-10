@@ -29,6 +29,7 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
         public void Validate() {
+            if (!BuildTargetUtils.IsDesktop()) return;
             foreach (var request in requests) {
                 throw new Exception($"Cannot inject parameter '{request.sourceParam}' from "
                     + $"'{request.sourceObject?.GetDebugPath() ?? "(missing object)"}' into '{request.resolvedParam}': "

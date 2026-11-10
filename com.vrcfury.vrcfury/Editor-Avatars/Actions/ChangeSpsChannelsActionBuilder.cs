@@ -24,7 +24,7 @@ namespace VF.Actions {
             var content = new VisualElement();
             var target = prop.FindPropertyRelative("target");
             content.Add(VRCFuryEditorUtils.Prop(target, "Socket / Plug"));
-            content.Add(VRCFuryEditorUtils.Warn("Adds several more contacts: a separate set of senders and receivers is needed for these channels."));
+            content.Add(VRCFuryEditorUtils.Warn("Warning: This action adds SEVERAL additional contacts per channel change. Use sparingly."));
             content.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 var obj = target.objectReferenceValue as UnityEngine.GameObject;
                 if (obj == null || (obj.GetComponent<VRCFuryHapticPlug>() != null ? 1 : 0)
