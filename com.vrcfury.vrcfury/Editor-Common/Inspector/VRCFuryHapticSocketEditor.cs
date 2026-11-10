@@ -103,7 +103,7 @@ namespace VF.Inspector {
                 if (addLightProp.enumValueIndex == noneIndex) return new VisualElement();
                 var output = new VisualElement();
 
-                var section = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "Plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
+                var section = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "SPS3 plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
                 var modeField = new PopupField<string>(
                     new List<string>() { "Auto", "Hole", "Ring", "One-Way Ring (Uncommon)" },
                     addLightProp.enumValueIndex == 4 ? 3 : addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0
@@ -129,8 +129,11 @@ namespace VF.Inspector {
                 ));
                 output.Add(section);
 
-                var legacySupport = VRCFuryEditorUtils.Section("Legacy Compatibility",
-                    "SPS1/DPS/TPS plugs will deform toward this socket\nUses Lights");
+                var legacySupport = VRCFuryEditorUtils.Section(
+                    "Legacy Compatibility",
+                    "DPS/TPS/SPS1/SPS2 plugs will deform toward this socket\n"
+                    + "when you have Legacy enabled in the SPS menu in-game"
+                );
                 legacySupport.Add(VRCFuryEditorUtils.Debug(refreshElement: () => {
                     if (target == null) return null;
                     var options = target.owner().GetComponentsInUploadRoot<VRCFury>()
@@ -138,8 +141,8 @@ namespace VF.Inspector {
                         .OfType<SpsOptions>()
                         .FirstOrDefault();
                     return options != null && !options.legacyModeAvailable
-                        ? VRCFuryEditorUtils.Warn("Legacy plug compatibility is disabled in SPS Options. These settings will have no effect. Enable 'DPS/TPS/SPS1/SPS2 Plugs' under Legacy Compatibility to use them.")
-                        : null;
+                        ? VRCFuryEditorUtils.Warn("Legacy plug compatibility is disabled in SPS Options. These settings will have no effect. You can enable 'DPS/TPS/SPS1/SPS2 Plugs' in the SPS Options component if you want to remain compatible with them.")
+                        : VRCFuryEditorUtils.Info("You can disable legacy plug compatibility and remove its lights by adding an SPS Options component on the avatar root.");
                 }));
                 var overrideLegacySocketType = serializedObject.FindProperty("overrideLegacySocketType");
                 legacySupport.Add(VRCFuryEditorUtils.BetterProp(
@@ -175,6 +178,7 @@ namespace VF.Inspector {
                     );
                 }, overrideLegacyOffset));
                 output.Add(legacySupport);
+
 
                 return output;
             }, addLightProp));

@@ -39,18 +39,6 @@ namespace VF.Inspector {
             }
         }
 
-        static Vector3 DrawColoredHandle(Vector3 position, Color color) {
-            var oldColor = Handles.color;
-            Handles.color = color;
-            var size = HandleUtility.GetHandleSize(position) * 0.5f;
-            var result = position;
-            result = Handles.Slider(result, Vector3.right, size, Handles.ArrowHandleCap, 0);
-            result = Handles.Slider(result, Vector3.up, size, Handles.ArrowHandleCap, 0);
-            result = Handles.Slider(result, Vector3.forward, size, Handles.ArrowHandleCap, 0);
-            Handles.color = oldColor;
-            return result;
-        }
-
         static Vector3 GetDefaultTangentOut(TransformData start, TransformData end) {
             var distance = Vector3.Distance(start.position, end.position) * 0.5f;
             return start.position - start.TransformDirection(Vector3.forward) * distance;
@@ -77,18 +65,20 @@ namespace VF.Inspector {
             VRCFuryGizmoUtils.DrawArrow(worldPos, worldPos + worldUp * 0.02f, color);
         }
 
-        static string GetSocketText(VRCFuryHapticSocket.AddLight type, string name) {
+        static string GetSocketText(VRCFuryHapticSocket.AddLight type, string name, string system = "SPS") {
             var orange = new Color(1f, 0.5f, 0);
             var text = "SPS Socket";
             if (!string.IsNullOrWhiteSpace(name)) text += $" '{name}'";
             if (!BuildTargetUtils.IsDesktop()) {
                 text += " (Deformation Disabled)\nThis is an Android/iOS project!";
             } else if (type == VRCFuryHapticSocket.AddLight.Hole) {
-                text += " (Hole)\nPlug follows orange arrow";
+                text += $" (Hole)\n{(system == "SPS3" ? "SPS3 plug" : "Plug")} follows orange arrow";
             } else if (type == VRCFuryHapticSocket.AddLight.Ring) {
-                text += " (Ring)\nSPS enters either direction\nDPS/TPS only follow orange arrow";
+                text += system == "SPS3"
+                    ? " (Ring)\nSPS3 plug enters either direction"
+                    : $" (Ring)\n{system} enters either direction\nDPS/TPS only follow orange arrow";
             } else if (type == VRCFuryHapticSocket.AddLight.RingOneWay) {
-                text += " (One-Way Ring)\nPlug follows orange arrow";
+                text += $" (One-Way Ring)\n{(system == "SPS3" ? "SPS3 plug" : "Plug")} follows orange arrow";
             } else {
                 text += " (Deformation disabled)";
             }
@@ -187,6 +177,8 @@ namespace VF.Inspector {
             var socketTransformWorld = new TransformData(owner) * new TransformData(data.pos, data.rot);
             var worldStart = socketTransformWorld.position;
             var worldRotation = owner.worldRotation * data.rot;
+            var showLegacyOffset = data.useLegacyLights && data.overrideLegacyOffset
+                && (!EditorApplication.isPlaying || (data.legacyLights != null && data.legacyLights.activeInHierarchy));
             if (guidedPathStops.Count > 0 && data.type != VRCFuryHapticSocket.AddLight.None) {
                 DrawGizmo(
                     worldStart,
@@ -199,7 +191,7 @@ namespace VF.Inspector {
                 if (owner.IsSelected()) {
                     VRCFuryGizmoUtils.DrawText(
                         worldStart,
-                        "\n" + GetSocketText(VRCFuryHapticSocket.AddLight.RingOneWay, data.name),
+                        "\n" + GetSocketText(VRCFuryHapticSocket.AddLight.RingOneWay, data.name, showLegacyOffset ? "SPS3" : "SPS"),
                         Color.gray,
                         true,
                         true
@@ -244,7 +236,7 @@ namespace VF.Inspector {
                 if (owner.IsSelected()) {
                     VRCFuryGizmoUtils.DrawText(
                         worldStart,
-                        "\n" + GetSocketText(data.type, data.name),
+                        "\n" + GetSocketText(data.type, data.name, showLegacyOffset ? "SPS3" : "SPS"),
                         Color.gray,
                         true,
                         true
@@ -252,14 +244,13 @@ namespace VF.Inspector {
                 }
             }
 
-            if (data.useLegacyLights && data.overrideLegacyOffset
-                && (!EditorApplication.isPlaying || (data.legacyLights != null && data.legacyLights.activeInHierarchy))) {
+            if (showLegacyOffset) {
                 var legacyOrigin = socketTransformWorld.TransformPoint(data.legacyOffsetLocal);
                 DrawGizmo(legacyOrigin, worldRotation, data.legacyType, false, Color.yellow, Color.yellow);
                 if (owner.IsSelected()) {
                     VRCFuryGizmoUtils.DrawText(
                         legacyOrigin,
-                        "\nLegacy " + GetSocketText(data.legacyType, ""),
+                        "\nLegacy " + GetSocketText(data.legacyType, "", "SPS1/SPS2").Replace("SPS Socket", "SPS Socket Override"),
                         Color.yellow,
                         true,
                         true
@@ -271,6 +262,8 @@ namespace VF.Inspector {
         internal static void DrawEditableLegacyOffset(VRCFuryHapticSocket socket) {
             if (socket == null) return;
             if (!socket.overrideLegacyOffset) return;
+            if (Tools.hidden || EditorUtility.IsPersistent(socket)) return;
+            if (Tools.current != Tool.Move && Tools.current != Tool.Transform) return;
 
             var owner = socket.owner();
             var socketTransformWorld = new TransformData(owner)
@@ -278,7 +271,10 @@ namespace VF.Inspector {
 
             EditorGUI.BeginChangeCheck();
             var offsetWorld = socketTransformWorld.TransformPoint(socket.legacyOffsetLocal);
-            var newOffsetWorld = DrawColoredHandle(offsetWorld, Color.yellow);
+            var handleRotation = Tools.pivotRotation == PivotRotation.Local
+                ? socketTransformWorld.rotation
+                : Quaternion.identity;
+            var newOffsetWorld = Handles.PositionHandle(offsetWorld, handleRotation);
             if (EditorGUI.EndChangeCheck()) {
                 Undo.RecordObject(socket, "Move SPS Legacy Light Offset");
                 socket.legacyOffsetLocal = socketTransformWorld.InverseTransformPoint(newOffsetWorld);
