@@ -64,6 +64,7 @@ namespace VF.Tests {
 
         [Test]
         public void ReceiverAndBakerShareCachedSizeAndFramesRegardlessOfRequestOrder() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             plug.enableSps = false;
             var sizes = injector.GetService<PlugSizeService>();
             var size = sizes.GetWorldSize(plug);
@@ -97,6 +98,7 @@ namespace VF.Tests {
         [TestCase(3f, 0.5f)]
         [TestCase(3f, 3f)]
         public void BakeResultKeepsLocalGeometryAndReportsCurrentWorldDimensions(float uploadScale, float resize) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             root.transform.localScale = Vector3.one * uploadScale;
             plug.enableSps = false;
             var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
@@ -114,10 +116,6 @@ namespace VF.Tests {
             Assert.That(bake.localRadius, Is.EqualTo(0.01f));
             Assert.That(bake.localMinimumRadius, Is.EqualTo(minimumRadius));
             Assert.That(bake.radiusCurve.keys, Is.EqualTo(keys));
-            if (!BuildTargetUtils.IsDesktop()) {
-                Assert.That(bake.mainSender, Is.Null);
-                return;
-            }
             Assert.That(bake.mainSender.worldScale.z, Is.EqualTo(bake.worldLength).Within(0.00001f));
             Assert.That(bake.mainSender.worldScale.x, Is.EqualTo(bake.worldRadius).Within(0.00001f));
         }

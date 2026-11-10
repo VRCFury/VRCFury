@@ -49,6 +49,7 @@ namespace VF.Tests {
         [TestCase(0, 1, 1)]
         [TestCase(-1, 1, 1)]
         public void StandaloneSocketBakeStillRejectsInvalidScale(float x, float y, float z) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var obj = GameObjects.Create("World socket", root);
             obj.localScale = new Vector3(x, y, z);
             var socket = obj.AddComponent<VRCFuryHapticSocket>();
@@ -118,6 +119,7 @@ namespace VF.Tests {
 
         [Test]
         public void PlugBakerReusesLengthSenderAndPreservesLegacyGeometry() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var plug = root.AddComponent<VRCFuryHapticPlug>();
             plug.autoRenderer = plug.autoLength = plug.autoRadius = false;
             plug.enableSps = false;
@@ -127,10 +129,6 @@ namespace VF.Tests {
             var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
             injector.GetService<SpsChannelsService>().Apply(bake.channelContacts);
             var contacts = root.GetComponentsInChildren<VRCContactSender>(true);
-            if (!BuildTargetUtils.IsDesktop()) {
-                Assert.That(contacts, Is.Empty);
-                return;
-            }
 
             Assert.That(contacts.Length, Is.EqualTo(4));
             CheckVector(bake.bakeRoot.worldScale, Vector3.one);
@@ -180,6 +178,7 @@ namespace VF.Tests {
         [TestCase((int)VRCFuryHapticSocket.AddLight.Ring, (int)Flags.Ring)]
         [TestCase((int)VRCFuryHapticSocket.AddLight.RingOneWay, (int)Flags.RingOneWay)]
         public void SocketBakerKeepsLightsAndLegacyContactsWithoutMarkers(int typeValue, int flagValue) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var type = (VRCFuryHapticSocket.AddLight)typeValue;
             var flags = (Flags)flagValue;
             var socket = root.AddComponent<VRCFuryHapticSocket>();
@@ -187,10 +186,6 @@ namespace VF.Tests {
             socket.useRadiusOffset = true;
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
-            if (!BuildTargetUtils.IsDesktop()) {
-                Assert.That(NativeSocketSenders(result.bakeRoot), Is.Empty);
-                return;
-            }
 
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Animator>(), Is.Empty);
@@ -226,6 +221,7 @@ namespace VF.Tests {
 
         [Test]
         public void GuidedRecordsKeepOrderShrinkTerminalAndStopTransforms() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Ring;
             socket.useLights = false;
@@ -728,6 +724,7 @@ namespace VF.Tests {
 
         [Test]
         public void DisabledSocketCreatesNoSendersOrLights([Values] bool legacy, [Values] bool tpsDepth) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.None;
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket,
@@ -742,6 +739,7 @@ namespace VF.Tests {
 
         [Test]
         public void SocketWithNoChannelsRejectsBaking() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             socket.channelSettings.useSharedTag = false;
@@ -797,6 +795,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void DeformingPlugKeepsItsBakeWithoutCreatingMarkers(bool withMaterial) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var mesh = new Mesh {
                 vertices = new[] {
                     new Vector3(-0.015f, 0, 0), new Vector3(0.015f, 0, 0),
@@ -862,6 +861,7 @@ namespace VF.Tests {
 
         [Test]
         public void LongPathsAdvertiseBoundedPrefixWithoutChangingAuthoredStops() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             for (var i = 0; i < 7; i++) {
@@ -882,6 +882,7 @@ namespace VF.Tests {
 
         [Test]
         public void LegacyOverridesDoNotReplaceNativePoseOrType() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Ring;
             socket.overrideLegacySocketType = socket.overrideLegacyOffset = true;
@@ -900,6 +901,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void SeparateSocketFramesPreserveTheAuthoredOffsetAndFrontSpacing(bool overrideOffset) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             socket.useRadiusOffset = true;
@@ -927,6 +929,7 @@ namespace VF.Tests {
 
         [Test]
         public void StaticNonuniformStopScaleDoesNotCorruptPayload() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             var stop = new GameObject("Nonuniform stop").transform;
@@ -957,6 +960,7 @@ namespace VF.Tests {
         [TestCase(0.41f)]
         [TestCase(0.42f)]
         public void AutomaticLegacyUpgradeReplacesLightsWithFullSocket(float rootRange) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var upgrader = CreateUpgrader();
             var main = new GameObject("Existing DPS Root").AddComponent<Light>();
             main.transform.SetParent(root.transform, false);

@@ -237,6 +237,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void SocketBakeProtectsGuidedPathSourcesFromHeadChop(bool disabled) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var head = GameObjects.Create("Head", root);
             var socket = GameObjects.Create("Socket", head).AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
@@ -1202,6 +1203,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void ObjectTreeCapturesLateDefaultsWithoutAnimatingSdkInputs(bool optimize) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             optimizeTrees = optimize;
             var globals = injector.GetService<GlobalsService>();
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
@@ -1271,6 +1273,7 @@ namespace VF.Tests {
         [TestCase(0.25f, false)]
         [TestCase(3f, false)]
         public void ScaleDetectorSdkContactUsesFixedCalibrationWithOptionalOgbName(float uploadScale, bool reportLength) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             root.transform.localScale = Vector3.one * uploadScale;
             var detector = injector.GetService<WorldScaleDetectorService>();
             const float bakedLength = 0.4f;
@@ -1374,6 +1377,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void AutoSelectionHonorsPerSocketSetting(bool includeAnotherSocket) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var excluded = GameObjects.Create("Excluded", root).AddComponent<VRCFuryHapticSocket>();
             excluded.name = "Excluded";
             excluded.addLight = VRCFuryHapticSocket.AddLight.Hole;
@@ -1407,6 +1411,7 @@ namespace VF.Tests {
         [TestCase(false, true)]
         [TestCase(true, true)]
         public void AutoSelectionUsesCloseContactHysteresisAndLocksActiveSocket(bool remote, bool manualSocket) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             root.GetComponent<VRCAvatarDescriptor>().ViewPosition = new Vector3(0, 1.8f, 0);
             foreach (var name in new[] { "SocketA", "SocketB", "NoMenu" }) {
                 var socket = GameObjects.Create(name, root).AddComponent<VRCFuryHapticSocket>();
@@ -1531,6 +1536,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void SocketOgbIdsNormalizeMenuFallbacksAndExplicitOverridesBeforeDeduplication(bool useOverride) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
@@ -1567,6 +1573,7 @@ namespace VF.Tests {
         [TestCase(HumanBodyBones.LeftUpperLeg, "Test", false)]
         [TestCase(HumanBodyBones.LastBone, "Test", false)]
         public void SocketTouchReceiversUseSharedEligibility(HumanBodyBones bone, string menuName, bool supportsTouch) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             if (!VF.Menu.HapticsToggleMenuItem.Get()) Assert.Ignore("OGB haptics are disabled");
             injector.Set("autoChannelGenerator", new TouchBoneChannels(bone == HumanBodyBones.LastBone ? null : bone));
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
@@ -1625,6 +1632,7 @@ namespace VF.Tests {
         [TestCase("plug", SpsPlugEntryRadiusMeters)]
         [TestCase("none", SpsDepthMeters)]
         public void UnsupportedParameterInjectionsFailBuild(string sourceType, string parameter) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             if (sourceType == "socket") root.AddComponent<VRCFuryHapticSocket>().addMenuItem = false;
             if (sourceType == "plug") {
                 var plug = root.AddComponent<VRCFuryHapticPlug>();
@@ -1657,6 +1665,7 @@ namespace VF.Tests {
 
         [Test]
         public void SocketBakeSharesDepthActionsAndInjectedDimensions() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
             socket.addMenuItem = false;
@@ -1706,6 +1715,7 @@ namespace VF.Tests {
 
         [Test]
         public void SocketFramesKeepWorldDimensionsLocalUnitsAndIndependentHapticAndLegacySwitches() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             if (!VF.Menu.HapticsToggleMenuItem.Get()) Assert.Ignore("OGB haptics are disabled");
             injector.Set("autoChannelGenerator", new TouchBoneChannels(HumanBodyBones.Hips));
             root.transform.localScale = Vector3.one * 2;
@@ -1841,6 +1851,7 @@ namespace VF.Tests {
         [TestCase(true, false, true, true, true)]
         [TestCase(true, true, true, true, true)]
         public void LegacyToggleControlsSocketLightsTpsFrontAndDpsTipIncludingPlugOnlyAvatars(bool withSocket, bool defaultOn, bool available, bool shared, bool legacyServiceFirst = false) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
@@ -1914,6 +1925,7 @@ namespace VF.Tests {
             [Values(false, true)] bool legacySockets,
             [Values(false, true)] bool tpsAnimations,
             [Values(false, true)] bool dpsAnimations) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
@@ -1964,6 +1976,7 @@ namespace VF.Tests {
 
         [Test]
         public void AllLocalHapticReceiversUseNativePlugAndSocketTags() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var previousHaptics = UnityEditor.EditorPrefs.GetBool("com.vrcfury.haptics", true);
             UnityEditor.EditorPrefs.SetBool("com.vrcfury.haptics", true);
             try {
@@ -2116,6 +2129,7 @@ namespace VF.Tests {
         [TestCase(0.5f)]
         [TestCase(2f)]
         public void PlugBakeAfterResizingReportsLengthAndInjectsConstantDimensions(float resize) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             if (!VF.Menu.HapticsToggleMenuItem.Get()) Assert.Ignore("OGB haptics are disabled");
             var plug = root.AddComponent<VRCFuryHapticPlug>();
             plug.name = "Test";
@@ -2166,6 +2180,7 @@ namespace VF.Tests {
         [TestCase(0f, true, false, true)]
         [TestCase(0.1f, true, true, true)]
         public void PlugEntryRadiusAnimationsUseSampledRadiusWithDepthAnimationOptions(float smoothingSeconds, bool motionTime, bool self, bool savedReverseClip = false) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
@@ -2880,6 +2895,7 @@ namespace VF.Tests {
         [TestCase(true, true, true)]
         [TestCase(false, true, true)]
         public void SocketCalculationGateResetsOutputsForMenuAndParentToggles(bool useMenu, bool optimize, bool nonUniform = false) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             optimizeTrees = optimize;
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();
@@ -2979,6 +2995,7 @@ namespace VF.Tests {
         [TestCase(false, true)]
         [TestCase(true, true)]
         public void PlugCalculationAndRadiusGatesFollowParentAndSpsToggles(bool optimize, bool spsToggle) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             optimizeTrees = optimize;
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();

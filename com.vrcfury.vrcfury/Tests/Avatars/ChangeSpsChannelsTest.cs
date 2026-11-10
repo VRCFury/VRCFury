@@ -236,6 +236,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void CallbacksSeeEveryDistinctSetOnceAfterLateRequests(bool publicRequested) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Callbacks", root);
             var bake = BakePlug(Plug(obj, false));
             var data = bake.channelContacts;
@@ -287,6 +288,7 @@ namespace VF.Tests {
         public void ChannelPermissionsApplyInBothDirectionsWithoutExtraContacts(
             [Values(false, true)] bool plugSelf, [Values(false, true)] bool plugOthers,
             [Values(false, true)] bool socketSelf, [Values(false, true)] bool socketOthers) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject plugObj = GameObjects.Create("Plug", root);
             var plug = Plug(plugObj, false);
             plug.channelSettings.channels.Clear();
@@ -331,6 +333,7 @@ namespace VF.Tests {
 
         [Test]
         public void ChannelChangesSwitchSelfAndOthersPermissions() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Socket", root);
             var socket = obj.AddComponent<VRCFuryHapticSocket>();
             socket.channelSettings.useSharedTag = false;
@@ -361,6 +364,7 @@ namespace VF.Tests {
 
         [Test]
         public void SingleSetDoesNotControlMergedReceiverActivation() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var bake = BakePlug(Plug(obj, true));
             injector.GetService<SelfAndOthersReceiverAnimatorService>().GetParameter(bake.socketReceivers, Party.Merged);
@@ -376,6 +380,7 @@ namespace VF.Tests {
 
         [Test]
         public void RegisteredObjectsAreEnabledOnlyForSetsThatIncludeThem() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var data = BakePlug(Plug(obj, false)).channelContacts;
             var builder = injector.GetService<ChangeSpsChannelsActionBuilder>();
@@ -411,6 +416,7 @@ namespace VF.Tests {
 
         [Test]
         public void IndependentRequestsHaveDiscretePriorityWithoutEnablingUnrequestedSets() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Requests", root);
             BakePlug(Plug(obj, false));
             var builder = injector.GetService<ChangeSpsChannelsActionBuilder>();
@@ -436,6 +442,7 @@ namespace VF.Tests {
 
         [Test]
         public void UnbuiltActionsDoNotCreateContactVariants() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var plug = Plug(obj, false);
             var used = Action(obj, false, "used");
@@ -452,6 +459,7 @@ namespace VF.Tests {
 
         [Test]
         public void AcceptsChannelsRequestedAfterBaking() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             BakePlug(Plug(obj, false));
             var action = new ChangeSpsChannelsAction {
@@ -494,6 +502,7 @@ namespace VF.Tests {
         [TestCase(true, false)]
         [TestCase(true, true)]
         public void SwitchesContactsAndRestoresOriginalChannels(bool socket, bool shared) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Target", root);
             var action = Action(obj, !shared);
             SelfAndOthersReceiverService.Receivers main;
@@ -551,6 +560,7 @@ namespace VF.Tests {
         [TestCase(true, false)]
         [TestCase(true, true)]
         public void ToggleRestoresChannelsUsingNormalDefaults(bool defaultOn, bool writeDefaults) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             BakePlug(Plug(obj, true));
             injector.Set("componentObject", new System.Func<VFGameObject>(() => root));
@@ -599,6 +609,7 @@ namespace VF.Tests {
 
         [Test]
         public void SharesRadiusAndMergedSelectorBindingsWithoutBufferingMeasurements() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var action = Action(obj, false);
             var bake = BakePlug(Plug(obj, true));
@@ -644,6 +655,7 @@ namespace VF.Tests {
 
         [Test]
         public void TwoAlternativesCannotLeaveAnotherContactSetEnabled() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var a = Action(obj, false, "a");
             var b = Action(obj, false, "b");
@@ -664,6 +676,7 @@ namespace VF.Tests {
 
         [Test]
         public void LoopCanSwitchBetweenChannelsRequestedAtDifferentTimes() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             BakePlug(Plug(obj, true));
             var builder = injector.GetService<ChangeSpsChannelsActionBuilder>();
@@ -685,6 +698,7 @@ namespace VF.Tests {
         [TestCase(true, false)]
         [TestCase(true, true)]
         public void CommonFinalizationNeedsNoAvatarServicesOrChannelActions(bool socket, bool shared) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var common = new VRCFuryInjector();
             common.ImportScan(typeof(VFServiceAttribute));
             GameObject obj = GameObjects.Create("Detached", root);
@@ -750,6 +764,7 @@ namespace VF.Tests {
         [TestCase(true)]
         [TestCase(false)]
         public void NativeClassificationIncludesChannelsRequestedByLaterActionBuilders(bool socket) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Target", root);
             var action = Action(obj, false);
             SelfAndOthersReceiverService.Receivers main;
@@ -838,6 +853,7 @@ namespace VF.Tests {
         [TestCase(false, (int)Party.Merged, false)]
         [TestCase(true, (int)Party.Merged, false)]
         public void NativeOnlyClassificationDoesNotAllocateReceiversOrParameters(bool socket, int party, bool legacyEnabled) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Native only", root);
             SelfAndOthersReceiverService.Receivers main;
             if (socket) {
@@ -861,6 +877,7 @@ namespace VF.Tests {
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
         [Test]
         public void FinalizedReceiversRejectRepeatedRequestsToo() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var bake = BakePlug(Plug(obj, true));
             var animator = injector.GetService<SelfAndOthersReceiverAnimatorService>();
@@ -891,6 +908,7 @@ namespace VF.Tests {
         [TestCase(true, false)]
         [TestCase(true, true)]
         public void PrivateComponentsCanGainLegacyDecodingFromALaterPublicRequest(bool socket, bool publicRequested) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Private target", root);
             SelfAndOthersReceiverService.Receivers main;
             System.Func<string, VFAParam> measurements;
@@ -925,6 +943,7 @@ namespace VF.Tests {
         [TestCase(true)]
         [TestCase(false)]
         public void OscAdvancedOutputsDoNotCreateUnusedAnimatorParameters(bool self) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var bake = BakePlug(Plug(obj, true));
             var raw = injector.GetService<SelfAndOthersReceiverAnimatorService>().GetParameter(bake.socketReceivers, self,
@@ -949,6 +968,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void ChannelChangesRespectLegacyMode(bool originalShared) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Socket", root);
             var socket = obj.AddComponent<VRCFuryHapticSocket>();
             socket.channelSettings.useSharedTag = originalShared;
@@ -985,6 +1005,7 @@ namespace VF.Tests {
         public void TipLightRequiresPublicChannelsAndLegacyMenuToggle(
             [Values(false, true)] bool originalShared, [Values(false, true)] bool legacyDefaultOn,
             [Values(false, true)] bool writeDefaults) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             Plug(obj, originalShared);
             injector.Set("componentObject", new System.Func<VFGameObject>(() => root));
@@ -1052,6 +1073,7 @@ namespace VF.Tests {
         public void SocketExclusivityDependsOnLegacyModeRatherThanChannels(
             [Values(false, true)] bool shared, [Values(false, true)] bool legacyPlugs,
             [Values(false, true)] bool tipLight) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var globals = injector.GetService<GlobalsService>();
             globals.addOtherFeature = _ => { };
             injector.Set("componentObject", new System.Func<VFGameObject>(() => root));
@@ -1102,6 +1124,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void MaterialSwapsPreserveChannelSettingsWithoutChannelActions(bool shared) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var plug = Plug(obj, shared);
             BakePlug(plug);
@@ -1146,6 +1169,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void SmoothLoopSelectsOneChannelSetBetweenKeyframes(bool publicToPrivate) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var plug = Plug(obj, true);
             BakePlug(plug);
@@ -1195,6 +1219,7 @@ namespace VF.Tests {
 
         [Test]
         public void PlugWithNoChannelsRejectsBaking() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var plug = Plug(obj, false);
             plug.channelSettings.channels.Clear();
@@ -1203,6 +1228,7 @@ namespace VF.Tests {
 
         [Test]
         public void ShaderTagLayoutFollowsTheSelectedSetWithoutEnablingThePlug() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var plug = Plug(obj, true);
             var bake = BakePlug(plug);

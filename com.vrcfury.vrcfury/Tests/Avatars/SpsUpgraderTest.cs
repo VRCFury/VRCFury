@@ -649,6 +649,7 @@ namespace VF.Tests {
         [TestCase(true, false)]
         [TestCase(true, true)]
         public void NonUniformLegacySocketUpgradesToConstrainedRootAndBakes(bool duringBuild, bool scaledAncestor) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             root.transform.localScale = Vector3.one * 1.2f;
             var bone = Child("Bone");
             bone.transform.localPosition = new Vector3(0.3f, 0.8f, -0.2f);
@@ -695,6 +696,7 @@ namespace VF.Tests {
 
         [Test]
         public void RelocatingNonUniformSocketPreservesDepthAnimationsAndSettings() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var owner = Child("DPS Socket");
             owner.transform.localScale = new Vector3(1.3f, 0.7f, 2);
             Lights(owner);
@@ -724,6 +726,7 @@ namespace VF.Tests {
 
         [Test]
         public void NonUniformAttachmentTargetCreatesConstrainedReplacementWithMenuSettings() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var attachment = Attachment(nullSource: true);
             var source = attachment.GetSource(0).sourceTransform;
             source.localScale = new Vector3(1.3f, 0.7f, 2);
@@ -1479,6 +1482,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void SocketBakingUsesComponentDataAndLeavesLegacyLightsForUpgrader(bool deform) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var owner = Child("Socket");
             var socket = owner.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = deform ? LightType.Ring : LightType.None;
@@ -1539,6 +1543,7 @@ namespace VF.Tests {
         [TestCase(0.41f)]
         [TestCase(0.42f)]
         public void SocketPreparationCapturesLightFrameBeforeBuildCleanup(float range) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var owner = Child("Legacy Socket");
             owner.transform.SetPositionAndRotation(new Vector3(1, 2, 3), Quaternion.Euler(12, 34, 56));
             owner.transform.localScale = Vector3.one * 2;

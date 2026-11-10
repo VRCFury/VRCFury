@@ -29,12 +29,15 @@ namespace VF.Hooks.UnityFixes {
             public static readonly HarmonyUtils.PatchObj Rebuild = HarmonyUtils.Patch(
                 typeof(CacheBlendTreeEditorParameterRangesHook), nameof(Clear),
                 "UnityEditor.Graphs.AnimationBlendTree.Graph", "BuildFromBlendTree");
+            // Unity 6 inherits this method from GraphGUI instead of declaring it on the blendtree GUI.
+            public static readonly Type LabelOwner = ReflectionUtils.GetTypeFromAnyAssembly(
+                "UnityEditor.Graphs.AnimationBlendTree.GraphGUI")?.VFMethod("LimitStringWidth")?.DeclaringType;
             public static readonly HarmonyUtils.PatchObj LabelPrefix = HarmonyUtils.Patch(
                 typeof(CacheBlendTreeEditorParameterRangesHook), nameof(LabelPrefix),
-                "UnityEditor.Graphs.AnimationBlendTree.GraphGUI", "LimitStringWidth");
+                LabelOwner, "LimitStringWidth");
             public static readonly HarmonyUtils.PatchObj LabelPostfix = HarmonyUtils.Patch(
                 typeof(CacheBlendTreeEditorParameterRangesHook), nameof(LabelPostfix),
-                "UnityEditor.Graphs.AnimationBlendTree.GraphGUI", "LimitStringWidth", HarmonyUtils.PatchMode.Postfix);
+                LabelOwner, "LimitStringWidth", HarmonyUtils.PatchMode.Postfix);
         }
 
         private static ConditionalWeakTable<BlendTree, Dictionary<int, (string name, float min, float max)>> cache = new();
