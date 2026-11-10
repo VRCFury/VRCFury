@@ -202,5 +202,54 @@ namespace VF.Tests {
                 }
             } finally { graphType.VFMethod("Clear").Invoke(graph, new object[] { true }); }
         }
+
+        [Test]
+        public void SceneAnimatorParameterLookupTracksLiveValuesControllerReplacementAndRebinding() {
+            var animator = Own(new GameObject("Scene parameter list")).AddComponent<Animator>();
+            var controller = Controller();
+            animator.runtimeAnimatorController = controller;
+            animator.Update(0);
+            animator.SetFloat("Value", 0.3f);
+            Assert.That(animator.GetFloat("Value"), Is.EqualTo(0.3f));
+            animator.SetFloat("Value", 0.7f);
+            animator.SetInteger("Number", 12);
+            animator.SetBool("Enabled", true);
+            Assert.That(animator.GetFloat("Value"), Is.EqualTo(0.7f), "Only metadata may be cached, not values");
+            Assert.That(animator.GetInteger("Number"), Is.EqualTo(12));
+            Assert.That(animator.GetBool("Enabled"), Is.True);
+            Assert.That(animator.IsParameterControlledByCurve("Value"), Is.False);
+            Assert.That(animator.GetFloat("Missing"), Is.Zero, "Missing parameters must not produce native warnings");
+            animator.SetFloat("Missing", 1);
+
+            var replacement = Controller();
+            var parameters = replacement.parameters;
+            parameters[0].name = "Replacement";
+            replacement.parameters = parameters;
+            animator.runtimeAnimatorController = replacement;
+            animator.Update(0);
+            animator.SetFloat("Replacement", 0.8f);
+            Assert.That(animator.GetFloat("Replacement"), Is.EqualTo(0.8f), "Same-size controller replacement must invalidate metadata");
+            Assert.That(animator.GetFloat("Value"), Is.Zero);
+
+            replacement.AddParameter("Added", AnimatorControllerParameterType.Float);
+            animator.Rebind();
+            animator.Update(0);
+            animator.SetFloat("Added", 0.9f);
+            Assert.That(animator.GetFloat("Added"), Is.EqualTo(0.9f), "Rebinding after parameter changes must refresh metadata");
+        }
+
+        [Test]
+        public void SceneAnimatorParameterLookupPreservesAnimatedParameterStatus() {
+            var animator = Own(new GameObject("Animated parameter list")).AddComponent<Animator>();
+            var controller = Controller();
+            var clip = (AnimationClip)controller.layers[0].stateMachine.states[0].state.motion;
+            AnimationUtility.SetEditorCurve(clip, EditorCurveBinding.FloatCurve("", typeof(Animator), "Value"),
+                AnimationCurve.Constant(0, 1, 0.25f));
+            animator.runtimeAnimatorController = controller;
+            animator.Update(0);
+            Assert.That(animator.IsParameterControlledByCurve(Animator.StringToHash("Value")), Is.True);
+            Assert.That(animator.IsParameterControlledByCurve("Value"), Is.True);
+            Assert.That(animator.GetFloat("Value"), Is.EqualTo(0.25f));
+        }
     }
 }

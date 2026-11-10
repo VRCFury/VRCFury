@@ -49,6 +49,7 @@ namespace VF.Hooks.UnityFixes {
             }
             Scheduler.Schedule(() => {
                 previewedPlayableCache.Clear();
+                parameterHashCache.Clear();
             }, 0);
         }
 
@@ -215,16 +216,24 @@ namespace VF.Hooks.UnityFixes {
                 .ToArray();
         }
 
-        private static bool TryGetParameterNameHash(Animator animator, string name, out int hash) {
-            foreach (var p in animator.parameters) {
-                if (p.name == name) {
-                    hash = p.nameHash;
-                    return true;
-                }
-            }
+        private static readonly Dictionary<Animator, (RuntimeAnimatorController controller, int version, Dictionary<string, int> hashes)>
+            parameterHashCache = new();
 
+        private static bool TryGetParameterNameHash(Animator animator, string name, out int hash) {
             hash = -1;
-            return false;
+            if (name == null) return false;
+            var controller = animator.runtimeAnimatorController;
+            var version = controller != null ? EditorUtility.GetDirtyCount(controller) : 0;
+            if (!parameterHashCache.TryGetValue(animator, out var cached)
+                || cached.controller != controller || cached.version != version) {
+                // The live parameter list calls this twice per row. Scanning the whole native
+                // parameter array each time makes drawing the list quadratic in its size.
+                var hashes = new Dictionary<string, int>();
+                foreach (var parameter in animator.parameters) hashes[parameter.name] = parameter.nameHash;
+                cached = (controller, version, hashes);
+                parameterHashCache[animator] = cached;
+            }
+            return cached.hashes.TryGetValue(name, out hash);
         }
 
         private static void SetWithCoercion(AnimatorControllerPlayable playable, string name, float val) {
