@@ -1,13 +1,10 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using VF.Utils.Controller;
 
 namespace VF.Utils {
-    /**
-     * Collects the resting value for every animated property in an animator, and puts them all into a clip.
-     */
+    // Traverses animator graphs, including shared motions and additive reference poses.
     internal static class AnimatorIterator {
 
         public abstract class Iterator<T> {
@@ -22,7 +19,7 @@ namespace VF.Utils {
                 return new States().From(root).SelectMany(From).ToImmutableHashSet();
             }
 
-            public IImmutableSet<T> From(IEnumerable<VFLayer> layers) {
+            public virtual IImmutableSet<T> From(IEnumerable<VFLayer> layers) {
                 if (layers == null) return ImmutableHashSet<T>.Empty;
                 return layers.SelectMany(From).ToImmutableHashSet();
             }
@@ -33,53 +30,50 @@ namespace VF.Utils {
             }
         }
 
-        public static IImmutableSet<T> GetRecursive<T>(T root, Func<T, IEnumerable<T>> getChildren) {
-            var all = new HashSet<T>();
-            var stack = new Stack<T>();
-            stack.Push(root);
-            while (stack.Count > 0) {
-                var one = stack.Pop();
-                if (one == null) continue;
-                if (all.Contains(one)) continue;
-                all.Add(one);
-                foreach (var child in getChildren(one)) {
-                    stack.Push(child);
-                }
-            }
-            return all.ToImmutableHashSet();
-        }
-
         public class States : Iterator<VFState> {
             public override IImmutableSet<VFState> From(VFLayer root) {
                 return root.allStates.ToImmutableHashSet();
             }
         }
 
-        public class Motions : Iterator<VFMotion> {
-            public override IImmutableSet<VFMotion> From(VFMotion root) {
-                if (root == null) return ImmutableHashSet<VFMotion>.Empty;
-                return GetRecursive(root, motion => {
+        public abstract class MotionIterator<T> : Iterator<T> where T : VFMotion {
+            public override IImmutableSet<T> From(VFMotion root) {
+                if (root == null) return ImmutableHashSet<T>.Empty;
+                if (root is VFClip clip && clip.GetAdditiveReferencePoseClip() == null) {
+                    return root is T match ? ImmutableHashSet.Create(match) : ImmutableHashSet<T>.Empty;
+                }
+                return Collect(new[] { root });
+            }
+
+            public override IImmutableSet<T> From(VFLayer root) {
+                return Collect(root.allStates.Select(state => state?.motion));
+            }
+
+            public override IImmutableSet<T> From(IEnumerable<VFLayer> layers) {
+                if (layers == null) return ImmutableHashSet<T>.Empty;
+                return Collect(layers.SelectMany(layer => layer.allStates).Select(state => state?.motion));
+            }
+
+            private static IImmutableSet<T> Collect(IEnumerable<VFMotion> roots) {
+                var visited = new HashSet<VFMotion>();
+                var output = ImmutableHashSet.CreateBuilder<T>();
+                var stack = new Stack<VFMotion>(roots);
+                while (stack.Count > 0) {
+                    var motion = stack.Pop();
+                    if (motion == null || !visited.Add(motion)) continue;
+                    if (motion is T match) output.Add(match);
                     if (motion is VFTree tree) {
-                        return tree.children.Select(child => child.motion);
+                        foreach (var child in tree.children) stack.Push(child.motion);
+                    } else if (motion is VFClip clip) {
+                        stack.Push(clip.GetAdditiveReferencePoseClip());
                     }
-                    if (motion is VFClip clip) {
-                        return new VFMotion[] { clip.GetAdditiveReferencePoseClip() };
-                    }
-                    return Array.Empty<VFMotion>();
-                });
+                }
+                return output.ToImmutable();
             }
         }
 
-        public class Clips : Iterator<VFClip> {
-            public override IImmutableSet<VFClip> From(VFMotion root) {
-                return new Motions().From(root).OfType<VFClip>().ToImmutableHashSet();
-            }
-        }
-
-        public class Trees : Iterator<VFTree> {
-            public override IImmutableSet<VFTree> From(VFMotion root) {
-                return new Motions().From(root).OfType<VFTree>().ToImmutableHashSet();
-            }
-        }
+        public class Motions : MotionIterator<VFMotion> { }
+        public class Clips : MotionIterator<VFClip> { }
+        public class Trees : MotionIterator<VFTree> { }
     }
 }
