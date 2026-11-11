@@ -553,8 +553,9 @@ namespace VF.Utils.Controller {
                 void ProcessArray(string arrayPath) {
                     var array = so.FindProperty(arrayPath);
                     var length = array?.arraySize ?? 0;
-                    for (var i = 0; i < length; i++) {
-                        var element = array.GetArrayElementAtIndex(i);
+                    if (length == 0) return;
+                    var element = array.GetArrayElementAtIndex(0);
+                    for (var i = 0; i < length; i++, element.Next(false)) {
                         var rotationOrderProp = element.FindPropertyRelative("curve.m_RotationOrder");
                         if (rotationOrderProp == null || rotationOrderProp.propertyType != SerializedPropertyType.Integer) continue;
                         var rotationOrder = rotationOrderProp.intValue;
@@ -582,8 +583,9 @@ namespace VF.Utils.Controller {
                 void ProcessArray(string arrayPath) {
                     var array = so.FindProperty(arrayPath);
                     var length = array?.arraySize ?? 0;
-                    for (var i = 0; i < length; i++) {
-                        var element = array.GetArrayElementAtIndex(i);
+                    if (length == 0) return;
+                    var element = array.GetArrayElementAtIndex(0);
+                    for (var i = 0; i < length; i++, element.Next(false)) {
                         var pathProp = element.FindPropertyRelative("path");
                         if (pathProp == null || pathProp.propertyType != SerializedPropertyType.String) continue;
                         var path = pathProp.stringValue;
