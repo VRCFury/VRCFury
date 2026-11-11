@@ -80,37 +80,30 @@ namespace VF.Builder.Haptics {
                 var bakedMesh = MeshBaker.BakeMesh(renderer);
                 if (bakedMesh == null) continue;
                 var mask = plug != null ? PlugMaskGenerator.GetMask(renderer, plug) : null;
-                var matsUsedByVert = new VFMultimapSet<int, int>();
+                var rendererObject = renderer.owner();
+                var localToWorld = renderer.transform.localToWorldMatrix;
+                var usedVertices = new bool[bakedMesh.vertices.Length];
+                for (var i = 0; i < bakedMesh.vertices.Length; i++) {
+                    var v = inverseWorldRotation * (localToWorld.MultiplyPoint3x4(bakedMesh.vertices[i]) - worldPosition);
+                    if (!(mask.GetOrDefault(i, 1) > 0 && v.z > 0)) continue;
+                    usedVertices[i] = true;
+                    allLocalVerts.Add(v);
+                }
                 var mesh = renderer.GetMesh();
                 var matSlotsInMesh = 0;
                 if (mesh != null) {
                     var matCount = matSlotsInMesh = mesh.subMeshCount;
                     for (var matI = 0; matI < matCount; matI++) {
-                        foreach (var vert in mesh.GetTriangles(matI)) {
-                            matsUsedByVert.Put(vert, matI);
+                        if (mesh.GetTriangles(matI).Any(vert => usedVertices[vert])) {
+                            matsUsed.Put(rendererObject, matI);
                         }
                     }
                 }
 
-                var localVertsUsedInRenderer = bakedMesh.vertices
-                    .Select(vert => renderer.owner().TransformPoint(vert))
-                    .Select(v => inverseWorldRotation * (v - worldPosition))
-                    .Select((v, i) => {
-                        var isUsed = mask.GetOrDefault(i, 1) > 0;
-                        isUsed &= v.z > 0;
-                        return (v, i, isUsed);
-                    });
-                foreach (var (v, index, isUsed) in localVertsUsedInRenderer) {
-                    if (!isUsed) continue;
-                    foreach (var matI in matsUsedByVert.Get(index)) {
-                        matsUsed.Put(renderer.owner(), matI);
-                    }
-                    allLocalVerts.Add(v);
-                }
                 // Mat slots in the renderer that are higher than the number of mats on the mesh reuse the same verts as the last mesh mat
-                if (matsUsed.Get(renderer.owner()).Contains(matSlotsInMesh-1)) {
+                if (matsUsed.Get(rendererObject).Contains(matSlotsInMesh-1)) {
                     for (var i = matSlotsInMesh; i < renderer.sharedMaterials.Length; i++) {
-                        matsUsed.Put(renderer.owner(), i);
+                        matsUsed.Put(rendererObject, i);
                     }
                 }
             }

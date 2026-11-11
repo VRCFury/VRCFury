@@ -30,10 +30,11 @@ namespace VF.Builder.Haptics {
                         return ImmutableList<Renderer>.Empty;
                     }
 
+                    var children = current.GetSelfAndAllChildren().ToImmutableHashSet();
                     var bestRenderer = current.uploadRoots
                         .SelectMany(root => root.GetComponentsInSelfAndChildren<Renderer>())
                         .Where(r => !r.owner().IsSameOrChildOf(current))
-                        .Select(r => (r, GetVertsWeightedToBone(r, current)))
+                        .Select(r => (r, GetVertsWeightedToBone(r, children)))
                         .Where(pair => pair.Item2 > 0)
                         .OrderByDescending(pair => pair.Item2)
                         .Select(pair => pair.Item1)
@@ -77,12 +78,10 @@ namespace VF.Builder.Haptics {
             return ImmutableList.Create<Renderer>();
         }
 
-        private static long GetVertsWeightedToBone(Renderer r, VFGameObject bone) {
+        private static long GetVertsWeightedToBone(Renderer r, IImmutableSet<VFGameObject> children) {
             if (!(r is SkinnedMeshRenderer skin)) return 0;
             var mesh = skin.GetMesh();
             if (mesh == null) return 0;
-            var children = bone.GetSelfAndAllChildren()
-                .ToImmutableHashSet();
             var childrenBoneIds = skin.bones.Select((b, i) => (b, i))
                 // TODO: Verify .contains works when it's two different instances
                 .Where(pair => children.Contains(pair.b))

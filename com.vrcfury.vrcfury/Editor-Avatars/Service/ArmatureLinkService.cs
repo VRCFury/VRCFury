@@ -304,22 +304,24 @@ namespace VF.Service {
         private static void RewriteSkins(VFGameObject fromBone, VFGameObject toBone, VFGameObject avatarObject) {
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 // Update skins to use bones and bind poses from the original avatar
-                if (skin.bones.Contains((Transform)fromBone)) {
+                var bones = skin.bones;
+                if (bones.Contains((Transform)fromBone)) {
                     var mesh = skin.GetMutableMesh("Needed to change bone bind-poses for Armature Link to re-use bones on base armature");
                     if (mesh != null) {
-                        mesh.bindposes = skin.bones.Zip(mesh.bindposes)
-                            .Select(boneAndBindPose => {
-                                var bone = boneAndBindPose.Item1.asVf();
-                                var bindPose = boneAndBindPose.Item2;
-                                if (bone != fromBone) return bindPose;
-                                return toBone.worldToLocalMatrix * bone.localToWorldMatrix * bindPose;
-                            }) 
-                            .ToArray();
+                        var bindposes = mesh.bindposes;
+                        var length = Math.Min(bones.Length, bindposes.Length);
+                        var rewritten = new Matrix4x4[length];
+                        var transform = toBone.worldToLocalMatrix * fromBone.localToWorldMatrix;
+                        for (var i = 0; i < length; i++) {
+                            rewritten[i] = bones[i] == fromBone ? transform * bindposes[i] : bindposes[i];
+                        }
+                        mesh.bindposes = rewritten;
                     }
 
-                    skin.bones = skin.bones
-                        .Select(b => b == fromBone ? (Transform)toBone : b)
-                        .ToArray();
+                    for (var i = 0; i < bones.Length; i++) {
+                        if (bones[i] == fromBone) bones[i] = toBone;
+                    }
+                    skin.bones = bones;
                     skin.Dirty();
                 }
 
@@ -393,11 +395,14 @@ namespace VF.Service {
                 }
             }
 
+            var visitedParents = new HashSet<VFGameObject>();
             foreach (var used in reasons.GetKeys().ToArray()) {
-                foreach (var parent in used.GetSelfAndAllParents()) {
-                    if (parent != used && parent.IsSameOrChildOf(avatarObject)) {
-                        reasons.Put(parent, "A child object is used");
-                    }
+                if (used == avatarObject) continue;
+                for (var parent = used.parent; parent != null; parent = parent.parent) {
+                    // Shared ancestors already have this reason, along with all their parents.
+                    if (!visitedParents.Add(parent)) break;
+                    reasons.Put(parent, "A child object is used");
+                    if (parent == avatarObject) break;
                 }
             }
 
