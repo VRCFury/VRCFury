@@ -388,7 +388,7 @@ namespace VF.Utils.Controller {
 
         internal override bool IsStatic() {
             if (originalSourceIsProxyClip) return false;
-            foreach (var (_, curve) in GetAllCurves()) {
+            foreach (var curve in curves.Values) {
                 if (curve.IsFloat) {
                     var keys = curve.FloatCurve.keys;
                     if (keys.All(key => key.time != 0)) return false;
@@ -404,7 +404,7 @@ namespace VF.Utils.Controller {
 
         internal override bool IsTwoState() {
             var times = new HashSet<float>();
-            foreach (var (_, curve) in GetAllCurves()) {
+            foreach (var curve in curves.Values) {
                 if (curve.IsFloat) {
                     times.UnionWith(curve.FloatCurve.keys.Select(key => key.time));
                 } else {
@@ -431,7 +431,7 @@ namespace VF.Utils.Controller {
         }
 
         internal override bool IsEmptyOrZeroLength() {
-            return GetLengthInSeconds() == 0 || GetAllBindings().Length == 0;
+            return GetLengthInSeconds() == 0 || curves.Count == 0;
         }
 
         internal override VFMotion EvaluateMotion(float fraction) {

@@ -52,32 +52,34 @@ namespace VF.Utils {
         }
 
         public static bool NextFast(this SerializedProperty prop) {
-            if (prop.propertyPath == "") return prop.Next(true);
-            if (prop.propertyType == SerializedPropertyType.String) return prop.Next(false);
+            var path = prop.propertyPath;
+            if (path == "") return prop.Next(true);
+            var type = prop.propertyType;
+            if (type == SerializedPropertyType.String) return prop.Next(false);
 
             // Params in an animator controller
-            if (prop.propertyPath == "m_AnimatorParameters") return prop.Next(false);
+            if (path == "m_AnimatorParameters") return prop.Next(false);
             // Float arrays in an animation clip
-            if (prop.propertyPath == "m_FloatCurves") return prop.Next(false);
-            if (prop.propertyPath == "m_EulerEditorCurves") return prop.Next(false);
-            if (prop.propertyPath == "m_EditorCurves") return prop.Next(false);
-            if (prop.propertyPath == "m_ClipBindingConstant") return prop.Next(false);
+            if (path == "m_FloatCurves") return prop.Next(false);
+            if (path == "m_EulerEditorCurves") return prop.Next(false);
+            if (path == "m_EditorCurves") return prop.Next(false);
+            if (path == "m_ClipBindingConstant") return prop.Next(false);
             // Numeric properties in a material
-            if (prop.propertyPath == "m_SavedProperties.m_Ints") return prop.Next(false);
-            if (prop.propertyPath == "m_SavedProperties.m_Floats") return prop.Next(false);
-            if (prop.propertyPath == "m_SavedProperties.m_Colors") return prop.Next(false);
+            if (path == "m_SavedProperties.m_Ints") return prop.Next(false);
+            if (path == "m_SavedProperties.m_Floats") return prop.Next(false);
+            if (path == "m_SavedProperties.m_Colors") return prop.Next(false);
 
             if (prop.isArray) {
                 if (prop.arraySize == 0) return prop.Next(false);
-                var firstElement = prop.GetArrayElementAtIndex(0);
-                return prop.Next(firstElement.propertyType == SerializedPropertyType.ObjectReference
-                                 || firstElement.propertyType == SerializedPropertyType.ExposedReference
-                                 || firstElement.propertyType == SerializedPropertyType.Generic
-                                 || firstElement.propertyType == SerializedPropertyType.ManagedReference);
+                var firstType = prop.GetArrayElementAtIndex(0).propertyType;
+                return prop.Next(firstType == SerializedPropertyType.ObjectReference
+                                 || firstType == SerializedPropertyType.ExposedReference
+                                 || firstType == SerializedPropertyType.Generic
+                                 || firstType == SerializedPropertyType.ManagedReference);
             }
 
-            return prop.Next(prop.propertyType == SerializedPropertyType.Generic
-                             || prop.propertyType == SerializedPropertyType.ManagedReference);
+            return prop.Next(type == SerializedPropertyType.Generic
+                             || type == SerializedPropertyType.ManagedReference);
         }
     }
 }
