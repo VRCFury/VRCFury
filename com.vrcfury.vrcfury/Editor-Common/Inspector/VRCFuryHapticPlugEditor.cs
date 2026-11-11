@@ -583,7 +583,12 @@ namespace VF.Inspector {
                 cache.size = null;
                 cache.error = null;
                 try {
-                    cache.size = PlugSizeDetector.GetWorldSize(plug);
+                    var copy = VRCFuryComponentEditor.CreateUpgradedClone(plug, out var cloneObject);
+                    try {
+                        cache.size = PlugSizeDetector.GetWorldSize(copy);
+                    } finally {
+                        UnityEngine.Object.DestroyImmediate(cloneObject);
+                    }
                 } catch (Exception e) {
                     cache.error = e.Message;
                 }

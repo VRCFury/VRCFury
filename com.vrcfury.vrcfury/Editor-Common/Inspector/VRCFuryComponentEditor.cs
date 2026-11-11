@@ -21,9 +21,8 @@ namespace VF.Inspector {
 
         internal static C CreateUpgradedClone<C>(C original, out GameObject cloneObject)
             where C : VRCFuryComponent {
-            cloneObject = new GameObject();
+            cloneObject = EditorUtility.CreateGameObjectWithHideFlags("", HideFlags.HideAndDontSave);
             cloneObject.SetActive(false);
-            cloneObject.hideFlags |= HideFlags.HideAndDontSave;
             // Don't use AddComponent<C>, since C might not be the concrete type.
             var copy = (C)cloneObject.AddComponent(original.GetType());
             UnitySerializationUtils.CloneSerializable(original, copy);

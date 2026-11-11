@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 using VF.Builder.Haptics;
@@ -319,16 +320,36 @@ namespace VF.Inspector {
             }
         }
 
-        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
-        static void DrawGizmo2(VRCFuryHapticSocket socket, GizmoType gizmoType) {
+        private class GizmoCache {
+            public long version = -1;
+            public Matrix4x4 transform;
+            public VRCFurySocketGizmo.SocketGizmoData data;
+        }
+
+        private static readonly ConditionalWeakTable<VRCFuryHapticSocket, GizmoCache> gizmoCache =
+            new ConditionalWeakTable<VRCFuryHapticSocket, GizmoCache>();
+
+        internal static VRCFurySocketGizmo.SocketGizmoData GetGizmoData(VRCFuryHapticSocket socket) {
+            var cache = gizmoCache.GetOrCreateValue(socket);
+            var transform = socket.transform.localToWorldMatrix;
+            if (cache.version == EditorChanges.Version && cache.transform == transform) return cache.data;
+
             var copy = VRCFuryComponentEditor.CreateUpgradedClone(socket, out var cloneObject);
             try {
                 var baker = VRCFuryPerFrameInjector.GetPerFrameInjector(socket.owner())
                     .GetService<VRCFuryHapticSocketBaker>();
-                DrawGizmo(socket.owner(), baker.GetGizmoData(copy));
+                cache.data = baker.GetGizmoData(copy);
             } finally {
                 UnityEngine.Object.DestroyImmediate(cloneObject);
             }
+            cache.version = EditorChanges.Version;
+            cache.transform = transform;
+            return cache.data;
+        }
+
+        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
+        static void DrawGizmo2(VRCFuryHapticSocket socket, GizmoType gizmoType) {
+            DrawGizmo(socket.owner(), GetGizmoData(socket));
         }
     }
 }

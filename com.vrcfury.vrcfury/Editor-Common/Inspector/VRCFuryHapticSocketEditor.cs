@@ -222,12 +222,12 @@ namespace VF.Inspector {
                 }))
             ));
 
-            // Active Animations
+            // While Enabled Animation
             container.Add(VRCFuryEditorUtils.CheckboxList(
                 serializedObject.FindProperty("activeActions.actions"),
-                "Enable Active Animation",
+                "Enable While Enabled Animation",
                 "This animation will be active whenever the socket is enabled in the menu",
-                "Active Animation",
+                "While Enabled Animation",
                 VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("activeActions"))
             ));
 

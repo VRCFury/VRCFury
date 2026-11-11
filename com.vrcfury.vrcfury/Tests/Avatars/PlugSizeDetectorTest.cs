@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder.Haptics;
 using VF.Component;
@@ -9,6 +11,45 @@ using Object = UnityEngine.Object;
 
 namespace VF.Tests {
     internal class PlugSizeDetectorTest {
+        [Test]
+        public void GizmoUpgradesLegacyPrefabUnitsAndSizingWithoutChangingThePrefab() {
+            var path = "Assets/PlugGizmoTest-" + Guid.NewGuid().ToString("N") + ".prefab";
+            var obj = new GameObject("Legacy plug");
+            GameObject instance = null;
+            try {
+                var plug = obj.AddComponent<VRCFuryHapticPlug>();
+                plug.Version = 0;
+                plug.length = 0.3f;
+                plug.radius = 0.05f;
+                obj.transform.localScale = Vector3.one * 2;
+                var prefab = PrefabUtility.SaveAsPrefabAsset(obj, path);
+                instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                var original = instance.GetComponent<VRCFuryHapticPlug>();
+                var before = EditorJsonUtility.ToJson(original);
+                var size = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(original, out var error);
+                Assert.That(error, Is.Null);
+                Assert.That(size.worldLength, Is.EqualTo(0.3f));
+                Assert.That(size.worldRadius, Is.EqualTo(0.05f));
+                for (var i = 0; i < 100; i++) {
+                    Assert.That(VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(original, out _), Is.SameAs(size));
+                }
+                Assert.That(EditorJsonUtility.ToJson(original), Is.EqualTo(before));
+                Assert.That(PrefabUtility.HasPrefabInstanceAnyOverrides(instance, false), Is.False);
+
+                instance.transform.localScale = Vector3.one * 4;
+                var scaled = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(original, out error);
+                Assert.That(error, Is.Null);
+                Assert.That(scaled, Is.Not.SameAs(size));
+                Assert.That(scaled.worldLength, Is.EqualTo(0.3f), "Legacy dimensions are in meters");
+                Assert.That(scaled.worldRadius, Is.EqualTo(0.05f));
+                Assert.That(original.Version, Is.EqualTo(0));
+            } finally {
+                if (instance != null) Object.DestroyImmediate(instance);
+                Object.DestroyImmediate(obj);
+                AssetDatabase.DeleteAsset(path);
+            }
+        }
+
         [Test]
         public void GizmoSizeStaysCachedUntilInputsChange() {
             var obj = new GameObject("Plug");
