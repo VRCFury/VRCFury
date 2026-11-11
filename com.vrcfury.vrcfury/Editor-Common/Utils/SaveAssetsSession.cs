@@ -12,7 +12,7 @@ namespace VF.Utils {
     internal class SaveAssetsSession {
         private readonly string outputDir;
         private readonly Lazy<Object> otherParent;
-        private readonly HashSet<Object> workLogManifest = new HashSet<Object>();
+        private readonly Dictionary<Object, Object> workLogManifest = new Dictionary<Object, Object>();
         private readonly HashSet<Object> assetsToSave = new HashSet<Object>();
         private readonly HashSet<string> savedMaterialGuids = new HashSet<string>();
 
@@ -47,7 +47,7 @@ namespace VF.Utils {
                 }
                 VRCFuryAssetDatabase.AttachAsset(child, parent.Value);
                 RecordSavedMaterial(child);
-                RecordWorkLog(child);
+                RecordWorkLog(child, parent.Value);
             }
             // If we don't do this, the attached assets don't show up in the browser
             // until the next time all assets are saved
@@ -105,10 +105,10 @@ namespace VF.Utils {
             if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(parent))) {
                 VRCFuryAssetDatabase.SaveAsset(parent, outputDir, parent.name);
             }
-            RecordWorkLog(parent);
+            RecordWorkLog(parent, parent);
         }
 
-        private void RecordWorkLog(Object obj) {
+        private void RecordWorkLog(Object obj, Object parent) {
             if (obj is AnimatorTransitionBase
                 || obj is Motion
                 || obj is AnimatorState
@@ -122,10 +122,7 @@ namespace VF.Utils {
             var workLog = obj.GetWorkLog();
             if (workLog.Count <= 0) return;
 
-            var outputPath = AssetDatabase.GetAssetPath(obj);
-            if (string.IsNullOrEmpty(outputPath)) return;
-
-            workLogManifest.Add(obj);
+            workLogManifest[obj] = parent;
         }
 
         private void RecordSavedMaterial(Object obj) {
@@ -140,12 +137,21 @@ namespace VF.Utils {
 
             var manifestPath = VRCFuryAssetDatabase.GetUniquePath(outputDir, "_ work-log", "txt");
             var builder = new StringBuilder();
+            // GetAssetPath is expensive on subassets in large generated files. Query each owner once.
+            var parentPaths = new Dictionary<Object, string>();
+            string GetName(Object obj, Object parent) {
+                if (!parentPaths.TryGetValue(parent, out var path)) {
+                    path = AssetDatabase.GetAssetPath(parent);
+                    parentPaths[parent] = path;
+                }
+                return AssetDatabase.IsMainAsset(obj) ? path : $"{path} ({obj.name})";
+            }
             foreach (var entry in workLogManifest
-                         .Where(entry => entry != null)
-                         .Select(entry => (obj: entry, workLog: entry.GetWorkLog()))
+                         .Where(entry => entry.Key != null)
+                         .Select(entry => (name: GetName(entry.Key, entry.Value), workLog: entry.Key.GetWorkLog()))
                          .Where(entry => entry.workLog.Count > 0)
-                         .OrderBy(entry => entry.obj.GetPathAndName())) {
-                builder.AppendLine($"{entry.obj.GetPathAndName()}:");
+                         .OrderBy(entry => entry.name)) {
+                builder.AppendLine($"{entry.name}:");
 
                 foreach (var item in entry.workLog) {
                     builder.AppendLine($"* {item}");
