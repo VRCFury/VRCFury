@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using VF.Builder;
@@ -62,16 +61,6 @@ namespace VF.Utils {
             }
         }
 
-        private static readonly Dictionary<Material, Dictionary<string, PoiProp>> lockedPropsCache
-            = new Dictionary<Material, Dictionary<string, PoiProp>>();
-
-        [VFInit]
-        private static void Init() {
-            Scheduler.Schedule(() => {
-                lockedPropsCache.Clear();
-            }, 0);
-        }
-        
         private static bool IsPoiUnlocked(Material mat) {
             if (mat == null || mat.shader == null) return false;
             if (mat.shader.name.StartsWith("Hidden/Locked/")) return false;
@@ -85,68 +74,40 @@ namespace VF.Utils {
         }
         
         public static bool IsPoiyomiWithPropNonanimated(Material m, string propertyName) {
-            return (IsPoiLocked(m) || IsPoiUnlocked(m)) && GetProps(m).TryGetValue(propertyName, out var prop) && !prop.animated;
-        }
+            if (!IsPoiLocked(m) && !IsPoiUnlocked(m)) return false;
 
-        public class PoiProp {
-            public bool animated;
-        }
-
-        private static Dictionary<string, PoiProp> GetProps(Material mat) {
-            var output = new Dictionary<string, PoiProp>();
-
-            if (mat == null) return output;
-            var shader = mat.shader;
-            if (shader == null) return output;
-
-            if (lockedPropsCache.TryGetValue(mat, out var cached)) return cached;
-
-            var matRenameSuffix = GetRenameSuffix(mat);
-
-            var count = shader.GetPropertyCount();
-            for (var i = 0; i < count; i++) {
-                var propertyName = shader.GetPropertyName(i);
-
-                var ogName = propertyName;
-                if (matRenameSuffix != null && ogName.EndsWith("_" + matRenameSuffix)) {
-                    ogName = ogName.Substring(0, ogName.Length - matRenameSuffix.Length - 1);
-                }
-                
-                var propType = shader.GetPropertyType(i);
-                var animatedTag = mat.GetTag(ogName + "Animated", false, "");
-
-                var isAnimated = animatedTag != "";
-                var renameSuffix = animatedTag == "2" ? $"_{matRenameSuffix}" : "";
-                void Add(string suffix) {
-                    output[$"{ogName}{renameSuffix}{suffix}"] = new PoiProp {
-                        animated = isAnimated,
-                    };
-                }
-
-                if (propType == ShaderPropertyType.Texture) {
-                    Add("_ST.x");
-                    Add("_ST.y");
-                    Add("_ST.z");
-                    Add("_ST.w");
-                    Add("_TexelSize.x");
-                    Add("_TexelSize.y");
-                    Add("_TexelSize.z");
-                    Add("_TexelSize.w");
-                } else if (propType == ShaderPropertyType.Vector) {
-                    Add(".x");
-                    Add(".y");
-                    Add(".z");
-                    Add(".w");
-                } else if (propType == ShaderPropertyType.Color) {
-                    Add(".r");
-                    Add(".g");
-                    Add(".b");
-                    Add(".a");
-                }
-                Add("");
+            var component = "";
+            var dot = propertyName.LastIndexOf('.');
+            if (dot >= 0) {
+                component = propertyName.Substring(dot + 1);
+                if (component.Length != 1) return false;
+                propertyName = propertyName.Substring(0, dot);
             }
-
-            return lockedPropsCache[mat] = output;
+            var renameSuffix = GetRenameSuffix(m);
+            // Renamed bindings are animated. Unmarked properties on locked shaders are
+            // still addressed by their original name, even if the shader name has a suffix.
+            bool MatchesProperty(string name, bool textureComponent) {
+                if (renameSuffix != null && name.EndsWith("_" + renameSuffix)) return false;
+                if (m.GetTag(name + "Animated", false, "") != "") return false;
+                bool MatchesShader(string shaderName) {
+                    var index = m.shader.GetPropertyIndex(shaderName);
+                    if (index < 0) return false;
+                    var type = m.shader.GetPropertyType(index);
+                    if (component == "") return true;
+                    if (textureComponent) return type == ShaderPropertyType.Texture && "xyzw".Contains(component);
+                    return (type == ShaderPropertyType.Vector && "xyzw".Contains(component))
+                        || (type == ShaderPropertyType.Color && "rgba".Contains(component));
+                }
+                return MatchesShader(name) || (renameSuffix != null && MatchesShader(name + "_" + renameSuffix));
+            }
+            if (MatchesProperty(propertyName, false)) return true;
+            if (component.Length > 0) {
+                foreach (var suffix in new[] { "_ST", "_TexelSize" }) {
+                    if (propertyName.EndsWith(suffix)
+                        && MatchesProperty(propertyName.Substring(0, propertyName.Length - suffix.Length), true)) return true;
+                }
+            }
+            return false;
         }
 
         [CanBeNull]
