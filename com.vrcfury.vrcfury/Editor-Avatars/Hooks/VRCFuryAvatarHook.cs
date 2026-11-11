@@ -119,7 +119,7 @@ namespace VF.Hooks {
                 injector.ImportOne(typeof(ActionClipService));
                 injector.ImportOne(typeof(ClipFactoryService));
                 if (avatarObject != null) {
-                    // Inject the shared per-frame caches (already captured) instead of creating + Capture() per action set
+                    // Share the per-frame caches instead of capturing them separately for each action set.
                     injector.Set(VRCFObjectPathCache.GetPerFrame(avatarObject));
                     injector.Set(VRCFArmatureCache.GetPerFrame(avatarObject));
                 } else {

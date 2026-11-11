@@ -30,7 +30,6 @@ namespace VF.Builder {
                     var cache = new VRCFArmatureCache {
                         avatarObject = avatarObject
                     };
-                    cache.Capture();
                     return cache;
                 }
             );

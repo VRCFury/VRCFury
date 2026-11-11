@@ -20,10 +20,11 @@ namespace VF.Builder.Haptics {
 
             ISet<int> includedBoneIds = ImmutableHashSet<int>.Empty;
             if (plug.useBoneMask && renderer is SkinnedMeshRenderer skin) {
+                var bones = skin.bones;
                 VFGameObject firstBone = plug.owner();
                 while (firstBone != null && !includedBoneIds.Any()) {
                     includedBoneIds = firstBone.GetSelfAndAllChildren()
-                        .Select(bone => Array.IndexOf(skin.bones, (Transform)bone))
+                        .Select(bone => Array.IndexOf(bones, (Transform)bone))
                         .Where(id => id >= 0)
                         .ToImmutableHashSet();
                     firstBone = firstBone.parent;

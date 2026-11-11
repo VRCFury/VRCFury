@@ -284,18 +284,20 @@ namespace VF.Utils {
             
             var warnings = new List<VisualElement>();
             
-            var inNonAnimatedPhysbones = avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()
-                .Where(physbone => !physbone.isAnimated)
-                .SelectMany(physbone => physbone.GetRootTransform().asVf()
-                    .GetSelfAndAllChildren()
-                    .Where(transform => !physbone.IsIgnored(transform)))
-                .ToImmutableHashSet();
+            var inNonAnimatedPhysbones = new Lazy<IImmutableSet<VFGameObject>>(
+                () => avatarObject.GetComponentsInSelfAndChildren<VRCPhysBone>()
+                    .Where(physbone => !physbone.isAnimated)
+                    .SelectMany(physbone => physbone.GetRootTransform().asVf()
+                        .GetSelfAndAllChildren()
+                        .Where(transform => !physbone.IsIgnored(transform)))
+                    .ToImmutableHashSet()
+            );
             var badPhysboneTransforms = new HashSet<string>();
             foreach (var binding in usedBindings) {
                 if (binding.type != typeof(Transform)) continue;
                 var obj = binding.target;
                 if (obj == null) continue;
-                if (!inNonAnimatedPhysbones.Contains(obj)) continue;
+                if (!inNonAnimatedPhysbones.Value.Contains(obj)) continue;
                 badPhysboneTransforms.Add(obj.GetPath(avatarObject));
             }
             if (badPhysboneTransforms.Any()) {

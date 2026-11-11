@@ -683,6 +683,7 @@ namespace VF.Feature {
                     .Select(a => a.obj)
                     .Where(o => o != null)
                     .ToImmutableHashSet();
+                if (turnsOff.Count == 0) return new VisualElement();
                 var othersTurnOn = baseObject.GetComponentsInSelfAndChildren<VRCFury>()
                     .SelectMany(vf => vf.GetAllFeatures())
                     .OfType<Toggle>()
