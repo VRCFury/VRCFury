@@ -64,6 +64,8 @@ namespace VF.Menu {
         public const int logExternalSceneReferencesPriority = utilitiesPriority + 15;
         public const string logVfInitTimings = utilities + "Log VFInit Timings";
         public const int logVfInitTimingsPriority = utilitiesPriority + 16;
+        public const string logAvatarPreprocessors = utilities + "Log Avatar Preprocessors";
+        public const int logAvatarPreprocessorsPriority = utilitiesPriority + 17;
 
         public const string settings = prefix + "Settings/";
         public const int settingsPriority = 1312;
