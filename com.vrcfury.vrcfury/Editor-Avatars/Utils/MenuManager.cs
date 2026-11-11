@@ -21,9 +21,13 @@ namespace VF.Utils {
         }
 
         public void OverrideSortPosition(int serviceId, Action with) {
-            this.overrideMenuSortPosition = serviceId;
-            with();
-            this.overrideMenuSortPosition = -1;
+            var previous = overrideMenuSortPosition;
+            overrideMenuSortPosition = serviceId;
+            try {
+                with();
+            } finally {
+                overrideMenuSortPosition = previous;
+            }
         }
 
         public VRCExpressionsMenu GetRaw() {
@@ -39,10 +43,8 @@ namespace VF.Utils {
         public static IList<string> SplitPath(string path) {
             if (string.IsNullOrWhiteSpace(path))
                 return new string[] { };
-            return path
-                .Replace("\\/", "REALSLASH")
-                .Split('/')
-                .Select(s => s.Replace("REALSLASH", "/"))
+            return Regex.Split(path, @"(?<!\\)/")
+                .Select(s => s.Replace("\\/", "/"))
                 .ToArray();
         }
 
@@ -79,6 +81,7 @@ namespace VF.Utils {
             
             var fromControls = FindControlsWithName(fromMenu, fromName);
             if (fromControls.Length == 0) return false;
+            if (from == to) return true;
             fromMenu.controls.RemoveAll(c => fromControls.Contains(c));
 
             if (string.IsNullOrWhiteSpace(to)) {
@@ -259,12 +262,12 @@ namespace VF.Utils {
             if (sourceRoot != null) combined.Add((sourceRoot, destination));
             var seen = new Dictionary<VRCExpressionsMenu, VRCExpressionsMenu>();
             if (!preserveSubmenuLinks) seen.Add(sourceRoot, destination);
-            Merge(controls, destination, combineNames: preserveSubmenuLinks);
+            Merge(controls, destination, combineDuplicateNames: preserveSubmenuLinks);
 
             void Merge(
                 IEnumerable<VRCExpressionsMenu.Control> sourceControls,
                 VRCExpressionsMenu to,
-                bool combineNames = false
+                bool combineDuplicateNames = false
             ) {
                 var submenuCount = new Dictionary<string, int>();
                 foreach (var control in sourceControls.ToArray()) {
@@ -278,7 +281,7 @@ namespace VF.Utils {
                         to.controls.Add(copy);
                         continue;
                     }
-                    var index = combineNames ? 0
+                    var index = combineDuplicateNames ? 0
                         : submenuCount.TryGetValue(control.name, out var count) ? count + 1 : 0;
                     submenuCount[control.name] = index;
                     var folder = FindControlsWithName(

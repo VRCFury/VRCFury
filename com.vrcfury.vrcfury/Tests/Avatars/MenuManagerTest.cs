@@ -397,5 +397,83 @@ namespace VF.Tests {
             Assert.That(original.name, Is.EqualTo("Authored menu"));
             Assert.That(Child(shared, "Back"), Is.SameAs(root));
         }
+
+        [TestCase("REALSLASH/Child", new[] { "REALSLASH", "Child" })]
+        [TestCase(@"Group\/One/Child", new[] { "Group/One", "Child" })]
+        [TestCase(@"REALSLASH\/One/Child", new[] { "REALSLASH/One", "Child" })]
+        [TestCase(@"Group\\/One/Child", new[] { @"Group\/One", "Child" })]
+        [TestCase("/Group//", new[] { "", "Group", "", "" })]
+        [TestCase("", new string[] { })]
+        [TestCase(null, new string[] { })]
+        public void SplitPathPreservesLiteralNamesAndEscapedSlashes(string path, string[] expected) {
+            Assert.That(MenuManager.SplitPath(path), Is.EqualTo(expected));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void NestedSortOverrideRestoresOuterPosition(bool innerThrows) {
+            var root = Menu();
+            var manager = new MenuManager(root, () => 30);
+            manager.OverrideSortPosition(10, () => {
+                manager.NewMenuButton("Outer before");
+                void Inner() => manager.OverrideSortPosition(5, () => {
+                    manager.NewMenuButton("Inner");
+                    if (innerThrows) throw new InvalidOperationException("Expected test exception");
+                });
+                if (innerThrows) Assert.Throws<InvalidOperationException>(Inner);
+                else Inner();
+                manager.NewMenuButton("Outer after");
+            });
+            manager.OverrideSortPosition(20, () => manager.NewMenuButton("Middle"));
+            manager.NewMenuButton("Normal");
+
+            manager.SortMenu();
+
+            Assert.That(root.controls.Select(control => control.name), Is.EqualTo(new[] {
+                "Inner",
+                "Outer before",
+                "Outer after",
+                "Middle",
+                "Normal"
+            }));
+        }
+
+        [Test]
+        public void ThrowingSortOverrideRestoresNormalPosition() {
+            var root = Menu();
+            var manager = new MenuManager(root, () => 0);
+            Assert.Throws<InvalidOperationException>(() => manager.OverrideSortPosition(10, () => {
+                manager.NewMenuButton("Override");
+                throw new InvalidOperationException("Expected test exception");
+            }));
+            manager.NewMenuButton("Normal");
+
+            manager.SortMenu();
+
+            Assert.That(root.controls.Select(control => control.name), Is.EqualTo(new[] { "Normal", "Override" }));
+        }
+
+        [Test]
+        public void MovingToSamePathPreservesOrderAndDistinctDuplicateFolders() {
+            var root = Menu();
+            var first = Menu();
+            var second = Menu();
+            Link(root, "Folder", first);
+            root.controls.Add(new VRCExpressionsMenu.Control { name = "Button" });
+            Link(root, "Folder", second);
+            Link(first, "Back", root);
+            var before = root.controls.ToArray();
+            var manager = Manager(root);
+
+            Assert.That(manager.Move("Folder", "Folder"), Is.True);
+            Assert.That(manager.Move("Button", "Button"), Is.True);
+            Assert.That(manager.Move("Missing", "Missing"), Is.False);
+
+            Assert.That(root.controls, Is.EqualTo(before));
+            Assert.That(Child(root, "Folder"), Is.SameAs(first));
+            Assert.That(Child(root, "Folder", 1), Is.SameAs(second));
+            Assert.That(first.controls.Single().subMenu, Is.SameAs(root));
+            Assert.That(second.controls, Is.Empty);
+        }
     }
 }
