@@ -2948,6 +2948,19 @@ namespace VF.Tests {
             var internalValues = fx.parameters.Where(p => p.name.Contains("/Mapped") || p.name.Contains("/Smoothed")
                 || p.name.Contains("/LegacyLengthValid") || p.name.Contains("/LegacyRadiusValid")).ToArray();
             Start();
+            if (menuToggle != null) {
+                playable.SetFloat(parentEnabled, 0);
+                Evaluate(8);
+                playable.SetFloat(menuToggle, 1);
+                Evaluate(8);
+                Assert.That(obj.activeInHierarchy, Is.False);
+                Assert.That(playable.GetFloat("Socket active output"), Is.EqualTo(1),
+                    "Menu actions must run even when the socket's parent is inactive");
+                playable.SetFloat(menuToggle, 0);
+                Evaluate(8);
+                Assert.That(playable.GetFloat("Socket active output"), Is.Zero);
+                playable.SetFloat(parentEnabled, 1);
+            }
             if (menuToggle != null) playable.SetFloat(menuToggle, 1);
             void Contact(float proximity, float separation) {
                 Set(Main(false), proximity, separation, 0.6f, 0.06f, native: true);

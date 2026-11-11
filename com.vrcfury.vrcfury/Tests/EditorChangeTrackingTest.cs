@@ -656,6 +656,49 @@ namespace VF.Tests {
             }
         }
 
+        [Test]
+        public void SocketMenuToggleClearsAdditionalActionsInTheSameUndoOperation() {
+            var panelOwner = ScriptableObject.CreateInstance<Fields>();
+            var obj = new GameObject("Socket menu actions");
+            UnityEditor.Editor editor = null;
+            try {
+                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                socket.activeActions.actions.Add(new VF.Model.StateAction.FxFloatAction { name = "Test", value = 1 });
+                editor = UnityEditor.Editor.CreateEditor(socket);
+                using (var panel = new Panel(panelOwner)) {
+                    var gui = editor.CreateInspectorGUI();
+                    panel.root.Add(gui);
+                    panel.root.Bind(editor.serializedObject);
+                    panel.Pump();
+                    var labels = gui.Query<Label>().ToList();
+                    var menuSection = labels.Single(label => label.text == "Menu Toggle").parent.parent;
+                    Assert.That(menuSection.Query<Label>().ToList().Any(label =>
+                        label.text == "Additional Actions While Menu Item is Active"), Is.True);
+                    var checkbox = labels.Single(label => label.text == "Enable Menu Toggle").parent.parent
+                        .Q<UnityEngine.UIElements.Toggle>();
+                    Undo.IncrementCurrentGroup();
+                    checkbox.value = false;
+                    panel.Pump();
+                    Assert.That(socket.addMenuItem, Is.False);
+                    Assert.That(socket.activeActions.actions, Is.Empty);
+                    Undo.PerformUndo();
+                    panel.Pump();
+                    Assert.That(socket.addMenuItem, Is.True);
+                    Assert.That(socket.activeActions.actions, Has.Count.EqualTo(1));
+                    Assert.That(checkbox.value, Is.True);
+                    Undo.PerformRedo();
+                    panel.Pump();
+                    Assert.That(socket.addMenuItem, Is.False);
+                    Assert.That(socket.activeActions.actions, Is.Empty);
+                    Assert.That(checkbox.value, Is.False);
+                }
+            } finally {
+                if (editor != null) Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(obj);
+                Object.DestroyImmediate(panelOwner);
+            }
+        }
+
         [TestCase("depthActions2")]
         [TestCase("plugEntryRadiusActions")]
         [TestCase("activeActions.actions")]

@@ -246,17 +246,14 @@ namespace VF.Service {
                         obj.active = true;
                         forceEnable.Add(obj);
 
-                        var activeClip = actionClipService.LoadState($"SPS - Active Animation for {oscId}", socket.activeActions);
+                        var activeClip = actionClipService.LoadState($"SPS - Menu Actions for {oscId}", socket.activeActions);
                         if (new AnimatorIterator.Clips().From(activeClip).SelectMany(clip => clip.GetAllBindings()).Any()) {
-                            var activeAnimParam = fx.CreateUniqueFloat($"SPS - Active Animation for {oscId}");
-                            var activeAnimLayer = fx.NewLayer($"SPS - Active Animation for {oscId}");
+                            var activeAnimLayer = fx.NewLayer($"SPS - Menu Actions for {oscId}");
                             var off = activeAnimLayer.NewState("Off");
                             var on = activeAnimLayer.NewState("On").WithAnimation(activeClip);
 
-                            off.TransitionsTo(on).When(activeAnimParam.IsGreaterThan(0));
-                            on.TransitionsTo(off).When(activeAnimParam.IsLessThan(1));
-
-                            objectTrees.Get(bakeResult.worldSpace).Add(activeAnimParam.MakeSetter(1));
+                            off.TransitionsTo(on).When(toggleParam.IsTrue());
+                            on.TransitionsTo(off).When(toggleParam.IsFalse());
                         }
 
                         var gizmo = obj.GetComponent<VRCFurySocketGizmo>();

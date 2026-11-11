@@ -184,7 +184,15 @@ namespace VF.Inspector {
             }, addLightProp));
 
             var addMenuItemProp = serializedObject.FindProperty("addMenuItem");
-            container.Add(VRCFuryEditorUtils.BetterProp(addMenuItemProp, "Enable Menu Toggle"));
+            var menuToggle = new Toggle();
+            menuToggle.SetValueWithoutNotify(addMenuItemProp.boolValue);
+            menuToggle.TrackProperty(addMenuItemProp, p => menuToggle.SetValueWithoutNotify(p.boolValue));
+            menuToggle.RegisterValueChangedCallback(e => {
+                addMenuItemProp.boolValue = e.newValue;
+                if (!e.newValue) serializedObject.FindProperty("activeActions.actions").ClearArray();
+                serializedObject.ApplyModifiedProperties();
+            });
+            container.Add(VRCFuryEditorUtils.BetterProp(addMenuItemProp, "Enable Menu Toggle", fieldOverride: menuToggle));
             container.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (!addMenuItemProp.boolValue) return new VisualElement();
                 var toggles = VRCFuryEditorUtils.Section("Menu Toggle", "A menu item will be created for this socket");
@@ -197,9 +205,16 @@ namespace VF.Inspector {
                     GetMenuName,
                     isOgbId: false
                 ));
+                toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("menuIcon"), "Menu Icon", tooltip: "Override the menu icon used for this socket's individual toggle. Looking to move or change the icon of the main SPS menu? Add a VRCFury 'SPS Options' component to the avatar root."));
                 toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?",
                     tooltip: "If checked, this socket will be eligible to be automatically enabled during Auto Mode."));
-                toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("menuIcon"), "Menu Icon", tooltip: "Override the menu icon used for this socket's individual toggle. Looking to move or change the icon of the main SPS menu? Add a VRCFury 'SPS Options' component to the avatar root."));
+                toggles.Add(VRCFuryEditorUtils.CheckboxList(
+                    serializedObject.FindProperty("activeActions.actions"),
+                    "Additional Actions While Menu Item is Active",
+                    "These actions run while the menu item is active, even if the socket object is inactive.",
+                    "Additional Actions While Menu Item is Active",
+                    VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("activeActions"))
+                ));
                 return toggles;
             }, addMenuItemProp));
 
@@ -220,15 +235,6 @@ namespace VF.Inspector {
                 VRCFuryEditorUtils.List(radiusActions, () => VRCFuryEditorUtils.AddToList(radiusActions, action => {
                     action.FindPropertyRelative("range").vector2Value = new Vector2(0, 0.1f);
                 }))
-            ));
-
-            // While Enabled Animation
-            container.Add(VRCFuryEditorUtils.CheckboxList(
-                serializedObject.FindProperty("activeActions.actions"),
-                "Enable While Enabled Animation",
-                "This animation will be active whenever the socket is enabled in the menu",
-                "While Enabled Animation",
-                VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("activeActions"))
             ));
 
             container.Add(VRCFuryHapticPlugEditor.GetOgbHapticsSection(haptics => {
