@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
+using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace VF.Service {
     [VFService]
@@ -45,6 +48,8 @@ namespace VF.Service {
                 }
             }
 
+            NameMenuAssets(VRCAvatarUtils.GetAvatarMenu(avatar));
+
             // Save mats and meshes
             Session.SaveAssetAndChildren(avatar);
             foreach (var component in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
@@ -62,6 +67,24 @@ namespace VF.Service {
             }
 
             Session.Finish();
+        }
+
+        internal static void NameMenuAssets(VRCExpressionsMenu root) {
+            if (root == null) return;
+            root.ForEachMenu(
+                (menu, path) => {
+                    if (!VrcfObjectFactory.DidCreate(menu) || EditorUtility.IsPersistent(menu)) return;
+                    menu.name = path.Count == 0 ? "VRCFury Menu" : string.Join(
+                        " » ",
+                        path.Select(name => {
+                            name = Regex.Replace(name, "<.*?>", "");
+                            name = Regex.Replace(name, "\n.*", "");
+                            return Regex.Replace(name, " +", " ").Trim();
+                        })
+                    );
+                },
+                dirtyAll: false
+            );
         }
     }
 }

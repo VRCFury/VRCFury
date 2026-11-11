@@ -57,7 +57,7 @@ namespace VF.Utils {
         }
 
         public bool SetIcon(string path, Texture2D icon) {
-            GetSubmenuAndItem(path, false, out _, out _, out var controlName, out var parentMenu);
+            var (parentMenu, controlName) = GetSubmenuAndItem(path, false);
             if (!parentMenu) return false;
 
             var controls = FindControlsWithName(parentMenu, controlName);
@@ -74,7 +74,7 @@ namespace VF.Utils {
         }
 
         public bool Move(string from, string to) {
-            GetSubmenuAndItem(from, false, out var fromPath, out var fromPrefix, out var fromName, out var fromMenu);
+            var (fromMenu, fromName) = GetSubmenuAndItem(from, false);
             if (!fromMenu) return false;
             
             var fromControls = FindControlsWithName(fromMenu, fromName);
@@ -86,23 +86,14 @@ namespace VF.Utils {
                 return true;
             }
 
-            GetSubmenuAndItem(to, true, out var toPath, out var toPrefix, out var toName, out var toMenu);
-            foreach (var control in fromControls) {
-                if (control.type == VRCExpressionsMenu.Control.ControlType.SubMenu && control.subMenu != null) {
-                    GetSubmenu(toPath, createFromControl: control);
-                    MergeMenu(toPath, control.subMenu);
-                } else {
-                    control.name = toName;
-                    var tmpMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
-                    tmpMenu.controls.Add(control);
-                    MergeMenu(toPrefix, tmpMenu);
-                }
-            }
+            var (toMenu, toName) = GetSubmenuAndItem(to, true);
+            foreach (var control in fromControls) control.name = toName;
+            MergeControls(toMenu, fromControls, preserveSubmenuLinks: true);
             return true;
         }
         
         public bool Reorder(string path, int position) {
-            GetSubmenuAndItem(path, false, out var splitPath, out var splitPrefix, out var fromName, out var fromMenu);
+            var (fromMenu, fromName) = GetSubmenuAndItem(path, false);
             if (!fromMenu) return false;
             
             var controls = FindControlsWithName(fromMenu, fromName);
@@ -116,23 +107,10 @@ namespace VF.Utils {
             return true;
         }
 
-        private void GetSubmenuAndItem(
-            string rawPath,
-            bool create,
-            out IList<string> path,
-            out IList<string> prefix,
-            out string name,
-            out VRCExpressionsMenu prefixMenu
-        ) {
-            path = SplitPath(rawPath);
-            if (path.Count > 0) {
-                prefix = Slice(path, path.Count - 1);
-                name = path[path.Count - 1];
-            } else {
-                prefix = new string[]{};
-                name = "";
-            }
-            prefixMenu = GetSubmenu(prefix, createIfMissing: create);
+        private (VRCExpressionsMenu menu, string name) GetSubmenuAndItem(string rawPath, bool create) {
+            var path = SplitPath(rawPath);
+            var prefix = Slice(path, Math.Max(0, path.Count - 1));
+            return (GetSubmenu(prefix, createIfMissing: create), path.LastOrDefault() ?? "");
         }
 
         private static VRCExpressionsMenu.Control[] FindControlsWithName(
@@ -173,12 +151,10 @@ namespace VF.Utils {
 
         /**
          * Gets the VRC menu for the path specified, recursively creating if it doesn't exist.
-         * If createFromControl is set, we will use it as the basis if creating the folder control is needed.
          */
         private VRCExpressionsMenu GetSubmenu(
             IList<string> path,
-            bool createIfMissing = true,
-            VRCExpressionsMenu.Control createFromControl = null
+            bool createIfMissing = true
         ) {
             var current = GetRaw();
             for (var i = 0; i < path.Count; i++) {
@@ -193,21 +169,15 @@ namespace VF.Utils {
                 var folderControl = offset < folderControls.Length ? folderControls[offset] : null;
                 if (folderControl == null) {
                     if (!createIfMissing) return null;
-                    if (createFromControl != null && i == path.Count - 1) {
-                        folderControl = CloneControl(createFromControl);
-                    } else {
-                        folderControl = NewControl();
-                    }
+                    folderControl = NewControl();
                     folderControl.name = folderName;
                     folderControl.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
-                    folderControl.subMenu = null;
                     current.controls.Add(folderControl);
                 }
                 var folder = folderControl.subMenu;
                 if (folder == null) {
                     if (!createIfMissing) return null;
-                    var newFolderPath = Slice(path, i + 1);
-                    folder = CreateNewMenu(newFolderPath);
+                    folder = VrcfObjectFactory.Create<VRCExpressionsMenu>();
                     folderControl.subMenu = folder;
                 }
                 current = folder;
@@ -252,22 +222,6 @@ namespace VF.Utils {
             control.icon = icon;
         }
 
-        private VRCExpressionsMenu CreateNewMenu(IList<string> path) {
-            var cleanPath = path.Select(CleanTitleForFilename);
-            var newMenu = VrcfObjectFactory.Create<VRCExpressionsMenu>();
-            newMenu.name = cleanPath.Join(" » ");
-            return newMenu;
-        }
-        private static string CleanTitleForFilename(string str) {
-            // strip html tags
-            str = Regex.Replace(str, "<.*?>", string.Empty);
-            // remove after newline
-            str = Regex.Replace(str, "\n.*", string.Empty);
-            // clean up extra spaces
-            str = Regex.Replace(str, " +", " ");
-            return str.Trim();
-        }
-
         public void MergeMenu(VRCExpressionsMenu from) {
             MergeMenu(new string[]{}, from);
         }
@@ -275,9 +229,9 @@ namespace VF.Utils {
         public void MergeMenu(
             IList<string> prefix,
             VRCExpressionsMenu from,
-            Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> seen = null
+            bool preserveSubmenuLinks = false
         ) {
-            if (seen == null) {
+            if (!preserveSubmenuLinks) {
                 var target = string.Join("/", prefix);
                 var controlCount = from.controls.Count;
                 rootMenu.WorkLog(
@@ -286,32 +240,67 @@ namespace VF.Utils {
                         : $"Merged menu {from.GetPathAndName()} with {controlCount} root controls into {target}"
                 );
             }
-            var to = GetSubmenu(prefix);
-            if (seen == null) {
-                seen = new Dictionary<VRCExpressionsMenu, VRCExpressionsMenu>();
-            }
-            seen.Add(from, to);
+            MergeControls(
+                GetSubmenu(prefix),
+                from.controls,
+                preserveSubmenuLinks,
+                from
+            );
+        }
 
-            var submenuCount = new Dictionary<string,int>();
-            int GetNextSubmenuDupId(string name) {
-                return submenuCount[name] = submenuCount.TryGetValue(name, out var value) ? value + 1 : 0;
-            }
-            foreach (var fromControl in from.controls) {
-                if (fromControl.type == VRCExpressionsMenu.Control.ControlType.SubMenu && fromControl.subMenu != null) {
-                    // Properly handle loops
-                    if (seen.TryGetValue(fromControl.subMenu, out var value)) {
-                        var toControl = CloneControl(fromControl);
-                        toControl.subMenu = value;
-                        to.controls.Add(toControl);
-                    } else {
-                        var submenuDupId = GetNextSubmenuDupId(fromControl.name);
-                        var prefix2 = new List<string>(prefix);
-                        prefix2.Add(fromControl.name + (submenuDupId > 0 ? (".dup." + submenuDupId) : ""));
-                        GetSubmenu(prefix2.ToArray(), createFromControl: fromControl);
-                        MergeMenu(prefix2.ToArray(), fromControl.subMenu, seen);
+        private void MergeControls(
+            VRCExpressionsMenu destination,
+            IEnumerable<VRCExpressionsMenu.Control> controls,
+            bool preserveSubmenuLinks,
+            VRCExpressionsMenu sourceRoot = null
+        ) {
+            if (preserveSubmenuLinks && sourceRoot == destination) return;
+            var combined = new HashSet<(VRCExpressionsMenu, VRCExpressionsMenu)>();
+            if (sourceRoot != null) combined.Add((sourceRoot, destination));
+            var seen = new Dictionary<VRCExpressionsMenu, VRCExpressionsMenu>();
+            if (!preserveSubmenuLinks) seen.Add(sourceRoot, destination);
+            Merge(controls, destination, combineNames: preserveSubmenuLinks);
+
+            void Merge(
+                IEnumerable<VRCExpressionsMenu.Control> sourceControls,
+                VRCExpressionsMenu to,
+                bool combineNames = false
+            ) {
+                var submenuCount = new Dictionary<string, int>();
+                foreach (var control in sourceControls.ToArray()) {
+                    if (control.type != VRCExpressionsMenu.Control.ControlType.SubMenu || control.subMenu == null) {
+                        to.controls.Add(preserveSubmenuLinks ? control : CloneControl(control));
+                        continue;
                     }
-                } else {
-                    to.controls.Add(CloneControl(fromControl));
+                    if (!preserveSubmenuLinks && seen.TryGetValue(control.subMenu, out var previous)) {
+                        var copy = CloneControl(control);
+                        copy.subMenu = previous;
+                        to.controls.Add(copy);
+                        continue;
+                    }
+                    var index = combineNames ? 0
+                        : submenuCount.TryGetValue(control.name, out var count) ? count + 1 : 0;
+                    submenuCount[control.name] = index;
+                    var folder = FindControlsWithName(
+                        to,
+                        control.name,
+                        c => c.type == VRCExpressionsMenu.Control.ControlType.SubMenu
+                    ).ElementAtOrDefault(index);
+                    if (folder == null) {
+                        folder = preserveSubmenuLinks ? control : CloneControl(control);
+                        if (!preserveSubmenuLinks) folder.subMenu = null;
+                        to.controls.Add(folder);
+                    }
+                    if (folder.subMenu == null) {
+                        folder.subMenu = preserveSubmenuLinks ? control.subMenu : VrcfObjectFactory.Create<VRCExpressionsMenu>();
+                    }
+                    var child = folder.subMenu;
+                    if (preserveSubmenuLinks) {
+                        if (control.subMenu == child || !combined.Add((control.subMenu, child))) continue;
+                    } else {
+                        seen.Add(control.subMenu, child);
+                    }
+                    Merge(control.subMenu.controls, child);
                 }
             }
         }
