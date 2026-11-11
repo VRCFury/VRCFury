@@ -30,7 +30,7 @@ namespace VF.Inspector {
 
             RegisterCallback<ChangeEvent<string>>(_ => RefreshPlaceholder());
             RegisterCallback<AttachToPanelEvent>(_ => {
-                schedule.Execute(RefreshPlaceholder);
+                this.ScheduleSafe(RefreshPlaceholder);
             });
         }
 

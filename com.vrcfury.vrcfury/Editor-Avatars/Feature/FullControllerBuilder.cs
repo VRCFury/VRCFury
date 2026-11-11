@@ -815,7 +815,7 @@ namespace VF.Feature {
                 System.Action refreshWarnings = null;
                 void ScheduleRefreshWarnings() {
                     scheduledRefresh?.Pause();
-                    scheduledRefresh = content.schedule.Execute(() => {
+                    scheduledRefresh = content.ScheduleSafe(() => {
                         scheduledRefresh = null;
                         refreshWarnings?.Invoke();
                     }).StartingIn(2000);

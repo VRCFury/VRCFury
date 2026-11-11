@@ -5,6 +5,16 @@ using UnityEngine;
 
 namespace VF.Utils {
     internal static class SerializedPropertyExtensions {
+        // Returns the innermost array index, including for fields inside an array element.
+        public static int? GetArrayIndex(this SerializedProperty prop) {
+            var path = prop.propertyPath;
+            var indexStart = path.LastIndexOf('[') + 1;
+            var indexEnd = path.IndexOf(']', indexStart);
+            return indexStart > 0 && indexEnd > indexStart
+                && int.TryParse(path.Substring(indexStart, indexEnd - indexStart), out var index)
+                    ? index : null;
+        }
+
         [CanBeNull]
         public static object GetObject(this SerializedProperty prop) {
             var path = prop.propertyPath.Replace(".Array.data[", ".[");

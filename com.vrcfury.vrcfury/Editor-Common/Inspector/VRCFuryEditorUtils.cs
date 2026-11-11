@@ -14,6 +14,20 @@ using Object = UnityEngine.Object;
 namespace VF.Inspector {
 
     internal static class VRCFuryEditorUtils {
+        public static IVisualElementScheduledItem ScheduleSafe(this VisualElement element, Action callback) {
+            IVisualElementScheduledItem scheduled = null;
+            scheduled = element.schedule.Execute(() => {
+                try {
+                    callback();
+                } catch (Exception e) {
+                    // Let Unity finish updating bindings, and avoid retrying a broken timer forever.
+                    scheduled.Pause();
+                    UnityEngine.Debug.LogException(e);
+                }
+            });
+            return scheduled;
+        }
+
         public static VisualElement List(
             SerializedProperty list,
             Action onPlus = null,
@@ -602,7 +616,7 @@ namespace VF.Inspector {
                     }
                 }
                 Update();
-                holder.schedule.Execute(Update).Every((long)(interval * 1000));
+                holder.ScheduleSafe(Update).Every((long)(interval * 1000));
                 return holder;
             }
 
@@ -639,7 +653,7 @@ namespace VF.Inspector {
                 }
 
                 Update();
-                label.schedule.Execute(Update).Every((long)(interval * 1000));
+                label.ScheduleSafe(Update).Every((long)(interval * 1000));
             }
 
             return el;

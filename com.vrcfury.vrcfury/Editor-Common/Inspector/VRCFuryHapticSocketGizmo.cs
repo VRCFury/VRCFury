@@ -39,12 +39,12 @@ namespace VF.Inspector {
             }
         }
 
-        static Vector3 GetDefaultTangentOut(TransformData start, TransformData end) {
+        internal static Vector3 GetDefaultTangentOut(TransformData start, TransformData end) {
             var distance = Vector3.Distance(start.position, end.position) * 0.5f;
             return start.position - start.TransformDirection(Vector3.forward) * distance;
         }
 
-        static Vector3 GetDefaultTangentIn(TransformData start, TransformData end) {
+        internal static Vector3 GetDefaultTangentIn(TransformData start, TransformData end) {
             var distance = Vector3.Distance(start.position, end.position) * 0.5f;
             return end.position + end.TransformDirection(Vector3.forward) * distance;
         }
@@ -91,17 +91,25 @@ namespace VF.Inspector {
             VRCFuryHapticSocket.AddLight type,
             Color primaryColor,
             Color secondaryColor,
-            Color? ringArrowColor = null
+            Color? ringArrowColor = null,
+            bool drawCross = false
         ) {
             var orange = new Color(1f, 0.5f, 0);
-            var discColor = primaryColor;
+            var markerColor = primaryColor;
             if (!BuildTargetUtils.IsDesktop() || type == VRCFuryHapticSocket.AddLight.None) {
-                discColor = Color.red;
+                markerColor = Color.red;
             }
 
             var worldForward = worldRot * Vector3.forward;
-            VRCFuryGizmoUtils.DrawDisc(worldPos, worldForward, 0.02f, discColor);
-            VRCFuryGizmoUtils.DrawDisc(worldPos, worldForward, 0.04f, discColor);
+            if (drawCross) {
+                var right = worldRot * Vector3.right * 0.02f;
+                var up = worldRot * Vector3.up * 0.02f;
+                VRCFuryGizmoUtils.DrawLine(worldPos - right, worldPos + right, markerColor);
+                VRCFuryGizmoUtils.DrawLine(worldPos - up, worldPos + up, markerColor);
+            } else {
+                VRCFuryGizmoUtils.DrawDisc(worldPos, worldForward, 0.02f, markerColor);
+                VRCFuryGizmoUtils.DrawDisc(worldPos, worldForward, 0.04f, markerColor);
+            }
             if (type == VRCFuryHapticSocket.AddLight.RingOneWay) {
                 VRCFuryGizmoUtils.DrawArrow(
                     worldPos + worldForward * 0.05f,
@@ -131,15 +139,23 @@ namespace VF.Inspector {
             Gizmos.DrawSphere(worldPos, 0.04f);
         }
 
-        static void DrawGizmo(Vector3 worldPos, Quaternion worldRot, VRCFuryHapticSocket.AddLight type, bool radiusOffset, Color primaryColor, Color secondaryColor) {
+        static void DrawGizmo(
+            Vector3 worldPos,
+            Quaternion worldRot,
+            VRCFuryHapticSocket.AddLight type,
+            bool radiusOffset,
+            Color primaryColor,
+            Color secondaryColor,
+            bool drawCross
+        ) {
             if (!radiusOffset) {
-                DrawSocketGizmo(worldPos, worldRot, type, primaryColor, secondaryColor);
+                DrawSocketGizmo(worldPos, worldRot, type, primaryColor, secondaryColor, drawCross: drawCross);
                 return;
             }
 
             var offsetPos = worldPos + worldRot * (Vector3.up * VRCFuryHapticSocketEditor.GizmoRadiusOffset);
             DrawRadiusOffsetPlane(worldPos, worldRot);
-            DrawSocketGizmo(offsetPos, worldRot, type, primaryColor, secondaryColor);
+            DrawSocketGizmo(offsetPos, worldRot, type, primaryColor, secondaryColor, drawCross: drawCross);
         }
 
         internal static VRCFurySocketGizmo.SocketGizmoData BuildGizmoData(
@@ -179,6 +195,10 @@ namespace VF.Inspector {
         }
 
         public static void DrawGizmo(VFGameObject owner, VRCFurySocketGizmo.SocketGizmoData data) {
+            var socket = owner.GetComponent<VRCFuryHapticSocket>();
+            var drawCross = owner.IsSelected() && !Tools.hidden && socket != null
+                && (socket.plugEntryRadiusActions.Count > 0 || socket.depthActions2.Any(action =>
+                    action.units != VRCFuryHapticSocket.DepthActionUnits.Plugs));
             var guidedPathStops = (data.guidedPathStops ?? new List<VRCFurySocketGizmo.GuidedPathStopData>())
                 .Take(SpsTags.MaxUserPathStops).ToList();
             var socketTransformWorld = new TransformData(owner) * new TransformData(data.pos, data.rot);
@@ -193,7 +213,8 @@ namespace VF.Inspector {
                     VRCFuryHapticSocket.AddLight.RingOneWay,
                     data.useRadiusOffset,
                     new Color(1f, 0.5f, 0),
-                    Color.white
+                    Color.white,
+                    drawCross
                 );
                 if (owner.IsSelected()) {
                     VRCFuryGizmoUtils.DrawText(
@@ -234,12 +255,13 @@ namespace VF.Inspector {
                         stopType,
                         false,
                         new Color(1f, 0.5f, 0),
-                        Color.white
+                        Color.white,
+                        drawCross
                     );
                     previousTransformWorld = stopTransformWorld;
                 }
             } else {
-                DrawGizmo(worldStart, worldRotation, data.type, data.useRadiusOffset, new Color(1f, 0.5f, 0), Color.white);
+                DrawGizmo(worldStart, worldRotation, data.type, data.useRadiusOffset, new Color(1f, 0.5f, 0), Color.white, drawCross);
                 if (owner.IsSelected()) {
                     VRCFuryGizmoUtils.DrawText(
                         worldStart,
@@ -259,7 +281,8 @@ namespace VF.Inspector {
                     data.legacyType,
                     Color.gray,
                     Color.gray,
-                    new Color(1f, 0.5f, 0)
+                    new Color(1f, 0.5f, 0),
+                    drawCross
                 );
                 if (owner.IsSelected()) {
                     VRCFuryGizmoUtils.DrawText(

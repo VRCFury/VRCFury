@@ -315,41 +315,33 @@ namespace VF.Inspector {
                 if (!IsRadius) c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("reverseClip"), "Reverse clip (Deprecated, DO NOT USE)"));
                 if (!IsRadius && prop.serializedObject.targetObject is VRCFuryHapticSocket socket) {
                     var radius = prop.FindPropertyRelative("plugRadiusForFullWeight");
+                    var radiusObject = radius.serializedObject;
+                    var radiusPath = radius.propertyPath;
+                    // Undo can delete this action before its pooled inspector row is detached.
+                    SerializedProperty CurrentRadius() => socket == null ? null : radiusObject.FindProperty(radiusPath);
                     float WorldScale() => Mathf.Max(Mathf.Abs(socket.transform.lossyScale.x), 0.000001f);
                     var toggle = new Toggle { name = "multiplyPlugRadius" };
-                    var field = new FloatField { name = "plugRadiusForFullWeight", isDelayed = true };
-                    field.style.width = 80;
-                    field.style.flexShrink = 0;
+                    var field = new DepthActionSlider(radius, VRCFuryHapticSocket.DepthActionUnits.Local, radius: true);
+                    field.Q<FloatField>().name = "plugRadiusForFullWeight";
+                    field.Q<Label>("rangeMetersMax").name = "plugRadiusMeters";
                     var radiusControls = new VisualElement { name = "plugRadiusControls" };
-                    var row = new VisualElement().Row();
-                    row.Add(field);
-                    var meters = VRCFuryEditorUtils.WrappedLabel("");
-                    meters.name = "plugRadiusMeters";
-                    meters.style.marginLeft = 5;
-                    row.Add(meters);
-                    radiusControls.Add(VRCFuryEditorUtils.BetterProp(null, "Local plug radius for max (1.0) weight:", fieldOverride: row));
-                    void UpdateMeters() => meters.text = $"{radius.floatValue * WorldScale():G4} m";
+                    radiusControls.Add(VRCFuryEditorUtils.BetterProp(null, "Local plug radius for max (1.0) weight:", fieldOverride: field));
                     void UpdateRadius() {
-                        field.SetValueWithoutNotify(radius.floatValue);
-                        toggle.SetValueWithoutNotify(radius.floatValue > 0);
-                        radiusControls.style.display = radius.floatValue > 0 ? DisplayStyle.Flex : DisplayStyle.None;
-                        UpdateMeters();
+                        var value = CurrentRadius()?.floatValue ?? 0;
+                        toggle.SetValueWithoutNotify(value > 0);
+                        radiusControls.style.display = value > 0 ? DisplayStyle.Flex : DisplayStyle.None;
                     }
-                    field.RegisterValueChangedCallback(evt => {
-                        radius.floatValue = Mathf.Max(0, evt.newValue);
-                        radius.serializedObject.ApplyModifiedProperties();
-                        UpdateRadius();
-                    });
                     toggle.RegisterValueChangedCallback(evt => {
-                        radius.floatValue = evt.newValue ? 0.25f / WorldScale() : 0;
-                        radius.serializedObject.ApplyModifiedProperties();
+                        var current = CurrentRadius();
+                        if (current == null) return;
+                        current.floatValue = evt.newValue ? 0.25f / WorldScale() : 0;
+                        radiusObject.ApplyModifiedProperties();
                         UpdateRadius();
                     });
                     c.Add(VRCFuryEditorUtils.BetterProp(null, "Weight by local plug radius", fieldOverride: toggle,
                         tooltip: "Scales the animation weight using the plug's average radius in socket-local units. Full weight is reached at the configured radius."));
                     c.Add(radiusControls);
                     toggle.TrackProperty(radius, _ => UpdateRadius());
-                    meters.schedule.Execute(UpdateMeters).Every(100);
                     UpdateRadius();
                 }
                 return c;
