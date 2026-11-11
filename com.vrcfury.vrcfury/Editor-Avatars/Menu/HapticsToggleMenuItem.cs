@@ -22,6 +22,7 @@ namespace VF.Menu {
                 if (!ok) return;
             }
             EditorPrefs.SetBool(EditorPref, !Get());
+            EditorChanges.Changed();
         }
 
         [MenuItem(MenuItems.hapticToggle, true)]

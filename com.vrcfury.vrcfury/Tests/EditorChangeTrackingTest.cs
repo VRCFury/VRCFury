@@ -14,6 +14,38 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     internal class EditorChangeTrackingTest {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void DebugRefreshesAfterChangesButDoesNotRebuildWhileIdle(bool element) {
+            var owner = ScriptableObject.CreateInstance<Fields>();
+            try {
+                using (var panel = new Panel(owner)) {
+                    var calls = 0;
+                    var debug = element
+                        ? VRCFuryEditorUtils.Debug(refreshElement: () => { calls++; return new Label("Debug"); })
+                        : VRCFuryEditorUtils.Debug(refreshMessage: () => { calls++; return "Debug"; });
+                    panel.root.Add(debug);
+                    for (var i = 0; i < 30; i++) panel.Pump();
+                    Assert.That(calls, Is.EqualTo(1), "An unchanged inspector must not rebuild once per second");
+                    VF.Utils.EditorChanges.Changed();
+                    VF.Utils.EditorChanges.Changed();
+                    for (var i = 0; i < 15; i++) panel.Pump();
+                    Assert.That(calls, Is.EqualTo(2), "Changes are coalesced into one refresh");
+                    for (var i = 0; i < 15; i++) panel.Pump();
+                    Assert.That(calls, Is.EqualTo(2));
+                    debug.RemoveFromHierarchy();
+                    VF.Utils.EditorChanges.Changed();
+                    for (var i = 0; i < 15; i++) panel.Pump();
+                    Assert.That(calls, Is.EqualTo(2), "Detached inspectors must stop updating");
+                    panel.root.Add(debug);
+                    for (var i = 0; i < 15; i++) panel.Pump();
+                    Assert.That(calls, Is.EqualTo(3), "Reattached inspectors must see changes made while detached");
+                }
+            } finally {
+                Object.DestroyImmediate(owner);
+            }
+        }
+
         [Test]
         public void ScheduledExceptionStopsFailingTimerWithoutBlockingOtherTimersOrBindings() {
             var owner = ScriptableObject.CreateInstance<Fields>();

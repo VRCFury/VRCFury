@@ -28,6 +28,15 @@ namespace VF.Inspector {
             return scheduled;
         }
 
+        private static void RefreshWhenChanged(VisualElement element, Action callback, float interval) {
+            var version = EditorChanges.Version;
+            element.ScheduleSafe(() => {
+                if (version == EditorChanges.Version) return;
+                version = EditorChanges.Version;
+                callback();
+            }).Every((long)(interval * 1000));
+        }
+
         public static VisualElement List(
             SerializedProperty list,
             Action onPlus = null,
@@ -616,7 +625,7 @@ namespace VF.Inspector {
                     }
                 }
                 Update();
-                holder.ScheduleSafe(Update).Every((long)(interval * 1000));
+                RefreshWhenChanged(holder, Update, interval);
                 return holder;
             }
 
@@ -653,7 +662,7 @@ namespace VF.Inspector {
                 }
 
                 Update();
-                label.ScheduleSafe(Update).Every((long)(interval * 1000));
+                RefreshWhenChanged(label, Update, interval);
             }
 
             return el;

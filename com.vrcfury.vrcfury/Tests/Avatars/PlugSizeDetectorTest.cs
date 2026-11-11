@@ -10,6 +10,36 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     internal class PlugSizeDetectorTest {
         [Test]
+        public void GizmoSizeStaysCachedUntilInputsChange() {
+            var obj = new GameObject("Plug");
+            try {
+                var plug = obj.AddComponent<VRCFuryHapticPlug>();
+                plug.enableSps = false;
+                plug.autoRenderer = false;
+                plug.autoLength = plug.autoRadius = false;
+                plug.length = 0.3f;
+                plug.radius = 0.05f;
+                var size = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out var error);
+                Assert.That(error, Is.Null);
+                Assert.That(size.worldLength, Is.EqualTo(0.3f));
+                for (var i = 0; i < 100; i++) {
+                    Assert.That(VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out _), Is.SameAs(size));
+                }
+                plug.length = 0.4f;
+                VF.Utils.EditorChanges.Changed();
+                var changed = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out _);
+                Assert.That(changed, Is.Not.SameAs(size));
+                Assert.That(changed.worldLength, Is.EqualTo(0.4f));
+                obj.transform.localScale = Vector3.one * 2;
+                var scaled = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out _);
+                Assert.That(scaled.worldLength, Is.EqualTo(0.8f));
+                Assert.That(scaled.worldRadius, Is.EqualTo(0.1f));
+            } finally {
+                Object.DestroyImmediate(obj);
+            }
+        }
+
+        [Test]
         public void SizeAndMaterialSlotsUseForwardVerticesAndPreserveRadiusPercentile(
             [Values(0.5f, 2f)] float scale,
             [Values] bool lastSlotUsed

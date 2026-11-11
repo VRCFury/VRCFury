@@ -556,26 +556,30 @@ namespace VF.Inspector {
         }
 
         private class GizmoCache {
-            public double time = 0;
+            public bool initialized;
             public PlugSizeDetector.SizeResult size;
             public string error;
             public Vector3 position;
             public Quaternion rotation;
+            public Vector3 scale;
+            public long version;
         }
 
         private static readonly ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache> gizmoCache
             = new ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache>();
         
-        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
-        //[DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
-        static void DrawGizmo(VRCFuryHapticPlug plug, GizmoType gizmoType) {
+        internal static PlugSizeDetector.SizeResult GetGizmoSize(VRCFuryHapticPlug plug, out string error) {
             var transform = plug.owner();
             
             var cache = gizmoCache.GetOrCreateValue(plug);
-            if (cache.time == 0 || transform.worldPosition != cache.position || transform.worldRotation != cache.rotation || EditorApplication.timeSinceStartup > cache.time + 1) {
-                cache.time = EditorApplication.timeSinceStartup;
+            if (!cache.initialized || cache.version != EditorChanges.Version
+                || transform.worldPosition != cache.position || transform.worldRotation != cache.rotation
+                || transform.worldScale != cache.scale) {
+                cache.initialized = true;
                 cache.position = transform.worldPosition;
                 cache.rotation = transform.worldRotation;
+                cache.scale = transform.worldScale;
+                cache.version = EditorChanges.Version;
                 cache.size = null;
                 cache.error = null;
                 try {
@@ -585,20 +589,25 @@ namespace VF.Inspector {
                 }
             }
 
-            var size = cache.size;
+            error = cache.error;
+            return cache.size;
+        }
+
+        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
+        static void DrawGizmo(VRCFuryHapticPlug plug, GizmoType gizmoType) {
+            var transform = plug.owner();
+            var size = GetGizmoSize(plug, out var error);
             Vector3 worldRoot;
             Vector3 worldForward;
             float worldLength;
             float worldRadius;
             Color color;
-            string error = null;
             if (size == null) {
                 worldRoot = transform.TransformPoint(Vector3.zero);
                 worldForward = transform.TransformDirection(Vector3.forward);
                 worldLength = 0.3f;
                 worldRadius = 0.05f;
                 color = Color.red;
-                error = cache.error;
             } else {
                 worldRoot = transform.TransformPoint(size.localPosition);
                 worldForward = transform.TransformDirection(size.localRotation * Vector3.forward);
