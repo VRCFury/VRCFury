@@ -78,7 +78,7 @@ namespace VF.Feature {
                     .Select(skin.GetBlendShapeWeight).ToArray();
 
                 var savedBlendshapes = Enumerable.Range(0, blendshapeCount)
-                    .Select(id => new SavedBlendshape(mesh, id))
+                    .Select(id => new SavedBlendshape(mesh, id, blendshapeIdsToKeep.Contains(id) || savedWeights[id] != 0))
                     .ToArray();
 
                 mesh = skin.GetMutableMesh("Needed to remove blendshapes for blendshape optimizer");
@@ -123,8 +123,10 @@ namespace VF.Feature {
             private readonly string name;
             private readonly List<Tuple<float, Vector3[], Vector3[], Vector3[]>> frames
                 = new List<Tuple<float, Vector3[], Vector3[], Vector3[]>>();
-            public SavedBlendshape(Mesh mesh, int id) {
+            public SavedBlendshape(Mesh mesh, int id, bool saveFrames) {
                 name = mesh.GetBlendShapeName(id);
+                // Discarded zero-weight shapes do not contribute to the mesh.
+                if (!saveFrames) return;
                 for (var i = 0; i < mesh.GetBlendShapeFrameCount(id); i++) {
                     var weight = mesh.GetBlendShapeFrameWeight(id, i);
                     var v = new Vector3[mesh.vertexCount];
@@ -145,10 +147,11 @@ namespace VF.Feature {
             public void BakeTo(Mesh mesh, float weight100, out string logOutputDetail) {
                 logOutputDetail = $"Baking BlendShape \"{name}\" into mesh at weight {weight100}, as weight is not animated\n";
                 // TODO: Is this how multiple frames work?
-                var lastFrame = frames[frames.Count - 1];
                 if (frames.Count == 0 || weight100 == 0) {
                     return;
-                } else if (frames.Count == 1 || weight100 < 0 || weight100 >= lastFrame.Item1) {
+                }
+                var lastFrame = frames[frames.Count - 1];
+                if (frames.Count == 1 || weight100 < 0 || weight100 >= lastFrame.Item1) {
                     var (_, dv, dn, dt) = lastFrame;
                     BakeTo(mesh, dv, dn, dt, weight100);
                 } else {
