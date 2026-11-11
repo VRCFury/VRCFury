@@ -269,8 +269,9 @@ namespace VF.Utils.Controller {
             return curves.Keys.ToArray();
         }
 
-        internal (VFBinding, FloatOrObjectCurve)[] GetAllCurves() {
+        internal (VFBinding, FloatOrObjectCurve)[] GetAllCurves(Func<VFBinding, bool> filter = null) {
             return curves
+                .Where(pair => filter == null || filter(pair.Key))
                 .Select(pair => (pair.Key, pair.Value.Clone()))
                 .ToArray();
         }

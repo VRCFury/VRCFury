@@ -807,6 +807,9 @@ namespace VF.Tests {
             var clip = VFClip.Create("SPS Enable Test");
             clip.SetCurve(componentBinding ? (UnityEngine.Object)plug : renderer,
                 componentBinding ? "spsAnimatedEnabled" : "material._TPS_AnimatedToggle", sourceCurve);
+            var unrelated = GameObjects.Create("Unrelated", root);
+            clip.SetCurve((Transform)unrelated, "m_LocalPosition.x", sourceCurve);
+            clip.SetAap("Unrelated AAP", 0.3f);
             injector.GetService<AllClipsService>().AddAdditionalManagedClip(clip);
             var service = injector.GetService<BakeHapticPlugsService>();
             var rewrites = (List<BakeHapticPlugsService.SpsRewriteToDo>)typeof(BakeHapticPlugsService)
@@ -820,6 +823,8 @@ namespace VF.Tests {
                 configureMaterial = (_, material) => material
             });
             service.ApplySpsRewrites();
+            Assert.That(clip.GetFloatCurves().Single(pair => pair.Item1.Targets(unrelated)).Item2.keys, Is.EqualTo(sourceCurve.keys));
+            Assert.That(clip.GetFloatCurves().Single(pair => pair.Item1.propertyName == "Unrelated AAP").Item2.Evaluate(0), Is.EqualTo(0.3f));
             var curves = clip.GetFloatCurves();
             var enabledCurve = curves.Single(pair => pair.Item1.Targets(rendererObject)
                 && pair.Item1.type == renderer.GetType() && pair.Item1.propertyName == "material._SPS_Enabled").Item2;

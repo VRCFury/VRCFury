@@ -113,5 +113,29 @@ namespace VF.Tests {
                 Object.DestroyImmediate(outside);
             }
         }
+
+        [Test]
+        public void UsageReasonsPreserveEachBoneReferenceAndObserveRendererMoves() {
+            var root = new GameObject("Avatar");
+            try {
+                var parent = new GameObject("Group");
+                parent.transform.SetParent(root.transform, false);
+                var first = new GameObject("First");
+                first.transform.SetParent(root.transform, false);
+                var second = new GameObject("Second");
+                second.transform.SetParent(root.transform, false);
+                var skin = parent.AddComponent<SkinnedMeshRenderer>();
+                skin.bones = new[] { first.transform, second.transform, first.transform };
+                foreach (var name in new[] { "Group", "Moved" }) {
+                    parent.name = name;
+                    var reasons = ArmatureLinkService.GetUsageReasons(root);
+                    Assert.That(reasons.Get(first), Does.Contain("m_Bones.Array.data[0] in SkinnedMeshRenderer on " + name));
+                    Assert.That(reasons.Get(first), Does.Contain("m_Bones.Array.data[2] in SkinnedMeshRenderer on " + name));
+                    Assert.That(reasons.Get(second), Does.Contain("m_Bones.Array.data[1] in SkinnedMeshRenderer on " + name));
+                }
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
     }
 }

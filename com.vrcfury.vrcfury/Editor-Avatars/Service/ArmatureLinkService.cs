@@ -379,6 +379,7 @@ namespace VF.Service {
                 }
 
                 if (scanInternals) {
+                    string componentPath = null;
                     MutableManager.ForEachChildObjectReference(component, (path,value,set) => {
                         if (path.StartsWith("ignoreTransforms.Array")) {
                             // TODO: If we remove objects that are in these physbone ignoreTransforms arrays, we should
@@ -389,7 +390,8 @@ namespace VF.Service {
                         if (value is Transform t) target = t;
                         else if (value is GameObject g) target = g;
                         if (target != null && target.IsSameOrChildOf(avatarObject)) {
-                            reasons.Put(target, path + " in " + component.GetType().Name + " on " + component.owner().GetPath(avatarObject, true));
+                            componentPath ??= component.owner().GetPath(avatarObject, true);
+                            reasons.Put(target, path + " in " + component.GetType().Name + " on " + componentPath);
                         }
                     });
                 }

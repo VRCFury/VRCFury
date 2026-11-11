@@ -775,6 +775,28 @@ namespace VF.Tests {
             Vector(Quaternion.Euler(socket.rotation) * Vector3.forward, expectedForward);
         }
 
+        [Test]
+        public void AttachmentConstraintCanBeHostedOutsideItsAffectedObject() {
+            var original = Attachment();
+            var moving = original.gameObject;
+            var sources = original.GetSources();
+            var host = Child("External constraint host");
+            var constraint = VFConstraint.CreateParent(host);
+            var targetField = constraint.GetComponent().GetType().VFField("TargetTransform");
+            if (targetField == null) Assert.Ignore("Requires VRC constraints with target overrides");
+            targetField.SetValue(constraint.GetComponent(), moving.transform);
+            foreach (var source in sources) constraint.AddSource(source.sourceTransform, source.weight);
+            Object.DestroyImmediate(original);
+
+            Assert.That(constraint.GetAffectedObject(), Is.EqualTo(moving.asVf()));
+            Apply();
+            Assert.That(moving == null, Is.True);
+            Assert.That(host != null, Is.True);
+            Assert.That(Sockets, Has.Length.EqualTo(2));
+            Assert.That(Sockets.Select(socket => socket.owner()), Is.EquivalentTo(sources.Select(source => source.sourceTransform.asVf())));
+            Assert.That(Sockets.All(socket => socket.addMenuItem), Is.True);
+        }
+
         [TestCase(0f, 0f)]
         [TestCase(0f, 1f)]
         public void AttachmentSwitchCanStartDisabledOrAtAnyTarget(float first, float second) {

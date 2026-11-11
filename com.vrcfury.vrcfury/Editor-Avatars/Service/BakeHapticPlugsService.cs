@@ -253,11 +253,14 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
         public void ApplySpsRewrites() {
             foreach (var rewrite in spsRewritesToDo) {
+                var rendererObject = rewrite.skin.owner();
                 void RewriteClip(VFClip clip) {
-                    foreach (var pair in clip.GetAllCurves()) {
+                    foreach (var pair in clip.GetAllCurves(
+                        binding => binding.Targets(rendererObject) || binding.Targets(rewrite.plugObject)
+                    )) {
                         var binding = pair.Item1;
                         var curve = pair.Item2;
-                        var isRendererBinding = binding.Targets(rewrite.skin.owner());
+                        var isRendererBinding = binding.Targets(rendererObject);
                         var isPlugBinding = binding.Targets(rewrite.plugObject);
                         var finalBinding = binding;
 
