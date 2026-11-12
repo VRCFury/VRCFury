@@ -89,8 +89,7 @@ inline void sps_deform_walk_chain(
     // Straighten the curve before blending back to the original mesh. Blending
     // bent vertex positions directly to straight ones cuts across the bend.
     float curveWeight = sps_saturated_map(entryWeight, SPS_DEFORM_MESH_FADE_WEIGHT, 1);
-    bool allowOverrun = sps_to_bool(_SPS_Overrun);
-    float capLength = allowOverrun ? path.worldLength * SPS_DEFORM_HOLE_CAP_LENGTH : 0;
+    float capLength = path.worldLength * SPS_DEFORM_HOLE_CAP_LENGTH;
     float previousCurveWeight = curveWeight;
     outDeformationWeight = saturate(path.deformationWeight / SPS_DEFORM_MESH_FADE_WEIGHT);
     outRadiusMult = 1;
@@ -169,7 +168,7 @@ inline void sps_deform_walk_chain(
         if (remainingDistance <= 0) {
             if (!zeroLength && sps_has_flag(previousFlags, SPS_SOCKET_FLAG_HOLE)) {
                 float cullAdvance = (1 - previousCurveWeight) * (path.worldLength + capLength);
-                outRadiusMult = allowOverrun
+                outRadiusMult = capLength > 0
                     ? 1 - sps_saturated_map(distanceIntoSegment, cullAdvance - capLength, cullAdvance)
                     : (distanceIntoSegment < cullAdvance ? 1 : 0);
             }
@@ -193,8 +192,8 @@ inline void sps_deform_walk_chain(
         // Ensure the configured overrun past the terminal hole, without adding it twice
         // when the entrance look-ahead already extends beyond that hole.
         float cullAdvance = (1 - curveWeight) * (path.worldLength + capLength);
-        float overrun = (allowOverrun ? max(path.worldLength * SPS_DEFORM_HOLE_OVERRUN - terminalAdvance, 0) : 0) + cullAdvance;
-        outRadiusMult = allowOverrun
+        float overrun = max(path.worldLength * SPS_DEFORM_HOLE_OVERRUN - terminalAdvance, 0) + cullAdvance;
+        outRadiusMult = capLength > 0
             ? sps_saturated_map(max(remainingDistance - overrun, 0), capLength, 0)
             : (remainingDistance <= overrun ? 1 : 0);
         remainingDistance = min(remainingDistance, overrun);

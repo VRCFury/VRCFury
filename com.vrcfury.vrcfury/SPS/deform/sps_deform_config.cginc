@@ -31,8 +31,9 @@
 // At/below this capture weight the curve is straight; the final mesh blend happens below it.
 #define SPS_DEFORM_MESH_FADE_WEIGHT 0.2
 // Minimum extension beyond a terminal hole, in plug lengths, including entry look-ahead.
+// Set to zero to disable the minimum; SPS_DEFORM_ENTRY_ADVANCE still applies.
 #define SPS_DEFORM_HOLE_OVERRUN 0.1
-// Length of the radius taper closing a hole, in plug lengths.
+// Length of the radius taper closing a hole, in plug lengths. Zero uses a hard cutoff.
 #define SPS_DEFORM_HOLE_CAP_LENGTH 0.05
 
 // Each Bezier tangent handle is this fraction of the distance between segment endpoints.

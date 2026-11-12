@@ -317,8 +317,7 @@ namespace VF.Tests {
         [Test]
         public void BakeDoesNotReuseMutableMaterialsAcrossRenderers(
             [Values] bool compatibility,
-            [Values] bool deferred,
-            [Values] bool overrun
+            [Values] bool deferred
         ) {
             var mesh = new Mesh {
                 vertices = new[] { Vector3.zero, Vector3.right * 0.02f, Vector3.forward * 0.2f },
@@ -331,7 +330,6 @@ namespace VF.Tests {
                 plug.unitsInMeters = true;
                 plug.length = 0.4f;
                 plug.radius = 0.03f;
-                plug.spsOverrun = overrun;
                 for (var i = 0; i < 2; i++) {
                     var obj = GameObjects.Create("Renderer " + i, root);
                     obj.localPosition = Vector3.right * i * 0.1f;
@@ -361,8 +359,8 @@ namespace VF.Tests {
                 Assert.That(second, Is.Not.SameAs(source));
                 Assert.That(first, Is.Not.SameAs(second));
                 Assert.That(first.GetTexture("_SPS_Bake"), Is.Not.SameAs(second.GetTexture("_SPS_Bake")));
-                Assert.That(first.GetFloat("_SPS_Overrun"), Is.EqualTo(overrun ? 1 : 0));
-                Assert.That(second.GetFloat("_SPS_Overrun"), Is.EqualTo(overrun ? 1 : 0));
+                Assert.That(first.HasProperty("_SPS_Overrun"), Is.False);
+                Assert.That(second.HasProperty("_SPS_Overrun"), Is.False);
                 Assert.That(first.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
                 Assert.That(second.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
                 Assert.That(first.GetFloat("_SPS_OthersLegacyTags"), Is.EqualTo(compatibility ? 1 : 0));

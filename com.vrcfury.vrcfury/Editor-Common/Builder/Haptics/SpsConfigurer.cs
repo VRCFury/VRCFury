@@ -71,7 +71,6 @@ namespace VF.Builder.Haptics {
             m.SetTextureFast(SpsBake, spsBaked);
             m.SetFloatFast(SpsEnabled, plug.spsAnimatedEnabled);
             m.SetFloatFast(SpsObjectEnabled, 1);
-            m.SetFloatFast("_SPS_Overrun", plug.spsOverrun ? 1 : 0);
             m.SetFloatFast(SpsBakedLength, worldLength);
             m.SetFloatFast(SpsBakedRadius, worldRadius);
             m.SetFloatFast(SpsBaseActivationRadiusOverride, 0);
