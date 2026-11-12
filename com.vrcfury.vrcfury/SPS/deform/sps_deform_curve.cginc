@@ -10,12 +10,15 @@
 
 // Approximate the outgoing path with straight lines between stops.
 // Returns the next socket index (2 if unchanged), or SPS_CHAIN_MAX_SOCKETS + 1 on the final exit.
+// terminalAdvance reports how far the new entrance extends beyond the final stop.
 inline uint sps_deform_advance_entry(
     float distance,
     inout float3 position,
     inout float3 forward,
-    inout uint flags
+    inout uint flags,
+    out float terminalAdvance
 ) {
+    terminalAdvance = 0;
     if (distance <= 0) return 2;
     [fastopt]
     for (uint next = 2; next <= SPS_CHAIN_MAX_SOCKETS; next++) {
@@ -39,6 +42,7 @@ inline uint sps_deform_advance_entry(
         flags = sps_path_flags[next];
     }
     // Beyond the last stop, follow its straight-line exit.
+    terminalAdvance = distance;
     position += forward * distance;
     return SPS_CHAIN_MAX_SOCKETS + 1;
 }
@@ -61,11 +65,13 @@ inline void sps_deform_walk_chain(
     float lateralDistance = length(offset - entryForward * axialDepth);
     // Aim farther along the path so off-center plugs need less of a return bend.
     float advance = max(axialDepth + lateralDistance + path.worldLength * 0.1, 0);
+    float terminalAdvance;
     uint nextSocket = sps_deform_advance_entry(
         advance,
         entryPoint,
         entryForward,
-        entryFlags
+        entryFlags,
+        terminalAdvance
     );
     float remainingDistance = max(targetDistance, 0);
     uint terminalFlags = 0u;
@@ -144,13 +150,15 @@ inline void sps_deform_walk_chain(
     }
 
     if (sps_has_flag(terminalFlags, SPS_SOCKET_FLAG_HOLE)) {
-        // Cap the hole over 5% of plug length without extending its centerline.
+        // Ensure 10% overrun past the terminal hole, without adding it twice when
+        // the entrance look-ahead already extends beyond that hole. Keep the 5% cap.
+        float overrun = max(path.worldLength * 0.1 - terminalAdvance, 0);
         outRadiusMult = sps_saturated_map(
-            remainingDistance,
+            max(remainingDistance - overrun, 0),
             path.worldLength * 0.05,
             0
         );
-        remainingDistance = 0;
+        remainingDistance = min(remainingDistance, overrun);
     }
     outPosition += outForward * remainingDistance;
 }
