@@ -49,6 +49,8 @@ namespace VF.Inspector {
                 bakeRoot = GameObjects.Create("BakedSpsSocket", root);
                 bakeRoot.worldPosition = target.worldPosition;
                 bakeRoot.worldRotation = target.worldRotation;
+                // Preserve socket-local units on a uniform, head-chop-safe reference.
+                bakeRoot.worldScale = Vector3.one * transform.worldScale.x;
                 VFConstraint.CreateParent(bakeRoot).AddSource(target, weight: 1);
             }
 

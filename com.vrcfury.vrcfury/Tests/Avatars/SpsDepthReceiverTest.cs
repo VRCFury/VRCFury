@@ -93,7 +93,10 @@ namespace VF.Tests {
             ((Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
                 typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector))
                 [root] = (null, new Lazy<VFAParam>(() => scale), inverseScale);
-            return service.GetMeasurements(socket, contacts, "Test");
+            return service.GetMeasurements(socket, new VRCFuryHapticSocketEditor.BakeResult {
+                bakeRoot = root,
+                plugReceivers = contacts
+            }, "Test");
         }
 
         private Func<Party, Func<string, VFAParam>> PlugMeasurements(VRCFuryHapticPlug plug) {
@@ -272,6 +275,49 @@ namespace VF.Tests {
             Assert.That(guideSenders, Has.Length.EqualTo(2));
             Assert.That(guideSenders.SelectMany(sender => sender.owner().GetConstraints().Single(c => c.IsParent()).GetSources()),
                 Is.EquivalentTo(paths));
+        }
+
+        [Test]
+        public void SocketLocalMeasurementsUseProtectedBakeScale(
+            [Values(0.5f, 2f)] float authoredScale,
+            [Values] bool nonUniform
+        ) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var owner = GameObjects.Create("Authored socket", root);
+            owner.localScale = new Vector3(authoredScale, nonUniform ? authoredScale * 1.5f : authoredScale, authoredScale);
+            var socket = owner.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.channelSettings.useSharedTag = false;
+            socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test" });
+            var bake = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket, avatarRoot: root);
+            var outputs = injector.GetService<SpsSocketMeasurementsService>()
+                .GetMeasurements(socket, bake, "Head socket")(Party.Others);
+            var meters = outputs(SpsPlugEntryRadiusMeters);
+            var local = outputs(SpsPlugEntryRadiusLocal);
+            var detector = injector.GetService<WorldScaleDetectorService>();
+            var cache = (Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
+                typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector);
+            Assert.That(cache.ContainsKey(bake.bakeRoot), Is.True,
+                "Local-unit conversion must measure the head-chop-protected bake root");
+            Assert.That(cache.ContainsKey(owner), Is.False);
+            Assert.That(bake.bakeRoot.worldScale.x, Is.EqualTo(authoredScale).Within(.00001f));
+            Assert.That(bake.worldSpace.worldScale, Is.EqualTo(Vector3.one));
+            var raw = cache[bake.bakeRoot].raw;
+            Start();
+            var receiver = Main(false);
+            Set(receiver, .5f, .4196f, length: .4f, radius: .02f, native: true);
+            foreach (var resize in new[] { 1f, 2f }) {
+                foreach (var chopped in new[] { false, true }) {
+                    // Simulate the scale split: authored hierarchy is chopped, baked data stays visible.
+                    owner.localScale = Vector3.one * (authoredScale * resize * (chopped ? .0001f : 1));
+                    bake.bakeRoot.worldScale = Vector3.one * authoredScale * resize;
+                    bake.worldSpace.worldScale = Vector3.one;
+                    playable.SetFloat(raw, resize / WorldScaleDetectorService.MaxDetectedScale);
+                    Evaluate(30);
+                    Assert.That(playable.GetFloat(meters), Is.EqualTo(.0004f).Within(.00001f));
+                    Assert.That(playable.GetFloat(local), Is.EqualTo(.0004f / (authoredScale * resize)).Within(.00001f));
+                }
+            }
         }
 
         [Test]
@@ -1721,7 +1767,6 @@ namespace VF.Tests {
             if (!VF.Menu.HapticsToggleMenuItem.Get()) Assert.Ignore("OGB haptics are disabled");
             injector.Set("autoChannelGenerator", new TouchBoneChannels(HumanBodyBones.Hips));
             root.transform.localScale = Vector3.one * 2;
-            scale.SetDefault(2);
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var globals = injector.GetService<GlobalsService>();
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
@@ -1739,9 +1784,6 @@ namespace VF.Tests {
             stop.localPosition = Vector3.forward;
             socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
             var detector = injector.GetService<WorldScaleDetectorService>();
-            ((Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
-                typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector))
-                [root] = (null, new Lazy<VFAParam>(() => scale), inverseScale);
             foreach (var (source, output) in new[] { (SpsDepthMeters, "Depth meters"), (SpsDepthLocal, "Depth local"),
                          (SpsPlugRadiusLocal, "Radius local") }) {
                 injector.GetService<ParameterInjectService>().Register(new ParameterInjectService.Request {
@@ -1751,6 +1793,8 @@ namespace VF.Tests {
             injector.GetService<BakeHapticSocketsService>().Apply();
             injector.GetService<ChangeSpsChannelsService>().Apply();
             var bakeRoot = root.asVf().Children().Single(obj => obj.name == "BakedSpsSocket");
+            var rawScale = detector.GetRawWorldScale(bakeRoot, "Socket scale");
+            var uploadScale = bakeRoot.worldScale.x;
             var worldSpace = bakeRoot.Children().Single(obj => obj.name == "WorldSpace");
             var legacyLights = bakeRoot.Children().Single(obj => obj.name == "Legacy Mode").Children().Single();
             Assert.That(bakeRoot.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "WorldSpace", "Legacy Mode" }));
@@ -1775,7 +1819,7 @@ namespace VF.Tests {
                 // Manual EditMode graph evaluation does not run scene constraints.
                 worldSpace.worldScale = Vector3.one;
                 legacyLights.worldScale = Vector3.one;
-                playable.SetFloat(scale, resize);
+                playable.SetFloat(rawScale, resize / (WorldScaleDetectorService.MaxDetectedScale * uploadScale));
                 Set(Merged(), 1, 0.2f, 0.6f, 0.06f, native: true);
                 Evaluate(12);
                 Assert.That(Vector3.Distance(worldSpace.worldScale, Vector3.one), Is.LessThan(0.0001f));

@@ -163,7 +163,7 @@ namespace VF.Service {
 
                     var math = new Lazy<BlendtreeMath>(() => new BlendtreeMath(fx, objectTrees.Get(bakeResult.worldSpace)));
                     var measurements = new Lazy<Func<Party, Func<string, VFAParam>>>(() =>
-                        socketMeasurements.GetMeasurements(socket, mainReceivers, oscId));
+                        socketMeasurements.GetMeasurements(socket, bakeResult, oscId));
 
                     if (socket.depthActions2.Count > 0) {
                         depthAnimations.CreateAnims(
