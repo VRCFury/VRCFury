@@ -2320,17 +2320,19 @@ namespace VF.Tests {
         public void SocketDepthAnimationWeightsByLocalPlugRadius(
             [Values(false, true)] bool motionTime,
             [Values(false, true)] bool optimize,
-            [Values(0f, 0.1f)] float smoothingSeconds) {
+            [Values(0f, 0.1f)] float smoothingSeconds,
+            [Values(0f, 0.05f)] float zeroRadius) {
             optimizeTrees = optimize;
             root.AddComponent<VRCFuryHapticSocket>();
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var depth = fx.CreateUniqueFloat("Raw depth", -0.125f);
-            var radius = fx.CreateUniqueFloat("Local plug radius", 0.125f);
+            var radius = fx.CreateUniqueFloat("Local plug radius", (zeroRadius + 0.25f) / 2);
             var output = fx.GetOrCreateFloat("Weighted depth output");
             var action = new VRCFuryHapticSocket.DepthActionNew {
                 range = new Vector2(-0.25f, 0), plugRadiusForFullWeight = 0.25f,
                 smoothingSeconds = smoothingSeconds
             };
+            action.plugRadiusForZeroWeight = zeroRadius;
             if (motionTime) {
                 var clip = VFClip.Create("Weighted motion time");
                 clip.SetAap(output, AnimationCurve.Linear(0, 0, 1, 1));
@@ -2355,7 +2357,8 @@ namespace VF.Tests {
         public void ZeroPlugWidthLetsLowerLayersDriveTheDepthAction(
             [Values(false, true)] bool motionTime,
             [Values(false, true)] bool optimize,
-            [Values(false, true)] bool reverse) {
+            [Values(false, true)] bool reverse,
+            [Values(0f, 0.05f)] float zeroRadius) {
             optimizeTrees = optimize;
             root.AddComponent<VRCFuryHapticSocket>();
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
@@ -2367,6 +2370,7 @@ namespace VF.Tests {
                 range = new Vector2(-0.25f, 0), plugRadiusForFullWeight = 0.25f, reverseClip = reverse
             };
             var clip = VFClip.Create("Weighted depth action");
+            action.plugRadiusForZeroWeight = zeroRadius;
             clip.SetAap(output, motionTime ? AnimationCurve.Linear(0, 0, 1, 1) : AnimationCurve.Constant(0, 0, 1));
             action.actionSet.actions.Add(new VF.Model.StateAction.AnimationClipAction { vfClip = clip });
             injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Shared weighted",
@@ -2376,8 +2380,9 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.6f).Within(0.001f));
             playable.SetFloat(radius, 0.125f);
             Evaluate(120);
-            Assert.That(playable.GetFloat(output), Is.EqualTo(motionTime && reverse ? 0.375f : 0.125f).Within(0.001f));
-            foreach (var value in new[] { 0, -0.125f }) {
+            var radiusWeight = (0.125f - zeroRadius) / (0.25f - zeroRadius);
+            Assert.That(playable.GetFloat(output), Is.EqualTo((motionTime && reverse ? 0.75f : 0.25f) * radiusWeight).Within(0.001f));
+            foreach (var value in new[] { zeroRadius, 0, -0.125f }) {
                 playable.SetFloat(radius, value);
                 Evaluate(120);
                 Assert.That(playable.GetFloat(output), Is.EqualTo(0.6f).Within(0.001f), "Zero width must release the shared property");

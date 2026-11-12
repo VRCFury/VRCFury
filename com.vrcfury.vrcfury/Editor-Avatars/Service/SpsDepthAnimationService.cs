@@ -103,7 +103,7 @@ namespace VF.Service {
                     weightedRadius = measurements(SpsPlugRadiusLocal);
                     on.WithAnimation(VFBlendTree1D.CreateWithData(prefix + "/Plug width weight",
                         weightedRadius,
-                        (0, clipFactory.GetEmptyClip()),
+                        (depthAction.plugRadiusForZeroWeight, clipFactory.GetEmptyClip()),
                         (depthAction.plugRadiusForFullWeight, on.motion)));
                 }
 
@@ -122,7 +122,7 @@ namespace VF.Service {
                         onWhen = onWhen.And(objectEnabled.Get(bakeRoot).IsGreaterThan(0));
                     }
                 }
-                if (weightedRadius != null) onWhen = onWhen.And(weightedRadius.IsGreaterThan(0));
+                if (weightedRadius != null) onWhen = onWhen.And(weightedRadius.IsGreaterThan(depthAction.plugRadiusForZeroWeight));
                 off.TransitionsTo(on).When(onWhen);
                 on.TransitionsTo(off).When(onWhen.Not());
             }

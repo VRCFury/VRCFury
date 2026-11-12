@@ -23,8 +23,8 @@ namespace VF.Inspector {
             new Color(0.7f, 0, 1)
         };
         private readonly MinMaxSlider slider;
-        private readonly Slider singleSlider;
-        private readonly bool singleValue;
+        private readonly bool separateValues;
+        private readonly string minimumPath;
         private readonly FloatField xField;
         private readonly FloatField yField;
         private readonly Label minMeters;
@@ -36,14 +36,21 @@ namespace VF.Inspector {
         private readonly int actionIndex;
         private readonly VRCFuryHapticSocket.DepthActionUnits units;
         
-        public DepthActionSlider(SerializedProperty prop, VRCFuryHapticSocket.DepthActionUnits units, bool radius = false) : base(null,null) {
+        public DepthActionSlider(
+            SerializedProperty prop,
+            VRCFuryHapticSocket.DepthActionUnits units,
+            bool radius = false,
+            SerializedProperty minimum = null
+        ) : base(null, null) {
             this.radius = radius;
             this.units = units;
-            singleValue = prop.propertyType == SerializedPropertyType.Float;
+            separateValues = prop.propertyType == SerializedPropertyType.Float;
+            minimumPath = minimum?.propertyPath;
+            if (separateValues && minimum == null) throw new ArgumentException("A float range requires a minimum property");
             serialized = prop.serializedObject;
             rangePath = prop.propertyPath;
             actionIndex = prop.GetArrayIndex() ?? 0;
-            if (!singleValue) bindingPath = prop.propertyPath;
+            if (!separateValues) bindingPath = prop.propertyPath;
             Clear();
             style.flexDirection = FlexDirection.Column;
 
@@ -59,7 +66,8 @@ namespace VF.Inspector {
                     Mathf.Max(v, value.y)
                 ));
             });
-            if (!singleValue) output.Add(xField);
+            if (separateValues) xField.name = minimum.name;
+            output.Add(xField);
 
             var c = new VisualElement();
 
@@ -97,19 +105,14 @@ namespace VF.Inspector {
                     (float)Math.Round(e.newValue.y, radius ? 3 : 2)
                 ));
             });
-            if (singleValue) {
-                singleSlider = new Slider(0, 0.5f);
-                singleSlider.RegisterValueChangedCallback(e => Changed(new Vector2(0, (float)Math.Round(e.newValue, 3))));
-                c.Add(singleSlider);
-            } else {
-                c.Add(slider);
-            }
+            c.Add(slider);
 
             output.style.marginTop = radius ? 0 : 20;
 
             output.Add(c.FlexGrow(1).FlexBasis(0));
 
             yField = new FloatField().FlexBasis(50);
+            if (separateValues) yField.name = prop.name;
             yField.isDelayed = true;
             yField.RegisterValueChangedCallback(e => {
                 var v = e.newValue;
@@ -132,19 +135,24 @@ namespace VF.Inspector {
                 maxMeters = VRCFuryEditorUtils.WrappedLabel("");
                 maxMeters.name = "rangeMetersMax";
                 maxMeters.style.unityTextAlign = TextAnchor.UpperRight;
-                if (!singleValue) meters.Add(minMeters);
+                meters.Add(minMeters);
                 meters.Add(maxMeters);
                 Add(meters);
                 meters.ScheduleSafe(UpdateMeters).Every(100);
                 UpdateMeters();
             }
-            if (singleValue) {
-                SetValueWithoutNotify(new Vector2(0, prop.floatValue));
-                this.TrackProperty(prop, p => SetValueWithoutNotify(new Vector2(0, p.floatValue)));
+            if (separateValues) {
+                SetValueWithoutNotify(ReadRange(prop));
+                this.TrackProperty(prop, p => SetValueWithoutNotify(ReadRange(p)));
+                this.TrackProperty(minimum, _ => {
+                    var current = serialized.FindProperty(rangePath);
+                    if (current != null) SetValueWithoutNotify(ReadRange(current));
+                });
                 this.RegisterValueChangedCallback(evt => {
+                    if (evt.target != this) return;
                     var current = serialized.FindProperty(rangePath);
                     if (current == null) return;
-                    current.floatValue = evt.newValue.y;
+                    WriteRange(current, evt.newValue);
                     serialized.ApplyModifiedProperties();
                 });
             }
@@ -193,13 +201,13 @@ namespace VF.Inspector {
             var range = serialized.FindProperty(rangePath);
             if (range == null) return;
             // Radius editors stay on the actual socket/path; depth editors sit beside the main line.
-            var offset = radius ? Vector3.zero : Vector3.right
-                * ((actionIndex + 1) * 0.04f);
+            var offset = radius ? Vector3.zero
+                : Quaternion.Euler(0, 0, 45 + (actionIndex % 4) * 90) * Vector3.right * 0.02f;
             var center = frame.position + frame.rotation * offset;
             var handleRotation = frame.rotation;
-            var current = singleValue ? new Vector2(0, range.floatValue) : range.vector2Value;
-            if (singleValue && current.y <= 0) return;
-            if (singleValue && component is VRCFuryHapticSocket depthSocket) {
+            var current = ReadRange(range);
+            if (separateValues && current.y <= 0) return;
+            if (separateValues && component is VRCFuryHapticSocket depthSocket) {
                 var action = serialized.FindProperty(rangePath.Substring(0, rangePath.LastIndexOf('.')));
                 var depthUnits = (VRCFuryHapticSocket.DepthActionUnits)action.FindPropertyRelative("units").enumValueIndex;
                 if (depthUnits == VRCFuryHapticSocket.DepthActionUnits.Plugs) return;
@@ -218,7 +226,7 @@ namespace VF.Inspector {
             }
             // Draw the maximum first so it stays draggable when both handles are at zero.
             var maximum = Draw(current.y, false);
-            var minimum = singleValue ? 0 : Draw(current.x, true);
+            var minimum = radius && current.x == 0 ? 0 : Draw(current.x, true);
             var changed = new Vector2(
                 radius ? Mathf.Clamp(minimum, 0, current.y) : Mathf.Min(minimum, current.y),
                 radius ? Mathf.Max(0, maximum) : maximum
@@ -226,8 +234,7 @@ namespace VF.Inspector {
             changed.y = Mathf.Max(changed.x, changed.y);
             if (changed == current) return;
             Undo.SetCurrentGroupName(radius ? "Edit SPS Plug Entry Radius Range" : "Edit SPS Depth Range");
-            if (singleValue) range.floatValue = changed.y;
-            else range.vector2Value = changed;
+            WriteRange(range, changed);
             serialized.ApplyModifiedProperties();
             SetValueWithoutNotify(changed);
         }
@@ -251,7 +258,7 @@ namespace VF.Inspector {
                 }
                 VRCFuryGizmoUtils.DrawText(
                     center + rotation * (Vector3.right * radius),
-                    $"{(singleValue ? "D" : "R")}{actionIndex + 1} {(minimum ? "Off" : "Fully On")}",
+                    $"{(separateValues ? "D" : "R")}{actionIndex + 1} {(minimum ? "Off" : "Fully On")}",
                     Handles.color,
                     left: true
                 );
@@ -406,7 +413,7 @@ namespace VF.Inspector {
 
         private void UpdateMeters() {
             if (minMeters == null || owner == null) return;
-            if (singleValue && serialized.FindProperty(rangePath) == null) {
+            if (separateValues && serialized.FindProperty(rangePath) == null) {
                 maxMeters.text = "";
                 return;
             }
@@ -433,13 +440,26 @@ namespace VF.Inspector {
             if (!radius) slider.lowLimit = Mathf.Min(slider.lowLimit, newValue.x);
             slider.highLimit = Mathf.Max(slider.highLimit, newValue.y);
             slider.SetValueWithoutNotify(newValue);
-            if (singleSlider != null) {
-                singleSlider.highValue = Mathf.Max(0.5f, newValue.y);
-                singleSlider.SetValueWithoutNotify(newValue.y);
-            }
             xField.SetValueWithoutNotify(newValue.x);
             yField.SetValueWithoutNotify(newValue.y);
             UpdateMeters();
+        }
+
+        private Vector2 ReadRange(SerializedProperty range) {
+            return separateValues
+                ? new Vector2(serialized.FindProperty(minimumPath)?.floatValue ?? 0, range.floatValue)
+                : range.vector2Value;
+        }
+
+        private void WriteRange(SerializedProperty range, Vector2 value) {
+            if (separateValues) {
+                var minimum = serialized.FindProperty(minimumPath);
+                if (minimum == null) return;
+                minimum.floatValue = value.x;
+                range.floatValue = value.y;
+            } else {
+                range.vector2Value = value;
+            }
         }
     }
 }
