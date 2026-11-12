@@ -1,3 +1,4 @@
+#if VRCSDK_HAS_MATERIAL_CONTACTS
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
@@ -58,3 +59,4 @@ namespace VF.Tests {
         }
     }
 }
+#endif
