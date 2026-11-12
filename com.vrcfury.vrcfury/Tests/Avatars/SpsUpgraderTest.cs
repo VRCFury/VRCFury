@@ -1240,14 +1240,15 @@ namespace VF.Tests {
             plug.autoRenderer = false;
             plug.configureTpsMesh.Add(renderer);
             var authored = Track(new Texture2D(1, 1, TextureFormat.RGBA32, false, true));
-            authored.SetPixel(0, 0, new Color(0.25f, 0.25f, 0.25f, 1));
+            // Stay above the radius filter's 75% threshold after 8-bit texture quantization.
+            authored.SetPixel(0, 0, new Color(0.2f, 0.2f, 0.2f, 1));
             authored.Apply();
             plug.textureMask = authored;
             Apply();
             renderer.sharedMaterials = Array.Empty<Material>();
             var mask = PlugMaskGenerator.GetMask(renderer, plug);
             Assert.That(plug.textureMask.Get(), Is.SameAs(authored));
-            Assert.That(mask, Has.All.EqualTo(0.75f).Within(0.01f));
+            Assert.That(mask, Has.All.EqualTo(0.8f).Within(0.01f));
         }
 
         [Test]
