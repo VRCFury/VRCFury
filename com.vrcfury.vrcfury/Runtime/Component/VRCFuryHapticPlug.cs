@@ -32,7 +32,7 @@ namespace VF.Component {
         public bool addDpsTipLight = false;
         [DoNotApplyRestingState]
         public State postBakeActions;
-        public bool spsOverrun = true;
+        [Obsolete, HideInInspector] public bool spsOverrun = true;
         [Obsolete] public bool enableDepthAnimations = false;
         [Obsolete] public List<LegacyPlugDepthAction> depthActions = new List<LegacyPlugDepthAction>();
         public List<VRCFuryHapticSocket.DepthActionNew> depthActions2 = new List<VRCFuryHapticSocket.DepthActionNew>();
