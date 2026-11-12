@@ -363,6 +363,35 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void OffsetDepthEndpointsStayInTheRadiusRingPlane() {
+            var obj = new GameObject("Curved socket");
+            try {
+                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                var stop = new GameObject("Stop").transform;
+                stop.SetParent(obj.transform, false);
+                stop.localPosition = new Vector3(0.2f, 0, -0.3f);
+                stop.localRotation = Quaternion.Euler(0, -45, 0);
+                socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
+                var path = new DepthActionSlider.SocketDepthPath(socket, Vector3.zero, Quaternion.identity);
+                for (var index = 0; index < 4; index++) {
+                    var offset = Quaternion.Euler(0, 0, 45 + index * 90) * Vector3.right * 0.02f;
+                    var shifted = new DepthActionSlider.SocketDepthPath(socket, Vector3.zero, Quaternion.identity, offset);
+                    foreach (var depth in new[] { 0.1f, -0.05f, -0.15f, -0.3f, -0.6f }) {
+                        var ring = path.Sample(depth);
+                        var endpoint = shifted.Sample(depth);
+                        var delta = endpoint.position - ring.position;
+                        Assert.That(Vector3.Dot(delta, ring.outward), Is.Zero.Within(0.000001f));
+                        Assert.That(delta.magnitude, Is.EqualTo(0.02f).Within(0.000001f));
+                        Assert.That(Vector3.Distance(endpoint.outward, ring.outward), Is.LessThan(0.000001f));
+                        Assert.That(Vector3.Distance(shifted.RangePoints(depth - 0.01f, depth)[0], endpoint.position), Is.LessThan(0.000001f));
+                    }
+                }
+            } finally {
+                Object.DestroyImmediate(obj);
+            }
+        }
+
+        [Test]
         public void GuidedDepthHandlesFollowCurveAndProjectBackToDepth(
             [Values] bool curved,
             [Values(0.5f, 2f)] float scale,

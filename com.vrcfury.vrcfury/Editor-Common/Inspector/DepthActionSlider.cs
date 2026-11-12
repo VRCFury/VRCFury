@@ -269,8 +269,11 @@ namespace VF.Inspector {
         private float DrawDepthHandle(Vector3 center, Quaternion rotation, float depth, bool minimum, float? offDepth) {
             using (new Handles.DrawingScope(AnimationColors[actionIndex % AnimationColors.Length], Matrix4x4.identity)) {
                 var socket = serialized.targetObject as VRCFuryHapticSocket;
+                var socketCenter = socket != null
+                    ? (new TransformData(socket.owner()) * VRCFuryHapticSocketEditor.GetSocketTransformLocal(socket).Item2).position
+                    : center;
                 var path = socket != null && socket.guidedPathStops.Any(s => s?.transform != null)
-                    ? new SocketDepthPath(socket, center, rotation) : null;
+                    ? new SocketDepthPath(socket, socketCenter, rotation, center - socketCenter) : null;
                 var axis = rotation * Vector3.forward;
                 var position = center + axis * depth;
                 if (path != null) (position, axis) = path.Sample(depth);
@@ -322,8 +325,15 @@ namespace VF.Inspector {
             private readonly List<float> distances = new();
             private readonly Vector3 entranceForward;
             private readonly Vector3 terminalForward;
+            private readonly Vector3 radialOffset;
 
-            internal SocketDepthPath(VRCFuryHapticSocket socket, Vector3 center, Quaternion rotation) {
+            internal SocketDepthPath(
+                VRCFuryHapticSocket socket,
+                Vector3 center,
+                Quaternion rotation,
+                Vector3 radialOffset = default
+            ) {
+                this.radialOffset = radialOffset;
                 var frame = new TransformData(socket.owner()) * VRCFuryHapticSocketEditor.GetSocketTransformLocal(socket).Item2;
                 var offset = center - frame.position;
                 var previous = new TransformData(center, rotation);
@@ -352,6 +362,13 @@ namespace VF.Inspector {
             }
 
             internal (Vector3 position, Vector3 outward) Sample(float depth) {
+                var sample = SampleCenterline(depth);
+                // Keep the visual offset in the same cross-section as the radius ring.
+                sample.position += Quaternion.FromToRotation(entranceForward, sample.outward) * radialOffset;
+                return sample;
+            }
+
+            private (Vector3 position, Vector3 outward) SampleCenterline(float depth) {
                 if (depth >= 0) return (points[0] + entranceForward * depth, entranceForward);
                 var distance = -depth;
                 for (var i = 1; i < points.Count; i++) {
@@ -363,10 +380,15 @@ namespace VF.Inspector {
                 return (points[last] - terminalForward * (distance - distances[last]), terminalForward);
             }
 
+            private Vector3 OffsetPoint(int index) {
+                var outward = index == 0 ? entranceForward : (points[index - 1] - points[index]).normalized;
+                return points[index] + Quaternion.FromToRotation(entranceForward, outward) * radialOffset;
+            }
+
             internal Vector3[] RangePoints(float minimum, float maximum) {
                 var output = new List<Vector3> { Sample(maximum).position };
                 for (var i = 0; i < points.Count; i++) {
-                    if (-distances[i] > minimum && -distances[i] < maximum) output.Add(points[i]);
+                    if (-distances[i] > minimum && -distances[i] < maximum) output.Add(OffsetPoint(i));
                 }
                 output.Add(Sample(minimum).position);
                 return output.ToArray();
@@ -401,12 +423,19 @@ namespace VF.Inspector {
                     best = error;
                     depth = Mathf.LerpUnclamped(startDepth, endDepth, t);
                 }
-                Consider(points[0], points[0] + entranceForward, 0, 1, ray: true);
+                var start = OffsetPoint(0);
+                Consider(start, start + entranceForward, 0, 1, ray: true);
                 for (var i = 1; i < points.Count; i++) {
-                    Consider(points[i - 1], points[i], -distances[i - 1], -distances[i]);
+                    Consider(
+                        OffsetPoint(i - 1),
+                        OffsetPoint(i),
+                        -distances[i - 1],
+                        -distances[i]
+                    );
                 }
                 var last = points.Count - 1;
-                Consider(points[last], points[last] - terminalForward, -distances[last], -distances[last] - 1, ray: true);
+                var end = points[last] + Quaternion.FromToRotation(entranceForward, terminalForward) * radialOffset;
+                Consider(end, end - terminalForward, -distances[last], -distances[last] - 1, ray: true);
                 return depth;
             }
         }
