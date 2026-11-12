@@ -75,16 +75,21 @@ inline void sps_deform_walk_chain(
     );
     float remainingDistance = max(targetDistance, 0);
     uint terminalFlags = 0u;
-    outDeformationWeight = path.deformationWeight;
+    // Straighten the curve before blending back to the original mesh. Blending
+    // bent vertex positions directly to straight ones cuts across the bend.
+    float curveWeight = sps_saturated_map(path.deformationWeight, 0.2, 1);
+    outDeformationWeight = saturate(path.deformationWeight * 5);
     outRadiusMult = 1;
     outPosition = sps_path_worlds[0];
     outForward = sps_path_forwards[0];
     if (sps_is_zero(outForward)) outForward = float3(0, 0, 1);
     outForward = sps_normalize(outForward);
+    float3 plugForward = outForward;
     outUp = sps_nearest_normal(outForward, path.plugUp);
     float3 startPoint = outPosition;
     float3 startForward = outForward;
     float3 currentUp = outUp;
+    float3 originalStartPoint = outPosition;
     uint previousFlags = 0u;
 
     [fastopt]
@@ -94,6 +99,12 @@ inline void sps_deform_walk_chain(
         float3 endForward = sampleIndex == 1 ? entryForward : sps_path_forwards[sampleIndex];
         if (sps_is_zero(endForward)) break;
         uint socketFlags = sampleIndex == 1 ? entryFlags : sps_path_flags[sampleIndex];
+
+        // Straighten each segment from the previous segment's adjusted endpoint.
+        float3 segmentOffset = endPoint - originalStartPoint;
+        originalStartPoint = endPoint;
+        endPoint = startPoint + lerp(plugForward * length(segmentOffset), segmentOffset, curveWeight);
+        endForward = sps_normalize(lerp(plugForward, endForward, curveWeight));
 
         terminalFlags = socketFlags;
         float3 p0;
@@ -136,7 +147,7 @@ inline void sps_deform_walk_chain(
 
         if (remainingDistance <= 0) {
             if (!zeroLength && sps_has_flag(previousFlags, SPS_SOCKET_FLAG_HOLE)) {
-                outRadiusMult = 0;
+                outRadiusMult = 1 - curveWeight;
             }
             return;
         }
@@ -153,12 +164,13 @@ inline void sps_deform_walk_chain(
         // Ensure 10% overrun past the terminal hole, without adding it twice when
         // the entrance look-ahead already extends beyond that hole. Keep the 5% cap.
         float overrun = max(path.worldLength * 0.1 - terminalAdvance, 0);
-        outRadiusMult = sps_saturated_map(
+        float capRadius = sps_saturated_map(
             max(remainingDistance - overrun, 0),
             path.worldLength * 0.05,
             0
         );
-        remainingDistance = min(remainingDistance, overrun);
+        outRadiusMult = lerp(1, capRadius, curveWeight);
+        remainingDistance = lerp(remainingDistance, min(remainingDistance, overrun), curveWeight);
     }
     outPosition += outForward * remainingDistance;
 }
