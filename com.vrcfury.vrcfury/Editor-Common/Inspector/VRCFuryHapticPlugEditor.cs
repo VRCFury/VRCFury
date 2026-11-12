@@ -390,6 +390,11 @@ namespace VF.Inspector {
                         tooltip: "Usually, SPS penetrators revert blendshapes back to exactly the way they look in the editor while deforming toward a socket." +
                                  " You can specify up to 16 blendshapes in this list which can still be animated while deforming."
                     ));
+                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
+                        serializedObject.FindProperty("spsOverrun"),
+                        "Allow Hole Overrun (Recommended)",
+                        tooltip: "When enabled, the plug will proceed 'into' holes by a small distance before collapsing, hiding the collapsing tris."
+                    ));
                 }
                 return c;
             }, enableSps));
