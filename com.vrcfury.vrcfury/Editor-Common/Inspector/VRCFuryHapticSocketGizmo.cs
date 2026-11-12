@@ -205,6 +205,25 @@ namespace VF.Inspector {
             var socketTransformWorld = new TransformData(owner) * new TransformData(data.pos, data.rot);
             var worldStart = socketTransformWorld.position;
             var worldRotation = owner.worldRotation * data.rot;
+            if (owner.IsSelected() && socket != null) {
+                var depths = socket.depthActions2
+                    .Where(action => action.units != VRCFuryHapticSocket.DepthActionUnits.Plugs)
+                    .SelectMany(action => {
+                        var scale = action.units == VRCFuryHapticSocket.DepthActionUnits.Local
+                            ? Mathf.Abs(owner.worldScale.x) : 1;
+                        return new[] { action.range.x * scale, action.range.y * scale };
+                    })
+                    .Where(depth => !float.IsNaN(depth) && !float.IsInfinity(depth))
+                    .ToArray();
+                if (depths.Length > 0) {
+                    var path = new DepthActionSlider.SocketDepthPath(socket, worldStart, worldRotation);
+                    var points = path.RangePoints(Mathf.Min(0, depths.Min()), Mathf.Max(0, depths.Max()));
+                    VRCFuryGizmoUtils.WithHandles(() => {
+                        Handles.color = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+                        Handles.DrawAAPolyLine(points);
+                    });
+                }
+            }
             var showLegacyOffset = data.useLegacyLights && data.overrideLegacyOffset
                 && (!EditorApplication.isPlaying || (data.legacyLights != null && data.legacyLights.activeInHierarchy));
             if (guidedPathStops.Count > 0 && data.type != VRCFuryHapticSocket.AddLight.None) {

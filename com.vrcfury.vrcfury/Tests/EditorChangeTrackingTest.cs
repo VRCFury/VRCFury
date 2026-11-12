@@ -179,7 +179,7 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void SocketPlugRadiusFieldStoresLocalUnitsAndUsesOneField() {
+        public void SocketPlugRadiusRangeStoresLocalUnits() {
             var panelOwner = ScriptableObject.CreateInstance<Fields>();
             var obj = new GameObject("Weighted socket");
             obj.transform.localScale = Vector3.one * 2;
@@ -195,9 +195,11 @@ namespace VF.Tests {
                     panel.Pump();
                     var toggle = editor.Q<UnityEngine.UIElements.Toggle>("multiplyPlugRadius");
                     var field = editor.Q<FloatField>("plugRadiusForFullWeight");
-                    Assert.That(editor.Q("plugRadiusControls").Query<UnityEngine.UIElements.Slider>().ToList(), Has.Count.EqualTo(1));
-                    Assert.That(editor.Q("plugRadiusControls").Query<MinMaxSlider>().ToList(), Is.Empty);
-                    Assert.That(editor.Q("plugRadiusControls").Query<FloatField>().ToList(), Has.Count.EqualTo(1));
+                    Assert.That(editor.Q("plugRadiusControls").Query<UnityEngine.UIElements.Slider>().ToList(), Is.Empty);
+                    Assert.That(editor.Q("plugRadiusControls").Query<MinMaxSlider>().ToList(), Has.Count.EqualTo(1));
+                    Assert.That(editor.Q("plugRadiusControls").Query<FloatField>().ToList(), Has.Count.EqualTo(2));
+                    var minimumField = editor.Q<FloatField>("plugRadiusForZeroWeight");
+                    var minimumRadius = action.FindPropertyRelative("plugRadiusForZeroWeight");
                     Assert.That(field.isDelayed, Is.True);
                     var radius = action.FindPropertyRelative("plugRadiusForFullWeight");
                     Assert.That(toggle.value, Is.False);
@@ -215,9 +217,24 @@ namespace VF.Tests {
                     panel.Pump();
                     Assert.That(radius.floatValue, Is.EqualTo(2), "Typing must not clamp to the old slider range");
                     Assert.That(editor.Q<Label>("plugRadiusMeters").text, Is.EqualTo("8 m"));
+                    minimumField.value = 0.05f;
+                    panel.Pump();
+                    Assert.That(minimumRadius.floatValue, Is.EqualTo(0.05f));
+                    Assert.That(editor.Q("plugRadiusControls").Q<Label>("rangeMetersMin").text, Is.EqualTo("0.2 m"));
+                    Undo.IncrementCurrentGroup();
+                    editor.Q("plugRadiusControls").Q<MinMaxSlider>().value = new Vector2(0.1f, 0.3f);
+                    panel.Pump();
+                    Assert.That(minimumRadius.floatValue, Is.EqualTo(0.1f));
+                    Assert.That(radius.floatValue, Is.EqualTo(0.3f));
+                    Undo.PerformUndo();
+                    serialized.Update();
+                    panel.Pump();
+                    Assert.That(minimumRadius.floatValue, Is.EqualTo(0.05f));
+                    Assert.That(radius.floatValue, Is.EqualTo(2f));
                     field.value = -1;
                     panel.Pump();
                     Assert.That(radius.floatValue, Is.Zero);
+                    Assert.That(minimumRadius.floatValue, Is.Zero);
                     Assert.That(field.value, Is.Zero);
                     Assert.That(toggle.value, Is.False);
                     toggle.value = true;
@@ -263,10 +280,11 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void RadiusMultiplierVisualEditorEditsOnlyMaximumAtDeepestPoint(
+        public void RadiusMultiplierVisualEditorEditsRangeAtDeepestPoint(
             [Values(0.5f, 2f)] float scale,
             [Values] bool meters,
-            [Values] bool curved
+            [Values] bool curved,
+            [Values(0f, 0.025f)] float zeroRadius
         ) {
             var obj = new GameObject("Radius multiplier socket");
             try {
@@ -274,6 +292,7 @@ namespace VF.Tests {
                 var socket = obj.AddComponent<VRCFuryHapticSocket>();
                 socket.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew {
                     plugRadiusForFullWeight = 0.1f,
+                    plugRadiusForZeroWeight = zeroRadius,
                     range = new Vector2(-0.15f, 0),
                     units = meters ? VRCFuryHapticSocket.DepthActionUnits.Meters : VRCFuryHapticSocket.DepthActionUnits.Local
                 });
@@ -288,22 +307,29 @@ namespace VF.Tests {
                     .Sample(-0.15f * (meters ? 1 : scale));
                 using (var serialized = new SerializedObject(socket)) {
                     var radius = serialized.FindProperty("depthActions2").GetArrayElementAtIndex(0).FindPropertyRelative("plugRadiusForFullWeight");
-                    var control = new DepthActionSlider(radius, VRCFuryHapticSocket.DepthActionUnits.Local, radius: true);
+                    var minimumRadius = serialized.FindProperty("depthActions2").GetArrayElementAtIndex(0).FindPropertyRelative("plugRadiusForZeroWeight");
+                    var control = new DepthActionSlider(
+                        radius,
+                        VRCFuryHapticSocket.DepthActionUnits.Local,
+                        radius: true,
+                        minimum: minimumRadius
+                    );
                     var calls = 0;
                     Undo.IncrementCurrentGroup();
                     control.EditRangeVisually((center, rotation, value, minimum) => {
                         Assert.That(Vector3.Distance(center, expected.position), Is.LessThan(0.00001f));
                         Assert.That(Vector3.Distance(rotation * Vector3.forward, expected.outward), Is.LessThan(0.00001f));
-                        Assert.That(minimum, Is.False);
-                        Assert.That(value, Is.EqualTo(0.1f * scale).Within(0.00001f));
+                        Assert.That(value, Is.EqualTo((minimum ? zeroRadius : 0.1f) * scale).Within(0.00001f));
                         calls++;
-                        return 0.2f;
+                        return minimum ? 0.01f : 0.2f;
                     });
-                    Assert.That(calls, Is.EqualTo(1));
+                    Assert.That(calls, Is.EqualTo(zeroRadius > 0 ? 2 : 1));
                     Assert.That(radius.floatValue, Is.EqualTo(0.2f / scale).Within(0.00001f));
+                    Assert.That(minimumRadius.floatValue, Is.EqualTo(zeroRadius > 0 ? 0.01f / scale : 0).Within(0.00001f));
                     Undo.PerformUndo();
                     serialized.Update();
                     Assert.That(radius.floatValue, Is.EqualTo(0.1f));
+                    Assert.That(minimumRadius.floatValue, Is.EqualTo(zeroRadius));
                     radius.floatValue = 0;
                     serialized.ApplyModifiedProperties();
                     control.EditRangeVisually((center, rotation, value, minimum) => {
@@ -331,6 +357,35 @@ namespace VF.Tests {
                 mouse.y += 10;
                 Assert.That(path.Project(mouse, Screen), Is.EqualTo(0.05f).Within(0.00001f));
                 Assert.That(path.Project(Screen(new Vector3(0, 0, -2)), Screen), Is.EqualTo(-2).Within(0.00001f));
+            } finally {
+                Object.DestroyImmediate(obj);
+            }
+        }
+
+        [Test]
+        public void OffsetDepthEndpointsStayInTheRadiusRingPlane() {
+            var obj = new GameObject("Curved socket");
+            try {
+                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                var stop = new GameObject("Stop").transform;
+                stop.SetParent(obj.transform, false);
+                stop.localPosition = new Vector3(0.2f, 0, -0.3f);
+                stop.localRotation = Quaternion.Euler(0, -45, 0);
+                socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
+                var path = new DepthActionSlider.SocketDepthPath(socket, Vector3.zero, Quaternion.identity);
+                for (var index = 0; index < 4; index++) {
+                    var offset = Quaternion.Euler(0, 0, 45 + index * 90) * Vector3.right * 0.02f;
+                    var shifted = new DepthActionSlider.SocketDepthPath(socket, Vector3.zero, Quaternion.identity, offset);
+                    foreach (var depth in new[] { 0.1f, -0.05f, -0.15f, -0.3f, -0.6f }) {
+                        var ring = path.Sample(depth);
+                        var endpoint = shifted.Sample(depth);
+                        var delta = endpoint.position - ring.position;
+                        Assert.That(Vector3.Dot(delta, ring.outward), Is.Zero.Within(0.000001f));
+                        Assert.That(delta.magnitude, Is.EqualTo(0.02f).Within(0.000001f));
+                        Assert.That(Vector3.Distance(endpoint.outward, ring.outward), Is.LessThan(0.000001f));
+                        Assert.That(Vector3.Distance(shifted.RangePoints(depth - 0.01f, depth)[0], endpoint.position), Is.LessThan(0.000001f));
+                    }
+                }
             } finally {
                 Object.DestroyImmediate(obj);
             }
@@ -435,7 +490,7 @@ namespace VF.Tests {
                 var socket = obj.AddComponent<VRCFuryHapticSocket>();
                 socket.position = new Vector3(0.1f, 0.2f, 0.3f);
                 socket.rotation = new Vector3(10, 20, 30);
-                for (var i = 0; i < 3; i++) {
+                for (var i = 0; i < 8; i++) {
                     if (radius) socket.plugEntryRadiusActions.Add(new VRCFuryHapticSocket.PlugEntryRadiusAction());
                     else socket.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew());
                 }
@@ -443,19 +498,25 @@ namespace VF.Tests {
                     var actions = serialized.FindProperty(radius ? "plugEntryRadiusActions" : "depthActions2");
                     var rotation = obj.transform.rotation * Quaternion.Euler(socket.rotation);
                     var origin = obj.transform.TransformPoint(socket.position);
-                    for (var i = 0; i < 3; i++) {
+                    var directions = new[] {
+                        new Vector3(1, 1, 0).normalized,
+                        new Vector3(-1, 1, 0).normalized,
+                        new Vector3(-1, -1, 0).normalized,
+                        new Vector3(1, -1, 0).normalized
+                    };
+                    for (var i = 0; i < 8; i++) {
                         var range = actions.GetArrayElementAtIndex(i).FindPropertyRelative("range");
                         var original = range.vector2Value;
                         var control = new DepthActionSlider(range, VRCFuryHapticSocket.DepthActionUnits.Local, radius);
                         var calls = 0;
                         control.EditRangeVisually((center, actualRotation, value, minimum) => {
-                            var expected = origin + rotation * Vector3.right * (radius ? 0 : (i + 1) * 0.04f);
+                            var expected = origin + rotation * directions[i % 4] * (radius ? 0 : 0.02f);
                             Assert.That(Vector3.Distance(center, expected), Is.LessThan(0.00001f));
                             Assert.That(Quaternion.Angle(actualRotation, rotation), Is.LessThan(0.01f));
                             calls++;
                             return value;
                         });
-                        Assert.That(calls, Is.EqualTo(2));
+                        Assert.That(calls, Is.EqualTo(radius ? 1 : 2));
                         Assert.That(range.vector2Value, Is.EqualTo(original));
                     }
                     Assert.That(socket.position, Is.EqualTo(new Vector3(0.1f, 0.2f, 0.3f)));
@@ -575,7 +636,7 @@ namespace VF.Tests {
                     var worldRotation = obj.transform.rotation * Quaternion.Euler(rotation);
                     var center = obj.transform.TransformPoint(offset);
                     if (!isSocket) center += worldRotation * Vector3.forward * (0.4f * scale);
-                    center += worldRotation * Vector3.right * 0.04f;
+                    center += worldRotation * new Vector3(1, 1, 0).normalized * 0.02f;
                     var multiplier = units == VRCFuryHapticSocket.DepthActionUnits.Local ? scale
                         : units == VRCFuryHapticSocket.DepthActionUnits.Plugs ? 0.4f * scale : 1;
                     var calls = 0;
@@ -642,7 +703,8 @@ namespace VF.Tests {
                     var control = new DepthActionSlider(range, VRCFuryHapticSocket.DepthActionUnits.Plugs);
                     var calls = 0;
                     control.EditRangeVisually((center, rotation, depth, minimum) => {
-                        Assert.That(Vector3.Distance(center, new Vector3(0.04f, 0, 1.2f)), Is.LessThan(0.00001f));
+                        var offset = new Vector3(1, 1, 0).normalized * 0.02f;
+                        Assert.That(Vector3.Distance(center, new Vector3(0, 0, 1.2f) + offset), Is.LessThan(0.00001f));
                         Assert.That(depth, Is.EqualTo(minimum ? -1.2f : 0.6f).Within(0.00001f));
                         calls++;
                         return depth;

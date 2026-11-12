@@ -75,6 +75,7 @@ namespace VF.Builder.Haptics {
             var inverseWorldRotation = Quaternion.Inverse(worldRotation);
 
             var allLocalVerts = new List<Vector3>();
+            var radii = new List<float>();
             var matsUsed = new VFMultimapSet<VFGameObject, int>();
             foreach (var renderer in renderers) {
                 var bakedMesh = MeshBaker.BakeMesh(renderer);
@@ -88,6 +89,9 @@ namespace VF.Builder.Haptics {
                     if (!(mask.GetOrDefault(i, 1) > 0 && v.z > 0)) continue;
                     usedVertices[i] = true;
                     allLocalVerts.Add(v);
+                    if (mask.GetOrDefault(i, 1) >= PlugMaskGenerator.MinimumRadiusWeight) {
+                        radii.Add(Vector3.Cross(v, Vector3.forward).magnitude);
+                    }
                 }
                 var mesh = renderer.GetMesh();
                 var matSlotsInMesh = 0;
@@ -112,10 +116,9 @@ namespace VF.Builder.Haptics {
                 .Select(v => v.z)
                 .DefaultIfEmpty(0)
                 .Max();
-            var radius = allLocalVerts
-                .Select(v => Vector3.Cross(v, Vector3.forward).magnitude)
+            var radius = radii
                 .OrderBy(m => m)
-                .Where((m, i) => i <= allLocalVerts.Count*0.75)
+                .Where((m, i) => i <= radii.Count*0.75)
                 .DefaultIfEmpty(0)
                 .Max();
 

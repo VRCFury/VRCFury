@@ -390,12 +390,6 @@ namespace VF.Inspector {
                         tooltip: "Usually, SPS penetrators revert blendshapes back to exactly the way they look in the editor while deforming toward a socket." +
                                  " You can specify up to 16 blendshapes in this list which can still be animated while deforming."
                     ));
-                    spsBox.Add(VRCFuryEditorUtils.BetterProp(
-                        serializedObject.FindProperty("spsOverrun"),
-                        "Allow Hole Overrun",
-                        tooltip: "This allows the plug to extend very slightly past holes to improve collapse visuals." +
-                                 " Beware that disabling this may cause plug to appear to 'fold in' near holes like a map, which may be strange."
-                    ));
                 }
                 return c;
             }, enableSps));
@@ -558,6 +552,7 @@ namespace VF.Inspector {
         private class GizmoCache {
             public bool initialized;
             public PlugSizeDetector.SizeResult size;
+            public AnimationCurve radiusCurve;
             public string error;
             public Vector3 position;
             public Quaternion rotation;
@@ -581,11 +576,17 @@ namespace VF.Inspector {
                 cache.scale = transform.worldScale;
                 cache.version = EditorChanges.Version;
                 cache.size = null;
+                cache.radiusCurve = null;
                 cache.error = null;
                 try {
                     var copy = VRCFuryComponentEditor.CreateUpgradedClone(plug, out var cloneObject);
                     try {
                         cache.size = PlugSizeDetector.GetWorldSize(copy);
+                        cache.radiusCurve = PlugRadiusCurve.GetRadiusCurve(
+                            copy,
+                            cache.size,
+                            transform.worldScale.x
+                        );
                     } finally {
                         UnityEngine.Object.DestroyImmediate(cloneObject);
                     }
@@ -625,6 +626,18 @@ namespace VF.Inspector {
 
             var worldEnd = worldRoot + worldForward * worldLength;
             VRCFuryGizmoUtils.DrawCappedCylinder(worldRoot, worldEnd, worldRadius, color);
+
+            var radiusCurve = gizmoCache.GetOrCreateValue(plug).radiusCurve;
+            if (isSelected && radiusCurve != null) {
+                foreach (var key in radiusCurve.keys) {
+                    VRCFuryGizmoUtils.DrawDisc(
+                        worldRoot + worldForward * (worldLength * key.time),
+                        worldForward,
+                        key.value * transform.worldScale.x,
+                        new Color(0.5f, 0.5f, 0.5f, 0.3f)
+                    );
+                }
+            }
 
             if (isSelected) {
                 VRCFuryGizmoUtils.DrawText(

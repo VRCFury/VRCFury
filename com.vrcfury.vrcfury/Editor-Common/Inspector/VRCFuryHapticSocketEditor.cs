@@ -321,17 +321,23 @@ namespace VF.Inspector {
                 if (!IsRadius) c.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("reverseClip"), "Reverse clip (Deprecated, DO NOT USE)"));
                 if (!IsRadius && prop.serializedObject.targetObject is VRCFuryHapticSocket socket) {
                     var radius = prop.FindPropertyRelative("plugRadiusForFullWeight");
+                    var minimumRadius = prop.FindPropertyRelative("plugRadiusForZeroWeight");
+                    var minimumRadiusPath = minimumRadius.propertyPath;
                     var radiusObject = radius.serializedObject;
                     var radiusPath = radius.propertyPath;
                     // Undo can delete this action before its pooled inspector row is detached.
                     SerializedProperty CurrentRadius() => socket == null ? null : radiusObject.FindProperty(radiusPath);
                     float WorldScale() => Mathf.Max(Mathf.Abs(socket.transform.lossyScale.x), 0.000001f);
                     var toggle = new Toggle { name = "multiplyPlugRadius" };
-                    var field = new DepthActionSlider(radius, VRCFuryHapticSocket.DepthActionUnits.Local, radius: true);
-                    field.Q<FloatField>().name = "plugRadiusForFullWeight";
+                    var field = new DepthActionSlider(
+                        radius,
+                        VRCFuryHapticSocket.DepthActionUnits.Local,
+                        radius: true,
+                        minimum: minimumRadius
+                    );
                     field.Q<Label>("rangeMetersMax").name = "plugRadiusMeters";
                     var radiusControls = new VisualElement { name = "plugRadiusControls" };
-                    radiusControls.Add(VRCFuryEditorUtils.BetterProp(null, "Local plug radius for max (1.0) weight:", fieldOverride: field));
+                    radiusControls.Add(VRCFuryEditorUtils.BetterProp(null, "Local plug radius for zero / full weight:", fieldOverride: field));
                     void UpdateRadius() {
                         var value = CurrentRadius()?.floatValue ?? 0;
                         toggle.SetValueWithoutNotify(value > 0);
@@ -341,6 +347,7 @@ namespace VF.Inspector {
                         var current = CurrentRadius();
                         if (current == null) return;
                         current.floatValue = evt.newValue ? 0.25f / WorldScale() : 0;
+                        radiusObject.FindProperty(minimumRadiusPath).floatValue = 0;
                         radiusObject.ApplyModifiedProperties();
                         UpdateRadius();
                     });

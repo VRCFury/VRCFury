@@ -7,13 +7,19 @@ using VF.Utils;
 
 namespace VF.Builder.Haptics {
     internal static class PlugRadiusCurve {
+        private const float RelativeRadiusTolerance = 0.02f;
+        private const int MaxSamples = 24;
+
         public static AnimationCurve GetRadiusCurve(VRCFuryHapticPlug plug) {
             return GetRadiusCurve(plug, PlugSizeDetector.GetWorldSize(plug), plug.owner().worldScale.x);
         }
 
         // X is normalized plug length (0=root, 1=tip); Y is local radius.
         public static AnimationCurve GetRadiusCurve(VRCFuryHapticPlug plug, PlugSizeDetector.SizeResult size, float scale) {
-            if (size.renderers.Count == 0) return AnimationCurve.Constant(0, 1, size.worldRadius / scale);
+            if (size.renderers.Count == 0) {
+                var radius = size.worldRadius / scale;
+                return FitSamples(new[] { 0f, 127f / 128, 1f }, new[] { radius, radius, 0f });
+            }
             var position = plug.owner().TransformPoint(size.localPosition);
             var inverseRotation = Quaternion.Inverse(plug.owner().worldRotation * size.localRotation);
             const float boundaryTolerance = 0.00001f;
@@ -40,8 +46,8 @@ namespace VF.Builder.Haptics {
                     if (mesh.GetTopology(submesh) != MeshTopology.Triangles) continue;
                     var indices = mesh.GetTriangles(submesh);
                     for (var i = 0; i < indices.Length; i += 3) {
-                        // Don't let fully or partly excluded body triangles inflate the plug envelope.
-                        if (Enumerable.Range(0, 3).Any(j => mask.GetOrDefault(indices[i + j], 1) <= 0)) continue;
+                        // Don't let weakly influenced vertices inflate the plug envelope.
+                        if (Enumerable.Range(0, 3).Any(j => mask.GetOrDefault(indices[i + j], 1) < PlugMaskGenerator.MinimumRadiusWeight)) continue;
                         for (var j = 0; j < 3; j++) triangles.Add(offset + indices[i + j]);
                     }
                 }
@@ -84,28 +90,39 @@ namespace VF.Builder.Haptics {
             }
 
             var radii = extents.Select(e => (e.x + e.y + e.z + e.w) * 0.25f).ToArray();
+            return FitSamples(depths, radii);
+        }
 
-            // Reduce keys with a maximum sampled radial error of 0.5% of the largest averaged radius.
-            var tolerance = radii.Max() * 0.005f;
+        private static AnimationCurve FitSamples(float[] depths, float[] radii) {
+            // Extend the first measured cross-section back to the base instead of pinching it closed.
+            var firstMeasured = Array.FindIndex(radii, radius => radius > 0);
+            for (var i = 0; i < firstMeasured; i++) radii[i] = radii[firstMeasured];
+            // Always close the tip, including flat-ended meshes and renderer-free plugs.
+            radii[radii.Length - 1] = 0;
+
+            // Keep the most significant changes until the tolerance or sample limit is reached.
+            var tolerance = radii.Max() * RelativeRadiusTolerance;
             var kept = new SortedSet<int> { 0, depths.Length - 1 };
-            var pending = new Stack<(int, int)>();
-            pending.Push((0, depths.Length - 1));
-            while (pending.Count > 0) {
-                var (first, last) = pending.Pop();
+            while (kept.Count < MaxSamples) {
                 var worst = -1;
                 var error = tolerance;
-                for (var i = first + 1; i < last; i++) {
-                    var estimate = Mathf.Lerp(radii[first], radii[last],
-                        (depths[i] - depths[first]) / (depths[last] - depths[first]));
-                    var delta = Mathf.Abs(radii[i] - estimate);
-                    if (delta <= error) continue;
-                    error = delta;
-                    worst = i;
+                var first = kept.Min;
+                foreach (var last in kept.Skip(1)) {
+                    for (var i = first + 1; i < last; i++) {
+                        var estimate = Mathf.Lerp(
+                            radii[first],
+                            radii[last],
+                            (depths[i] - depths[first]) / (depths[last] - depths[first])
+                        );
+                        var delta = Mathf.Abs(radii[i] - estimate);
+                        if (delta <= error) continue;
+                        error = delta;
+                        worst = i;
+                    }
+                    first = last;
                 }
-                if (worst < 0) continue;
+                if (worst < 0) break;
                 kept.Add(worst);
-                pending.Push((first, worst));
-                pending.Push((worst, last));
             }
             var keys = kept.Select(i => new Keyframe(depths[i], radii[i])).ToArray();
             for (var i = 1; i < keys.Length; i++) {
