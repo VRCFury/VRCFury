@@ -8,6 +8,8 @@ using VF.Utils;
 
 namespace VF.Builder.Haptics {
     internal static class PlugMaskGenerator {
+        public const float MinimumRadiusWeight = 0.75f;
+
         // Returns 1 if active, 0 if ignored
         public static float[] GetMask(Renderer renderer, VRCFuryHapticPlug plug) {
             var mesh = renderer.GetMesh();

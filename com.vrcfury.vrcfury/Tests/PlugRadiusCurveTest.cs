@@ -26,15 +26,15 @@ public class PlugRadiusCurveTest {
 
     [TestCase(0.1f)]
     [TestCase(0)]
-    public void SparseCylinderOrConeNeedsOnlyTwoKeys(float endRadius) {
+    public void SparseCylinderOrConeClosesOnlyAtTip(float endRadius) {
         var curve = Fit((0, 0.1f), (1, endRadius));
-        Assert.That(curve.length, Is.EqualTo(2));
+        Assert.That(curve.length, Is.EqualTo(endRadius == 0 ? 2 : 3));
         for (var i = 0; i <= 100; i++) {
             var t = i / 100f;
-            Assert.That(curve.Evaluate(t), Is.EqualTo(Mathf.Lerp(0.1f, endRadius, t)).Within(0.00001f));
+            Assert.That(curve.Evaluate(t), Is.EqualTo(i == 100 ? 0 : Mathf.Lerp(0.1f, endRadius, t)).Within(0.00001f));
         }
         Assert.That(curve.Evaluate(-1), Is.EqualTo(0.1f).Within(0.00001f));
-        Assert.That(curve.Evaluate(2), Is.EqualTo(endRadius).Within(0.00001f));
+        Assert.That(curve.Evaluate(2), Is.Zero);
     }
 
     [Test]
@@ -46,6 +46,19 @@ public class PlugRadiusCurveTest {
     }
 
     [Test]
+    public void DetailedMeshProducesAtMostTwentyFourProfileSamples() {
+        var rings = Enumerable.Range(0, 65)
+            .Select(i => (i / 64f, i % 2 == 0 ? 0.05f : 0.1f))
+            .ToArray();
+        var curve = Fit(rings);
+        Assert.That(curve.length, Is.LessThanOrEqualTo(24));
+        Assert.That(curve.keys.First().time, Is.Zero);
+        Assert.That(curve.keys.First().value, Is.EqualTo(0.05f));
+        Assert.That(curve.keys.Last().time, Is.EqualTo(1));
+        Assert.That(curve.keys.Last().value, Is.Zero);
+    }
+
+    [Test]
     public void AveragesDirectionalExtentsInsteadOfDistanceFromAxis() {
         // Right shrinks from 1 to 0 as up grows from 0 to 1; left/down stay zero.
         var curve = PlugRadiusCurve.Fit(new[] {
@@ -53,7 +66,7 @@ public class PlugRadiusCurveTest {
         }, new[] { 0, 1, 2 });
         for (var i = 0; i <= 1000; i++) {
             var z = i / 1000f;
-            Assert.That(curve.Evaluate(z), Is.EqualTo(0.25f).Within(0.00001f));
+            Assert.That(curve.Evaluate(z), Is.EqualTo(0.25f * Mathf.Clamp01((1 - z) * 128)).Within(0.00001f));
         }
     }
 
@@ -69,16 +82,18 @@ public class PlugRadiusCurveTest {
             triangles.AddRange(new[] { side, next, side + 4, next, next + 4, side + 4 });
         }
         var curve = PlugRadiusCurve.Fit(vertices, triangles.ToArray());
-        Assert.That(curve.length, Is.EqualTo(2));
-        foreach (var depth in new[] { 0f, 0.25f, 0.75f, 1f })
+        Assert.That(curve.length, Is.EqualTo(3));
+        foreach (var depth in new[] { 0f, 0.25f, 0.75f })
             Assert.That(curve.Evaluate(depth), Is.EqualTo(0.025f).Within(0.000001f));
+        Assert.That(curve.Evaluate(1), Is.Zero);
     }
 
     [Test]
     public void ClipsTrianglesAtRootAndConfiguredLength() {
         var curve = Fit((-1, 0.3f), (2, 0));
         Assert.That(curve.Evaluate(0), Is.EqualTo(0.2f).Within(0.00001f));
-        Assert.That(curve.Evaluate(1), Is.EqualTo(0.1f).Within(0.00001f));
+        Assert.That(curve.Evaluate(0.5f), Is.EqualTo(0.15f).Within(0.00001f));
+        Assert.That(curve.Evaluate(1), Is.Zero);
     }
 
     [Test]
@@ -89,7 +104,7 @@ public class PlugRadiusCurveTest {
             new Vector3(100, 0, 0.5f)
         };
         var curve = PlugRadiusCurve.Fit(vertices, new[] { 0, 1, 2, 3, 4, 5 });
-        Assert.That(curve.length, Is.EqualTo(2));
+        Assert.That(curve.length, Is.EqualTo(3));
         Assert.That(curve.Evaluate(0.5f), Is.EqualTo(0.05f).Within(0.00001f));
     }
 
@@ -98,6 +113,73 @@ public class PlugRadiusCurveTest {
         var curve = PlugRadiusCurve.Fit(Array.Empty<Vector3>(), Array.Empty<int>());
         Assert.That(curve.length, Is.EqualTo(2));
         Assert.That(curve.Evaluate(0.5f), Is.Zero);
+    }
+
+    [Test]
+    public void MissingBaseCrossSectionsInheritTheFirstMeasuredSegment() {
+        var curve = Fit((0.2f, 0.1f), (0.8f, 0.1f), (1, 0));
+        Assert.That(curve.keys.First().time, Is.Zero);
+        foreach (var depth in new[] { -0.1f, 0f, 0.1f, 0.2f, 0.5f }) {
+            Assert.That(curve.Evaluate(depth), Is.EqualTo(0.1f).Within(0.00001f));
+        }
+        Assert.That(curve.keys.Last().time, Is.EqualTo(1));
+        Assert.That(curve.keys.Last().value, Is.Zero);
+    }
+
+    [TestCase(0.749f)]
+    [TestCase(0.75f)]
+    public void OverallAndProfileRadiusRequireAtLeastSeventyFivePercentPlugInfluence(float wideWeight) {
+        var root = new GameObject("Masked radius test");
+        var mesh = new Mesh();
+        try {
+            var plugObject = new GameObject("Plug");
+            plugObject.transform.SetParent(root.transform, false);
+            var otherBone = new GameObject("Body");
+            otherBone.transform.SetParent(root.transform, false);
+            var plug = plugObject.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = false;
+            plug.useBoneMask = true;
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            var weights = new List<BoneWeight>();
+            foreach (var radius in new[] { 0.1f, 0.4f }) {
+                var start = vertices.Count;
+                foreach (var depth in new[] { 0.2f, 1f }) {
+                    foreach (var direction in new[] { Vector3.right, Vector3.up, Vector3.left, Vector3.down }) {
+                        vertices.Add(direction * radius + Vector3.forward * depth);
+                        var weight = radius == 0.1f ? 0.75f : wideWeight;
+                        weights.Add(new BoneWeight {
+                            boneIndex0 = 0,
+                            weight0 = weight,
+                            boneIndex1 = 1,
+                            weight1 = 1 - weight
+                        });
+                    }
+                }
+                for (var side = 0; side < 4; side++) {
+                    var a = start + side;
+                    var b = start + (side + 1) % 4;
+                    triangles.AddRange(new[] { a, b, a + 4, b, b + 4, a + 4 });
+                }
+            }
+            mesh.vertices = vertices.ToArray();
+            mesh.triangles = triangles.ToArray();
+            mesh.boneWeights = weights.ToArray();
+            mesh.bindposes = new[] { Matrix4x4.identity, Matrix4x4.identity };
+            var renderer = root.AddComponent<SkinnedMeshRenderer>();
+            renderer.sharedMesh = mesh;
+            renderer.bones = new[] { plugObject.transform, otherBone.transform };
+            plug.configureTpsMesh.Add(renderer);
+            var expected = wideWeight < 0.75f ? 0.1f : 0.4f;
+            Assert.That(PlugSizeDetector.GetWorldSize(plug).worldRadius, Is.EqualTo(expected).Within(0.00001f));
+            var curve = PlugRadiusCurve.GetRadiusCurve(plug);
+            Assert.That(curve.Evaluate(0), Is.EqualTo(expected).Within(0.00001f));
+            Assert.That(curve.Evaluate(0.5f), Is.EqualTo(expected).Within(0.00001f));
+            Assert.That(curve.Evaluate(1), Is.Zero);
+        } finally {
+            UnityEngine.Object.DestroyImmediate(root);
+            UnityEngine.Object.DestroyImmediate(mesh);
+        }
     }
 
     [TestCase(false, 0.5f)]

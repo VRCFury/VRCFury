@@ -442,12 +442,13 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void ManualPlugWithoutMeshUsesConstantRadius() {
+        public void ManualPlugWithoutMeshUsesConstantRadiusUntilTip() {
             plug.configureTpsMesh.Clear();
             var injector = new VRCFuryInjector(); injector.ImportScan(typeof(VFServiceAttribute));
             bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
-            foreach (var depth in new[] { 0f, 0.25f, 0.75f, 1f })
+            foreach (var depth in new[] { 0f, 0.25f, 0.75f })
                 Assert.That(bake.radiusCurve.Evaluate(depth), Is.EqualTo(0.06f).Within(0.00001f));
+            Assert.That(bake.radiusCurve.Evaluate(1), Is.Zero);
         }
 
 #if VRCSDK_HAS_MATERIAL_CONTACTS
