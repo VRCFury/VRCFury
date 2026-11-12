@@ -1,17 +1,17 @@
-#ifndef SPS_INC_DEFORM_CURVE
-#define SPS_INC_DEFORM_CURVE
+#ifndef SPS_INC_CURVE
+#define SPS_INC_CURVE
 
-#include "sps_deform_config.cginc"
+#include "sps_config.cginc"
 
-#include "sps_deform_path.cginc"
-#include "../common/sps_types.cginc"
-#include "../common/sps_utils.cginc"
-#include "sps_deform_bezier.cginc"
-#include "sps_deform_control_points.cginc"
-#include "sps_deform_globals.cginc"
+#include "sps_path.cginc"
+#include "sps_types.cginc"
+#include "sps_utils.cginc"
+#include "sps_bezier.cginc"
+#include "sps_control_points.cginc"
+#include "sps_globals.cginc"
 
 // Approximate the outgoing path with straight lines between stops.
-// Returns the next socket index (2 if unchanged), or SPS_CHAIN_MAX_SOCKETS + 1 on the final exit.
+// Returns the next socket index (2 if unchanged), or SPS_CHAIN_SOCKETS_MAX + 1 on the final exit.
 // terminalAdvance reports how far the new entrance extends beyond the final stop.
 inline uint sps_deform_advance_entry(
     float distance,
@@ -24,7 +24,7 @@ inline uint sps_deform_advance_entry(
     terminalAdvance = 0;
     if (distance <= 0) return 2;
     [fastopt]
-    for (uint next = 2; next <= SPS_CHAIN_MAX_SOCKETS; next++) {
+    for (uint next = 2; next <= SPS_CHAIN_SOCKETS_MAX; next++) {
         float3 end = sps_path_worlds[next];
         float3 endForward = sps_path_forwards[next];
         if (sps_is_zero(endForward)) break;
@@ -50,7 +50,7 @@ inline uint sps_deform_advance_entry(
     // Beyond the last stop, follow its straight-line exit.
     terminalAdvance = distance;
     position += forward * distance;
-    return SPS_CHAIN_MAX_SOCKETS + 1;
+    return SPS_CHAIN_SOCKETS_MAX + 1;
 }
 
 inline void sps_deform_walk_chain(
@@ -72,7 +72,7 @@ inline void sps_deform_walk_chain(
     float lateralDistance = length(offset - entryForward * axialDepth);
     // Aim farther along the path so off-center plugs need less of a return bend.
     float advance = max(
-        axialDepth + lateralDistance * SPS_DEFORM_LATERAL_ADVANCE_MULTIPLIER + path.worldLength * SPS_DEFORM_ENTRY_ADVANCE,
+        axialDepth + lateralDistance * SPS_LATERAL_ADVANCE_MULTIPLIER + path.worldLength * SPS_ENTRY_ADVANCE,
         0
     );
     float terminalAdvance;
@@ -88,10 +88,10 @@ inline void sps_deform_walk_chain(
     uint terminalFlags = 0u;
     // Straighten the curve before blending back to the original mesh. Blending
     // bent vertex positions directly to straight ones cuts across the bend.
-    float curveWeight = sps_saturated_map(entryWeight, SPS_DEFORM_MESH_FADE_WEIGHT, 1);
-    float capLength = path.worldLength * SPS_DEFORM_HOLE_CAP_LENGTH;
+    float curveWeight = sps_saturated_map(entryWeight, SPS_MESH_FADE_WEIGHT_MAX, 1);
+    float capLength = path.worldLength * SPS_HOLE_CAP_LENGTH;
     float previousCurveWeight = curveWeight;
-    outDeformationWeight = saturate(path.deformationWeight / SPS_DEFORM_MESH_FADE_WEIGHT);
+    outDeformationWeight = saturate(path.deformationWeight / SPS_MESH_FADE_WEIGHT_MAX);
     outRadiusMult = 1;
     outPosition = sps_path_worlds[0];
     outForward = sps_path_forwards[0];
@@ -106,14 +106,14 @@ inline void sps_deform_walk_chain(
     uint previousFlags = 0u;
 
     [fastopt]
-    for (uint sampleIndex = 1; sampleIndex <= SPS_CHAIN_MAX_SOCKETS; sampleIndex++) {
+    for (uint sampleIndex = 1; sampleIndex <= SPS_CHAIN_SOCKETS_MAX; sampleIndex++) {
         // Keep the root-to-entrance Bezier, using the advanced entrance as its target.
         float3 endPoint = sampleIndex == 1 ? entryPoint : sps_path_worlds[sampleIndex];
         float3 endForward = sampleIndex == 1 ? entryForward : sps_path_forwards[sampleIndex];
         if (sps_is_zero(endForward)) break;
         uint socketFlags = sampleIndex == 1 ? entryFlags : sps_path_flags[sampleIndex];
         float weight = sampleIndex == 1 ? entryWeight : sps_path_weights[sampleIndex];
-        curveWeight = min(curveWeight, sps_saturated_map(weight, SPS_DEFORM_MESH_FADE_WEIGHT, 1));
+        curveWeight = min(curveWeight, sps_saturated_map(weight, SPS_MESH_FADE_WEIGHT_MAX, 1));
 
         // Straighten each segment from the previous segment's adjusted endpoint.
         float3 segmentOffset = endPoint - originalStartPoint;
@@ -192,7 +192,7 @@ inline void sps_deform_walk_chain(
         // Ensure the configured overrun past the terminal hole, without adding it twice
         // when the entrance look-ahead already extends beyond that hole.
         float cullAdvance = (1 - curveWeight) * (path.worldLength + capLength);
-        float overrun = max(path.worldLength * SPS_DEFORM_HOLE_OVERRUN - terminalAdvance, 0) + cullAdvance;
+        float overrun = max(path.worldLength * SPS_HOLE_OVERRUN_MIN - terminalAdvance, 0) + cullAdvance;
         outRadiusMult = capLength > 0
             ? sps_saturated_map(max(remainingDistance - overrun, 0), capLength, 0)
             : (remainingDistance <= overrun ? 1 : 0);

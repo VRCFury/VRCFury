@@ -128,7 +128,7 @@ namespace VF.Builder.Haptics {
             }
 
             if (parentHash == null) {
-                var propertiesContent = ReadAndFlattenPath($"{pathToSps}/deform/sps_deform_props.cginc");
+                var propertiesContent = ReadAndFlattenPath($"{pathToSps}/deform/sps_props.cginc");
                 Replace(
                     @"((?:^|\n)\s*Properties\s*{)",
                     $"$1\n{propertiesContent}\n",
@@ -138,10 +138,10 @@ namespace VF.Builder.Haptics {
 
             string spsMain;
             if (keepImports) {
-                spsMain = $"{(hasBlendshapes ? "#define SPS_HAS_BLENDSHAPES\n" : "")}#include \"{pathToSps}/deform/sps_deform_main.cginc\"";
+                spsMain = $"{(hasBlendshapes ? "#define SPS_HAS_BLENDSHAPES\n" : "")}#include \"{pathToSps}/deform/sps_main.cginc\"";
             } else {
                 spsMain = (hasBlendshapes ? "#define SPS_HAS_BLENDSHAPES\n" : "")
-                    + ReadAndFlattenPath($"{pathToSps}/deform/sps_deform_main.cginc");
+                    + ReadAndFlattenPath($"{pathToSps}/deform/sps_main.cginc");
             }
             
             Replace(
@@ -1106,8 +1106,8 @@ namespace VF.Builder.Haptics {
                 Add(keepImports.ToString());
                 Add(hasBlendshapes.ToString());
                 AddFile(sourcePath);
-                if (parentHash == null) AddFile($"{pathToSps}/deform/sps_deform_props.cginc");
-                AddFile($"{pathToSps}/deform/sps_deform_main.cginc");
+                if (parentHash == null) AddFile($"{pathToSps}/deform/sps_props.cginc");
+                AddFile($"{pathToSps}/deform/sps_main.cginc");
 
                 var hashContentBytes = Encoding.UTF8.GetBytes(hashContent.ToString());
                 var hashBytes = md5.ComputeHash(hashContentBytes);

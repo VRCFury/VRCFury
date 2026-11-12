@@ -1,10 +1,10 @@
-#ifndef SPS_INC_DEFORM_GLOBALS
-#define SPS_INC_DEFORM_GLOBALS
+#ifndef SPS_INC_GLOBALS
+#define SPS_INC_GLOBALS
 
 #include "UnityShaderVariables.cginc"
 #include "UnityShaderUtilities.cginc"
 #include "UnityInstancing.cginc"
-#include "../common/sps_utils.cginc"
+#include "sps_utils.cginc"
 
 Texture2D _SPS_Bake;
 float4 _SPS_Bake_TexelSize;
@@ -41,30 +41,30 @@ UNITY_INSTANCING_BUFFER_START(SpsDeformProps)
     UNITY_DEFINE_INSTANCED_PROP(float, _SPS_BlendshapeCount)
 UNITY_INSTANCING_BUFFER_END(SpsDeformProps)
 
-#define SPS_DEFORM_PROP(name) UNITY_ACCESS_INSTANCED_PROP(SpsDeformProps, name)
-#define _SPS_Enabled SPS_DEFORM_PROP(_SPS_Enabled)
-#define _SPS_ObjectEnabled SPS_DEFORM_PROP(_SPS_ObjectEnabled)
-#define _SPS_BaseActivationRadiusOverride SPS_DEFORM_PROP(_SPS_BaseActivationRadiusOverride)
-#define _SPS_RadiusOffsetMultiplier SPS_DEFORM_PROP(_SPS_RadiusOffsetMultiplier)
-#define _SPS_DisableShadows SPS_DEFORM_PROP(_SPS_DisableShadows)
-#define _SPS_DisableDepth SPS_DEFORM_PROP(_SPS_DisableDepth)
-#define _SPS_BlendshapeVertCount SPS_DEFORM_PROP(_SPS_BlendshapeVertCount)
-#define _SPS_Blendshape0 SPS_DEFORM_PROP(_SPS_Blendshape0)
-#define _SPS_Blendshape1 SPS_DEFORM_PROP(_SPS_Blendshape1)
-#define _SPS_Blendshape2 SPS_DEFORM_PROP(_SPS_Blendshape2)
-#define _SPS_Blendshape3 SPS_DEFORM_PROP(_SPS_Blendshape3)
-#define _SPS_Blendshape4 SPS_DEFORM_PROP(_SPS_Blendshape4)
-#define _SPS_Blendshape5 SPS_DEFORM_PROP(_SPS_Blendshape5)
-#define _SPS_Blendshape6 SPS_DEFORM_PROP(_SPS_Blendshape6)
-#define _SPS_Blendshape7 SPS_DEFORM_PROP(_SPS_Blendshape7)
-#define _SPS_Blendshape8 SPS_DEFORM_PROP(_SPS_Blendshape8)
-#define _SPS_Blendshape9 SPS_DEFORM_PROP(_SPS_Blendshape9)
-#define _SPS_Blendshape10 SPS_DEFORM_PROP(_SPS_Blendshape10)
-#define _SPS_Blendshape11 SPS_DEFORM_PROP(_SPS_Blendshape11)
-#define _SPS_Blendshape12 SPS_DEFORM_PROP(_SPS_Blendshape12)
-#define _SPS_Blendshape13 SPS_DEFORM_PROP(_SPS_Blendshape13)
-#define _SPS_Blendshape14 SPS_DEFORM_PROP(_SPS_Blendshape14)
-#define _SPS_Blendshape15 SPS_DEFORM_PROP(_SPS_Blendshape15)
-#define _SPS_BlendshapeCount SPS_DEFORM_PROP(_SPS_BlendshapeCount)
+#define SPS_PROP(name) UNITY_ACCESS_INSTANCED_PROP(SpsDeformProps, name)
+#define _SPS_Enabled SPS_PROP(_SPS_Enabled)
+#define _SPS_ObjectEnabled SPS_PROP(_SPS_ObjectEnabled)
+#define _SPS_BaseActivationRadiusOverride SPS_PROP(_SPS_BaseActivationRadiusOverride)
+#define _SPS_RadiusOffsetMultiplier SPS_PROP(_SPS_RadiusOffsetMultiplier)
+#define _SPS_DisableShadows SPS_PROP(_SPS_DisableShadows)
+#define _SPS_DisableDepth SPS_PROP(_SPS_DisableDepth)
+#define _SPS_BlendshapeVertCount SPS_PROP(_SPS_BlendshapeVertCount)
+#define _SPS_Blendshape0 SPS_PROP(_SPS_Blendshape0)
+#define _SPS_Blendshape1 SPS_PROP(_SPS_Blendshape1)
+#define _SPS_Blendshape2 SPS_PROP(_SPS_Blendshape2)
+#define _SPS_Blendshape3 SPS_PROP(_SPS_Blendshape3)
+#define _SPS_Blendshape4 SPS_PROP(_SPS_Blendshape4)
+#define _SPS_Blendshape5 SPS_PROP(_SPS_Blendshape5)
+#define _SPS_Blendshape6 SPS_PROP(_SPS_Blendshape6)
+#define _SPS_Blendshape7 SPS_PROP(_SPS_Blendshape7)
+#define _SPS_Blendshape8 SPS_PROP(_SPS_Blendshape8)
+#define _SPS_Blendshape9 SPS_PROP(_SPS_Blendshape9)
+#define _SPS_Blendshape10 SPS_PROP(_SPS_Blendshape10)
+#define _SPS_Blendshape11 SPS_PROP(_SPS_Blendshape11)
+#define _SPS_Blendshape12 SPS_PROP(_SPS_Blendshape12)
+#define _SPS_Blendshape13 SPS_PROP(_SPS_Blendshape13)
+#define _SPS_Blendshape14 SPS_PROP(_SPS_Blendshape14)
+#define _SPS_Blendshape15 SPS_PROP(_SPS_Blendshape15)
+#define _SPS_BlendshapeCount SPS_PROP(_SPS_BlendshapeCount)
 
 #endif

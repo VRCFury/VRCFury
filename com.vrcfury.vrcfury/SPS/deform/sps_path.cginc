@@ -1,19 +1,19 @@
-#ifndef SPS_INC_DEFORM_PATH
-#define SPS_INC_DEFORM_PATH
+#ifndef SPS_INC_PATH
+#define SPS_INC_PATH
 
-#include "sps_deform_config.cginc"
+#include "sps_config.cginc"
 
-#include "../common/sps_types.cginc"
-#include "../common/sps_utils.cginc"
-#include "sps_deform_contacts.cginc"
-#include "sps_deform_lights.cginc"
+#include "sps_types.cginc"
+#include "sps_utils.cginc"
+#include "sps_contacts.cginc"
+#include "sps_lights.cginc"
 #include "Packages/com.vrchat.base/ShaderLibrary/VRCContacts.cginc"
 
 // Per-invocation scratch arrays avoid copying the path between helpers.
-static float3 sps_path_worlds[SPS_CHAIN_MAX_SOCKETS + 1];
-static float3 sps_path_forwards[SPS_CHAIN_MAX_SOCKETS + 1];
-static uint sps_path_flags[SPS_CHAIN_MAX_SOCKETS + 1];
-static float sps_path_weights[SPS_CHAIN_MAX_SOCKETS + 1];
+static float3 sps_path_worlds[SPS_CHAIN_SOCKETS_MAX + 1];
+static float3 sps_path_forwards[SPS_CHAIN_SOCKETS_MAX + 1];
+static uint sps_path_flags[SPS_CHAIN_SOCKETS_MAX + 1];
+static float sps_path_weights[SPS_CHAIN_SOCKETS_MAX + 1];
 
 struct SpsDeformNode {
     float3 world;
@@ -46,40 +46,34 @@ inline float sps_deformation_weight(
     // Fade excessive bends using the configured dot-product thresholds.
     float angleWeight = sps_saturated_map(
         dot(currentForward, socketForward),
-        cos(radians(SPS_DEFORM_BEND_FADE_END_DEGREES)),
-        cos(radians(SPS_DEFORM_BEND_FADE_START_DEGREES))
+        cos(radians(SPS_BEND_FADE_DEGREES_MAX)),
+        cos(radians(SPS_BEND_FADE_DEGREES_MIN))
     );
     float baseActivationRadius = worldBaseActivationRadiusOverride > 0
-        ? worldBaseActivationRadiusOverride : worldRadius * SPS_DEFORM_BASE_RADIUS_MULTIPLIER;
+        ? worldBaseActivationRadiusOverride : worldRadius * SPS_BASE_RADIUS_MULTIPLIER;
     float2 sideways = float2(dot(delta, cross(currentUp, currentForward)), dot(delta, currentUp));
     float innerDistance;
     float outerDistance;
     if (forwardDistance < 0) {
         // Behind the base: a cylinder with the same radius and one radius of depth.
         outerDistance = max(length(sideways), -forwardDistance) / baseActivationRadius;
-        innerDistance = outerDistance / SPS_DEFORM_SIDE_FADE_START_FRACTION;
+        innerDistance = outerDistance / SPS_SIDE_FADE_FRACTION_MIN;
     } else {
         float2 sidewaysReach = forwardDistance * tan(radians(float2(
-            SPS_DEFORM_CONE_HORIZONTAL_HALF_ANGLE_DEGREES,
-            SPS_DEFORM_CONE_VERTICAL_HALF_ANGLE_DEGREES
+            SPS_CONE_HORIZONTAL_HALF_ANGLE_DEGREES,
+            SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES
         )));
         // The forward cone has elliptical inner/outer boundaries. Interpolate
         // along their radius so the fade has the configured width in each direction.
-        innerDistance = length(sideways / (sidewaysReach + baseActivationRadius * SPS_DEFORM_SIDE_FADE_START_FRACTION));
+        innerDistance = length(sideways / (sidewaysReach + baseActivationRadius * SPS_SIDE_FADE_FRACTION_MIN));
         outerDistance = length(sideways / (sidewaysReach + baseActivationRadius));
     }
-    // Perpendicular distance to the current stop's forward axis. The target plane's
-    // orientation does not affect this limit, so parallel sockets can still be reached.
-    float lateralOffset = length(sideways);
-    float lateralRatio = lateralOffset / (baseActivationRadius * SPS_DEFORM_MAX_LATERAL_OFFSET_MULTIPLIER);
-    outerDistance = max(outerDistance, lateralRatio);
-    innerDistance = max(innerDistance, lateralRatio / SPS_DEFORM_SIDE_FADE_START_FRACTION);
     float boundaryWeight = outerDistance >= 1 ? 0 : innerDistance <= 1 ? 1
         : (1 - outerDistance) / (1 - outerDistance / innerDistance);
     float farEdgeWeight = 1 - sps_saturated_map(
         distance,
-        worldLength * SPS_DEFORM_REACH_FADE_START,
-        worldLength * SPS_DEFORM_MAX_REACH
+        worldLength * SPS_REACH_FADE_MIN,
+        worldLength * SPS_REACH_FADE_MAX
     );
     float captureWeight = angleWeight * boundaryWeight;
     // A hole snaps at its side/back limits; only its far edge fades.
@@ -141,7 +135,7 @@ bool sps_prepare_socket(
 bool sps_try_get_path(out SpsDeformPathInfo path) {
     // Unity's shader upgrader mistakes built-in array casts for legacy array declarations.
     [unroll]
-    for (uint i = 0; i <= SPS_CHAIN_MAX_SOCKETS; i++) {
+    for (uint i = 0; i <= SPS_CHAIN_SOCKETS_MAX; i++) {
         sps_path_worlds[i] = 0;
         sps_path_forwards[i] = 0;
         sps_path_flags[i] = 0;
@@ -176,9 +170,9 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
     previousNode.world = sps_path_worlds[0];
     previousNode.forward = sps_path_forwards[0];
     previousNode.up = path.plugUp;
-    float remainingLength = path.worldLength * SPS_DEFORM_MAX_REACH;
+    float remainingLength = path.worldLength * SPS_REACH_FADE_MAX;
     [fastopt]
-    for (uint step = 1; step <= SPS_CHAIN_MAX_SOCKETS; step++) {
+    for (uint step = 1; step <= SPS_CHAIN_SOCKETS_MAX; step++) {
         int chosen = -1;
         SpsDeformNode chosenNode = (SpsDeformNode)0;
         float nearest = 1e30;
@@ -195,7 +189,7 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
                 if (!sps_prepare_socket(
                     socket,
                     previousNode,
-                    remainingLength / SPS_DEFORM_MAX_REACH,
+                    remainingLength / SPS_REACH_FADE_MAX,
                     worldRadius,
                     worldBaseActivationRadiusOverride,
                     true,
@@ -220,7 +214,7 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
                 if (!sps_prepare_socket(
                     socket,
                     previousNode,
-                    remainingLength / SPS_DEFORM_MAX_REACH,
+                    remainingLength / SPS_REACH_FADE_MAX,
                     worldRadius,
                     worldBaseActivationRadiusOverride,
                     false,

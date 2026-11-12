@@ -1,8 +1,8 @@
-#ifndef SPS_INC_DEFORM_CONTACTS
-#define SPS_INC_DEFORM_CONTACTS
+#ifndef SPS_INC_CONTACTS
+#define SPS_INC_CONTACTS
 
-#include "sps_deform_globals.cginc"
-#include "../common/sps_types.cginc"
+#include "sps_globals.cginc"
+#include "sps_types.cginc"
 #include "Packages/com.vrchat.base/ShaderLibrary/VRCContacts.cginc"
 
 // Each receiver writes a separate buffer on the renderer.
