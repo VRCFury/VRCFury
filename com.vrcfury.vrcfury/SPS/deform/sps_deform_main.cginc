@@ -115,7 +115,7 @@ void sps_apply_real(
 		#endif
 	#endif
 
-	float deformationWeight;
+	float firstSegmentLerp;
 	float radiusMult = 1;
 	float3 sampledWorldPos;
 	float3 sampledWorldForward;
@@ -124,24 +124,24 @@ void sps_apply_real(
 	sps_deform_walk_chain(
 		path,
 		pathDistance,
-		deformationWeight,
+		firstSegmentLerp,
 		radiusMult,
 		sampledWorldPos,
 		sampledWorldForward,
 		sampledWorldUp
 	);
-	float blendWeight = deformationWeight * active;
+	float dumbLerp = sps_saturated_map(firstSegmentLerp, 0, 0.2) * active;
 	float3 sampledWorldRight = cross(sampledWorldUp, sampledWorldForward);
 
 	float3 deformedWorldVertex = sampledWorldPos + sampledWorldRight * bakedVertex.x * radiusMult + sampledWorldUp * bakedVertex.y * radiusMult;
-	vertex.xyz = lerp(origVertex, sps_toLocal(deformedWorldVertex), blendWeight);
+	vertex.xyz = lerp(origVertex, sps_toLocal(deformedWorldVertex), dumbLerp);
 	if (!sps_is_zero(bakedNormal)) {
 		float3 deformedWorldNormal = sampledWorldRight * bakedNormal.x + sampledWorldUp * bakedNormal.y + sampledWorldForward * bakedNormal.z;
-		normal.xyz = lerp(origNormal, sps_direction_toLocal(deformedWorldNormal), blendWeight);
+		normal.xyz = lerp(origNormal, sps_direction_toLocal(deformedWorldNormal), dumbLerp);
 	}
 	if (!sps_is_zero(bakedTangent)) {
 		float3 deformedWorldTangent = sampledWorldRight * bakedTangent.x + sampledWorldUp * bakedTangent.y + sampledWorldForward * bakedTangent.z;
-		tangent.xyz = lerp(origTangent, sps_direction_toLocal(deformedWorldTangent), blendWeight);
+		tangent.xyz = lerp(origTangent, sps_direction_toLocal(deformedWorldTangent), dumbLerp);
 	}
 }
 

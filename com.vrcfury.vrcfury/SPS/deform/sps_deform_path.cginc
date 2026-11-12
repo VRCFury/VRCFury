@@ -2,7 +2,6 @@
 #define SPS_INC_DEFORM_PATH
 
 #include "../common/sps_types.cginc"
-#include "../common/sps_utils.cginc"
 #include "sps_deform_contacts.cginc"
 #include "sps_deform_lights.cginc"
 #include "Packages/com.vrchat.base/ShaderLibrary/VRCContacts.cginc"
@@ -19,7 +18,6 @@ struct SpsDeformNode {
     float3 forward;
     float3 up;
     uint flags;
-    float deformationWeight;
 };
 
 struct SpsDeformPathInfo {
@@ -27,26 +25,10 @@ struct SpsDeformPathInfo {
     float3 firstSocketUp;
     float worldLength;
     float bakeScale;
-    float deformationWeight;
 };
 
-inline float sps_deformation_weight(
-    float3 delta,
-    float3 plugForward,
-    float3 socketForward,
-    float worldLength
-) {
-    // Compress the range behind either the plug or the socket opening to one quarter.
-    float3 plugDelta = delta + plugForward * min(dot(delta, plugForward), 0) * 3;
-    float3 socketDelta = delta + socketForward * min(dot(delta, socketForward), 0) * 3;
-    float distance = sqrt(max(dot(plugDelta, plugDelta), dot(socketDelta, socketDelta)));
-    // Fade bends from full strength at 90 degrees to zero at 108 degrees.
-    float angleWeight = sps_saturated_map(dot(plugForward, socketForward), -0.309016994, 0);
-    return (1 - sps_saturated_map(distance, worldLength * 1.2, worldLength * 1.6)) * angleWeight;
-}
-
 bool sps_prepare_socket(SpsSocketCandidate socket, SpsDeformNode previous, float worldLength, float worldRadius,
-    bool guided, out SpsDeformNode node, out float distanceSq) {
+    bool first, bool guided, out SpsDeformNode node, out float distanceSq) {
     node = (SpsDeformNode)0;
     node.world = socket.world;
     // Offset in the socket's own up direction before distance/approach checks.
@@ -66,15 +48,26 @@ bool sps_prepare_socket(SpsSocketCandidate socket, SpsDeformNode previous, float
         float3 right = sps_normalize(cross(up, -normal));
         normal = sps_nearest_normal(right, -direction);
         up = sps_normalize(cross(right, normal));
-    } else if (sps_has_flag(socket.control, SPS_SOCKET_FLAG_DOUBLE_SIDED) && dot(normal, previous.forward) > 0) {
+    } else if (sps_has_flag(socket.control, SPS_SOCKET_FLAG_DOUBLE_SIDED) && dot(normal, direction) > 0) {
         normal = -normal;
     }
     node.forward = -normal;
     node.up = up;
     node.flags = socket.control & 0xfc00u; // Flags in bits 10-15, without path key or validity.
-    node.deformationWeight = 1;
-    if (!guided) node.deformationWeight = sps_deformation_weight(delta, previous.forward, node.forward, worldLength);
-    return node.deformationWeight > 0;
+    if (guided) return true;
+    bool hilted = first && sps_has_flag(socket.control, SPS_SOCKET_FLAG_HOLE)
+        && distanceSq <= worldLength * worldLength * 0.25;
+    if (!hilted) {
+        // Socket inward direction (-normal) is more than 108 degrees from our current travel direction.
+        if (dot(-normal, previous.forward) < -0.309016994) return false;
+        // Previous-to-socket direction points within 36 degrees of its outward normal: approaching from behind.
+        if (dot(normal, direction) > 0.809016994) return false;
+        // Socket is beside or behind the previous node, rather than ahead along its travel direction.
+        if (dot(direction, previous.forward) <= 0) return false;
+    }
+    // Socket is >1.6x plug length away
+    if (distanceSq > worldLength * worldLength * 2.56) return false;
+    return true;
 }
 
 // Node zero is the plug frame; the remaining nodes are socket entrances/stops.
@@ -131,7 +124,7 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
                 SpsDeformNode node;
                 float distanceSq;
                 if (!sps_prepare_socket(socket, previousNode, path.worldLength, worldRadius,
-                    true, node, distanceSq) || distanceSq >= nearest) continue;
+                    step == 1, true, node, distanceSq) || distanceSq >= nearest) continue;
                 chosen = candidate;
                 chosenNode = node;
                 nearest = distanceSq;
@@ -147,7 +140,7 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
                 SpsDeformNode node;
                 float distanceSq;
                 if (!sps_prepare_socket(socket, previousNode, path.worldLength, worldRadius,
-                    false, node, distanceSq) || distanceSq >= nearest) continue;
+                    step == 1, false, node, distanceSq) || distanceSq >= nearest) continue;
                 chosen = candidate;
                 chosenNode = node;
                 nearest = distanceSq;
@@ -157,10 +150,7 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
         sps_path_worlds[step] = chosenNode.world;
         sps_path_forwards[step] = chosenNode.forward;
         sps_path_flags[step] = chosenNode.flags;
-        if (step == 1) {
-            path.firstSocketUp = chosenNode.up;
-            path.deformationWeight = chosenNode.deformationWeight;
-        }
+        if (step == 1) path.firstSocketUp = chosenNode.up;
         previous = sockets[chosen];
         previousNode = chosenNode;
         used |= 1u << chosen;
