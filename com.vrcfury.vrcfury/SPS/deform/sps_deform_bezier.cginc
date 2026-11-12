@@ -1,4 +1,5 @@
 #include "../common/sps_utils.cginc"
+#include "sps_deform_config.cginc"
 
 // https://en.wikipedia.org/wiki/B%C3%A9zier_curve
 float3 sps_bezier(float3 p0, float3 p1, float3 p2, float3 p3, float t)
@@ -32,7 +33,6 @@ inline void sps_bezierSolve(
 	out float3 forward,
 	out float3 up
 ) {
-	#define SPS_BEZIER_SAMPLES 50
 	float sampleT = 0;
 	float3 approximateUp = initialUp;
 	float totalLength = 0;

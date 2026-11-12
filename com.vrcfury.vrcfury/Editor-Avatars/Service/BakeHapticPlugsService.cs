@@ -26,7 +26,6 @@ namespace VF.Service {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly SpsDepthAnimationService depthAnimations;
-        [VFAutowired] private readonly ScalePropertyCompensationService scaleCompensationService;
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly HapticContactsService hapticContacts;
         [VFAutowired] private readonly AllClipsService allClipsService;
@@ -207,7 +206,7 @@ namespace VF.Service {
                     light.renderMode = LightRenderMode.ForceVertex;
                     light.intensity = worldLength;
 
-                    scaleCompensationService.AddScaledProp(bakeRoot,
+                    worldScaleService.AddScaledProp(bakeRoot,
                         new[] { ((UnityEngine.Component)light, "m_Intensity", localLength) });
                     spsOptions.RegisterLegacyObject(tip);
                     foreach (var set in publicSets) set.Register(tip);

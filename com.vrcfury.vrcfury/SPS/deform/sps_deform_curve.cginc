@@ -1,6 +1,8 @@
 #ifndef SPS_INC_DEFORM_CURVE
 #define SPS_INC_DEFORM_CURVE
 
+#include "sps_deform_config.cginc"
+
 #include "sps_deform_path.cginc"
 #include "../common/sps_types.cginc"
 #include "../common/sps_utils.cginc"
@@ -16,6 +18,7 @@ inline uint sps_deform_advance_entry(
     inout float3 position,
     inout float3 forward,
     inout uint flags,
+    inout float weight,
     out float terminalAdvance
 ) {
     terminalAdvance = 0;
@@ -30,12 +33,15 @@ inline uint sps_deform_advance_entry(
         if (distance < span) {
             // Join between these stops; use their chord if their directions cancel.
             float t = distance / span;
+            // Introduce the next stop's fade gradually as the entrance approaches it.
+            weight = lerp(weight, min(weight, sps_path_weights[next]), t);
             position += delta * t;
             float3 blendedForward = lerp(forward, endForward, t);
             forward = sps_normalize(sps_is_zero(blendedForward) ? delta : blendedForward);
             return next;
         }
         // This stop is already behind the new entrance.
+        weight = min(weight, sps_path_weights[next]);
         distance -= span;
         position = end;
         forward = endForward;
@@ -59,32 +65,38 @@ inline void sps_deform_walk_chain(
     float3 entryPoint = sps_path_worlds[1];
     float3 entryForward = sps_path_forwards[1];
     uint entryFlags = sps_path_flags[1];
+    float entryWeight = path.deformationWeight;
     float3 offset = sps_path_worlds[0] - entryPoint;
     // Signed distance past the socket plane, plus sideways distance from its axis.
     float axialDepth = dot(offset, entryForward);
     float lateralDistance = length(offset - entryForward * axialDepth);
     // Aim farther along the path so off-center plugs need less of a return bend.
-    float advance = max(axialDepth + lateralDistance + path.worldLength * 0.1, 0);
+    float advance = max(
+        axialDepth + lateralDistance * SPS_DEFORM_LATERAL_ADVANCE_MULTIPLIER + path.worldLength * SPS_DEFORM_ENTRY_ADVANCE,
+        0
+    );
     float terminalAdvance;
     uint nextSocket = sps_deform_advance_entry(
         advance,
         entryPoint,
         entryForward,
         entryFlags,
+        entryWeight,
         terminalAdvance
     );
     float remainingDistance = max(targetDistance, 0);
     uint terminalFlags = 0u;
     // Straighten the curve before blending back to the original mesh. Blending
     // bent vertex positions directly to straight ones cuts across the bend.
-    float curveWeight = sps_saturated_map(path.deformationWeight, 0.2, 1);
-    outDeformationWeight = saturate(path.deformationWeight * 5);
+    float curveWeight = sps_saturated_map(entryWeight, SPS_DEFORM_MESH_FADE_WEIGHT, 1);
+    float capLength = path.worldLength * SPS_DEFORM_HOLE_CAP_LENGTH;
+    float previousCurveWeight = curveWeight;
+    outDeformationWeight = saturate(path.deformationWeight / SPS_DEFORM_MESH_FADE_WEIGHT);
     outRadiusMult = 1;
     outPosition = sps_path_worlds[0];
     outForward = sps_path_forwards[0];
     if (sps_is_zero(outForward)) outForward = float3(0, 0, 1);
     outForward = sps_normalize(outForward);
-    float3 plugForward = outForward;
     outUp = sps_nearest_normal(outForward, path.plugUp);
     float3 startPoint = outPosition;
     float3 startForward = outForward;
@@ -99,12 +111,14 @@ inline void sps_deform_walk_chain(
         float3 endForward = sampleIndex == 1 ? entryForward : sps_path_forwards[sampleIndex];
         if (sps_is_zero(endForward)) break;
         uint socketFlags = sampleIndex == 1 ? entryFlags : sps_path_flags[sampleIndex];
+        float weight = sampleIndex == 1 ? entryWeight : sps_path_weights[sampleIndex];
+        curveWeight = min(curveWeight, sps_saturated_map(weight, SPS_DEFORM_MESH_FADE_WEIGHT, 1));
 
         // Straighten each segment from the previous segment's adjusted endpoint.
         float3 segmentOffset = endPoint - originalStartPoint;
         originalStartPoint = endPoint;
-        endPoint = startPoint + lerp(plugForward * length(segmentOffset), segmentOffset, curveWeight);
-        endForward = sps_normalize(lerp(plugForward, endForward, curveWeight));
+        endPoint = startPoint + lerp(startForward * length(segmentOffset), segmentOffset, curveWeight);
+        endForward = sps_normalize(lerp(startForward, endForward, curveWeight));
 
         terminalFlags = socketFlags;
         float3 p0;
@@ -123,6 +137,7 @@ inline void sps_deform_walk_chain(
         );
 
         bool zeroLength = sps_is_zero(p1 - p0) && sps_is_zero(p2 - p0) && sps_is_zero(p3 - p0);
+        float distanceIntoSegment = remainingDistance;
         float nextRemainingDistance = remainingDistance;
         if (zeroLength) {
             // Coincident endpoints can leave no curve length or derivative to solve.
@@ -147,13 +162,15 @@ inline void sps_deform_walk_chain(
 
         if (remainingDistance <= 0) {
             if (!zeroLength && sps_has_flag(previousFlags, SPS_SOCKET_FLAG_HOLE)) {
-                outRadiusMult = 1 - curveWeight;
+                float cullAdvance = (1 - previousCurveWeight) * (path.worldLength + capLength);
+                outRadiusMult = 1 - sps_saturated_map(distanceIntoSegment, cullAdvance - capLength, cullAdvance);
             }
             return;
         }
 
         currentUp = outUp;
         previousFlags = socketFlags;
+        previousCurveWeight = curveWeight;
         startPoint = endPoint;
         startForward = endForward;
         // Resume after any stops consumed by the entrance look-ahead.
@@ -161,16 +178,16 @@ inline void sps_deform_walk_chain(
     }
 
     if (sps_has_flag(terminalFlags, SPS_SOCKET_FLAG_HOLE)) {
-        // Ensure 10% overrun past the terminal hole, without adding it twice when
-        // the entrance look-ahead already extends beyond that hole. Keep the 5% cap.
-        float overrun = max(path.worldLength * 0.1 - terminalAdvance, 0);
-        float capRadius = sps_saturated_map(
+        // Ensure the configured overrun past the terminal hole, without adding it twice
+        // when the entrance look-ahead already extends beyond that hole.
+        float cullAdvance = (1 - curveWeight) * (path.worldLength + capLength);
+        float overrun = max(path.worldLength * SPS_DEFORM_HOLE_OVERRUN - terminalAdvance, 0) + cullAdvance;
+        outRadiusMult = sps_saturated_map(
             max(remainingDistance - overrun, 0),
-            path.worldLength * 0.05,
+            capLength,
             0
         );
-        outRadiusMult = lerp(1, capRadius, curveWeight);
-        remainingDistance = lerp(remainingDistance, min(remainingDistance, overrun), curveWeight);
+        remainingDistance = min(remainingDistance, overrun);
     }
     outPosition += outForward * remainingDistance;
 }

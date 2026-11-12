@@ -160,9 +160,16 @@ namespace VF.Inspector {
                                 // Bake data belongs to this renderer, even if another
                                 // feature already made the source material mutable.
                                 var copy = mat.Clone("Needed to swap shader to SPS", forceClone: true);
-                                SpsConfigurer.ConfigureSpsMaterial(renderer, copy, worldLength, worldRadius,
+                                SpsConfigurer.ConfigureSpsMaterial(
+                                    renderer,
+                                    copy,
+                                    worldLength,
+                                    worldRadius,
                                     spsBaked,
-                                    plug, localSpace, spsBlendshapes);
+                                    plug,
+                                    localSpace,
+                                    spsBlendshapes
+                                );
                                 spsPlugReceiverService.ConfigureMaterial(copy, plug, legacySocketCompatibility);
                                 spsCopies[mat] = copy;
                                 return copy;

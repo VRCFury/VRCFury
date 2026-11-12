@@ -1,6 +1,8 @@
 #ifndef SPS_INC_DEFORM_CONTROL_POINTS
 #define SPS_INC_DEFORM_CONTROL_POINTS
 
+#include "sps_deform_config.cginc"
+
 #include "../common/sps_types.cginc"
 #include "../common/sps_utils.cginc"
 
@@ -27,7 +29,7 @@ inline void sps_deform_segment_control_points(
     if (sps_is_zero(endForward)) endForward = sps_normalize(segmentOffset);
     if (sps_is_zero(endForward)) endForward = float3(0, 0, 1);
 
-    float handleDistance = segmentDistance * 0.5;
+    float handleDistance = segmentDistance * SPS_DEFORM_HANDLE_LENGTH;
     p1 = p0 + startForward * handleDistance;
     p2 = p3 - endForward * handleDistance;
 }
