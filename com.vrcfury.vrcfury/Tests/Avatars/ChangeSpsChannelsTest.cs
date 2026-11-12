@@ -780,7 +780,7 @@ namespace VF.Tests {
                 RegisterTree(component, bake.worldSpace);
                 main = injector.GetService<SpsSocketReceiverService>().GetReceivers(component, bake.worldSpace, "Test");
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-                measurement = injector.GetService<SpsSocketMeasurementsService>().GetMeasurements(component, main, "Test")
+                measurement = injector.GetService<SpsSocketMeasurementsService>().GetMeasurements(component, bake, "Test")
                     (Party.Others)(VRCFuryHapticPlugEditor.SpsPlugLengthMeters);
 #endif
             } else {
@@ -921,7 +921,7 @@ namespace VF.Tests {
                 var bake = injector.GetService<VRCFuryHapticSocketBaker>().Bake(component, avatarRoot: root);
                 RegisterTree(component, bake.worldSpace);
                 main = bake.plugReceivers;
-                measurements = injector.GetService<SpsSocketMeasurementsService>().GetMeasurements(component, main, "Test")(Party.Others);
+                measurements = injector.GetService<SpsSocketMeasurementsService>().GetMeasurements(component, bake, "Test")(Party.Others);
                 _ = measurements(VRCFuryHapticPlugEditor.SpsPlugLengthMeters);
                 _ = measurements(VRCFuryHapticPlugEditor.SpsPlugRadiusMeters);
             } else {

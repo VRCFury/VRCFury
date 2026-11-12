@@ -679,7 +679,8 @@ namespace VF.Tests {
             Vector(baked.bakeRoot.worldRotation * Vector3.forward, forward);
             Assert.That(baked.bakeRoot.parent.parent, Is.EqualTo(root.asVf()));
             Assert.That(baked.bakeRoot.parent.name, Is.EqualTo("Nonuniform SPS Sockets"));
-            Vector(baked.bakeRoot.localScale, Vector3.one);
+            Vector(baked.bakeRoot.worldScale, Vector3.one * socket.owner().worldScale.x);
+            Vector(baked.worldSpace.worldScale, Vector3.one);
             Assert.That(owner.GetComponent<VRCFuryHapticSocket>(), Is.SameAs(socket));
             Assert.That(VRCFuryHapticSocketEditor.GetMenuName(socket), Is.EqualTo(expectedName));
             var constraint = baked.bakeRoot.GetConstraints().Single();

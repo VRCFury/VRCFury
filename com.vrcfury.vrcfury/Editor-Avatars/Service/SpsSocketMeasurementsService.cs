@@ -8,6 +8,7 @@ using VF.Component;
 using VF.Injector;
 using VF.Utils;
 using VF.Utils.Controller;
+using BakeResult = VF.Inspector.VRCFuryHapticSocketEditor.BakeResult;
 
 namespace VF.Service {
     [VFService]
@@ -24,17 +25,18 @@ namespace VF.Service {
 
         public Func<Party, Func<string, VFAParam>> GetMeasurements(
             VRCFuryHapticSocket socket,
-            SelfAndOthersReceiverService.Receivers main,
+            BakeResult bake,
             string name
         ) {
 
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
 
             var fx = controllers.GetFx();
+            var main = bake.plugReceivers;
             var tree = receiverAnimator.GetTree(main);
             var math = new BlendtreeMath(fx, tree);
             var inverseWorldScale = new Lazy<VFAParam>(() => worldScaleService.GetInverseWorldScale(
-                socket.owner(), name));
+                bake.bakeRoot, name));
             var worldRadius = main.request.worldRadius;
             var includeLegacy = main.request.supportsLegacy;
             var entranceType = new Lazy<VRCFuryHapticSocket.AddLight>(() => socketBaker.GetEntranceType(socket));
