@@ -13,7 +13,8 @@
 
 // FADE OUT (SOCKET OUTSIDE OF CAPTURE ZONE)
 
-// Horizontal half-angle in degrees
+// Horizontal half-angle in degrees, used with a base radius override.
+// Without an override, both axes use the vertical half-angle.
 #define SPS_CONE_HORIZONTAL_HALF_ANGLE_DEGREES 50.0
 // Vertical half-angle in degrees
 #define SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES 95.0

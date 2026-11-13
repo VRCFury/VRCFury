@@ -39,7 +39,7 @@ inline float sps_capture_margin(float2 sideways, float depth, float radius, floa
     angles = clamp(angles, 0, 180);
     float sideSq = dot(sideways, sideways);
     float2 safeAngles = max(angles, 1e-6);
-    float angle = sideSq > 0
+    float angle = angles.x == angles.y ? angles.x : sideSq > 0
         ? rsqrt(dot(sideways * sideways / sideSq, 1 / (safeAngles * safeAngles)))
         : max(angles.x, angles.y);
     float cosine = angle == 90 ? 0 : cos(radians(angle));
@@ -67,7 +67,12 @@ inline float sps_deformation_weight(
         ? worldBaseActivationRadiusOverride : worldRadius * SPS_BASE_RADIUS_MULTIPLIER;
     float2 sideways = float2(dot(delta, cross(currentUp, currentForward)), dot(delta, currentUp));
     float2 angles = float2(
-        clamp(SPS_CONE_HORIZONTAL_HALF_ANGLE_DEGREES, 0, 180),
+        clamp(
+            worldBaseActivationRadiusOverride > 0
+                ? SPS_CONE_HORIZONTAL_HALF_ANGLE_DEGREES : SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES,
+            0,
+            180
+        ),
         clamp(SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES, 0, 180)
     );
     float outerMargin = sps_capture_margin(sideways, forwardDistance, baseActivationRadius, angles);

@@ -169,6 +169,28 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         }
 
         [Test]
+        public void WithoutBaseOverrideBothAxesUseTheVerticalAngle() {
+            var horizontal = Read(
+                new Vector3(.16f, 0, .05f),
+                Vector3.forward,
+                baseRadius: 0,
+                horizontalAngle: 10,
+                verticalAngle: 60,
+                captureOnly: true
+            );
+            var vertical = Read(
+                new Vector3(0, .16f, .05f),
+                Vector3.forward,
+                baseRadius: 0,
+                horizontalAngle: 10,
+                verticalAngle: 60,
+                captureOnly: true
+            );
+            Assert.That(horizontal.a, Is.GreaterThan(0));
+            Assert.That(horizontal.a, Is.EqualTo(vertical.a).Within(.0001f));
+        }
+
+        [Test]
         public void CylinderSideFadeIsContinuousAcrossTheBasePlane() {
             foreach (var angle in new[] { 89f, 90f, 100f, 120f, 180f }) {
                 var behind = Read(new Vector3(0, .09f, -.000001f), Vector3.forward, baseRadius: .1f, verticalAngle: angle, captureOnly: true);
