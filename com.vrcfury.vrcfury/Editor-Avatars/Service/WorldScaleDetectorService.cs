@@ -24,6 +24,7 @@ namespace VF.Service {
         [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly IsObjectEnabledService isObjectEnabledService;
+        [VFAutowired] private readonly ObjectTreeService objectTrees;
 
         private const string Tag = "VRCF_WSD";
         private const float ContactRadius = 1f;
@@ -44,6 +45,27 @@ namespace VF.Service {
                 -30f + (Random.value * 60f)
             ));
             senderObject = new Lazy<VFGameObject>(CreateSender);
+        }
+
+        // Applies local property values using raw scale, without an intermediate AAP.
+        public void AddScaledProp(
+            VFGameObject scaleReference,
+            IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties,
+            VFBlendTreeDirect tree = null
+        ) {
+            var rawScale = GetRawWorldScale(scaleReference, "Property scale compensation");
+            if (rawScale == null) return;
+            var multiplier = MaxDetectedScale * scaleReference.worldScale.x;
+            tree ??= objectTrees.Get(scaleReference);
+            // Prevent Unity from adding authored defaults when the raw weight is below one.
+            var zeroClip = VFClip.Create("Scale compensation zero");
+            tree.Add(zeroClip);
+            var scaleClip = VFClip.Create("Scale compensation scaled");
+            tree.Add(rawScale, scaleClip);
+            foreach (var prop in properties) {
+                scaleClip.SetCurve(prop.component, prop.PropertyName, prop.LocalValue * multiplier);
+                zeroClip.SetCurve(prop.component, prop.PropertyName, 0);
+            }
         }
 
         [CanBeNull]

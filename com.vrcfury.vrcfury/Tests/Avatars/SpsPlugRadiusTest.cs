@@ -303,6 +303,118 @@ namespace VF.Tests {
             Assert.That(fx.parameters.Length, Is.EqualTo(parameterCount));
         }
 
+        [Test]
+        public void ScaledLightUsesRawScaleWithoutDelayOrClamping(
+            [Values(0.5f, 2f)] float localScale
+        ) {
+            var reference = GameObjects.Create("Scale reference", root);
+            reference.localScale = Vector3.one * localScale;
+            var light = GameObjects.Create("Scaled light", root).AddComponent<Light>();
+            light.intensity = 3;
+            var detector = injector.GetService<WorldScaleDetectorService>();
+            var raw = detector.GetRawWorldScale(reference, "Scaled light");
+            var multiplier = WorldScaleDetectorService.MaxDetectedScale * reference.worldScale.x;
+            Start(() => detector.AddScaledProp(
+                reference,
+                new[] { ((UnityEngine.Component)light, "m_Intensity", 1.5f) }
+            ));
+            for (var i = 0; i < 20; i++) graph.Evaluate(1f / 60);
+            foreach (var weight in new[] { 0f, 0.005f, 0.01f, 1f, 2f }) {
+                playable.SetFloat(raw.name, weight);
+                graph.Evaluate(1f / 60);
+                Assert.That(light.intensity, Is.EqualTo(1.5f * multiplier * weight).Within(0.0001f));
+            }
+            var cache = (Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
+                typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector);
+            Assert.That(cache[reference].scale.IsValueCreated, Is.False);
+            Assert.That(cache[reference].inverse.IsValueCreated, Is.False);
+        }
+
+        private class LegSpacingBones : SpsAutoChannelGenerator {
+            public HumanBodyBones closest;
+            public VFGameObject left;
+            public VFGameObject right;
+            public HumanBodyBones? GetClosestBone(VFGameObject obj) => closest;
+            public VFGameObject GetBone(VFGameObject obj, HumanBodyBones bone) => bone switch {
+                HumanBodyBones.LeftUpperLeg => left,
+                HumanBodyBones.RightUpperLeg => right,
+                _ => null
+            };
+            public Vector3? GetAvatarViewPosition(VFGameObject obj) => null;
+        }
+
+        [Test]
+        public void BaseActivationRadiusOverrideFollowsUpperLegScaleInsteadOfPlugScale(
+            [Values(0.5f, 2f)] float upperLegLocalScale,
+            [Values(HumanBodyBones.Hips, HumanBodyBones.Head)] HumanBodyBones closest,
+            [Values] bool missingLeg
+        ) {
+#if !VRCSDK_HAS_MATERIAL_CONTACTS
+            Assert.Ignore("SPS deformation requires material contact support.");
+#endif
+            var upperLeg = GameObjects.Create("Upper leg", root);
+            upperLeg.localScale = Vector3.one * upperLegLocalScale;
+            var uploadScale = upperLeg.worldScale.x;
+            var otherLeg = GameObjects.Create("Other upper leg", root);
+            otherLeg.localPosition = new Vector3(0.2f, 0, 0);
+            var localRadius = Vector3.Distance(upperLeg.worldPosition, otherLeg.worldPosition) * 0.5f / uploadScale;
+            typeof(SpsPlugRadiusService).VFField("autoChannelGenerator").SetValue(service, new LegSpacingBones {
+                closest = closest,
+                left = upperLeg,
+                right = missingLeg ? null : otherLeg
+            });
+            var overridden = closest == HumanBodyBones.Hips && !missingLeg;
+            var renderer = bake.renderers.Single();
+            renderer.spsBlendshapes = new List<string>();
+            var material = new Material(Shader.Find("Unlit/Color"));
+            assets.Add(material);
+            SpsPatcher.Patch(material, false, false);
+            Assert.That(material.GetFloat(SpsConfigurer.SpsBaseActivationRadiusOverride), Is.Zero);
+            renderer.configureMaterial = (slot, source) => {
+                if (slot != 0 || source == null) return source;
+                var copy = new Material(source);
+                assets.Add(copy);
+                return copy;
+            };
+            renderer.renderer.sharedMaterial = material;
+            for (var pass = 0; pass < material.passCount; pass++) UnityEditor.ShaderUtil.CompilePass(material, pass, true);
+            Assert.That(UnityEditor.ShaderUtil.ShaderHasError(material.shader), Is.False);
+            var detector = injector.GetService<WorldScaleDetectorService>();
+            var raw = detector.GetRawWorldScale(upperLeg, "SPS Leg Spacing");
+            var cache = (Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
+                typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector);
+            Start(() => {
+                var initialRadius = overridden ? localRadius * uploadScale : 0;
+                var configured = renderer.configureMaterial(0, material);
+                Assert.That(configured, Is.Not.SameAs(material));
+                Assert.That(configured.GetFloat(SpsConfigurer.SpsBaseActivationRadiusOverride),
+                    Is.EqualTo(initialRadius).Within(0.0001f));
+                renderer.renderer.sharedMaterial = configured;
+                var swapSource = new Material(material);
+                assets.Add(swapSource);
+                var swap = renderer.configureMaterial(0, swapSource);
+                Assert.That(swap.GetFloat(SpsConfigurer.SpsBaseActivationRadiusOverride),
+                    Is.EqualTo(initialRadius).Within(0.0001f));
+                Assert.That(renderer.configureMaterial(1, material), Is.SameAs(material));
+                Assert.That(renderer.configureMaterial(0, null), Is.Null);
+                Assert.That(material.GetFloat(SpsConfigurer.SpsBaseActivationRadiusOverride), Is.Zero);
+                Assert.That(swapSource.GetFloat(SpsConfigurer.SpsBaseActivationRadiusOverride), Is.Zero);
+            });
+            var block = new MaterialPropertyBlock();
+            foreach (var plugScale in new[] { 0.5f, 3f }) {
+                bake.bakeRoot.localScale = Vector3.one * plugScale;
+                foreach (var legScale in new[] { 0.5f, 1f, 3f, 2 * WorldScaleDetectorService.MaxDetectedScale * uploadScale }) {
+                    playable.SetFloat(raw.name, legScale / (WorldScaleDetectorService.MaxDetectedScale * uploadScale));
+                    for (var i = 0; i < 20; i++) graph.Evaluate(1f / 60);
+                    renderer.renderer.GetPropertyBlock(block);
+                    Assert.That(block.GetFloat(SpsConfigurer.SpsBaseActivationRadiusOverride),
+                        Is.EqualTo(overridden ? localRadius * legScale : 0).Within(0.0001f));
+                }
+            }
+            Assert.That(cache.Keys.Count(obj => obj == upperLeg), Is.EqualTo(1));
+            Assert.That(cache[upperLeg].scale.IsValueCreated, Is.False);
+        }
+
         [TestCase(0f)]
         [TestCase(0.25f)]
         [TestCase(0.75f)]

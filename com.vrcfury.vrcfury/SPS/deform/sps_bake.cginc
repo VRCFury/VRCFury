@@ -1,5 +1,8 @@
-#include "sps_deform_globals.cginc"
-#include "../common/sps_utils.cginc"
+#ifndef SPS_INC_BAKE
+#define SPS_INC_BAKE
+
+#include "sps_globals.cginc"
+#include "sps_utils.cginc"
 
 #define SPS_MAX_BLENDSHAPES 16
 
@@ -54,3 +57,5 @@ void SpsGetBakedPosition(uint vertexId, out float3 position, out float3 normal, 
     }
     #endif
 }
+
+#endif

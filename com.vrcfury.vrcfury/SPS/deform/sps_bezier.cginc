@@ -1,4 +1,8 @@
-#include "../common/sps_utils.cginc"
+#ifndef SPS_INC_BEZIER
+#define SPS_INC_BEZIER
+
+#include "sps_utils.cginc"
+#include "sps_config.cginc"
 
 // https://en.wikipedia.org/wiki/B%C3%A9zier_curve
 float3 sps_bezier(float3 p0, float3 p1, float3 p2, float3 p3, float t)
@@ -32,7 +36,6 @@ inline void sps_bezierSolve(
 	out float3 forward,
 	out float3 up
 ) {
-	#define SPS_BEZIER_SAMPLES 50
 	float sampleT = 0;
 	float3 approximateUp = initialUp;
 	float totalLength = 0;
@@ -71,3 +74,5 @@ inline void sps_bezierSolve(
 	forward = sps_normalize(sps_bezierDerivative(p0, p1, p2, p3, sampleT));
 	up = sps_nearest_normal(forward, approximateUp);
 }
+
+#endif

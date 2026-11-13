@@ -1,7 +1,9 @@
-#ifndef SPS_INC_DEFORM_LIGHTS
-#define SPS_INC_DEFORM_LIGHTS
+#ifndef SPS_INC_LIGHTS
+#define SPS_INC_LIGHTS
 
-#include "sps_deform_contacts.cginc"
+#include "sps_config.cginc"
+
+#include "sps_contacts.cginc"
 
 float3 sps_light_world(uint index) {
     return float3(unity_4LightPosX0[index], unity_4LightPosY0[index], unity_4LightPosZ0[index]);
@@ -40,12 +42,14 @@ SpsSocketCandidate sps_read_light(uint index, float3 plugWorld, float3 plugUp) {
     socket.up = plugUp;
     socket.control = kind == 1 ? SPS_SOCKET_FLAG_HOLE : SPS_SOCKET_FLAG_DOUBLE_SIDED;
     socket.control |= SPS_SOCKET_VALID;
-    float nearest = 0.01; // Front lights are 1 cm away; don't pair across distant sockets.
+    float nearest = SPS_LEGACY_FRONT_DISTANCE_MAX * SPS_LEGACY_FRONT_DISTANCE_MAX;
     [fastopt]
     for (uint front = 0; front < 4; front++) {
         float3 delta = sps_light_world(front) - socket.world;
         float distanceSq = dot(delta, delta);
-        if (sps_light_type(front) == 5 && distanceSq > 0.0000000025 && distanceSq < nearest) {
+        if (sps_light_type(front) == 5
+            && distanceSq > SPS_LEGACY_FRONT_DISTANCE_MIN * SPS_LEGACY_FRONT_DISTANCE_MIN
+            && distanceSq < nearest) {
             socket.normal = normalize(delta);
             nearest = distanceSq;
         }

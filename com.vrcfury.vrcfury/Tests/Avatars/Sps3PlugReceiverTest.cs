@@ -314,11 +314,11 @@ namespace VF.Tests {
         }
 #endif
 
-        [TestCase(true, true)]
-        [TestCase(true, false)]
-        [TestCase(false, true)]
-        [TestCase(false, false)]
-        public void BakeDoesNotReuseMutableMaterialsAcrossRenderers(bool compatibility, bool deferred) {
+        [Test]
+        public void BakeDoesNotReuseMutableMaterialsAcrossRenderers(
+            [Values] bool compatibility,
+            [Values] bool deferred
+        ) {
             var mesh = new Mesh {
                 vertices = new[] { Vector3.zero, Vector3.right * 0.02f, Vector3.forward * 0.2f },
                 triangles = new[] { 0, 1, 2 }
@@ -359,6 +359,8 @@ namespace VF.Tests {
                 Assert.That(second, Is.Not.SameAs(source));
                 Assert.That(first, Is.Not.SameAs(second));
                 Assert.That(first.GetTexture("_SPS_Bake"), Is.Not.SameAs(second.GetTexture("_SPS_Bake")));
+                Assert.That(first.HasProperty("_SPS_Overrun"), Is.False);
+                Assert.That(second.HasProperty("_SPS_Overrun"), Is.False);
                 Assert.That(first.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
                 Assert.That(second.GetFloat("_SPS_UseLegacyLights"), Is.EqualTo(compatibility ? 1 : 0));
                 Assert.That(first.GetFloat("_SPS_OthersLegacyTags"), Is.EqualTo(compatibility ? 1 : 0));

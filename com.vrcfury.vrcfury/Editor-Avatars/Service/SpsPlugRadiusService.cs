@@ -1,4 +1,6 @@
 using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
+using JetBrains.Annotations;
+using System.Linq;
 using UnityEngine;
 using VF.Builder.Haptics;
 using VF.Injector;
@@ -13,9 +15,38 @@ namespace VF.Service {
         [VFAutowired] private readonly WorldScaleDetectorService worldScale;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ObjectTreeService objectTrees;
+        [VFAutowired] [CanBeNull] private readonly SpsAutoChannelGenerator autoChannelGenerator;
 
         public void Create(VRCFuryHapticPlugEditor.BakeResult bake, string name) {
             var tree = objectTrees.Get(bake.bakeRoot);
+            var renderers = bake.renderers.Where(r => r.spsBlendshapes != null).ToArray();
+            var left = autoChannelGenerator?.GetBone(bake.bakeRoot, HumanBodyBones.LeftUpperLeg);
+            var right = autoChannelGenerator?.GetBone(bake.bakeRoot, HumanBodyBones.RightUpperLeg);
+            if (renderers.Length > 0 && left != null && right != null
+                && autoChannelGenerator.GetClosestBone(bake.bakeRoot) == HumanBodyBones.Hips) {
+                // Hip plugs use half the leg spacing to avoid capturing nearby hands.
+                // Follow upper-leg scale, independently of the plug's own scaling.
+                var initialRadius = Vector3.Distance(left.worldPosition, right.worldPosition) * 0.5f;
+                foreach (var renderer in renderers) {
+                    var configureMaterial = renderer.configureMaterial;
+                    renderer.configureMaterial = (slot, material) => {
+                        var configured = configureMaterial(slot, material);
+                        if (configured != null && configured != material) {
+                            configured.SetFloatFast(SpsConfigurer.SpsBaseActivationRadiusOverride, initialRadius);
+                        }
+                        return configured;
+                    };
+                }
+                worldScale.AddScaledProp(
+                    left,
+                    renderers.Select(renderer => (
+                        (UnityEngine.Component)renderer.renderer,
+                        "material." + SpsConfigurer.SpsBaseActivationRadiusOverride,
+                        initialRadius / left.worldScale.x
+                    )).ToArray(),
+                    tree
+                );
+            }
             var proximity = receiverAnimator.GetParameter(bake.socketReceivers, Party.Merged);
             var separation = receiverAnimator.GetAdvancedParam(bake.socketReceivers, Party.Merged, "PointSeparation");
             var inverseScale = worldScale.GetInverseWorldScale(bake.bakeRoot, name);

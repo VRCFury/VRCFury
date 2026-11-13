@@ -1,13 +1,16 @@
+#ifndef SPS_INC_MAIN
+#define SPS_INC_MAIN
+
 #ifdef SHADER_TARGET_SURFACE_ANALYSIS
 void sps_apply(inout SpsInputs o){}
 #else
 
-#include "sps_deform_globals.cginc"
-#include "sps_deform_path.cginc"
-#include "../common/sps_utils.cginc"
-#include "sps_deform_bake.cginc"
-#include "sps_deform_control_points.cginc"
-#include "sps_deform_curve.cginc"
+#include "sps_globals.cginc"
+#include "sps_path.cginc"
+#include "sps_utils.cginc"
+#include "sps_bake.cginc"
+#include "sps_control_points.cginc"
+#include "sps_curve.cginc"
 
 // SPS Penetration Shader
 void sps_apply_real(
@@ -115,7 +118,7 @@ void sps_apply_real(
 		#endif
 	#endif
 
-	float firstSegmentLerp;
+	float deformationWeight;
 	float radiusMult = 1;
 	float3 sampledWorldPos;
 	float3 sampledWorldForward;
@@ -124,24 +127,24 @@ void sps_apply_real(
 	sps_deform_walk_chain(
 		path,
 		pathDistance,
-		firstSegmentLerp,
+		deformationWeight,
 		radiusMult,
 		sampledWorldPos,
 		sampledWorldForward,
 		sampledWorldUp
 	);
-	float dumbLerp = sps_saturated_map(firstSegmentLerp, 0, 0.2) * active;
+	float blendWeight = deformationWeight * active;
 	float3 sampledWorldRight = cross(sampledWorldUp, sampledWorldForward);
 
 	float3 deformedWorldVertex = sampledWorldPos + sampledWorldRight * bakedVertex.x * radiusMult + sampledWorldUp * bakedVertex.y * radiusMult;
-	vertex.xyz = lerp(origVertex, sps_toLocal(deformedWorldVertex), dumbLerp);
+	vertex.xyz = lerp(origVertex, sps_toLocal(deformedWorldVertex), blendWeight);
 	if (!sps_is_zero(bakedNormal)) {
 		float3 deformedWorldNormal = sampledWorldRight * bakedNormal.x + sampledWorldUp * bakedNormal.y + sampledWorldForward * bakedNormal.z;
-		normal.xyz = lerp(origNormal, sps_direction_toLocal(deformedWorldNormal), dumbLerp);
+		normal.xyz = lerp(origNormal, sps_direction_toLocal(deformedWorldNormal), blendWeight);
 	}
 	if (!sps_is_zero(bakedTangent)) {
 		float3 deformedWorldTangent = sampledWorldRight * bakedTangent.x + sampledWorldUp * bakedTangent.y + sampledWorldForward * bakedTangent.z;
-		tangent.xyz = lerp(origTangent, sps_direction_toLocal(deformedWorldTangent), dumbLerp);
+		tangent.xyz = lerp(origTangent, sps_direction_toLocal(deformedWorldTangent), blendWeight);
 	}
 }
 
@@ -175,5 +178,7 @@ void sps_apply(inout SpsInputs o) {
 	);
 
 }
+
+#endif
 
 #endif

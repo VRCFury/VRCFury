@@ -19,8 +19,8 @@ namespace VF.Builder.Haptics {
         public const string SpsObjectEnabled = "_SPS_ObjectEnabled";
         public const string SpsBakedLength = "_SPS_BakedLength";
         public const string SpsBakedRadius = "_SPS_BakedRadius";
+        public const string SpsBaseActivationRadiusOverride = "_SPS_BaseActivationRadiusOverride";
         public const string SpsRadiusOffsetMultiplier = "_SPS_RadiusOffsetMultiplier";
-        public const string SpsOverrun = "_SPS_Overrun";
         public const string SpsDisableShadows = "_SPS_DisableShadows";
         public const string SpsDisableDepth = "_SPS_DisableDepth";
         private const string SpsBake = "_SPS_Bake";
@@ -73,10 +73,10 @@ namespace VF.Builder.Haptics {
             m.SetFloatFast(SpsObjectEnabled, 1);
             m.SetFloatFast(SpsBakedLength, worldLength);
             m.SetFloatFast(SpsBakedRadius, worldRadius);
+            m.SetFloatFast(SpsBaseActivationRadiusOverride, 0);
             m.SetFloatFast(SpsRadiusOffsetMultiplier, 1);
             m.SetFloatFast(SpsDisableShadows, 0);
             m.SetFloatFast(SpsDisableDepth, 0);
-            m.SetFloatFast(SpsOverrun, plug.spsOverrun ? 1 : 0);
             m.SetFloatFast("_SPS_BlendshapeCount", spsBlendshapes.Count);
             m.SetFloatFast("_SPS_BlendshapeVertCount", skin.GetVertexCount());
             for (var i = 0; i < spsBlendshapes.Count; i++) {
