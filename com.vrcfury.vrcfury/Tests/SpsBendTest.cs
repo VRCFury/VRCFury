@@ -29,6 +29,12 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         #pragma fragment frag
         #include ""UnityCG.cginc""
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_config.cginc""
+        float _VerticalAngle;
+        #undef SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES
+        #define SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES _VerticalAngle
+        float _HorizontalAngle;
+        #undef SPS_CONE_HORIZONTAL_HALF_ANGLE_DEGREES
+        #define SPS_CONE_HORIZONTAL_HALF_ANGLE_DEGREES _HorizontalAngle
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_types.cginc""
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_utils.cginc""
         #include ""Packages/com.vrchat.base/ShaderLibrary/VRCContacts.cginc""
@@ -49,6 +55,10 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         float3 _Position, _Forward, _Up, _Exit;
         float _Length, _CaptureLength, _Guided, _Entrance, _Flags, _Operation, _BaseRadius;
         float4 frag(v2f_img input) : SV_Target {
+            if (_Operation == 2) {
+                float weight = sps_deformation_weight(_Position, _Forward, _Up, _Length, .02, _BaseRadius, 0);
+                return float4(weight, weight, weight, weight);
+            }
             if (_Operation > 0) {
                 float advance = _Entrance > 0
                     ? sps_entry_advance_distance(-_Position, _Forward, _Exit, _Length) : 0;
@@ -121,7 +131,10 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             Quaternion rotation = default,
             float captureLength = .4f,
             int unlock = 0,
-            float baseRadius = 1
+            float baseRadius = 1,
+            float verticalAngle = 89,
+            bool captureOnly = false,
+            float horizontalAngle = 45
         ) {
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null) Assert.Ignore("Requires a graphics device.");
             if (material == null) {
@@ -137,10 +150,12 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             material.SetFloat("_Length", .4f * scale);
             material.SetFloat("_CaptureLength", captureLength * scale);
             material.SetFloat("_BaseRadius", baseRadius * scale);
+            material.SetFloat("_VerticalAngle", verticalAngle);
+            material.SetFloat("_HorizontalAngle", horizontalAngle);
             material.SetFloat("_Guided", guided ? 1 : 0);
             material.SetFloat("_Entrance", entrance ? 1 : 0);
             material.SetFloat("_Flags", (twoWay ? 1 << 13 : 0) | (hole ? 1 << 14 : 0) | unlock);
-            material.SetFloat("_Operation", scores ? 1 : 0);
+            material.SetFloat("_Operation", captureOnly ? 2 : scores ? 1 : 0);
             var previous = RenderTexture.active;
             try {
                 Graphics.Blit(Texture2D.blackTexture, target, material);
@@ -151,6 +166,80 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             } finally {
                 RenderTexture.active = previous;
             }
+        }
+
+        [Test]
+        public void CylinderSideFadeIsContinuousAcrossTheBasePlane() {
+            foreach (var angle in new[] { 89f, 90f, 100f, 120f, 180f }) {
+                var behind = Read(new Vector3(0, .09f, -.000001f), Vector3.forward, baseRadius: .1f, verticalAngle: angle, captureOnly: true);
+                var ahead = Read(new Vector3(0, .09f, .000001f), Vector3.forward, baseRadius: .1f, verticalAngle: angle, captureOnly: true);
+                Assert.That(behind.a, Is.EqualTo(ahead.a).Within(.001f), "angle=" + angle);
+            }
+        }
+
+        [Test]
+        public void NinetyDegreeConeFadesContinuouslyAtTheBasePlane() {
+            var behind = Read(new Vector3(0, .3f, -.000001f), Vector3.forward, baseRadius: .1f, verticalAngle: 90, captureOnly: true);
+            var ahead = Read(new Vector3(0, .3f, .000001f), Vector3.forward, baseRadius: .1f, verticalAngle: 90, captureOnly: true);
+            Assert.That(behind.a, Is.Zero);
+            Assert.That(ahead.a, Is.GreaterThan(0).And.LessThan(.001f));
+        }
+
+        [TestCase(89, false)]
+        [TestCase(90, false)]
+        [TestCase(100, true)]
+        [TestCase(120, true)]
+        public void VerticalConeOpensBehindOnlyAboveNinety(float angle, bool expected) {
+            var result = Read(new Vector3(0, .3f, -.05f), Vector3.forward, baseRadius: .1f, verticalAngle: angle, captureOnly: true);
+            Assert.That(float.IsNaN(result.a) || float.IsInfinity(result.a), Is.False);
+            Assert.That(result.a > 0, Is.EqualTo(expected));
+            var side = Read(new Vector3(.101f, .3f, -.05f), Vector3.forward, baseRadius: .1f, verticalAngle: angle, captureOnly: true);
+            Assert.That(side.a, Is.Zero, "Vertical opening must retain the horizontal boundary.");
+        }
+
+        [TestCase(89, false)]
+        [TestCase(90, false)]
+        [TestCase(100, true)]
+        [TestCase(120, true)]
+        public void HorizontalConeOpensBehindOnlyAboveNinety(float angle, bool expected) {
+            var result = Read(new Vector3(.3f, 0, -.05f), Vector3.forward, baseRadius: .1f, horizontalAngle: angle, captureOnly: true);
+            Assert.That(float.IsNaN(result.a) || float.IsInfinity(result.a), Is.False);
+            Assert.That(result.a > 0, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void ExtendedAnglesAreSymmetricAndFinite() {
+            foreach (var horizontal in new[] { 0f, 45f, 89.999f, 90f, 90.001f, 120f, 180f, 200f })
+            foreach (var vertical in new[] { 0f, 45f, 90f, 120f, 180f, 200f })
+            foreach (var p in new[] { Vector3.zero, new Vector3(.09f, .03f, 0), new Vector3(.3f, .2f, -.05f), new Vector3(0, 0, -.3f), new Vector3(.65f, 0, 0) }) {
+                var result = Read(p, Vector3.forward, baseRadius: .1f, horizontalAngle: horizontal, verticalAngle: vertical, captureOnly: true);
+                var swapped = Read(new Vector3(p.y, p.x, p.z), Vector3.forward, baseRadius: .1f, horizontalAngle: vertical, verticalAngle: horizontal, captureOnly: true);
+                Assert.That(result.a, Is.InRange(0f, 1f), $"position={p}, angles={horizontal}/{vertical}");
+                Assert.That(swapped.a, Is.EqualTo(result.a).Within(.0001f), $"position={p}, angles={horizontal}/{vertical}");
+            }
+        }
+
+        [Test]
+        public void BothAxesCanOpenBehindWhileRetainingReachLimit() {
+            Assert.That(Read(new Vector3(.3f, .3f, -.05f), Vector3.forward, baseRadius: .1f, horizontalAngle: 120, verticalAngle: 120, captureOnly: true).a, Is.GreaterThan(0));
+            Assert.That(Read(new Vector3(.5f, .5f, -.05f), Vector3.forward, baseRadius: .1f, horizontalAngle: 180, verticalAngle: 180, captureOnly: true).a, Is.Zero);
+        }
+
+        [TestCase(90)]
+        [TestCase(100)]
+        [TestCase(120)]
+        [TestCase(180)]
+        public void ExtendedConeStillRespectsMaximumReach(float angle) {
+            var result = Read(new Vector3(0, .65f, 0), Vector3.forward, baseRadius: .1f, verticalAngle: angle, captureOnly: true);
+            Assert.That(result.a, Is.Zero);
+        }
+
+        [Test]
+        public void FullyOpenVerticalConeAcceptsDirectlyBehind() {
+            var result = Read(new Vector3(0, 0, -.3f), Vector3.forward, baseRadius: .1f, verticalAngle: 180, captureOnly: true);
+            var beyond = Read(new Vector3(0, 0, -.3f), Vector3.forward, baseRadius: .1f, verticalAngle: 200, captureOnly: true);
+            Assert.That(result.a, Is.GreaterThan(0));
+            Assert.That(beyond.a, Is.EqualTo(result.a).Within(.0001f));
         }
 
         [Test]

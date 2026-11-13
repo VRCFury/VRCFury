@@ -37,13 +37,11 @@ inline void sps_deform_segment_control_points(
     float3 segmentOffset = endPoint - startPoint;
     float segmentDistance = length(segmentOffset);
 
+    // Both callers supply nonzero, normalized directions. In particular,
+    // sps_normalize already supplies +Z for a zero vector. Repeating those
+    // fallbacks here bloats every inlined bend-score and curve evaluation.
     float3 startForward = startForwardInput;
-    if (sps_is_zero(startForward)) startForward = sps_normalize(segmentOffset);
-    if (sps_is_zero(startForward)) startForward = float3(0, 0, 1);
-
     float3 endForward = endForwardInput;
-    if (sps_is_zero(endForward)) endForward = sps_normalize(segmentOffset);
-    if (sps_is_zero(endForward)) endForward = float3(0, 0, 1);
 
     float handleDistance = segmentDistance * SPS_HANDLE_LENGTH;
     p1 = p0 + startForward * handleDistance;

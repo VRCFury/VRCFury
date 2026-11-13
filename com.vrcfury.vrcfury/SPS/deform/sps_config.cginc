@@ -13,10 +13,10 @@
 
 // FADE OUT (SOCKET OUTSIDE OF CAPTURE ZONE)
 
-// Horizontal half-angle for the fade cone. Don't set to 90 degrees: tan(90) is undefined.
-#define SPS_CONE_HORIZONTAL_HALF_ANGLE_DEGREES 45.0
-// Vertical half-angle for the fade cone. Don't set to 90 degrees: tan(90) is undefined.
-#define SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES 89.0
+// Horizontal half-angle in degrees
+#define SPS_CONE_HORIZONTAL_HALF_ANGLE_DEGREES 50.0
+// Vertical half-angle in degrees
+#define SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES 95.0
 // Maximum base sideways capture radius, in plug radii, unless the material supplies an override.
 #define SPS_BASE_RADIUS_MULTIPLIER 6.0
 // Rear cylinder depth as a multiple of the base capture radius.

@@ -32,6 +32,26 @@ struct SpsDeformPathInfo {
     float deformationWeight;
 };
 
+// Positive inside, zero on the capture boundary. An ellipse in angular space
+// gives either axis a finite boundary through 90 degrees and into the rear half.
+inline float sps_capture_margin(float2 sideways, float depth, float radius, float2 angles) {
+    float cylinder = min(radius - length(sideways), depth + radius * SPS_BASE_DEPTH_MULTIPLIER);
+    angles = clamp(angles, 0, 180);
+    float sideSq = dot(sideways, sideways);
+    float2 safeAngles = max(angles, 1e-6);
+    float angle = sideSq > 0
+        ? rsqrt(dot(sideways * sideways / sideSq, 1 / (safeAngles * safeAngles)))
+        : max(angles.x, angles.y);
+    float cosine = angle == 90 ? 0 : cos(radians(angle));
+    float sine = angle >= 180 ? 0 : sin(radians(angle));
+    // abs(cosine) keeps the base radius expanding the zone on either side of 90.
+    float cone = depth * sine - sqrt(sideSq) * cosine + radius * abs(cosine);
+    // Only angles beyond 90 may extend past the rear cylinder's cap. Keep the
+    // signed margin on both sides of the base plane so its fade stays continuous.
+    if (angle <= 90) cone = min(cone, depth + radius * SPS_BASE_DEPTH_MULTIPLIER);
+    return max(cylinder, cone);
+}
+
 inline float sps_deformation_weight(
     float3 delta,
     float3 currentForward,
@@ -46,26 +66,19 @@ inline float sps_deformation_weight(
     float baseActivationRadius = worldBaseActivationRadiusOverride > 0
         ? worldBaseActivationRadiusOverride : worldRadius * SPS_BASE_RADIUS_MULTIPLIER;
     float2 sideways = float2(dot(delta, cross(currentUp, currentForward)), dot(delta, currentUp));
-    float innerDistance;
-    float outerDistance;
-    if (forwardDistance < 0) {
-        // Behind the base: a cylinder whose depth scales with its capture radius.
-        outerDistance = max(length(sideways), -forwardDistance / SPS_BASE_DEPTH_MULTIPLIER) / baseActivationRadius;
-        innerDistance = outerDistance / SPS_SIDE_FADE_FRACTION_MIN;
-    } else {
-        float2 coneAngles = radians(float2(
-            SPS_CONE_HORIZONTAL_HALF_ANGLE_DEGREES,
-            SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES
-        ));
-        // Narrow the inner cone's angles too, so the fade widens with distance.
-        innerDistance = length(sideways / (
-            forwardDistance * tan(coneAngles * SPS_SIDE_FADE_FRACTION_MIN)
-            + baseActivationRadius * SPS_SIDE_FADE_FRACTION_MIN
-        ));
-        outerDistance = length(sideways / (forwardDistance * tan(coneAngles) + baseActivationRadius));
-    }
-    float boundaryWeight = outerDistance >= 1 ? 0 : innerDistance <= 1 ? 1
-        : (1 - outerDistance) / (1 - outerDistance / innerDistance);
+    float2 angles = float2(
+        clamp(SPS_CONE_HORIZONTAL_HALF_ANGLE_DEGREES, 0, 180),
+        clamp(SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES, 0, 180)
+    );
+    float outerMargin = sps_capture_margin(sideways, forwardDistance, baseActivationRadius, angles);
+    float innerMargin = sps_capture_margin(
+        sideways,
+        forwardDistance,
+        baseActivationRadius * SPS_SIDE_FADE_FRACTION_MIN,
+        angles * SPS_SIDE_FADE_FRACTION_MIN
+    );
+    float boundaryWeight = outerMargin <= 0 ? 0 : innerMargin >= 0 ? 1
+        : outerMargin / (outerMargin - innerMargin);
     float farEdgeWeight = 1 - sps_saturated_map(
         distance,
         worldLength * SPS_REACH_FADE_MIN,
