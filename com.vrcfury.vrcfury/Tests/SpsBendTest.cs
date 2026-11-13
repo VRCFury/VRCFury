@@ -47,7 +47,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_path.cginc""
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_curve.cginc""
         float3 _Position, _Forward, _Up, _Exit;
-        float _Length, _CaptureLength, _Guided, _Entrance, _Flags, _Operation;
+        float _Length, _CaptureLength, _Guided, _Entrance, _Flags, _Operation, _BaseRadius;
         float4 frag(v2f_img input) : SV_Target {
             if (_Operation > 0) {
                 float advance = _Entrance > 0
@@ -75,7 +75,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 _Length,
                 _CaptureLength,
                 .02,
-                1,
+                _BaseRadius,
                 _Guided > 0,
                 _Entrance > 0,
                 node,
@@ -120,7 +120,8 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             float scale = 1,
             Quaternion rotation = default,
             float captureLength = .4f,
-            int unlock = 0
+            int unlock = 0,
+            float baseRadius = 1
         ) {
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null) Assert.Ignore("Requires a graphics device.");
             if (material == null) {
@@ -135,6 +136,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             material.SetVector("_Exit", rotation * exit);
             material.SetFloat("_Length", .4f * scale);
             material.SetFloat("_CaptureLength", captureLength * scale);
+            material.SetFloat("_BaseRadius", baseRadius * scale);
             material.SetFloat("_Guided", guided ? 1 : 0);
             material.SetFloat("_Entrance", entrance ? 1 : 0);
             material.SetFloat("_Flags", (twoWay ? 1 << 13 : 0) | (hole ? 1 << 14 : 0) | unlock);
@@ -149,6 +151,14 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             } finally {
                 RenderTexture.active = previous;
             }
+        }
+
+        [Test]
+        public void RearCylinderIsOneAndAHalfRadiiDeepWithoutWidening() {
+            Assert.That(Read(new Vector3(0, 0, -.12f), Vector3.forward, baseRadius: .1f).a, Is.EqualTo(1).Within(.0001f));
+            Assert.That(Read(new Vector3(0, 0, -.145f), Vector3.forward, baseRadius: .1f).a, Is.EqualTo(1f / 6).Within(.0001f));
+            Assert.That(Read(new Vector3(0, 0, -.151f), Vector3.forward, baseRadius: .1f).a, Is.Zero);
+            Assert.That(Read(new Vector3(.101f, 0, -.12f), Vector3.forward, baseRadius: .1f).a, Is.Zero);
         }
 
         [Test]

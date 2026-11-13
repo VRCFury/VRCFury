@@ -49,8 +49,8 @@ inline float sps_deformation_weight(
     float innerDistance;
     float outerDistance;
     if (forwardDistance < 0) {
-        // Behind the base: a cylinder with the same radius and one radius of depth.
-        outerDistance = max(length(sideways), -forwardDistance) / baseActivationRadius;
+        // Behind the base: a cylinder whose depth scales with its capture radius.
+        outerDistance = max(length(sideways), -forwardDistance / SPS_BASE_DEPTH_MULTIPLIER) / baseActivationRadius;
         innerDistance = outerDistance / SPS_SIDE_FADE_FRACTION_MIN;
     } else {
         float2 coneAngles = radians(float2(

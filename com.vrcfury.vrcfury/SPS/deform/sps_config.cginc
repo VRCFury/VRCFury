@@ -19,6 +19,8 @@
 #define SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES 89.0
 // Maximum base sideways capture radius, in plug radii, unless the material supplies an override.
 #define SPS_BASE_RADIUS_MULTIPLIER 6.0
+// Rear cylinder depth as a multiple of the base capture radius.
+#define SPS_BASE_DEPTH_MULTIPLIER 1.5
 // Inner capture radius and cone angles as a fraction of their outer values.
 #define SPS_SIDE_FADE_FRACTION_MIN 0.8
 
