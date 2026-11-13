@@ -77,11 +77,12 @@ namespace VF.Tests {
             Assert.That(sizes.GetWorldSize(plug), Is.SameAs(size));
             Assert.That(receivers.IsCreated, Is.False);
             var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
-            Assert.That(bake.worldLength, Is.EqualTo(0.4f));
-            Assert.That(bake.worldRadius, Is.EqualTo(0.01f));
+            Assert.That(bake.worldLength, Is.EqualTo(0.4f).Within(0.000001f));
+            Assert.That(bake.worldRadius, Is.EqualTo(0.01f).Within(0.000001f));
             Assert.That(bake.socketReceivers, Is.SameAs(receivers));
             Assert.That(bake.bakeRoot, Is.EqualTo(frame));
-            Assert.That(frame.worldScale, Is.EqualTo(Vector3.one));
+            // Rotating the hip frame introduces normal transform-decomposition rounding.
+            Assert.That(Vector3.Distance(frame.worldScale, Vector3.one), Is.LessThan(0.000001f));
             Assert.That(root.GetComponentsInChildren<Transform>().Count(t => t.name == "BakedSpsPlug"), Is.EqualTo(1));
             Assert.That(receivers.IsCreated, Is.False);
             var another = GameObjects.Create("Other plug", root).AddComponent<VRCFuryHapticPlug>();
@@ -106,16 +107,16 @@ namespace VF.Tests {
             var bake = injector.GetService<VRCFuryHapticPlugBaker>().Bake(plug);
             var keys = bake.radiusCurve.keys;
             var minimumRadius = bake.localMinimumRadius;
-            Assert.That(bake.localLength, Is.EqualTo(0.4f));
-            Assert.That(bake.localRadius, Is.EqualTo(0.01f));
+            Assert.That(bake.localLength, Is.EqualTo(0.4f).Within(0.000001f));
+            Assert.That(bake.localRadius, Is.EqualTo(0.01f).Within(0.000001f));
             Assert.That(keys.First().time, Is.Zero);
             Assert.That(keys.Last().time, Is.EqualTo(1));
             Assert.That(keys.First().value, Is.EqualTo(bake.localRadius));
             root.transform.localScale *= resize;
             Assert.That(bake.worldLength, Is.EqualTo(0.4f * resize).Within(0.00001f));
             Assert.That(bake.worldRadius, Is.EqualTo(0.01f * resize).Within(0.00001f));
-            Assert.That(bake.localLength, Is.EqualTo(0.4f));
-            Assert.That(bake.localRadius, Is.EqualTo(0.01f));
+            Assert.That(bake.localLength, Is.EqualTo(0.4f).Within(0.000001f));
+            Assert.That(bake.localRadius, Is.EqualTo(0.01f).Within(0.000001f));
             Assert.That(bake.localMinimumRadius, Is.EqualTo(minimumRadius));
             Assert.That(bake.radiusCurve.keys, Is.EqualTo(keys));
             Assert.That(bake.mainSender.worldScale.z, Is.EqualTo(bake.worldLength).Within(0.00001f));
