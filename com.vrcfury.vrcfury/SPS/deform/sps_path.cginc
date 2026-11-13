@@ -5,6 +5,7 @@
 
 #include "sps_types.cginc"
 #include "sps_utils.cginc"
+#include "sps_control_points.cginc"
 #include "sps_contacts.cginc"
 #include "sps_lights.cginc"
 #include "Packages/com.vrchat.base/ShaderLibrary/VRCContacts.cginc"
@@ -35,20 +36,13 @@ inline float sps_deformation_weight(
     float3 delta,
     float3 currentForward,
     float3 currentUp,
-    float3 socketForward,
     float worldLength,
     float worldRadius,
     float worldBaseActivationRadiusOverride,
-    bool hole
+    uint flags
 ) {
     float forwardDistance = dot(delta, currentForward);
     float distance = length(delta);
-    // Fade excessive bends using the configured dot-product thresholds.
-    float angleWeight = sps_saturated_map(
-        dot(currentForward, socketForward),
-        cos(radians(SPS_BEND_FADE_DEGREES_MAX)),
-        cos(radians(SPS_BEND_FADE_DEGREES_MIN))
-    );
     float baseActivationRadius = worldBaseActivationRadiusOverride > 0
         ? worldBaseActivationRadiusOverride : worldRadius * SPS_BASE_RADIUS_MULTIPLIER;
     float2 sideways = float2(dot(delta, cross(currentUp, currentForward)), dot(delta, currentUp));
@@ -59,14 +53,16 @@ inline float sps_deformation_weight(
         outerDistance = max(length(sideways), -forwardDistance) / baseActivationRadius;
         innerDistance = outerDistance / SPS_SIDE_FADE_FRACTION_MIN;
     } else {
-        float2 sidewaysReach = forwardDistance * tan(radians(float2(
+        float2 coneAngles = radians(float2(
             SPS_CONE_HORIZONTAL_HALF_ANGLE_DEGREES,
             SPS_CONE_VERTICAL_HALF_ANGLE_DEGREES
-        )));
-        // The forward cone has elliptical inner/outer boundaries. Interpolate
-        // along their radius so the fade has the configured width in each direction.
-        innerDistance = length(sideways / (sidewaysReach + baseActivationRadius * SPS_SIDE_FADE_FRACTION_MIN));
-        outerDistance = length(sideways / (sidewaysReach + baseActivationRadius));
+        ));
+        // Narrow the inner cone's angles too, so the fade widens with distance.
+        innerDistance = length(sideways / (
+            forwardDistance * tan(coneAngles * SPS_SIDE_FADE_FRACTION_MIN)
+            + baseActivationRadius * SPS_SIDE_FADE_FRACTION_MIN
+        ));
+        outerDistance = length(sideways / (forwardDistance * tan(coneAngles) + baseActivationRadius));
     }
     float boundaryWeight = outerDistance >= 1 ? 0 : innerDistance <= 1 ? 1
         : (1 - outerDistance) / (1 - outerDistance / innerDistance);
@@ -75,19 +71,20 @@ inline float sps_deformation_weight(
         worldLength * SPS_REACH_FADE_MIN,
         worldLength * SPS_REACH_FADE_MAX
     );
-    float captureWeight = angleWeight * boundaryWeight;
     // A hole snaps at its side/back limits; only its far edge fades.
-    if (hole) captureWeight = captureWeight > 0 ? 1 : 0;
-    return farEdgeWeight * captureWeight;
+    if (sps_has_flag(flags, SPS_SOCKET_FLAG_HOLE)) boundaryWeight = boundaryWeight > 0 ? 1 : 0;
+    return farEdgeWeight * boundaryWeight;
 }
 
 bool sps_prepare_socket(
     SpsSocketCandidate socket,
     SpsDeformNode previous,
     float worldLength,
+    float captureLength,
     float worldRadius,
     float worldBaseActivationRadiusOverride,
     bool guided,
+    bool entrance,
     out SpsDeformNode node,
     out float distanceSq
 ) {
@@ -110,8 +107,45 @@ bool sps_prepare_socket(
         float3 right = sps_normalize(cross(up, -normal));
         normal = sps_nearest_normal(right, -direction);
         up = sps_normalize(cross(right, normal));
-    } else if (sps_has_flag(socket.control, SPS_SOCKET_FLAG_DOUBLE_SIDED) && dot(normal, previous.forward) > 0) {
-        normal = -normal;
+    }
+    bool twoWay = sps_has_flag(socket.control, SPS_SOCKET_FLAG_DOUBLE_SIDED);
+    bool unlocked = sps_has_flag(socket.control, SPS_SOCKET_FLAG_UNLOCK_ALL)
+        || sps_has_flag(socket.control, SPS_SOCKET_FLAG_UNLOCK_LOCAL_X);
+    // Guided stops are exempt from rejection. Unlocked two-way sockets already
+    // have their orientation determined above, so they do not need a face choice.
+    bool checkOneWaySharpness = !twoWay && !guided;
+    bool chooseTwoWayFace = twoWay && !unlocked;
+    if (checkOneWaySharpness || chooseTwoWayFace) {
+        // Only the initial entrance gets lookahead. Its distance is identical for
+        // both faces, but advancing along their opposite exits gives different targets.
+        float advance = entrance
+            ? sps_entry_advance_distance(-delta, previous.forward, -normal, worldLength) : 0;
+        float sharpness = sps_bend_sharpness_sq(
+            delta - normal * advance,
+            previous.forward,
+            -normal,
+            worldLength
+        );
+        if (chooseTwoWayFace) {
+            float opposite = sps_bend_sharpness_sq(
+                delta + normal * advance,
+                previous.forward,
+                normal,
+                worldLength
+            );
+            bool flip = opposite < sharpness;
+            if (opposite == sharpness) {
+                // Break symmetric ties in the incoming frame, independently of
+                // the authored normal's sign. Prefer forward, then up, then right.
+                float facing = dot(normal, previous.forward);
+                if (facing == 0) facing = dot(normal, previous.up);
+                if (facing == 0) facing = dot(normal, cross(previous.up, previous.forward));
+                flip = facing > 0;
+            }
+            if (flip) normal = -normal;
+        } else if (sharpness > SPS_ONE_WAY_BEND_SHARPNESS_MAX * SPS_ONE_WAY_BEND_SHARPNESS_MAX) {
+            return false;
+        }
     }
     node.forward = -normal;
     node.up = up;
@@ -121,11 +155,10 @@ bool sps_prepare_socket(
         delta,
         previous.forward,
         previous.up,
-        node.forward,
-        worldLength,
+        captureLength,
         worldRadius,
         worldBaseActivationRadiusOverride,
-        sps_has_flag(node.flags, SPS_SOCKET_FLAG_HOLE)
+        node.flags
     );
     return node.deformationWeight > 0;
 }
@@ -189,10 +222,12 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
                 if (!sps_prepare_socket(
                     socket,
                     previousNode,
+                    path.worldLength,
                     remainingLength / SPS_REACH_FADE_MAX,
                     worldRadius,
                     worldBaseActivationRadiusOverride,
                     true,
+                    false,
                     node,
                     distanceSq
                 ) || distanceSq >= nearest) continue;
@@ -214,10 +249,12 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
                 if (!sps_prepare_socket(
                     socket,
                     previousNode,
+                    path.worldLength,
                     remainingLength / SPS_REACH_FADE_MAX,
                     worldRadius,
                     worldBaseActivationRadiusOverride,
                     false,
+                    step == 1,
                     node,
                     distanceSq
                 ) || distanceSq >= nearest) continue;

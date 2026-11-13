@@ -67,13 +67,12 @@ inline void sps_deform_walk_chain(
     uint entryFlags = sps_path_flags[1];
     float entryWeight = path.deformationWeight;
     float3 offset = sps_path_worlds[0] - entryPoint;
-    // Signed distance past the socket plane, plus sideways distance from its axis.
-    float axialDepth = dot(offset, entryForward);
-    float lateralDistance = length(offset - entryForward * axialDepth);
     // Aim farther along the path so off-center plugs need less of a return bend.
-    float advance = max(
-        axialDepth + lateralDistance * SPS_LATERAL_ADVANCE_MULTIPLIER + path.worldLength * SPS_ENTRY_ADVANCE,
-        0
+    float advance = sps_entry_advance_distance(
+        offset,
+        sps_path_forwards[0],
+        entryForward,
+        path.worldLength
     );
     float terminalAdvance;
     uint nextSocket = sps_deform_advance_entry(
