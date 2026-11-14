@@ -1,17 +1,22 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VF.Builder;
 using VF.Builder.Haptics;
+using VF.Exceptions;
 using VF.Injector;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDK3.Dynamics.Contact.Components;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
@@ -92,6 +97,69 @@ namespace VF.Tests {
 
         private string OriginalAssets() => EditorJsonUtility.ToJson(controller) + EditorJsonUtility.ToJson(parameters)
             + EditorJsonUtility.ToJson(menu);
+
+        [TestCase(typeof(VRCContactReceiver), "rootTransform")]
+        [TestCase(typeof(VRCContactSender), "rootTransform")]
+        [TestCase(typeof(VRCPhysBone), "rootTransform")]
+        [TestCase(typeof(VRCPhysBoneCollider), "rootTransform")]
+        public void CleanupReportsComponentWithMalformedTransform(Type type, string fieldName) {
+            var source = new GameObject("Dynamics");
+            source.SetActive(false);
+            source.transform.SetParent(root.transform, false);
+            var target = new GameObject("Target");
+            target.transform.SetParent(source.transform, false);
+            var rootField = type.GetField(fieldName);
+            rootField.SetValue(source.AddComponent(type), target.transform);
+            var path = folder + "/Dynamics.prefab";
+            var prefab = PrefabUtility.SaveAsPrefabAsset(source, path);
+            Object.DestroyImmediate(source);
+            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(
+                prefab.transform.Find("Target").gameObject,
+                out _,
+                out long gameObjectId
+            );
+            // Editor assignments sanitize this. Loading malformed YAML creates a Transform
+            // wrapper whose instance ID belongs to a GameObject, so Unity's null check passes.
+            File.WriteAllText(
+                path,
+                Regex.Replace(
+                    File.ReadAllText(path),
+                    fieldName + @": \{fileID: -?\d+\}",
+                    fieldName + ": {fileID: " + gameObjectId + "}"
+                )
+            );
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(path));
+            instance.transform.SetParent(root.transform, false);
+            target = instance.transform.Find("Target").gameObject;
+            var component = instance.GetComponent(type);
+            var brokenRoot = (Transform)rootField.GetValue(component);
+            Assert.That(brokenRoot != null, Is.True);
+            Assert.Throws<MissingReferenceException>(() => brokenRoot.IsChildOf(root.transform));
+            var unrelated = new GameObject("Unrelated legacy object");
+            unrelated.transform.SetParent(root.transform, false);
+            var error = Assert.Throws<ExceptionWithCause>(() => Cleaner(false).Cleanup(
+                root,
+                perform: true,
+                ShouldRemoveObj: obj => obj == unrelated.asVf()
+            ));
+            Assert.That(error.Message, Does.Contain(type.Name).And.Contain(component.owner().GetDebugPath()));
+            Assert.That(error.InnerException, Is.TypeOf<MissingReferenceException>());
+            Assert.That(unrelated != null, Is.True);
+            Assert.That(component != null, Is.True);
+            Assert.That(
+                rootField.GetValue(component),
+                Is.SameAs(brokenRoot),
+                "Malformed references must not be rewritten"
+            );
+        }
+
+        [Test]
+        public void CleanupReportsConstraintWithMalformedTransform() {
+            var type = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Dynamics.Constraint.Components.VRCParentConstraint");
+            if (type == null) Assert.Ignore("VRC constraints are not available in this SDK");
+            CleanupReportsComponentWithMalformedTransform(type, "TargetTransform");
+        }
 
         [TestCase(false)]
         [TestCase(true)]

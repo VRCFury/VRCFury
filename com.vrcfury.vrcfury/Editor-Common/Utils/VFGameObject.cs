@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using VF.Exceptions;
 using VF.Hooks.UnityFixes;
 using VF.Utils;
 using VRC.Dynamics;
@@ -283,15 +284,15 @@ namespace VF.Utils {
         public void Destroy() {
             var roots = uploadRoots;
             foreach (var c in roots.SelectMany(root => root.GetComponentsInSelfAndChildren<VRCPhysBoneBase>())) {
-                if (c.GetRootTransform().IsChildOf(this))
+                if (IsRootChildOf(c.GetRootTransform(), c))
                     Object.DestroyImmediate(c);
             }
             foreach (var c in roots.SelectMany(root => root.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>())) {
-                if (c.GetRootTransform().IsChildOf(this))
+                if (IsRootChildOf(c.GetRootTransform(), c))
                     Object.DestroyImmediate(c);
             }
             foreach (var c in roots.SelectMany(root => root.GetComponentsInSelfAndChildren<ContactBase>())) {
-                if (c.GetRootTransform().IsChildOf(this))
+                if (IsRootChildOf(c.GetRootTransform(), c))
                     Object.DestroyImmediate(c);
             }
             foreach (var c in GetConstraints(includeChildren: true)) {
@@ -300,14 +301,36 @@ namespace VF.Utils {
             Object.DestroyImmediate(this);
         }
 
+        // Due to unity serialization goofs in some really old broken assets, in some rare situations, a Transform handle
+        // can actually be holding a GameObject. If you try to use it as a transform, it'll throw MissingReferenceException.
+        // With this try catch, at least you'll be able to find where it is.
+        private bool IsRootChildOf(Transform root, UnityEngine.Component component) {
+            try {
+                return root.IsChildOf(this);
+            } catch (Exception e) {
+                throw new ExceptionWithCause(
+                    $"Failed to check root transform of {component.GetType().Name} on {component.owner().GetDebugPath()}",
+                    e
+                );
+            }
+        }
+
         public VFConstraint[] GetConstraints(bool includeParents = false, bool includeChildren = false) {
             return VFConstraint.GetConstraintsInSelfAndChildren(uploadRoots)
                 .Where(c => {
-                    var affectedObject = c.GetAffectedObject();
-                    if (affectedObject == null) return false;
-                    if (includeParents) return IsSameOrChildOf(affectedObject);
-                    if (includeChildren) return affectedObject.IsSameOrChildOf(this);
-                    return affectedObject == this;
+                    try {
+                        var affectedObject = c.GetAffectedObject();
+                        if (affectedObject == null) return false;
+                        if (includeParents) return IsSameOrChildOf(affectedObject);
+                        if (includeChildren) return affectedObject.IsSameOrChildOf(this);
+                        return affectedObject == this;
+                    } catch (Exception e) {
+                        // this is here for same reason as IsRootChildOf
+                        throw new ExceptionWithCause(
+                            $"Failed to check affected object of {c.GetComponent().GetType().Name} on {c.owner().GetDebugPath()}",
+                            e
+                        );
+                    }
                 })
                 .ToArray();
         }
