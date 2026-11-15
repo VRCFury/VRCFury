@@ -243,7 +243,7 @@ namespace VF.Tests {
             Assert.That(contact.transform.parent.asVf(), Is.EqualTo(result.worldSpace));
             CheckVector(result.worldSpace.worldScale, Vector3.one);
             Assert.That(result.worldSpace.GetComponent<UnityEngine.Animations.ScaleConstraint>(), Is.Not.Null);
-            Assert.That(result.bakeRoot.Children().Select(child => child.name), Is.EquivalentTo(new[] { "WorldSpace", "LegacyLights" }));
+            Assert.That(result.bakeRoot.Children().Select(child => child.name), Is.EquivalentTo(new[] { "WorldSpace", "LegacyLights", "ReceiverSpace" }));
             var typeBits = flags == Flags.Hole ? 1 << 14 : flags == Flags.Ring ? 1 << 13 : 0;
             Assert.That(contact.transform.lossyScale.x, Is.EqualTo(1 | typeBits | (1 << 12)).Within(0.01));
             Assert.That(legacy.All(c => c.radius == 0), Is.True);
@@ -791,7 +791,10 @@ namespace VF.Tests {
         [TestCase(true, true)]
         public void EnableAnimationsReachPlugRendererAndBakeRoot(bool componentBinding, bool skinned) {
             var avatar = root.AddComponent<VRCAvatarDescriptor>();
-            avatar.baseAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+            avatar.customizeAnimationLayers = true;
+            avatar.baseAnimationLayers = new[] {
+                new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX }
+            };
             avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
             injector.Set("avatarObject", root.asVf());
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
@@ -811,7 +814,11 @@ namespace VF.Tests {
             clip.SetCurve((Transform)unrelated, "m_LocalPosition.x", sourceCurve);
             clip.SetAap("Unrelated AAP", 0.3f);
             injector.GetService<AllClipsService>().AddAdditionalManagedClip(clip);
+            injector.GetService<ControllersService>().ClearCache(applyBaseMask: false);
             var service = injector.GetService<BakeHapticPlugsService>();
+            ((Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>)
+                typeof(BakeHapticPlugsService).VFField("bakeResults").GetValue(service))
+                [plug] = new VRCFuryHapticPlugEditor.BakeResult { bakeRoot = bakeRoot };
             var rewrites = (List<BakeHapticPlugsService.SpsRewriteToDo>)typeof(BakeHapticPlugsService)
                 .GetField("spsRewritesToDo", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
                 .GetValue(service);
@@ -828,8 +835,9 @@ namespace VF.Tests {
             var curves = clip.GetFloatCurves();
             var enabledCurve = curves.Single(pair => pair.Item1.Targets(rendererObject)
                 && pair.Item1.type == renderer.GetType() && pair.Item1.propertyName == "material._SPS_Enabled").Item2;
-            var activeCurve = curves.Single(pair => pair.Item1.Targets(bakeRoot)
-                && pair.Item1.propertyName == "m_IsActive").Item2;
+            var weight = ((Dictionary<VRCFuryHapticPlug, VFAParam>)
+                typeof(BakeHapticPlugsService).VFField("enabledWeights").GetValue(service))[plug];
+            var activeCurve = curves.Single(pair => pair.Item1.propertyName == weight.name).Item2;
             foreach (var time in new[] { 0f, 0.5f, 1f }) {
                 Assert.That(enabledCurve.Evaluate(time), Is.EqualTo(sourceCurve.Evaluate(time)));
                 Assert.That(activeCurve.Evaluate(time), Is.EqualTo(sourceCurve.Evaluate(time)));
@@ -960,7 +968,7 @@ namespace VF.Tests {
             CheckVector(main.worldPosition, result.bakeRoot.worldPosition + result.bakeRoot.worldRotation * (offset * 2));
             CheckVector(front.worldPosition - main.worldPosition, result.bakeRoot.worldRotation * Vector3.forward * 0.01f);
             Assert.That(result.bakeRoot.Children().Select(obj => obj.name), Is.EquivalentTo(new[] {
-                "WorldSpace", "LegacyLights"
+                "WorldSpace", "LegacyLights", "ReceiverSpace"
             }));
             Assert.That(result.worldSpace.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "Sender - Root", "Sender - Legacy Front" }));
             Assert.That(result.legacyLights.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "Light - Legacy Root", "Light - Legacy Front" }));
@@ -968,7 +976,39 @@ namespace VF.Tests {
             Assert.That(result.legacyLights.Children().All(obj => obj.Children().Length == 0), Is.True);
             CheckVector(result.legacyLights.localPosition, offset);
             Assert.That(result.bakeRoot.GetComponent<UnityEngine.Animations.ScaleConstraint>(), Is.Null);
-            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Animations.ScaleConstraint>(), Has.Length.EqualTo(2));
+            Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Animations.ScaleConstraint>(), Has.Length.EqualTo(3));
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void SocketReceiversUseDefaultRadiusOffsetWithoutMovingTheSender(bool radiusOffset, bool legacyOverride) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking.");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
+            socket.useRadiusOffset = radiusOffset;
+            socket.overrideLegacyOffset = legacyOverride;
+            socket.legacyOffsetLocal = new Vector3(.1f, .2f, .3f);
+            var bake = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            foreach (var self in new[] { false, true }) {
+                bake.plugReceivers.Find(self, false);
+                bake.plugReceivers.Find(self, true);
+            }
+            injector.GetService<SpsSocketReceiverService>().GetLegacyWidthReceiver(bake.plugReceivers).Find(false, false);
+            injector.GetService<SpsChannelsService>().Apply(bake.channelContacts);
+            var offset = radiusOffset ? Vector3.up * VRCFuryHapticSocketEditor.LegacyRadiusOffset : Vector3.zero;
+            void CheckPositions() {
+                var expected = bake.bakeRoot.TransformPoint(offset);
+                foreach (var receiver in root.GetComponentsInChildren<VRCContactReceiver>(true)) {
+                    CheckVector(receiver.transform.TransformPoint(receiver.position), expected);
+                }
+                var sender = bake.worldSpace.Children().Single(obj => obj.name == "Sender - Root");
+                CheckVector(sender.worldPosition, bake.bakeRoot.worldPosition);
+            }
+            Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(5));
+            CheckPositions();
+            root.transform.localScale *= 2;
+            CheckPositions();
         }
 
         [Test]

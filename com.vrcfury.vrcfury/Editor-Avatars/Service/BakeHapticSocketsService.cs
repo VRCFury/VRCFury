@@ -117,7 +117,8 @@ namespace VF.Service {
 
                     var bakeResult = socketBaker.Bake(socket, legacyPlugCompatibility: options.legacyModeAvailable,
                         tpsDepthAnimationCompatibility: options.tpsDepthAnimationCompatibility, avatarRoot: avatarObject);
-                    channels.Register(socket, new Lazy<VFBlendTreeDirect>(() => objectTrees.Get(bakeResult.worldSpace)));
+                    var receiverSpace = bakeResult.plugReceivers.request.frame;
+                    channels.Register(socket, new Lazy<VFBlendTreeDirect>(() => objectTrees.Get(receiverSpace)));
                     foreach (var visible in new[] { bakeResult.bakeRoot }.Concat(bakeResult.pathRoots)) {
                         globals.addOtherFeature(new ShowInFirstPerson {
                             useObjOverride = true,
@@ -126,7 +127,7 @@ namespace VF.Service {
                         });
                     }
 
-                    var mainReceivers = socketMeasurements.GetReceivers(socket, bakeResult.worldSpace, oscId);
+                    var mainReceivers = socketMeasurements.GetReceivers(socket, receiverSpace, oscId);
 
                     if (HapticsToggleMenuItem.Get()) {
                         var paramPrefix = "OGB/Socket/" + oscId;
@@ -138,7 +139,7 @@ namespace VF.Service {
                             if (radius > 0) {
                                 foreach (var self in new[] { true, false }) {
                                     hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest {
-                                        obj = bakeResult.worldSpace,
+                                        obj = receiverSpace,
                                         radius = radius,
                                         paramName = paramPrefix + (self ? "/TouchSelf" : "/TouchOthers"),
                                         objName = self ? "Receiver - Touch (Self)" : "Receiver - Touch (Others)",
@@ -161,7 +162,7 @@ namespace VF.Service {
                         }
                     }
 
-                    var math = new Lazy<BlendtreeMath>(() => new BlendtreeMath(fx, objectTrees.Get(bakeResult.worldSpace)));
+                    var math = new Lazy<BlendtreeMath>(() => new BlendtreeMath(fx, objectTrees.Get(receiverSpace)));
                     var measurements = new Lazy<Func<Party, Func<string, VFAParam>>>(() =>
                         socketMeasurements.GetMeasurements(socket, bakeResult, oscId));
 
@@ -171,13 +172,13 @@ namespace VF.Service {
                             socket.owner(),
                             oscId,
                             party => measurements.Value(party),
-                            bakeResult.worldSpace
+                            receiverSpace
                         );
                     }
 
                     if (socket.plugEntryRadiusActions.Count > 0) {
                         depthAnimations.CreateAnims(socket.plugEntryRadiusActions, socket.owner(), oscId + "/PlugEntryRadius",
-                            party => measurements.Value(party), bakeResult.worldSpace,
+                            party => measurements.Value(party), receiverSpace,
                             measurement: VRCFuryHapticPlugEditor.SpsParamPlugEntryRadius);
                     }
 
@@ -263,7 +264,7 @@ namespace VF.Service {
                         }
 
                         if (autoOnClip != null && socket.enableAuto) {
-                            autoSockets.Add(Tuple.Create(oscId, toggleParam, bakeResult.bakeRoot));
+                            autoSockets.Add(Tuple.Create(oscId, toggleParam, receiverSpace));
                         }
                     }
                 } catch (Exception e) {

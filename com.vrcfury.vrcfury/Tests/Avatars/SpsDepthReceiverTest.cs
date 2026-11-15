@@ -1450,7 +1450,8 @@ namespace VF.Tests {
             } else {
                 Assert.That(receiver, Is.Not.Null);
                 var bakeRoot = included.owner().Children().Single(child => child.name == "BakedSpsSocket");
-                Assert.That(receiver.owner().GetConstraints().Single(c => c.IsParent()).GetSources(), Is.EqualTo(new[] { bakeRoot }));
+                var receiverFrame = bakeRoot.Children().Single(child => child.name == "WorldSpace");
+                Assert.That(receiver.owner().GetConstraints().Single(c => c.IsParent()).GetSources(), Is.EqualTo(new[] { receiverFrame }));
             }
         }
 
@@ -1796,12 +1797,13 @@ namespace VF.Tests {
             var rawScale = detector.GetRawWorldScale(bakeRoot, "Socket scale");
             var uploadScale = bakeRoot.worldScale.x;
             var worldSpace = bakeRoot.Children().Single(obj => obj.name == "WorldSpace");
+            var receiverSpace = bakeRoot.Children().Single(obj => obj.name == "ReceiverSpace");
             var legacyLights = bakeRoot.Children().Single(obj => obj.name == "Legacy Mode").Children().Single();
-            Assert.That(bakeRoot.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "WorldSpace", "Legacy Mode" }));
+            Assert.That(bakeRoot.Children().Select(obj => obj.name), Is.EquivalentTo(new[] { "WorldSpace", "Legacy Mode", "ReceiverSpace" }));
             Assert.That(worldSpace.Children().All(obj => obj.Children().Length == 0), Is.True);
-            Assert.That(bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Animations.ScaleConstraint>(), Has.Length.EqualTo(2));
+            Assert.That(bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Animations.ScaleConstraint>(), Has.Length.EqualTo(3));
             var contacts = bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>();
-            Assert.That(contacts.All(r => r.transform.parent == (Transform)worldSpace), Is.True);
+            Assert.That(contacts.All(r => r.transform.parent == (Transform)receiverSpace), Is.True);
             Assert.That(contacts.Select(r => r.name), Is.EquivalentTo(new[] {
                 "Receiver - Plugs (Self)", "Receiver - Plugs (Others)",
                 "Receiver - Plugs (Self Merged)", "Receiver - Plugs (Others Merged)",
@@ -1818,6 +1820,7 @@ namespace VF.Tests {
                 root.transform.localScale = Vector3.one * resize;
                 // Manual EditMode graph evaluation does not run scene constraints.
                 worldSpace.worldScale = Vector3.one;
+                receiverSpace.worldScale = Vector3.one;
                 legacyLights.worldScale = Vector3.one;
                 playable.SetFloat(rawScale, resize / (WorldScaleDetectorService.MaxDetectedScale * uploadScale));
                 Set(Merged(), 1, 0.2f, 0.6f, 0.06f, native: true);
@@ -1825,6 +1828,7 @@ namespace VF.Tests {
                 Assert.That(Vector3.Distance(worldSpace.worldScale, Vector3.one), Is.LessThan(0.0001f));
                 Assert.That(Vector3.Distance(legacyLights.worldPosition, bakeRoot.worldPosition),
                     Is.EqualTo(VRCFuryHapticSocketEditor.LegacyRadiusOffset * resize).Within(0.0001f));
+                Assert.That(Vector3.Distance(receiverSpace.worldPosition, legacyLights.worldPosition), Is.LessThan(.0001f));
                 Assert.That(playable.GetFloat("Depth meters"), Is.EqualTo(-0.4f).Within(0.001f));
                 Assert.That(playable.GetFloat("Depth local"), Is.EqualTo(-0.4f / resize).Within(0.001f));
                 Assert.That(playable.GetFloat("Radius local"), Is.EqualTo(0.06f / resize).Within(0.001f));

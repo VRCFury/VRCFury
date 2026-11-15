@@ -199,7 +199,13 @@ namespace VF.Inspector {
                 });
             }
 
-            result.plugReceivers = socketReceivers.GetReceivers(socket, worldSpace, socket.name, legacyPlugCompatibility);
+            var receiverSpace = worldSpace;
+            if (socket.useRadiusOffset) {
+                receiverSpace = GameObjects.Create("ReceiverSpace", bakeRoot);
+                receiverSpace.localPosition = Vector3.up * LegacyRadiusOffset;
+                ConstraintUtils.MakeWorldSpace(receiverSpace);
+            }
+            result.plugReceivers = socketReceivers.GetReceivers(socket, receiverSpace, socket.name, legacyPlugCompatibility);
             result.bakeRoot = bakeRoot;
             result.pathRoots = pathRoots;
             result.worldSpace = worldSpace;
