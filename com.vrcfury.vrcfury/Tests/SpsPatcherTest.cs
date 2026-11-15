@@ -1129,6 +1129,47 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
         }
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void PatchesInvisibleShaderWithoutProperties(bool keepImports) {
+        var sourcePath = $"Assets/{Guid.NewGuid()}.shader";
+        var patchedPath = "";
+        Material material = null;
+        try {
+            // Hidden material swaps can legitimately omit the optional Properties block.
+            File.WriteAllText(sourcePath, @"
+Shader ""Hidden/VRCFury/Tests/NoProperties"" {
+    SubShader {
+        Pass {
+            ColorMask 0
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            float4 vert(float4 vertex : POSITION) : SV_POSITION { return float4(0, 0, 0, 1); }
+            float4 frag() : SV_Target { discard; return 0; }
+            ENDCG
+        }
+    }
+}");
+            AssetDatabase.ImportAsset(sourcePath, ImportAssetOptions.ForceSynchronousImport);
+            material = new Material(AssetDatabase.LoadAssetAtPath<Shader>(sourcePath));
+#if !VRCSDK_HAS_MATERIAL_CONTACTS
+            Assert.Ignore("SPS requires material contacts.");
+#else
+            SpsPatcher.Patch(material, keepImports, hasBlendshapes: false);
+            patchedPath = AssetDatabase.GetAssetPath(material.shader);
+            Assert.That(material.HasProperty("_SPS_BakedLength"), Is.True);
+            ShaderUtil.CompilePass(material, 0, true);
+            Assert.That(ShaderUtil.ShaderHasError(material.shader), Is.False);
+            Assert.That(File.ReadAllText(patchedPath), Does.Contain("ColorMask 0"));
+#endif
+        } finally {
+            if (material != null) UnityEngine.Object.DestroyImmediate(material);
+            AssetDatabase.DeleteAsset(sourcePath);
+            if (!string.IsNullOrEmpty(patchedPath)) AssetDatabase.DeleteAsset(patchedPath);
+        }
+    }
+
     [TestCase("Unlit/Color", false)]
     [TestCase("Unlit/Color", true)]
     [TestCase("Standard", false)]

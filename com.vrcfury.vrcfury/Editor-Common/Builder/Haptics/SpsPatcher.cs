@@ -128,6 +128,14 @@ namespace VF.Builder.Haptics {
             }
 
             if (parentHash == null) {
+                // ShaderLab allows shaders without a Properties block, such as invisible material swaps.
+                if (!GetRegex(@"\bProperties\s*{").IsMatch(contents)) {
+                    Replace(
+                        @"((?:^|\n)\s*Shader\s*""[^""]*""\s*{)",
+                        "$1\nProperties {}\n",
+                        1
+                    );
+                }
                 var propertiesContent = ReadAndFlattenPath($"{pathToSps}/deform/sps_props.cginc");
                 Replace(
                     @"((?:^|\n)\s*Properties\s*{)",
