@@ -241,23 +241,29 @@ namespace VF.Inspector {
 
         private float DrawRadiusHandle(Vector3 center, Quaternion rotation, float radius, bool minimum) {
             if (minimum && radius == 0) return radius;
+            var offset = !separateValues && serialized.targetObject is VRCFuryHapticSocket socket && socket.useRadiusOffset
+                ? rotation * Vector3.up : Vector3.zero;
+            var ringCenter = center + offset * radius;
             using (new Handles.DrawingScope(AnimationColors[actionIndex % AnimationColors.Length], Matrix4x4.identity)) {
-                Handles.DrawWireDisc(center, rotation * Vector3.forward, radius);
+                Handles.DrawWireDisc(ringCenter, rotation * Vector3.forward, radius);
                 foreach (var axis in new[] { Vector3.right, Vector3.up, Vector3.left, Vector3.down }) {
-                    var direction = rotation * (minimum ? Quaternion.Euler(0, 0, 45) * axis : axis);
+                    // The center moves with the radius too. The bottom of an offset
+                    // ring stays fixed at the socket, so it has no draggable handle.
+                    var direction = rotation * (minimum ? Quaternion.Euler(0, 0, 45) * axis : axis) + offset;
+                    if (direction.sqrMagnitude == 0) continue;
                     var point = center + direction * radius;
                     EditorGUI.BeginChangeCheck();
                     var moved = Handles.Slider(
                         point,
-                        direction,
+                        direction.normalized,
                         HandleUtility.GetHandleSize(point) * 0.04f,
                         Handles.DotHandleCap,
                         0
                     );
-                    if (EditorGUI.EndChangeCheck()) radius = Mathf.Max(0, Vector3.Dot(moved - center, direction));
+                    if (EditorGUI.EndChangeCheck()) radius = Mathf.Max(0, Vector3.Dot(moved - center, direction) / direction.sqrMagnitude);
                 }
                 VRCFuryGizmoUtils.DrawText(
-                    center + rotation * (Vector3.right * radius),
+                    ringCenter + rotation * (Vector3.right * radius),
                     $"{(separateValues ? "D" : "R")}{actionIndex + 1} {(minimum ? "Off" : "Fully On")}",
                     Handles.color,
                     left: true
