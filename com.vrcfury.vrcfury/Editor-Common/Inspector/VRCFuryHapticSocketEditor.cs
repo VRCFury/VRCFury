@@ -121,6 +121,45 @@ namespace VF.Inspector {
                     "Radius Offset",
                     tooltip: "Offsets SPS targeting in the socket up direction by the resolver radius. Legacy lights are also moved upward slightly for TPS/DPS compatibility."
                 ));
+                section.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                    if (!serializedObject.FindProperty("useRadiusOffset").boolValue) return new VisualElement();
+                    var maximum = serializedObject.FindProperty("maxRadiusOffset");
+                    var checkbox = new Toggle { name = "limitRadiusOffset" };
+                    var field = VRCFuryEditorUtils.BetterProp(
+                        null,
+                        "Maximum (Local)",
+                        fieldOverride: new DepthActionSlider(
+                            maximum,
+                            VRCFuryHapticSocket.DepthActionUnits.Local,
+                            radius: true
+                        )
+                    );
+                    field.name = "maxRadiusOffsetControls";
+                    var controls = new VisualElement();
+                    controls.Add(VRCFuryEditorUtils.BetterProp(
+                        null,
+                        "Maximum Radius Offset",
+                        tooltip: "Caps the radius offset in socket-local units, scaling with the avatar. Only supported by updated SPS3 plugs.",
+                        fieldOverride: checkbox
+                    ));
+                    controls.Add(field);
+                    void UpdateState() {
+                        var enabled = maximum.floatValue != 0;
+                        checkbox.SetValueWithoutNotify(enabled);
+                        field.SetVisible(enabled);
+                    }
+                    checkbox.RegisterValueChangedCallback(evt => {
+                        field.SetVisible(evt.newValue);
+                        SceneView.RepaintAll();
+                        if (!evt.newValue) {
+                            maximum.floatValue = 0;
+                            serializedObject.ApplyModifiedProperties();
+                        }
+                    });
+                    checkbox.TrackProperty(maximum, _ => UpdateState());
+                    UpdateState();
+                    return controls;
+                }, serializedObject.FindProperty("useRadiusOffset")));
                 section.Add(VRCFuryEditorUtils.BetterProp(
                     serializedObject.FindProperty("guidedPathStops"),
                     "Guided Path",
@@ -394,6 +433,7 @@ namespace VF.Inspector {
             public SpsChannelContacts channelContacts;
             public SelfAndOthersReceiverService.Receivers plugReceivers;
             public VFGameObject bakeRoot;
+            public VFGameObject mainSender;
             public VFGameObject[] pathRoots;
             public VFGameObject legacyFrontSender;
             public VFGameObject worldSpace;

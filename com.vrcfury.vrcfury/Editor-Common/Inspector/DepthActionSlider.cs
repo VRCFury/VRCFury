@@ -23,8 +23,10 @@ namespace VF.Inspector {
             new Color(0.7f, 0, 1)
         };
         private readonly MinMaxSlider slider;
+        private readonly Slider singleSlider;
         private readonly bool separateValues;
         private readonly string minimumPath;
+        private bool singleValue => separateValues && minimumPath == null;
         private readonly FloatField xField;
         private readonly FloatField yField;
         private readonly Label minMeters;
@@ -35,6 +37,8 @@ namespace VF.Inspector {
         private readonly string rangePath;
         private readonly int actionIndex;
         private readonly VRCFuryHapticSocket.DepthActionUnits units;
+        private readonly Color gizmoColor;
+        private readonly string gizmoLabel;
         
         public DepthActionSlider(
             SerializedProperty prop,
@@ -46,10 +50,13 @@ namespace VF.Inspector {
             this.units = units;
             separateValues = prop.propertyType == SerializedPropertyType.Float;
             minimumPath = minimum?.propertyPath;
-            if (separateValues && minimum == null) throw new ArgumentException("A float range requires a minimum property");
             serialized = prop.serializedObject;
             rangePath = prop.propertyPath;
             actionIndex = prop.GetArrayIndex() ?? 0;
+            var colorIndex = actionIndex;
+            if (radius && !separateValues) colorIndex++;
+            gizmoColor = AnimationColors[colorIndex % AnimationColors.Length];
+            gizmoLabel = prop.displayName;
             if (!separateValues) bindingPath = prop.propertyPath;
             Clear();
             style.flexDirection = FlexDirection.Column;
@@ -66,8 +73,8 @@ namespace VF.Inspector {
                     Mathf.Max(v, value.y)
                 ));
             });
-            if (separateValues) xField.name = minimum.name;
-            output.Add(xField);
+            if (minimum != null) xField.name = minimum.name;
+            if (!singleValue) output.Add(xField);
 
             var c = new VisualElement();
 
@@ -94,18 +101,27 @@ namespace VF.Inspector {
                 c.Add(test3);
             }
 
-            slider = new MinMaxSlider {
-                highLimit = radius ? 0.5f : 3,
-                lowLimit = radius ? 0 : -1
-            };
-            slider.RegisterValueChangedCallback(e => {
-                // Keep more precision for the smaller radius ranges.
-                Changed(new Vector2(
-                    (float)Math.Round(e.newValue.x, radius ? 3 : 2),
-                    (float)Math.Round(e.newValue.y, radius ? 3 : 2)
-                ));
-            });
-            c.Add(slider);
+            if (singleValue) {
+                singleSlider = new Slider(radius ? 0 : -1, radius ? 0.5f : 3);
+                singleSlider.RegisterValueChangedCallback(e => Changed(new Vector2(
+                    0,
+                    (float)Math.Round(e.newValue, radius ? 3 : 2)
+                )));
+                c.Add(singleSlider);
+            } else {
+                slider = new MinMaxSlider {
+                    highLimit = radius ? 0.5f : 3,
+                    lowLimit = radius ? 0 : -1
+                };
+                slider.RegisterValueChangedCallback(e => {
+                    // Keep more precision for the smaller radius ranges.
+                    Changed(new Vector2(
+                        (float)Math.Round(e.newValue.x, radius ? 3 : 2),
+                        (float)Math.Round(e.newValue.y, radius ? 3 : 2)
+                    ));
+                });
+                c.Add(slider);
+            }
 
             output.style.marginTop = radius ? 0 : 20;
 
@@ -135,19 +151,22 @@ namespace VF.Inspector {
                 maxMeters = VRCFuryEditorUtils.WrappedLabel("");
                 maxMeters.name = "rangeMetersMax";
                 maxMeters.style.unityTextAlign = TextAnchor.UpperRight;
-                meters.Add(minMeters);
+                if (!singleValue) meters.Add(minMeters);
+                else maxMeters.style.flexGrow = 1;
                 meters.Add(maxMeters);
                 Add(meters);
-                meters.ScheduleSafe(UpdateMeters).Every(100);
+                meters.TrackEditorChanges(UpdateMeters);
                 UpdateMeters();
             }
             if (separateValues) {
                 SetValueWithoutNotify(ReadRange(prop));
                 this.TrackProperty(prop, p => SetValueWithoutNotify(ReadRange(p)));
-                this.TrackProperty(minimum, _ => {
-                    var current = serialized.FindProperty(rangePath);
-                    if (current != null) SetValueWithoutNotify(ReadRange(current));
-                });
+                if (minimum != null) {
+                    this.TrackProperty(minimum, _ => {
+                        var current = serialized.FindProperty(rangePath);
+                        if (current != null) SetValueWithoutNotify(ReadRange(current));
+                    });
+                }
                 this.RegisterValueChangedCallback(evt => {
                     if (evt.target != this) return;
                     var current = serialized.FindProperty(rangePath);
@@ -181,6 +200,11 @@ namespace VF.Inspector {
         }
 
         internal void EditRangeVisually(Func<Vector3, Quaternion, float, bool, float> draw) {
+            if (singleValue) {
+                for (VisualElement element = this; element != null; element = element.parent) {
+                    if (element.resolvedStyle.display == DisplayStyle.None) return;
+                }
+            }
             if (!(serialized.targetObject is UnityEngine.Component component)) return;
             var scale = units == VRCFuryHapticSocket.DepthActionUnits.Local
                 ? Mathf.Abs(component.transform.lossyScale.x) : 1;
@@ -200,14 +224,14 @@ namespace VF.Inspector {
             serialized.UpdateIfRequiredOrScript();
             var range = serialized.FindProperty(rangePath);
             if (range == null) return;
-            // Radius editors stay on the actual socket/path; depth editors sit beside the main line.
+            // Radius editors stay on the socket/path; depth editors sit beside the main line.
             var offset = radius ? Vector3.zero
                 : Quaternion.Euler(0, 0, 45 + (actionIndex % 4) * 90) * Vector3.right * 0.02f;
             var center = frame.position + frame.rotation * offset;
             var handleRotation = frame.rotation;
             var current = ReadRange(range);
-            if (separateValues && current.y <= 0) return;
-            if (separateValues && component is VRCFuryHapticSocket depthSocket) {
+            if (separateValues && !singleValue && current.y <= 0) return;
+            if (separateValues && !singleValue && component is VRCFuryHapticSocket depthSocket) {
                 var action = serialized.FindProperty(rangePath.Substring(0, rangePath.LastIndexOf('.')));
                 var depthUnits = (VRCFuryHapticSocket.DepthActionUnits)action.FindPropertyRelative("units").enumValueIndex;
                 if (depthUnits == VRCFuryHapticSocket.DepthActionUnits.Plugs) return;
@@ -226,7 +250,7 @@ namespace VF.Inspector {
             }
             // Draw the maximum first so it stays draggable when both handles are at zero.
             var maximum = Draw(current.y, false);
-            var minimum = radius && current.x == 0 ? 0 : Draw(current.x, true);
+            var minimum = singleValue || (radius && current.x == 0) ? 0 : Draw(current.x, true);
             var changed = new Vector2(
                 radius ? Mathf.Clamp(minimum, 0, current.y) : Mathf.Min(minimum, current.y),
                 radius ? Mathf.Max(0, maximum) : maximum
@@ -241,17 +265,13 @@ namespace VF.Inspector {
 
         private float DrawRadiusHandle(Vector3 center, Quaternion rotation, float radius, bool minimum) {
             if (minimum && radius == 0) return radius;
-            var offset = !separateValues && serialized.targetObject is VRCFuryHapticSocket socket && socket.useRadiusOffset
-                ? rotation * Vector3.up : Vector3.zero;
-            var ringCenter = center + offset * radius;
-            using (new Handles.DrawingScope(AnimationColors[actionIndex % AnimationColors.Length], Matrix4x4.identity)) {
-                Handles.DrawWireDisc(ringCenter, rotation * Vector3.forward, radius);
+            var ring = GetRadiusRing(center, rotation, minimum);
+            using (new Handles.DrawingScope(gizmoColor, Matrix4x4.identity)) {
+                Handles.DrawWireDisc(ring.Center(radius), rotation * Vector3.forward, radius);
                 foreach (var axis in new[] { Vector3.right, Vector3.up, Vector3.left, Vector3.down }) {
-                    // The center moves with the radius too. The bottom of an offset
-                    // ring stays fixed at the socket, so it has no draggable handle.
-                    var direction = rotation * (minimum ? Quaternion.Euler(0, 0, 45) * axis : axis) + offset;
+                    var direction = ring.HandleDirection(axis, radius);
                     if (direction.sqrMagnitude == 0) continue;
-                    var point = center + direction * radius;
+                    var point = ring.HandlePosition(axis, radius);
                     EditorGUI.BeginChangeCheck();
                     var moved = Handles.Slider(
                         point,
@@ -260,11 +280,11 @@ namespace VF.Inspector {
                         Handles.DotHandleCap,
                         0
                     );
-                    if (EditorGUI.EndChangeCheck()) radius = Mathf.Max(0, Vector3.Dot(moved - center, direction) / direction.sqrMagnitude);
+                    if (EditorGUI.EndChangeCheck()) radius = ring.Project(axis, moved);
                 }
                 VRCFuryGizmoUtils.DrawText(
-                    ringCenter + rotation * (Vector3.right * radius),
-                    $"{(separateValues ? "D" : "R")}{actionIndex + 1} {(minimum ? "Off" : "Fully On")}",
+                    ring.HandlePosition(Vector3.right, radius),
+                    singleValue ? gizmoLabel : $"{(separateValues ? "D" : "R")}{actionIndex + 1} {(minimum ? "Off" : "Fully On")}",
                     Handles.color,
                     left: true
                 );
@@ -272,8 +292,53 @@ namespace VF.Inspector {
             return radius;
         }
 
+        internal RadiusRing GetRadiusRing(Vector3 center, Quaternion rotation, bool minimum) {
+            var socket = serialized.targetObject as VRCFuryHapticSocket;
+            var offset = (!separateValues || singleValue) && socket != null && socket.useRadiusOffset
+                ? rotation * Vector3.up : Vector3.zero;
+            var limit = !singleValue && offset != Vector3.zero && socket.maxRadiusOffset > 0
+                ? socket.maxRadiusOffset * Mathf.Abs(socket.transform.lossyScale.x) : float.PositiveInfinity;
+            // Keep the cap at zero degrees, then stagger entrance-radius actions by ten degrees each.
+            var angle = (!separateValues ? (actionIndex + 1) * 10 : 0) + (minimum ? 45 : 0);
+            return new RadiusRing(center, rotation * Quaternion.Euler(0, 0, angle), offset, limit);
+        }
+
+        internal readonly struct RadiusRing {
+            private readonly Vector3 center;
+            private readonly Quaternion handles;
+            private readonly Vector3 offset;
+            private readonly float limit;
+
+            internal RadiusRing(Vector3 center, Quaternion handles, Vector3 offset, float limit) {
+                this.center = center;
+                this.handles = handles;
+                this.offset = offset;
+                this.limit = limit;
+            }
+
+            public Vector3 Center(float radius) => center + offset * Mathf.Min(radius, limit);
+            public Vector3 HandlePosition(Vector3 axis, float radius) => Center(radius) + handles * axis * radius;
+            public Vector3 HandleDirection(Vector3 axis, float radius) => handles * axis + (radius < limit ? offset : Vector3.zero);
+
+            public float Project(Vector3 axis, Vector3 point) {
+                axis = handles * axis;
+                point -= center;
+                // Below the cap, the center moves with the radius. Above it,
+                // the center stays fixed. Project onto both pieces to cross smoothly.
+                var direction = axis + offset;
+                var radius = direction.sqrMagnitude > 0
+                    ? Mathf.Clamp(Vector3.Dot(point, direction) / direction.sqrMagnitude, 0, limit)
+                    : float.IsPositiveInfinity(limit) ? 0 : limit;
+                if (float.IsPositiveInfinity(limit)) return radius;
+                var capped = Mathf.Max(limit, Vector3.Dot(point - offset * limit, axis) / axis.sqrMagnitude);
+                var firstError = (point - axis * radius - offset * Mathf.Min(radius, limit)).sqrMagnitude;
+                var cappedError = (point - axis * capped - offset * limit).sqrMagnitude;
+                return cappedError < firstError ? capped : radius;
+            }
+        }
+
         private float DrawDepthHandle(Vector3 center, Quaternion rotation, float depth, bool minimum, float? offDepth) {
-            using (new Handles.DrawingScope(AnimationColors[actionIndex % AnimationColors.Length], Matrix4x4.identity)) {
+            using (new Handles.DrawingScope(gizmoColor, Matrix4x4.identity)) {
                 var socket = serialized.targetObject as VRCFuryHapticSocket;
                 var socketCenter = socket != null
                     ? (new TransformData(socket.owner()) * VRCFuryHapticSocketEditor.GetSocketTransformLocal(socket).Item2).position
@@ -286,7 +351,7 @@ namespace VF.Inspector {
                 var size = HandleUtility.GetHandleSize(position) * 0.1f;
                 Handles.DrawWireDisc(position, axis, size);
                 if (minimum && offDepth.HasValue) {
-                    using (new Handles.DrawingScope(AnimationColors[actionIndex % AnimationColors.Length])) {
+                    using (new Handles.DrawingScope(gizmoColor)) {
                         if (path == null) Handles.DrawLine(position, center + axis * offDepth.Value);
                         else Handles.DrawAAPolyLine(path.RangePoints(depth, offDepth.Value));
                     }
@@ -472,9 +537,15 @@ namespace VF.Inspector {
 
         public override void SetValueWithoutNotify(Vector2 newValue) {
             base.SetValueWithoutNotify(newValue);
-            if (!radius) slider.lowLimit = Mathf.Min(slider.lowLimit, newValue.x);
-            slider.highLimit = Mathf.Max(slider.highLimit, newValue.y);
-            slider.SetValueWithoutNotify(newValue);
+            if (singleValue) {
+                if (!radius) singleSlider.lowValue = Mathf.Min(singleSlider.lowValue, newValue.y);
+                singleSlider.highValue = Mathf.Max(singleSlider.highValue, newValue.y);
+                singleSlider.SetValueWithoutNotify(newValue.y);
+            } else {
+                if (!radius) slider.lowLimit = Mathf.Min(slider.lowLimit, newValue.x);
+                slider.highLimit = Mathf.Max(slider.highLimit, newValue.y);
+                slider.SetValueWithoutNotify(newValue);
+            }
             xField.SetValueWithoutNotify(newValue.x);
             yField.SetValueWithoutNotify(newValue.y);
             UpdateMeters();
@@ -482,15 +553,20 @@ namespace VF.Inspector {
 
         private Vector2 ReadRange(SerializedProperty range) {
             return separateValues
-                ? new Vector2(serialized.FindProperty(minimumPath)?.floatValue ?? 0, range.floatValue)
+                ? new Vector2(
+                    singleValue ? 0 : serialized.FindProperty(minimumPath)?.floatValue ?? 0,
+                    range.floatValue
+                )
                 : range.vector2Value;
         }
 
         private void WriteRange(SerializedProperty range, Vector2 value) {
             if (separateValues) {
-                var minimum = serialized.FindProperty(minimumPath);
-                if (minimum == null) return;
-                minimum.floatValue = value.x;
+                if (!singleValue) {
+                    var minimum = serialized.FindProperty(minimumPath);
+                    if (minimum == null) return;
+                    minimum.floatValue = value.x;
+                }
                 range.floatValue = value.y;
             } else {
                 range.vector2Value = value;

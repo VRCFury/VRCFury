@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
 using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
@@ -154,6 +157,135 @@ namespace VF.Tests {
         [TestCase(1, 8)]
         public void RejectsUnrepresentableProtocolValues(int group, int pathIndex) {
             Assert.Throws<ArgumentOutOfRangeException>(() => HapticUtils.EncodeSocketScale(group, pathIndex));
+        }
+
+        [TestCase(0f, 1f)]
+        [TestCase(float.Epsilon, 2f)]
+        [TestCase(.000001f, 2.000001f)]
+        [TestCase(.00001f, 2.00001f)]
+        [TestCase(.05f, 2.05f)]
+        [TestCase(.5f, 2.5f)]
+        [TestCase(1f, 3f)]
+        [TestCase(float.PositiveInfinity, 1f)]
+        public void SocketScaleEncodesRadiusCapWithoutChangingOtherMetadata(float cap, float encodedY) {
+            var flags = ScaleFlags.RadiusOffset | ScaleFlags.Collapse;
+            var encoded = HapticUtils.EncodeSocketScale(37, 2, flags, cap);
+            Assert.That(encoded.x, Is.EqualTo(293 | (int)flags));
+            Assert.That(encoded.y, Is.EqualTo(encodedY));
+            Assert.That(encoded.z, Is.EqualTo(1));
+        }
+
+        [TestCase(-1f)]
+        [TestCase(float.NaN)]
+        public void SocketScaleRejectsInvalidRadiusCaps(float cap) {
+            Assert.Throws<ArgumentOutOfRangeException>(() => HapticUtils.EncodeSocketScale(1, 0, maxRadiusOffset: cap));
+        }
+
+        [TestCase(false, 0f)]
+        [TestCase(false, .025f)]
+        [TestCase(true, 0f)]
+        [TestCase(true, .025f)]
+        public void SocketBakesRadiusCapInWorldMetersOnlyOnEntrance(bool enabled, float cap) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            Assert.That(socket.maxRadiusOffset, Is.Zero);
+            socket.addLight = Flags.Ring;
+            socket.useRadiusOffset = enabled;
+            socket.maxRadiusOffset = cap;
+            var stop = GameObjects.Create("Guide", root);
+            stop.localPosition = Vector3.forward;
+            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            var senders = NativeSocketSenders(result.bakeRoot).OrderBy(s => s.transform.lossyScale.x).ToArray();
+            Assert.That(result.mainSender.worldScale.y, Is.EqualTo(enabled && cap > 0 ? 2 + cap * 2 : 1f).Within(.000001f));
+            Assert.That(senders, Has.Length.EqualTo(2));
+            Assert.That(senders.Single(s => s.transform != (Transform)result.mainSender).transform.lossyScale.y,
+                Is.EqualTo(1).Within(.00001f));
+        }
+
+        [TestCase(0f)]
+        [TestCase(float.Epsilon)]
+        [TestCase(.0000001f)]
+        [TestCase(.025f)]
+        [TestCase(.5f)]
+        [TestCase(float.PositiveInfinity)]
+        public void AvatarSocketRadiusCapTracksScaleWithoutScalingTheMarker(float cap) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var avatar = root.AddComponent<VRCAvatarDescriptor>();
+            avatar.customizeAnimationLayers = true;
+            avatar.baseAnimationLayers = new[] {
+                new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX }
+            };
+            avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+            injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allFeaturesInRun = new List<VF.Model.Feature.FeatureModel> {
+                new VF.Model.Feature.SpsOptions { legacyModeAvailable = false, autoModeAvailable = false }
+            };
+            globals.addOtherFeature = _ => { };
+            var controllers = injector.GetService<ControllersService>();
+            controllers.ClearCache(applyBaseMask: false);
+            var fx = controllers.GetFx();
+            fx.GetOrCreateFloat(VFBlendTreeDirect.AlwaysOneParam, 1);
+            var socket = GameObjects.Create("Socket", root).AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = Flags.Ring;
+            socket.addMenuItem = false;
+            socket.enableAuto = false;
+            socket.useRadiusOffset = true;
+            socket.maxRadiusOffset = cap;
+            var sets = injector.GetService<SpsChannelsService>().Get(socket);
+            sets.Request(new VF.Model.SpsChannelSettings {
+                useSharedTag = false,
+                channels = new List<VF.Model.SpsChannelSettings.Channel> { new() { id = "custom" } }
+            });
+            injector.GetService<BakeHapticSocketsService>().Apply();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
+            var bakeRoot = socket.owner().Children().Single(o => o.name == "BakedSpsSocket");
+            var worldSpace = bakeRoot.Children().Single(o => o.name == "WorldSpace");
+            var sender = worldSpace.Children().Single(o => o.name == "Sender - Root");
+            var packedWord = sender.worldScale.x;
+            var uploadScale = bakeRoot.worldScale.x;
+            var raw = cap > 0 && !float.IsPositiveInfinity(cap)
+                ? injector.GetService<WorldScaleDetectorService>().GetRawWorldScale(bakeRoot, "Socket")
+                : null;
+            injector.GetService<IsObjectEnabledService>().Apply();
+            injector.GetService<ObjectTreeService>().Apply();
+            var context = new VFSaveContext(root, false);
+            var controller = new AnimatorController {
+                parameters = fx.parameters.Select(p => p.Save()).ToArray(),
+                layers = fx.GetLayers().Select(l => l.Save(context)).ToArray()
+            };
+            var graph = PlayableGraph.Create("Socket radius cap");
+            try {
+                graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
+                var playable = AnimatorControllerPlayable.Create(graph, controller);
+                var animator = root.AddComponent<Animator>();
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                AnimationPlayableOutput.Create(graph, "Socket", animator).SetSourcePlayable(playable);
+                graph.Play();
+                foreach (var scale in new[] { .5f, 1.97f, 1.99f, 2f, 2.01f, 2.03f, 3f }) {
+                    root.transform.localScale = Vector3.one * scale;
+                    // Synchronous graph evaluation does not evaluate scene constraints.
+                    worldSpace.worldScale = Vector3.one;
+                    if (raw != null) playable.SetFloat(raw.name, scale / (WorldScaleDetectorService.MaxDetectedScale * uploadScale));
+                    for (var i = 0; i < 20; i++) graph.Evaluate(1f / 60);
+                    var expected = cap == 0 || float.IsPositiveInfinity(cap) ? 1 : 2 + cap * scale;
+                    Assert.That(sender.worldScale.y, Is.EqualTo(expected).Within(expected * .0001f));
+                    var variants = sender.GetComponentsInSelfAndChildren<VRCContactSender>();
+                    Assert.That(variants, Has.Length.EqualTo(2));
+                    foreach (var variant in variants) {
+                        Assert.That(variant.transform.lossyScale.x, Is.EqualTo(packedWord).Within(.01f));
+                        Assert.That(variant.transform.lossyScale.y, Is.EqualTo(expected).Within(expected * .0001f));
+                        Assert.That(variant.transform.lossyScale.z, Is.EqualTo(1).Within(.0001f));
+                    }
+                }
+            } finally {
+                graph.Destroy();
+                Object.DestroyImmediate(controller);
+                foreach (var asset in context.NewAssets) if (asset != null) Object.DestroyImmediate(asset);
+            }
         }
 
         [Test]

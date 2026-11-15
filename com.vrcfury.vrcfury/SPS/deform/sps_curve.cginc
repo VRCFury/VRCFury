@@ -160,10 +160,14 @@ inline void sps_deform_walk_chain(
 
         if (remainingDistance <= 0) {
             if (!zeroLength && sps_has_flag(previousFlags, SPS_SOCKET_FLAG_HOLE)) {
-                float cullAdvance = (1 - previousCurveWeight) * (path.worldLength + capLength);
-                outRadiusMult = capLength > 0
-                    ? 1 - sps_saturated_map(distanceIntoSegment, cullAdvance - capLength, cullAdvance)
-                    : (distanceIntoSegment < cullAdvance ? 1 : 0);
+                if (sps_has_flag(previousFlags, SPS_SOCKET_FLAG_GUIDED)) {
+                    outRadiusMult = 0;
+                } else {
+                    float cullAdvance = (1 - previousCurveWeight) * (path.worldLength + capLength);
+                    outRadiusMult = capLength > 0
+                        ? 1 - sps_saturated_map(distanceIntoSegment, cullAdvance - capLength, cullAdvance)
+                        : (distanceIntoSegment < cullAdvance ? 1 : 0);
+                }
             }
             return;
         }
@@ -182,14 +186,20 @@ inline void sps_deform_walk_chain(
     }
 
     if (sps_has_flag(terminalFlags, SPS_SOCKET_FLAG_HOLE)) {
-        // Ensure the configured overrun past the terminal hole, without adding it twice
-        // when the entrance look-ahead already extends beyond that hole.
-        float cullAdvance = (1 - curveWeight) * (path.worldLength + capLength);
-        float overrun = max(path.worldLength * SPS_HOLE_OVERRUN_MIN - terminalAdvance, 0) + cullAdvance;
-        outRadiusMult = capLength > 0
-            ? sps_saturated_map(max(remainingDistance - overrun, 0), capLength, 0)
-            : (remainingDistance <= overrun ? 1 : 0);
-        remainingDistance = min(remainingDistance, overrun);
+        if (sps_has_flag(terminalFlags, SPS_SOCKET_FLAG_GUIDED)) {
+            // Guided holes collapse immediately, including the final stop.
+            outRadiusMult = 0;
+            remainingDistance = 0;
+        } else {
+            // Ensure the configured overrun past the terminal hole, without adding it twice
+            // when the entrance look-ahead already extends beyond that hole.
+            float cullAdvance = (1 - curveWeight) * (path.worldLength + capLength);
+            float overrun = max(path.worldLength * SPS_HOLE_OVERRUN_MIN - terminalAdvance, 0) + cullAdvance;
+            outRadiusMult = capLength > 0
+                ? sps_saturated_map(max(remainingDistance - overrun, 0), capLength, 0)
+                : (remainingDistance <= overrun ? 1 : 0);
+            remainingDistance = min(remainingDistance, overrun);
+        }
     }
     outPosition += outForward * remainingDistance;
 }

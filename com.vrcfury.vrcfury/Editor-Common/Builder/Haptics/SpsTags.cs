@@ -14,7 +14,8 @@ namespace VF.Builder.Haptics {
 
         // SPS3 Socket
         // At the entrance, +Z outward, radius = 0
-        // World scale: Y = 1, Z = 1, X = packed word:
+        // World scale: Y = 1 (unlimited), or 2 + maximum radius offset in world meters. Z = 1.
+        // X = packed word:
         //   Bits 0-6: group ID (1-127)
         //   Bits 7-9: path index
         //   Bit 10: UnlockAll

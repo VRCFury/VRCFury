@@ -35,6 +35,7 @@ namespace VF.Service {
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ObjectTreeService objectTrees;
+        [VFAutowired] private readonly WorldScaleDetectorService worldScale;
         [VFAutowired] private readonly IsObjectEnabledService objectEnabled;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
@@ -119,6 +120,16 @@ namespace VF.Service {
                         tpsDepthAnimationCompatibility: options.tpsDepthAnimationCompatibility, avatarRoot: avatarObject);
                     var receiverSpace = bakeResult.plugReceivers.request.frame;
                     channels.Register(socket, new Lazy<VFBlendTreeDirect>(() => objectTrees.Get(receiverSpace)));
+                    if (bakeResult.mainSender != null && socket.useRadiusOffset
+                        && socket.maxRadiusOffset > 0 && !float.IsPositiveInfinity(socket.maxRadiusOffset)) {
+                        // Keep the encoding marker fixed while the local cap follows avatar scaling.
+                        worldScale.AddScaledProp(
+                            bakeResult.bakeRoot,
+                            new[] { ((UnityEngine.Component)(Transform)bakeResult.mainSender, "m_LocalScale.y", socket.maxRadiusOffset) },
+                            objectTrees.Get(receiverSpace),
+                            offset: 2
+                        );
+                    }
                     foreach (var visible in new[] { bakeResult.bakeRoot }.Concat(bakeResult.pathRoots)) {
                         globals.addOtherFeature(new ShowInFirstPerson {
                             useObjOverride = true,

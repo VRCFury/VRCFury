@@ -509,6 +509,28 @@ namespace VF.Inspector {
         public static void TrackProperty(this VisualElement owner, SerializedProperty prop, Action<SerializedProperty> changed) {
             owner.Add(OnChange(prop, () => changed(prop)));
         }
+
+        public static void TrackEditorChanges(this VisualElement owner, Action changed) {
+            var version = EditorChanges.Version;
+            IVisualElementScheduledItem pending = null;
+            void Refresh() {
+                if (pending != null || version == EditorChanges.Version) return;
+                pending = owner.ScheduleSafe(() => {
+                    pending = null;
+                    version = EditorChanges.Version;
+                    changed();
+                });
+            }
+            owner.RegisterCallback<AttachToPanelEvent>(_ => {
+                EditorChanges.OnChanged += Refresh;
+                Refresh();
+            });
+            owner.RegisterCallback<DetachFromPanelEvent>(_ => {
+                EditorChanges.OnChanged -= Refresh;
+                pending?.Pause();
+                pending = null;
+            });
+        }
         
         public static VisualElement RefreshOnTrigger(Func<VisualElement> content, SerializedObject obj, out Action triggerRefresh) {
             var inner = new VisualElement();
@@ -599,7 +621,7 @@ namespace VF.Inspector {
             el.Add(new Image {
                 image = EditorGUIUtility.FindTexture("_Help"),
                 scaleMode = ScaleMode.ScaleToFit
-            });
+            }.FlexShrink(0));
             el.Add(WrappedLabel(message).FlexGrow(1));
             return el;
         }

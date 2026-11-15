@@ -35,13 +35,23 @@ namespace VF.Builder.Haptics {
             Collapse = 1 << 14
         }
 
-        public static Vector3 EncodeSocketScale(int group, int pathIndex, SocketScaleFlags flags = SocketScaleFlags.None) {
+        public static Vector3 EncodeSocketScale(
+            int group,
+            int pathIndex,
+            SocketScaleFlags flags = SocketScaleFlags.None,
+            float maxRadiusOffset = 0
+        ) {
             if (group < 1 || group > GroupCount) throw new ArgumentOutOfRangeException(nameof(group));
             if (pathIndex < 0 || pathIndex >= 8) throw new ArgumentOutOfRangeException(nameof(pathIndex));
             if (((int)flags & ~0x7C00) != 0) throw new ArgumentOutOfRangeException(nameof(flags));
+            if (float.IsNaN(maxRadiusOffset) || maxRadiusOffset < 0) throw new ArgumentOutOfRangeException(nameof(maxRadiusOffset));
             // X: group ID 0-6 (nonzero), path index 7-9, flags 10-14.
-            // Y/Z are unit scale; emitted flags are also collision tags.
-            return new Vector3(group | (pathIndex << 7) | (int)flags, 1, 1);
+            // Y: 1 means unlimited; otherwise 2 + the maximum offset in world meters. Z: 1.
+            return new Vector3(
+                group | (pathIndex << 7) | (int)flags,
+                maxRadiusOffset == 0 || float.IsPositiveInfinity(maxRadiusOffset) ? 1 : 2 + maxRadiusOffset,
+                1
+            );
         }
 
         public static Vector3 EncodePlugScale(float worldLength, float worldRadius) {

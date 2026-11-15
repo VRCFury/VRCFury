@@ -64,6 +64,7 @@ namespace VF.Inspector {
             var enableDeformation = lightType != VRCFuryHapticSocket.AddLight.None;
             if (enableDeformation) {
                 var rootSender = GameObjects.Create("Sender - Root", worldSpace);
+                result.mainSender = rootSender;
                 var stops = socket.guidedPathStops;
                 for (var i = 0; i < stops.Count; i++) {
                     var stop = stops[i];
@@ -108,7 +109,14 @@ namespace VF.Inspector {
                         flags |= HapticUtils.SocketScaleFlags.Twoway;
                     }
                     // WorldSpace keeps metadata scale independent of avatar/stop scaling.
-                    sender.worldScale = HapticUtils.EncodeSocketScale(group, pathIndex, flags);
+                    sender.worldScale = HapticUtils.EncodeSocketScale(
+                        group,
+                        pathIndex,
+                        flags,
+                        pathIndex == 0 && socket.useRadiusOffset
+                            ? socket.maxRadiusOffset * bakeRoot.worldScale.x
+                            : 0
+                    );
                     contacts.OnAllSetsAvailable(sets => {
                         var variants = new Dictionary<string, VFGameObject>();
                         foreach (var set in sets) {

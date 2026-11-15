@@ -1,10 +1,15 @@
+using System;
 using UnityEditor;
 
 namespace VF.Utils {
     internal static class EditorChanges {
         public static long Version { get; private set; }
+        public static event Action OnChanged;
 
-        public static void Changed() => Version++;
+        public static void Changed() {
+            Version++;
+            OnChanged?.Invoke();
+        }
 
         [VFInit]
         private static void Init() {

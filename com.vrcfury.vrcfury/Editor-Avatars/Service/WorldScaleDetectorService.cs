@@ -51,20 +51,29 @@ namespace VF.Service {
         public void AddScaledProp(
             VFGameObject scaleReference,
             IList<(UnityEngine.Component component, string PropertyName, float LocalValue)> properties,
-            VFBlendTreeDirect tree = null
+            VFBlendTreeDirect tree = null,
+            float offset = 0
         ) {
             var rawScale = GetRawWorldScale(scaleReference, "Property scale compensation");
             if (rawScale == null) return;
             var multiplier = MaxDetectedScale * scaleReference.worldScale.x;
             tree ??= objectTrees.Get(scaleReference);
             // Prevent Unity from adding authored defaults when the raw weight is below one.
-            var zeroClip = VFClip.Create("Scale compensation zero");
-            tree.Add(zeroClip);
+            var baseClip = VFClip.Create("Scale compensation base");
+            tree.Add(baseClip);
             var scaleClip = VFClip.Create("Scale compensation scaled");
             tree.Add(rawScale, scaleClip);
+            // Unity fills missing scale axes from the transform's defaults. Keep
+            // those axes constant instead of adding them again at the raw weight.
+            foreach (var prop in properties) {
+                if (prop.component is Transform transform && prop.PropertyName.StartsWith("m_LocalScale.")) {
+                    baseClip.SetScale(transform, transform.localScale);
+                    scaleClip.SetScale(transform, Vector3.zero);
+                }
+            }
             foreach (var prop in properties) {
                 scaleClip.SetCurve(prop.component, prop.PropertyName, prop.LocalValue * multiplier);
-                zeroClip.SetCurve(prop.component, prop.PropertyName, 0);
+                baseClip.SetCurve(prop.component, prop.PropertyName, offset);
             }
         }
 

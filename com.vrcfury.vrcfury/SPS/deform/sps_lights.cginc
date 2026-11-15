@@ -34,6 +34,7 @@ uint sps_light_type(uint index) {
 
 SpsSocketCandidate sps_read_light(uint index, float3 plugWorld, float3 plugUp) {
     SpsSocketCandidate socket = (SpsSocketCandidate)0;
+    socket.radiusOffsetLimit = asfloat(0x7f800000);
     if (!sps_to_bool(_SPS_UseLegacyLights)) return socket;
     uint kind = sps_light_type(index);
     if (kind != 1 && kind != 2) return socket;

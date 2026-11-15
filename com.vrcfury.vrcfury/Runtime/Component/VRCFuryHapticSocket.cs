@@ -48,6 +48,7 @@ namespace VF.Component {
         public bool overrideLegacySocketType = false;
         public LegacySocketType legacySocketType = LegacySocketType.Hole;
         public bool useRadiusOffset = false;
+        [Min(0)] public float maxRadiusOffset = 0;
         public bool overrideLegacyOffset = false;
         [Obsolete] public Vector3 legacyOffset = Vector3.zero;
         public Vector3 legacyOffsetLocal = Vector3.zero;

@@ -113,7 +113,11 @@ bool sps_prepare_socket(
     // Offset in the socket's own up direction before distance/approach checks.
     // Orientation unlocking below must not change which side of the socket we target.
     if (sps_has_flag(socket.control, SPS_SOCKET_FLAG_RADIUS_OFFSET)) {
-        node.world += socket.up * worldRadius * max(_SPS_RadiusOffsetMultiplier, 0);
+        // The live profile sample belongs to the first entrance. Later nodes use
+        // the overall plug radius rather than reusing that entrance's sample.
+        float multiplier = entrance ? max(_SPS_RadiusOffsetMultiplier, 0) : 1;
+        float offset = min(worldRadius * multiplier, socket.radiusOffsetLimit);
+        node.world += socket.up * offset;
     }
     float3 delta = node.world - previous.world;
     distanceSq = dot(delta, delta);

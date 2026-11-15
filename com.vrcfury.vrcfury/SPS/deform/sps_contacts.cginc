@@ -53,6 +53,7 @@ struct SpsSocketCandidate {
     float3 world;
     float3 normal;
     float3 up;
+    float radiusOffsetLimit; // Maximum offset in world meters; infinity means unlimited.
     uint control; // Sender word in bits 0-14, plus shader-only traversal/validity bits.
     int owner;
 };
@@ -72,6 +73,7 @@ float3 sps_matrix_scale(float4x4 transform) {
 
 SpsSocketCandidate sps_read_contact(uint index) {
     SpsSocketCandidate socket = (SpsSocketCandidate)0;
+    socket.radiusOffsetLimit = asfloat(0x7f800000);
     if (!sps_contact_present(index)) return socket;
     float4x4 transform = sps_contact_transform(index);
     uint tags = sps_contact_tags(index);
@@ -85,6 +87,7 @@ SpsSocketCandidate sps_read_contact(uint index) {
     socket.normal = sps_normalize(transform._m02_m12_m22);
     socket.up = sps_nearest_normal(socket.normal, transform._m01_m11_m21);
     if (native) {
+        if (scale.y >= 1.5) socket.radiusOffsetLimit = max(scale.y - 2, 0);
         uint packed = (uint)round(scale.x);
         if (packed > 32767 || packed == 0) return socket;
         socket.control = packed | (path ? SPS_SOCKET_FLAG_GUIDED : 0u);

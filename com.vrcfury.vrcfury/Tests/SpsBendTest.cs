@@ -44,15 +44,10 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_types.cginc""
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_utils.cginc""
         #include ""Packages/com.vrchat.base/ShaderLibrary/VRCContacts.cginc""
-        #define SPS_INC_CONTACTS
         #define SPS_INC_LIGHTS
         #define SPS_INC_GLOBALS
-        #define SPS_CONTACT_COUNT (3 * VRC_CONTACT_MAX_TARGETS)
-        struct SpsSocketCandidate { float3 world; float3 normal; float3 up; uint control; int owner; };
-        bool sps_socket_valid(SpsSocketCandidate s) { return (s.control & SPS_SOCKET_VALID) != 0; }
-        uint sps_socket_key(SpsSocketCandidate s) { return s.control & 1023u; }
-        float4x4 sps_contact_frame() { return 0; }
-        SpsSocketCandidate sps_read_contact(uint i) { return (SpsSocketCandidate)0; }
+        float _SPS_OthersChannelTagCount, _SPS_OthersLegacyTags;
+        #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_contacts.cginc""
         SpsSocketCandidate sps_read_light(uint i, float3 p, float3 u) { return (SpsSocketCandidate)0; }
         float _SPS_RadiusOffsetMultiplier;
         float _SPS_BakedLength, _SPS_BakedRadius, _SPS_BaseActivationRadiusOverride;
@@ -60,7 +55,39 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_curve.cginc""
         float3 _Position, _Forward, _Up, _Exit, _Root, _Stop1, _Stop2;
         float _Length, _CaptureLength, _Guided, _Entrance, _Flags, _Operation, _BaseRadius;
+        float _SampleDistance, _EntryAdvance, _PathWeight, _ContactIndex;
         float4 frag(v2f_img input) : SV_Target {
+            if (_Operation == 6) {
+                SpsSocketCandidate contact = sps_read_contact((uint)_ContactIndex);
+                return float4(contact.radiusOffsetLimit, isinf(contact.radiusOffsetLimit), sps_socket_valid(contact), 1);
+            }
+            if (_Operation == 5) {
+                [unroll]
+                for (uint i = 0; i <= SPS_CHAIN_SOCKETS_MAX; i++) {
+                    sps_path_worlds[i] = 0;
+                    sps_path_forwards[i] = 0;
+                    sps_path_flags[i] = 0;
+                    sps_path_weights[i] = 1;
+                }
+                sps_path_forwards[0] = sps_path_forwards[1] = float3(0, 0, 1);
+                sps_path_worlds[1] = float3(0, 0, .1);
+                sps_path_forwards[2] = float3(0, 0, 1);
+                sps_path_worlds[2] = float3(0, 0, .2);
+                sps_path_flags[2] = (uint)_Flags;
+                if (_Guided > 1) {
+                    sps_path_forwards[3] = float3(0, 0, 1);
+                    sps_path_worlds[3] = float3(0, 0, .3);
+                }
+                SpsDeformPathInfo path = (SpsDeformPathInfo)0;
+                path.worldLength = 1;
+                path.deformationWeight = _PathWeight;
+                path.entryAdvance = _EntryAdvance;
+                path.plugUp = float3(0, 1, 0);
+                float weight, radius;
+                float3 position, forward, up;
+                sps_deform_walk_chain(path, _SampleDistance, weight, radius, position, forward, up);
+                return float4(position, radius);
+            }
             if (_Operation == 3) {
                 [unroll]
                 for (uint i = 0; i <= SPS_CHAIN_SOCKETS_MAX; i++) {
@@ -95,7 +122,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 float weight = sps_deformation_weight(_Position, _Forward, _Up, _Length, .02, _BaseRadius, 0);
                 return float4(weight, weight, weight, weight);
             }
-            if (_Operation > 0) {
+            if (_Operation > 0 && _Operation != 4) {
                 float advance;
                 bool valid = sps_solve_entry_join(_Position, _Forward, _Exit, _Length, _Entrance > 0, advance);
                 float oppositeAdvance;
@@ -107,7 +134,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                     oppositeValid ? 1 : 0
                 );
             }
-            SpsSocketCandidate socket = (SpsSocketCandidate)0;
+            SpsSocketCandidate socket = sps_read_contact((uint)_ContactIndex);
             socket.world = _Position;
             socket.normal = -_Exit;
             socket.up = sps_nearest_normal(socket.normal, _Up);
@@ -129,7 +156,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 node,
                 distanceSq
             );
-            return float4(node.forward, accepted ? node.deformationWeight : 0);
+            return float4(_Operation == 4 ? node.world : node.forward, accepted ? node.deformationWeight : 0);
         }
         ENDHLSL
     } }
@@ -143,6 +170,129 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             if (target != null) Object.DestroyImmediate(target);
             if (pixels != null) Object.DestroyImmediate(pixels);
             if (shader != null) Object.DestroyImmediate(shader);
+        }
+
+        [TestCase(true, false)]
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        public void OnlyFirstRadiusOffsetUsesTheSampledProfile(bool entrance, bool guided) {
+            var position = new Vector3(0, 0, .2f);
+            foreach (var multiplier in new[] { 0f, .25f, 1f, 2f }) {
+                Read(position, Vector3.forward, entrance: entrance, guided: guided);
+                material.SetFloat("_Operation", 4);
+                material.SetFloat("_Flags", 1 << 12);
+                material.SetFloat("_SPS_RadiusOffsetMultiplier", multiplier);
+                var result = Render();
+                Assert.That(result.a, Is.EqualTo(1).Within(.0001f));
+                Assert.That(result.r, Is.Zero.Within(.0001f));
+                Assert.That(result.g, Is.EqualTo(.02f * (entrance ? multiplier : 1)).Within(.0001f));
+                Assert.That(result.b, Is.EqualTo(position.z).Within(.0001f));
+            }
+        }
+
+        [TestCase(0f, .02f)]
+        [TestCase(1f, .02f)]
+        [TestCase(1.49f, .02f)]
+        [TestCase(1.5f, 0f)]
+        [TestCase(2f, 0f)]
+        [TestCase(2.000001f, .00000095367431640625f)]
+        [TestCase(2.00001f, .000010013580322265625f)]
+        [TestCase(2.005f, .005f)]
+        [TestCase(2.1f, .02f)]
+        public void RadiusOffsetCapOnlyLimitsTheOffset(float encodedCap, float expectedOffset) {
+            foreach (var entrance in new[] { false, true }) {
+                Read(new Vector3(0, 0, .2f), Vector3.forward, entrance: entrance);
+                material.SetFloat("_Operation", 4);
+                material.SetFloat("_Flags", 1 << 12);
+                material.SetFloat("_SPS_RadiusOffsetMultiplier", 1);
+                SetRadiusOffsetLimit(encodedCap);
+                var result = Render();
+                Assert.That(result.a, Is.EqualTo(1).Within(.0001f));
+                Assert.That(result.g, Is.EqualTo(expectedOffset).Within(expectedOffset * .0001f));
+
+                material.SetFloat("_Flags", 0);
+                Assert.That(Render().g, Is.Zero.Within(.0001f), "The cap must not enable radius offset by itself.");
+            }
+        }
+
+        [TestCase(0f, 2f)]
+        [TestCase(1f, 2f)]
+        [TestCase(1.49f, 2f)]
+        [TestCase(1.5f, 0f)]
+        [TestCase(2f, 0f)]
+        [TestCase(3f, 1f)]
+        [TestCase(4f, 2f)]
+        public void RadiusOffsetCapDecodesOnlyValuesAtOrAboveTheMarker(float encodedCap, float expectedOffset) {
+            Read(new Vector3(0, 0, .2f), Vector3.forward, guided: true);
+            material.SetFloat("_Operation", 4);
+            material.SetFloat("_Flags", 1 << 12);
+            material.SetFloat("_SPS_RadiusOffsetMultiplier", 100);
+            SetRadiusOffsetLimit(encodedCap);
+            Assert.That(Render().g, Is.EqualTo(expectedOffset).Within(.000001f));
+        }
+
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        public void RadiusOffsetCapIsDecodedOnlyForNativeContacts(bool others, bool native) {
+            Read(Vector3.forward * .2f, Vector3.forward);
+            SetRadiusOffsetLimit(2.005f, others, native);
+            material.SetFloat("_Operation", 6);
+            var result = Render();
+            Assert.That(result.b, Is.EqualTo(1), "The contact must be valid.");
+            if (native) {
+                Assert.That(result.r, Is.EqualTo(.005f).Within(.000001f));
+                Assert.That(result.g, Is.Zero);
+            } else {
+                Assert.That(float.IsPositiveInfinity(result.r), Is.True);
+                Assert.That(result.g, Is.EqualTo(1));
+            }
+        }
+
+        [TestCase(false, 0f, 1f)]
+        [TestCase(true, 0f, 1f)]
+        [TestCase(false, .05f, 1f)]
+        [TestCase(true, .05f, 1f)]
+        [TestCase(false, 0f, .6f)]
+        [TestCase(true, 0f, .6f)]
+        [TestCase(false, .05f, .6f)]
+        [TestCase(true, .05f, .6f)]
+        public void GuidedHolesCollapseImmediatelyWhetherTerminalOrIntermediate(
+            bool intermediate,
+            float advance,
+            float weight
+        ) {
+            Read(Vector3.forward * .2f, Vector3.forward);
+            material.SetFloat("_Operation", 5);
+            material.SetFloat("_Flags", (1 << 14) | (1 << 15));
+            material.SetFloat("_Guided", intermediate ? 2 : 1);
+            material.SetFloat("_EntryAdvance", advance);
+            material.SetFloat("_PathWeight", weight);
+            material.SetFloat("_SampleDistance", .199f);
+            Assert.That(Render().a, Is.EqualTo(1).Within(.0001f));
+            foreach (var distance in new[] { .201f, .21f, .24f }) {
+                material.SetFloat("_SampleDistance", distance);
+                Assert.That(Render().a, Is.Zero.Within(.0001f), "distance=" + distance);
+            }
+            material.SetFloat("_SampleDistance", .4f);
+            Assert.That(Render().a, Is.EqualTo(intermediate ? 1 : 0).Within(.0001f),
+                "Intermediate holes can reopen after a later ring; terminal holes stay collapsed.");
+        }
+
+        [Test]
+        public void UnguidedTerminalHoleKeepsItsOverrunAndCap() {
+            Read(Vector3.forward * .2f, Vector3.forward);
+            material.SetFloat("_Operation", 5);
+            material.SetFloat("_Flags", 1 << 14);
+            material.SetFloat("_Guided", 0);
+            material.SetFloat("_EntryAdvance", 0);
+            material.SetFloat("_PathWeight", 1);
+            material.SetFloat("_SampleDistance", .25f);
+            Assert.That(Render().a, Is.EqualTo(1).Within(.0001f));
+            material.SetFloat("_SampleDistance", .325f);
+            Assert.That(Render().a, Is.EqualTo(.5f).Within(.001f));
+            material.SetFloat("_SampleDistance", .36f);
+            Assert.That(Render().a, Is.Zero.Within(.0001f));
         }
 
         [Test]
@@ -198,7 +348,24 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             material.SetFloat("_Entrance", entrance ? 1 : 0);
             material.SetFloat("_Flags", (twoWay ? 1 << 13 : 0) | (hole ? 1 << 14 : 0) | unlock);
             material.SetFloat("_Operation", captureOnly ? 2 : joins ? 1 : 0);
+            SetRadiusOffsetLimit(1);
+            material.SetFloat("_SPS_RadiusOffsetMultiplier", 0);
             return Render();
+        }
+
+        private void SetRadiusOffsetLimit(float encodedCap, bool others = false, bool native = true) {
+            var transforms = new Matrix4x4[9];
+            transforms[0] = Matrix4x4.Scale(new Vector3(1, encodedCap, 1));
+            transforms[8] = Matrix4x4.identity;
+            var data = new Vector4[9];
+            data[0].y = BitConverter.ToSingle(BitConverter.GetBytes(native ? 1 : 2), 0);
+            data[8].y = BitConverter.ToSingle(BitConverter.GetBytes(1), 0);
+            var buffer = others ? "SPS_Others" : "SPS_Self";
+            material.SetMatrixArray("_VRChatContact_Transforms_" + buffer, transforms);
+            material.SetVectorArray("_VRChatContact_Data_" + buffer, data);
+            material.SetFloat("_ContactIndex", others ? 8 : 0);
+            material.SetFloat("_SPS_OthersChannelTagCount", 1);
+            material.SetFloat("_SPS_OthersLegacyTags", 1);
         }
 
         private Color Render() {
