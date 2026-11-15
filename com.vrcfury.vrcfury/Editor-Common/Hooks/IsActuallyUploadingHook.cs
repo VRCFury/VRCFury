@@ -10,7 +10,11 @@ namespace VF.Hooks {
 
         public static bool Get() {
 #if VRCSDK_HAS_ACTIVE_BUILD_TYPE
-            return VRC_SdkBuilder.ActiveBuildType != VRC_SdkBuilder.BuildType.None;
+            if (VRC_SdkBuilder.ActiveBuildType != VRC_SdkBuilder.BuildType.None) return true;
+            // Multi-platform builds can leave ActiveBuildType unset, including after platform switches.
+            return VRCSdkControlPanel.window != null
+                && VRCSdkControlPanel.TryGetBuilder<IVRCSdkBuilderApi>(out var builder)
+                && builder.BuildState == SdkBuildState.Building;
 #else
             return LegacyGet();
 #endif
