@@ -1311,5 +1311,42 @@ namespace VF.Tests {
                 }
             } finally { Object.DestroyImmediate(owner); }
         }
+
+        [Test]
+        public void ArrayElementTrackingCanDetachAfterDeletionAndReattachAfterUndo() {
+            var owner = ScriptableObject.CreateInstance<Fields>();
+            try {
+                using (var serialized = new SerializedObject(owner))
+                using (var panel = new Panel(owner)) {
+                    var calls = 0;
+                    var list = serialized.FindProperty("numbers");
+                    var tracker = VRCFuryEditorUtils.OnChange(list.GetArrayElementAtIndex(0), () => calls++);
+                    panel.root.Add(tracker);
+                    panel.Pump();
+                    serialized.FindProperty("number").intValue = 10;
+                    serialized.ApplyModifiedProperties();
+                    panel.Pump();
+                    Assert.That(calls, Is.Zero, "Other fields must not trigger the array element callback.");
+                    list.GetArrayElementAtIndex(0).intValue = 2;
+                    serialized.ApplyModifiedProperties();
+                    panel.Pump();
+                    Assert.That(calls, Is.EqualTo(1));
+                    Undo.IncrementCurrentGroup();
+                    list.ClearArray();
+                    serialized.ApplyModifiedProperties();
+                    panel.Pump();
+                    Assert.That(calls, Is.EqualTo(1), "Deleted properties must not invoke callbacks with invalid handles.");
+                    Assert.DoesNotThrow(() => tracker.RemoveFromHierarchy());
+                    Undo.PerformUndo();
+                    serialized.Update();
+                    panel.root.Add(tracker);
+                    panel.Pump();
+                    list.GetArrayElementAtIndex(0).intValue = 3;
+                    serialized.ApplyModifiedProperties();
+                    panel.Pump();
+                    Assert.That(calls, Is.EqualTo(2));
+                }
+            } finally { Object.DestroyImmediate(owner); }
+        }
     }
 }

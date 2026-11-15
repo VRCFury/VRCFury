@@ -500,8 +500,27 @@ namespace VF.Inspector {
             var watched = prop.isArray && prop.propertyType != SerializedPropertyType.String
                 ? prop.FindPropertyRelative("Array.size") : prop;
             var watcher = new VisualElement();
-            watcher.RegisterCallback<AttachToPanelEvent>(evt =>
-                watcher.TrackPropertyValue(watched, property => changed()));
+            if (watched.propertyPath.Contains(".Array.data[")) {
+                // Older Unity cannot unregister a property tracker after its array element
+                // is deleted. Track the object instead and resolve the property on each change.
+                // This was fixed (no longer requiring this workaround) between 2022.3.6 and 2022.3.22
+                var serialized = watched.serializedObject;
+                var path = watched.propertyPath;
+                watcher.RegisterCallback<AttachToPanelEvent>(_ => {
+                    var hash = serialized.FindProperty(path)?.contentHash;
+                    watcher.TrackSerializedObjectValue(serialized, _ => {
+                        var current = serialized.FindProperty(path);
+                        if (current == null) return;
+                        var currentHash = current.contentHash;
+                        if (currentHash == hash) return;
+                        hash = currentHash;
+                        changed();
+                    });
+                });
+            } else {
+                watcher.RegisterCallback<AttachToPanelEvent>(_ =>
+                    watcher.TrackPropertyValue(watched, _ => changed()));
+            }
             watcher.RegisterCallback<DetachFromPanelEvent>(_ => watcher.Unbind());
             return watcher;
         }
