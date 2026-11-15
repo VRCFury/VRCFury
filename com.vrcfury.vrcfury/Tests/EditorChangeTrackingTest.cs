@@ -1203,7 +1203,7 @@ namespace VF.Tests {
         }
 
         // A detached editor panel exercises real bindings without opening a window.
-        private sealed class Panel : IDisposable {
+        internal sealed class Panel : IDisposable {
             public readonly IPanel panel;
             private readonly PropertyInfo clock;
             private readonly object previousClock;

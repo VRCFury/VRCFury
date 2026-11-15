@@ -19,6 +19,7 @@ namespace VF.Tests {
                 socket.addLight = VRCFuryHapticSocket.AddLight.Hole;
                 socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop.transform });
                 var data = VRCFuryHapticSocketGizmo.GetGizmoData(socket);
+                Assert.That(data.guidedPathStops[0].useRadiusOffset, Is.False);
                 for (var i = 0; i < 100; i++) {
                     Assert.That(VRCFuryHapticSocketGizmo.GetGizmoData(socket), Is.SameAs(data));
                 }
@@ -27,11 +28,13 @@ namespace VF.Tests {
 
                 socket.position = Vector3.right;
                 socket.addLight = VRCFuryHapticSocket.AddLight.Ring;
+                socket.guidedPathStops[0].useRadiusOffset = true;
                 EditorChanges.Changed();
                 var changed = VRCFuryHapticSocketGizmo.GetGizmoData(socket);
                 Assert.That(changed, Is.Not.SameAs(data));
                 Assert.That(changed.pos, Is.EqualTo(Vector3.right));
                 Assert.That(changed.type, Is.EqualTo(VRCFuryHapticSocket.AddLight.Ring));
+                Assert.That(changed.guidedPathStops[0].useRadiusOffset, Is.True);
             } finally {
                 Object.DestroyImmediate(obj);
                 Object.DestroyImmediate(stop);

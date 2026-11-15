@@ -35,6 +35,7 @@ namespace VF.Inspector {
         private readonly bool radius;
         private readonly SerializedObject serialized;
         private readonly string rangePath;
+        private readonly string transformPath;
         private readonly int actionIndex;
         private readonly VRCFuryHapticSocket.DepthActionUnits units;
         private readonly Color gizmoColor;
@@ -44,7 +45,8 @@ namespace VF.Inspector {
             SerializedProperty prop,
             VRCFuryHapticSocket.DepthActionUnits units,
             bool radius = false,
-            SerializedProperty minimum = null
+            SerializedProperty minimum = null,
+            SerializedProperty transform = null
         ) : base(null, null) {
             this.radius = radius;
             this.units = units;
@@ -52,6 +54,7 @@ namespace VF.Inspector {
             minimumPath = minimum?.propertyPath;
             serialized = prop.serializedObject;
             rangePath = prop.propertyPath;
+            transformPath = transform?.propertyPath;
             actionIndex = prop.GetArrayIndex() ?? 0;
             var colorIndex = actionIndex;
             if (radius && !separateValues) colorIndex++;
@@ -156,6 +159,7 @@ namespace VF.Inspector {
                 meters.Add(maxMeters);
                 Add(meters);
                 meters.TrackEditorChanges(UpdateMeters);
+                if (transform != null) meters.TrackProperty(transform, _ => UpdateMeters());
                 UpdateMeters();
             }
             if (separateValues) {
@@ -206,10 +210,16 @@ namespace VF.Inspector {
                 }
             }
             if (!(serialized.targetObject is UnityEngine.Component component)) return;
+            serialized.UpdateIfRequiredOrScript();
+            var reference = transformPath == null ? component.transform
+                : serialized.FindProperty(transformPath)?.objectReferenceValue as Transform;
+            if (reference == null) return;
             var scale = units == VRCFuryHapticSocket.DepthActionUnits.Local
-                ? Mathf.Abs(component.transform.lossyScale.x) : 1;
+                ? Mathf.Abs(reference.lossyScale.x) : 1;
             TransformData frame;
-            if (component is VRCFuryHapticSocket socket) {
+            if (transformPath != null) {
+                frame = new TransformData(reference);
+            } else if (component is VRCFuryHapticSocket socket) {
                 if (units == VRCFuryHapticSocket.DepthActionUnits.Plugs) return;
                 frame = new TransformData(socket.owner()) * VRCFuryHapticSocketEditor.GetSocketTransformLocal(socket).Item2;
             } else if (component is VRCFuryHapticPlug plug && !radius) {
@@ -221,7 +231,6 @@ namespace VF.Inspector {
                 if (units == VRCFuryHapticSocket.DepthActionUnits.Plugs) scale = length;
             } else return;
             if (!(scale > 0)) return;
-            serialized.UpdateIfRequiredOrScript();
             var range = serialized.FindProperty(rangePath);
             if (range == null) return;
             // Radius editors stay on the socket/path; depth editors sit beside the main line.
@@ -294,7 +303,9 @@ namespace VF.Inspector {
 
         internal RadiusRing GetRadiusRing(Vector3 center, Quaternion rotation, bool minimum) {
             var socket = serialized.targetObject as VRCFuryHapticSocket;
-            var offset = (!separateValues || singleValue) && socket != null && socket.useRadiusOffset
+            var useRadiusOffset = socket != null && (transformPath == null
+                ? socket.useRadiusOffset : socket.guidedPathStops.ElementAtOrDefault(actionIndex)?.useRadiusOffset == true);
+            var offset = (!separateValues || singleValue) && useRadiusOffset
                 ? rotation * Vector3.up : Vector3.zero;
             var limit = !singleValue && offset != Vector3.zero && socket.maxRadiusOffset > 0
                 ? socket.maxRadiusOffset * Mathf.Abs(socket.transform.lossyScale.x) : float.PositiveInfinity;
@@ -517,7 +528,9 @@ namespace VF.Inspector {
                 maxMeters.text = "";
                 return;
             }
-            var scale = owner.transform.lossyScale.x;
+            var reference = transformPath == null ? owner.transform
+                : serialized.FindProperty(transformPath)?.objectReferenceValue as Transform;
+            var scale = reference != null ? reference.lossyScale.x : 0;
             minMeters.text = $"{value.x * scale:G4} m";
             maxMeters.text = $"{value.y * scale:G4} m";
         }

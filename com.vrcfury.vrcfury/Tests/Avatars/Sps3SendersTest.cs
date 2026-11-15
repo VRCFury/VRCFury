@@ -185,7 +185,7 @@ namespace VF.Tests {
         [TestCase(false, .025f)]
         [TestCase(true, 0f)]
         [TestCase(true, .025f)]
-        public void SocketBakesRadiusCapInWorldMetersOnlyOnEntrance(bool enabled, float cap) {
+        public void SocketBakesIndependentRadiusCapsInNodeLocalUnits(bool enabled, float cap) {
             if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             Assert.That(socket.maxRadiusOffset, Is.Zero);
@@ -194,14 +194,19 @@ namespace VF.Tests {
             socket.maxRadiusOffset = cap;
             var stop = GameObjects.Create("Guide", root);
             stop.localPosition = Vector3.forward;
-            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
+            stop.localScale = Vector3.one * 3;
+            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop {
+                transform = stop,
+                useRadiusOffset = true,
+                maxRadiusOffset = cap * 2
+            });
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             var senders = NativeSocketSenders(result.bakeRoot).OrderBy(s => s.transform.lossyScale.x).ToArray();
             Assert.That(result.mainSender.worldScale.y, Is.EqualTo(enabled && cap > 0 ? 2 + cap * 2 : 1f).Within(.000001f));
             Assert.That(senders, Has.Length.EqualTo(2));
             Assert.That(senders.Single(s => s.transform != (Transform)result.mainSender).transform.lossyScale.y,
-                Is.EqualTo(1).Within(.00001f));
+                Is.EqualTo(cap > 0 ? 2 + cap * 2 * stop.worldScale.x : 1).Within(.00001f));
         }
 
         [TestCase(0f)]
@@ -235,6 +240,14 @@ namespace VF.Tests {
             socket.enableAuto = false;
             socket.useRadiusOffset = true;
             socket.maxRadiusOffset = cap;
+            var guide = GameObjects.Create("Guide", root);
+            guide.localScale = Vector3.one * 3;
+            var nodeCap = cap * 2;
+            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop {
+                transform = guide,
+                useRadiusOffset = true,
+                maxRadiusOffset = nodeCap
+            });
             var sets = injector.GetService<SpsChannelsService>().Get(socket);
             sets.Request(new VF.Model.SpsChannelSettings {
                 useSharedTag = false,
@@ -245,10 +258,17 @@ namespace VF.Tests {
             var bakeRoot = socket.owner().Children().Single(o => o.name == "BakedSpsSocket");
             var worldSpace = bakeRoot.Children().Single(o => o.name == "WorldSpace");
             var sender = worldSpace.Children().Single(o => o.name == "Sender - Root");
+            var nodeSender = worldSpace.Children().Single(o => o.name == "Sender - Path Stop 1");
+            var nodeRoot = guide.Children().Single(o => o.name == "BakedSpsPath");
             var packedWord = sender.worldScale.x;
+            var nodePackedWord = nodeSender.worldScale.x;
             var uploadScale = bakeRoot.worldScale.x;
+            var nodeUploadScale = nodeRoot.worldScale.x;
             var raw = cap > 0 && !float.IsPositiveInfinity(cap)
                 ? injector.GetService<WorldScaleDetectorService>().GetRawWorldScale(bakeRoot, "Socket")
+                : null;
+            var nodeRaw = nodeCap > 0 && !float.IsPositiveInfinity(nodeCap)
+                ? injector.GetService<WorldScaleDetectorService>().GetRawWorldScale(nodeRoot, "Node")
                 : null;
             injector.GetService<IsObjectEnabledService>().Apply();
             injector.GetService<ObjectTreeService>().Apply();
@@ -267,12 +287,22 @@ namespace VF.Tests {
                 graph.Play();
                 foreach (var scale in new[] { .5f, 1.97f, 1.99f, 2f, 2.01f, 2.03f, 3f }) {
                     root.transform.localScale = Vector3.one * scale;
+                    guide.localScale = Vector3.one * (1 + scale);
                     // Synchronous graph evaluation does not evaluate scene constraints.
                     worldSpace.worldScale = Vector3.one;
                     if (raw != null) playable.SetFloat(raw.name, scale / (WorldScaleDetectorService.MaxDetectedScale * uploadScale));
+                    if (nodeRaw != null) playable.SetFloat(nodeRaw.name,
+                        nodeRoot.worldScale.x / (WorldScaleDetectorService.MaxDetectedScale * nodeUploadScale));
                     for (var i = 0; i < 20; i++) graph.Evaluate(1f / 60);
                     var expected = cap == 0 || float.IsPositiveInfinity(cap) ? 1 : 2 + cap * scale;
                     Assert.That(sender.worldScale.y, Is.EqualTo(expected).Within(expected * .0001f));
+                    var nodeExpected = nodeCap == 0 || float.IsPositiveInfinity(nodeCap) ? 1 : 2 + nodeCap * guide.worldScale.x;
+                    Assert.That(nodeSender.worldScale.y, Is.EqualTo(nodeExpected).Within(nodeExpected * .0001f));
+                    foreach (var variant in nodeSender.GetComponentsInSelfAndChildren<VRCContactSender>()) {
+                        Assert.That(variant.transform.lossyScale.x, Is.EqualTo(nodePackedWord).Within(.01f));
+                        Assert.That(variant.transform.lossyScale.y, Is.EqualTo(nodeExpected).Within(nodeExpected * .0001f));
+                        Assert.That(variant.transform.lossyScale.z, Is.EqualTo(1).Within(.0001f));
+                    }
                     var variants = sender.GetComponentsInSelfAndChildren<VRCContactSender>();
                     Assert.That(variants, Has.Length.EqualTo(2));
                     foreach (var variant in variants) {
@@ -436,6 +466,54 @@ namespace VF.Tests {
             Assert.That(VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot }).Count(), Is.EqualTo(5));
             result.bakeRoot.active = false;
             Assert.That(contacts.All(c => !c.gameObject.activeInHierarchy), Is.True);
+        }
+
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void GuidedNodeRadiusOffsetIsIndependentOfEntrance(bool entranceOffset, bool nodeOffset) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.useRadiusOffset = entranceOffset;
+            socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop {
+                transform = GameObjects.Create("Guide", root),
+                useRadiusOffset = nodeOffset
+            });
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            var senders = NativeSocketSenders(result.bakeRoot);
+            Assert.That(senders, Has.Length.EqualTo(2));
+            CheckNode(senders[0], 1, 0, Flags.RingOneWay, radiusOffset: entranceOffset);
+            CheckNode(senders[1], 1, 1, Flags.RingOneWay, radiusOffset: nodeOffset);
+        }
+
+        [TestCase(HumanBodyBones.Hips, false)]
+        [TestCase(HumanBodyBones.Hips, true)]
+        [TestCase(HumanBodyBones.Head, false)]
+        [TestCase(HumanBodyBones.Head, true)]
+        [TestCase(HumanBodyBones.LeftHand, false)]
+        [TestCase(HumanBodyBones.LeftHand, true)]
+        public void AutoOnlyDetectsHoleWhenThereIsNoGuidedPath(HumanBodyBones bone, bool guided) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            injector.Set("autoChannelGenerator", new AutoChannels(bone));
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.addLight = Flags.Auto;
+            if (guided) {
+                socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop {
+                    transform = GameObjects.Create("Guide", root)
+                });
+            }
+            var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
+            var senders = NativeSocketSenders(result.bakeRoot);
+            if (guided) {
+                Assert.That(senders, Has.Length.EqualTo(2));
+                CheckNode(senders[0], 1, 0, Flags.RingOneWay);
+                CheckNode(senders[1], 1, 1, Flags.RingOneWay);
+            } else {
+                CheckNode(senders.Single(), 1, 0, bone == HumanBodyBones.LeftHand ? Flags.Ring : Flags.Hole);
+            }
         }
 
         [Test]

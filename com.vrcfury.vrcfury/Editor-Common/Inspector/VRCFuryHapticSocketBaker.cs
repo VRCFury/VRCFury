@@ -97,7 +97,12 @@ namespace VF.Inspector {
                     }
                     var tags = new List<string>();
                     var flags = HapticUtils.SocketScaleFlags.None;
-                    if (pathIndex == 0 && socket.useRadiusOffset) {
+                    var radiusOffset = pathIndex == 0 ? socket.useRadiusOffset : stops[pathIndex - 1].useRadiusOffset;
+                    var radiusLimit = radiusOffset
+                        ? pathIndex == 0 ? socket.maxRadiusOffset : stops[pathIndex - 1].maxRadiusOffset
+                        : 0;
+                    var scaleReference = pathIndex == 0 ? bakeRoot : pathRoots[pathIndex - 1];
+                    if (radiusOffset) {
                         tags.Add(SpsTags.SocketRadiusOffset);
                         flags |= HapticUtils.SocketScaleFlags.RadiusOffset;
                     }
@@ -113,10 +118,11 @@ namespace VF.Inspector {
                         group,
                         pathIndex,
                         flags,
-                        pathIndex == 0 && socket.useRadiusOffset
-                            ? socket.maxRadiusOffset * bakeRoot.worldScale.x
-                            : 0
+                        radiusLimit * scaleReference.worldScale.x
                     );
+                    if (radiusLimit > 0 && !float.IsPositiveInfinity(radiusLimit)) {
+                        result.radiusOffsetLimits.Add((sender, scaleReference, radiusLimit));
+                    }
                     contacts.OnAllSetsAvailable(sets => {
                         var variants = new Dictionary<string, VFGameObject>();
                         foreach (var set in sets) {
@@ -264,7 +270,7 @@ namespace VF.Inspector {
         ) {
             var (type, socketTransformLocal) = GetSocketTransformLocal(socket);
             if (type == VRCFuryHapticSocket.AddLight.Auto) {
-                type = ShouldProbablyBeHole(socket, closestBone)
+                type = socket.guidedPathStops.Count == 0 && ShouldProbablyBeHole(socket, closestBone)
                     ? VRCFuryHapticSocket.AddLight.Hole
                     : VRCFuryHapticSocket.AddLight.Ring;
             }

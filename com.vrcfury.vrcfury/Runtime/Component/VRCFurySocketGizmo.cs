@@ -8,6 +8,7 @@ namespace VF.Component {
         [Serializable]
         public class GuidedPathStopData {
             public Transform transform;
+            public bool useRadiusOffset;
         }
 
         [Serializable]

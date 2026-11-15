@@ -43,44 +43,106 @@ namespace VF.Inspector {
             );
         }
 
-        private static SerializedProperty AddGuidedPath(SerializedProperty listProp) {
-            if (listProp.arraySize >= SpsTags.MaxUserPathStops) return null;
-            return VRCFuryEditorUtils.AddToList(listProp);
-        }
-
-        private static VisualElement GuidedPathList(SerializedProperty listProp) {
-            return VRCFuryEditorUtils.RefreshOnChange(() => {
-                var container = new VisualElement();
-
-                string FormatSlot(int slot) {
-                    if (slot == -1) return "Root";
-                    return $"Stop {slot+1}";
+        private static VisualElement RenderNode(SerializedObject serializedObject, int index) {
+            var stops = serializedObject.FindProperty("guidedPathStops");
+            var addLight = serializedObject.FindProperty("addLight");
+            var node = index == 0 ? null : stops.GetArrayElementAtIndex(index - 1);
+            SerializedProperty Prop(string name) => node == null
+                ? serializedObject.FindProperty(name) : node.FindPropertyRelative(name);
+            var row = new VisualElement();
+            if (index == 0) row.name = "guidedPathEntrance";
+            if (stops.arraySize > 0) {
+                if (index == 0) {
+                    row.AddToClassList("unity-collection-view--with-border");
+                    row.Padding(5).PaddingLeft(17);
                 }
-
-                for (var i = 0; i < Math.Min(listProp.arraySize, SpsTags.MaxUserPathStops); i++) {
-                    var index = i;
-                    var row = new VisualElement();
-                    var item = listProp.GetArrayElementAtIndex(index);
-                    row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("shrink"), $"Collapse plug between {FormatSlot(index-1)} and {FormatSlot(index)}"));
-
-                    row.Add(VRCFuryEditorUtils.Prop(item.FindPropertyRelative("transform"), FormatSlot(index)));
-
-                    row.Add(new Button(() => {
-                        listProp.DeleteArrayElementAtIndex(index);
-                        listProp.serializedObject.ApplyModifiedProperties();
-                    }) {
-                        text = "Remove"
+                row.Add(new Label(index == 0 ? "Entrance" : $"Node {index + 1}").Bold().PaddingBottom(5));
+            } else {
+                var mode = new PopupField<string>(
+                    new List<string> { "Auto", "Hole", "Ring", "One-Way Ring (Uncommon)" },
+                    addLight.enumValueIndex == 4 ? 3 : addLight.enumValueIndex == 2 ? 2 : addLight.enumValueIndex == 1 ? 1 : 0
+                );
+                mode.RegisterValueChangedCallback(evt => {
+                    addLight.enumValueIndex = evt.newValue == "Hole" ? 1 : evt.newValue == "Ring" ? 2
+                        : evt.newValue == "One-Way Ring (Uncommon)" ? 4 : 3;
+                    serializedObject.ApplyModifiedProperties();
+                });
+                row.Add(VRCFuryEditorUtils.BetterProp(
+                    addLight,
+                    "Mode",
+                    fieldOverride: mode,
+                    tooltip: "'Auto' will set to Hole if attached to hips or head bone.\n" +
+                             "'Rings' can be entered from either side using SPS, but TPS/DPS will only enter one side.\n" +
+                             "'One-Way Rings' can only be entered from one side."
+                ));
+            }
+            if (node != null) row.Add(VRCFuryEditorUtils.BetterProp(Prop("transform")));
+            var radiusOffset = Prop("useRadiusOffset");
+            row.Add(VRCFuryEditorUtils.BetterProp(
+                radiusOffset,
+                "Radius Offset",
+                tooltip: "Offsets SPS targeting in the node's up direction by the plug radius."
+                    + (index == 0 ? " Legacy lights are also moved upward slightly for TPS/DPS compatibility." : "")
+            ));
+            row.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
+                if (!radiusOffset.boolValue) return new VisualElement();
+                var maximum = Prop("maxRadiusOffset");
+                var checkbox = new Toggle { name = "limitRadiusOffset" };
+                var field = VRCFuryEditorUtils.BetterProp(
+                    null,
+                    "Maximum (Local)",
+                    fieldOverride: new DepthActionSlider(
+                        maximum,
+                        VRCFuryHapticSocket.DepthActionUnits.Local,
+                        radius: true,
+                        transform: node == null ? null : Prop("transform")
+                    )
+                );
+                field.name = "maxRadiusOffsetControls";
+                var controls = new VisualElement();
+                controls.Add(VRCFuryEditorUtils.BetterProp(
+                    null,
+                    "Limit Radius Offset",
+                    tooltip: "Caps the radius offset in node-local units, scaling with the avatar. Only supported by updated SPS3 plugs.",
+                    fieldOverride: checkbox
+                ));
+                controls.Add(field);
+                void UpdateState() {
+                    var enabled = maximum.floatValue != 0;
+                    checkbox.SetValueWithoutNotify(enabled);
+                    field.SetVisible(enabled);
+                }
+                checkbox.RegisterValueChangedCallback(evt => {
+                    field.SetVisible(evt.newValue);
+                    SceneView.RepaintAll();
+                    if (!evt.newValue) {
+                        maximum.floatValue = 0;
+                        serializedObject.ApplyModifiedProperties();
+                    }
+                });
+                checkbox.TrackProperty(maximum, _ => UpdateState());
+                UpdateState();
+                return controls;
+            }, radiusOffset));
+            if (stops.arraySize > 0) {
+                if (index < stops.arraySize) {
+                    row.Add(VRCFuryEditorUtils.BetterProp(
+                        stops.GetArrayElementAtIndex(index).FindPropertyRelative("shrink"),
+                        "Collapse until next node"
+                    ));
+                } else {
+                    var collapse = new Toggle();
+                    collapse.SetValueWithoutNotify(addLight.enumValueIndex == (int)VRCFuryHapticSocket.AddLight.Hole);
+                    collapse.TrackProperty(addLight, p => collapse.SetValueWithoutNotify(p.enumValueIndex == (int)VRCFuryHapticSocket.AddLight.Hole));
+                    collapse.RegisterValueChangedCallback(evt => {
+                        addLight.enumValueIndex = (int)(evt.newValue
+                            ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.Ring);
+                        serializedObject.ApplyModifiedProperties();
                     });
-                    container.Add(row);
+                    row.Add(VRCFuryEditorUtils.BetterProp(null, "Collapse plug at exit", fieldOverride: collapse));
                 }
-                if (listProp.arraySize < SpsTags.MaxUserPathStops) {
-                    container.Add(new Button(() => AddGuidedPath(listProp)) {
-                        text = "Add Stop to Path"
-                    });
-                }
-
-                return container;
-            }, listProp);
+            }
+            return row;
         }
 
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryHapticSocket target) {
@@ -89,6 +151,7 @@ namespace VF.Inspector {
             container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target, true));
             
             var addLightProp = serializedObject.FindProperty("addLight");
+            var stopsProp = serializedObject.FindProperty("guidedPathStops");
             var spsEnabledCheckbox = new Toggle();
             var noneIndex = (int)VRCFuryHapticSocket.AddLight.None;
             var autoIndex = (int)VRCFuryHapticSocket.AddLight.Auto;
@@ -104,68 +167,21 @@ namespace VF.Inspector {
                 var output = new VisualElement();
 
                 var section = VRCFuryEditorUtils.Section("Deformation (Super Plug Shader)", "SPS3 plugs will deform toward this socket\nCheck out vrcfury.com/sps for details");
-                var modeField = new PopupField<string>(
-                    new List<string>() { "Auto", "Hole", "Ring", "One-Way Ring (Uncommon)" },
-                    addLightProp.enumValueIndex == 4 ? 3 : addLightProp.enumValueIndex == 2 ? 2 : addLightProp.enumValueIndex == 1 ? 1 : 0
-                );
-                modeField.RegisterValueChangedCallback(cb => {
-                    addLightProp.enumValueIndex = cb.newValue == "Hole" ? 1 : cb.newValue == "Ring" ? 2 : cb.newValue == "One-Way Ring (Uncommon)" ? 4 : 3;
-                    addLightProp.serializedObject.ApplyModifiedProperties();
-                });
-                section.Add(VRCFuryEditorUtils.BetterProp(addLightProp, "Mode", fieldOverride: modeField,
-                    tooltip: "'Auto' will set to Hole if attached to hips or head bone.\n" +
-                             "'Rings' can be entered from either side using SPS, but TPS/DPS will only enter one side.\n" +
-                             "'One-Way Rings' can only be entered from one side."));
-                section.Add(VRCFuryEditorUtils.BetterProp(
-                    serializedObject.FindProperty("useRadiusOffset"),
-                    "Radius Offset",
-                    tooltip: "Offsets SPS targeting in the socket up direction by the resolver radius. Legacy lights are also moved upward slightly for TPS/DPS compatibility."
-                ));
-                section.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
-                    if (!serializedObject.FindProperty("useRadiusOffset").boolValue) return new VisualElement();
-                    var maximum = serializedObject.FindProperty("maxRadiusOffset");
-                    var checkbox = new Toggle { name = "limitRadiusOffset" };
-                    var field = VRCFuryEditorUtils.BetterProp(
-                        null,
-                        "Maximum (Local)",
-                        fieldOverride: new DepthActionSlider(
-                            maximum,
-                            VRCFuryHapticSocket.DepthActionUnits.Local,
-                            radius: true
-                        )
+                var entrance = RenderNode(serializedObject, 0);
+                if (stopsProp.arraySize > 0) {
+                    var pathList = VRCFuryEditorUtils.List(
+                        stopsProp,
+                        renderItem: (_, index) => RenderNode(serializedObject, index + 1),
+                        max: SpsTags.MaxUserPathStops
                     );
-                    field.name = "maxRadiusOffsetControls";
-                    var controls = new VisualElement();
-                    controls.Add(VRCFuryEditorUtils.BetterProp(
-                        null,
-                        "Maximum Radius Offset",
-                        tooltip: "Caps the radius offset in socket-local units, scaling with the avatar. Only supported by updated SPS3 plugs.",
-                        fieldOverride: checkbox
-                    ));
-                    controls.Add(field);
-                    void UpdateState() {
-                        var enabled = maximum.floatValue != 0;
-                        checkbox.SetValueWithoutNotify(enabled);
-                        field.SetVisible(enabled);
-                    }
-                    checkbox.RegisterValueChangedCallback(evt => {
-                        field.SetVisible(evt.newValue);
-                        SceneView.RepaintAll();
-                        if (!evt.newValue) {
-                            maximum.floatValue = 0;
-                            serializedObject.ApplyModifiedProperties();
-                        }
+                    pathList.Insert(0, entrance);
+                    section.Add(pathList.PaddingBottom(5));
+                } else {
+                    section.Add(entrance);
+                    section.Add(new Button(() => VRCFuryEditorUtils.AddToList(stopsProp)) {
+                        text = "Add Guided Path Node"
                     });
-                    checkbox.TrackProperty(maximum, _ => UpdateState());
-                    UpdateState();
-                    return controls;
-                }, serializedObject.FindProperty("useRadiusOffset")));
-                section.Add(VRCFuryEditorUtils.BetterProp(
-                    serializedObject.FindProperty("guidedPathStops"),
-                    "Guided Path",
-                    fieldOverride: GuidedPathList(serializedObject.FindProperty("guidedPathStops")),
-                    tooltip: "If provided, the plug will be guided through these transforms after passing through the socket. If the socket is a hole, the collapse will occur at the last transform in the path."
-                ));
+                }
                 output.Add(section);
 
                 var legacySupport = VRCFuryEditorUtils.Section(
@@ -220,7 +236,7 @@ namespace VF.Inspector {
 
 
                 return output;
-            }, addLightProp));
+            }, addLightProp, stopsProp));
 
             var addMenuItemProp = serializedObject.FindProperty("addMenuItem");
             var menuToggle = new Toggle();
@@ -434,6 +450,7 @@ namespace VF.Inspector {
             public SelfAndOthersReceiverService.Receivers plugReceivers;
             public VFGameObject bakeRoot;
             public VFGameObject mainSender;
+            public readonly List<(VFGameObject sender, VFGameObject scaleReference, float localLimit)> radiusOffsetLimits = new();
             public VFGameObject[] pathRoots;
             public VFGameObject legacyFrontSender;
             public VFGameObject worldSpace;

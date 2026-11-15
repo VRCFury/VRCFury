@@ -41,7 +41,8 @@ namespace VF.Inspector {
             SerializedProperty list,
             Action onPlus = null,
             Func<VisualElement> onEmpty = null,
-            Func<SerializedProperty, int, VisualElement> renderItem = null
+            Func<SerializedProperty, int, VisualElement> renderItem = null,
+            int max = int.MaxValue
         ) {
             var output = new VisualElement();
             output.AddToClassList("vfList");
@@ -54,6 +55,7 @@ namespace VF.Inspector {
             }
 
             void OnClickPlus() {
+                if (list.arraySize >= max) return;
                 if (onPlus != null) {
                     onPlus();
                 } else {

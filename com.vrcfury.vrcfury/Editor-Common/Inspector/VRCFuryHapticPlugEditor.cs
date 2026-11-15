@@ -213,16 +213,17 @@ namespace VF.Inspector {
             var content = VRCFuryEditorUtils.Section("Channels", isPlug
                 ? "Filter which sockets this plug will target" : "Filter which plugs can target this socket");
             var listProp = Prop("channels");
-            content.Add(VRCFuryEditorUtils.List(listProp, onPlus: () => {
-                if (listProp.arraySize >= SpsTags.MaxUserChannels) return;
-                VRCFuryEditorUtils.AddToList(listProp);
-            }, renderItem: (item, _) => {
-                var entry = new VisualElement();
-                entry.Add(SpsChannelProp(item.FindPropertyRelative("id"), null));
-                entry.Add(VRCFuryEditorUtils.CheckboxPair(item.FindPropertyRelative("allowSelf"), "Allow Self",
-                    item.FindPropertyRelative("allowOthers"), "Allow Others"));
-                return entry;
-            }));
+            content.Add(VRCFuryEditorUtils.List(
+                listProp,
+                renderItem: (item, _) => {
+                    var entry = new VisualElement();
+                    entry.Add(SpsChannelProp(item.FindPropertyRelative("id"), null));
+                    entry.Add(VRCFuryEditorUtils.CheckboxPair(item.FindPropertyRelative("allowSelf"), "Allow Self",
+                        item.FindPropertyRelative("allowOthers"), "Allow Others"));
+                    return entry;
+                },
+                max: SpsTags.MaxUserChannels
+            ));
             var useSharedTag = Prop("useSharedTag");
             content.Add(VRCFuryEditorUtils.BetterProp(useSharedTag, "Include Public SPS Channel",
                 tooltip: "Includes the public SPS channel for compatibility with most plugs and sockets."));

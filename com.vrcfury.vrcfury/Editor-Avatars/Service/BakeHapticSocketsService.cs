@@ -120,12 +120,11 @@ namespace VF.Service {
                         tpsDepthAnimationCompatibility: options.tpsDepthAnimationCompatibility, avatarRoot: avatarObject);
                     var receiverSpace = bakeResult.plugReceivers.request.frame;
                     channels.Register(socket, new Lazy<VFBlendTreeDirect>(() => objectTrees.Get(receiverSpace)));
-                    if (bakeResult.mainSender != null && socket.useRadiusOffset
-                        && socket.maxRadiusOffset > 0 && !float.IsPositiveInfinity(socket.maxRadiusOffset)) {
+                    foreach (var limit in bakeResult.radiusOffsetLimits) {
                         // Keep the encoding marker fixed while the local cap follows avatar scaling.
                         worldScale.AddScaledProp(
-                            bakeResult.bakeRoot,
-                            new[] { ((UnityEngine.Component)(Transform)bakeResult.mainSender, "m_LocalScale.y", socket.maxRadiusOffset) },
+                            limit.scaleReference,
+                            new[] { ((UnityEngine.Component)(Transform)limit.sender, "m_LocalScale.y", limit.localLimit) },
                             objectTrees.Get(receiverSpace),
                             offset: 2
                         );

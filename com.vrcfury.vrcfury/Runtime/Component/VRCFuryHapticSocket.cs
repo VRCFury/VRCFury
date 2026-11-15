@@ -59,6 +59,8 @@ namespace VF.Component {
         [Serializable]
         public class GuidedPathStop {
             public Transform transform;
+            public bool useRadiusOffset;
+            [Min(0)] public float maxRadiusOffset;
             public bool shrink = false;
             public bool customizeTangentIn = false;
             public bool customizeTangentOut = false;

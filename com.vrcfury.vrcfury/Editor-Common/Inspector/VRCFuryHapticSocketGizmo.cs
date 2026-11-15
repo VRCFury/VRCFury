@@ -36,7 +36,7 @@ namespace VF.Inspector {
     internal static class VRCFuryHapticSocketGizmo {
         internal static void DrawEditableStops(IEnumerable<Transform> stops) {
             foreach (var stop in stops.Take(SpsTags.MaxUserPathStops).Where(stop => stop != null).Distinct()) {
-                VRCFuryGizmoUtils.DrawTransformHandle(stop, "Transform SPS Path Stop");
+                VRCFuryGizmoUtils.DrawTransformHandle(stop, "Transform SPS Path Node");
             }
         }
 
@@ -188,7 +188,8 @@ namespace VF.Inspector {
             for (var i = 0; i < guidedPathStops.Count; i++) {
                 var stop = guidedPathStops[i];
                 data.guidedPathStops.Add(new VRCFurySocketGizmo.GuidedPathStopData {
-                    transform = stop.transform
+                    transform = stop.transform,
+                    useRadiusOffset = stop.useRadiusOffset
                 });
             }
 
@@ -254,6 +255,11 @@ namespace VF.Inspector {
                     var stop = guidedPathStops[i];
                     if (stop == null || stop.transform == null) continue;
                     TransformData stopTransformWorld = stop.transform;
+                    var stopPosition = stopTransformWorld.position;
+                    if (stop.useRadiusOffset) {
+                        stopTransformWorld = stopTransformWorld.WithPosition(stopPosition
+                            + stopTransformWorld.TransformDirection(Vector3.up) * VRCFuryHapticSocketEditor.GizmoRadiusOffset);
+                    }
                     var isLast = i == guidedPathStops.Count - 1;
                     var stopType = isLast && data.type == VRCFuryHapticSocket.AddLight.Hole
                         ? VRCFuryHapticSocket.AddLight.Hole
@@ -270,10 +276,10 @@ namespace VF.Inspector {
                         2f
                     );
                     DrawGizmo(
-                        stopTransformWorld.position,
+                        stopPosition,
                         stopTransformWorld.rotation,
                         stopType,
-                        false,
+                        stop.useRadiusOffset,
                         new Color(1f, 0.5f, 0),
                         Color.white,
                         drawCross
