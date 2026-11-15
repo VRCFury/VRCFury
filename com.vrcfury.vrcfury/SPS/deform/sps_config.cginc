@@ -25,31 +25,27 @@
 // Inner capture radius and cone angles as a fraction of their outer values.
 #define SPS_SIDE_FADE_FRACTION_MIN 0.8
 
-// BEND SHARPNESS
+// ENTRY JOIN
 
-// Maximum geometric sharpness for one-way entrances. Higher permits tighter bends.
-// 10 allows a right-angle entry at the base with the default 10% entry advance.
-// Two-way sockets choose the gentler face; guided stops are never rejected here.
-#define SPS_ONE_WAY_BEND_SHARPNESS_MAX 5.0
-
-// HILT / OFFSET "EASING"
-
-// Advance the entry target this far down the path, in plug lengths, to straighten near entry.
-#define SPS_ENTRY_ADVANCE 0.1
-// Extra entry look-ahead per unit of sideways displacement from the socket axis.
-#define SPS_LATERAL_ADVANCE_MULTIPLIER 0.5
+// Bend room as a fraction of plug length. Lower permits tighter bends.
+// The join is solved directly from heading, lateral clearance, and fold bounds.
+// Two-way sockets choose the shorter permissible connection; guided stops are exempt.
+#define SPS_BEND_ROOM 0.2
+// Maximum depth that a plug is allowed to "late-join" a socket path. If it's impossible to join by this depth
+// (due to SPS_BEND_ROOM), then entry will be rejected.
+#define SPS_ENTRY_ADVANCE_MAX 0.5
 
 // HOLE OVERRUN
 
 // Minimum extension beyond a terminal hole, in plug lengths, including entry look-ahead.
-// Set to zero to disable the minimum; SPS_ENTRY_ADVANCE still applies.
+// Set to zero to disable the minimum; the path join can still extend beyond a hole.
 #define SPS_HOLE_OVERRUN_MIN 0.1
 // Length of the radius taper closing a hole, in plug lengths. Zero uses a hard cutoff.
 #define SPS_HOLE_CAP_LENGTH 0.05
 
 // BEZIER
 
-// Each Bezier tangent handle is this fraction of the distance between segment endpoints.
+// Each Bezier tangent handle is this fraction of the distance between segment endpoints (0 < value < 1).
 #define SPS_HANDLE_LENGTH 0.5
 // Samples used to approximate Bezier arc length and transport the cross-section orientation.
 #define SPS_BEZIER_SAMPLES 50

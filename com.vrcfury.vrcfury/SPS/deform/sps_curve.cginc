@@ -66,17 +66,11 @@ inline void sps_deform_walk_chain(
     float3 entryForward = sps_path_forwards[1];
     uint entryFlags = sps_path_flags[1];
     float entryWeight = path.deformationWeight;
-    float3 offset = sps_path_worlds[0] - entryPoint;
-    // Aim farther along the path so off-center plugs need less of a return bend.
-    float advance = sps_entry_advance_distance(
-        offset,
-        sps_path_forwards[0],
-        entryForward,
-        path.worldLength
-    );
     float terminalAdvance;
+    // Selection already solved this against the entry socket's outgoing ray.
+    // Walk the resulting distance across stops without choosing another join.
     uint nextSocket = sps_deform_advance_entry(
-        advance,
+        path.entryAdvance,
         entryPoint,
         entryForward,
         entryFlags,

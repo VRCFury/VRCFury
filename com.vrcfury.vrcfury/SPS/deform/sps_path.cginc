@@ -22,6 +22,7 @@ struct SpsDeformNode {
     float3 up;
     uint flags;
     float deformationWeight;
+    float entryAdvance;
 };
 
 struct SpsDeformPathInfo {
@@ -30,6 +31,7 @@ struct SpsDeformPathInfo {
     float worldLength;
     float bakeScale;
     float deformationWeight;
+    float entryAdvance;
 };
 
 // Positive inside, zero on the capture boundary. An ellipse in angular space
@@ -131,28 +133,36 @@ bool sps_prepare_socket(
         || sps_has_flag(socket.control, SPS_SOCKET_FLAG_UNLOCK_LOCAL_X);
     // Guided stops are exempt from rejection. Unlocked two-way sockets already
     // have their orientation determined above, so they do not need a face choice.
-    bool checkOneWaySharpness = !twoWay && !guided;
+    bool checkFixedFace = !guided && (!twoWay || unlocked);
     bool chooseTwoWayFace = twoWay && !unlocked;
-    if (checkOneWaySharpness || chooseTwoWayFace) {
-        // Only the initial entrance gets lookahead. Its distance is identical for
-        // both faces, but advancing along their opposite exits gives different targets.
-        float advance = entrance
-            ? sps_entry_advance_distance(-delta, previous.forward, -normal, worldLength) : 0;
-        float sharpness = sps_bend_sharpness_sq(
-            delta - normal * advance,
+    if (checkFixedFace || chooseTwoWayFace || entrance) {
+        float advance;
+        bool valid = sps_solve_entry_join(
+            delta,
             previous.forward,
             -normal,
-            worldLength
+            worldLength,
+            entrance,
+            advance
         );
         if (chooseTwoWayFace) {
-            float opposite = sps_bend_sharpness_sq(
-                delta + normal * advance,
+            float oppositeAdvance;
+            bool oppositeValid = sps_solve_entry_join(
+                delta,
                 previous.forward,
                 normal,
-                worldLength
+                worldLength,
+                entrance,
+                oppositeAdvance
             );
-            bool flip = opposite < sharpness;
-            if (opposite == sharpness) {
+            if (!valid && !oppositeValid && !guided) return false;
+            // Prefer a shorter connection, but penalize skipping farther past the
+            // entrance: advancing can bring a join closer to the plug root.
+            // This is a selection heuristic, not actual curve length or smoothness.
+            float cost = length(delta - normal * advance) + advance;
+            float oppositeCost = length(delta + normal * oppositeAdvance) + oppositeAdvance;
+            bool flip = oppositeValid && (!valid || oppositeCost < cost);
+            if (valid == oppositeValid && oppositeCost == cost) {
                 // Break symmetric ties in the incoming frame, independently of
                 // the authored normal's sign. Prefer forward, then up, then right.
                 float facing = dot(normal, previous.forward);
@@ -160,10 +170,15 @@ bool sps_prepare_socket(
                 if (facing == 0) facing = dot(normal, cross(previous.up, previous.forward));
                 flip = facing > 0;
             }
-            if (flip) normal = -normal;
-        } else if (sharpness > SPS_ONE_WAY_BEND_SHARPNESS_MAX * SPS_ONE_WAY_BEND_SHARPNESS_MAX) {
+            if (flip) {
+                normal = -normal;
+                advance = oppositeAdvance;
+                valid = oppositeValid;
+            }
+        } else if (checkFixedFace && !valid) {
             return false;
         }
+        node.entryAdvance = valid ? advance : 0;
     }
     node.forward = -normal;
     node.up = up;
@@ -292,6 +307,7 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
         if (step == 1) {
             path.firstSocketUp = chosenNode.up;
             path.deformationWeight = chosenNode.deformationWeight;
+            path.entryAdvance = chosenNode.entryAdvance;
         }
         previous = sockets[chosen];
         previousNode = chosenNode;
