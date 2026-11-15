@@ -61,6 +61,7 @@ namespace VF.Service {
 
                     bakeResults[plug] = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true,
                         legacySocketCompatibility: spsOptions.GetOptions().legacySocketCompatibility);
+                    bakeResults[plug].bakeRoot.active = plug.spsAnimatedEnabled > 0;
                     channels.Register(plug, new Lazy<VFBlendTreeDirect>(() => objectTrees.Get(bakeResults[plug].bakeRoot)));
 
                     var postBakeClip = actionClipService.LoadStateAdv("sps_postbake", plug.postBakeActions, plug.owner());
@@ -228,7 +229,8 @@ namespace VF.Service {
                     plug.owner(),
                     name,
                     party => measurements.Value(party),
-                    bakeRoot
+                    bakeRoot,
+                    weight: GetEnabledWeight(plug)
                 );
             }
             foreach (var inject in injectRequests) {
@@ -248,9 +250,30 @@ namespace VF.Service {
             public IList<string> spsBlendshapes;
         }
         private readonly List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
+        private readonly Dictionary<VRCFuryHapticPlug, VFAParam> enabledWeights = new();
+
+        private VFAParam GetEnabledWeight(VRCFuryHapticPlug plug) => enabledWeights.GetOrCreate(plug, () => {
+            var weight = fx.CreateUniqueFloat(plug.name + "/SPS Enabled", plug.spsAnimatedEnabled);
+            var on = VFClip.Create("Enable SPS");
+            var off = VFClip.Create("Disable SPS");
+            on.SetEnabled(bakeResults[plug].bakeRoot, true);
+            off.SetEnabled(bakeResults[plug].bakeRoot, false);
+            directTreeService.Create(plug.name + " - SPS Enabled").Add(
+                BlendtreeMath.GreaterThan(weight, 0).create(on, off)
+            );
+            return weight;
+        });
 
         [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
         public void ApplySpsRewrites() {
+            // Enable SPS also controls non-deforming plugs, which have no renderer rewrites.
+            foreach (var clip in allClipsService.GetAllClips()) {
+                foreach (var (binding, curve) in clip.GetFloatCurves()) {
+                    if (binding.type != typeof(VRCFuryHapticPlug) || binding.propertyName != "spsAnimatedEnabled") continue;
+                    var plug = binding.target?.GetComponent<VRCFuryHapticPlug>();
+                    if (plug != null && bakeResults.ContainsKey(plug)) clip.SetAap(GetEnabledWeight(plug), curve);
+                }
+            }
             foreach (var rewrite in spsRewritesToDo) {
                 var rendererObject = rewrite.skin.owner();
                 void RewriteClip(VFClip clip) {
@@ -268,7 +291,7 @@ namespace VF.Service {
                             || isPlugBinding && binding.propertyName == "spsAnimatedEnabled"
                         )) {
                             clip.SetCurve(rewrite.skin, $"material.{SpsConfigurer.SpsEnabled}", curve);
-                            clip.SetEnabled(rewrite.bakeRoot, curve);
+                            clip.SetAap(GetEnabledWeight(rewrite.plugObject.GetComponent<VRCFuryHapticPlug>()), curve);
                         }
 
                         if (isRendererBinding

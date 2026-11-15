@@ -2532,6 +2532,61 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void EnableSpsDisablesMotionTimeDepthActions(
+            [Values(false, true)] bool reverse,
+            [Values(false, true)] bool optimize
+        ) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking.");
+            optimizeTrees = optimize;
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.length = .4f;
+            plug.radius = .05f;
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.addOtherFeature = _ => { };
+            var baker = injector.GetService<BakeHapticPlugsService>();
+            baker.ApplyEarlyBake();
+            var bakeRoot = injector.GetService<PlugFrameService>().Get(plug);
+            var input = fx.CreateUniqueFloat("Depth", -.125f);
+            var output = fx.CreateUniqueFloat("Depth output");
+            var baseline = VFClip.Create("Lower layer");
+            baseline.SetAap(output, .2f);
+            fx.NewLayer("Lower layer").NewState("Lower layer").WithAnimation(baseline);
+            var enabled = fx.CreateUniqueFloat("Enable SPS", 1);
+            enabled.MakeExpressionFloat(synced: false);
+            var builder = injector.GetService<VF.Actions.SpsOnActionBuilder>();
+            var enable = new VF.Model.StateAction.SpsOnAction { target = plug };
+            fx.NewLayer("Enable SPS").NewState("Enable SPS").WithAnimation(VFBlendTree1D.CreateWithData(
+                "Enable SPS",
+                enabled,
+                (0, builder.BuildOff(enable)),
+                (1, builder.Build(enable))
+            ));
+            var clip = VFClip.Create("Motion time");
+            clip.SetAap(output, AnimationCurve.Linear(0, 0, 1, 1));
+            var action = new VRCFuryHapticSocket.DepthActionNew {
+                range = new Vector2(-.25f, 0),
+                units = VRCFuryHapticSocket.DepthActionUnits.Meters,
+                smoothingSeconds = 0,
+                reverseClip = reverse
+            };
+            action.actionSet.actions.Add(new VF.Model.StateAction.AnimationClipAction { vfClip = clip });
+            injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Test", _ => _ => input, bakeRoot);
+            baker.ApplySpsRewrites();
+            Start();
+            Evaluate(30);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(.5f).Within(.001f));
+            playable.SetFloat(enabled, 0);
+            Evaluate(10);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(.2f).Within(.001f), "Disabled depth actions must inherit lower layers.");
+            playable.SetFloat(enabled, 1);
+            Evaluate(30);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(.5f).Within(.001f));
+        }
+
+        [Test]
         public void InactiveDepthActionsInheritSharedAapFromLowerLayers(
             [Values(false, true)] bool optimize,
             [Values(0f, 0.1f)] float smoothingSeconds,
@@ -3054,11 +3109,12 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat("Injected depth"), Is.EqualTo(100).Within(0.001f));
         }
 
-        [TestCase(false, false)]
-        [TestCase(true, false)]
-        [TestCase(false, true)]
-        [TestCase(true, true)]
-        public void PlugCalculationAndRadiusGatesFollowParentAndSpsToggles(bool optimize, bool spsToggle) {
+        [Test]
+        public void PlugCalculationAndRadiusGatesFollowParentAndSpsToggles(
+            [Values(false, true)] bool optimize,
+            [Values(false, true)] bool spsToggle,
+            [Values(false, true)] bool motionTime
+        ) {
             if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             optimizeTrees = optimize;
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
@@ -3079,7 +3135,13 @@ namespace VF.Tests {
             var action = new VRCFuryHapticSocket.DepthActionNew {
                 units = VRCFuryHapticSocket.DepthActionUnits.Meters, smoothingSeconds = 0.2f
             };
-            action.actionSet.actions.Add(new VF.Model.StateAction.FxFloatAction { name = "Action output", value = 1 });
+            if (motionTime) {
+                var clip = VFClip.Create("Depth motion time");
+                clip.SetAap("Action output", AnimationCurve.Linear(0, 0, 1, 1));
+                action.actionSet.actions.Add(new VF.Model.StateAction.AnimationClipAction { vfClip = clip });
+            } else {
+                action.actionSet.actions.Add(new VF.Model.StateAction.FxFloatAction { name = "Action output", value = 1 });
+            }
             plug.depthActions2.Add(action);
             var output = fx.GetOrCreateFloat("Action output");
             var injected = new[] {
@@ -3098,8 +3160,10 @@ namespace VF.Tests {
             var parentOn = VFClip.Create("Parent on");
             var parentOff = VFClip.Create("Parent off");
             if (spsToggle) {
-                parentOn.SetCurve(plug, "spsAnimatedEnabled", 1);
-                parentOff.SetCurve(plug, "spsAnimatedEnabled", 0);
+                var builder = injector.GetService<VF.Actions.SpsOnActionBuilder>();
+                var enable = new VF.Model.StateAction.SpsOnAction { target = plug };
+                parentOn = builder.Build(enable);
+                parentOff = builder.BuildOff(enable);
             } else {
                 parentOn.SetEnabled(parent, true);
                 parentOff.SetEnabled(parent, false);
@@ -3109,24 +3173,7 @@ namespace VF.Tests {
             var baker = injector.GetService<BakeHapticPlugsService>();
             baker.ApplyEarlyBake();
             baker.Apply();
-            if (spsToggle) {
-                // Exercise activation rewriting without requiring shader patching in this test.
-                var skin = obj.AddComponent<MeshRenderer>();
-                var rewrites = (List<BakeHapticPlugsService.SpsRewriteToDo>)typeof(BakeHapticPlugsService)
-                    .VFField("spsRewritesToDo").GetValue(baker);
-                rewrites.Add(new BakeHapticPlugsService.SpsRewriteToDo {
-                    plugObject = obj, skin = skin, bakeRoot = injector.GetService<PlugFrameService>().Get(plug),
-                    configureMaterial = (_, material) => material, spsBlendshapes = Array.Empty<string>()
-                });
-                baker.ApplySpsRewrites();
-                // The gate only needs the rewritten activation curves, not material bindings.
-                parentOn.SetCurve(skin, "material." + SpsConfigurer.SpsEnabled, null);
-                parentOff.SetCurve(skin, "material." + SpsConfigurer.SpsEnabled, null);
-                Assert.That(VF.Feature.Base.FeatureOrder.IsObjectEnabled,
-                    Is.GreaterThan(VF.Feature.Base.FeatureOrder.HapticsAnimationRewrites));
-                Assert.That(VF.Feature.Base.FeatureOrder.IsObjectEnabled,
-                    Is.GreaterThan(VF.Feature.Base.FeatureOrder.TpsScaleFix));
-            }
+            baker.ApplySpsRewrites();
             var receivers = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
             var othersName = receiverAnimator.GetParameter(receivers, false).name;
             var mergedName = receiverAnimator.GetParameter(receivers, Party.Merged).name;
@@ -3145,6 +3192,15 @@ namespace VF.Tests {
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.EqualTo(1).Within(0.002f));
             Assert.That(playable.GetFloat(position), Is.EqualTo(0.25f).Within(0.002f));
+            if (spsToggle) {
+                playable.SetFloat(parentEnabled, .25f);
+                Evaluate(30);
+                Assert.That(injector.GetService<PlugFrameService>().Get(plug).active, Is.True,
+                    "Fractional SPS weights must keep contacts and calculations enabled.");
+                Assert.That(playable.GetFloat(output), Is.EqualTo(.25f).Within(.002f));
+                playable.SetFloat(parentEnabled, 1);
+                Evaluate(30);
+            }
             foreach (var (source, active, _) in injected) {
                 Assert.That(playable.GetFloat("Injected" + source), Is.EqualTo(active).Within(0.002f));
             }

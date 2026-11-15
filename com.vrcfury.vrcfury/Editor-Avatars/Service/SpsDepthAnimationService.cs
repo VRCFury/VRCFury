@@ -25,7 +25,8 @@ namespace VF.Service {
             string name,
             Func<Party, Func<string, VFAParam>> getMeasurements,
             VFGameObject bakeRoot,
-            string measurement = SpsParamDepth
+            string measurement = SpsParamDepth,
+            VFAParam weight = null
         ) {
             var calculations = objectTrees.Get(bakeRoot);
             var increasing = measurement == SpsParamPlugEntryRadius;
@@ -106,6 +107,11 @@ namespace VF.Service {
                         (depthAction.plugRadiusForZeroWeight, clipFactory.GetEmptyClip()),
                         (depthAction.plugRadiusForFullWeight, on.motion)));
                 }
+                if (weight != null) {
+                    var weighted = VFBlendTreeDirect.Create(prefix + "/SPS weight");
+                    weighted.Add(weight, on.motion);
+                    on.WithAnimation(weighted);
+                }
 
                 VFCondition onWhen;
                 if (action.useMotionTime && reverseClip) {
@@ -118,10 +124,8 @@ namespace VF.Service {
                     if (useRawInput) {
                         if (filters.Count > 0) onWhen = onWhen.And(allowedInState);
                     }
-                    if (!action.useMotionTime) {
-                        onWhen = onWhen.And(objectEnabled.Get(bakeRoot).IsGreaterThan(0));
-                    }
                 }
+                onWhen = onWhen.And(objectEnabled.Get(bakeRoot).IsGreaterThan(0));
                 if (weightedRadius != null) onWhen = onWhen.And(weightedRadius.IsGreaterThan(depthAction.plugRadiusForZeroWeight));
                 off.TransitionsTo(on).When(onWhen);
                 on.TransitionsTo(off).When(onWhen.Not());
