@@ -454,6 +454,23 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void MovingEmptyPathToEmptyPathDeletesOnlyUnnamedRootItems() {
+            var root = Menu();
+            var child = Menu();
+            Link(root, "", child);
+            root.controls.Add(new VRCExpressionsMenu.Control { name = "Keep" });
+            root.controls.Add(new VRCExpressionsMenu.Control { name = "" });
+            child.controls.Add(new VRCExpressionsMenu.Control { name = "" });
+            var manager = Manager(root);
+
+            Assert.That(manager.Move("", ""), Is.True);
+
+            Assert.That(root.controls.Select(control => control.name), Is.EqualTo(new[] { "Keep" }));
+            Assert.That(child.controls.Count, Is.EqualTo(1));
+            Assert.That(manager.Move("", ""), Is.False);
+        }
+
+        [Test]
         public void MovingToSamePathPreservesOrderAndDistinctDuplicateFolders() {
             var root = Menu();
             var first = Menu();

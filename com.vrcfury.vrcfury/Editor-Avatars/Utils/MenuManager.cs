@@ -81,7 +81,7 @@ namespace VF.Utils {
             
             var fromControls = FindControlsWithName(fromMenu, fromName);
             if (fromControls.Length == 0) return false;
-            if (from == to) return true;
+            if (from == to && !string.IsNullOrWhiteSpace(to)) return true;
             fromMenu.controls.RemoveAll(c => fromControls.Contains(c));
 
             if (string.IsNullOrWhiteSpace(to)) {
