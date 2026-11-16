@@ -13,9 +13,12 @@ VRC_CONTACT_DECLARE(SPS_Path);
 #define SPS_CONTACT_COUNT (3 * VRC_CONTACT_MAX_TARGETS)
 
 float4x4 sps_contact_transform(uint index) {
-    if (index < VRC_CONTACT_MAX_TARGETS) return VRC_CONTACT_TRANSFORM(SPS_Self, index);
-    if (index < 2 * VRC_CONTACT_MAX_TARGETS) return VRC_CONTACT_TRANSFORM(SPS_Others, index - VRC_CONTACT_MAX_TARGETS);
-    return VRC_CONTACT_TRANSFORM(SPS_Path, index - 2 * VRC_CONTACT_MAX_TARGETS);
+    // A single return avoids FXC's false uninitialized-return warnings on these buffer lookups.
+    float4x4 result = 0;
+    if (index < VRC_CONTACT_MAX_TARGETS) result = VRC_CONTACT_TRANSFORM(SPS_Self, index);
+    else if (index < 2 * VRC_CONTACT_MAX_TARGETS) result = VRC_CONTACT_TRANSFORM(SPS_Others, index - VRC_CONTACT_MAX_TARGETS);
+    else result = VRC_CONTACT_TRANSFORM(SPS_Path, index - 2 * VRC_CONTACT_MAX_TARGETS);
+    return result;
 }
 
 int sps_contact_count(uint buffer) {
@@ -25,15 +28,19 @@ int sps_contact_count(uint buffer) {
 }
 
 int sps_contact_player_id(uint index) {
-    if (index < VRC_CONTACT_MAX_TARGETS) return VRC_CONTACT_PLAYERID(SPS_Self, index);
-    if (index < 2 * VRC_CONTACT_MAX_TARGETS) return VRC_CONTACT_PLAYERID(SPS_Others, index - VRC_CONTACT_MAX_TARGETS);
-    return VRC_CONTACT_PLAYERID(SPS_Path, index - 2 * VRC_CONTACT_MAX_TARGETS);
+    int result = 0;
+    if (index < VRC_CONTACT_MAX_TARGETS) result = VRC_CONTACT_PLAYERID(SPS_Self, index);
+    else if (index < 2 * VRC_CONTACT_MAX_TARGETS) result = VRC_CONTACT_PLAYERID(SPS_Others, index - VRC_CONTACT_MAX_TARGETS);
+    else result = VRC_CONTACT_PLAYERID(SPS_Path, index - 2 * VRC_CONTACT_MAX_TARGETS);
+    return result;
 }
 
 uint sps_contact_tags(uint index) {
-    if (index < VRC_CONTACT_MAX_TARGETS) return VRC_CONTACT_TAGS(SPS_Self, index);
-    if (index < 2 * VRC_CONTACT_MAX_TARGETS) return VRC_CONTACT_TAGS(SPS_Others, index - VRC_CONTACT_MAX_TARGETS);
-    return VRC_CONTACT_TAGS(SPS_Path, index - 2 * VRC_CONTACT_MAX_TARGETS);
+    uint result = 0;
+    if (index < VRC_CONTACT_MAX_TARGETS) result = VRC_CONTACT_TAGS(SPS_Self, index);
+    else if (index < 2 * VRC_CONTACT_MAX_TARGETS) result = VRC_CONTACT_TAGS(SPS_Others, index - VRC_CONTACT_MAX_TARGETS);
+    else result = VRC_CONTACT_TAGS(SPS_Path, index - 2 * VRC_CONTACT_MAX_TARGETS);
+    return result;
 }
 
 bool sps_contact_present(uint index) {

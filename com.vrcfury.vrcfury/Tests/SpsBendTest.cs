@@ -787,6 +787,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 BuildTarget.StandaloneWindows64
             );
             Assert.That(compiled.Success, Is.True, string.Join("\n", compiled.Messages.Select(m => m.message)));
+            Assert.That(compiled.Messages, Is.Empty, string.Join("\n", compiled.Messages.Select(m => m.message)));
             Assert.That(compiled.ShaderData, Is.Not.Null.And.Not.Empty);
         }
 

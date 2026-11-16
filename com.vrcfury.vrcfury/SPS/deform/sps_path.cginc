@@ -188,18 +188,19 @@ bool sps_prepare_socket(
     // have their orientation determined above, so they do not need a face choice.
     bool checkFixedFace = !guided && (!twoWay || unlocked);
     bool chooseTwoWayFace = twoWay && !unlocked;
+    bool accepted = true; // Keep a single return so FXC can prove it is initialized.
     if (checkFixedFace || chooseTwoWayFace || entrance) {
-        float advance;
+        float joinAdvance = 0;
         bool valid = sps_solve_entry_join(
             delta,
             previous.forward,
             -normal,
             worldLength,
             entrance,
-            advance
+            joinAdvance
         );
         if (chooseTwoWayFace) {
-            float oppositeAdvance;
+            float oppositeAdvance = 0;
             bool oppositeValid = sps_solve_entry_join(
                 delta,
                 previous.forward,
@@ -208,11 +209,11 @@ bool sps_prepare_socket(
                 entrance,
                 oppositeAdvance
             );
-            if (!valid && !oppositeValid && !guided) return false;
+            accepted = valid || oppositeValid || guided;
             // Prefer a shorter connection, but penalize skipping farther past the
             // entrance: advancing can bring a join closer to the plug root.
             // This is a selection heuristic, not actual curve length or smoothness.
-            float cost = length(delta - normal * advance) + advance;
+            float cost = length(delta - normal * joinAdvance) + joinAdvance;
             float oppositeCost = length(delta + normal * oppositeAdvance) + oppositeAdvance;
             bool flip = oppositeValid && (!valid || oppositeCost < cost);
             if (valid == oppositeValid && oppositeCost == cost) {
@@ -225,13 +226,13 @@ bool sps_prepare_socket(
             }
             if (flip) {
                 normal = -normal;
-                advance = oppositeAdvance;
+                joinAdvance = oppositeAdvance;
                 valid = oppositeValid;
             }
-        } else if (checkFixedFace && !valid) {
-            return false;
+        } else if (checkFixedFace) {
+            accepted = valid;
         }
-        node.entryAdvance = valid ? advance : 0;
+        node.entryAdvance = valid ? joinAdvance : 0;
     }
     node.forward = -normal;
     node.up = up;
@@ -253,7 +254,7 @@ bool sps_prepare_socket(
             node.flags
         );
     }
-    return node.deformationWeight > 0;
+    return accepted && node.deformationWeight > 0;
 }
 
 // Node zero is the plug frame; the remaining nodes are socket entrances/stops.
@@ -282,8 +283,8 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
 
     SpsSocketCandidate sockets[SPS_CONTACT_COUNT + 4];
     [fastopt]
-    for (uint i = 0; i < SPS_CONTACT_COUNT; i++) {
-        sockets[i] = sps_read_contact(i);
+    for (uint contactIndex = 0; contactIndex < SPS_CONTACT_COUNT; contactIndex++) {
+        sockets[contactIndex] = sps_read_contact(contactIndex);
     }
     [fastopt]
     for (uint lightIndex = 0; lightIndex < 4; lightIndex++) {
