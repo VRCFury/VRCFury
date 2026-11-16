@@ -1068,15 +1068,14 @@ namespace VF.Builder.Haptics {
         }
 
         private static string ReadAndFlattenPath(string path, HashSet<string> included = null, bool includeLibraryFiles = false) {
-            if (included == null) {
-                included = new HashSet<string>();
-            }
+            if (included == null) included = new HashSet<string>();
             if (included.Contains(path)) return "";
             included.Add(path);
             var content = ReadFile(path);
             return ReadAndFlattenContent(content, included, includeLibraryFiles);
         }
         private static string ReadAndFlattenContent(string content, HashSet<string> included = null, bool includeLibraryFiles = false) {
+            if (included == null) included = new HashSet<string>();
             var output = new List<string>();
             content = WithEachInclude(content, null, includePath => {
                 return ReadAndFlattenPath(includePath, included, includeLibraryFiles);
