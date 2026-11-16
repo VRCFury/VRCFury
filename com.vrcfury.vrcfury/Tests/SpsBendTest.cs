@@ -5,22 +5,26 @@ using UnityEditor;
 using UnityEditor.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
+using VF.Builder.Haptics;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
     [Category("VRCFury")]
     public class SpsBendTest {
         private Shader shader;
+        private Shader pathShader;
+        private Shader deformationShader;
         private Material material;
         private RenderTexture target;
         private Texture2D pixels;
+        private Texture2D defaultProfile;
 
         [OneTimeSetUp]
         public void SetUp() {
 #if !VRCSDK_HAS_MATERIAL_CONTACTS
             Assert.Ignore("SPS requires material contacts.");
 #endif
-            shader = ShaderUtil.CreateShaderAsset(@"
+            var source = @"
 Shader ""Hidden/VRCFury/Tests/SpsBend"" {
     SubShader { Pass { ZTest Always Cull Off ZWrite Off
         HLSLPROGRAM
@@ -49,14 +53,49 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         float _SPS_OthersChannelTagCount, _SPS_OthersLegacyTags;
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_contacts.cginc""
         SpsSocketCandidate sps_read_light(uint i, float3 p, float3 u) { return (SpsSocketCandidate)0; }
-        float _SPS_RadiusOffsetMultiplier;
         float _SPS_BakedLength, _SPS_BakedRadius, _SPS_BaseActivationRadiusOverride;
+        Texture2D _SPS_Bake;
+        float4 _SPS_Bake_TexelSize;
+        float _SPS_BlendshapeVertCount, _SPS_BlendshapeCount, _SPS_RadiusProfileSamples;
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_path.cginc""
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_curve.cginc""
         float3 _Position, _Forward, _Up, _Exit, _Root, _Stop1, _Stop2;
         float _Length, _CaptureLength, _Guided, _Entrance, _Flags, _Operation, _BaseRadius;
-        float _SampleDistance, _EntryAdvance, _PathWeight, _ContactIndex;
+        float _SampleDistance, _EntryAdvance, _TerminalAdvance, _PathWeight, _ContactIndex, _ProfileDistance;
+        float4 path_frag(v2f_img input) : SV_Target {
+            SpsDeformPathInfo path;
+            bool valid = sps_try_get_path(path);
+            float4x4 frame = sps_contact_frame();
+            float3 up = sps_normalize(frame._m01_m11_m21);
+            float3 origin = frame._m03_m13_m23;
+            if (_Operation == 9) return float4(sps_path_worlds[1], valid);
+            if (_Operation == 10) return float4(sps_path_forwards[1], sps_path_flags[1]);
+            if (_Operation == 11) {
+                uint count = 0;
+                for (uint i = 1; i <= SPS_CHAIN_SOCKETS_MAX; i++) {
+                    if (!sps_is_zero(sps_path_forwards[i])) count++;
+                }
+                return float4(path.terminalAdvance, count, path.deformationWeight, valid);
+            }
+            if (_Operation == 12) return float4(sps_path_worlds[2], sps_path_cull_advances[2]);
+            if (_Operation == 13) return float4(sps_path_forwards[2], 0);
+            return float4(
+                dot(sps_path_worlds[2] - origin, up),
+                dot(sps_path_worlds[3] - origin, up),
+                dot(sps_path_worlds[1] - origin, up),
+                valid
+            );
+        }
+        float4 deformation_frag(v2f_img input) : SV_Target {
+            SpsDeformPathInfo path;
+            if (!sps_try_get_path(path)) return float4(0, 0, 0, -1);
+            float weight, radius;
+            float3 position, forward, up;
+            sps_deform_walk_chain(path, _SampleDistance, weight, radius, position, forward, up);
+            return float4(position, radius);
+        }
         float4 frag(v2f_img input) : SV_Target {
+            if (_Operation == 7) return sps_bake_radius_multiplier(_ProfileDistance);
             if (_Operation == 6) {
                 SpsSocketCandidate contact = sps_read_contact((uint)_ContactIndex);
                 return float4(contact.radiusOffsetLimit, isinf(contact.radiusOffsetLimit), sps_socket_valid(contact), 1);
@@ -67,10 +106,13 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                     sps_path_worlds[i] = 0;
                     sps_path_forwards[i] = 0;
                     sps_path_flags[i] = 0;
-                    sps_path_weights[i] = 1;
+                    // This synthetic path is straight, so its positions are
+                    // unchanged by fading; prepare only the cumulative cull distance.
+                    float curveWeight = sps_saturated_map(_PathWeight, SPS_MESH_FADE_WEIGHT_MAX, 1);
+                    sps_path_cull_advances[i] = i == 0 ? 0 : (1 - curveWeight) * (1 + SPS_HOLE_CAP_LENGTH);
                 }
                 sps_path_forwards[0] = sps_path_forwards[1] = float3(0, 0, 1);
-                sps_path_worlds[1] = float3(0, 0, .1);
+                sps_path_worlds[1] = float3(0, 0, .1 + _EntryAdvance);
                 sps_path_forwards[2] = float3(0, 0, 1);
                 sps_path_worlds[2] = float3(0, 0, .2);
                 sps_path_flags[2] = (uint)_Flags;
@@ -81,7 +123,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 SpsDeformPathInfo path = (SpsDeformPathInfo)0;
                 path.worldLength = 1;
                 path.deformationWeight = _PathWeight;
-                path.entryAdvance = _EntryAdvance;
+                path.terminalAdvance = _TerminalAdvance;
                 path.plugUp = float3(0, 1, 0);
                 float weight, radius;
                 float3 position, forward, up;
@@ -93,7 +135,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 for (uint i = 0; i <= SPS_CHAIN_SOCKETS_MAX; i++) {
                     sps_path_worlds[i] = 0;
                     sps_path_forwards[i] = 0;
-                    sps_path_weights[i] = 1;
+                    sps_path_cull_advances[i] = 0;
                     sps_path_flags[i] = 0;
                 }
                 sps_path_worlds[0] = _Root;
@@ -108,15 +150,24 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 }
                 SpsDeformPathInfo path = (SpsDeformPathInfo)0;
                 path.worldLength = _Length;
-                sps_solve_entry_join(_Position - _Root, _Forward, _Exit, _Length, true, path.entryAdvance);
-                float advance = path.entryAdvance;
-                float3 joinPoint = _Position;
-                float3 forward = _Exit;
-                uint flags = 0;
-                float weight = 1;
-                float terminalAdvance;
-                sps_deform_advance_entry(advance, joinPoint, forward, flags, weight, terminalAdvance);
-                return float4(joinPoint, advance);
+                float advance;
+                sps_solve_entry_join(_Position - _Root, _Forward, _Exit, _Length, true, advance);
+                float solvedAdvance = advance;
+                SpsDeformNode entry = (SpsDeformNode)0;
+                entry.world = _Position;
+                entry.forward = _Exit;
+                entry.up = _Up;
+                entry.deformationWeight = 1;
+                for (uint next = 2; next <= SPS_CHAIN_SOCKETS_MAX && advance > 0; next++) {
+                    if (sps_is_zero(sps_path_forwards[next])) break;
+                    SpsDeformNode node = (SpsDeformNode)0;
+                    node.world = sps_path_worlds[next];
+                    node.forward = sps_path_forwards[next];
+                    node.up = _Up;
+                    node.deformationWeight = 1;
+                    if (!sps_advance_entry(entry, node, advance)) break;
+                }
+                return float4(entry.world + entry.forward * advance, solvedAdvance);
             }
             if (_Operation == 2) {
                 float weight = sps_deformation_weight(_Position, _Forward, _Up, _Length, .02, _BaseRadius, 0);
@@ -148,11 +199,12 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 socket,
                 previous,
                 _Length,
-                _CaptureLength,
+                max(_Length - _CaptureLength, 0) * SPS_REACH_FADE_MAX,
                 .02,
                 _BaseRadius,
                 _Guided > 0,
                 _Entrance > 0,
+                0,
                 node,
                 distanceSq
             );
@@ -161,7 +213,14 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         ENDHLSL
     } }
 }
-");
+";
+            shader = ShaderUtil.CreateShaderAsset(source);
+            pathShader = ShaderUtil.CreateShaderAsset(source
+                .Replace("Hidden/VRCFury/Tests/SpsBend", "Hidden/VRCFury/Tests/SpsBendPath")
+                .Replace("#pragma fragment frag", "#pragma fragment path_frag"));
+            deformationShader = ShaderUtil.CreateShaderAsset(source
+                .Replace("Hidden/VRCFury/Tests/SpsBend", "Hidden/VRCFury/Tests/SpsBendDeformation")
+                .Replace("#pragma fragment frag", "#pragma fragment deformation_frag"));
         }
 
         [OneTimeTearDown]
@@ -170,24 +229,404 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             if (target != null) Object.DestroyImmediate(target);
             if (pixels != null) Object.DestroyImmediate(pixels);
             if (shader != null) Object.DestroyImmediate(shader);
+            if (pathShader != null) Object.DestroyImmediate(pathShader);
+            if (deformationShader != null) Object.DestroyImmediate(deformationShader);
+            if (defaultProfile != null) Object.DestroyImmediate(defaultProfile);
         }
 
         [TestCase(true, false)]
         [TestCase(false, false)]
         [TestCase(false, true)]
-        public void OnlyFirstRadiusOffsetUsesTheSampledProfile(bool entrance, bool guided) {
+        public void ConstantProfileUsesOverallRadiusForEveryNode(bool entrance, bool guided) {
             var position = new Vector3(0, 0, .2f);
-            foreach (var multiplier in new[] { 0f, .25f, 1f, 2f }) {
-                Read(position, Vector3.forward, entrance: entrance, guided: guided);
-                material.SetFloat("_Operation", 4);
-                material.SetFloat("_Flags", 1 << 12);
-                material.SetFloat("_SPS_RadiusOffsetMultiplier", multiplier);
-                var result = Render();
-                Assert.That(result.a, Is.EqualTo(1).Within(.0001f));
-                Assert.That(result.r, Is.Zero.Within(.0001f));
-                Assert.That(result.g, Is.EqualTo(.02f * (entrance ? multiplier : 1)).Within(.0001f));
-                Assert.That(result.b, Is.EqualTo(position.z).Within(.0001f));
+            Read(position, Vector3.forward, entrance: entrance, guided: guided);
+            material.SetFloat("_Operation", 4);
+            material.SetFloat("_Flags", 1 << 12);
+            var result = Render();
+            Assert.That(result.a, Is.EqualTo(1).Within(.0001f));
+            Assert.That(result.r, Is.Zero.Within(.0001f));
+            Assert.That(result.g, Is.EqualTo(.02f).Within(.0001f));
+            Assert.That(result.b, Is.EqualTo(position.z).Within(.0001f));
+        }
+
+        [TestCase(2, 0, 0)]
+        [TestCase(3, 3, 0)]
+        [TestCase(24, 3, 2)]
+        public void BakedProfileUsesNearestUniformSampleAndClampsEndpoints(int count, int vertices, int blendshapes) {
+            Read(Vector3.forward * .2f, Vector3.forward);
+            var keys = Enumerable.Range(0, count).Select(i => new Keyframe(
+                Mathf.Pow(i / (count - 1f), 2),
+                i == count - 1 ? 0 : .2f + (i % 3) * .75f
+            )).ToArray();
+            var curve = ProfileCurve(keys);
+            var texture = SetProfile(vertices, blendshapes, keys);
+            try {
+                material.SetFloat("_Operation", 7);
+                foreach (var depth in keys.Select(key => key.time).Concat(Enumerable.Range(-1, 32).Select(i => i / 29f))) {
+                    material.SetFloat("_ProfileDistance", depth);
+                    var nearest = Mathf.RoundToInt(Mathf.Clamp01(depth) * (SpsBaker.RadiusProfileSamples - 1));
+                    var expected = curve.Evaluate(nearest / (SpsBaker.RadiusProfileSamples - 1f));
+                    Assert.That(Render().r, Is.EqualTo(expected).Within(.0001f), "Depth " + depth);
+                }
+            } finally {
+                Object.DestroyImmediate(texture);
             }
+        }
+
+        [TestCase(.2f, false, false, 1f, .02f)]
+        [TestCase(-.1f, false, false, 1f, .02f)]
+        [TestCase(.2f, true, false, 1f, .02f)]
+        [TestCase(.2f, false, true, 2.5f, .02f)]
+        [TestCase(.2f, false, false, 1f, .12f)]
+        [TestCase(.2f, true, false, 1f, .12f)]
+        public void GuidedNodesSampleTheirOwnPathDistanceAndKeepTheirLimits(
+            float entranceZ,
+            bool capped,
+            bool turn,
+            float scale,
+            float radius
+        ) {
+            Read(Vector3.forward * entranceZ, Vector3.forward);
+            var keys = new[] {
+                new Keyframe(0, 1),
+                new Keyframe(.5f, 2),
+                new Keyframe(.75f, .5f),
+                new Keyframe(1, 0)
+            };
+            var curve = ProfileCurve(keys);
+            float Sample(float depth) {
+                var nearest = Mathf.RoundToInt(Mathf.Clamp01(depth) * (SpsBaker.RadiusProfileSamples - 1));
+                return curve.Evaluate(nearest / (SpsBaker.RadiusProfileSamples - 1f));
+            }
+            var entranceRadius = radius * Sample(Mathf.Abs(entranceZ));
+            var entrance = new Vector3(0, entranceRadius, entranceZ);
+            material.SetFloat("_Length", 1);
+            material.SetVector("_Position", entrance);
+            material.SetFloat("_Operation", 1);
+            var advance = Render().r;
+            material.shader = pathShader;
+            Read(Vector3.forward * entranceZ, Vector3.forward);
+            var texture = SetProfile(keys);
+            try {
+                var frame = Matrix4x4.TRS(
+                    new Vector3(1, 2, 3),
+                    Quaternion.Euler(20, 30, 40),
+                    Vector3.one * scale
+                );
+                var rotation = frame.rotation * Quaternion.Euler(0, 180, 0);
+                var nodeRotation = turn ? frame.rotation * Quaternion.LookRotation(Vector3.left) : rotation;
+                var second = Vector3.forward * .48f;
+                var third = turn ? new Vector3(.25f, 0, .48f) : Vector3.forward * .73f;
+                SetContacts(
+                    "SPS_Self",
+                    frame,
+                    Matrix4x4.TRS(
+                        frame.MultiplyPoint3x4(Vector3.forward * entranceZ),
+                        rotation,
+                        new Vector3(1 | (1 << 12), 1, 1)
+                    )
+                );
+                SetContacts("SPS_Others", frame);
+                SetContacts(
+                    "SPS_Path",
+                    frame,
+                    Matrix4x4.TRS(
+                        frame.MultiplyPoint3x4(second),
+                        nodeRotation,
+                        new Vector3(1 | 128 | (1 << 12), capped ? 2.005f : 1, 1)
+                    ),
+                    Matrix4x4.TRS(
+                        frame.MultiplyPoint3x4(third),
+                        nodeRotation,
+                        new Vector3(1 | 256 | (1 << 12), 1, 1)
+                    )
+                );
+                material.SetFloat("_SPS_BakedLength", 1);
+                material.SetFloat("_SPS_BakedRadius", radius);
+                material.SetFloat("_SPS_BaseActivationRadiusOverride", 1);
+                material.SetFloat("_Operation", 8);
+                var result = Render();
+                var distance = (entrance + Vector3.forward * advance).magnitude;
+                // Estimate each new node once, then carry its final offset position forward.
+                var secondDistance = Vector3.Distance(second, entrance);
+                var secondRadius = radius * Sample(distance + Mathf.Max(secondDistance - advance, 0));
+                if (capped) secondRadius = Mathf.Min(secondRadius, .005f / scale);
+                second += Vector3.up * secondRadius;
+                var join = Vector3.Lerp(entrance, second, advance / Vector3.Distance(second, entrance));
+                distance = join.magnitude + Vector3.Distance(second, join);
+                var thirdRadius = radius * Sample(distance + Vector3.Distance(third, second));
+                Assert.That(result.a, Is.EqualTo(1));
+                Assert.That(result.r, Is.EqualTo(secondRadius * scale).Within(.00001f));
+                Assert.That(result.g, Is.EqualTo(thirdRadius * scale).Within(.00001f));
+                Assert.That(result.b, Is.EqualTo(join.y * scale).Within(.00001f));
+            } finally {
+                Object.DestroyImmediate(texture);
+                material.shader = shader;
+            }
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void PathBuilderConsumesAdvanceBeforeEmittingNodes(bool corner, bool coincident) {
+            var nodeZ = coincident ? -.2f : -.15f;
+            try {
+                if (corner) {
+                    SetPath(
+                        (Vector3.forward * -.2f, Vector3.forward, 0),
+                        (Vector3.forward * nodeZ, Vector3.right, 0),
+                        (new Vector3(.3f, 0, nodeZ), Vector3.right, 0)
+                    );
+                } else {
+                    SetPath(
+                        (Vector3.forward * -.2f, Vector3.forward, 0),
+                        (Vector3.forward * .3f, Vector3.forward, 0)
+                    );
+                }
+                material.SetFloat("_Operation", 9);
+                var position = Render();
+                var expected = corner ? new Vector3(-nodeZ, 0, nodeZ) : Vector3.zero;
+                Assert.That(position.a, Is.EqualTo(1));
+                Assert.That(Vector3.Distance(new Vector3(position.r, position.g, position.b), expected), Is.LessThan(.00001f));
+                material.SetFloat("_Operation", 10);
+                var direction = Render();
+                Assert.That(direction.r, Is.EqualTo(corner ? 1 : 0).Within(.00001f));
+                Assert.That(direction.b, Is.EqualTo(corner ? 0 : 1).Within(.00001f));
+                material.SetFloat("_Operation", 11);
+                var metadata = Render();
+                Assert.That(metadata.r, Is.Zero.Within(.00001f), "Advance ended before the last node.");
+                Assert.That(metadata.g, Is.EqualTo(2), "Skipped nodes must not reach the precise walk.");
+            } finally {
+                material.shader = shader;
+            }
+        }
+
+        [Test]
+        public void PathBuilderAdvancesAlongTheFinalExitWhenNoNodesRemain() {
+            try {
+                SetPath(
+                    (Vector3.forward * -.2f, Vector3.forward, 0),
+                    (Vector3.forward * -.15f, Vector3.right, 0)
+                );
+                material.SetFloat("_Operation", 9);
+                var position = Render();
+                Assert.That(position.r, Is.EqualTo(.15f).Within(.00001f));
+                Assert.That(position.b, Is.EqualTo(-.15f).Within(.00001f));
+                material.SetFloat("_Operation", 11);
+                var metadata = Render();
+                Assert.That(metadata.r, Is.EqualTo(.15f).Within(.00001f));
+                Assert.That(metadata.g, Is.EqualTo(1));
+            } finally {
+                material.shader = shader;
+            }
+        }
+
+        [Test]
+        public void LateJoinUsesTheMovedEntranceForCapture() {
+            try {
+                SetPath((Vector3.forward * -.2f, Vector3.forward, 1 << 14));
+                material.SetFloat("_SPS_BaseActivationRadiusOverride", .08f);
+                material.SetFloat("_Operation", 11);
+                var result = Render();
+                Assert.That(result.a, Is.EqualTo(1), "The effective entrance is at the plug root, inside the capture zone.");
+                Assert.That(result.b, Is.EqualTo(1).Within(.00001f));
+            } finally {
+                material.shader = shader;
+            }
+        }
+
+        [Test]
+        public void GuidedNodesRemainAvailablePastTheReachBudget() {
+            try {
+                SetPath(
+                    (Vector3.forward * .2f, Vector3.forward, 0),
+                    (Vector3.forward * 2, Vector3.forward, 1 << 14)
+                );
+                material.SetFloat("_Operation", 11);
+                var result = Render();
+                Assert.That(result.a, Is.EqualTo(1));
+                Assert.That(result.g, Is.EqualTo(2));
+            } finally {
+                material.shader = shader;
+            }
+        }
+
+        [TestCase(.025f, .5f)]
+        [TestCase(.075f, 0f)]
+        public void LateJoinPastTerminalHoleDoesNotAddItsOverrunAgain(float distance, float radius) {
+            try {
+                SetPath(deformationShader, (Vector3.forward * -.2f, Vector3.forward, 1 << 14));
+                material.SetFloat("_SampleDistance", distance);
+                Assert.That(Render().a, Is.EqualTo(radius).Within(.0001f));
+            } finally {
+                material.shader = shader;
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void LateJoinPreservesTheHoleFlagsOfTheJoinedSegment(bool hole) {
+            try {
+                SetPath(
+                    deformationShader,
+                    (Vector3.forward * -.2f, Vector3.forward, 0),
+                    (Vector3.forward * -.15f, Vector3.right, hole ? 1 << 14 : 0),
+                    (new Vector3(1, 0, -.15f), Vector3.right, 0)
+                );
+                material.SetFloat("_SampleDistance", .6f);
+                Assert.That(Render().a, Is.EqualTo(hole ? 0 : 1).Within(.0001f));
+                material.SetFloat("_SampleDistance", 2);
+                Assert.That(Render().a, Is.EqualTo(1).Within(.0001f), "The ring after the hole reopens the plug.");
+            } finally {
+                material.shader = shader;
+            }
+        }
+
+        [TestCase(1.59f, 2)]
+        [TestCase(1.61f, 1)]
+        public void FollowingSocketsUseReachRemainingAfterTheMovedEntrance(float socketZ, int count) {
+            try {
+                SetIndependentSockets(pathShader, socketZ, false);
+                material.SetFloat("_Operation", 11);
+                var result = Render();
+                Assert.That(result.a, Is.EqualTo(1));
+                Assert.That(result.g, Is.EqualTo(count));
+            } finally {
+                material.shader = shader;
+            }
+        }
+
+        [TestCase(-.1f, .025f)]
+        [TestCase(.3f, .425f)]
+        public void RingFollowedByHoleKeepsOnlyTheUnconsumedOverrun(float holeZ, float distance) {
+            try {
+                SetIndependentSockets(deformationShader, holeZ, true);
+                material.SetFloat("_SampleDistance", distance);
+                Assert.That(Render().a, Is.EqualTo(.5f).Within(.0001f));
+            } finally {
+                material.shader = shader;
+            }
+        }
+
+        [Test]
+        public void PathBuilderStraightensFadedSegmentsAndKeepsTheirCumulativeFade() {
+            try {
+                SetPath(
+                    (new Vector3(.84f, 0, 1.12f), Vector3.forward, 0),
+                    (new Vector3(.84f, 0, 1.62f), Vector3.right, 0)
+                );
+                // The first entrance is 1.4 plug lengths away: capture weight
+                // is 0.5 and curve weight is 0.375. The guided node has weight 1.
+                material.SetFloat("_Operation", 9);
+                var entrance = Render();
+                Assert.That(entrance.a, Is.EqualTo(1));
+                Assert.That(entrance.r, Is.EqualTo(.315f).Within(.00001f));
+                Assert.That(entrance.b, Is.EqualTo(1.295f).Within(.00001f));
+                material.SetFloat("_Operation", 12);
+                var next = Render();
+                Assert.That(next.r, Is.EqualTo(.315f).Within(.00001f));
+                Assert.That(next.b, Is.EqualTo(1.795f).Within(.00001f));
+                Assert.That(next.a, Is.EqualTo(.65625f).Within(.00001f));
+                material.SetFloat("_Operation", 13);
+                var forward = Render();
+                var expected = new Vector3(.375f, 0, .625f).normalized;
+                Assert.That(forward.r, Is.EqualTo(expected.x).Within(.00001f));
+                Assert.That(forward.b, Is.EqualTo(expected.z).Within(.00001f));
+            } finally {
+                material.shader = shader;
+            }
+        }
+
+        [TestCase(false, 2.18125f)]
+        [TestCase(true, 2.03125f)]
+        public void FadedHoleKeepsItsCullDistanceWhetherTerminalOrFollowedByAGuide(bool guided, float distance) {
+            try {
+                if (guided) {
+                    SetPath(
+                        deformationShader,
+                        (Vector3.forward * 1.4f, Vector3.forward, 1 << 14),
+                        (Vector3.forward * 2.4f, Vector3.forward, 0)
+                    );
+                } else {
+                    SetPath(deformationShader, (Vector3.forward * 1.4f, Vector3.forward, 1 << 14));
+                }
+                material.SetFloat("_SampleDistance", distance);
+                Assert.That(Render().a, Is.EqualTo(.5f).Within(.0001f));
+            } finally {
+                material.shader = shader;
+            }
+        }
+
+        private void SetIndependentSockets(Shader targetShader, float secondZ, bool hole) {
+            SetPath(targetShader, (Vector3.forward * -.2f, Vector3.forward, 0));
+            var rotation = Quaternion.LookRotation(Vector3.back, Vector3.up);
+            SetContacts(
+                "SPS_Self",
+                Matrix4x4.identity,
+                Matrix4x4.TRS(Vector3.forward * -.2f, rotation, Vector3.one),
+                Matrix4x4.TRS(
+                    Vector3.forward * secondZ,
+                    rotation,
+                    new Vector3(2 | (hole ? 1 << 14 : 0), 1, 1)
+                )
+            );
+        }
+
+        private void SetPath(params (Vector3 position, Vector3 forward, int flags)[] nodes) => SetPath(pathShader, nodes);
+
+        private void SetPath(Shader targetShader, params (Vector3 position, Vector3 forward, int flags)[] nodes) {
+            Read(Vector3.zero, Vector3.forward);
+            material.shader = targetShader;
+            Read(Vector3.zero, Vector3.forward);
+            var contacts = nodes.Select((node, index) => Matrix4x4.TRS(
+                node.position,
+                Quaternion.LookRotation(-node.forward, Vector3.up),
+                new Vector3(1 | (index << 7) | node.flags, 1, 1)
+            )).ToArray();
+            SetContacts("SPS_Self", Matrix4x4.identity, contacts[0]);
+            SetContacts("SPS_Others", Matrix4x4.identity);
+            SetContacts("SPS_Path", Matrix4x4.identity, contacts.Skip(1).ToArray());
+            material.SetFloat("_SPS_BakedLength", 1);
+            material.SetFloat("_SPS_BakedRadius", .02f);
+            material.SetFloat("_SPS_BaseActivationRadiusOverride", 1);
+        }
+
+        private void SetContacts(string buffer, Matrix4x4 frame, params Matrix4x4[] contacts) {
+            var transforms = new Matrix4x4[9];
+            Array.Copy(contacts, transforms, contacts.Length);
+            transforms[8] = frame;
+            var data = new Vector4[9];
+            data[8].y = BitConverter.ToSingle(BitConverter.GetBytes(contacts.Length), 0);
+            material.SetMatrixArray("_VRChatContact_Transforms_" + buffer, transforms);
+            material.SetVectorArray("_VRChatContact_Data_" + buffer, data);
+        }
+
+        private Texture2D SetProfile(params Keyframe[] keys) => SetProfile(0, 0, keys);
+
+        private Texture2D SetProfile(int vertices, int blendshapes, params Keyframe[] keys) {
+            var baked = new SpsBakedTexture();
+            var curve = ProfileCurve(keys);
+            baked.WriteFloat(0);
+            for (var i = 0; i < vertices * 10 + (vertices * 9 + 1) * blendshapes; i++) baked.WriteFloat(7);
+            for (var i = 0; i < SpsBaker.RadiusProfileSamples; i++) {
+                baked.WriteFloat(curve.Evaluate(i / (SpsBaker.RadiusProfileSamples - 1f)));
+            }
+            var texture = baked.Save();
+            material.SetTexture("_SPS_Bake", texture);
+            material.SetVector("_SPS_Bake_TexelSize", new Vector4(1f / texture.width, 1f / texture.height, texture.width, texture.height));
+            material.SetFloat("_SPS_BlendshapeVertCount", vertices);
+            material.SetFloat("_SPS_BlendshapeCount", blendshapes);
+            material.SetFloat(SpsConfigurer.SpsRadiusProfileSamples, SpsBaker.RadiusProfileSamples);
+            return texture;
+        }
+
+        private static AnimationCurve ProfileCurve(Keyframe[] keys) {
+            var curve = new AnimationCurve(keys) { preWrapMode = WrapMode.ClampForever, postWrapMode = WrapMode.ClampForever };
+            for (var i = 0; i < keys.Length; i++) {
+                AnimationUtility.SetKeyLeftTangentMode(curve, i, AnimationUtility.TangentMode.Linear);
+                AnimationUtility.SetKeyRightTangentMode(curve, i, AnimationUtility.TangentMode.Linear);
+            }
+            return curve;
         }
 
         [TestCase(0f, .02f)]
@@ -204,7 +643,6 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 Read(new Vector3(0, 0, .2f), Vector3.forward, entrance: entrance);
                 material.SetFloat("_Operation", 4);
                 material.SetFloat("_Flags", 1 << 12);
-                material.SetFloat("_SPS_RadiusOffsetMultiplier", 1);
                 SetRadiusOffsetLimit(encodedCap);
                 var result = Render();
                 Assert.That(result.a, Is.EqualTo(1).Within(.0001f));
@@ -224,11 +662,15 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         [TestCase(4f, 2f)]
         public void RadiusOffsetCapDecodesOnlyValuesAtOrAboveTheMarker(float encodedCap, float expectedOffset) {
             Read(new Vector3(0, 0, .2f), Vector3.forward, guided: true);
-            material.SetFloat("_Operation", 4);
-            material.SetFloat("_Flags", 1 << 12);
-            material.SetFloat("_SPS_RadiusOffsetMultiplier", 100);
-            SetRadiusOffsetLimit(encodedCap);
-            Assert.That(Render().g, Is.EqualTo(expectedOffset).Within(.000001f));
+            var texture = SetProfile(new Keyframe(0, 100), new Keyframe(1, 100));
+            try {
+                material.SetFloat("_Operation", 4);
+                material.SetFloat("_Flags", 1 << 12);
+                SetRadiusOffsetLimit(encodedCap);
+                Assert.That(Render().g, Is.EqualTo(expectedOffset).Within(.000001f));
+            } finally {
+                Object.DestroyImmediate(texture);
+            }
         }
 
         [TestCase(false, true)]
@@ -331,6 +773,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 material = new Material(shader);
                 target = new RenderTexture(1, 1, 0, RenderTextureFormat.ARGBFloat);
                 pixels = new Texture2D(1, 1, TextureFormat.RGBAFloat, false);
+                defaultProfile = SetProfile(new Keyframe(0, 1), new Keyframe(1, 1));
             }
             if (rotation == default) rotation = Quaternion.identity;
             material.SetVector("_Position", rotation * position * scale);
@@ -349,7 +792,21 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             material.SetFloat("_Flags", (twoWay ? 1 << 13 : 0) | (hole ? 1 << 14 : 0) | unlock);
             material.SetFloat("_Operation", captureOnly ? 2 : joins ? 1 : 0);
             SetRadiusOffsetLimit(1);
-            material.SetFloat("_SPS_RadiusOffsetMultiplier", 0);
+            material.SetTexture("_SPS_Bake", defaultProfile);
+            material.SetFloat(SpsConfigurer.SpsRadiusProfileSamples, SpsBaker.RadiusProfileSamples);
+            material.SetVector(
+                "_SPS_Bake_TexelSize",
+                new Vector4(
+                    1f / defaultProfile.width,
+                    1f / defaultProfile.height,
+                    defaultProfile.width,
+                    defaultProfile.height
+                )
+            );
+            material.SetFloat("_SPS_BlendshapeVertCount", 0);
+            material.SetFloat("_SPS_BlendshapeCount", 0);
+            material.SetFloat("_ProfileDistance", 0);
+            material.SetFloat("_TerminalAdvance", 0);
             return Render();
         }
 
@@ -779,13 +1236,13 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         }
 
         [Test]
-        public void RearCaptureDepthCanEndBeforeAnAlignedJoinReachesItsAdvanceCap() {
+        public void AlignedLateJoinUsesItsMovedPositionForRearCapture() {
             var position = new Vector3(0, 0, -.16f);
             var join = Read(position, Vector3.forward, joins: true, maxAdvance: .5f);
             Assert.That(join.b, Is.EqualTo(1));
             Assert.That(join.r, Is.EqualTo(.16f).Within(.00001f));
-            Assert.That(Read(position, Vector3.forward, hole: true, baseRadius: .08f, maxAdvance: .5f).a, Is.Zero,
-                "The 1.5-radius rear cylinder ends at 0.12m, before the 0.20m advance cap");
+            Assert.That(Read(position, Vector3.forward, hole: true, baseRadius: .08f, maxAdvance: .5f).a,
+                Is.EqualTo(1).Within(.0001f), "Late joining moves the effective entrance to the plug root.");
             Assert.That(Read(position, Vector3.forward, hole: true, baseRadius: .14f, maxAdvance: .5f).a,
                 Is.EqualTo(1).Within(.0001f));
             Assert.That(Read(new Vector3(0, 0, -.201f), Vector3.forward, hole: true, baseRadius: .14f, maxAdvance: .5f).a,

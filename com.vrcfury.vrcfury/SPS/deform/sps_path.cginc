@@ -8,13 +8,14 @@
 #include "sps_control_points.cginc"
 #include "sps_contacts.cginc"
 #include "sps_lights.cginc"
+#include "sps_bake.cginc"
 #include "Packages/com.vrchat.base/ShaderLibrary/VRCContacts.cginc"
 
 // Per-invocation scratch arrays avoid copying the path between helpers.
 static float3 sps_path_worlds[SPS_CHAIN_SOCKETS_MAX + 1];
 static float3 sps_path_forwards[SPS_CHAIN_SOCKETS_MAX + 1];
 static uint sps_path_flags[SPS_CHAIN_SOCKETS_MAX + 1];
-static float sps_path_weights[SPS_CHAIN_SOCKETS_MAX + 1];
+static float sps_path_cull_advances[SPS_CHAIN_SOCKETS_MAX + 1];
 
 struct SpsDeformNode {
     float3 world;
@@ -31,8 +32,51 @@ struct SpsDeformPathInfo {
     float worldLength;
     float bakeScale;
     float deformationWeight;
-    float entryAdvance;
+    float terminalAdvance; // How far the moved entrance extends beyond the final node.
 };
+
+inline void sps_store_path_node(
+    uint index,
+    SpsDeformNode node,
+    SpsDeformNode previous,
+    float worldLength,
+    inout float curveWeight
+) {
+    curveWeight = min(curveWeight, sps_saturated_map(node.deformationWeight, SPS_MESH_FADE_WEIGHT_MAX, 1));
+    float3 start = sps_path_worlds[index - 1];
+    float3 forward = sps_path_forwards[index - 1];
+    float3 offset = node.world - previous.world;
+    // Straighten from the previous adjusted endpoint before blending the mesh
+    // back to its original shape. Keep each segment's original direction change
+    // so an already-faded bend is not applied again by a later node.
+    sps_path_worlds[index] = start + lerp(forward * length(offset), offset, curveWeight);
+    sps_path_forwards[index] = sps_normalize(forward + (node.forward - previous.forward) * curveWeight);
+    sps_path_flags[index] = node.flags;
+    float capLength = worldLength * SPS_HOLE_CAP_LENGTH;
+    sps_path_cull_advances[index] = (1 - curveWeight) * (worldLength + capLength);
+}
+
+// Consume entrance advance as each next node is selected. Return true if the
+// whole segment was skipped; otherwise entry becomes the join within it.
+inline bool sps_advance_entry(inout SpsDeformNode entry, SpsDeformNode next, inout float advance) {
+    float3 delta = next.world - entry.world;
+    float span = length(delta);
+    float weight = min(entry.deformationWeight, next.deformationWeight);
+    if (advance >= span) {
+        advance -= span;
+        entry = next;
+        entry.deformationWeight = weight;
+        return true;
+    }
+    float t = advance / span;
+    entry.world += delta * t;
+    float3 forward = lerp(entry.forward, next.forward, t);
+    entry.forward = sps_normalize(sps_is_zero(forward) ? delta : forward);
+    entry.up = sps_nearest_normal(entry.forward, lerp(entry.up, next.up, t));
+    entry.deformationWeight = lerp(entry.deformationWeight, weight, t);
+    advance = 0;
+    return false;
+}
 
 // Positive inside, zero on the capture boundary. An ellipse in angular space
 // gives either axis a finite boundary through 90 degrees and into the rear half.
@@ -100,11 +144,12 @@ bool sps_prepare_socket(
     SpsSocketCandidate socket,
     SpsDeformNode previous,
     float worldLength,
-    float captureLength,
+    float traveledDistance,
     float worldRadius,
     float worldBaseActivationRadiusOverride,
     bool guided,
     bool entrance,
+    float advance,
     out SpsDeformNode node,
     out float distanceSq
 ) {
@@ -113,9 +158,10 @@ bool sps_prepare_socket(
     // Offset in the socket's own up direction before distance/approach checks.
     // Orientation unlocking below must not change which side of the socket we target.
     if (sps_has_flag(socket.control, SPS_SOCKET_FLAG_RADIUS_OFFSET)) {
-        // The live profile sample belongs to the first entrance. Later nodes use
-        // the overall plug radius rather than reusing that entrance's sample.
-        float multiplier = entrance ? max(_SPS_RadiusOffsetMultiplier, 0) : 1;
+        // Estimate once from the processed previous node. Pending entrance
+        // advance skips part of this segment before the plug joins it.
+        float profileDistance = traveledDistance + max(length(socket.world - previous.world) - advance, 0);
+        float multiplier = sps_bake_radius_multiplier(profileDistance / worldLength);
         float offset = min(worldRadius * multiplier, socket.radiusOffsetLimit);
         node.world += socket.up * offset;
     }
@@ -188,15 +234,22 @@ bool sps_prepare_socket(
     node.up = up;
     node.flags = socket.control & 0xfc00u; // Flags in bits 10-15, without path key or validity.
     node.deformationWeight = 1;
-    if (!guided) node.deformationWeight = sps_deformation_weight(
-        delta,
-        previous.forward,
-        previous.up,
-        captureLength,
-        worldRadius,
-        worldBaseActivationRadiusOverride,
-        node.flags
-    );
+    if (!guided) {
+        // Capture and fade use the effective entrance, including late joining.
+        if (entrance) delta += node.forward * node.entryAdvance;
+        else if (advance > 0) delta *= max(1 - advance / max(sqrt(distanceSq), 1e-20), 0);
+        distanceSq = dot(delta, delta);
+        float captureLength = max(worldLength * SPS_REACH_FADE_MAX - traveledDistance, 0) / SPS_REACH_FADE_MAX;
+        node.deformationWeight = sps_deformation_weight(
+            delta,
+            previous.forward,
+            previous.up,
+            captureLength,
+            worldRadius,
+            worldBaseActivationRadiusOverride,
+            node.flags
+        );
+    }
     return node.deformationWeight > 0;
 }
 
@@ -209,7 +262,7 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
         sps_path_worlds[i] = 0;
         sps_path_forwards[i] = 0;
         sps_path_flags[i] = 0;
-        sps_path_weights[i] = 0;
+        sps_path_cull_advances[i] = 0;
     }
     path = (SpsDeformPathInfo)0;
     float4x4 frame = sps_contact_frame();
@@ -240,9 +293,15 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
     previousNode.world = sps_path_worlds[0];
     previousNode.forward = sps_path_forwards[0];
     previousNode.up = path.plugUp;
-    float remainingLength = path.worldLength * SPS_REACH_FADE_MAX;
+    SpsDeformNode rootNode = previousNode;
+    SpsDeformNode entry = (SpsDeformNode)0;
+    uint count = 0;
+    float traveledDistance = 0; // Processed chord length, shared by profile sampling and reach.
+    float advance = 0;
+    float curveWeight = 1;
     [fastopt]
     for (uint step = 1; step <= SPS_CHAIN_SOCKETS_MAX; step++) {
+        float remainingLength = max(path.worldLength * SPS_REACH_FADE_MAX - traveledDistance, 0);
         int chosen = -1;
         SpsDeformNode chosenNode = (SpsDeformNode)0;
         float nearest = 1e30;
@@ -260,11 +319,12 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
                     socket,
                     previousNode,
                     path.worldLength,
-                    remainingLength / SPS_REACH_FADE_MAX,
+                    traveledDistance,
                     worldRadius,
                     worldBaseActivationRadiusOverride,
                     true,
                     false,
+                    advance,
                     node,
                     distanceSq
                 ) || distanceSq >= nearest) continue;
@@ -287,11 +347,12 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
                     socket,
                     previousNode,
                     path.worldLength,
-                    remainingLength / SPS_REACH_FADE_MAX,
+                    traveledDistance,
                     worldRadius,
                     worldBaseActivationRadiusOverride,
                     false,
                     step == 1,
+                    advance,
                     node,
                     distanceSq
                 ) || distanceSq >= nearest) continue;
@@ -301,17 +362,57 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
             }
         }
         if (chosen < 0) break;
-        // New entrances share one reach budget. Guided stops remain available even
-        // beyond it; the curve walker only travels as far as each vertex needs.
-        remainingLength = max(remainingLength - sqrt(nearest), 0);
-        sps_path_worlds[step] = chosenNode.world;
-        sps_path_forwards[step] = chosenNode.forward;
-        sps_path_flags[step] = chosenNode.flags;
-        sps_path_weights[step] = chosenNode.deformationWeight;
+        SpsDeformNode segmentStart = previousNode;
+        bool skipped = false;
+        bool movingEntry = step == 1 || advance > 0;
         if (step == 1) {
-            path.firstSocketUp = chosenNode.up;
+            entry = chosenNode;
+            entry.deformationWeight = 1;
             path.deformationWeight = chosenNode.deformationWeight;
-            path.entryAdvance = chosenNode.entryAdvance;
+            advance = chosenNode.entryAdvance;
+            count = 1;
+            skipped = true;
+        } else if (advance > 0) {
+            skipped = sps_advance_entry(entry, chosenNode, advance);
+        }
+        if (movingEntry) {
+            // Until advance is consumed, predict the join on the current exit.
+            // Once a following node is available, the same walk moves it along
+            // that segment instead. No skipped nodes enter the finished path.
+            SpsDeformNode join = entry;
+            join.world += join.forward * advance;
+            if (step > 1) path.deformationWeight = sps_deformation_weight(
+                join.world - sps_path_worlds[0],
+                sps_path_forwards[0],
+                path.plugUp,
+                path.worldLength,
+                worldRadius,
+                worldBaseActivationRadiusOverride,
+                join.flags
+            );
+            join.deformationWeight = min(join.deformationWeight, path.deformationWeight);
+            curveWeight = 1;
+            sps_store_path_node(
+                1,
+                join,
+                rootNode,
+                path.worldLength,
+                curveWeight
+            );
+            path.firstSocketUp = join.up;
+            path.terminalAdvance = advance;
+            traveledDistance = length(join.world - sps_path_worlds[0]);
+            segmentStart = join;
+        }
+        if (!skipped) {
+            traveledDistance += length(chosenNode.world - segmentStart.world);
+            sps_store_path_node(
+                ++count,
+                chosenNode,
+                segmentStart,
+                path.worldLength,
+                curveWeight
+            );
         }
         previous = sockets[chosen];
         previousNode = chosenNode;

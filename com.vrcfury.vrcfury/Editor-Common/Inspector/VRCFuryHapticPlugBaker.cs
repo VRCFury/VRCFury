@@ -146,7 +146,14 @@ namespace VF.Inspector {
                         }
                         SpsConfigurer.ExtendBoundsForSps(renderer, localSpace, worldLength);
 
-                        var spsBaked = SpsBaker.Bake(renderer, localSpace, activeFromMask, spsBlendshapes);
+                        var spsBaked = SpsBaker.Bake(
+                            renderer,
+                            localSpace,
+                            activeFromMask,
+                            spsBlendshapes,
+                            radiusCurve,
+                            worldRadius / scale
+                        );
 
                         var spsCopies = new Dictionary<Material, Material>();
                         Material ConfigureMaterial(int slotNum, Material mat) {

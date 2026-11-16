@@ -269,7 +269,7 @@ namespace VF.Tests {
 #endif
 
         [Test]
-        public void RadiusOffsetMaterialUsesProfileWithoutChangingTheBakedRadius() {
+        public void RadiusSamplingOnlyAnimatesSenderScaleAndPreservesBakedRadius() {
 #if !VRCSDK_HAS_MATERIAL_CONTACTS
             Assert.Ignore("SPS deformation requires material contact support.");
 #endif
@@ -280,11 +280,12 @@ namespace VF.Tests {
             SpsPatcher.Patch(material, false, false);
             material.SetFloat(SpsConfigurer.SpsBakedRadius, 0.06f);
             renderer.renderer.sharedMaterial = material;
-            Assert.That(material.GetFloat(SpsConfigurer.SpsRadiusOffsetMultiplier), Is.EqualTo(1));
             for (var pass = 0; pass < material.passCount; pass++) UnityEditor.ShaderUtil.CompilePass(material, pass, true);
             Assert.That(UnityEditor.ShaderUtil.ShaderHasError(material.shader), Is.False);
             Start();
-            var block = new MaterialPropertyBlock();
+            Assert.That(assets.OfType<AnimatorController>().Single().animationClips
+                .SelectMany(UnityEditor.AnimationUtility.GetCurveBindings)
+                .Any(binding => binding.propertyName.StartsWith("material.")), Is.False);
             var parameterCount = fx.parameters.Length;
             foreach (var resize in new[] { 0.5f, 1f, 3f }) foreach (var distance in new[] { 0f, 0.5f, 1f, 1.5f }) {
                 root.transform.localScale = Vector3.one * (2 * resize);
@@ -292,13 +293,8 @@ namespace VF.Tests {
                 SetMergedProximity(1);
                 playable.SetFloat(mergedParameterName + "_PointSeparation", distance * bake.worldLength);
                 for (var i = 0; i < 20; i++) graph.Evaluate(1f / 60);
-                renderer.renderer.GetPropertyBlock(block);
-                var multiplier = block.GetFloat(SpsConfigurer.SpsRadiusOffsetMultiplier);
-                Assert.That(multiplier, Is.EqualTo(Mathf.Clamp01(1 - distance)).Within(0.0001f));
                 Assert.That(material.GetFloat(SpsConfigurer.SpsBakedRadius), Is.EqualTo(0.06f));
-                Assert.That(0.06f * resize * multiplier,
-                    Is.EqualTo(Mathf.Max(0, bake.radiusCurve.Evaluate(distance)) * bake.bakeRoot.worldScale.x).Within(0.0001f));
-                Assert.That(bake.mainSender.worldScale.y, Is.GreaterThan(0), "A zero material radius must not make the sender matrix singular");
+                Assert.That(bake.mainSender.worldScale.y, Is.GreaterThan(0), "A zero sampled radius must not make the sender matrix singular");
             }
             Assert.That(fx.parameters.Length, Is.EqualTo(parameterCount));
         }

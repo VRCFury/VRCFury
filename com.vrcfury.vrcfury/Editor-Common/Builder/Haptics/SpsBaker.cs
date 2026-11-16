@@ -5,11 +5,15 @@ using VF.Utils;
 
 namespace VF.Builder.Haptics {
     internal static class SpsBaker {
+        internal const int RadiusProfileSamples = 256;
+
         public static Texture2D Bake(
             Renderer renderer,
             Transform origin,
             float[] activeFromMask,
-            ICollection<string> spsBlendshapes = null
+            ICollection<string> spsBlendshapes,
+            AnimationCurve radiusCurve,
+            float localRadius
         ) {
             var bakedMesh = MeshBaker.BakeMesh(renderer, origin, true);
             if (bakedMesh == null)
@@ -55,6 +59,11 @@ namespace VF.Builder.Haptics {
                         );
                     }
                 }
+            }
+
+            for (var i = 0; i < RadiusProfileSamples; i++) {
+                var depth = i / (RadiusProfileSamples - 1f);
+                baked.WriteFloat(Mathf.Max(radiusCurve.Evaluate(depth), 0) / localRadius);
             }
 
             var tex = baked.Save();

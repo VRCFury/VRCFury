@@ -19,6 +19,15 @@ inline float3 sps_bake_read_float3(uint index) {
     );
 }
 
+// Radius relative to the plug's overall radius.
+inline float sps_bake_radius_multiplier(float depth) {
+    uint count = sps_to_uint(_SPS_RadiusProfileSamples);
+    uint vertices = sps_to_uint(_SPS_BlendshapeVertCount);
+    uint offset = 1 + vertices * 10 + (vertices * 9 + 1) * sps_to_uint(_SPS_BlendshapeCount);
+    uint sample = (uint)round(saturate(depth) * (count - 1));
+    return sps_bake_read_float(offset + sample);
+}
+
 inline void SpsApplyBlendshape(uint vertexId, inout float3 position, inout float3 normal, inout float3 tangent, float blendshapeValue, int blendshapeId) {
     const int vertCount = sps_to_uint(_SPS_BlendshapeVertCount);
     const uint bytesPerBlendshapeVertex = 9;
