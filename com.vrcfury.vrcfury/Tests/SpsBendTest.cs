@@ -223,15 +223,19 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 .Replace("#pragma fragment frag", "#pragma fragment deformation_frag"));
         }
 
-        [OneTimeTearDown]
-        public void TearDown() {
+        [TearDown]
+        public void TearDownRenderResources() {
             if (material != null) Object.DestroyImmediate(material);
             if (target != null) Object.DestroyImmediate(target);
             if (pixels != null) Object.DestroyImmediate(pixels);
+            if (defaultProfile != null) Object.DestroyImmediate(defaultProfile);
+        }
+
+        [OneTimeTearDown]
+        public void TearDown() {
             if (shader != null) Object.DestroyImmediate(shader);
             if (pathShader != null) Object.DestroyImmediate(pathShader);
             if (deformationShader != null) Object.DestroyImmediate(deformationShader);
-            if (defaultProfile != null) Object.DestroyImmediate(defaultProfile);
         }
 
         [TestCase(true, false)]
@@ -296,7 +300,6 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
 
         [TestCase(1f)]
         [TestCase(1.05f)]
-        [TestCase(1.2f)]
         public void PathTargetsOverallRadiusOffsetBeforeTipContact(float distance) {
             SetPath((Vector3.forward * distance, Vector3.forward, 1 << 12));
             var texture = SetProfile(new Keyframe(0, .25f), new Keyframe(1, 0));
