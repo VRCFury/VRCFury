@@ -32,7 +32,7 @@ namespace VF.Builder.Haptics {
                     && m.GetParameters()[3].IsOut);
         }
 
-        private const string HashBuster = "34";
+        private const string HashBuster = "38";
         private static readonly Regex ProgramStartRegex = GetRegex(@"\G(?:^|\n)[ \t]*(CGPROGRAM|HLSLPROGRAM)[ \t]*(?:\n|$)");
         private static readonly Regex CgProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDCG[ \t]*(?:\n|$)");
         private static readonly Regex HlslProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDHLSL[ \t]*(?:\n|$)");
@@ -94,14 +94,15 @@ namespace VF.Builder.Haptics {
             var pathToSps = GetPathToSps();
             var sourcePath = ResolveShaderSource(shader);
             var hash = GetPatchHash(sourcePath, pathToSps, keepImports, hasBlendshapes, parentHash);
+            var family = shader.name.IndexOf("poiyomi", StringComparison.OrdinalIgnoreCase) >= 0 ? "Poiyomi/" : "";
 
             string newShaderName;
             if (shader.name.StartsWith("Hidden/Locked/")) {
                 // Special case for Poiyomi
                 // This prevents Poiyomi from complaining that the mat isn't locked and bailing on the build
-                newShaderName = $"Hidden/Locked/SPSPatched/{hash}";
+                newShaderName = $"Hidden/Locked/SPSPatched/{family}{hash}";
             } else {
-                newShaderName = $"Hidden/SPSPatched/{hash}";
+                newShaderName = $"Hidden/SPSPatched/{family}{hash}";
             }
             var alreadyExists = Shader.Find(newShaderName);
             if (alreadyExists != null && !ShaderUtil.ShaderHasError(alreadyExists)) {
