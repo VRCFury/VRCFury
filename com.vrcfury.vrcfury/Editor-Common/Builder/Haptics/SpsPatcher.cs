@@ -32,7 +32,7 @@ namespace VF.Builder.Haptics {
                     && m.GetParameters()[3].IsOut);
         }
 
-        private const string HashBuster = "33";
+        private const string HashBuster = "34";
         private static readonly Regex ProgramStartRegex = GetRegex(@"\G(?:^|\n)[ \t]*(CGPROGRAM|HLSLPROGRAM)[ \t]*(?:\n|$)");
         private static readonly Regex CgProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDCG[ \t]*(?:\n|$)");
         private static readonly Regex HlslProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDHLSL[ \t]*(?:\n|$)");

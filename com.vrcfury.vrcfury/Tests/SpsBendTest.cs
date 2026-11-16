@@ -273,6 +273,44 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             }
         }
 
+        [TestCase(1.2f, 1f)]
+        [TestCase(1f, 1f)]
+        [TestCase(.975f, .8125f)]
+        [TestCase(.95f, .625f)]
+        [TestCase(.9f, .25f)]
+        [TestCase(.8f, .25f)]
+        public void RadiusOffsetBlendsFromOverallRadiusToProfileOverFirstTenPercent(float distance, float multiplier) {
+            foreach (var length in new[] { 1f, 2.5f }) {
+                Read(Vector3.forward * distance * length, Vector3.forward, captureLength: length);
+                var texture = SetProfile(new Keyframe(0, .25f), new Keyframe(.99f, .25f), new Keyframe(1, 0));
+                try {
+                    material.SetFloat("_Length", length);
+                    material.SetFloat("_Operation", 4);
+                    material.SetFloat("_Flags", 1 << 12);
+                    Assert.That(Render().g, Is.EqualTo(.02f * multiplier).Within(.00001f));
+                } finally {
+                    Object.DestroyImmediate(texture);
+                }
+            }
+        }
+
+        [TestCase(1f)]
+        [TestCase(1.05f)]
+        [TestCase(1.2f)]
+        public void PathTargetsOverallRadiusOffsetBeforeTipContact(float distance) {
+            SetPath((Vector3.forward * distance, Vector3.forward, 1 << 12));
+            var texture = SetProfile(new Keyframe(0, .25f), new Keyframe(1, 0));
+            try {
+                material.SetFloat("_Operation", 9);
+                var result = Render();
+                Assert.That(result.a, Is.EqualTo(1));
+                Assert.That(result.g, Is.EqualTo(.02f).Within(.00001f));
+            } finally {
+                Object.DestroyImmediate(texture);
+                material.shader = shader;
+            }
+        }
+
         [TestCase(.2f, false, false, 1f, .02f)]
         [TestCase(-.1f, false, false, 1f, .02f)]
         [TestCase(.2f, true, false, 1f, .02f)]
@@ -296,7 +334,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             var curve = ProfileCurve(keys);
             float Sample(float depth) {
                 var nearest = Mathf.RoundToInt(Mathf.Clamp01(depth) * (SpsBaker.RadiusProfileSamples - 1));
-                return curve.Evaluate(nearest / (SpsBaker.RadiusProfileSamples - 1f));
+                return Mathf.Lerp(1, curve.Evaluate(nearest / (SpsBaker.RadiusProfileSamples - 1f)), Mathf.Clamp01((1 - depth) / .1f));
             }
             var entranceRadius = radius * Sample(Mathf.Abs(entranceZ));
             var entrance = new Vector3(0, entranceRadius, entranceZ);

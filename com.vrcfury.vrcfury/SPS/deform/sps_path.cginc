@@ -161,7 +161,10 @@ bool sps_prepare_socket(
         // Estimate once from the processed previous node. Pending entrance
         // advance skips part of this segment before the plug joins it.
         float profileDistance = traveledDistance + max(length(socket.world - previous.world) - advance, 0);
-        float multiplier = sps_bake_radius_multiplier(profileDistance / worldLength);
+        float profileDepth = profileDistance / worldLength;
+        // Use overall radius at/beyond the tip, fading to the profile as insertion begins.
+        float profileWeight = saturate((1 - profileDepth) / SPS_RADIUS_PROFILE_FADE_DEPTH);
+        float multiplier = lerp(1, sps_bake_radius_multiplier(profileDepth), profileWeight);
         float offset = min(worldRadius * multiplier, socket.radiusOffsetLimit);
         node.world += socket.up * offset;
     }

@@ -62,4 +62,7 @@
 // Maximum number of socket entrances/stops followed in one deformation path.
 #define SPS_CHAIN_SOCKETS_MAX 8
 
+// Blend radius offsets from overall radius at the tip to the profile at this insertion depth, in plug lengths.
+#define SPS_RADIUS_PROFILE_FADE_DEPTH 0.1
+
 #endif
