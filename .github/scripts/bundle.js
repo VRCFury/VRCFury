@@ -168,6 +168,9 @@ async function rmdir(path) {
         await fs.rm(path, {recursive: true});
     }
 }
+async function packageEntries(dir) {
+    return (await fs.readdir(dir)).filter(name => name !== 'Tests' && name !== 'Tests.meta');
+}
 async function createTar(dir, outputFilename) {
     await tarCreate({
         gzip: true,
@@ -176,7 +179,7 @@ async function createTar(dir, outputFilename) {
         portable: true,
         noMtime: true,
         prefix: 'package/'
-    }, await fs.readdir(dir));
+    }, await packageEntries(dir));
 }
 async function createZip(dir, outputFilename) {
     const output = fsPlain.createWriteStream(outputFilename);
@@ -189,7 +192,14 @@ async function createZip(dir, outputFilename) {
         once(archive, 'error').then(([error]) => Promise.reject(error))
     ]);
     archive.pipe(output);
-    archive.directory(dir, false);
+    for (const name of await packageEntries(dir)) {
+        const source = path.join(dir, name);
+        if ((await fs.stat(source)).isDirectory()) {
+            archive.directory(source, name);
+        } else {
+            archive.file(source, { name });
+        }
+    }
     await archive.finalize();
     await streamClosed;
 }
