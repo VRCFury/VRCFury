@@ -146,7 +146,8 @@ namespace VF.Tests {
             SetMergedProximity(1);
             for (var i = 0; i < 4; i++) graph.Evaluate(1f / 60);
             playable.SetFloat(enabled, 0);
-            for (var i = 0; i < 2; i++) graph.Evaluate(1f / 60);
+            // Decode the initially-on object's delta, then propagate the gate and radius reset.
+            for (var i = 0; i < 3; i++) graph.Evaluate(1f / 60);
             var position = fx.parameters.Single(p => p.name.EndsWith("Test - Socket position"));
             Assert.That(playable.GetFloat(position), Is.EqualTo(1));
             Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(bake.worldRadius).Within(0.0001f));

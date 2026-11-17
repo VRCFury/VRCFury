@@ -3081,7 +3081,8 @@ namespace VF.Tests {
             if (useMenu) Assert.That(playable.GetFloat("Socket active output"), Is.EqualTo(1));
             Assert.That(playable.GetFloat("Injected depth"), Is.EqualTo(-0.4f).Within(0.002f));
             playable.SetFloat(useMenu ? menuToggle : parentEnabled, 0);
-            Evaluate(3);
+            // Initially-on objects need a frame to decode their activation delta before gating calculations.
+            Evaluate(4);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
             Evaluate(4);
             if (nonUniform) Assert.That(relocatedRoot.activeSelf, Is.False);
@@ -3209,7 +3210,8 @@ namespace VF.Tests {
                 Assert.That(playable.GetFloat("Injected" + source), Is.EqualTo(active).Within(0.002f));
             }
             playable.SetFloat(parentEnabled, 0);
-            Evaluate(3);
+            // Include activation-delta decoding before the calculation gate and its dependent outputs.
+            Evaluate(4);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
             Assert.That(playable.GetFloat(position), Is.EqualTo(1).Within(0.001f));
             foreach (var (source, _, disabled) in injected) {
