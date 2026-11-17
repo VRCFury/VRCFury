@@ -70,8 +70,11 @@ namespace VF.Service {
             VFAParam GetSelf(VFGameObject obj) {
                 return selfEnabled.GetOrCreate(
                     obj,
-                    () => fx.CreateUniqueFloat($"IsObjectEnabledService/{GetPath(obj)}/Self", obj.active)
+                    () => fx.CreateUniqueFloat($"IsObjectEnabledService/{GetPath(obj)}/SelfDelta")
                 );
+            }
+            BlendtreeMath.Condition IsEnabled(VFGameObject obj) {
+                return BlendtreeMath.GreaterThan(GetSelf(obj), obj.active ? -1 : 0);
             }
 
             foreach (var pair in hierarchyEnabled.ToArray()) {
@@ -98,13 +101,12 @@ namespace VF.Service {
                     output.SetDefault(true);
                     continue;
                 }
-                if (toggledObjects.Count == 1) {
+                if (toggledObjects.Count == 1 && !toggledObjects[0].active) {
                     rewrites[output.name] = GetSelf(toggledObjects[0]).name;
                     continue;
                 }
 
-                var condition = toggledObjects.Select(GetSelf)
-                    .Select(self => BlendtreeMath.GreaterThan(self, 0))
+                var condition = toggledObjects.Select(IsEnabled)
                     .Aggregate(BlendtreeMath.True(), (a, b) => a.And(b));
                 math.SetValueWithConditions(
                     (output.MakeSetter(1), condition),
@@ -123,7 +125,17 @@ namespace VF.Service {
                     if (animatedObject == null) continue;
                     if (!byObject.TryGetValue(animatedObject, out var enabled)) continue;
 
-                    clip.SetAap(enabled.name, curve.Clone());
+                    // Store changes from the initial state, so a zero-weight animation means
+                    // "unchanged" even after AAP weight protection adds its zero setter.
+                    // In particular, an inactive PhysBone reset must not disable an initially-on object.
+                    var delta = curve.Clone();
+                    if (animatedObject.active) {
+                        delta.MutateKeys(key => {
+                            key.value -= 1;
+                            return key;
+                        });
+                    }
+                    clip.SetAap(enabled.name, delta);
                 }
             }
 

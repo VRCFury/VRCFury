@@ -1,6 +1,7 @@
 using VF.Injector;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace VF.Service {
     /**
@@ -23,7 +24,9 @@ namespace VF.Service {
             var buffer3 = blendtreeMath.Buffer(buffer2);
             
             var resetClip = clipFactory.NewClip("Physbone Reset");
-            resetClip.SetEnabled(physBone, false);
+            foreach (var component in physBone.GetComponentsInSelfAndChildren<VRCPhysBone>()) {
+                resetClip.SetEnabled(component, false);
+            }
 
             directTree.Add(
                 BlendtreeMath.GreaterThan(buffer1, 0)

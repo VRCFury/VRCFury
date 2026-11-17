@@ -24,8 +24,10 @@ namespace VF.Inspector {
                 if (!expanded) return;
 
                 using (new EditorGUI.IndentLevelScope()) {
+                    var properties = MaterialEditor.GetMaterialProperties(editor.targets);
+                    MaterialEditor.PrepareMaterialPropertiesForAnimationMode(properties, GUI.enabled);
                     EditorGUI.BeginChangeCheck();
-                    foreach (var property in MaterialEditor.GetMaterialProperties(editor.targets)
+                    foreach (var property in properties
                                  .Where(property => property.name.StartsWith("_SPS_", StringComparison.Ordinal))) {
                         materialEditor.ShaderProperty(property, property.displayName);
                     }
