@@ -128,6 +128,9 @@ namespace VF.Feature {
 
 #if VRCSDK_HAS_FACE_TRACKING
         private bool MigrateBlendshapeVisemesToFaceTracking() {
+            // Native visemes blend their weights; instant mode needs the animator's discrete selection.
+            if (model.instant) return true;
+
             var blendshapeLinks = globals.allFeaturesInRun
                 .OfType<BlendShapeLink>()
                 .ToArray();

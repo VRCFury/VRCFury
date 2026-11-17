@@ -484,6 +484,28 @@ namespace VF.Tests {
             }
         }
 
+        [Test]
+        public void InstantAdvancedVisemesKeepBlendshapeActionsInTheAnimator() {
+            using (var build = new Build()) {
+                var skin = build.Skin("Mouth");
+                var model = NewVisemes();
+                model.instant = true;
+                var action = new BlendShapeAction {
+                    renderer = skin,
+                    allRenderers = false,
+                    blendShape = "Smile",
+                    blendShapeValue = 65
+                };
+                model.state_aa.actions.Add(action);
+                Assert.That(build.MigrateVisemes(model), Is.True, "Instant visemes must retain their animator output");
+                Assert.That(model.state_aa.actions, Is.EqualTo(new[] { action }));
+                build.Run();
+                Assert.That(build.avatar.faceTrackingBlendshapesSetList, Is.Null.Or.Empty);
+                Assert.That(build.avatar.lipSync,
+                    Is.Not.EqualTo(VRC.SDKBase.VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShapeFaceTracking));
+            }
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void LegacyVisemeMigrationPreservesExplicitSilence(bool onlySilence) {
