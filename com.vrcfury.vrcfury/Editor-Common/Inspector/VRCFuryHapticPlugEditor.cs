@@ -6,6 +6,7 @@ using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 using VF.Builder;
 using VF.Builder.Haptics;
@@ -556,23 +557,33 @@ namespace VF.Inspector {
             public AnimationCurve radiusCurve;
             public string error;
             public long nonTransformVersion;
+            public Vector3 worldScale;
             public (Transform transform, Matrix4x4 matrix)[] dependencies = Array.Empty<(Transform, Matrix4x4)>();
         }
 
         private static readonly ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache> gizmoCache
             = new ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache>();
         
-        internal static PlugSizeDetector.SizeResult GetGizmoSize(VRCFuryHapticPlug plug, out string error) {
+        internal static PlugSizeDetector.SizeResult GetGizmoSize(
+            VRCFuryHapticPlug plug,
+            out string error,
+            bool includeRadiusCurve = false
+        ) {
             var transform = plug.owner();
+            var worldToPlug = plug.transform.worldToLocalMatrix;
             
             var cache = gizmoCache.GetOrCreateValue(plug);
             if (!cache.initialized || cache.nonTransformVersion != EditorChanges.NonTransformVersion
-                || cache.dependencies.Any(d => d.transform == null || d.transform.localToWorldMatrix != d.matrix)) {
+                || cache.worldScale != transform.worldScale
+                || cache.dependencies.Any(d => d.transform == null || (cache.error != null
+                    ? d.transform.localToWorldMatrix : worldToPlug * d.transform.localToWorldMatrix) != d.matrix)
+                || (includeRadiusCurve && cache.radiusCurve == null && cache.error == null)) {
                 // Moving transforms cannot change which renderers the search selects.
                 var renderers = cache.nonTransformVersion == EditorChanges.NonTransformVersion ? cache.size?.renderers : null;
                 cache.initialized = true;
                 cache.dependencies = new[] { (plug.transform, plug.transform.localToWorldMatrix) };
                 cache.nonTransformVersion = EditorChanges.NonTransformVersion;
+                cache.worldScale = transform.worldScale;
                 cache.size = null;
                 cache.radiusCurve = null;
                 cache.error = null;
@@ -582,17 +593,19 @@ namespace VF.Inspector {
                         cache.size = renderers != null
                             ? PlugSizeDetector.GetWorldSize(copy, renderers)
                             : PlugSizeDetector.GetWorldSize(copy);
-                        // Renderer/bone motion changes the sampled mesh, but unrelated scene motion does not.
-                        cache.dependencies = cache.size.renderers.SelectMany(renderer => renderer is SkinnedMeshRenderer skin
-                                ? skin.bones.Append(skin.transform).Append(skin.rootBone)
-                                : new[] { renderer.transform })
-                            .Prepend(plug.transform).Where(t => t != null).Distinct()
-                            .Select(t => (t, t.localToWorldMatrix)).ToArray();
-                        cache.radiusCurve = PlugRadiusCurve.GetRadiusCurve(
+                        if (includeRadiusCurve) cache.radiusCurve = PlugRadiusCurve.GetRadiusCurve(
                             copy,
                             cache.size,
                             transform.worldScale.x
                         );
+                        // Track the posed geometry relative to the plug. Moving the whole avatar
+                        // does not change its size/profile; weighted skins follow bones, not the renderer object.
+                        cache.dependencies = cache.size.renderers.SelectMany(renderer => renderer is SkinnedMeshRenderer skin
+                                && skin.sharedMesh != null && skin.sharedMesh.HasVertexAttribute(VertexAttribute.BlendWeight)
+                                ? skin.bones.Append(skin.rootBone)
+                                : new[] { renderer.transform })
+                            .Prepend(plug.transform).Where(t => t != null).Distinct()
+                            .Select(t => (t, worldToPlug * t.localToWorldMatrix)).ToArray();
                     } finally {
                         UnityEngine.Object.DestroyImmediate(cloneObject);
                     }
@@ -608,7 +621,8 @@ namespace VF.Inspector {
         [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Pickable)]
         static void DrawGizmo(VRCFuryHapticPlug plug, GizmoType gizmoType) {
             var transform = plug.owner();
-            var size = GetGizmoSize(plug, out var error);
+            var isSelected = transform.IsSelected();
+            var size = GetGizmoSize(plug, out var error, includeRadiusCurve: isSelected);
             Vector3 worldRoot;
             Vector3 worldForward;
             float worldLength;
@@ -627,8 +641,6 @@ namespace VF.Inspector {
                 worldRadius = size.worldRadius;
                 color = new Color(1f, 0.5f, 0);
             }
-
-            var isSelected = plug.owner().IsSelected();
 
             var worldEnd = worldRoot + worldForward * worldLength;
             VRCFuryGizmoUtils.DrawCappedCylinder(worldRoot, worldEnd, worldRadius, color);

@@ -34,7 +34,12 @@ namespace VF.Utils {
                         break;
                     }
                     stream.GetChangeGameObjectOrComponentPropertiesEvent(i, out var change);
-                    if (!(EditorUtility.InstanceIDToObject(change.instanceId) is Transform)) {
+#if UNITY_6000_3_OR_NEWER
+                    var obj = EditorUtility.EntityIdToObject(change.entityId);
+#else
+                    var obj = EditorUtility.InstanceIDToObject(change.instanceId);
+#endif
+                    if (!(obj is Transform)) {
                         transformsOnly = false;
                         break;
                     }

@@ -84,6 +84,7 @@ namespace VF.Tests {
         [TestCase(false)]
         [TestCase(true)]
         public void GizmoTracksRendererAndBoneMovementButIgnoresUnrelatedTransforms(bool skinned) {
+            var root = new GameObject("Avatar");
             var obj = new GameObject("Plug");
             var mesh = new Mesh {
                 vertices = new[] {
@@ -97,6 +98,9 @@ namespace VF.Tests {
             var bone = new GameObject("Bone");
             var unrelated = new GameObject("Unrelated");
             try {
+                obj.transform.SetParent(root.transform, false);
+                renderObject.transform.SetParent(root.transform, false);
+                bone.transform.SetParent(root.transform, false);
                 Renderer renderer;
                 if (skinned) {
                     var skin = renderObject.AddComponent<SkinnedMeshRenderer>();
@@ -117,9 +121,21 @@ namespace VF.Tests {
                 plug.autoRenderer = false;
                 plug.useBoneMask = false;
                 plug.configureTpsMesh.Add(renderer);
-                var size = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out var error);
+                var size = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out var error, includeRadiusCurve: true);
                 Assert.That(error, Is.Null);
                 Assert.That(size.worldLength, Is.EqualTo(.2f).Within(.00001f));
+                root.transform.SetPositionAndRotation(Vector3.one, Quaternion.Euler(20, 30, 40));
+                EditorChanges.Changed(transformsOnly: true);
+                Assert.That(VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out _), Is.SameAs(size),
+                    "Moving the avatar rigidly must not remeasure its mesh");
+                root.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                if (skinned) {
+                    renderObject.transform.position = Vector3.left;
+                    EditorChanges.Changed(transformsOnly: true);
+                    Assert.That(VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out _), Is.SameAs(size),
+                        "Moving the renderer object does not move its weighted bones");
+                    renderObject.transform.position = Vector3.zero;
+                }
                 unrelated.transform.position = Vector3.one;
                 EditorChanges.Changed(transformsOnly: true);
                 Assert.That(VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out _), Is.SameAs(size));
@@ -147,6 +163,7 @@ namespace VF.Tests {
                 Assert.That(edited.worldLength, Is.EqualTo(.45f).Within(.00001f),
                     "Editing mesh data must invalidate the cached pose as well as the measurements");
             } finally {
+                Object.DestroyImmediate(root);
                 Object.DestroyImmediate(obj);
                 Object.DestroyImmediate(renderObject);
                 Object.DestroyImmediate(bone);
