@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Rendering;
 using VF.Exceptions;
 using VF.Utils;
 using VRC.Dynamics;
@@ -45,7 +46,7 @@ namespace VF.Builder.Haptics {
             var mesh = skin.GetMutableMesh("SPS Autorig");
             if (mesh == null) throw new Exception("Missing mesh");
 
-            if (skin.bones.Length == 0 || mesh.boneWeights.Length == 0) {
+            if (skin.bones.Length == 0 || !mesh.HasVertexAttribute(VertexAttribute.BlendWeight)) {
                 var mainBone = GameObjects.Create("SpsMainBone", skin.owner());
                 mesh.boneWeights = mesh.vertices.Select(v => new BoneWeight { weight0 = 1 }).ToArray();
                 mesh.bindposes = new[] { Matrix4x4.identity };
@@ -83,7 +84,7 @@ namespace VF.Builder.Haptics {
             mesh.bindposes = mesh.bindposes.Concat(bindPoses).ToArray();
             var weights = mesh.boneWeights;
             var bakedVertexCount = bake?.vertices?.Length ?? 0;
-            for (var i = 0; i < mesh.vertices.Length && i < bakedVertexCount; i++) {
+            for (var i = 0; i < mesh.vertexCount && i < bakedVertexCount; i++) {
                 var bakedVert = bake.vertices[i];
                 if (bakedVert.z < 0) continue;
                 var boneNum = bakedVert.z / localLength * boneCount;

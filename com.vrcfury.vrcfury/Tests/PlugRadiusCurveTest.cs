@@ -45,6 +45,21 @@ public class PlugRadiusCurveTest {
         for (var i = 0; i <= 1000; i++) Assert.That(curve.Evaluate(i / 1000f), Is.InRange(-0.000001f, 0.201f));
     }
 
+    [TestCase(0.1f)]
+    [TestCase(0f)]
+    public void DenseUnmaskedProfilesKeepTheirShapeAndAreDeterministic(float endRadius) {
+        var rings = Enumerable.Range(0, 2049)
+            .Select(i => (i / 2048f, Mathf.Lerp(.1f, endRadius, i / 2048f)))
+            .ToArray();
+        var curve = Fit(rings);
+        Assert.That(Fit(rings).keys, Is.EqualTo(curve.keys));
+        for (var i = 0; i <= 1000; i++) {
+            var depth = i / 1000f;
+            Assert.That(curve.Evaluate(depth),
+                Is.EqualTo(i == 1000 ? 0 : Mathf.Lerp(.1f, endRadius, depth)).Within(.00001f));
+        }
+    }
+
     [Test]
     public void DetailedMeshProducesAtMostTwentyFourProfileSamples() {
         var rings = Enumerable.Range(0, 65)

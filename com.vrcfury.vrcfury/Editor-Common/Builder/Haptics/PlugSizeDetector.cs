@@ -74,7 +74,7 @@ namespace VF.Builder.Haptics {
             if (renderers.Count == 0) return null;
             var inverseWorldRotation = Quaternion.Inverse(worldRotation);
 
-            var allLocalVerts = new List<Vector3>();
+            var length = 0f;
             var radii = new List<float>();
             var matsUsed = new VFMultimapSet<VFGameObject, int>();
             foreach (var renderer in renderers) {
@@ -85,11 +85,13 @@ namespace VF.Builder.Haptics {
                 var localToWorld = renderer.transform.localToWorldMatrix;
                 var usedVertices = new bool[bakedMesh.vertices.Length];
                 for (var i = 0; i < bakedMesh.vertices.Length; i++) {
+                    var weight = mask.GetOrDefault(i, 1);
+                    if (!(weight > 0)) continue;
                     var v = inverseWorldRotation * (localToWorld.MultiplyPoint3x4(bakedMesh.vertices[i]) - worldPosition);
-                    if (!(mask.GetOrDefault(i, 1) > 0 && v.z > 0)) continue;
+                    if (!(v.z > 0)) continue;
                     usedVertices[i] = true;
-                    allLocalVerts.Add(v);
-                    if (mask.GetOrDefault(i, 1) >= PlugMaskGenerator.MinimumRadiusWeight) {
+                    length = Mathf.Max(length, v.z);
+                    if (weight >= PlugMaskGenerator.MinimumRadiusWeight) {
                         radii.Add(Vector3.Cross(v, Vector3.forward).magnitude);
                     }
                 }
@@ -112,15 +114,8 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            var length = allLocalVerts
-                .Select(v => v.z)
-                .DefaultIfEmpty(0)
-                .Max();
-            var radius = radii
-                .OrderBy(m => m)
-                .Where((m, i) => i <= radii.Count*0.75)
-                .DefaultIfEmpty(0)
-                .Max();
+            radii.Sort();
+            var radius = radii.Count == 0 ? 0 : radii[(int)(radii.Count * 0.75)];
 
             if (length <= 0 || radius <= 0) return null;
 

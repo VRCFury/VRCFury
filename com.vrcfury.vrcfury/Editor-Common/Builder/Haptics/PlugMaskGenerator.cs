@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using UnityEngine;
 using VF.Component;
@@ -14,33 +13,33 @@ namespace VF.Builder.Haptics {
         public static float[] GetMask(Renderer renderer, VRCFuryHapticPlug plug) {
             var mesh = renderer.GetMesh();
             if (mesh == null) return null;
-            
-            var boneWeights = mesh.boneWeights;
-            var vertices = mesh.vertices;
-            var uvs = mesh.uv;
             var textureMask = MakeReadable(plug.textureMask?.Get());
-
-            ISet<int> includedBoneIds = ImmutableHashSet<int>.Empty;
+            if (!plug.useBoneMask && textureMask == null) {
+                return Enumerable.Repeat(1f, mesh.vertexCount).ToArray();
+            }
+            
+            var includedBoneIds = new HashSet<int>();
             if (plug.useBoneMask && renderer is SkinnedMeshRenderer skin) {
                 var bones = skin.bones;
                 VFGameObject firstBone = plug.owner();
-                while (firstBone != null && !includedBoneIds.Any()) {
-                    includedBoneIds = firstBone.GetSelfAndAllChildren()
+                while (firstBone != null && includedBoneIds.Count == 0) {
+                    includedBoneIds = new HashSet<int>(firstBone.GetSelfAndAllChildren()
                         .Select(bone => Array.IndexOf(bones, (Transform)bone))
-                        .Where(id => id >= 0)
-                        .ToImmutableHashSet();
+                        .Where(id => id >= 0));
                     firstBone = firstBone.parent;
                 }
             }
 
-            float[] output = new float[vertices.Length];
-            for (var i = 0; i < vertices.Length; i++) {
+            var boneWeights = includedBoneIds.Count > 0 ? mesh.boneWeights : Array.Empty<BoneWeight>();
+            var uvs = textureMask != null ? mesh.uv : Array.Empty<Vector2>();
+            float[] output = new float[mesh.vertexCount];
+            for (var i = 0; i < output.Length; i++) {
                 var activeByWeight = boneWeights.Length == 0
                     ? 1f
                     : GetWeight(boneWeights.GetOrDefault(i), includedBoneIds);
                 var activeByTexture = 1f;
-                var uv = uvs.GetOrDefault(i, Vector2.zero);
                 if (textureMask != null) {
+                    var uv = uvs.GetOrDefault(i, Vector2.zero);
                     var p = textureMask.GetPixelBilinear(uv.x, uv.y);
                     activeByTexture = 1 - Math.Min(p.maxColorComponent, p.a);
                 }
@@ -52,7 +51,6 @@ namespace VF.Builder.Haptics {
         }
 
         private static float GetWeight(BoneWeight boneWeight, ICollection<int> boneIds) {
-            if (boneIds.Count == 0) return 1;
             var weightedToBone = 0f;
             if (boneIds.Contains(boneWeight.boneIndex0)) weightedToBone += boneWeight.weight0;
             if (boneIds.Contains(boneWeight.boneIndex1)) weightedToBone += boneWeight.weight1;

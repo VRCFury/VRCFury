@@ -124,12 +124,28 @@ namespace VF.Tests {
                 EditorChanges.Changed(transformsOnly: true);
                 Assert.That(VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out _), Is.SameAs(size));
 
+                // Moving just the marker must reuse the posed mesh but recompute its local measurements.
+                obj.transform.position = Vector3.forward * .05f;
+                EditorChanges.Changed(transformsOnly: true);
+                var shifted = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out error);
+                Assert.That(error, Is.Null);
+                Assert.That(shifted.worldLength, Is.EqualTo(.15f).Within(.00001f));
+
                 (skinned ? bone : renderObject).transform.position = Vector3.forward * .1f;
                 EditorChanges.Changed(transformsOnly: true);
                 var moved = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out error);
                 Assert.That(error, Is.Null);
                 Assert.That(moved, Is.Not.SameAs(size));
-                Assert.That(moved.worldLength, Is.EqualTo(.3f).Within(.00001f));
+                Assert.That(moved.worldLength, Is.EqualTo(.25f).Within(.00001f));
+
+                var editedVertices = mesh.vertices;
+                editedVertices[2].z = .4f;
+                mesh.vertices = editedVertices;
+                EditorChanges.Changed();
+                var edited = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out error);
+                Assert.That(error, Is.Null);
+                Assert.That(edited.worldLength, Is.EqualTo(.45f).Within(.00001f),
+                    "Editing mesh data must invalidate the cached pose as well as the measurements");
             } finally {
                 Object.DestroyImmediate(obj);
                 Object.DestroyImmediate(renderObject);

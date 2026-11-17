@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 using VF.Component;
 using VF.Utils;
@@ -21,7 +22,11 @@ namespace VF.Builder.Haptics {
                 return FitSamples(new[] { 0f, 127f / 128, 1f }, new[] { radius, radius, 0f });
             }
             var position = plug.owner().TransformPoint(size.localPosition);
-            var inverseRotation = Quaternion.Inverse(plug.owner().worldRotation * size.localRotation);
+            var worldToPlug = Matrix4x4.TRS(
+                position,
+                plug.owner().worldRotation * size.localRotation,
+                Vector3.one
+            ).inverse;
             const float boundaryTolerance = 0.00001f;
             var vertices = new List<Vector3>();
             var triangles = new List<int>();
@@ -29,10 +34,16 @@ namespace VF.Builder.Haptics {
                 var baked = MeshBaker.BakeMesh(renderer);
                 if (baked == null) continue;
                 var mask = PlugMaskGenerator.GetMask(renderer, plug);
-                var rendererTransform = renderer.transform;
-                var offset = vertices.Count;
-                vertices.AddRange(baked.vertices.Select(v => {
-                    var point = inverseRotation * (rendererTransform.TransformPoint(v) - position);
+                var toPlug = worldToPlug * renderer.localToWorldMatrix;
+                var remap = new int[baked.vertices.Length];
+                for (var i = 0; i < remap.Length; i++) remap[i] = -1;
+                void AddVertex(int index) {
+                    if (remap[index] >= 0) {
+                        triangles.Add(remap[index]);
+                        return;
+                    }
+                    var v = baked.vertices[index];
+                    var point = toPlug.MultiplyPoint3x4(v);
                     point.x /= scale;
                     point.y /= scale;
                     point.z /= size.worldLength;
@@ -40,8 +51,10 @@ namespace VF.Builder.Haptics {
                     // cross-section that lies exactly on the root or tip plane.
                     if (Mathf.Abs(point.z) <= boundaryTolerance) point.z = 0;
                     else if (Mathf.Abs(point.z - 1) <= boundaryTolerance) point.z = 1;
-                    return point;
-                }));
+                    remap[index] = vertices.Count;
+                    triangles.Add(vertices.Count);
+                    vertices.Add(point);
+                }
                 var mesh = renderer.GetMesh();
                 for (var submesh = 0; submesh < mesh.subMeshCount; submesh++) {
                     if (mesh.GetTopology(submesh) != MeshTopology.Triangles) continue;
@@ -51,7 +64,7 @@ namespace VF.Builder.Haptics {
                         if (mask.GetOrDefault(indices[i], 1) < PlugMaskGenerator.MinimumRadiusWeight
                             || mask.GetOrDefault(indices[i + 1], 1) < PlugMaskGenerator.MinimumRadiusWeight
                             || mask.GetOrDefault(indices[i + 2], 1) < PlugMaskGenerator.MinimumRadiusWeight) continue;
-                        for (var j = 0; j < 3; j++) triangles.Add(offset + indices[i + j]);
+                        for (var j = 0; j < 3; j++) AddVertex(indices[i + j]);
                     }
                 }
             }
@@ -61,44 +74,97 @@ namespace VF.Builder.Haptics {
         // Input X/Y are local distances from the plug axis; Z is normalized depth.
         // Slice triangle edges rather than binning vertices: even a sparsely tessellated cone has a profile.
         public static AnimationCurve Fit(Vector3[] vertices, int[] triangles) {
-            var depths = vertices.Select(v => v.z).Where(z => z >= 0 && z <= 1)
-                .Concat(Enumerable.Range(0, 129).Select(i => i / 128f))
-                .Distinct().OrderBy(z => z).ToArray();
-            var extents = new Vector4[depths.Length];
-            void Include(int index, float x, float y) {
-                // Right, left, up, down distances from the plug axis. A missing side contributes 0.
-                ref var extent = ref extents[index];
-                if (x > extent.x) extent.x = x;
-                if (-x > extent.y) extent.y = -x;
-                if (y > extent.z) extent.z = y;
-                if (-y > extent.w) extent.w = -y;
+            var depths = GetSampleDepths(vertices, triangles);
+            var radii = SampleRadii(vertices, triangles, depths);
+            return FitSamples(depths, radii);
+        }
+
+        private static float[] GetSampleDepths(Vector3[] vertices, int[] triangles) {
+            var referenced = new bool[vertices.Length];
+            foreach (var index in triangles) referenced[index] = true;
+            var depthSet = new HashSet<float>();
+            for (var i = 0; i < vertices.Length; i++) {
+                var z = vertices[i].z;
+                if (referenced[i] && z >= 0 && z <= 1) depthSet.Add(z);
             }
-            void Edge(Vector3 a, Vector3 b) {
-                if (a.z > b.z) (a, b) = (b, a);
-                var start = Array.BinarySearch(depths, a.z);
-                if (start < 0) start = ~start;
-                for (var i = start; i < depths.Length && depths[i] <= b.z; i++) {
-                    if (a.z == b.z) {
-                        Include(i, a.x, a.y);
-                        Include(i, b.x, b.y);
-                    } else {
-                        var t = (depths[i] - a.z) / (b.z - a.z);
-                        Include(i, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
+            for (var i = 0; i <= 128; i++) depthSet.Add(i / 128f);
+            var depths = depthSet.ToArray();
+            Array.Sort(depths);
+            return depths;
+        }
+
+        private static float[] SampleRadii(Vector3[] vertices, int[] triangles, float[] depths) {
+            var extents = new Vector4[depths.Length];
+            var segments = new (Vector3 a, Vector3 b, int first, int last)[triangles.Length];
+            var workers = depths.Length >= 1024 && triangles.Length >= 1024
+                ? Math.Min(Environment.ProcessorCount, 8) : 1;
+            // Each directional extreme of a triangle's slice occurs at a slice endpoint (mesh edge).
+            // Repeating a shared edge cannot change a maximum; avoid hashing every triangle edge.
+            void Prepare(int worker) {
+                var firstTriangle = triangles.Length / 3 * worker / workers;
+                var lastTriangle = triangles.Length / 3 * (worker + 1) / workers;
+                for (var i = firstTriangle * 3; i < lastTriangle * 3; i += 3) {
+                    for (var edge = 0; edge < 3; edge++) {
+                        var start = vertices[triangles[i + edge]];
+                        var end = vertices[triangles[i + (edge + 1) % 3]];
+                        if (start.z > end.z) (start, end) = (end, start);
+                        var first = FindDepth(depths, start.z, false);
+                        var last = FindDepth(depths, end.z, true) - 1;
+                        segments[i + edge] = (start, end, first, last);
                     }
                 }
             }
-            // Each directional extreme of a triangle's slice occurs at a slice endpoint (mesh edge).
-            var edges = new HashSet<(int, int)>();
-            for (var i = 0; i < triangles.Length; i += 3) {
-                for (var j = 0; j < 3; j++) {
-                    var a = triangles[i + j];
-                    var b = triangles[i + (j + 1) % 3];
-                    if (edges.Add((Math.Min(a, b), Math.Max(a, b)))) Edge(vertices[a], vertices[b]);
+
+            // Slice ranges are independent. Workers only read mesh snapshots and write
+            // their own extents, preserving edge order and avoiding locks or Unity object access.
+            void Sample(int worker) {
+                var first = depths.Length * worker / workers;
+                var last = depths.Length * (worker + 1) / workers - 1;
+                foreach (var segment in segments) {
+                    if (segment.first > last || segment.last < first) continue;
+                    var a = segment.a;
+                    var b = segment.b;
+                    var end = Math.Min(last, segment.last);
+                    for (var i = Math.Max(first, segment.first); i <= end; i++) {
+                        if (a.z == b.z) {
+                            Include(ref extents[i], a.x, a.y);
+                            Include(ref extents[i], b.x, b.y);
+                        } else {
+                            var t = (depths[i] - a.z) / (b.z - a.z);
+                            Include(ref extents[i], a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
+                        }
+                    }
                 }
             }
+            if (workers == 1) {
+                Prepare(0);
+                Sample(0);
+            } else {
+                Parallel.For(0, workers, Prepare);
+                Parallel.For(0, workers, Sample);
+            }
 
-            var radii = extents.Select(e => (e.x + e.y + e.z + e.w) * 0.25f).ToArray();
-            return FitSamples(depths, radii);
+            return extents.Select(e => (e.x + e.y + e.z + e.w) * 0.25f).ToArray();
+        }
+
+        // Right, left, up, down distances from the plug axis. A missing side contributes 0.
+        private static void Include(ref Vector4 extent, float x, float y) {
+            if (x > extent.x) extent.x = x;
+            if (-x > extent.y) extent.y = -x;
+            if (y > extent.z) extent.z = y;
+            if (-y > extent.w) extent.w = -y;
+        }
+
+        // Lower/upper bounds without the generic comparer's per-comparison overhead.
+        private static int FindDepth(float[] depths, float value, bool after) {
+            var lo = 0;
+            var hi = depths.Length;
+            while (lo < hi) {
+                var mid = lo + (hi - lo) / 2;
+                if (depths[mid] < value || (after && depths[mid] == value)) lo = mid + 1;
+                else hi = mid;
+            }
+            return lo;
         }
 
         private static AnimationCurve FitSamples(float[] depths, float[] radii) {
