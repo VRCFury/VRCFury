@@ -357,7 +357,7 @@ namespace VF.Inspector {
         internal static VRCFurySocketGizmo.SocketGizmoData GetGizmoData(VRCFuryHapticSocket socket) {
             var cache = gizmoCache.GetOrCreateValue(socket);
             var transform = socket.transform.localToWorldMatrix;
-            if (cache.version == EditorChanges.Version && cache.transform == transform) return cache.data;
+            if (cache.version == EditorChanges.NonTransformVersion && cache.transform == transform) return cache.data;
 
             var copy = VRCFuryComponentEditor.CreateUpgradedClone(socket, out var cloneObject);
             try {
@@ -367,7 +367,7 @@ namespace VF.Inspector {
             } finally {
                 UnityEngine.Object.DestroyImmediate(cloneObject);
             }
-            cache.version = EditorChanges.Version;
+            cache.version = EditorChanges.NonTransformVersion;
             cache.transform = transform;
             return cache.data;
         }

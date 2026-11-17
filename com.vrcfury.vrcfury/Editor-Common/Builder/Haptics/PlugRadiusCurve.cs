@@ -29,9 +29,10 @@ namespace VF.Builder.Haptics {
                 var baked = MeshBaker.BakeMesh(renderer);
                 if (baked == null) continue;
                 var mask = PlugMaskGenerator.GetMask(renderer, plug);
+                var rendererTransform = renderer.transform;
                 var offset = vertices.Count;
                 vertices.AddRange(baked.vertices.Select(v => {
-                    var point = inverseRotation * (renderer.owner().TransformPoint(v) - position);
+                    var point = inverseRotation * (rendererTransform.TransformPoint(v) - position);
                     point.x /= scale;
                     point.y /= scale;
                     point.z /= size.worldLength;
@@ -47,7 +48,9 @@ namespace VF.Builder.Haptics {
                     var indices = mesh.GetTriangles(submesh);
                     for (var i = 0; i < indices.Length; i += 3) {
                         // Don't let weakly influenced vertices inflate the plug envelope.
-                        if (Enumerable.Range(0, 3).Any(j => mask.GetOrDefault(indices[i + j], 1) < PlugMaskGenerator.MinimumRadiusWeight)) continue;
+                        if (mask.GetOrDefault(indices[i], 1) < PlugMaskGenerator.MinimumRadiusWeight
+                            || mask.GetOrDefault(indices[i + 1], 1) < PlugMaskGenerator.MinimumRadiusWeight
+                            || mask.GetOrDefault(indices[i + 2], 1) < PlugMaskGenerator.MinimumRadiusWeight) continue;
                         for (var j = 0; j < 3; j++) triangles.Add(offset + indices[i + j]);
                     }
                 }
@@ -62,9 +65,13 @@ namespace VF.Builder.Haptics {
                 .Concat(Enumerable.Range(0, 129).Select(i => i / 128f))
                 .Distinct().OrderBy(z => z).ToArray();
             var extents = new Vector4[depths.Length];
-            void Include(int index, Vector3 point) {
+            void Include(int index, float x, float y) {
                 // Right, left, up, down distances from the plug axis. A missing side contributes 0.
-                extents[index] = Vector4.Max(extents[index], new Vector4(point.x, -point.x, point.y, -point.y));
+                ref var extent = ref extents[index];
+                if (x > extent.x) extent.x = x;
+                if (-x > extent.y) extent.y = -x;
+                if (y > extent.z) extent.z = y;
+                if (-y > extent.w) extent.w = -y;
             }
             void Edge(Vector3 a, Vector3 b) {
                 if (a.z > b.z) (a, b) = (b, a);
@@ -72,10 +79,11 @@ namespace VF.Builder.Haptics {
                 if (start < 0) start = ~start;
                 for (var i = start; i < depths.Length && depths[i] <= b.z; i++) {
                     if (a.z == b.z) {
-                        Include(i, a);
-                        Include(i, b);
+                        Include(i, a.x, a.y);
+                        Include(i, b.x, b.y);
                     } else {
-                        Include(i, Vector3.LerpUnclamped(a, b, (depths[i] - a.z) / (b.z - a.z)));
+                        var t = (depths[i] - a.z) / (b.z - a.z);
+                        Include(i, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
                     }
                 }
             }
@@ -103,21 +111,31 @@ namespace VF.Builder.Haptics {
             // Keep the most significant changes until the tolerance or sample limit is reached.
             var tolerance = radii.Max() * RelativeRadiusTolerance;
             var kept = new SortedSet<int> { 0, depths.Length - 1 };
+            var errors = new Dictionary<(int first, int last), (int index, float error)>();
             while (kept.Count < MaxSamples) {
                 var worst = -1;
                 var error = tolerance;
                 var first = kept.Min;
                 foreach (var last in kept.Skip(1)) {
-                    for (var i = first + 1; i < last; i++) {
-                        var estimate = Mathf.Lerp(
-                            radii[first],
-                            radii[last],
-                            (depths[i] - depths[first]) / (depths[last] - depths[first])
-                        );
-                        var delta = Mathf.Abs(radii[i] - estimate);
-                        if (delta <= error) continue;
-                        error = delta;
-                        worst = i;
+                    // Adding a key only changes its two neighboring intervals.
+                    // Reuse the worst error for every interval whose endpoints stayed the same.
+                    if (!errors.TryGetValue((first, last), out var interval)) {
+                        interval = (-1, tolerance);
+                        for (var i = first + 1; i < last; i++) {
+                            var estimate = Mathf.Lerp(
+                                radii[first],
+                                radii[last],
+                                (depths[i] - depths[first]) / (depths[last] - depths[first])
+                            );
+                            var delta = Mathf.Abs(radii[i] - estimate);
+                            if (delta <= interval.error) continue;
+                            interval = (i, delta);
+                        }
+                        errors[(first, last)] = interval;
+                    }
+                    if (interval.error > error) {
+                        error = interval.error;
+                        worst = interval.index;
                     }
                     first = last;
                 }

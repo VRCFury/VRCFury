@@ -64,6 +64,7 @@ namespace VF.Tests {
                 Assert.That(error, Is.Null);
                 Assert.That(size.worldLength, Is.EqualTo(0.3f));
                 for (var i = 0; i < 100; i++) {
+                    VF.Utils.EditorChanges.Changed(transformsOnly: true);
                     Assert.That(VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out _), Is.SameAs(size));
                 }
                 plug.length = 0.4f;
@@ -77,6 +78,64 @@ namespace VF.Tests {
                 Assert.That(scaled.worldRadius, Is.EqualTo(0.1f));
             } finally {
                 Object.DestroyImmediate(obj);
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GizmoTracksRendererAndBoneMovementButIgnoresUnrelatedTransforms(bool skinned) {
+            var obj = new GameObject("Plug");
+            var mesh = new Mesh {
+                vertices = new[] {
+                    new Vector3(-.02f, 0, .1f),
+                    new Vector3(.02f, 0, .1f),
+                    new Vector3(0, .02f, .2f)
+                },
+                triangles = new[] { 0, 1, 2 }
+            };
+            var renderObject = new GameObject("Renderer");
+            var bone = new GameObject("Bone");
+            var unrelated = new GameObject("Unrelated");
+            try {
+                Renderer renderer;
+                if (skinned) {
+                    var skin = renderObject.AddComponent<SkinnedMeshRenderer>();
+                    mesh.bindposes = new[] { Matrix4x4.identity };
+                    mesh.boneWeights = new[] {
+                        new BoneWeight { boneIndex0 = 0, weight0 = 1 },
+                        new BoneWeight { boneIndex0 = 0, weight0 = 1 },
+                        new BoneWeight { boneIndex0 = 0, weight0 = 1 }
+                    };
+                    skin.bones = new[] { bone.transform };
+                    skin.sharedMesh = mesh;
+                    renderer = skin;
+                } else {
+                    renderObject.AddComponent<MeshFilter>().sharedMesh = mesh;
+                    renderer = renderObject.AddComponent<MeshRenderer>();
+                }
+                var plug = obj.AddComponent<VRCFuryHapticPlug>();
+                plug.autoRenderer = false;
+                plug.useBoneMask = false;
+                plug.configureTpsMesh.Add(renderer);
+                var size = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out var error);
+                Assert.That(error, Is.Null);
+                Assert.That(size.worldLength, Is.EqualTo(.2f).Within(.00001f));
+                unrelated.transform.position = Vector3.one;
+                EditorChanges.Changed(transformsOnly: true);
+                Assert.That(VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out _), Is.SameAs(size));
+
+                (skinned ? bone : renderObject).transform.position = Vector3.forward * .1f;
+                EditorChanges.Changed(transformsOnly: true);
+                var moved = VF.Inspector.VRCFuryHapticPlugEditor.GetGizmoSize(plug, out error);
+                Assert.That(error, Is.Null);
+                Assert.That(moved, Is.Not.SameAs(size));
+                Assert.That(moved.worldLength, Is.EqualTo(.3f).Within(.00001f));
+            } finally {
+                Object.DestroyImmediate(obj);
+                Object.DestroyImmediate(renderObject);
+                Object.DestroyImmediate(bone);
+                Object.DestroyImmediate(unrelated);
+                Object.DestroyImmediate(mesh);
             }
         }
 

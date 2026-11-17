@@ -24,6 +24,9 @@ namespace VF.Tests {
                     Assert.That(VRCFuryHapticSocketGizmo.GetGizmoData(socket), Is.SameAs(data));
                 }
                 stop.transform.position = Vector3.forward;
+                EditorChanges.Changed(transformsOnly: true);
+                Assert.That(VRCFuryHapticSocketGizmo.GetGizmoData(socket), Is.SameAs(data),
+                    "Stop transforms are read live and must not clone/upgrade the socket again");
                 Assert.That(data.guidedPathStops[0].transform.position, Is.EqualTo(Vector3.forward));
 
                 socket.position = Vector3.right;

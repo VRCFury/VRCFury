@@ -555,10 +555,8 @@ namespace VF.Inspector {
             public PlugSizeDetector.SizeResult size;
             public AnimationCurve radiusCurve;
             public string error;
-            public Vector3 position;
-            public Quaternion rotation;
-            public Vector3 scale;
-            public long version;
+            public long nonTransformVersion;
+            public (Transform transform, Matrix4x4 matrix)[] dependencies = Array.Empty<(Transform, Matrix4x4)>();
         }
 
         private static readonly ConditionalWeakTable<VRCFuryHapticPlug, GizmoCache> gizmoCache
@@ -568,21 +566,28 @@ namespace VF.Inspector {
             var transform = plug.owner();
             
             var cache = gizmoCache.GetOrCreateValue(plug);
-            if (!cache.initialized || cache.version != EditorChanges.Version
-                || transform.worldPosition != cache.position || transform.worldRotation != cache.rotation
-                || transform.worldScale != cache.scale) {
+            if (!cache.initialized || cache.nonTransformVersion != EditorChanges.NonTransformVersion
+                || cache.dependencies.Any(d => d.transform == null || d.transform.localToWorldMatrix != d.matrix)) {
+                // Moving transforms cannot change which renderers the search selects.
+                var renderers = cache.nonTransformVersion == EditorChanges.NonTransformVersion ? cache.size?.renderers : null;
                 cache.initialized = true;
-                cache.position = transform.worldPosition;
-                cache.rotation = transform.worldRotation;
-                cache.scale = transform.worldScale;
-                cache.version = EditorChanges.Version;
+                cache.dependencies = new[] { (plug.transform, plug.transform.localToWorldMatrix) };
+                cache.nonTransformVersion = EditorChanges.NonTransformVersion;
                 cache.size = null;
                 cache.radiusCurve = null;
                 cache.error = null;
                 try {
                     var copy = VRCFuryComponentEditor.CreateUpgradedClone(plug, out var cloneObject);
                     try {
-                        cache.size = PlugSizeDetector.GetWorldSize(copy);
+                        cache.size = renderers != null
+                            ? PlugSizeDetector.GetWorldSize(copy, renderers)
+                            : PlugSizeDetector.GetWorldSize(copy);
+                        // Renderer/bone motion changes the sampled mesh, but unrelated scene motion does not.
+                        cache.dependencies = cache.size.renderers.SelectMany(renderer => renderer is SkinnedMeshRenderer skin
+                                ? skin.bones.Append(skin.transform).Append(skin.rootBone)
+                                : new[] { renderer.transform })
+                            .Prepend(plug.transform).Where(t => t != null).Distinct()
+                            .Select(t => (t, t.localToWorldMatrix)).ToArray();
                         cache.radiusCurve = PlugRadiusCurve.GetRadiusCurve(
                             copy,
                             cache.size,
