@@ -1,10 +1,10 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using UnityEditor;
+using VF.Menu;
 using Debug = UnityEngine.Debug;
 using VF.Utils;
 
@@ -19,8 +19,10 @@ namespace VF.Hooks {
     internal static class VFInitHook {
         [InitializeOnLoadMethod]
         private static void Init() {
-            var logTimings = EditorPrefs.GetBool("com.vrcfury.logVfInitTimings", false);
-            var timings = logTimings ? new List<(string name, long ticks)>() : null;
+            VfInitTimingLoggerMenuItem.Run(
+                () => RuntimeHelpers.RunClassConstructor(typeof(HarmonyTest).TypeHandle),
+                "Harmony warmup"
+            );
 
             foreach (var method in TypeCache.GetMethodsWithAttribute<VFInitAttribute>()
                          .OrderBy(m => m.DeclaringType?.FullName)
@@ -30,29 +32,18 @@ namespace VF.Hooks {
                     continue;
                 }
 
-                var sw = logTimings ? Stopwatch.StartNew() : null;
                 try {
-                    method.Invoke(null, null);
+                    VfInitTimingLoggerMenuItem.Run(
+                        () => method.Invoke(null, null),
+                        $"{method.DeclaringType?.FullName}.{method.Name}"
+                    );
                 } catch (Exception e) {
                     Debug.LogException(new Exception(
                         $"Failed VFInit {method.DeclaringType?.FullName}.{method.Name}",
                         e is TargetInvocationException tie && tie.InnerException != null ? tie.InnerException : e
                     ));
-                } finally {
-                    if (sw != null) {
-                        sw.Stop();
-                        timings.Add(($"{method.DeclaringType?.FullName}.{method.Name}", sw.ElapsedTicks));
-                    }
                 }
             }
-
-            if (!logTimings) return;
-            Debug.Log(
-                "[VRCFury] VFInit timings:\n" +
-                string.Join("\n", timings
-                    .OrderByDescending(x => x.ticks)
-                    .Select(x => $"{TimeSpan.FromTicks(x.ticks).TotalMilliseconds:F1} ms  {x.name}"))
-            );
         }
 
         private static bool IsValid(MethodInfo method) {

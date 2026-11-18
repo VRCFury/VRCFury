@@ -62,7 +62,7 @@ namespace VF.Menu {
         public const int sceneDirtyLoggerPriority = utilitiesPriority + 14;
         public const string logExternalSceneReferences = utilities + "Log External Scene References";
         public const int logExternalSceneReferencesPriority = utilitiesPriority + 15;
-        public const string logVfInitTimings = utilities + "Log VFInit Timings";
+        public const string logVfInitTimings = utilities + "Log Timings";
         public const int logVfInitTimingsPriority = utilitiesPriority + 16;
         public const string logAvatarPreprocessors = utilities + "Log Avatar Preprocessors";
         public const int logAvatarPreprocessorsPriority = utilitiesPriority + 17;

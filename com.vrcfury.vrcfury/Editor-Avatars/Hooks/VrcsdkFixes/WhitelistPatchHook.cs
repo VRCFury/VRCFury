@@ -66,8 +66,8 @@ namespace VF.Hooks.VrcsdkFixes {
         }
         
         private static string[] UpdateComponentList(string[] list) {
-            var addTypes = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(assembly => assembly.GetTypes())
+            var addTypes = VrcfuryAssemblyUtils.Assemblies
+                .SelectMany(entry => entry.assembly.GetTypes())
                 .Where(type => typeof(IVrcfEditorOnly).IsAssignableFrom(type))
                 .Select(type => type.FullName)
                 .ToImmutableHashSet();
