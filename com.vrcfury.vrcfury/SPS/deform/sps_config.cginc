@@ -37,11 +37,11 @@
 
 // HOLE OVERRUN
 
-// Minimum extension beyond a terminal hole, in plug lengths, including entry look-ahead.
-// Set to zero to disable the minimum; the path join can still extend beyond a hole.
-#define SPS_HOLE_OVERRUN_MIN 0.1
-// Length of the radius taper after the terminal hole's overrun, in plug lengths. Zero uses a hard cutoff.
-#define SPS_HOLE_CAP_LENGTH 0.05
+// Full-radius distance before the cone taper, in plug lengths, measured from where the plug joins the hole.
+#define SPS_HOLE_OVERRUN_MIN 0.05
+// Angle of the taper after the hole overrun, in degrees from the plug axis.
+// Taper length = average plug radius / tan(angle). Use 90 for a hard cutoff.
+#define SPS_HOLE_OVERRUN_TAPER_ANGLE 60.0
 
 // BEZIER
 

@@ -14,8 +14,9 @@
 // Per-invocation scratch arrays avoid copying the path between helpers.
 static float3 sps_path_worlds[SPS_CHAIN_SOCKETS_MAX + 1];
 static float3 sps_path_forwards[SPS_CHAIN_SOCKETS_MAX + 1];
-static uint sps_path_flags[SPS_CHAIN_SOCKETS_MAX + 1];
-static float sps_path_cull_advances[SPS_CHAIN_SOCKETS_MAX + 1];
+// Rings are open. Guided holes do not apply their own fade.
+static const float SPS_PATH_OPEN = -1;
+static float sps_path_hole_weights[SPS_CHAIN_SOCKETS_MAX + 1];
 
 struct SpsDeformNode {
     float3 world;
@@ -32,14 +33,13 @@ struct SpsDeformPathInfo {
     float worldLength;
     float bakeScale;
     float deformationWeight;
-    float terminalAdvance; // How far the moved entrance extends beyond the final node.
+    uint nodeCount;
 };
 
 inline void sps_store_path_node(
     uint index,
     SpsDeformNode node,
     SpsDeformNode previous,
-    float worldLength,
     inout float curveWeight
 ) {
     curveWeight = min(curveWeight, sps_saturated_map(node.deformationWeight, SPS_MESH_FADE_WEIGHT_MAX, 1));
@@ -51,9 +51,8 @@ inline void sps_store_path_node(
     // so an already-faded bend is not applied again by a later node.
     sps_path_worlds[index] = start + lerp(forward * length(offset), offset, curveWeight);
     sps_path_forwards[index] = sps_normalize(forward + (node.forward - previous.forward) * curveWeight);
-    sps_path_flags[index] = node.flags;
-    float capLength = worldLength * SPS_HOLE_CAP_LENGTH;
-    sps_path_cull_advances[index] = (1 - curveWeight) * (worldLength + capLength);
+    float holeWeight = sps_has_flag(node.flags, SPS_SOCKET_FLAG_GUIDED) ? 1 : curveWeight;
+    sps_path_hole_weights[index] = sps_has_flag(node.flags, SPS_SOCKET_FLAG_HOLE) ? holeWeight : SPS_PATH_OPEN;
 }
 
 // Consume entrance advance as each next node is selected. Return true if the
@@ -265,8 +264,6 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
     for (uint i = 0; i <= SPS_CHAIN_SOCKETS_MAX; i++) {
         sps_path_worlds[i] = 0;
         sps_path_forwards[i] = 0;
-        sps_path_flags[i] = 0;
-        sps_path_cull_advances[i] = 0;
     }
     path = (SpsDeformPathInfo)0;
     float4x4 frame = sps_contact_frame();
@@ -299,7 +296,6 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
     previousNode.up = path.plugUp;
     SpsDeformNode rootNode = previousNode;
     SpsDeformNode entry = (SpsDeformNode)0;
-    uint count = 0;
     float traveledDistance = 0; // Processed chord length, shared by profile sampling and reach.
     float advance = 0;
     float curveWeight = 1;
@@ -374,7 +370,7 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
             entry.deformationWeight = 1;
             path.deformationWeight = chosenNode.deformationWeight;
             advance = chosenNode.entryAdvance;
-            count = 1;
+            path.nodeCount = 1;
             skipped = true;
         } else if (advance > 0) {
             skipped = sps_advance_entry(entry, chosenNode, advance);
@@ -396,27 +392,14 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
             );
             join.deformationWeight = min(join.deformationWeight, path.deformationWeight);
             curveWeight = 1;
-            sps_store_path_node(
-                1,
-                join,
-                rootNode,
-                path.worldLength,
-                curveWeight
-            );
+            sps_store_path_node(1, join, rootNode, curveWeight);
             path.firstSocketUp = join.up;
-            path.terminalAdvance = advance;
             traveledDistance = length(join.world - sps_path_worlds[0]);
             segmentStart = join;
         }
         if (!skipped) {
             traveledDistance += length(chosenNode.world - segmentStart.world);
-            sps_store_path_node(
-                ++count,
-                chosenNode,
-                segmentStart,
-                path.worldLength,
-                curveWeight
-            );
+            sps_store_path_node(++path.nodeCount, chosenNode, segmentStart, curveWeight);
         }
         previous = sockets[chosen];
         previousNode = chosenNode;

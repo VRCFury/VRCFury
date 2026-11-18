@@ -11,6 +11,11 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     public class SpsBendTest {
+        private const float DefaultPlugRadius = .02f;
+        private const float MinHoleOverrun = .05f;
+
+        private static float TaperLength(float radius) => radius / Mathf.Tan(60 * Mathf.Deg2Rad);
+
         private Shader shader;
         private Shader pathShader;
         private Shader deformationShader;
@@ -61,7 +66,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_curve.cginc""
         float3 _Position, _Forward, _Up, _Exit, _Root, _Stop1, _Stop2;
         float _Length, _CaptureLength, _Guided, _Entrance, _Flags, _Operation, _BaseRadius;
-        float _SampleDistance, _EntryAdvance, _TerminalAdvance, _PathWeight, _ContactIndex, _ProfileDistance;
+        float _SampleDistance, _ContactIndex, _ProfileDistance;
         float4 path_frag(v2f_img input) : SV_Target {
             SpsDeformPathInfo path;
             bool valid = sps_try_get_path(path);
@@ -69,15 +74,9 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             float3 up = sps_normalize(frame._m01_m11_m21);
             float3 origin = frame._m03_m13_m23;
             if (_Operation == 9) return float4(sps_path_worlds[1], valid);
-            if (_Operation == 10) return float4(sps_path_forwards[1], sps_path_flags[1]);
-            if (_Operation == 11) {
-                uint count = 0;
-                for (uint i = 1; i <= SPS_CHAIN_SOCKETS_MAX; i++) {
-                    if (!sps_is_zero(sps_path_forwards[i])) count++;
-                }
-                return float4(path.terminalAdvance, count, path.deformationWeight, valid);
-            }
-            if (_Operation == 12) return float4(sps_path_worlds[2], sps_path_cull_advances[2]);
+            if (_Operation == 10) return float4(sps_path_forwards[1], 0);
+            if (_Operation == 11) return float4(0, path.nodeCount, path.deformationWeight, valid);
+            if (_Operation == 12) return float4(sps_path_worlds[2], 0);
             if (_Operation == 13) return float4(sps_path_forwards[2], 0);
             return float4(
                 dot(sps_path_worlds[2] - origin, up),
@@ -100,43 +99,11 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 SpsSocketCandidate contact = sps_read_contact((uint)_ContactIndex);
                 return float4(contact.radiusOffsetLimit, isinf(contact.radiusOffsetLimit), sps_socket_valid(contact), 1);
             }
-            if (_Operation == 5) {
-                [unroll]
-                for (uint i = 0; i <= SPS_CHAIN_SOCKETS_MAX; i++) {
-                    sps_path_worlds[i] = 0;
-                    sps_path_forwards[i] = 0;
-                    sps_path_flags[i] = 0;
-                    // This synthetic path is straight, so its positions are
-                    // unchanged by fading; prepare only the cumulative cull distance.
-                    float curveWeight = sps_saturated_map(_PathWeight, SPS_MESH_FADE_WEIGHT_MAX, 1);
-                    sps_path_cull_advances[i] = i == 0 ? 0 : (1 - curveWeight) * (1 + SPS_HOLE_CAP_LENGTH);
-                }
-                sps_path_forwards[0] = sps_path_forwards[1] = float3(0, 0, 1);
-                sps_path_worlds[1] = float3(0, 0, .1 + _EntryAdvance);
-                sps_path_forwards[2] = float3(0, 0, 1);
-                sps_path_worlds[2] = float3(0, 0, .2);
-                sps_path_flags[2] = (uint)_Flags;
-                if (_Guided > 1) {
-                    sps_path_forwards[3] = float3(0, 0, 1);
-                    sps_path_worlds[3] = float3(0, 0, .3);
-                }
-                SpsDeformPathInfo path = (SpsDeformPathInfo)0;
-                path.worldLength = 1;
-                path.deformationWeight = _PathWeight;
-                path.terminalAdvance = _TerminalAdvance;
-                path.plugUp = float3(0, 1, 0);
-                float weight, radius;
-                float3 position, forward, up;
-                sps_deform_walk_chain(path, _SampleDistance, weight, radius, position, forward, up);
-                return float4(position, radius);
-            }
             if (_Operation == 3) {
                 [unroll]
                 for (uint i = 0; i <= SPS_CHAIN_SOCKETS_MAX; i++) {
                     sps_path_worlds[i] = 0;
                     sps_path_forwards[i] = 0;
-                    sps_path_cull_advances[i] = 0;
-                    sps_path_flags[i] = 0;
                 }
                 sps_path_worlds[0] = _Root;
                 sps_path_forwards[0] = _Forward;
@@ -435,7 +402,6 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 Assert.That(direction.b, Is.EqualTo(corner ? 0 : 1).Within(.00001f));
                 material.SetFloat("_Operation", 11);
                 var metadata = Render();
-                Assert.That(metadata.r, Is.Zero.Within(.00001f), "Advance ended before the last node.");
                 Assert.That(metadata.g, Is.EqualTo(2), "Skipped nodes must not reach the precise walk.");
             } finally {
                 material.shader = shader;
@@ -455,7 +421,6 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 Assert.That(position.b, Is.EqualTo(-.15f).Within(.00001f));
                 material.SetFloat("_Operation", 11);
                 var metadata = Render();
-                Assert.That(metadata.r, Is.EqualTo(.15f).Within(.00001f));
                 Assert.That(metadata.g, Is.EqualTo(1));
             } finally {
                 material.shader = shader;
@@ -492,16 +457,17 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             }
         }
 
-        [TestCase(.025f, .5f)]
-        [TestCase(.075f, 0f)]
-        public void LateJoinPastTerminalHoleDoesNotAddItsOverrunAgain(float distance, float radius) {
+        [TestCase(.5f, .5f)]
+        [TestCase(1.5f, 0f)]
+        public void LateJoinPastTerminalHoleStartsFullOverrunAtTheJoin(float taperFraction, float radius) {
             try {
                 SetPath(deformationShader, (Vector3.forward * -.2f, Vector3.forward, 1 << 14));
+                var taperLength = TaperLength(DefaultPlugRadius);
+                var distance = MinHoleOverrun + taperLength * taperFraction;
                 material.SetFloat("_SampleDistance", distance);
                 var result = Render();
                 Assert.That(result.a, Is.EqualTo(radius).Within(.0001f));
-                Assert.That(result.b, Is.EqualTo(Mathf.Min(distance, .05f)).Within(.0001f),
-                    "A late join past the overrun still needs room for its cap.");
+                Assert.That(result.b, Is.EqualTo(Mathf.Min(distance, MinHoleOverrun + taperLength)).Within(.0001f));
             } finally {
                 material.shader = shader;
             }
@@ -540,12 +506,12 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             }
         }
 
-        [TestCase(-.1f, .025f)]
-        [TestCase(.3f, .425f)]
-        public void RingFollowedByHoleKeepsOnlyTheUnconsumedOverrun(float holeZ, float distance) {
+        [TestCase(-.1f, MinHoleOverrun)]
+        [TestCase(.3f, .3f + MinHoleOverrun)]
+        public void RingFollowedByHoleGetsFullOverrun(float holeZ, float taperStart) {
             try {
                 SetIndependentSockets(deformationShader, holeZ, true);
-                material.SetFloat("_SampleDistance", distance);
+                material.SetFloat("_SampleDistance", taperStart + TaperLength(DefaultPlugRadius) / 2);
                 Assert.That(Render().a, Is.EqualTo(.5f).Within(.0001f));
             } finally {
                 material.shader = shader;
@@ -570,7 +536,6 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 var next = Render();
                 Assert.That(next.r, Is.EqualTo(.315f).Within(.00001f));
                 Assert.That(next.b, Is.EqualTo(1.795f).Within(.00001f));
-                Assert.That(next.a, Is.EqualTo(.65625f).Within(.00001f));
                 material.SetFloat("_Operation", 13);
                 var forward = Render();
                 var expected = new Vector3(.375f, 0, .625f).normalized;
@@ -581,9 +546,9 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             }
         }
 
-        [TestCase(false, 2.18125f)]
-        [TestCase(true, 2.03125f)]
-        public void FadedHoleKeepsItsCullDistanceWhetherTerminalOrFollowedByAGuide(bool guided, float distance) {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void FadedHoleUsesTheSameTaperWhetherTerminalOrFollowedByAGuide(bool guided) {
             try {
                 if (guided) {
                     SetPath(
@@ -594,11 +559,40 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 } else {
                     SetPath(deformationShader, (Vector3.forward * 1.4f, Vector3.forward, 1 << 14));
                 }
-                material.SetFloat("_SampleDistance", distance);
+                var taperLength = TaperLength(DefaultPlugRadius);
+                var fadeAdvance = .625f * (1 + taperLength);
+                material.SetFloat("_SampleDistance", 1.4f + fadeAdvance + MinHoleOverrun + taperLength / 2);
                 Assert.That(Render().a, Is.EqualTo(.5f).Within(.0001f));
             } finally {
                 material.shader = shader;
             }
+        }
+
+        [Test]
+        public void FadeMovesTheHoleTaperPastTheTipOnAShortenedPath() {
+            var entrance = new Vector3(.369f, 0, .02f);
+            SetPath(deformationShader, (entrance, Vector3.right, 0));
+            material.SetFloat("_SPS_BaseActivationRadiusOverride", .4f);
+            var entranceRotation = Quaternion.LookRotation(Vector3.left, Vector3.up);
+            var exitRotation = Quaternion.LookRotation(Vector3.right + Vector3.forward, Vector3.up);
+            SetContacts(
+                "SPS_Self",
+                Matrix4x4.identity,
+                Matrix4x4.TRS(entrance, entranceRotation, Vector3.one),
+                Matrix4x4.TRS(new Vector3(-.65f, 0, -.65f), exitRotation, new Vector3(2 | (1 << 14), 1, 1))
+            );
+            SetContacts(
+                "SPS_Path",
+                Matrix4x4.identity,
+                Matrix4x4.TRS(new Vector3(-.62f, 0, -.62f), exitRotation, new Vector3(129, 1, 1))
+            );
+
+            // Straightening the turn brings the hole within reach of the mesh tip.
+            material.SetFloat("_SampleDistance", 1);
+            Assert.That(Render().a, Is.EqualTo(1).Within(.0001f));
+            // Verify that the hole was selected and eventually closes the mesh.
+            material.SetFloat("_SampleDistance", 1.3f);
+            Assert.That(Render().a, Is.Zero.Within(.0001f));
         }
 
         private void SetIndependentSockets(Shader targetShader, float secondZ, bool hole) {
@@ -631,7 +625,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             SetContacts("SPS_Others", Matrix4x4.identity);
             SetContacts("SPS_Path", Matrix4x4.identity, contacts.Skip(1).ToArray());
             material.SetFloat("_SPS_BakedLength", 1);
-            material.SetFloat("_SPS_BakedRadius", .02f);
+            material.SetFloat("_SPS_BakedRadius", DefaultPlugRadius);
             material.SetFloat("_SPS_BaseActivationRadiusOverride", 1);
         }
 
@@ -735,56 +729,128 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             }
         }
 
-        [TestCase(false, 0f, 1f)]
-        [TestCase(true, 0f, 1f)]
-        [TestCase(false, .05f, 1f)]
-        [TestCase(true, .05f, 1f)]
-        [TestCase(false, 0f, .6f)]
-        [TestCase(true, 0f, .6f)]
-        [TestCase(false, .05f, .6f)]
-        [TestCase(true, .05f, .6f)]
-        public void GuidedHolesCollapseImmediatelyWhetherTerminalOrIntermediate(
-            bool intermediate,
-            float advance,
-            float weight
-        ) {
-            Read(Vector3.forward * .2f, Vector3.forward);
-            material.SetFloat("_Operation", 5);
-            material.SetFloat("_Flags", (1 << 14) | (1 << 15));
-            material.SetFloat("_Guided", intermediate ? 2 : 1);
-            material.SetFloat("_EntryAdvance", advance);
-            material.SetFloat("_PathWeight", weight);
-            material.SetFloat("_SampleDistance", .199f);
+        [TestCase(.2f, .2f + MinHoleOverrun)]
+        [TestCase(-.025f, MinHoleOverrun)]
+        [TestCase(-.2f, MinHoleOverrun)]
+        public void GuidedPathEntranceHoleKeepsItsOverrunAndTaper(float entrance, float taperStart) {
+            SetPath(
+                deformationShader,
+                (Vector3.forward * entrance, Vector3.forward, 1 << 14),
+                (Vector3.forward * .4f, Vector3.forward, 0),
+                (Vector3.forward * .6f, Vector3.forward, 1 << 14),
+                (Vector3.forward * .8f, Vector3.forward, 0)
+            );
+            var taperLength = TaperLength(DefaultPlugRadius);
+            material.SetFloat("_SampleDistance", Mathf.Max(0, taperStart - .001f));
             Assert.That(Render().a, Is.EqualTo(1).Within(.0001f));
-            foreach (var distance in new[] { .201f, .21f, .24f }) {
-                material.SetFloat("_SampleDistance", distance);
-                Assert.That(Render().a, Is.Zero.Within(.0001f), "distance=" + distance);
+            var taperMiddle = taperStart + taperLength / 2;
+            material.SetFloat("_SampleDistance", taperMiddle);
+            var taper = Render();
+            Assert.That(taper.a, Is.EqualTo(.5f).Within(.0001f));
+            Assert.That(taper.b, Is.EqualTo(taperMiddle).Within(.0001f));
+            material.SetFloat("_SampleDistance", taperStart + taperLength + .001f);
+            Assert.That(Render().a, Is.Zero.Within(.0001f));
+            material.SetFloat("_SampleDistance", .6f + MinHoleOverrun - .001f);
+            Assert.That(Render().a, Is.EqualTo(1).Within(.0001f));
+            material.SetFloat("_SampleDistance", .6f + MinHoleOverrun + taperLength / 2);
+            Assert.That(Render().a, Is.EqualTo(.5f).Within(.0001f));
+            material.SetFloat("_SampleDistance", .6f + MinHoleOverrun + taperLength + .001f);
+            Assert.That(Render().a, Is.Zero.Within(.0001f));
+            material.SetFloat("_SampleDistance", .81f);
+            Assert.That(Render().a, Is.EqualTo(1).Within(.0001f));
+        }
+
+        [TestCase(.225f, false)]
+        [TestCase(.254f, false)]
+        [TestCase(.225f, true)]
+        [TestCase(.254f, true)]
+        public void EntranceHoleTaperContinuesPastGuidedHole(float stop, bool terminal) {
+            var entrance = (Vector3.forward * .2f, Vector3.forward, 1 << 14);
+            var guidedHole = (Vector3.forward * stop, Vector3.forward, 1 << 14);
+            if (terminal) {
+                SetPath(deformationShader, entrance, guidedHole);
+            } else {
+                SetPath(deformationShader, entrance, guidedHole, (Vector3.forward * .5f, Vector3.forward, 0));
             }
+            var taperLength = TaperLength(DefaultPlugRadius);
+            const float taperStart = .2f + MinHoleOverrun;
+            if (stop < taperStart) {
+                material.SetFloat("_SampleDistance", .24f);
+                Assert.That(Render().a, Is.EqualTo(1).Within(.0001f));
+            }
+            material.SetFloat("_SampleDistance", taperStart + taperLength / 2);
+            Assert.That(Render().a, Is.EqualTo(.5f).Within(.0001f));
             material.SetFloat("_SampleDistance", .4f);
-            Assert.That(Render().a, Is.EqualTo(intermediate ? 1 : 0).Within(.0001f),
-                "Intermediate holes can reopen after a later ring; terminal holes stay collapsed.");
+            var collapsed = Render();
+            Assert.That(collapsed.a, Is.Zero.Within(.0001f));
+            Assert.That(collapsed.b, Is.EqualTo(terminal ? taperStart + taperLength : .4f).Within(.0001f));
         }
 
         [Test]
-        public void UnguidedTerminalHoleKeepsItsOverrunAndCap() {
-            Read(Vector3.forward * .2f, Vector3.forward);
-            material.SetFloat("_Operation", 5);
-            material.SetFloat("_Flags", 1 << 14);
-            material.SetFloat("_Guided", 0);
-            material.SetFloat("_EntryAdvance", 0);
-            material.SetFloat("_PathWeight", 1);
-            material.SetFloat("_SampleDistance", .25f);
+        public void IndependentGuidedPathEntranceStartsItsOwnTaper() {
+            SetPath(deformationShader, (Vector3.forward * .1f, Vector3.forward, 0));
+            var rotation = Quaternion.LookRotation(Vector3.back, Vector3.up);
+            SetContacts(
+                "SPS_Self",
+                Matrix4x4.identity,
+                Matrix4x4.TRS(Vector3.forward * .1f, rotation, Vector3.one),
+                Matrix4x4.TRS(Vector3.forward * .2f, rotation, new Vector3(2 | (1 << 14), 1, 1))
+            );
+            SetContacts(
+                "SPS_Path",
+                Matrix4x4.identity,
+                Matrix4x4.TRS(Vector3.forward * .225f, rotation, new Vector3(130 | (1 << 14), 1, 1)),
+                Matrix4x4.TRS(Vector3.forward * .35f, rotation, new Vector3(258, 1, 1))
+            );
+            var taperMiddle = .2f + MinHoleOverrun + TaperLength(DefaultPlugRadius) / 2;
+            material.SetFloat("_SampleDistance", taperMiddle);
+            var result = Render();
+            Assert.That(result.a, Is.EqualTo(.5f).Within(.0001f));
+            Assert.That(result.b, Is.EqualTo(taperMiddle).Within(.0001f));
+            material.SetFloat("_SampleDistance", .4f);
+            Assert.That(Render().a, Is.EqualTo(1).Within(.0001f), "The ring reopens the second path.");
+        }
+
+        [TestCase(.03f, false)]
+        [TestCase(.054f, false)]
+        [TestCase(.08f, false)]
+        [TestCase(.08f, true)]
+        public void LateJoinPastGuidedHoleStartsFullOverrunAtTheJoin(float advance, bool crossesRing) {
+            SetPath(
+                deformationShader,
+                (Vector3.forward * -advance, Vector3.forward, 1 << 14),
+                (Vector3.forward * (-advance * .75f), Vector3.forward, crossesRing ? 0 : 1 << 14),
+                (Vector3.forward * (-advance * .5f), Vector3.forward, 1 << 14),
+                (Vector3.forward * .5f, Vector3.forward, 0)
+            );
+            var taperLength = TaperLength(DefaultPlugRadius);
+            material.SetFloat("_SampleDistance", MinHoleOverrun + taperLength / 2);
+            Assert.That(Render().a, Is.EqualTo(.5f).Within(.0001f));
+            material.SetFloat("_SampleDistance", MinHoleOverrun + taperLength + .001f);
+            Assert.That(Render().a, Is.Zero.Within(.0001f));
+        }
+
+        [TestCase(.02f)]
+        [TestCase(.04f)]
+        public void UnguidedTerminalHoleTaperScalesWithPlugRadius(float radius) {
+            SetPath(deformationShader, (Vector3.forward * .2f, Vector3.forward, 1 << 14));
+            material.SetFloat("_SPS_BakedRadius", radius);
+            var taperLength = TaperLength(radius);
+            const float taperStart = .2f + MinHoleOverrun;
+            material.SetFloat("_SampleDistance", .225f);
             var overrun = Render();
             Assert.That(overrun.a, Is.EqualTo(1).Within(.0001f));
-            Assert.That(overrun.b, Is.EqualTo(.25f).Within(.0001f));
-            material.SetFloat("_SampleDistance", .325f);
-            var cap = Render();
-            Assert.That(cap.a, Is.EqualTo(.5f).Within(.001f));
-            Assert.That(cap.b, Is.EqualTo(.325f).Within(.0001f));
-            material.SetFloat("_SampleDistance", .36f);
+            Assert.That(overrun.b, Is.EqualTo(.225f).Within(.0001f));
+            var taperMiddle = taperStart + taperLength / 2;
+            material.SetFloat("_SampleDistance", taperMiddle);
+            var taper = Render();
+            Assert.That(taper.a, Is.EqualTo(.5f).Within(.001f));
+            Assert.That(taper.b, Is.EqualTo(taperMiddle).Within(.0001f));
+            var taperEnd = taperStart + taperLength;
+            material.SetFloat("_SampleDistance", taperEnd + .01f);
             var collapsed = Render();
             Assert.That(collapsed.a, Is.Zero.Within(.0001f));
-            Assert.That(collapsed.b, Is.EqualTo(.35f).Within(.0001f));
+            Assert.That(collapsed.b, Is.EqualTo(taperEnd).Within(.0001f));
         }
 
         [Test]
@@ -857,7 +923,6 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             material.SetFloat("_SPS_BlendshapeVertCount", 0);
             material.SetFloat("_SPS_BlendshapeCount", 0);
             material.SetFloat("_ProfileDistance", 0);
-            material.SetFloat("_TerminalAdvance", 0);
             return Render();
         }
 
