@@ -120,7 +120,8 @@ inline void sps_deform_walk_chain(
             outRadiusMult = capLength > 0
                 ? sps_saturated_map(max(remainingDistance - overrun, 0), capLength, 0)
                 : (remainingDistance <= overrun ? 1 : 0);
-            remainingDistance = min(remainingDistance, overrun);
+            // Advance along the exit until the taper reaches zero radius.
+            remainingDistance = min(remainingDistance, overrun + capLength);
         }
     }
     outPosition += outForward * remainingDistance;

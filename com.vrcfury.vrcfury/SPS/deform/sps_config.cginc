@@ -40,7 +40,7 @@
 // Minimum extension beyond a terminal hole, in plug lengths, including entry look-ahead.
 // Set to zero to disable the minimum; the path join can still extend beyond a hole.
 #define SPS_HOLE_OVERRUN_MIN 0.1
-// Length of the radius taper closing a hole, in plug lengths. Zero uses a hard cutoff.
+// Length of the radius taper after the terminal hole's overrun, in plug lengths. Zero uses a hard cutoff.
 #define SPS_HOLE_CAP_LENGTH 0.05
 
 // BEZIER

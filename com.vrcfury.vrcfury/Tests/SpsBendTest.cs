@@ -498,7 +498,10 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             try {
                 SetPath(deformationShader, (Vector3.forward * -.2f, Vector3.forward, 1 << 14));
                 material.SetFloat("_SampleDistance", distance);
-                Assert.That(Render().a, Is.EqualTo(radius).Within(.0001f));
+                var result = Render();
+                Assert.That(result.a, Is.EqualTo(radius).Within(.0001f));
+                Assert.That(result.b, Is.EqualTo(Mathf.Min(distance, .05f)).Within(.0001f),
+                    "A late join past the overrun still needs room for its cap.");
             } finally {
                 material.shader = shader;
             }
@@ -771,11 +774,17 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             material.SetFloat("_EntryAdvance", 0);
             material.SetFloat("_PathWeight", 1);
             material.SetFloat("_SampleDistance", .25f);
-            Assert.That(Render().a, Is.EqualTo(1).Within(.0001f));
+            var overrun = Render();
+            Assert.That(overrun.a, Is.EqualTo(1).Within(.0001f));
+            Assert.That(overrun.b, Is.EqualTo(.25f).Within(.0001f));
             material.SetFloat("_SampleDistance", .325f);
-            Assert.That(Render().a, Is.EqualTo(.5f).Within(.001f));
+            var cap = Render();
+            Assert.That(cap.a, Is.EqualTo(.5f).Within(.001f));
+            Assert.That(cap.b, Is.EqualTo(.325f).Within(.0001f));
             material.SetFloat("_SampleDistance", .36f);
-            Assert.That(Render().a, Is.Zero.Within(.0001f));
+            var collapsed = Render();
+            Assert.That(collapsed.a, Is.Zero.Within(.0001f));
+            Assert.That(collapsed.b, Is.EqualTo(.35f).Within(.0001f));
         }
 
         [Test]
