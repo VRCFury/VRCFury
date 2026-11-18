@@ -11,7 +11,7 @@ using VF.Utils;
 namespace VF.Service {
     [VFService]
     internal class BoundingBoxFixService {
-        private const float MaxStepSizeInMeters = 5f;
+        private const float MaxStepSizeInMeters = 1f;
         [VFAutowired] private readonly GlobalsService globals;
         private VFGameObject avatarObject => globals.avatarObject;
 
