@@ -23,6 +23,7 @@ void sps_apply_real(
 	uint vertexId
 ) {
 	if (!sps_to_bool(_SPS_Enabled) || !sps_to_bool(_SPS_ObjectEnabled)) return;
+	if (!sps_has_possible_entrance()) return;
 	const float3 origVertex = vertex.xyz;
 	const float3 origNormal = normal.xyz;
 	const float3 origTangent = tangent.xyz;

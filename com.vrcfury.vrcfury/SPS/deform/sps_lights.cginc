@@ -32,12 +32,16 @@ uint sps_light_type(uint index) {
     return kind == 1 || kind == 2 || kind == 5 ? kind : 0;
 }
 
+bool sps_is_entrance_light(uint kind) {
+    return kind == 1 || kind == 2;
+}
+
 SpsSocketCandidate sps_read_light(uint index, float3 plugWorld, float3 plugUp) {
     SpsSocketCandidate socket = (SpsSocketCandidate)0;
     socket.radiusOffsetLimit = asfloat(0x7f800000);
     if (!sps_to_bool(_SPS_UseLegacyLights)) return socket;
     uint kind = sps_light_type(index);
-    if (kind != 1 && kind != 2) return socket;
+    if (!sps_is_entrance_light(kind)) return socket;
     socket.world = sps_light_world(index);
     socket.normal = sps_normalize(plugWorld - socket.world);
     socket.up = plugUp;

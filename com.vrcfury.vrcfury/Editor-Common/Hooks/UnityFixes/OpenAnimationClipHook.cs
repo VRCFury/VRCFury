@@ -11,11 +11,11 @@ namespace VF.Hooks.UnityFixes {
     internal static class OpenAnimationClipHook {
         private abstract class Reflection : ReflectionHelper {
             public static readonly MethodInfo RefreshSelection = typeof(AnimationWindow).VFMethod("OnSelectionChange");
+            public static readonly MethodInfo EditWithImporter = typeof(Editor).Assembly
+                .GetType("UnityEditor.AnimationClipEditor")?.VFStaticMethod("EditWithImporter", new[] { typeof(AnimationClip) });
             public static readonly HarmonyUtils.PatchObj EditWithImporterPatch = HarmonyUtils.Patch(
-                typeof(OpenAnimationClipHook),
-                nameof(BeforeEditWithImporter),
-                "UnityEditor.AnimationClipEditor",
-                "EditWithImporter"
+                EditWithImporter,
+                (typeof(OpenAnimationClipHook), nameof(BeforeEditWithImporter))
             );
             public static readonly HarmonyUtils.PatchObj OpenAssetPatch = HarmonyUtils.Patch(
                 typeof(OpenAnimationClipHook),
@@ -25,11 +25,32 @@ namespace VF.Hooks.UnityFixes {
             );
         }
 
+        private abstract class BlendTreeReflection : ReflectionHelper {
+            public static readonly FieldInfo Motion = ReflectionUtils
+                .GetTypeFromAnyAssembly("UnityEditor.Graphs.AnimationBlendTree.Node")?.VFField("motion");
+            public static readonly HarmonyUtils.PatchObj NodeInput = HarmonyUtils.Patch(
+                typeof(OpenAnimationClipHook),
+                nameof(BeforeNodeInput),
+                "UnityEditor.Graphs.AnimationBlendTree.GraphGUI",
+                "HandleNodeInput"
+            );
+        }
+
         [VFInit]
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
             Reflection.EditWithImporterPatch.apply();
             Reflection.OpenAssetPatch.apply();
+            if (ReflectionHelper.IsReady<BlendTreeReflection>()) BlendTreeReflection.NodeInput.apply();
+        }
+
+        private static void BeforeNodeInput(object __0) {
+            if (Event.current is not { type: EventType.MouseDown, button: 0, clickCount: 2 }) return;
+            if (BlendTreeReflection.Motion.GetValue(__0) is not AnimationClip clip) return;
+            // Let the graph finish selecting the node before changing window focus.
+            EditorApplication.delayCall += () => {
+                if (clip) Reflection.EditWithImporter.Invoke(null, new object[] { clip });
+            };
         }
 
         // Double-clicking a state in the graph calls EditWithImporter directly.

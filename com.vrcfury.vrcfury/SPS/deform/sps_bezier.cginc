@@ -27,52 +27,86 @@ float3 sps_bezierDerivative(float3 p0, float3 p1, float3 p2, float3 p3, float t)
 // https://gamedev.stackexchange.com/questions/5373/moving-ships-between-two-planets-along-a-bezier-missing-some-equations-for-acce/5427#5427
 // https://www.geometrictools.com/Documentation/MovingAlongCurveSpecifiedSpeed.pdf
 // https://gamedev.stackexchange.com/questions/137022/consistent-normals-at-any-angle-in-bezier-curve/
-inline void sps_bezierSolve(
-	float3 p0, float3 p1, float3 p2, float3 p3,
-	float lookingForLength,
-	float3 initialUp,
-	out float remainingLength,
-	out float3 position,
-	out float3 forward,
-	out float3 up
+struct SpsCurveFrame {
+	float3 position;
+	float3 forward;
+	float3 up;
+};
+
+// Sample the requested vertex, then leave the walker at the next node.
+// Enclosed spans also need the whole segment length and exit orientation.
+inline bool sps_walk_segment(
+	inout SpsCurveFrame frame,
+	float3 endPoint,
+	float3 endForward,
+	inout float remainingDistance,
+	bool collapsed,
+	float taperEndLength,
+	inout float3 taperEnd,
+	float lookAhead,
+	out SpsCurveFrame sampleFrame
 ) {
+	float3 p0 = frame.position;
+	float3 p3 = endPoint;
+	float handleLength = length(p3 - p0) * SPS_HANDLE_LENGTH;
+	float3 p1 = p0 + frame.forward * handleLength;
+	float3 p2 = p3 - endForward * handleLength;
+	frame.position = endPoint;
+	frame.forward = endForward;
+	if (sps_is_zero(p3 - p0)) {
+		frame.up = sps_nearest_normal(endForward, frame.up);
+		sampleFrame = frame;
+		return true;
+	}
+
+	bool measureToRing = lookAhead >= 0;
 	float sampleT = 0;
-	float3 approximateUp = initialUp;
+	float taperEndT = -1;
+	float3 approximateUp = frame.up;
 	float totalLength = 0;
-	bool exhausted = false;
-	// Preserve the original <= 0 early-out, but share the final evaluation.
-	if (lookingForLength > 0) {
-		sampleT = 1;
-		exhausted = true;
+	float3 endUp = frame.up;
+	if (remainingDistance > 0 || measureToRing) {
+		sampleT = remainingDistance > 0 ? 1 : 0;
 		float3 lastPoint = p0;
 		float lastT = 0;
-		float lastLength = 0;
-		float3 lastUp = initialUp;
 		[fastopt]
 		for (int i = 1; i <= SPS_BEZIER_SAMPLES; i++) {
 			float t = float(i) / SPS_BEZIER_SAMPLES;
 			float3 currentPoint = sps_bezier(p0, p1, p2, p3, t);
 			float3 currentForward = sps_normalize(sps_bezierDerivative(p0, p1, p2, p3, t));
-			float3 currentUp = sps_nearest_normal(currentForward, lastUp);
+			float3 currentUp = sps_nearest_normal(currentForward, endUp);
+			float lastLength = totalLength;
 			totalLength += length(currentPoint - lastPoint);
-			if (lookingForLength <= totalLength) {
-				float fraction = sps_map(lookingForLength, lastLength, totalLength, 0, 1);
-				sampleT = lerp(lastT, t, fraction);
-				approximateUp = lerp(lastUp, currentUp, fraction);
-				exhausted = false;
-				break;
+			if (collapsed && lastLength < taperEndLength && taperEndLength <= totalLength) {
+				taperEndT = sps_map(taperEndLength, lastLength, totalLength, lastT, t);
 			}
+			if (sampleT == 1 && remainingDistance <= totalLength) {
+				float fraction = sps_map(remainingDistance, lastLength, totalLength, 0, 1);
+				sampleT = lerp(lastT, t, fraction);
+				approximateUp = lerp(endUp, currentUp, fraction);
+				if (!measureToRing) {
+					endUp = approximateUp;
+					break;
+				}
+			}
+			endUp = currentUp;
 			lastT = t;
-			lastLength = totalLength;
-			lastUp = currentUp;
-			approximateUp = currentUp;
 			lastPoint = currentPoint;
+			// Once more than half the span is known to lie beyond the vertex,
+			// its first-half sample is final, even if this segment continues.
+			if (measureToRing && totalLength - remainingDistance > lookAhead) break;
 		}
+		if (sampleT == 1) approximateUp = endUp;
 	}
-	remainingLength = exhausted ? max(lookingForLength - totalLength, 0) : 0;
-	position = sampleT == 0 ? p0 : sampleT == 1 ? p3 : sps_bezier(p0, p1, p2, p3, sampleT);
-	forward = sps_normalize(sps_bezierDerivative(p0, p1, p2, p3, sampleT));
-	up = sps_nearest_normal(forward, approximateUp);
+	// Negative inside a segment. A reopening ring uses the distance still to travel.
+	remainingDistance -= totalLength;
+	frame.up = endUp;
+	sampleFrame.position = sampleT == 0 ? p0 : sampleT == 1 ? p3 : sps_bezier(p0, p1, p2, p3, sampleT);
+	// Carry the actual taper endpoint through every later segment of this hole.
+	if (taperEndT >= 0) taperEnd = sps_bezier(p0, p1, p2, p3, taperEndT);
+	sampleFrame.forward = sampleT == 1 ? endForward : sps_normalize(sps_bezierDerivative(p0, p1, p2, p3, sampleT));
+	sampleFrame.up = sps_nearest_normal(sampleFrame.forward, approximateUp);
+	return sampleT == 1;
 }
 
 #endif

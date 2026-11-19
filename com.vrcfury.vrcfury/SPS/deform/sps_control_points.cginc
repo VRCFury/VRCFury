@@ -6,32 +6,6 @@
 #include "sps_types.cginc"
 #include "sps_utils.cginc"
 
-inline void sps_deform_segment_control_points(
-    float3 startPoint,
-    float3 startForwardInput,
-    float3 endPoint,
-    float3 endForwardInput,
-    out float3 p0,
-    out float3 p1,
-    out float3 p2,
-    out float3 p3
-) {
-    p0 = startPoint;
-    p3 = endPoint;
-    float3 segmentOffset = endPoint - startPoint;
-    float segmentDistance = length(segmentOffset);
-
-    // Both callers supply nonzero, normalized directions. In particular,
-    // sps_normalize already supplies +Z for a zero vector. Repeating those
-    // fallbacks here bloats every inlined bend-score and curve evaluation.
-    float3 startForward = startForwardInput;
-    float3 endForward = endForwardInput;
-
-    float handleDistance = segmentDistance * SPS_HANDLE_LENGTH;
-    p1 = p0 + startForward * handleDistance;
-    p2 = p3 - endForward * handleDistance;
-}
-
 // Solve the first permissible join on an outgoing ray. delta is entrance minus
 // plug root; both forward vectors must be unit directions along the curve.
 // This defines geometric bend bounds, not the exact curvature of the Bezier.

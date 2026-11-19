@@ -7,27 +7,40 @@
 #include "sps_types.cginc"
 #include "sps_utils.cginc"
 #include "sps_bezier.cginc"
-#include "sps_control_points.cginc"
 #include "sps_globals.cginc"
 
-inline float sps_sample_hole_taper(
-    SpsDeformPathInfo path,
-    uint firstHole,
-    float distanceFromHole,
-    inout float exitDistance
-) {
-    float angle = SPS_HOLE_OVERRUN_TAPER_ANGLE;
+inline float sps_hole_cone_length(SpsDeformPathInfo path) {
+    float angle = SPS_HOLE_TAPER_ANGLE;
     float worldRadius = _SPS_BakedRadius * path.bakeScale;
-    float coneLength = angle > 0 && angle < 90 ? worldRadius / max(tan(radians(angle)), 1e-6) : 0;
-    float fadeAdvance = (1 - sps_path_hole_weights[firstHole]) * (path.worldLength + coneLength);
-    float taperEnd = path.worldLength * SPS_HOLE_OVERRUN_MIN + coneLength + fadeAdvance;
+    return angle > 0 && angle < 90 ? worldRadius / max(tan(radians(angle)), 1e-6) : 0;
+}
 
-    float distanceToEnd = taperEnd - distanceFromHole;
-    bool onExit = exitDistance > 0;
-    exitDistance = max(exitDistance + min(distanceToEnd, 0), 0);
+inline float sps_hole_taper_end(SpsDeformPathInfo path, uint firstHole, float coneLength) {
+    float taperLength = path.worldLength * SPS_HOLE_TAPER_FULL_RADIUS_LENGTH + coneLength;
+    float fadeAdvance = (1 - sps_path_hole_weights[firstHole]) * (path.worldLength + coneLength);
+    return taperLength + fadeAdvance;
+}
+
+// Chords give a lower bound on the curved distance to the ring. Once the taper fits,
+// later nodes cannot shorten it. This avoids another Bezier length walk.
+inline float sps_guided_taper_scale(uint hole, uint lastRing, float taperLength) {
+    float required = 4 * taperLength;
+    if (hole >= lastRing || required <= 0) return 1;
+    float span = 0;
+    [fastopt]
+    for (uint i = hole + 1; i <= lastRing; i++) {
+        span += length(sps_path_worlds[i] - sps_path_worlds[i - 1]);
+        if (span >= required) return 1;
+        if (sps_path_hole_weights[i] < 0) break;
+    }
+    return span / required;
+}
+
+// A zero-length cone switches directly between full radius and the centerpoint.
+inline float sps_sample_hole_taper(float coneLength, float distanceToEnd, bool fullAtCut) {
     float divisor = coneLength > 0 ? coneLength : 1;
     if (coneLength > 0) return saturate(distanceToEnd / divisor);
-    return (onExit ? distanceToEnd >= 0 : distanceToEnd > 0) ? 1 : 0;
+    return (fullAtCut ? distanceToEnd >= 0 : distanceToEnd > 0) ? 1 : 0;
 }
 
 inline void sps_deform_walk_chain(
@@ -40,84 +53,97 @@ inline void sps_deform_walk_chain(
     out float3 outUp
 ) {
     float remainingDistance = max(targetDistance, 0);
-    uint firstHole = 0;
-    float distanceFromHole = 0;
+    bool inHole = false;
+    float distanceToEnd = 0;
+    float distanceFromJoin = 0;
+    uint lastRing = path.nodeCount;
+    [fastopt]
+    while (lastRing > 0 && sps_path_hole_weights[lastRing] >= 0) lastRing--;
+
     outDeformationWeight = saturate(path.deformationWeight / SPS_MESH_FADE_WEIGHT_MAX);
     outRadiusMult = 1;
-    outPosition = sps_path_worlds[0];
-    outForward = sps_path_forwards[0];
-    if (sps_is_zero(outForward)) outForward = float3(0, 0, 1);
-    outForward = sps_normalize(outForward);
-    outUp = sps_nearest_normal(outForward, path.plugUp);
-    float3 startPoint = outPosition;
-    float3 startForward = outForward;
-    float3 currentUp = outUp;
+    SpsCurveFrame frame;
+    frame.position = sps_path_worlds[0];
+    frame.forward = sps_normalize(sps_path_forwards[0]);
+    frame.up = sps_nearest_normal(frame.forward, path.plugUp);
+    SpsCurveFrame vertex = frame;
+    float coneLength = sps_hole_cone_length(path);
+    float taperConeLength = coneLength;
+    float3 taperEnd = frame.position;
 
     [fastopt]
     for (uint sampleIndex = 1; sampleIndex <= path.nodeCount; sampleIndex++) {
-        // Path construction already moved the entrance and removed skipped nodes.
-        float3 endPoint = sps_path_worlds[sampleIndex];
-        float3 endForward = sps_path_forwards[sampleIndex];
-
-        float3 p0;
-        float3 p1;
-        float3 p2;
-        float3 p3;
-        sps_deform_segment_control_points(
-            startPoint,
-            startForward,
-            endPoint,
-            endForward,
-            p0,
-            p1,
-            p2,
-            p3
+        bool measureToRing = inHole && sampleIndex <= lastRing;
+        bool needSample = remainingDistance >= 0;
+        bool collapsed = inHole && distanceToEnd < 0;
+        SpsCurveFrame sampleFrame;
+        bool reachedEnd = sps_walk_segment(
+            frame,
+            sps_path_worlds[sampleIndex],
+            sps_path_forwards[sampleIndex],
+            remainingDistance,
+            collapsed,
+            remainingDistance + distanceToEnd,
+            taperEnd,
+            measureToRing ? distanceFromJoin : -1,
+            sampleFrame
         );
-
-        bool zeroLength = sps_is_zero(p1 - p0) && sps_is_zero(p2 - p0) && sps_is_zero(p3 - p0);
-        float nextRemainingDistance = remainingDistance;
-        if (zeroLength) {
-            // Coincident endpoints can leave no curve length or derivative to solve.
-            outPosition = endPoint;
-            outForward = endForward;
-            outUp = sps_nearest_normal(endForward, currentUp);
-        } else {
-            sps_bezierSolve(
-                p0,
-                p1,
-                p2,
-                p3,
-                remainingDistance,
-                currentUp,
-                nextRemainingDistance,
-                outPosition,
-                outForward,
-                outUp
-            );
+        if (needSample) {
+            vertex = sampleFrame;
+            if (collapsed && remainingDistance <= 0) {
+                // A terminal hole span has two anchors, even if it crosses intermediate nodes.
+                float3 exitPoint = sps_path_worlds[path.nodeCount];
+                vertex.position = measureToRing || sps_length_sq(vertex.position - taperEnd) < sps_length_sq(vertex.position - exitPoint)
+                    ? taperEnd : exitPoint;
+            }
         }
-        remainingDistance = nextRemainingDistance;
-
-        if (remainingDistance <= 0) break;
-
-        // Use the known endpoint tangent after completing a segment. Subtracting
-        // nearly coincident control points can lose its direction to float precision.
-        outForward = endForward;
-        outUp = sps_nearest_normal(outForward, outUp);
-        currentUp = outUp;
+        if (!reachedEnd && !measureToRing) {
+            remainingDistance = 0;
+            break;
+        }
+        // Once the vertex is sampled, finish measuring its enclosed span to locate the exit taper.
+        if (measureToRing && remainingDistance < 0) {
+            float measuredPastVertex = -remainingDistance;
+            if (measuredPastVertex <= distanceFromJoin) {
+                if (sps_path_hole_weights[sampleIndex] >= 0) continue;
+                float distanceToRing = measuredPastVertex;
+                vertex = frame;
+                // Pin the second half at the ring: hold closed, open gradually, then hold full.
+                float thirdOfPinnedSpan = (distanceFromJoin + distanceToRing) / 6;
+                outRadiusMult = sps_sample_hole_taper(
+                    thirdOfPinnedSpan,
+                    2 * thirdOfPinnedSpan - distanceToRing,
+                    true
+                );
+                inHole = false;
+            }
+            remainingDistance = 0;
+            break;
+        }
         if (sps_path_hole_weights[sampleIndex] < 0) {
-            firstHole = 0;
-        } else if (firstHole == 0) {
-            firstHole = sampleIndex;
-            distanceFromHole = remainingDistance;
+            if (measureToRing) vertex = frame;
+            inHole = false;
+        } else if (!inHole) {
+            inHole = true;
+            taperEnd = frame.position;
+            distanceFromJoin = remainingDistance;
+            float taperLength = sps_hole_taper_end(path, sampleIndex, coneLength);
+            if (sampleIndex == 1) taperLength -= path.entryHoleAdvance;
+            float scale = sps_guided_taper_scale(sampleIndex, lastRing, taperLength);
+            taperConeLength = coneLength * scale;
+            distanceToEnd = taperLength * scale - distanceFromJoin;
         }
-        startPoint = endPoint;
-        startForward = endForward;
+        if (remainingDistance <= 0 && !(inHole && sampleIndex < lastRing)) break;
     }
 
-    if (firstHole != 0) {
-        outRadiusMult = sps_sample_hole_taper(path, firstHole, distanceFromHole, remainingDistance);
+    if (inHole) {
+        outRadiusMult = sps_sample_hole_taper(taperConeLength, distanceToEnd, remainingDistance > 0);
+        remainingDistance = max(remainingDistance + min(distanceToEnd, 0), 0);
     }
-    if (remainingDistance > 0) outPosition += outForward * remainingDistance;
+    outPosition = vertex.position;
+    outForward = vertex.forward;
+    outUp = vertex.up;
+    if (remainingDistance > 0 && !path.stationaryExit) outPosition += outForward * remainingDistance;
 }
 
 #endif

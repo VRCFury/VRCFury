@@ -35,13 +35,13 @@
 // (due to SPS_BEND_ROOM), then entry will be rejected.
 #define SPS_ENTRY_ADVANCE_MAX 0.5
 
-// HOLE OVERRUN
+// HOLE TAPER
 
-// Full-radius distance before the cone taper, in plug lengths, measured from where the plug joins the hole.
-#define SPS_HOLE_OVERRUN_MIN 0.05
-// Angle of the taper after the hole overrun, in degrees from the plug axis.
-// Taper length = average plug radius / tan(angle). Use 90 for a hard cutoff.
-#define SPS_HOLE_OVERRUN_TAPER_ANGLE 60.0
+// Length of the full-radius section of the taper, in plug lengths.
+#define SPS_HOLE_TAPER_FULL_RADIUS_LENGTH 0.05
+// Angle of the narrowing section, in degrees from the plug axis.
+// Cone length = average plug radius / tan(angle). Use 90 for a hard cutoff.
+#define SPS_HOLE_TAPER_ANGLE 60.0
 
 // BEZIER
 

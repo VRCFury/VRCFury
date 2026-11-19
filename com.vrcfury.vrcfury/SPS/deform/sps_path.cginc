@@ -30,10 +30,12 @@ struct SpsDeformNode {
 struct SpsDeformPathInfo {
     float3 plugUp;
     float3 firstSocketUp;
+    float entryHoleAdvance; // Distance skipped inside the current run of holes before the join.
     float worldLength;
     float bakeScale;
     float deformationWeight;
     uint nodeCount;
+    bool stationaryExit;
 };
 
 inline void sps_store_path_node(
@@ -256,6 +258,22 @@ bool sps_prepare_socket(
     return accepted && node.deformationWeight > 0;
 }
 
+// Guide contacts can extend an existing path, but only an entrance can start one.
+bool sps_has_possible_entrance() {
+    if (sps_contact_count(0) > 0 || sps_contact_count(1) > 0) return true;
+    if (!sps_to_bool(_SPS_UseLegacyLights)) return false;
+    float4x4 frame = sps_contact_frame();
+    // Capture uses the advanced join, which can be closer to the plug than the light itself.
+    float reach = _SPS_BakedLength * (SPS_REACH_FADE_MAX + max(SPS_ENTRY_ADVANCE_MAX, 0));
+    float reachSq = reach * reach * sps_length_sq(frame._m02_m12_m22);
+    [fastopt]
+    for (uint i = 0; i < 4; i++) {
+        if (sps_is_entrance_light(sps_light_type(i))
+            && sps_length_sq(sps_light_world(i) - frame._m03_m13_m23) < reachSq) return true;
+    }
+    return false;
+}
+
 // Node zero is the plug frame; the remaining nodes are socket entrances/stops.
 // fastopt keeps FXC from spending excessive compile time optimizing the nested loops.
 bool sps_try_get_path(out SpsDeformPathInfo path) {
@@ -281,7 +299,10 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
     SpsSocketCandidate sockets[SPS_CONTACT_COUNT + 4];
     [fastopt]
     for (uint contactIndex = 0; contactIndex < SPS_CONTACT_COUNT; contactIndex++) {
-        sockets[contactIndex] = sps_read_contact(contactIndex);
+        // Store guides first, then self and other entrances, followed by lights.
+        uint slot = contactIndex < 2 * VRC_CONTACT_MAX_TARGETS
+            ? VRC_CONTACT_MAX_TARGETS + contactIndex : contactIndex - 2 * VRC_CONTACT_MAX_TARGETS;
+        sockets[slot] = sps_read_contact(contactIndex);
     }
     [fastopt]
     for (uint lightIndex = 0; lightIndex < 4; lightIndex++) {
@@ -296,6 +317,7 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
     previousNode.up = path.plugUp;
     SpsDeformNode rootNode = previousNode;
     SpsDeformNode entry = (SpsDeformNode)0;
+    float advanceAtHoleStart = 0;
     float traveledDistance = 0; // Processed chord length, shared by profile sampling and reach.
     float advance = 0;
     float curveWeight = 1;
@@ -305,63 +327,44 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
         int chosen = -1;
         SpsDeformNode chosenNode = (SpsDeformNode)0;
         float nearest = 1e30;
-        // Look for path stops first
-        if (sps_socket_key(previous) != 0) {
-            [fastopt]
-            for (int candidate = 2 * VRC_CONTACT_MAX_TARGETS; candidate < SPS_CONTACT_COUNT; candidate++) {
-                SpsSocketCandidate socket = sockets[candidate];
-                if (!sps_socket_valid(socket) || (used & (1u << candidate)) != 0) continue;
+        int firstCandidate = sps_socket_key(previous) == 0 ? VRC_CONTACT_MAX_TARGETS : 0;
+        [fastopt]
+        for (int candidate = firstCandidate; candidate < SPS_CONTACT_COUNT + 4; candidate++) {
+            bool guided = candidate < VRC_CONTACT_MAX_TARGETS;
+            if (candidate == VRC_CONTACT_MAX_TARGETS) {
+                // Only search for a new entrance if there is no next guide and the path is open.
+                if (chosen >= 0 || (step > 1 && sps_has_flag(previousNode.flags, SPS_SOCKET_FLAG_HOLE))) break;
+                nearest = remainingLength * remainingLength;
+            }
+            SpsSocketCandidate socket = sockets[candidate];
+            if (!sps_socket_valid(socket) || (used & (1u << candidate)) != 0) continue;
+            if (guided) {
                 // Adding 128 advances the path index without changing the low 7-bit group.
                 if (socket.owner != previous.owner || sps_socket_key(socket) != sps_socket_key(previous) + 128u) continue;
-                SpsDeformNode node;
-                float distanceSq;
-                if (!sps_prepare_socket(
-                    socket,
-                    previousNode,
-                    path.worldLength,
-                    traveledDistance,
-                    worldRadius,
-                    worldBaseActivationRadiusOverride,
-                    true,
-                    false,
-                    advance,
-                    node,
-                    distanceSq
-                ) || distanceSq >= nearest) continue;
-                chosen = candidate;
-                chosenNode = node;
-                nearest = distanceSq;
-            }
-        }
-        // If no path stop, look for a new socket entrance (unless it just entered a hole)
-        if (chosen < 0 && (step == 1 || !sps_has_flag(previousNode.flags, SPS_SOCKET_FLAG_HOLE))) {
-            nearest = remainingLength * remainingLength;
-            [fastopt]
-            for (int slot = 0; slot < 2 * VRC_CONTACT_MAX_TARGETS + 4; slot++) {
-                int candidate = slot < 2 * VRC_CONTACT_MAX_TARGETS ? slot : slot + VRC_CONTACT_MAX_TARGETS;
-                SpsSocketCandidate socket = sockets[candidate];
-                if (!sps_socket_valid(socket) || sps_socket_key(socket) >= 128u || (used & (1u << candidate)) != 0) continue;
-                SpsDeformNode node;
-                float distanceSq;
-                if (!sps_prepare_socket(
-                    socket,
-                    previousNode,
-                    path.worldLength,
-                    traveledDistance,
-                    worldRadius,
-                    worldBaseActivationRadiusOverride,
-                    false,
-                    step == 1,
-                    advance,
-                    node,
-                    distanceSq
-                ) || distanceSq >= nearest) continue;
-                chosen = candidate;
-                chosenNode = node;
-                nearest = distanceSq;
-            }
+            } else if (sps_socket_key(socket) >= 128u) continue;
+
+            SpsDeformNode node;
+            float distanceSq;
+            if (!sps_prepare_socket(
+                socket,
+                previousNode,
+                path.worldLength,
+                traveledDistance,
+                worldRadius,
+                worldBaseActivationRadiusOverride,
+                guided,
+                step == 1,
+                advance,
+                node,
+                distanceSq
+            ) || distanceSq >= nearest) continue;
+            chosen = candidate;
+            chosenNode = node;
+            nearest = distanceSq;
         }
         if (chosen < 0) break;
+        path.stationaryExit = sps_has_flag(chosenNode.flags, SPS_SOCKET_FLAG_GUIDED)
+            && sps_has_flag(chosenNode.flags, SPS_SOCKET_FLAG_HOLE);
         SpsDeformNode segmentStart = previousNode;
         bool skipped = false;
         bool movingEntry = step == 1 || advance > 0;
@@ -376,11 +379,19 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
             skipped = sps_advance_entry(entry, chosenNode, advance);
         }
         if (movingEntry) {
+            if (skipped && sps_has_flag(entry.flags, SPS_SOCKET_FLAG_HOLE)
+                && !sps_has_flag(previousNode.flags, SPS_SOCKET_FLAG_HOLE)) {
+                advanceAtHoleStart = advance;
+            }
+            // A terminal guide consumes only the advance that actually reached it.
+            path.entryHoleAdvance = advanceAtHoleStart - (path.stationaryExit ? advance : 0);
             // Until advance is consumed, predict the join on the current exit.
             // Once a following node is available, the same walk moves it along
             // that segment instead. No skipped nodes enter the finished path.
             SpsDeformNode join = entry;
-            join.world += join.forward * advance;
+            // A guided terminal hole has no outgoing line. Any remaining advance
+            // can still be consumed if the next iteration finds another node.
+            if (!path.stationaryExit) join.world += join.forward * advance;
             if (step > 1) path.deformationWeight = sps_deformation_weight(
                 join.world - sps_path_worlds[0],
                 sps_path_forwards[0],
