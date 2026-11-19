@@ -10,7 +10,7 @@ namespace VF.Hooks.UnityFixes {
      */
     internal static class OpenAnimationClipHook {
         private abstract class Reflection : ReflectionHelper {
-            public static readonly MethodInfo EditAnimationClip = typeof(AnimationWindow).VFMethod("EditAnimationClip");
+            public static readonly MethodInfo RefreshSelection = typeof(AnimationWindow).VFMethod("OnSelectionChange");
             public static readonly HarmonyUtils.PatchObj EditWithImporterPatch = HarmonyUtils.Patch(
                 typeof(OpenAnimationClipHook),
                 nameof(BeforeEditWithImporter),
@@ -46,13 +46,13 @@ namespace VF.Hooks.UnityFixes {
             if (clip == null) return false;
             var path = AssetDatabase.GetAssetPath(clip);
             if (string.IsNullOrEmpty(path) || AssetImporter.GetAtPath(path) is ModelImporter) return false;
-            if (Reflection.EditAnimationClip == null) return false;
+            if (Reflection.RefreshSelection == null) return false;
 
             // Keep the Animation window's selection in sync when it receives focus.
             Selection.activeObject = clip;
             var window = EditorWindow.GetWindow<AnimationWindow>();
             if (window.animationClip == clip) return true;
-            Reflection.EditAnimationClip.Invoke(window, new object[] { clip });
+            Reflection.RefreshSelection.Invoke(window, null);
             return window.animationClip == clip;
         }
     }

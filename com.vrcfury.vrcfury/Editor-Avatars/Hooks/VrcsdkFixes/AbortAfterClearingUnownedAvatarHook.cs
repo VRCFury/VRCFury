@@ -1,3 +1,4 @@
+#if VRCSDK_HAS_CLEAR_AVATAR_DATA
 using System.Reflection;
 using VF.Utils;
 
@@ -46,3 +47,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

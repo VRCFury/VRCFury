@@ -1,4 +1,4 @@
-#if !VRCSDK_HAS_FIXED_CONTACT_MANAGER_STOPWATCH
+#if VRCSDK_NEEDS_CONTACT_MANAGER_STOPWATCH_FIX
 using System;
 using System.Diagnostics;
 using System.Reflection;

@@ -83,8 +83,13 @@
         },
         {
             "name": "com.vrchat.base",
-            "expression": "3.10.5",
-            "define": "VRCSDK_HAS_FIXED_CONTACT_MANAGER_STOPWATCH"
+            "expression": "[3.7.3,3.10.5)",
+            "define": "VRCSDK_NEEDS_CONTACT_MANAGER_STOPWATCH_FIX"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.8.1",
+            "define": "VRCSDK_HAS_CLEAR_AVATAR_DATA"
         },
         {
             "name": "com.vrchat.avatars",
