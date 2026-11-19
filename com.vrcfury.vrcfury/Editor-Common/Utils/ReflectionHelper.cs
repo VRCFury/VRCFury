@@ -44,8 +44,7 @@ namespace VF.Utils {
             return true;
         }
 
-        [VFInit]
-        private static void Init() {
+        internal static IReadOnlyList<string> GetMissingRequiredBindings() {
             var notReady = new List<string>();
 
             var helpers = TypeCache.GetTypesDerivedFrom<ReflectionHelper>();
@@ -56,7 +55,13 @@ namespace VF.Utils {
                     notReady.AddRange(GetMissingDetails($"{helper.FullName}.{field.Name}", value));
                 }
             }
-            if (notReady.Any()) {
+            return notReady;
+        }
+
+        [VFInit]
+        private static void Init() {
+            var notReady = GetMissingRequiredBindings();
+            if (notReady.Count > 0) {
                 Debug.LogWarning("VRCFury failed to find hook into some parts of Unity properly. Perhaps this version of Unity is not fully supported?\n" + notReady.Join('\n'));
             }
         }

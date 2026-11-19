@@ -37,6 +37,7 @@ namespace VF.Utils {
             public static readonly PropertyInfo isRecordingProperty = animStateType?.VFProperty("recording");
             public static readonly Type AnimationWindow = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.AnimationWindow");
             public static readonly PropertyInfo AnimationWindowState = AnimationWindow?.VFProperty("state");
+            public static readonly MethodInfo OnSelectionChange = AnimationWindow?.VFMethod("OnSelectionChange");
         }
 
         [VFInit]
@@ -77,14 +78,7 @@ namespace VF.Utils {
                 return;
             }
 
-            // Open / focus the animation tab
-            var animationWindow = EditorWindowFinder.GetWindows(Reflection.AnimationWindow).FirstOrDefault();
-            if (animationWindow == null) {
-                DialogUtils.DisplayDialog("VRCFury Animation Recorder", "Animation tab needs to be open",
-                    "Ok");
-                return;
-            }
-
+            var animationWindow = EditorWindowFinder.GetOrOpenWindow<AnimationWindow>();
             animationWindow.Focus();
             var animState = Reflection.AnimationWindowState.GetValue(animationWindow);
 
@@ -112,7 +106,6 @@ namespace VF.Utils {
 
             var prefix = baseObj.GetPath(avatarObject);
             var baseObjInClone = clone.Find(prefix);
-            Selection.activeGameObject = baseObjInClone;
 
             foreach (var an in clone.GetComponentsInSelfAndChildren<Animator>()) {
                 Object.DestroyImmediate(an);
@@ -131,6 +124,9 @@ namespace VF.Utils {
             state.motion = clip;
             animator.runtimeAnimatorController = controller;
 
+            // Initialize the Animation window's selection before configuring its recording state.
+            Selection.activeGameObject = baseObjInClone;
+            Reflection.OnSelectionChange.Invoke(animationWindow, null);
             var selection = Reflection.selectionField.GetValue(animState);
             Reflection.gameObjectField.SetValue(selection, (GameObject)clone);
             Reflection.animationClipField.SetValue(animState, clip);

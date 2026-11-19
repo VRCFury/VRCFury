@@ -26,6 +26,12 @@ namespace VF.Utils {
         public static IList<T> GetWindows<T>() where T : EditorWindow {
             return activeWindows.NotNull().OfType<T>().ToList();
         }
+
+        public static T GetOrOpenWindow<T>() where T : EditorWindow {
+            var window = activeWindows.NotNull().OfType<T>().FirstOrDefault() ?? EditorWindow.GetWindow<T>();
+            activeWindows.Add(window);
+            return window;
+        }
         
         public static IList<EditorWindow> GetWindows(Type type) {
             return activeWindows.NotNull().Where(type.IsInstanceOfType).ToList();
