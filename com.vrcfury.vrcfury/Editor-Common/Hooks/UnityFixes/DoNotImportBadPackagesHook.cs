@@ -173,7 +173,8 @@ namespace VF.Hooks.UnityFixes {
                                 " and must be removed before importing a new version.", "Ok");
                         } else {
                             EditorUtility.DisplayDialog(WarningDialogTitle,
-                                "The VRCSDK is already installed using the VCC.", "Ok");
+                                $"The VRCSDK is already installed as a package. Manage it in {AlcomUtils.GetName()}.",
+                                "Ok");
                         }
                     }
                 };

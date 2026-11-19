@@ -17,7 +17,7 @@ namespace VF {
                 DialogUtils.DisplayDialog(
                     "VRCFury",
                     "The VRCFury install is partially corrupt. The updater may have broken, or you may have updated " +
-                    "from an old manual install to a new version using the VCC.\n" +
+                    $"from an old manual install to a package-managed version using {AlcomUtils.GetName()}.\n" +
                     "\n" +
                     "Please download and import " +
                     "https://vrcfury.com/installer to resolve this issue.",

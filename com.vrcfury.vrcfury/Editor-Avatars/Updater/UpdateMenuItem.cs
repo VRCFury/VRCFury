@@ -16,7 +16,7 @@ namespace VF.Updater {
         private static readonly Lazy<bool> shouldShow = new Lazy<bool>(() => {
             var vpmManifest = "Packages/vpm-manifest.json";
             if (File.Exists(vpmManifest) && File.ReadLines(vpmManifest).Any(line => line.Contains("vrcfury"))) {
-                // Installed using VCC
+                // Managed through VPM
                 return false;
             }
             var unityManifest = "Packages/manifest.json";
@@ -37,8 +37,8 @@ namespace VF.Updater {
         private static async Task UpgradeUnsafe() {
             if (!ShouldShow()) {
                 throw new Exception(
-                    "VRCFury was installed using the VRChat Creator Companion. " +
-                    "Please update VRCFury in the Creator Companion app, in the Manage Project section.");
+                    $"To update VRCFury, open this project in {AlcomUtils.GetName()} and update VRCFury from the package list."
+                );
             }
             
             Log("Downloading installer ...");

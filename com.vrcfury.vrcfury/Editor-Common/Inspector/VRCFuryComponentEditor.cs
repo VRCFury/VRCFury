@@ -23,7 +23,7 @@ namespace VF.Inspector {
 #if UNITY_2022_3_6
             content.Add(VRCFuryEditorUtils.Warn(
                 "Your Unity version (2022.3.6) is outdated and some things may be broken." +
-                " Please update Unity to the newest recommended version in the VRChat Creator Companion."
+                $" Please update Unity to the newest recommended version in {AlcomUtils.GetName()}."
             ));
 #endif
         }

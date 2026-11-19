@@ -18,7 +18,8 @@ namespace VF.Menu {
                 var ok = DialogUtils.DisplayDialog(
                     "Warning",
                     "This will disable VRChat's buggy in-editor VPM resolver.\n\n" +
-                    "Note that the editor will no longer warn you if your vcc manifest no longer matches the state of the project. You will have to re-resolve the packages in the VCC or ALCOM manually if that happens.\n\n" +
+                    "The editor will no longer warn you if the project's VPM manifest is out of sync. " +
+                    $"If that happens, re-resolve the packages manually in {AlcomUtils.GetName()}.\n\n" +
                     "Are you sure?",
                     "Yes, disable it",
                     "Cancel"
