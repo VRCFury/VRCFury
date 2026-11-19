@@ -19,6 +19,15 @@ namespace VF.Inspector {
         public static Func<UnityEngine.Component,string> getDebugLine;
         public static Action<VFGameObject, VisualElement> renderWarnings;
 
+        internal static void AddUnityVersionWarning(VisualElement content) {
+#if UNITY_2022_3_6
+            content.Add(VRCFuryEditorUtils.Warn(
+                "Your Unity version (2022.3.6) is outdated and some things may be broken." +
+                " Please update Unity to the newest recommended version in the VRChat Creator Companion."
+            ));
+#endif
+        }
+
         internal static C CreateUpgradedClone<C>(C original, out GameObject cloneObject)
             where C : VRCFuryComponent {
             cloneObject = EditorUtility.CreateGameObjectWithHideFlags("", HideFlags.HideAndDontSave);
@@ -67,6 +76,7 @@ namespace VF.Inspector {
 
             var content = new VisualElement();
             content.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
+            VRCFuryComponentEditor.AddUnityVersionWarning(content);
 
             try {
                 content.Add(CreateInspectorGUIUnsafe(versionLabel));
