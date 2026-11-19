@@ -72,9 +72,11 @@ namespace com.vrcfury.udon {
             return nearestPlug < 0 ? 0 : cachedPlugSizes[nearestPlug].x;
         }
 
-        public float _GetPlugWidth() {
+        [System.Obsolete("Use _GetPlugRadius() instead.")]
+        public float _GetPlugWidth() => _GetPlugRadius();
+
+        public float _GetPlugRadius() {
             UpdateMeasurements();
-            // The existing API's "width" is a radius. Native SPS uses overall radius X.
             return nearestPlug < 0 ? 0 : cachedPlugSizes[nearestPlug].y;
         }
 

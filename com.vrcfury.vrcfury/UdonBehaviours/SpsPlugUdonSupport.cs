@@ -41,7 +41,10 @@ namespace com.vrcfury.udon {
             return plugLengthLocal * Mathf.Abs(plugRoot.lossyScale.x);
         }
 
-        public float _GetPlugWidth() {
+        [System.Obsolete("Use _GetPlugRadius() instead.")]
+        public float _GetPlugWidth() => _GetPlugRadius();
+
+        public float _GetPlugRadius() {
             return plugWidthLocal * Mathf.Abs(plugRoot.lossyScale.x);
         }
 
