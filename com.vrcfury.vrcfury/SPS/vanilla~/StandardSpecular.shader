@@ -82,7 +82,7 @@ Shader "Standard (Specular setup)"
             #pragma shader_feature_local _PARALLAXMAP
 
             #pragma multi_compile_fwdbase
-            #pragma multi_compile_fog
+            #include_with_pragmas "../deform/sps_standard_fog.cginc"
             #pragma multi_compile_instancing
             // Uncomment the following line to enable dithering LOD crossfade. Note: there are more in the file to uncomment for other passes.
             //#pragma multi_compile _ LOD_FADE_CROSSFADE
@@ -118,7 +118,7 @@ Shader "Standard (Specular setup)"
             #pragma shader_feature_local _PARALLAXMAP
 
             #pragma multi_compile_fwdadd_fullshadows
-            #pragma multi_compile_fog
+            #include_with_pragmas "../deform/sps_standard_fog.cginc"
             // Uncomment the following line to enable dithering LOD crossfade. Note: there are more in the file to uncomment for other passes.
             //#pragma multi_compile _ LOD_FADE_CROSSFADE
 
@@ -250,7 +250,7 @@ Shader "Standard (Specular setup)"
             #pragma skip_variants SHADOWS_SOFT DYNAMICLIGHTMAP_ON DIRLIGHTMAP_COMBINED
 
             #pragma multi_compile_fwdbase
-            #pragma multi_compile_fog
+            #include_with_pragmas "../deform/sps_standard_fog.cginc"
 
             #pragma vertex vertBase
             #pragma fragment fragBase
@@ -282,7 +282,7 @@ Shader "Standard (Specular setup)"
             #pragma skip_variants SHADOWS_SOFT
 
             #pragma multi_compile_fwdadd_fullshadows
-            #pragma multi_compile_fog
+            #include_with_pragmas "../deform/sps_standard_fog.cginc"
 
             #pragma vertex vertAdd
             #pragma fragment fragAdd

@@ -787,6 +787,19 @@ VertexOutput vert(AppData data, uint vertexId : SV_VertexID) {
     }
 
     [Test]
+    public void RemovesOrdinaryInstancingAndKeepsStereoKeywords() {
+        var program = Common + @"
+#pragma vertex vert
+#pragma multi_compile_instancing // regular GPU instancing
+#pragma multi_compile _ STEREO_INSTANCING_ON
+float4 vert(AppData input) : SV_POSITION { return input.vertex; }
+";
+        var patched = SpsPatcher.PatchProgram(program, true, SpsStub, "", false);
+        StringAssert.Contains("#pragma skip_variants INSTANCING_ON\n", patched);
+        StringAssert.Contains("#pragma multi_compile _ STEREO_INSTANCING_ON", patched);
+    }
+
+    [Test]
     public void CompilesSurfaceShaderWithoutCustomVertexFunction() {
         var originalProgram = @"
 #pragma surface surf Lambert
@@ -1181,7 +1194,9 @@ Shader ""Hidden/VRCFury/Tests/NoProperties"" {
             Assert.That(Assert.Throws<Exception>(() => SpsPatcher.Patch(material, keepImports, true)).Message,
                 Is.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
 #else
+            material.enableInstancing = true;
             SpsPatcher.Patch(material, keepImports, hasBlendshapes: true);
+            Assert.IsFalse(material.enableInstancing);
             // Error checks alone can pass when Unity's upgrader has excluded the graphics API.
             var compiled = ShaderUtil.GetShaderData(material.shader).GetSerializedSubshader(0).GetPass(0)
                 .CompileVariant(ShaderType.Vertex, Array.Empty<string>(), ShaderCompilerPlatform.D3D,

@@ -32,7 +32,9 @@ namespace VF.Builder.Haptics {
                     && m.GetParameters()[3].IsOut);
         }
 
-        private const string HashBuster = "56";
+        internal const string ShaderNamePrefix = "Hidden/SPSPatched/";
+        internal const string LockedShaderNamePrefix = "Hidden/Locked/SPSPatched/";
+        private const string HashBuster = "58";
         private static readonly Regex ProgramStartRegex = GetRegex(@"\G(?:^|\n)[ \t]*(CGPROGRAM|HLSLPROGRAM)[ \t]*(?:\n|$)");
         private static readonly Regex CgProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDCG[ \t]*(?:\n|$)");
         private static readonly Regex HlslProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDHLSL[ \t]*(?:\n|$)");
@@ -83,6 +85,7 @@ namespace VF.Builder.Haptics {
             var shader = mat.shader;
             var newShader = PatchUnsafe(shader, keepImports, hasBlendshapes);
             mat.shader = newShader.shader;
+            mat.enableInstancing = false;
             mat.Dirty();
         }
 
@@ -99,9 +102,9 @@ namespace VF.Builder.Haptics {
             if (shader.name.StartsWith("Hidden/Locked/")) {
                 // Special case for Poiyomi
                 // This prevents Poiyomi from complaining that the mat isn't locked and bailing on the build
-                newShaderName = $"Hidden/Locked/SPSPatched/{hash}";
+                newShaderName = LockedShaderNamePrefix + hash;
             } else {
-                newShaderName = $"Hidden/SPSPatched/{hash}";
+                newShaderName = ShaderNamePrefix + hash;
             }
             var alreadyExists = Shader.Find(newShaderName);
             if (alreadyExists != null && !ShaderUtil.ShaderHasError(alreadyExists)) {
@@ -276,6 +279,8 @@ namespace VF.Builder.Haptics {
                 float.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture) < 4.5f
                     ? match.Groups[1].Value + "4.5" : match.Value);
             if (!target.IsMatch(program)) program = "#pragma target 4.5\n" + program;
+            // The patched material disables ordinary GPU instancing. Single-pass stereo has its own keyword.
+            program = "#pragma skip_variants INSTANCING_ON\n" + program;
             var newVertFunctionName = "spsVert";
             var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
             string vanillaVertFunctionName = null;
