@@ -78,6 +78,23 @@ namespace com.vrcfury.udon {
             return nearestPlug < 0 ? 0 : cachedPlugSizes[nearestPlug].y;
         }
 
+        // Radius in world meters at the socket entrance.
+        public float _GetPlugEntryRadius() {
+            UpdateMeasurements();
+            if (nearestPlug < 0) return 0;
+            if (nativePlugs[nearestPlug]) {
+                // SPS3 sends the sampled profile radius on Y. Fade it in just before contact.
+                if (cachedProximity <= 0) return plugContacts[nearestPlug].scale.y;
+                var taperLength = cachedPlugSizes[nearestPlug].x * 0.05f;
+                if (cachedProximity >= taperLength) return 0;
+                return plugContacts[nearestPlug].scale.y * (1 - cachedProximity / taperLength);
+            }
+            if (cachedProximity >= 0 || !measuredWidths[nearestPlug]) return 0;
+            // Legacy plugs only send overall width. Fade it in after the tip enters.
+            var size = cachedPlugSizes[nearestPlug];
+            return size.y * Mathf.Clamp01(-cachedProximity / (size.x * 0.05f));
+        }
+
         public float _GetProximity() {
             UpdateMeasurements();
             return cachedProximity;
