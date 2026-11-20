@@ -275,15 +275,16 @@ namespace VF.Utils {
                         to.controls.Add(preserveSubmenuLinks ? control : CloneControl(control));
                         continue;
                     }
+                    // An alias still occupies its position among same-name submenu controls.
+                    var index = combineDuplicateNames ? 0
+                        : submenuCount.TryGetValue(control.name, out var count) ? count + 1 : 0;
+                    submenuCount[control.name] = index;
                     if (!preserveSubmenuLinks && seen.TryGetValue(control.subMenu, out var previous)) {
                         var copy = CloneControl(control);
                         copy.subMenu = previous;
                         to.controls.Add(copy);
                         continue;
                     }
-                    var index = combineDuplicateNames ? 0
-                        : submenuCount.TryGetValue(control.name, out var count) ? count + 1 : 0;
-                    submenuCount[control.name] = index;
                     var folder = FindControlsWithName(
                         to,
                         control.name,

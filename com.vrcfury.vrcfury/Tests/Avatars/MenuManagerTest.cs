@@ -105,6 +105,28 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void BlankSubmenuAfterSharedLinkKeepsItsOwnContents() {
+            var source = Menu();
+            var emotes = Menu();
+            var goLoco = Menu();
+            var poses = Menu();
+            Link(source, "Emotes", emotes);
+            Link(source, "GoGo Loco", goLoco);
+            Link(goLoco, " ", emotes);
+            Link(goLoco, " ", poses);
+            Link(emotes, "Standing", Menu());
+            Link(poses, "Pose", Menu());
+
+            var root = Menu();
+            Manager(root).MergeMenu(source);
+
+            var builtGoLoco = Child(root, "GoGo Loco");
+            Assert.That(Child(builtGoLoco, " "), Is.SameAs(Child(root, "Emotes")));
+            Assert.That(Child(root, "Emotes").controls.Single().name, Is.EqualTo("Standing"));
+            Assert.That(Child(builtGoLoco, " ", 1).controls.Single().name, Is.EqualTo("Pose"));
+        }
+
+        [Test]
         public void MoveRenamesOriginalControlAndPreservesMetadataAndAliases() {
             var root = Menu();
             var source = Menu();
