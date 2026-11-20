@@ -68,12 +68,30 @@ namespace VF.Service {
             return fx.GetOrCreateFloat(receiver.parameter);
         }
 
-        public VFAParam GetParameter(SelfAndOthersReceiverService.Receivers receivers, bool self, string parameterName = null
+        public void RegisterOgbDepth(SelfAndOthersReceiverService.Receivers receivers, string prefix) {
+            foreach (var self in new[] { true, false }) {
+                GetParameter(
+                    receivers,
+                    self,
+                    prefix + (self ? "/DepthSelf" : "/DepthOthers"),
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-            , AdvancedParameter advancedParameters = 0
+                    advancedParameters: AdvancedParameter.All,
 #endif
+                    localOnly: true
+                );
+            }
+        }
+
+        public VFAParam GetParameter(
+            SelfAndOthersReceiverService.Receivers receivers,
+            bool self,
+            string parameterName = null,
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            AdvancedParameter advancedParameters = 0,
+#endif
+            bool localOnly = false
         ) {
-            var receiver = receivers.Find(self, false, preferParameter: true, parameterName: parameterName);
+            var receiver = receivers.Find(self, false, preferParameter: true, parameterName: parameterName, localOnly: localOnly);
             // Explicit names are public outputs (for example OGB)
             // Never rename an existing output already used by another consumer
             if (parameterName != null) receiver.parameter = parameterName;

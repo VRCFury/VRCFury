@@ -1675,6 +1675,38 @@ namespace VF.Tests {
             Assert.That(receivers.All(r => !r.gameObject.activeSelf), Is.True);
         }
 
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void SocketOgbDepthOnlyRunsRemotelyForPartiesUsedByDepthAnimations(bool animateSelf, bool animateOthers) {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            if (!VF.Menu.HapticsToggleMenuItem.Get()) Assert.Ignore("OGB haptics are disabled");
+            var socket = root.AddComponent<VRCFuryHapticSocket>();
+            socket.oscId = "Test";
+            socket.addMenuItem = false;
+            if (animateSelf || animateOthers) {
+                socket.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew {
+                    units = VRCFuryHapticSocket.DepthActionUnits.Meters,
+                    enableSelf = animateSelf,
+                    enableOthers = animateOthers
+                });
+            }
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> { new SpsOptions { legacyModeAvailable = false } };
+            globals.addOtherFeature = _ => { };
+            injector.GetService<BakeHapticSocketsService>().Apply();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
+            var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
+            foreach (var self in new[] { true, false }) {
+                var contact = contacts.Single(r => r.parameter == "OGB/Socket/Test/Depth" + (self ? "Self" : "Others"));
+                Assert.That(contact.localOnly, Is.EqualTo(self ? !animateSelf : !animateOthers));
+                Assert.That(contact.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.All));
+            }
+        }
+
         [TestCase("socket", "__sps_unknown_meters")]
         [TestCase("socket", "__sps_depth_unknown")]
         [TestCase("plug", "__sps_unknown_meters")]
@@ -1745,6 +1777,7 @@ namespace VF.Tests {
             var mainReceivers = root.GetComponentsInChildren<VRCContactReceiver>(true)
                 .Where(r => r.collisionTags.Contains(SpsTags.FormatPlug(r.allowSelf ? SelfTag("test") : "test"))).ToArray();
             Assert.That(mainReceivers, Has.Length.EqualTo(4));
+            Assert.That(mainReceivers.Any(r => r.localOnly), Is.False);
             Assert.DoesNotThrow(() => injector.GetService<ParameterInjectService>().Validate());
             Start();
             foreach (var receiver in mainReceivers) {

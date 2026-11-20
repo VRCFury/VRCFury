@@ -26,6 +26,7 @@ namespace VF.Builder.Haptics {
         internal class Receiver {
             public readonly VFGameObject obj;
             public readonly bool allowSelf;
+            public bool localOnly = true;
             public string parameter = "";
             public VRCContactReceiver component;
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
@@ -55,14 +56,22 @@ namespace VF.Builder.Haptics {
                 this.request = request;
             }
 
-            internal Receiver Find(bool self, bool merged, bool preferParameter = false, string parameterName = null) {
+            internal Receiver Find(
+                bool self,
+                bool merged,
+                bool preferParameter = false,
+                string parameterName = null,
+                bool localOnly = false
+            ) {
                 request.channels.CheckOpen();
                 var receivers = merged ? mergeReceivers : alwaysOnReceivers;
                 bool Matches(Receiver r) => r.allowSelf == self
                     && (parameterName == null || string.IsNullOrEmpty(r.parameter) || r.parameter == parameterName);
-                return (preferParameter ? receivers.FirstOrDefault(r => Matches(r) && !string.IsNullOrEmpty(r.parameter)) : null)
+                var receiver = (preferParameter ? receivers.FirstOrDefault(r => Matches(r) && !string.IsNullOrEmpty(r.parameter)) : null)
                     ?? receivers.FirstOrDefault(Matches)
                     ?? Make(self, merged);
+                receiver.localOnly &= localOnly;
+                return receiver;
             }
 
             private Receiver Make(bool self, bool merged) {
@@ -93,6 +102,7 @@ namespace VF.Builder.Haptics {
                             contact.receiverType = ContactReceiver.ReceiverType.Proximity;
                             contact.allowSelf = self;
                             contact.allowOthers = !self;
+                            contact.localOnly = receiver.localOnly;
 #if VRCSDK_HAS_CONTACT_CONTENT_TYPES
                             contact.contentTypes = self ? DynamicsUsageFlags.Avatar : DynamicsUsageFlags.Everything;
 #endif
@@ -127,6 +137,7 @@ namespace VF.Builder.Haptics {
                         ?? alwaysOnReceivers.FirstOrDefault(r => Matches(r)
                             && r.shaderTargetRenderers.Count < ContactReceiver.SHADER_MAX_UPDATED_RENDERERS)
                         ?? Make(self, false);
+                    receiver.localOnly = false;
                     receiver.separateShaderParameter = shaderParameter;
                     // A consumer that doesn't need tags can still share a writer with one that does.
                     receiver.writeToMaterialsContactTags |= needsContactTags;

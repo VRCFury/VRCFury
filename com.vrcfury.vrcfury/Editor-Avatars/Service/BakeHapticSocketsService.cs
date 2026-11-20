@@ -163,13 +163,7 @@ namespace VF.Service {
                             }
                         }
 
-                        foreach (var self in new[] { true, false }) {
-                            receiverAnimator.GetParameter(mainReceivers, self, paramPrefix + (self ? "/DepthSelf" : "/DepthOthers")
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-                                , ContactReceiver.AdvancedParameter.All
-#endif
-                            );
-                        }
+                        receiverAnimator.RegisterOgbDepth(mainReceivers, paramPrefix);
                     }
 
                     var math = new Lazy<BlendtreeMath>(() => new BlendtreeMath(fx, objectTrees.Get(receiverSpace)));

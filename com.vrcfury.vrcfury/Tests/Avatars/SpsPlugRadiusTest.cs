@@ -166,6 +166,23 @@ namespace VF.Tests {
         }
 
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS && VRCSDK_HAS_MATERIAL_CONTACTS
+        [TestCase(true)]
+        [TestCase(false)]
+        public void OgbReceiverSharedWithMaterialAlwaysRunsRemotely(bool shaderFirst) {
+            var receivers = bake.socketReceivers;
+            void AddMaterial() => receivers.SetMaterials(plug.configureTpsMesh, false, true, "SPS_Others");
+            if (shaderFirst) AddMaterial();
+            receiverAnimator.RegisterOgbDepth(receivers, "OGB/Plug/Test");
+            if (!shaderFirst) AddMaterial();
+            injector.GetService<ChangeSpsChannelsService>().Apply();
+            var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
+            Assert.That(contacts, Has.Length.EqualTo(2));
+            Assert.That(contacts.Single(r => r.parameter == "OGB/Plug/Test/DepthSelf").localOnly, Is.True);
+            var others = contacts.Single(r => r.parameter == "OGB/Plug/Test/DepthOthers");
+            Assert.That(others.localOnly, Is.False);
+            Assert.That(others.writeToMaterials, Is.True);
+        }
+
         [TestCase(true, true)]
         [TestCase(true, false)]
         [TestCase(false, true)]

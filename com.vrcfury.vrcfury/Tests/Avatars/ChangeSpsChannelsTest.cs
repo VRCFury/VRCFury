@@ -948,17 +948,18 @@ namespace VF.Tests {
             if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var bake = BakePlug(Plug(obj, true));
-            var raw = injector.GetService<SelfAndOthersReceiverAnimatorService>().GetParameter(bake.socketReceivers, self,
-                "OGB/Plug/Test/Depth" + (self ? "Self" : "Others"), VRC.Dynamics.ContactReceiver.AdvancedParameter.All);
+            injector.GetService<SelfAndOthersReceiverAnimatorService>().RegisterOgbDepth(bake.socketReceivers, "OGB/Plug/Test");
+            var raw = "OGB/Plug/Test/Depth" + (self ? "Self" : "Others");
             Track(injector.GetService<ChangeSpsChannelsActionBuilder>().Build(Action(obj, false), false));
             injector.GetService<ChangeSpsChannelsService>().Apply();
             var fx = injector.GetService<ControllersService>().GetFx();
-            var contacts = obj.GetComponentsInChildren<VRCContactReceiver>(true).Where(r => r.parameter == raw.name).ToArray();
+            var contacts = obj.GetComponentsInChildren<VRCContactReceiver>(true).Where(r => r.parameter == raw).ToArray();
             Assert.That(contacts, Has.Length.EqualTo(2));
+            Assert.That(contacts.All(r => r.localOnly), Is.True);
             Assert.That(contacts.All(r => r.advancedParameters == VRC.Dynamics.ContactReceiver.AdvancedParameter.All), Is.True);
-            var outputs = contacts.SelectMany(receiver => receiver.GetParameterNames()).Where(name => name != raw.name).Distinct().ToArray();
+            var outputs = contacts.SelectMany(receiver => receiver.GetParameterNames()).Where(name => name != raw).Distinct().ToArray();
             foreach (var tag in new[] { "old", "new" }) {
-                Assert.That(outputs, Does.Contain(raw.name + "_CollisionTag_" + SpsTags.FormatSocket(self ? SelfTag(tag) : tag)));
+                Assert.That(outputs, Does.Contain(raw + "_CollisionTag_" + SpsTags.FormatSocket(self ? SelfTag(tag) : tag)));
             }
             foreach (var name in outputs) {
                 Assert.That(fx.TryGetParam(name, out _), Is.False, "OSC-only outputs must not create unused animator parameters: " + name);

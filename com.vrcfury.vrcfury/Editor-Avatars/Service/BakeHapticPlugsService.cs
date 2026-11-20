@@ -14,7 +14,6 @@ using VF.Menu;
 using VF.Model.Feature;
 using VF.Utils;
 using VF.Utils.Controller;
-using VRC.Dynamics;
 
 namespace VF.Service {
     [VFService]
@@ -147,13 +146,7 @@ namespace VF.Service {
                     c.party = self ? HapticUtils.ReceiverParty.Self : HapticUtils.ReceiverParty.Others;
                     hapticContacts.AddReceiver(c);
                 }
-                foreach (var self in new[] { true, false }) {
-                    receiverAnimator.GetParameter(bakeInfo.socketReceivers, self, paramPrefix + (self ? "/DepthSelf" : "/DepthOthers")
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-                        , ContactReceiver.AdvancedParameter.All
-#endif
-                    );
-                }
+                receiverAnimator.RegisterOgbDepth(bakeInfo.socketReceivers, paramPrefix);
                 {
                     var c = req.Clone();
                     c.paramName = paramPrefix + "/FrotOthers";
