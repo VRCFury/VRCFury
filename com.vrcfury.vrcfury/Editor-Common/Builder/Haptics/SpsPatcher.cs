@@ -34,7 +34,7 @@ namespace VF.Builder.Haptics {
 
         internal const string ShaderNamePrefix = "Hidden/SPSPatched/";
         internal const string LockedShaderNamePrefix = "Hidden/Locked/SPSPatched/";
-        private const string HashBuster = "58";
+        private const string HashBuster = "59";
         private static readonly Regex ProgramStartRegex = GetRegex(@"\G(?:^|\n)[ \t]*(CGPROGRAM|HLSLPROGRAM)[ \t]*(?:\n|$)");
         private static readonly Regex CgProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDCG[ \t]*(?:\n|$)");
         private static readonly Regex HlslProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDHLSL[ \t]*(?:\n|$)");
@@ -280,7 +280,7 @@ namespace VF.Builder.Haptics {
                     ? match.Groups[1].Value + "4.5" : match.Value);
             if (!target.IsMatch(program)) program = "#pragma target 4.5\n" + program;
             // The patched material disables ordinary GPU instancing. Single-pass stereo has its own keyword.
-            program = "#pragma skip_variants INSTANCING_ON\n" + program;
+            if (!isSurfaceShader) program = "#pragma skip_variants INSTANCING_ON\n" + program;
             var newVertFunctionName = "spsVert";
             var pragmaKeyword = isSurfaceShader ? "surface" : "vertex";
             string vanillaVertFunctionName = null;
@@ -288,16 +288,20 @@ namespace VF.Builder.Haptics {
             program = GetRegex(@"(#pragma[ \t]+" + pragmaKeyword + @"[ \t]+)([^\s]+)([^\n]*)").Replace(program, match => {
                 string newPragma;
                 if (isSurfaceShader) {
-                    var pragmaSuffix = match.Groups[3].ToString();
+                    var pragmaSuffix = match.Groups[3].Value;
+                    var comment = pragmaSuffix.IndexOf("//", StringComparison.Ordinal);
+                    if (comment >= 0) pragmaSuffix = pragmaSuffix.Substring(0, comment);
+                    pragmaSuffix = pragmaSuffix.TrimEnd();
+                    // Surface shaders generate their own instancing directives. Disable them at the source.
+                    if (!Regex.IsMatch(pragmaSuffix, @"(?:^|\s)noinstancing(?:\s|$)")) pragmaSuffix += " noinstancing";
                     pragmaSuffix = GetRegex(@"vertex:(\S+)").Replace(pragmaSuffix, vertMatch => {
                         vanillaVertFunctionName = vertMatch.Groups[1].ToString();
                         return "vertex:" + newVertFunctionName;
                     });
                     if (vanillaVertFunctionName == null) {
-                        newPragma = $"{match.Groups[0]} vertex:{newVertFunctionName}";
-                    } else {
-                        newPragma = $"{match.Groups[1]}{match.Groups[2]}{pragmaSuffix}";
+                        pragmaSuffix += $" vertex:{newVertFunctionName}";
                     }
+                    newPragma = $"{match.Groups[1]}{match.Groups[2]}{pragmaSuffix}";
                 } else {
                     vanillaVertFunctionName = match.Groups[2].ToString();
                     newPragma = $"{match.Groups[1]}{newVertFunctionName}{match.Groups[3]}";

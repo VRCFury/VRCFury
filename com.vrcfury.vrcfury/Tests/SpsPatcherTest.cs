@@ -799,10 +799,10 @@ float4 vert(AppData input) : SV_POSITION { return input.vertex; }
         StringAssert.Contains("#pragma multi_compile _ STEREO_INSTANCING_ON", patched);
     }
 
-    [Test]
-    public void CompilesSurfaceShaderWithoutCustomVertexFunction() {
-        var originalProgram = @"
-#pragma surface surf Lambert
+    [TestCase("")]
+    [TestCase(" noinstancing")]
+    public void CompilesSurfaceShaderWithoutCustomVertexFunction(string options) {
+        var originalProgram = "#pragma surface surf Lambert" + options + @" // noinstancing is handled by the surface compiler
 struct Input { float2 uv_MainTex; };
 void surf(Input input, inout SurfaceOutput output) {
     output.Albedo = 1;
@@ -815,6 +815,8 @@ void surf(Input input, inout SurfaceOutput output) {
             cgIncludes: "",
             isSurfaceShader: true
         );
+        StringAssert.Contains("#pragma surface surf Lambert noinstancing vertex:spsVert\n", patchedProgram.Replace("\r\n", "\n"));
+        StringAssert.DoesNotContain("#pragma skip_variants INSTANCING_ON", patchedProgram);
         AssertShaderCompiles(patchedProgram, "CGPROGRAM", "ENDCG", isSurfaceShader: true);
     }
 
