@@ -13,12 +13,14 @@ namespace VF.Tests {
     public class SpsBendTest {
         private const float DefaultPlugRadius = .02f;
         private const float TaperFullRadiusLength = .05f;
+        private const float StationaryTaperLength = .1f;
 
-        private static float ConeLength(float radius) => radius / Mathf.Tan(60 * Mathf.Deg2Rad);
+        private const float SmoothCollapseLength = .05f;
 
         private Shader shader;
         private Shader pathShader;
         private Shader deformationShader;
+        private Shader alternateTaperShader;
         private Material material;
         private RenderTexture target;
         private Texture2D pixels;
@@ -38,6 +40,11 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         #pragma fragment frag
         #include ""UnityCG.cginc""
         #include ""Packages/com.vrcfury.vrcfury/SPS/deform/sps_config.cginc""
+        // Exercise both phases even when the project config uses a zero-length collapse.
+        #undef SPS_TAPER_INSTANT_FULL_RADIUS_LENGTH
+        #undef SPS_TAPER_INSTANT_COLLAPSE_LENGTH
+        #define SPS_TAPER_INSTANT_FULL_RADIUS_LENGTH .05
+        #define SPS_TAPER_INSTANT_COLLAPSE_LENGTH .05
         float _BendRoom;
         #undef SPS_BEND_ROOM
         #define SPS_BEND_ROOM _BendRoom
@@ -119,8 +126,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                     sps_path_worlds[3] = _Stop2;
                     sps_path_forwards[3] = _Exit;
                 }
-                SpsDeformPathInfo path = (SpsDeformPathInfo)0;
-                path.worldLength = _Length;
+                float holeAdvance = 0;
                 float advance;
                 sps_solve_entry_join(_Position - _Root, _Forward, _Exit, _Length, true, advance);
                 float solvedAdvance = advance;
@@ -136,7 +142,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                     node.forward = sps_path_forwards[next];
                     node.up = _Up;
                     node.deformationWeight = 1;
-                    if (!sps_advance_entry(entry, node, advance)) break;
+                    if (!sps_advance_entry(entry, node, advance, holeAdvance)) break;
                 }
                 return float4(entry.world + entry.forward * advance, solvedAdvance);
             }
@@ -174,7 +180,8 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 .02,
                 _BaseRadius,
                 _Guided > 0,
-                _Entrance > 0,
+                0,
+                previous.world,
                 0,
                 node,
                 distanceSq
@@ -189,9 +196,26 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             pathShader = ShaderUtil.CreateShaderAsset(source
                 .Replace("Hidden/VRCFury/Tests/SpsBend", "Hidden/VRCFury/Tests/SpsBendPath")
                 .Replace("#pragma fragment frag", "#pragma fragment path_frag"));
-            deformationShader = ShaderUtil.CreateShaderAsset(source
+            var deformationSource = source
                 .Replace("Hidden/VRCFury/Tests/SpsBend", "Hidden/VRCFury/Tests/SpsBendDeformation")
-                .Replace("#pragma fragment frag", "#pragma fragment deformation_frag"));
+                .Replace("#pragma fragment frag", "#pragma fragment deformation_frag");
+            deformationShader = ShaderUtil.CreateShaderAsset(deformationSource);
+            alternateTaperShader = ShaderUtil.CreateShaderAsset(deformationSource
+                .Replace("Tests/SpsBendDeformation", "Tests/SpsBendAlternateTaper")
+                .Replace("float _BendRoom;", @"
+                    #undef SPS_TAPER_USE_INSTANT_FOR_STANDALONE_HOLES
+                    #undef SPS_TAPER_USE_INSTANT_FOR_PATH_HOLES
+                    #undef SPS_TAPER_USE_INSTANT_FOR_PATH_UNCOLLAPSE
+                    #undef SPS_TAPER_USE_INSTANT_FOR_PATH_TERMINAL_HOLES
+                    #undef SPS_TAPER_INSTANT_FULL_RADIUS_LENGTH
+                    #undef SPS_TAPER_SMOOTH_COLLAPSE_LENGTH
+                    #define SPS_TAPER_USE_INSTANT_FOR_STANDALONE_HOLES 1
+                    #define SPS_TAPER_USE_INSTANT_FOR_PATH_HOLES 1
+                    #define SPS_TAPER_USE_INSTANT_FOR_PATH_UNCOLLAPSE 0
+                    #define SPS_TAPER_USE_INSTANT_FOR_PATH_TERMINAL_HOLES 0
+                    #define SPS_TAPER_INSTANT_FULL_RADIUS_LENGTH .025
+                    #define SPS_TAPER_SMOOTH_COLLAPSE_LENGTH .1
+                    float _BendRoom;"));
         }
 
         [TearDown]
@@ -207,14 +231,14 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             if (shader != null) Object.DestroyImmediate(shader);
             if (pathShader != null) Object.DestroyImmediate(pathShader);
             if (deformationShader != null) Object.DestroyImmediate(deformationShader);
+            if (alternateTaperShader != null) Object.DestroyImmediate(alternateTaperShader);
         }
 
-        [TestCase(true, false)]
-        [TestCase(false, false)]
-        [TestCase(false, true)]
-        public void ConstantProfileUsesOverallRadiusForEveryNode(bool entrance, bool guided) {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ConstantProfileUsesOverallRadiusForEveryNode(bool guided) {
             var position = new Vector3(0, 0, .2f);
-            Read(position, Vector3.forward, entrance: entrance, guided: guided);
+            Read(position, Vector3.forward, guided: guided);
             material.SetFloat("_Operation", 4);
             material.SetFloat("_Flags", 1 << 12);
             var result = Render();
@@ -287,6 +311,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
 
         [TestCase(.2f, false, false, 1f, .02f)]
         [TestCase(-.1f, false, false, 1f, .02f)]
+        [TestCase(-.1f, false, true, 1f, .02f)]
         [TestCase(.2f, true, false, 1f, .02f)]
         [TestCase(.2f, false, true, 2.5f, .02f)]
         [TestCase(.2f, false, false, 1f, .12f)]
@@ -328,6 +353,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 var rotation = frame.rotation * Quaternion.Euler(0, 180, 0);
                 var nodeRotation = turn ? frame.rotation * Quaternion.LookRotation(Vector3.left) : rotation;
                 var second = Vector3.forward * .48f;
+                if (turn) second.x = .2f;
                 var third = turn ? new Vector3(.25f, 0, .48f) : Vector3.forward * .73f;
                 SetContacts(
                     "SPS_Self",
@@ -358,14 +384,13 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 material.SetFloat("_SPS_BaseActivationRadiusOverride", 1);
                 material.SetFloat("_Operation", 8);
                 var result = Render();
-                var distance = (entrance + Vector3.forward * advance).magnitude;
                 // Estimate each new node once, then carry its final offset position forward.
-                var secondDistance = Vector3.Distance(second, entrance);
-                var secondRadius = radius * Sample(distance + Mathf.Max(secondDistance - advance, 0));
+                var estimatedJoin = Vector3.MoveTowards(entrance, second, advance);
+                var secondRadius = radius * Sample(estimatedJoin.magnitude + Vector3.Distance(estimatedJoin, second));
                 if (capped) secondRadius = Mathf.Min(secondRadius, .005f / scale);
                 second += Vector3.up * secondRadius;
                 var join = Vector3.Lerp(entrance, second, advance / Vector3.Distance(second, entrance));
-                distance = join.magnitude + Vector3.Distance(second, join);
+                var distance = join.magnitude + Vector3.Distance(second, join);
                 var thirdRadius = radius * Sample(distance + Vector3.Distance(third, second));
                 Assert.That(result.a, Is.EqualTo(1));
                 Assert.That(result.r, Is.EqualTo(secondRadius * scale).Within(.00001f));
@@ -469,7 +494,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             var joinZ = Render().b;
             var advance = joinZ - hole.Item1.z;
             const float radius = .1f;
-            var cone = ConeLength(radius);
+            var cone = SmoothCollapseLength;
             Assert.That(advance, Is.InRange(TaperFullRadiusLength, TaperFullRadiusLength + cone));
 
             SetPath(deformationShader, hole);
@@ -510,26 +535,27 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             Assert.That(after.a, Is.EqualTo(before.a).Within(.01f));
         }
 
-        [Test]
-        public void GuidedRingReopensInItsPlaneBeforeTravelResumes() {
+        [TestCase(.5f)]
+        [TestCase(.08f)]
+        public void GuidedRingReopensInItsPlaneBeforeTravelResumes(float span) {
             const float hole = .125f;
-            const float ring = .625f;
+            var ring = hole + span;
             SetPath(
                 deformationShader,
                 (Vector3.forward * hole, Vector3.forward, 1 << 14),
-                (Vector3.forward * .25f, Vector3.forward, 1 << 14),
+                (Vector3.forward * (hole + span / 4), Vector3.forward, 1 << 14),
                 (Vector3.forward * ring, Vector3.forward, 0)
             );
+            var taperLength = Mathf.Min(StationaryTaperLength, span / 2);
             var samples = new[] {
-                (.5f, 0f),
-                (2f / 3, 0f),
-                (.75f, .5f),
-                (5f / 6, 1f),
-                (.9f, 1f),
-                (1f, 1f)
+                (.875f * taperLength, .25f),
+                (.75f * taperLength, .5f),
+                (.5f * taperLength, 1f),
+                (.25f * taperLength, 1f),
+                (0f, 1f)
             };
-            foreach (var (progress, radius) in samples) {
-                material.SetFloat("_SampleDistance", Mathf.Lerp(hole, ring, progress));
+            foreach (var (distanceToRing, radius) in samples) {
+                material.SetFloat("_SampleDistance", ring - distanceToRing);
                 var sample = Render();
                 Assert.That(sample.a, Is.EqualTo(radius).Within(.0001f));
                 Assert.That(sample.b, Is.EqualTo(ring).Within(.0001f));
@@ -549,12 +575,14 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 (Vector3.back * .25f, Vector3.forward, 1 << 14),
                 (Vector3.forward * ring, Vector3.forward, 0)
             );
+            const float taperLength = StationaryTaperLength;
             var samples = new[] {
                 (.01f, 0f),
                 (.24f, 0f),
                 (.26f, 0f),
-                (.375f, .5f),
-                (.45f, 1f)
+                (ring - taperLength, 0f),
+                (ring - .75f * taperLength, .5f),
+                (ring, 1f)
             };
             foreach (var (distance, radius) in samples) {
                 material.SetFloat("_SampleDistance", distance);
@@ -585,10 +613,11 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
 
         [Test]
         public void SpentTerminalTaperCollapsesAtTheJoin() {
-            var hole = (new Vector3(.025f, 0, .005f), Vector3.forward, 1 << 14);
+            var hole = (new Vector3(.025f, 0, -.025f), Vector3.forward, 1 << 14);
             SetPath(hole);
             material.SetFloat("_Operation", 9);
             var join = Render();
+            Assert.That(join.b - hole.Item1.z, Is.GreaterThan(TaperFullRadiusLength + SmoothCollapseLength));
             SetPath(deformationShader, hole);
             material.SetFloat("_SampleDistance", .2f);
             var end = Render();
@@ -604,6 +633,46 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             var result = Render();
             Assert.That(result.a, Is.Zero.Within(.0001f));
             Assert.That(result.b, Is.Zero.Within(.0001f));
+        }
+
+        [Test]
+        public void SkippingRingConsumesTheRemainingHoleTaper() {
+            const float ring = -.12f;
+            const float hole = -.10f;
+            SetPath(
+                deformationShader,
+                (Vector3.forward * ring, Vector3.forward, 0),
+                (Vector3.forward * hole, Vector3.forward, 1 << 14)
+            );
+            foreach (var distance in new[] { .005f, .2f }) {
+                material.SetFloat("_SampleDistance", distance);
+                var sample = Render();
+                Assert.That(sample.b, Is.Zero.Within(.0001f), "The centerline turned back to the guide.");
+                var radius = Mathf.Clamp01((StationaryTaperLength + hole - distance) / (StationaryTaperLength / 2));
+                Assert.That(sample.a, Is.EqualTo(radius).Within(.0001f));
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AdvanceAcrossRootPlaneFollowsTheFinalGuide(bool sideways) {
+            var forward = sideways ? Vector3.left : Vector3.forward;
+            foreach (var z in new[] { -.001f, 0f, .001f }) {
+                var stop = new Vector3(.02f, 0, z);
+                var entrance = stop - Vector3.forward * .02f;
+                SetPath((entrance, Vector3.forward, 0));
+                material.SetFloat("_Operation", 9);
+                var advance = Render().b - entrance.z;
+                Assert.That(advance, Is.GreaterThan(.02f));
+                var expected = stop + forward * (advance - .02f);
+
+                SetPath((entrance, Vector3.forward, 0), (stop, forward, 1 << 14));
+                material.SetFloat("_Operation", 9);
+                var join = Render();
+                Assert.That(join.a, Is.EqualTo(1));
+                Assert.That(join.r, Is.EqualTo(expected.x).Within(.0001f));
+                Assert.That(join.b, Is.EqualTo(expected.z).Within(.0001f));
+            }
         }
 
         [TestCase(false)]
@@ -625,6 +694,45 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             }
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AdvanceCrossesIndependentRingsInTravelOrder(bool farRingFirst) {
+            var first = Vector3.back * .1f;
+            var rotation = Quaternion.LookRotation(Vector3.back);
+            var near = Matrix4x4.TRS(Vector3.back * .04f, rotation, new Vector3(2, 1, 1));
+            var far = Matrix4x4.TRS(Vector3.back * .019f, rotation, new Vector3(3, 1, 1));
+            SetPath((first, Vector3.forward, 0));
+            SetContacts(
+                "SPS_Self",
+                Matrix4x4.identity,
+                Matrix4x4.TRS(first, rotation, Vector3.one),
+                farRingFirst ? far : near,
+                farRingFirst ? near : far
+            );
+            material.SetFloat("_Operation", 11);
+            Assert.That(Render().g, Is.EqualTo(1));
+            material.SetFloat("_Operation", 9);
+            Assert.That(Render().b, Is.Zero.Within(.0001f));
+        }
+
+        [TestCase(1.5f, 3)]
+        [TestCase(1.6f, 2)]
+        [TestCase(1.7f, 2)]
+        public void CoincidentIndependentSocketRequiresReachRemainingAfterGuide(float guideZ, int expectedNodes) {
+            var entrance = Vector3.forward * .25f;
+            var guide = Vector3.forward * guideZ;
+            SetPath((entrance, Vector3.forward, 0), (guide, Vector3.forward, 0));
+            var rotation = Quaternion.LookRotation(Vector3.back);
+            SetContacts(
+                "SPS_Self",
+                Matrix4x4.identity,
+                Matrix4x4.TRS(entrance, rotation, Vector3.one),
+                Matrix4x4.TRS(guide, rotation, new Vector3(2, 1, 1))
+            );
+            material.SetFloat("_Operation", 11);
+            Assert.That(Render().g, Is.EqualTo(expectedNodes));
+        }
+
         [TestCase(1.59f, 2)]
         [TestCase(1.61f, 1)]
         public void FollowingSocketsUseReachRemainingAfterTheMovedEntrance(float socketZ, int count) {
@@ -639,12 +747,109 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             }
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void IndependentEntranceAdvancesFromThePreviousRing(bool guidedStop) {
+            var first = Vector3.forward * .2f;
+            var delta = new Vector3(.02f, 0, .01f);
+            var rotation = Quaternion.LookRotation(Vector3.back, Vector3.up);
+            SetPath((delta, Vector3.forward, 0));
+            material.SetFloat("_Operation", 9);
+            var advance = Render().b - delta.z;
+            Assert.That(advance, Is.GreaterThan(.02f));
+            SetPath((first, Vector3.forward, 0));
+            SetContacts(
+                "SPS_Self",
+                Matrix4x4.identity,
+                Matrix4x4.TRS(first, rotation, new Vector3(1 | (1 << 13), 1, 1)),
+                Matrix4x4.TRS(first + delta, rotation, new Vector3(2, 1, 1))
+            );
+            var expected = first + delta + Vector3.forward * advance;
+            if (guidedStop) {
+                var stop = first + delta + Vector3.forward * .02f;
+                SetContacts(
+                    "SPS_Path",
+                    Matrix4x4.identity,
+                    Matrix4x4.TRS(stop, Quaternion.LookRotation(Vector3.left), new Vector3(130 | (1 << 14), 1, 1))
+                );
+                expected = stop + Vector3.right * (advance - .02f);
+            }
+            material.SetFloat("_Operation", 11);
+            Assert.That(Render().g, Is.EqualTo(2));
+            material.SetFloat("_Operation", 9);
+            Assert.That(Render().b, Is.EqualTo(first.z).Within(.0001f));
+            material.SetFloat("_Operation", 12);
+            var join = Render();
+            Assert.That(join.r, Is.EqualTo(expected.x).Within(.0001f));
+            Assert.That(join.b, Is.EqualTo(expected.z).Within(.0001f));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TwoWayRingThenOffsetOneWayRingAdvancesTowardItsGuidedHole(bool sampleTip) {
+            var first = Vector3.forward * .45f;
+            var second = new Vector3(0, -.15f, .65f);
+            var hole = new Vector3(0, 0, .86f);
+            var exit = Quaternion.LookRotation(second - hole);
+            SetPath(sampleTip ? deformationShader : pathShader, (first, Vector3.forward, 1 << 13));
+            SetContacts(
+                "SPS_Self",
+                Matrix4x4.identity,
+                Matrix4x4.TRS(first, Quaternion.LookRotation(Vector3.back), new Vector3(1 | (1 << 13), 1, 1)),
+                Matrix4x4.TRS(second, exit, new Vector3(2, 1, 1))
+            );
+            SetContacts(
+                "SPS_Path",
+                Matrix4x4.identity,
+                Matrix4x4.TRS(hole, exit, new Vector3(130 | (1 << 14), 1, 1))
+            );
+            if (sampleTip) {
+                material.SetFloat("_SampleDistance", 1);
+                var tip = Render();
+                Assert.That(tip.b, Is.EqualTo(hole.z).Within(.0001f));
+                Assert.That(tip.g, Is.EqualTo(hole.y).Within(.0001f));
+                Assert.That(tip.a, Is.GreaterThan(0).And.LessThan(1));
+                material.SetFloat("_SampleDistance", 1 + StationaryTaperLength);
+                Assert.That(Render().a, Is.Zero.Within(.0001f));
+                return;
+            }
+            material.SetFloat("_Operation", 11);
+            Assert.That(Render().g, Is.EqualTo(3));
+            material.SetFloat("_Operation", 9);
+            Assert.That(Render().b, Is.EqualTo(first.z).Within(.0001f));
+            material.SetFloat("_Operation", 12);
+            var join = Render();
+            Assert.That(join.b, Is.InRange(second.z + .001f, hole.z - .001f));
+            var fraction = Mathf.InverseLerp(second.z, hole.z, join.b);
+            Assert.That(join.g, Is.EqualTo(Mathf.Lerp(second.y, hole.y, fraction)).Within(.0001f));
+
+        }
+
+        [Test]
+        public void ConsumedIndependentHoleOnlyUsesTheRemainingRingAdvance() {
+            var ring = Vector3.back * .04f;
+            var hole = Vector3.back * .02f;
+            SetPath((ring, Vector3.forward, 0));
+            SetContacts(
+                "SPS_Self",
+                Matrix4x4.identity,
+                Matrix4x4.TRS(ring, Quaternion.LookRotation(Vector3.back), Vector3.one),
+                Matrix4x4.TRS(hole, Quaternion.LookRotation(Vector3.left), new Vector3(2 | (1 << 14), 1, 1))
+            );
+            material.SetFloat("_Operation", 11);
+            Assert.That(Render().g, Is.EqualTo(1));
+            material.SetFloat("_Operation", 9);
+            var join = Render();
+            Assert.That(join.r, Is.EqualTo(.02f).Within(.0001f));
+            Assert.That(join.b, Is.EqualTo(hole.z).Within(.0001f));
+        }
+
         [TestCase(-.1f, 0f)]
         [TestCase(.3f, .5f)]
         public void HoleAfterRingMeasuresTaperFromItsPlane(float holeZ, float expectedRadius) {
             try {
                 SetIndependentSockets(deformationShader, holeZ, true);
-                var distance = Mathf.Max(holeZ, 0) + TaperFullRadiusLength + ConeLength(DefaultPlugRadius) / 2;
+                var distance = Mathf.Max(holeZ, 0) + TaperFullRadiusLength + SmoothCollapseLength / 2;
                 material.SetFloat("_SampleDistance", distance);
                 Assert.That(Render().a, Is.EqualTo(expectedRadius).Within(.0001f));
             } finally {
@@ -693,7 +898,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 } else {
                     SetPath(deformationShader, (Vector3.forward * 1.4f, Vector3.forward, 1 << 14));
                 }
-                var coneLength = ConeLength(DefaultPlugRadius);
+                var coneLength = SmoothCollapseLength;
                 var fadeAdvance = .625f * (1 + coneLength);
                 material.SetFloat("_SampleDistance", 1.4f + fadeAdvance + TaperFullRadiusLength + coneLength / 2);
                 Assert.That(Render().a, Is.EqualTo(.5f).Within(.0001f));
@@ -844,8 +1049,8 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         [TestCase(2.005f, .005f)]
         [TestCase(2.1f, .02f)]
         public void RadiusOffsetCapOnlyLimitsTheOffset(float encodedCap, float expectedOffset) {
-            foreach (var entrance in new[] { false, true }) {
-                Read(new Vector3(0, 0, .2f), Vector3.forward, entrance: entrance);
+            foreach (var guided in new[] { false, true }) {
+                Read(new Vector3(0, 0, .2f), Vector3.forward, guided: guided);
                 material.SetFloat("_Operation", 4);
                 material.SetFloat("_Flags", 1 << 12);
                 SetRadiusOffsetLimit(encodedCap);
@@ -897,7 +1102,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         }
 
         [Test]
-        public void ShortGuidedSpanFitsTheEntranceTaperIntoItsFirstQuarter() {
+        public void ShortGuidedSpanFitsTheEntranceTaperIntoItsFirstHalf() {
             const float hole = .25f;
             const float span = .08f;
             SetPath(
@@ -905,14 +1110,15 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 (Vector3.forward * hole, Vector3.forward, 1 << 14),
                 (Vector3.forward * (hole + span), Vector3.forward, 0)
             );
-            var cone = ConeLength(DefaultPlugRadius);
-            var scale = span / 4 / (TaperFullRadiusLength + cone);
-            material.SetFloat("_SampleDistance", hole + scale * (TaperFullRadiusLength + cone / 2));
-            Assert.That(Render().a, Is.EqualTo(.5f).Within(.0001f));
-            material.SetFloat("_SampleDistance", hole + span * .4f);
-            var closed = Render();
-            Assert.That(closed.a, Is.Zero.Within(.0001f));
-            Assert.That(closed.b, Is.EqualTo(hole + span / 4).Within(.0001f));
+            var cone = SmoothCollapseLength;
+            var scale = span / 2 / (TaperFullRadiusLength + cone);
+            var middleOfCone = hole + scale * (TaperFullRadiusLength + cone / 2);
+            material.SetFloat("_SampleDistance", middleOfCone);
+            var closing = Render();
+            Assert.That(closing.a, Is.EqualTo(.5f).Within(.0001f));
+            Assert.That(closing.b, Is.EqualTo(middleOfCone).Within(.0001f));
+            material.SetFloat("_SampleDistance", hole + span * .5f);
+            Assert.That(Render().a, Is.Zero.Within(.0001f));
         }
 
         [Test]
@@ -925,7 +1131,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 (Vector3.forward * .35f, Vector3.forward, 1 << 14),
                 (terminal, Vector3.right, 1 << 14)
             );
-            var taperEnd = Vector3.forward * (hole + TaperFullRadiusLength + ConeLength(DefaultPlugRadius));
+            var taperEnd = Vector3.forward * (hole + TaperFullRadiusLength + SmoothCollapseLength);
             foreach (var distance in new[] { .349f, .35f, .351f, .65f }) {
                 material.SetFloat("_SampleDistance", distance);
                 var sample = Render();
@@ -945,7 +1151,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 (new Vector3(.0625f, 0, .25f), Vector3.right, 1 << 14),
                 (new Vector3(1, 0, .25f), Vector3.right, 0)
             );
-            material.SetFloat("_SampleDistance", hole + TaperFullRadiusLength + ConeLength(DefaultPlugRadius) + .002f);
+            material.SetFloat("_SampleDistance", hole + TaperFullRadiusLength + SmoothCollapseLength + .002f);
             var end = Render();
             material.SetFloat("_SampleDistance", .45f);
             var afterNode = Render();
@@ -966,7 +1172,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 (Vector3.forward * .6f, Vector3.forward, 1 << 14),
                 (Vector3.forward * .9f, Vector3.forward, 0)
             );
-            var coneLength = ConeLength(DefaultPlugRadius);
+            var coneLength = SmoothCollapseLength;
             material.SetFloat("_SampleDistance", Mathf.Max(0, coneStart - .001f));
             Assert.That(Render().a, Is.EqualTo(1).Within(.0001f));
             var taperMiddle = coneStart + coneLength / 2;
@@ -1000,7 +1206,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             } else {
                 SetPath(deformationShader, entrance, guidedHole, (Vector3.forward * .5f, Vector3.forward, 0));
             }
-            var coneLength = ConeLength(DefaultPlugRadius);
+            var coneLength = SmoothCollapseLength;
             const float coneStart = .2f + TaperFullRadiusLength;
             if (stop < coneStart) {
                 material.SetFloat("_SampleDistance", .24f);
@@ -1008,14 +1214,17 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             }
             material.SetFloat("_SampleDistance", coneStart + coneLength / 2);
             Assert.That(Render().a, Is.EqualTo(.5f).Within(.0001f));
-            material.SetFloat("_SampleDistance", .4f);
+            material.SetFloat("_SampleDistance", .38f);
             var collapsed = Render();
             Assert.That(collapsed.a, Is.Zero.Within(.0001f));
             Assert.That(collapsed.b, Is.EqualTo(terminal ? stop : .5f).Within(.0001f));
         }
 
-        [TestCase(-.5f, 1f)]
-        [TestCase(.5f, .5f)]
+        [TestCase(0f, 1f)]
+        [TestCase(.25f, 1f)]
+        [TestCase(.5f, 1f)]
+        [TestCase(.75f, .5f)]
+        [TestCase(1f, 0f)]
         [TestCase(2f, 0f)]
         public void TerminalGuidedHoleTapersAtTheNode(float taperFraction, float expectedRadius) {
             const float stop = .4f;
@@ -1024,7 +1233,9 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 (Vector3.forward * .2f, Vector3.forward, 0),
                 (Vector3.forward * stop, Vector3.forward, 1 << 14)
             );
-            var pastNode = TaperFullRadiusLength + taperFraction * ConeLength(DefaultPlugRadius);
+            const float plugLength = 2f;
+            material.SetFloat("_SPS_BakedLength", plugLength);
+            var pastNode = taperFraction * StationaryTaperLength * plugLength;
             material.SetFloat("_SampleDistance", stop + pastNode);
             var result = Render();
             Assert.That(result.b, Is.EqualTo(stop).Within(.0001f));
@@ -1032,34 +1243,37 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         }
 
         [Test]
-        public void EntryAdvanceStopsAtTerminalGuidedHole() {
-            var entrance = new Vector3(.025f, 0, .005f);
-            var stop = new Vector3(.025f, 0, .015f);
+        public void AdvanceShorterThanTheChordJoinsBeforeTheTerminalHole() {
+            var entrance = Vector3.back * .01f;
+            var stop = Vector3.back * .04f;
             SetPath((entrance, Vector3.forward, 0), (stop, Vector3.forward, 1 << 14));
             material.SetFloat("_Operation", 9);
             var join = Render();
             Assert.That(join.a, Is.EqualTo(1));
             Assert.That(join.r, Is.EqualTo(stop.x).Within(.0001f));
-            Assert.That(join.b, Is.EqualTo(stop.z).Within(.0001f));
+            Assert.That(join.b, Is.EqualTo(-.02f).Within(.0001f));
         }
 
         [Test]
         public void LateJoinAtTiltedTerminalHoleTapersOnlyAfterReachingIt() {
             var stop = new Vector3(.1f, 0, .015f);
+            var entrance = new Vector3(.1f, 0, .005f);
+            SetPath((entrance, Vector3.forward, 0));
+            material.SetFloat("_Operation", 9);
+            var remaining = Render().b - stop.z;
+            var expected = stop + Vector3.left * remaining;
             SetPath(
                 deformationShader,
-                (new Vector3(.1f, 0, .005f), Vector3.forward, 0),
+                (entrance, Vector3.forward, 0),
                 (stop, Vector3.left, 1 << 14)
             );
             material.SetFloat("_SampleDistance", 0);
             Assert.That(Render().a, Is.EqualTo(1).Within(.0001f));
-            foreach (var distance in new[] { .14f, .3f }) {
-                material.SetFloat("_SampleDistance", distance);
-                var sample = Render();
-                Assert.That(sample.r, Is.EqualTo(stop.x).Within(.0001f));
-                Assert.That(sample.b, Is.EqualTo(stop.z).Within(.0001f));
-                Assert.That(sample.a, Is.EqualTo(distance == .14f ? 1 : 0).Within(.0001f));
-            }
+            material.SetFloat("_SampleDistance", .3f);
+            var sample = Render();
+            Assert.That(sample.r, Is.EqualTo(expected.x).Within(.0001f));
+            Assert.That(sample.b, Is.EqualTo(expected.z).Within(.0001f));
+            Assert.That(sample.a, Is.Zero.Within(.0001f));
         }
 
         [Test]
@@ -1078,7 +1292,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 Matrix4x4.TRS(Vector3.forward * .225f, rotation, new Vector3(130 | (1 << 14), 1, 1)),
                 Matrix4x4.TRS(Vector3.forward * .5f, rotation, new Vector3(258, 1, 1))
             );
-            var taperMiddle = .2f + TaperFullRadiusLength + ConeLength(DefaultPlugRadius) / 2;
+            var taperMiddle = .2f + TaperFullRadiusLength + SmoothCollapseLength / 2;
             material.SetFloat("_SampleDistance", taperMiddle);
             var result = Render();
             Assert.That(result.a, Is.EqualTo(.5f).Within(.0001f));
@@ -1098,7 +1312,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
                 (Vector3.forward * (-advance * .5f), Vector3.forward, 1 << 14),
                 (Vector3.forward * .5f, Vector3.forward, 0)
             );
-            var coneLength = ConeLength(DefaultPlugRadius);
+            var coneLength = SmoothCollapseLength;
             var coneStart = -advance * (crossesRing ? .5f : 1) + TaperFullRadiusLength;
             material.SetFloat("_SampleDistance", coneStart + coneLength / 2);
             Assert.That(Render().a, Is.EqualTo(.5f).Within(.0001f));
@@ -1110,10 +1324,10 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
 
         [TestCase(.02f)]
         [TestCase(.04f)]
-        public void UnguidedTerminalHoleTaperScalesWithPlugRadius(float radius) {
+        public void UnguidedTerminalHoleTaperIsIndependentOfPlugRadius(float radius) {
             SetPath(deformationShader, (Vector3.forward * .2f, Vector3.forward, 1 << 14));
             material.SetFloat("_SPS_BakedRadius", radius);
-            var coneLength = ConeLength(radius);
+            var coneLength = SmoothCollapseLength;
             const float coneStart = .2f + TaperFullRadiusLength;
             material.SetFloat("_SampleDistance", .225f);
             var fullRadius = Render();
@@ -1129,6 +1343,25 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             var collapsed = Render();
             Assert.That(collapsed.a, Is.Zero.Within(.0001f));
             Assert.That(collapsed.b, Is.EqualTo(taperEnd).Within(.0001f));
+        }
+
+        [Test]
+        public void AlternateProfilesPinClosingHolesAndMoveThroughReopeningsAndTerminalHoles() {
+            var hole = (Vector3.forward * .2f, Vector3.forward, 1 << 14);
+            var ring = (Vector3.forward * .7f, Vector3.forward, 0);
+            void Check(float distance, float position) {
+                material.SetFloat("_SampleDistance", distance);
+                var sample = Render();
+                Assert.That(sample.b, Is.EqualTo(position).Within(.0001f));
+                Assert.That(sample.a, Is.EqualTo(.5f).Within(.0001f));
+            }
+            SetPath(alternateTaperShader, hole);
+            Check(.25f, .2f);
+            SetPath(alternateTaperShader, hole, ring);
+            Check(.25f, .2f);
+            Check(.6f, .6f);
+            SetPath(alternateTaperShader, (Vector3.forward * .1f, Vector3.forward, 0), hole);
+            Check(.3f, .3f);
         }
 
         [Test]
@@ -1450,18 +1683,15 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             Assert.That(Vector3.Dot(new Vector3(result.r, result.g, result.b), position.normalized), Is.GreaterThan(.999f));
         }
 
-        [TestCase(1 << 10, true)]
-        [TestCase(1 << 11, true)]
-        [TestCase(1 << 10, false)]
-        [TestCase(1 << 11, false)]
-        public void UnlockedTwoWayStillRequiresAPermissibleJoin(int unlock, bool entrance) {
+        [TestCase(1 << 10)]
+        [TestCase(1 << 11)]
+        public void UnlockedTwoWayStillRequiresAPermissibleJoin(int unlock) {
             var position = new Vector3(0, .005f, 0);
             Assert.That(Read(position, Vector3.up, joins: true, maxAdvance: 0).b, Is.Zero);
             var result = Read(
                 position,
                 Vector3.up,
                 twoWay: true,
-                entrance: entrance,
                 unlock: unlock,
                 maxAdvance: 0
             );

@@ -34,7 +34,7 @@ namespace VF.Builder.Haptics {
 
         internal const string ShaderNamePrefix = "Hidden/SPSPatched/";
         internal const string LockedShaderNamePrefix = "Hidden/Locked/SPSPatched/";
-        private const string HashBuster = "59";
+        private const string HashBuster = "70";
         private static readonly Regex ProgramStartRegex = GetRegex(@"\G(?:^|\n)[ \t]*(CGPROGRAM|HLSLPROGRAM)[ \t]*(?:\n|$)");
         private static readonly Regex CgProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDCG[ \t]*(?:\n|$)");
         private static readonly Regex HlslProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDHLSL[ \t]*(?:\n|$)");

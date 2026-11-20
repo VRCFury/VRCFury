@@ -37,11 +37,18 @@
 
 // HOLE TAPER
 
-// Length of the full-radius section of the taper, in plug lengths.
-#define SPS_HOLE_TAPER_FULL_RADIUS_LENGTH 0.05
-// Angle of the narrowing section, in degrees from the plug axis.
-// Cone length = average plug radius / tan(angle). Use 90 for a hard cutoff.
-#define SPS_HOLE_TAPER_ANGLE 60.0
+// Fractions of plug length. Hold full radius first, then collapse to zero.
+// Reopening plays the same profile backward. Bounded transitions fit in half the span.
+#define SPS_TAPER_SMOOTH_FULL_RADIUS_LENGTH 0.05
+#define SPS_TAPER_SMOOTH_COLLAPSE_LENGTH 0.05
+#define SPS_TAPER_INSTANT_FULL_RADIUS_LENGTH 0.0
+#define SPS_TAPER_INSTANT_COLLAPSE_LENGTH 0.1
+
+// Instant pins the centerline at the node. Smooth follows the path during the taper.
+#define SPS_TAPER_USE_INSTANT_FOR_STANDALONE_HOLES 0
+#define SPS_TAPER_USE_INSTANT_FOR_PATH_HOLES 0
+#define SPS_TAPER_USE_INSTANT_FOR_PATH_UNCOLLAPSE 1
+#define SPS_TAPER_USE_INSTANT_FOR_PATH_TERMINAL_HOLES 1
 
 // BEZIER
 

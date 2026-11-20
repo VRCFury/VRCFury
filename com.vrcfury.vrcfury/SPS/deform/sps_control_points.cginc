@@ -56,7 +56,7 @@ inline bool sps_solve_entry_join(
     // Heading change and sideways merging each require a minimum chord length.
     float minimumDistanceSq = max(2 * room * room * (1 - c), sqrt(6 * h) * room * r);
     if (!allowAdvance) {
-        // Later entrances are fixed points; only the initial entrance may move.
+        // Test a fixed join at the socket itself.
         return q0 >= lower - 1e-6 && q0 <= upper + 1e-6
             && dot(delta, delta) >= minimumDistanceSq - 1e-6;
     }
