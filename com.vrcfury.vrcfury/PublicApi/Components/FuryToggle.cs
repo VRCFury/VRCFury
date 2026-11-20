@@ -42,6 +42,11 @@ namespace com.vrcfury.api.Components {
             c.exclusiveTag += tag;
         }
 
+        public void SetTag(string tag) {
+            c.enableSetTag = true;
+            c.setTag = tag;
+        }
+
         public void SetGlobalParameter(string globalParameter) {
             c.useGlobalParam = true;
             c.globalParam = globalParameter;
