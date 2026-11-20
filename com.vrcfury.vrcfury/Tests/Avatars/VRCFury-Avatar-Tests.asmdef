@@ -32,6 +32,11 @@
     ],
     "versionDefines": [
         {
+            "name": "com.vrchat.avatars",
+            "expression": "3.11.0-beta.1",
+            "define": "VRCSDK_HAS_UNIQUE_EDITOR_PLAYER_IDS"
+        },
+        {
             "name": "com.vrchat.base",
             "expression": "3.10.6",
             "define": "VRCSDK_HAS_MATERIAL_CONTACTS"

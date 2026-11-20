@@ -14,9 +14,11 @@ namespace VF.Tests {
     [Category("VRCFury")]
     public class MaterialContactPlayerIdsTest {
         [Test]
-        public void ContactsShareStablePositiveIdsWithoutChangingPhysBones() {
+        public void ContactsShareStablePositiveIds() {
+#if !VRCSDK_HAS_UNIQUE_EDITOR_PLAYER_IDS
             if (HarmonyTest.PatchingError != null) Assert.Ignore(HarmonyTest.PatchingError);
             typeof(FixMaterialContactPlayerIdsHook).VFStaticMethod("Init").Invoke(null, null);
+#endif
             var root = new GameObject("Player ID test");
             try {
                 var setup = ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Avatars.AvatarDynamicsSetup");
@@ -27,7 +29,7 @@ namespace VF.Tests {
                 for (var i = 0; i < 32; i++) {
                     var avatar = new GameObject("Avatar " + i);
                     avatar.transform.SetParent(root.transform, false);
-                    var descriptor = avatar.AddComponent<VRCAvatarDescriptor>();
+                    avatar.AddComponent<VRCAvatarDescriptor>();
                     var child = new GameObject("Dynamics");
                     child.transform.SetParent(avatar.transform, false);
                     var sender = child.AddComponent<VRCContactSender>();
@@ -42,8 +44,13 @@ namespace VF.Tests {
                     Assert.That(id, Is.GreaterThan(0));
                     Assert.That(ids.Add(id), Is.True, "Each avatar must have its own material player ID");
                     Assert.That(receiver.playerId, Is.EqualTo(id));
-                    Assert.That(physBone.playerId, Is.EqualTo(descriptor.GetHashCode()));
-                    Assert.That(collider.playerId, Is.EqualTo(descriptor.GetHashCode()));
+#if VRCSDK_HAS_UNIQUE_EDITOR_PLAYER_IDS
+                    var expectedPhysBoneId = id;
+#else
+                    var expectedPhysBoneId = avatar.GetComponent<VRCAvatarDescriptor>().GetHashCode();
+#endif
+                    Assert.That(physBone.playerId, Is.EqualTo(expectedPhysBoneId));
+                    Assert.That(collider.playerId, Is.EqualTo(expectedPhysBoneId));
                     Assert.That(Math.Max(id, 0), Is.EqualTo(id), "Material packing must preserve the player ID");
                     sender.playerId = -1;
                     contacts.Invoke(null, new object[] { sender });

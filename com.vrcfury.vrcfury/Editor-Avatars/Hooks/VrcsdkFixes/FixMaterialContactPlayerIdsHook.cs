@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_UNIQUE_EDITOR_PLAYER_IDS
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -52,3 +53,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

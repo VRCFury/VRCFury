@@ -1,3 +1,4 @@
+#if !VRCSDK_HAS_INDEXED_DYNAMICS_PARAMETER_LOOKUP
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -55,3 +56,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

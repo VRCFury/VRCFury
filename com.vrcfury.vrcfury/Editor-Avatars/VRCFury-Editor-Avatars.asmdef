@@ -32,6 +32,16 @@
     ],
     "versionDefines": [
         {
+            "name": "com.vrchat.base",
+            "expression": "3.11.0-beta.1",
+            "define": "VRCSDK_HAS_INDEXED_DYNAMICS_PARAMETER_LOOKUP"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.11.0-beta.1",
+            "define": "VRCSDK_HAS_UNIQUE_EDITOR_PLAYER_IDS"
+        },
+        {
             "name": "com.vrchat.avatars",
             "expression": "3.1.12",
             "define": "VRCSDK_HAS_NETWORK_SYNCED"
@@ -80,6 +90,11 @@
             "name": "com.vrchat.base",
             "expression": "3.10.5",
             "define": "VRCSDK_HAS_FIXED_CONTACTS_RACE"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.11.0-beta.1",
+            "define": "VRCSDK_HAS_DEFERRED_CONTACT_REGISTRATION"
         },
         {
             "name": "com.vrchat.base",
