@@ -19,6 +19,7 @@ namespace VF.Feature {
     [FeatureRootOnly]
     internal class SecurityLockBuilder : FeatureBuilder<SecurityLock> {
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly UniqueParamService uniqueParams;
         private VFAvatarController fx => controllers.GetFx();
         private VFAvatarController actionController => controllers.GetAction();
         [VFAutowired] private readonly MenuService menuService;
@@ -49,7 +50,7 @@ namespace VF.Feature {
             var numDigits = digits.Length;
             var numDigitSlots = 10;
 
-            var paramSecuritySync = fx.CreateUniqueBool("SecurityLockSync");
+            var paramSecuritySync = fx.GetOrCreateBool(uniqueParams.GetAvatarWideName("SecurityLock"));
             paramSecuritySync.MakeExpressionBool();
             // Menu parameters need an expression entry, but PIN input must stay local.
             var paramInput = actionController.CreateUniqueInt("SecurityInput");

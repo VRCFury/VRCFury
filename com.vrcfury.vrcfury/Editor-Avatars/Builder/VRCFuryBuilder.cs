@@ -230,9 +230,7 @@ namespace VF.Builder {
                 globals.currentMenuSortPosition = globals.currentFeatureNum = currentServiceNumber = action.serviceNum;
                 var objectName = action.configObject.GetDebugPath();
                 globals.currentFeatureName = currentModelName = $"{service.GetType().Name}.{action.GetName()} on {objectName}";
-                globals.currentFeatureClipPrefix = $"VF{currentServiceNumber} {(service as FeatureBuilder)?.GetClipPrefix() ?? service.GetType().Name}";
                 currentServiceGameObject = action.configObject;
-                globals.currentFeatureObjectPath = action.configObject.GetPath(avatarObject);
 
                 var statusMessage = $"{service.GetType().Name}.{action.GetName()} on {objectName} ({currentServiceNumber})";
                 progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);

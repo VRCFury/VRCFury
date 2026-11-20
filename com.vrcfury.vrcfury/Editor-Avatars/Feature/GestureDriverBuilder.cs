@@ -20,6 +20,7 @@ namespace VF.Feature {
         private int i = 0;
         private readonly Dictionary<string, VFAParam> lockMenuItems = new Dictionary<string, VFAParam>();
         private readonly Dictionary<string, VFCondition> exclusiveConditions = new Dictionary<string, VFCondition>();
+        [VFAutowired] private readonly UniqueParamService uniqueParams;
         [VFAutowired] private readonly SmoothingService smoothing;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly ControllersService controllers;
@@ -53,7 +54,8 @@ namespace VF.Feature {
             VFAParam lockMenuParam = null;
             if (gesture.enableLockMenuItem && !string.IsNullOrWhiteSpace(gesture.lockMenuItem)) {
                 if (!lockMenuItems.TryGetValue(gesture.lockMenuItem, out lockMenuParam)) {
-                    lockMenuParam = fx.CreateUniqueBool(uid + "_lock");
+                    var paramName = uniqueParams.GetObjectScopedName(featureBaseObject, "GestureLock/" + gesture.lockMenuItem);
+                    lockMenuParam = fx.GetOrCreateBool(paramName);
                     lockMenuParam.MakeExpressionBool();
                     menu.NewMenuToggle(gesture.lockMenuItem, lockMenuParam);
                     lockMenuItems[gesture.lockMenuItem] = lockMenuParam;

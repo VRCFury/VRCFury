@@ -13,6 +13,7 @@ namespace VF.Service {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly MenuChangesService menuChanges;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly UniqueParamService uniqueParams;
         [VFAutowired] private readonly MenuService menuService;
         [VFAutowired] private readonly DbtLayerService trees;
         private VFAParam legacyParameter;
@@ -23,7 +24,10 @@ namespace VF.Service {
             var options = GetOptions();
             if (!options.autoModeAvailable) return null;
             if (autoParameter != null) return autoParameter;
-            autoParameter = controllers.GetFx().CreateUniqueBool("autoMode", def: options.autoModeDefaultOn);
+            autoParameter = controllers.GetFx().GetOrCreateBool(
+                uniqueParams.GetAvatarWideName("SpsAutoMode"),
+                def: options.autoModeDefaultOn
+            );
             autoParameter.MakeExpressionBool(synced: false, saved: options.autoModeSaved);
             var path = $"{GetMenuPath()}/<b>Auto<\\/b>";
             menuService.GetMenu().NewMenuToggle(path, autoParameter);
@@ -34,7 +38,10 @@ namespace VF.Service {
             var options = GetOptions();
             if (!options.NeedsLegacyMode) return null;
             if (legacyParameter != null) return legacyParameter;
-            legacyParameter = controllers.GetFx().CreateUniqueBool("legacy", def: options.legacyModeEnabledOnAvatarLoad);
+            legacyParameter = controllers.GetFx().GetOrCreateBool(
+                uniqueParams.GetAvatarWideName("SpsLegacy"),
+                def: options.legacyModeEnabledOnAvatarLoad
+            );
             legacyParameter.MakeExpressionBool(saved: options.legacyModeSaved);
             legacyOnClip = VFClip.Create("Turn on SPS Legacy compatibility");
             if (BuildTargetUtils.IsDesktop())

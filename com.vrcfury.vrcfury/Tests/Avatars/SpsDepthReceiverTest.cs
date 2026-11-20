@@ -36,6 +36,12 @@ namespace VF.Tests {
         private string SelfTag(string tag) => tag + injector.GetService<SpsConfigurer>().selfTagSuffix;
         private SelfAndOthersReceiverAnimatorService receiverAnimator;
         private VFAvatarController fx;
+
+        private VFAParam SocketMenuParameter(string menuName) {
+            var menu = injector.GetService<MenuService>().GetMenu().GetSubmenu("SPS");
+            var name = menu.controls.Single(c => c.name == menuName).parameter.name;
+            return fx.parameters.Single(p => p.name == name);
+        }
         private VFBlendTreeDirect tree;
         private BlendtreeMath math;
         private VFAParam scale;
@@ -851,7 +857,7 @@ namespace VF.Tests {
             var lengthConfidence = fx.parameters.Single(p => p.name.EndsWith("/LegacyLengthValid"));
             var radiusConfidence = fx.parameters.Single(p => p.name.EndsWith("/LegacyRadiusValid"));
             Start();
-            var native = fx.parameters.Single(p => p.name.EndsWith(Main(false).parameter + "/Native"));
+            var native = fx.parameters.Single(p => p.name.EndsWith("/Native"));
             var expectedLength = 0.3f;
             var expectedRadius = 0.03f;
             var lengthKnown = false;
@@ -1442,11 +1448,11 @@ namespace VF.Tests {
             globals.allFeaturesInRun = new List<FeatureModel> { new SpsOptions { autoModeAvailable = true, legacyModeAvailable = false } };
             globals.addOtherFeature = _ => { };
             injector.GetService<BakeHapticSocketsService>().Apply();
-            Assert.That(fx.parameters.Any(p => p.name.EndsWith("_Excluded")), Is.True, "Disabling auto must preserve the manual menu toggle");
+            Assert.That(SocketMenuParameter("Excluded"), Is.Not.Null, "Disabling auto must preserve the manual menu toggle");
             var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).SingleOrDefault(r => r.name == "SpsAutoDistance");
             if (included == null) {
                 Assert.That(receiver, Is.Null);
-                Assert.That(fx.parameters.Any(p => p.name.EndsWith("_autoMode")), Is.False);
+                Assert.That(fx.parameters.Any(p => p.name.EndsWith("_SpsAutoMode")), Is.False);
             } else {
                 Assert.That(receiver, Is.Not.Null);
                 var bakeRoot = included.owner().Children().Single(child => child.name == "BakedSpsSocket");
@@ -1482,8 +1488,8 @@ namespace VF.Tests {
             Assert.That(receiver.owner().GetConstraints().Single(c => c.IsParent()).GetSources(), Has.Length.EqualTo(2));
             Assert.That(fx.parameters.Any(p => p.name.EndsWith("_AutoActiveDist") || p.name.EndsWith("_AutoCloser")
                 || p.name.EndsWith("_AutoSocketNum") || p.name == receiver.parameter + "_PointSeparation"), Is.False);
-            var a = fx.parameters.Single(p => p.name.EndsWith("_SocketA"));
-            var b = fx.parameters.Single(p => p.name.EndsWith("_SocketB"));
+            var a = SocketMenuParameter("SocketA");
+            var b = SocketMenuParameter("SocketB");
             var auto = injector.GetService<SpsOptionsService>().GetAutoParameter();
             var layer = fx.GetLayers().Single(l => l.name.EndsWith("SPS - Auto Socket Selection"));
             var states = layer.allStates.ToDictionary(s => Animator.StringToHash(s.name));
@@ -2289,7 +2295,7 @@ namespace VF.Tests {
             }
             socket.plugEntryRadiusActions.Add(action);
             injector.GetService<BakeHapticSocketsService>().Apply();
-            var toggle = fx.parameters.Single(p => p.name.EndsWith("_RadiusTest"));
+            var toggle = SocketMenuParameter("RadiusTest");
             Start();
             playable.SetFloat(toggle, 1);
             var receiver = self ? Merged() : Main(false);
@@ -3085,7 +3091,7 @@ namespace VF.Tests {
                 relocatedRoot = group.GetChild(0).gameObject;
                 Assert.That(socket.owner(), Is.EqualTo(obj), "Baking must leave the authored component in place");
             }
-            var menuToggle = useMenu ? fx.parameters.Single(p => p.name.EndsWith("_Test")) : null;
+            var menuToggle = useMenu ? SocketMenuParameter("Test") : null;
             var internalValues = fx.parameters.Where(p => p.name.Contains("/Mapped") || p.name.Contains("/Smoothed")
                 || p.name.Contains("/LegacyLengthValid") || p.name.Contains("/LegacyRadiusValid")).ToArray();
             Start();

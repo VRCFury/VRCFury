@@ -14,7 +14,6 @@ namespace VF.Model.Feature {
         public List<ParamsEntry> prms = new List<ParamsEntry>();
         public List<SmoothParamEntry> smoothedPrms = new List<SmoothParamEntry>();
         public List<string> globalParams = new List<string>();
-        public bool allNonsyncedAreGlobal = false;
         public bool ignoreSaved;
         public string toggleParam;
         public GameObject rootObjOverride;
@@ -34,6 +33,7 @@ namespace VF.Model.Feature {
         public string injectSpsDepthParam;
         public string injectSpsVelocityParam;
 
+        [Obsolete] public bool allNonsyncedAreGlobal;
         [Obsolete] public GuidController controller;
         [Obsolete] public GuidMenu menu;
         [Obsolete] public GuidParams parameters;

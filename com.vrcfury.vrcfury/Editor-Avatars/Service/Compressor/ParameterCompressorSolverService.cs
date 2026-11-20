@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
@@ -11,6 +10,7 @@ using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDKBase;
+using ControlType = VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu.Control.ControlType;
 
 namespace VF.Service.Compressor {
     /**
@@ -35,7 +35,6 @@ namespace VF.Service.Compressor {
 
             var drivenParams = new HashSet<string>();
             var addDrivenParams = new HashSet<string>();
-            var useBadPriorityMethod = false;
 
             // Avoid making this clone controllers
             foreach (var drivenParam in controllers.GetAllUsedControllers()
@@ -46,14 +45,11 @@ namespace VF.Service.Compressor {
                 if (drivenParam.type == VRC_AvatarParameterDriver.ChangeType.Add) addDrivenParams.Add(drivenParam.name);
             }
 
-            var attemptOptions = new Func<ParamSelectionOptions>[] {
-                () => new ParamSelectionOptions { allowedMenuTypes = new [] { VRCExpressionsMenu.Control.ControlType.RadialPuppet } },
-                () => new ParamSelectionOptions { allowedMenuTypes = new [] { VRCExpressionsMenu.Control.ControlType.Toggle } },
-                () => new ParamSelectionOptions { allowedMenuTypes = new [] { VRCExpressionsMenu.Control.ControlType.RadialPuppet, VRCExpressionsMenu.Control.ControlType.Toggle } },
-                () => new ParamSelectionOptions { allowedMenuTypes = new [] { VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet, VRCExpressionsMenu.Control.ControlType.FourAxisPuppet } },
-                () => new ParamSelectionOptions { allowedMenuTypes = new [] { VRCExpressionsMenu.Control.ControlType.RadialPuppet, VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet, VRCExpressionsMenu.Control.ControlType.FourAxisPuppet } },
-                () => new ParamSelectionOptions { allowedMenuTypes = new [] { VRCExpressionsMenu.Control.ControlType.Toggle, VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet, VRCExpressionsMenu.Control.ControlType.FourAxisPuppet } },
-                () => new ParamSelectionOptions { allowedMenuTypes = new [] { VRCExpressionsMenu.Control.ControlType.RadialPuppet, VRCExpressionsMenu.Control.ControlType.Toggle, VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet, VRCExpressionsMenu.Control.ControlType.FourAxisPuppet } },
+            // Each group is one bit. Later groups are tried after all combinations of earlier groups.
+            var groups = new[] {
+                new[] { ControlType.RadialPuppet },
+                new[] { ControlType.Toggle },
+                new[] { ControlType.TwoAxisPuppet, ControlType.FourAxisPuppet }
             };
 
             var bestCost = originalCost;
@@ -61,15 +57,13 @@ namespace VF.Service.Compressor {
             var bestParameterOptions = new ParamSelectionOptions();
             var bestWasSuccess = false;
             var bestTime = 0f;
-            foreach (var attemptOptionFunc in attemptOptions) {
-                var options = attemptOptionFunc.Invoke();
-                var decision = GetParamsToOptimize(paramz, options.allowedMenuTypes.ToImmutableHashSet(), addDrivenParams, originalCost, useBadPriorityMethod);
+            for (var mask = 1; mask < (1 << groups.Length); mask++) {
+                var options = new ParamSelectionOptions {
+                    allowedMenuTypes = groups.Where((_, bit) => (mask & (1 << bit)) != 0).SelectMany(group => group).ToArray()
+                };
+                var decision = GetParamsToOptimize(paramz, options.allowedMenuTypes.ToImmutableHashSet(), addDrivenParams, originalCost);
                 var cost = decision.GetFinalCost(originalCost);
                 var batchCount = decision.GetBatchCount();
-                if (useBadPriorityMethod && batchCount > 255) {
-                    // Bad priority method only supports up to 255 batches
-                    continue;
-                }
                 var syncTime = batchCount * ParameterCompressorService.BATCH_TIME;
                 if (bestWasSuccess) {
                     // If we already have a working solution,
@@ -226,23 +220,20 @@ namespace VF.Service.Compressor {
             IEnumerable<VRCExpressionParameters.Parameter> paramz,
             ISet<VRCExpressionsMenu.Control.ControlType> allowedMenuTypes,
             ISet<string> addDriven,
-            int originalCost,
-            bool useBadPriorityMethod
+            int originalCost
         ) {
             var eligible = new List<VRCExpressionParameters.Parameter>();
             var usedInMenu = GetParamsUsedInMenu(allowedMenuTypes);
 
             foreach (var param in paramz) {
                 if (!param.IsNetworkSynced()) continue;
-                if (!param.HasStandardNetworkEncoding()) continue;
                 if (!usedInMenu.Contains(param.name)) continue;
                 if (addDriven.Contains(param.name) && !allowedMenuTypes.Contains(VRCExpressionsMenu.Control.ControlType.FourAxisPuppet)) continue;
                 eligible.Add(param);
             }
 
             var decision = new OptimizationDecision {
-                compress = eligible,
-                useBadPriorityMethod = useBadPriorityMethod
+                compress = eligible
             };
             decision.Optimize(originalCost);
 

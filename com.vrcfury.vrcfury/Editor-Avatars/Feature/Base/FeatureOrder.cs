@@ -6,6 +6,7 @@ namespace VF.Feature.Base {
 
         // Needs to happen before controllers load
         CaptureInitialState,
+        AlignFullControllerPaths,
         ArmatureLinkForceMergedNames,
 
         // Needs to happen before everything

@@ -20,8 +20,14 @@ namespace VF.Tests {
             controller.parameters.FirstOrDefault(p => p.name == name);
 
         private static VFAvatarController CreateController(ExpressionParamsService expressions) =>
-            new VFAvatarController(VFController.Create(), VRCAvatarDescriptor.AnimLayerType.FX,
-                () => 0, () => "", name => name, new LayerSourceService(), expressions);
+            new VFAvatarController(
+                VFController.Create(),
+                VRCAvatarDescriptor.AnimLayerType.FX,
+                () => 0,
+                null,
+                new LayerSourceService(),
+                expressions
+            );
 
         private static ExpressionParamsService GetExpressionParams(GameObject root) =>
             VRCFuryInjectorBuilder.GetInjector(root.AddComponent<VRCAvatarDescriptor>()).GetService<ExpressionParamsService>();
@@ -355,7 +361,7 @@ namespace VF.Tests {
                 }
                 var fx = GetFx(first);
                 var otherFx = GetFx(second);
-                var input = fx.CreateUniqueBool("Input", 0.75f);
+                var input = fx.GetOrCreateBool("Input", 0.75f);
                 Assert.That(first.expressionParameters, Is.Null, "Handles must not create expression assets until requested");
                 input.MakeExpressionFloat(synced: false, saved: true);
                 Assert.That(second.expressionParameters, Is.Null);
@@ -388,12 +394,13 @@ namespace VF.Tests {
         [TestCase(true)]
         public void UniqueNamesCheckAllControllersAndForgetDiscardedControllers(bool overrides) {
             var root = new GameObject("Unloaded parameter names");
+            const string prefix = "VF_sGqeWWch_";
             var raw = new UnityEditor.Animations.AnimatorController {
-                parameters = new[] { new AnimatorControllerParameter { name = "VF7_Existing", type = AnimatorControllerParameterType.Float } }
+                parameters = new[] { new AnimatorControllerParameter { name = prefix + "Existing", type = AnimatorControllerParameterType.Float } }
             };
             var wrapper = new AnimatorOverrideController(raw);
             var action = new UnityEditor.Animations.AnimatorController {
-                parameters = new[] { new AnimatorControllerParameter { name = "VF7_FromAction", type = AnimatorControllerParameterType.Float } }
+                parameters = new[] { new AnimatorControllerParameter { name = prefix + "FromAction", type = AnimatorControllerParameterType.Float } }
             };
             try {
                 var avatar = root.AddComponent<VRCAvatarDescriptor>();
@@ -409,19 +416,18 @@ namespace VF.Tests {
                     }
                 };
                 var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
-                injector.GetService<GlobalsService>().currentFeatureNum = 7;
                 var names = injector.GetService<UniqueParamService>();
                 var controllers = injector.GetService<ControllersService>();
                 controllers.ClearCache(applyBaseMask: false);
-                Assert.That(names.GetUniqueName("Existing"), Is.EqualTo("VF7_Existing_2"));
-                Assert.That(names.GetUniqueName("FromAction"), Is.EqualTo("VF7_FromAction_2"));
+                Assert.That(names.GetObjectScopedName(root, "Existing"), Is.EqualTo(prefix + "Existing_2"));
+                Assert.That(names.GetObjectScopedName(root, "FromAction"), Is.EqualTo(prefix + "FromAction_2"));
                 Assert.That(controllers.GetAllMutatedControllers().Count, Is.EqualTo(2));
                 controllers.ClearCache(applyBaseMask: false);
                 var fx = controllers.GetFx();
-                fx.GetOrCreateBool("VF7_Transient");
-                Assert.That(names.GetUniqueName("Transient"), Is.EqualTo("VF7_Transient_2"));
+                fx.GetOrCreateBool(prefix + "Transient");
+                Assert.That(names.GetObjectScopedName(root, "Transient"), Is.EqualTo(prefix + "Transient_2"));
                 controllers.ClearCache(applyBaseMask: false);
-                Assert.That(names.GetUniqueName("Transient"), Is.EqualTo("VF7_Transient"), "Discarded controller definitions must no longer block names");
+                Assert.That(names.GetObjectScopedName(root, "Transient"), Is.EqualTo(prefix + "Transient"), "Discarded controller definitions must no longer block names");
             } finally {
                 Object.DestroyImmediate(root);
                 Object.DestroyImmediate(wrapper);
@@ -444,11 +450,11 @@ namespace VF.Tests {
                 var controllers = injector.GetService<ControllersService>();
                 controllers.ClearCache(applyBaseMask: false);
                 var controller = controllers.GetAction();
+                var sliders = Enumerable.Range(0, 31).Select(i => ExpressionParam.Create("Slider" + i).Float()).ToArray();
+                injector.GetService<ExpressionParamsService>().SetParameters(sliders);
                 injector.GetService<ParameterCompressorLayerService>().BuildLayer(new OptimizationDecision {
                     numberSlots = 1,
-                    compress = Enumerable.Range(0, 31).Select(i => new VRCExpressionParameters.Parameter {
-                        name = "Slider" + i, valueType = VRCExpressionParameters.ValueType.Float
-                    }).ToArray()
+                    compress = sliders
                 }, controller);
                 var before = controller.layers.Sum(l => l.allTransitions.Count());
                 injector.GetService<NoBadControllerParamsService>().Apply();
@@ -512,8 +518,8 @@ namespace VF.Tests {
                 var expressions = injector.GetService<ExpressionParamsService>();
                 var count = Resources.FindObjectsOfTypeAll<VRCExpressionParameters>().Length;
                 Assert.That(expressions.Contains("Missing"), Is.False);
-                names.GetUniqueName("One");
-                names.GetUniqueName("Two");
+                names.GetObjectScopedName(root, "One");
+                names.GetObjectScopedName(root, "Two");
                 Assert.That(avatar.expressionParameters, Is.Null);
                 Assert.That(Resources.FindObjectsOfTypeAll<VRCExpressionParameters>(), Has.Length.EqualTo(count));
 
@@ -552,7 +558,7 @@ namespace VF.Tests {
                 var controllers = VRCFuryInjectorBuilder.GetInjector(avatar).GetService<ControllersService>();
                 controllers.ClearCache(applyBaseMask: false);
                 var fx = controllers.GetFx();
-                var input = fx.CreateUniqueBool("Input", 0.25f);
+                var input = fx.GetOrCreateBool("Input", 0.25f);
                 var math = new BlendtreeMath(fx, VFBlendTreeDirect.Create("Buffers"));
                 Assert.That(math.Buffer(input).GetDefault(), Is.EqualTo(0.25f));
                 Assert.That(math.Buffer(input, def: -100).GetDefault(), Is.EqualTo(-100));
@@ -570,8 +576,13 @@ namespace VF.Tests {
 
         [Test]
         public void ControllerHelpersDeclareTypesBeforeTheFinalRepairPass() {
-            var controller = new VFAvatarController(VFController.Create(), VRCAvatarDescriptor.AnimLayerType.FX,
-                () => 0, () => "", name => "Unique/" + name, new LayerSourceService());
+            var controller = new VFAvatarController(
+                VFController.Create(),
+                VRCAvatarDescriptor.AnimLayerType.FX,
+                () => 0,
+                null,
+                new LayerSourceService()
+            );
             Assert.That(controller.One().type, Is.EqualTo(AnimatorControllerParameterType.Float));
             Assert.That(controller.Zero().type, Is.EqualTo(AnimatorControllerParameterType.Float));
             Assert.That(controller.GestureLeft().type, Is.EqualTo(AnimatorControllerParameterType.Int));
@@ -580,29 +591,10 @@ namespace VF.Tests {
             Assert.That(controller.GestureLeftWeight().type, Is.EqualTo(AnimatorControllerParameterType.Float));
             Assert.That(controller.GestureRightWeight().type, Is.EqualTo(AnimatorControllerParameterType.Float));
             Assert.That(controller.IsLocal().type, Is.EqualTo(AnimatorControllerParameterType.Bool));
-            Assert.That(controller.CreateUniqueFloat("Weight").type,
-                Is.EqualTo(AnimatorControllerParameterType.Float));
-            Assert.That(controller.CreateUniqueInt("Counter").type,
-                Is.EqualTo(AnimatorControllerParameterType.Int));
-            Assert.That(controller.CreateUniqueBool("Toggle").type,
-                Is.EqualTo(AnimatorControllerParameterType.Bool));
         }
 
         [Test]
-        public void UniqueCreationUsesGetOrCreateWithoutReplacingTheExistingDefault() {
-            var controller = new VFAvatarController(VFController.Create(), VRCAvatarDescriptor.AnimLayerType.FX,
-                () => 0, () => "", _ => "Taken", new LayerSourceService());
-            var existing = controller.GetOrCreateBool("Taken", 0.25f);
-            var reused = controller.CreateUniqueBool("Feature", 1);
-            Assert.That(reused.name, Is.EqualTo(existing.name));
-            Assert.That(reused.type, Is.EqualTo(AnimatorControllerParameterType.Float));
-            Assert.That(reused.GetDefault(), Is.EqualTo(0.25f));
-            Assert.That(existing.GetDefault(), Is.EqualTo(0.25f));
-            Assert.That(controller.parameters.Length, Is.EqualTo(1));
-        }
-
-        [Test]
-        public void ControllerUniqueCreationUsesTheBoundAllocatorAndLiteralRegistrationDoesNot() {
+        public void UniqueNamesUseTheSuppliedOwnerAcrossControllers() {
             var root = new GameObject("Bound unique parameters");
             try {
                 var avatar = root.AddComponent<VRCAvatarDescriptor>();
@@ -613,26 +605,29 @@ namespace VF.Tests {
                     new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.Action }
                 };
                 var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
-                var globals = injector.GetService<GlobalsService>();
-                globals.currentFeatureNum = 7;
+                var names = injector.GetService<UniqueParamService>();
+                const string prefix = "VF_sGqeWWch_";
                 var controllers = injector.GetService<ControllersService>();
                 controllers.ClearCache(applyBaseMask: false);
                 var fx = controllers.GetFx();
                 var literal = fx.GetOrCreateBool("Depth", 2);
-                var first = fx.CreateUniqueBool("Depth", def: true);
-                var second = fx.CreateUniqueBool("Depth", def: 3);
-                var third = controllers.GetAction().CreateUniqueBool("Depth", def: 4);
-                Assert.That(first.name, Is.EqualTo("VF7_Depth"));
-                Assert.That(second.name, Is.EqualTo("VF7_Depth_2"));
-                Assert.That(third.name, Is.EqualTo("VF7_Depth_3"));
+                var first = fx.GetOrCreateBool(names.GetObjectScopedName(root, "Depth"), def: true);
+                var second = fx.GetOrCreateBool(names.GetObjectScopedName(root, "Depth"), def: 3);
+                var third = controllers.GetAction().GetOrCreateBool(names.GetObjectScopedName(root, "Depth"), def: 4);
+                Assert.That(first.name, Is.EqualTo(prefix + "Depth"));
+                Assert.That(second.name, Is.EqualTo(prefix + "Depth_2"));
+                Assert.That(third.name, Is.EqualTo(prefix + "Depth_3"));
                 Assert.That(first.GetDefault(), Is.EqualTo(1));
                 Assert.That(second.GetDefault(), Is.EqualTo(3));
                 Assert.That(third.GetDefault(), Is.EqualTo(4));
                 Assert.That(literal.name, Is.EqualTo("Depth"));
                 Assert.That(fx.GetOrCreateBool("Depth", 100).GetDefault(), Is.EqualTo(2));
-                globals.currentFeatureNum = 8;
-                Assert.That(fx.CreateUniqueBool("Depth").name, Is.EqualTo("VF8_Depth"),
-                    "The callback must use the current feature rather than the controller's creation context");
+                var other = GameObjects.Create("Other", root);
+                Assert.That(
+                    fx.GetOrCreateBool(names.GetObjectScopedName(other, "Depth")).name,
+                    Is.EqualTo("VF_AC5lr9R5_Depth"),
+                    "Allocation must use the supplied object's current path"
+                );
                 Assert.That(avatar.expressionParameters, Is.Null);
             } finally {
                 Object.DestroyImmediate(root);
@@ -653,7 +648,7 @@ namespace VF.Tests {
                 var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
                 var controllers = injector.GetService<ControllersService>();
                 controllers.ClearCache(applyBaseMask: false);
-                var name = injector.GetService<UniqueParamService>().GetUniqueName("Feature");
+                var name = injector.GetService<UniqueParamService>().GetObjectScopedName(root, "Feature");
                 var fx = controllers.GetFx();
                 Assert.That(FindDefinition(fx, name), Is.Null);
                 Assert.That(avatar.expressionParameters, Is.Null);
@@ -764,6 +759,34 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void InternalNamesSkipParametersInOtherControllersAndExpressions() {
+            var root = new GameObject("Internal parameter names");
+            try {
+                var avatar = root.AddComponent<VRCAvatarDescriptor>();
+                avatar.baseAnimationLayers = new[] {
+                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX }
+                };
+                avatar.specialAnimationLayers = new[] {
+                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.Action }
+                };
+                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+                var controllers = injector.GetService<ControllersService>();
+                controllers.ClearCache(applyBaseMask: false);
+                var fx = controllers.GetFx();
+                var probe = fx.CreateUniqueFloat("Probe").name;
+                var prefix = probe.Substring(0, probe.Length - "Probe".Length);
+                string Candidate(int offset) => offset == 1 ? prefix + "Value" : prefix + "Value_" + offset;
+
+                controllers.GetAction().GetOrCreateBool(Candidate(1));
+                injector.GetService<ExpressionParamsService>().AddOrMerge(ExpressionParam.Create(Candidate(2)).Float());
+                Assert.That(fx.CreateUniqueBool("Value").name, Is.EqualTo(Candidate(3)));
+                Assert.That(controllers.GetAction().CreateUniqueInt("Value").name, Is.EqualTo(Candidate(4)));
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void UniqueNamesAvoidExpressionsAllControllersAndOutstandingReservations() {
             var root = new GameObject("Unique parameter names");
             try {
@@ -775,21 +798,20 @@ namespace VF.Tests {
                     new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.Action }
                 };
                 var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
-                injector.GetService<GlobalsService>().currentFeatureNum = 7;
+                const string prefix = "VF_sGqeWWch_";
                 var controllers = injector.GetService<ControllersService>();
                 controllers.ClearCache(applyBaseMask: false);
                 var expressionParams = injector.GetService<ExpressionParamsService>();
-                expressionParams.AddOrMerge(new VRCExpressionParameters.Parameter { name = "VF7_Test", valueType = VRCExpressionParameters.ValueType.Bool, saved = false });
+                expressionParams.AddOrMerge(new VRCExpressionParameters.Parameter { name = prefix + "Test", valueType = VRCExpressionParameters.ValueType.Bool, saved = false });
                 var fx = controllers.GetFx();
-                Assert.That(fx.GetOrCreateBool("VF7_Test_2").name, Is.EqualTo("VF7_Test_2"));
-                Assert.That(controllers.GetAction().GetOrCreateBool("VF7_Test_3").name, Is.EqualTo("VF7_Test_3"));
+                Assert.That(fx.GetOrCreateBool(prefix + "Test_2").name, Is.EqualTo(prefix + "Test_2"));
+                Assert.That(controllers.GetAction().GetOrCreateBool(prefix + "Test_3").name, Is.EqualTo(prefix + "Test_3"));
                 var uniqueParams = injector.GetService<UniqueParamService>();
-                var first = uniqueParams.GetUniqueName("Test");
-                Assert.That(first, Is.EqualTo("VF7_Test_4"));
-                Assert.That(uniqueParams.GetUniqueName("Test"), Is.EqualTo("VF7_Test_5"));
+                var first = uniqueParams.GetObjectScopedName(root, "Test");
+                Assert.That(first, Is.EqualTo(prefix + "Test_4"));
+                Assert.That(uniqueParams.GetObjectScopedName(root, "Test"), Is.EqualTo(prefix + "Test_5"));
                 Assert.That(FindDefinition(fx, first), Is.Null, "Allocation must not create an animator parameter");
                 Assert.That(expressionParams.ToArray(), Has.Length.EqualTo(1));
-                Assert.That(injector.GetService<ParameterSourceService>().GetSource(first).originalParamName, Is.EqualTo("Test"));
             } finally {
                 Object.DestroyImmediate(root);
             }
@@ -848,40 +870,9 @@ namespace VF.Tests {
             }
         }
 
-        [TestCase(0, false)]
-        [TestCase(1, true)]
-        [TestCase(0.5f, true)]
-        [TestCase(-0.5f, true)]
-        public void LegacyCompressorImportsBooleanDefaultsWithoutPromotingTheirStorage(float defaultValue, bool expected) {
-            var root = new GameObject("Legacy compressor Bool import");
-            try {
-                var avatar = root.AddComponent<VRCAvatarDescriptor>();
-                avatar.baseAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
-                avatar.specialAnimationLayers = new[] {
-                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.Action }
-                };
-                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
-                var controllers = injector.GetService<ControllersService>();
-                controllers.ClearCache(applyBaseMask: false);
-                var controller = controllers.GetAction();
-                var original = new VRCExpressionParameters.Parameter {
-                    name = "ImportedBool", valueType = VRCExpressionParameters.ValueType.Bool, defaultValue = defaultValue
-                };
-                injector.GetService<ExpressionParamsService>().SetParameters(new[] { original });
-                injector.GetService<ParameterCompressorLegacyLayerService>().BuildLayer(
-                    new OptimizationDecision { boolSlots = 1, compress = new[] { original } }, controller);
-                Assert.That(controller.TryGetParam(original.name, out var imported), Is.True);
-                Assert.That(imported.type, Is.EqualTo(AnimatorControllerParameterType.Bool));
-                Assert.That(imported.GetDefault(), Is.EqualTo(expected ? 1 : 0));
-            } finally {
-                Object.DestroyImmediate(root);
-            }
-        }
-
 #if VRCSDK_HAS_PARAMETER_INTERPOLATION
-        [TestCase(false)]
-        [TestCase(true)]
-        public void CompressorTransportNeverInterpolates(bool legacy) {
+        [Test]
+        public void CompressorTransportNeverInterpolates() {
             var root = new GameObject("Compressor interpolation");
             try {
                 var avatar = root.AddComponent<VRCAvatarDescriptor>();
@@ -904,11 +895,10 @@ namespace VF.Tests {
                 modeAnimator.MakeExpressionInt();
                 var originals = paramz.ToArray();
                 var decision = new OptimizationDecision { numberSlots = 1, compress = originals };
-                if (legacy) injector.GetService<ParameterCompressorLegacyLayerService>().BuildLayer(decision, controller);
-                else injector.GetService<ParameterCompressorLayerService>().BuildLayer(decision, controller);
+                injector.GetService<ParameterCompressorLayerService>().BuildLayer(decision, controller);
                 var transport = paramz.Except(originals)
                     .Where(p => p.IsNetworkSynced() && p.valueType != VRCExpressionParameters.ValueType.Bool).ToArray();
-                Assert.That(transport.Length, Is.EqualTo(legacy ? 2 : 1));
+                Assert.That(transport.Length, Is.EqualTo(1));
                 foreach (var parameter in transport) {
                     Assert.That(parameter.useCustomLerpDuration, Is.True, parameter.name);
                     Assert.That(parameter.customLerpDuration, Is.Zero, parameter.name);
@@ -1072,7 +1062,7 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void CompressorSolverExcludesNonstandardWidthsAndSignedness() {
+        public void CompressorSolverAcceptsCustomWidthsAndSignedness() {
             var obj = new GameObject("Avatar");
             var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             var paramz = ScriptableObject.CreateInstance<VRCExpressionParameters>();
@@ -1090,7 +1080,7 @@ namespace VF.Tests {
                                 bitWidth = width, flippedRepresentation = flipped
                             };
                             parameters.Add(p);
-                            if (width == 8 && !flipped) expected.Add(p.name);
+                            expected.Add(p.name);
                         }
                     }
                 }
@@ -1107,10 +1097,12 @@ namespace VF.Tests {
                 var solver = new ParameterCompressorSolverService();
                 typeof(ParameterCompressorSolverService).VFField("menuService").SetValue(solver, menuService);
                 var method = typeof(ParameterCompressorSolverService).GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
-                    .Single(m => m.Name == "GetParamsToOptimize" && m.GetParameters().Length == 5);
+                    .Single(m => m.Name == "GetParamsToOptimize");
                 var decision = (OptimizationDecision)method.Invoke(solver, new object[] {
-                    paramz.parameters, new HashSet<VRCExpressionsMenu.Control.ControlType> { VRCExpressionsMenu.Control.ControlType.Toggle },
-                    new HashSet<string>(), 512, false
+                    paramz.parameters,
+                    new HashSet<VRCExpressionsMenu.Control.ControlType> { VRCExpressionsMenu.Control.ControlType.Toggle },
+                    new HashSet<string>(),
+                    512
                 });
                 Assert.That(decision.compress.Select(p => p.name), Is.EquivalentTo(expected));
             } finally {

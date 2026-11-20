@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
+using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Service;
 using VF.Utils;
-using VF.Utils.Controller;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
@@ -27,18 +27,14 @@ namespace VF.Tests {
             if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Desktop contact receivers only");
             var obj = new GameObject("Receiver");
             try {
-                var sources = new LayerSourceService();
-                typeof(LayerSourceService).VFField("globals").SetValue(sources, new GlobalsService());
-                var fx = new VFAvatarController(VFController.Create(), VRCAvatarDescriptor.AnimLayerType.FX,
-                    () => 0, () => "", name => name, sources);
-                var controllers = new ControllersService();
-                var cache = (Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController>)
-                    typeof(ControllersService).VFField("_controllers").GetValue(controllers);
-                cache[VRCAvatarDescriptor.AnimLayerType.FX] = fx;
-                var service = new HapticContactsService();
-                typeof(HapticContactsService).VFField("controllers").SetValue(service, controllers);
-                typeof(HapticContactsService).VFField("overlappingService").SetValue(service, new OverlappingContactsFixService());
-                // No bone resolver is installed: AddReceiver must not make hip-policy decisions.
+                var avatar = obj.AddComponent<VRCAvatarDescriptor>();
+                avatar.baseAnimationLayers = new[] {
+                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX }
+                };
+                avatar.specialAnimationLayers = System.Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+                injector.GetService<ControllersService>().ClearCache(applyBaseMask: false);
+                var service = injector.GetService<HapticContactsService>();
                 var tags = new[] { "Hand", SpsTags.PlugClose, "SPS/Socket/public" };
                 service.AddReceiver(new HapticContactsService.ReceiverRequest {
                     obj = obj, objName = "Self", paramName = "Self",

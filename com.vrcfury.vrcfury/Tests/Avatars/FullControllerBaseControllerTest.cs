@@ -38,8 +38,7 @@ namespace VF.Tests {
             public Build(VRCAvatarDescriptor.AnimLayerType type = VRCAvatarDescriptor.AnimLayerType.Base,
                 string originalOwner = LayerSourceService.AvatarDescriptorSource) {
                 typeof(LayerSourceService).VFField("globals").SetValue(sources, globals);
-                controller = new VFAvatarController(VFController.Create(), type,
-                    () => 0, () => "", name => name, sources);
+                controller = new VFAvatarController(VFController.Create(), type, () => 0, null, sources);
                 foreach (var name in new[] { "AvatarA", "AvatarB" }) {
                     var layer = controller.NewLayer(name);
                     layer.NewState(name);

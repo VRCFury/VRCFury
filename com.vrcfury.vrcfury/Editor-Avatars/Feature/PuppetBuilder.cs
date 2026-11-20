@@ -11,6 +11,7 @@ using VF.Utils.Controller;
 namespace VF.Feature {
 
     internal class PuppetBuilder : FeatureBuilder<Puppet> {
+        [VFAutowired] private readonly UniqueParamService uniqueParams;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ControllersService controllers;
@@ -29,14 +30,15 @@ namespace VF.Feature {
                 if (stop.x != 0) usesX = true;
                 if (stop.y != 0) usesY = true;
             }
-            var x = fx.CreateUniqueFloat(model.name + "_x", def: model.defaultX);
-            if (usesX) {
-                x.MakeExpressionFloat(saved: model.saved);
+            VFAParam Axis(string suffix, float defaultValue, bool used) {
+                var name = model.name + suffix;
+                if (!used) return fx.CreateUniqueFloat(name, def: defaultValue);
+                var axis = fx.GetOrCreateFloat(uniqueParams.GetObjectScopedName(featureBaseObject, name), def: defaultValue);
+                axis.MakeExpressionFloat(saved: model.saved);
+                return axis;
             }
-            var y = fx.CreateUniqueFloat(model.name + "_y", def: model.defaultY);
-            if (usesY) {
-                y.MakeExpressionFloat(saved: model.saved);
-            }
+            var x = Axis("_x", model.defaultX, usesX);
+            var y = Axis("_y", model.defaultY, usesY);
             
             var tree = VFBlendTree2D.CreateFreeformDirectional(model.name, x, y);
             tree.Add(new Vector2(0,0), clipFactory.GetEmptyClip());

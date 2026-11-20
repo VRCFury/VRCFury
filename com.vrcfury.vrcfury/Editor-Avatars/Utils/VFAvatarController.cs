@@ -10,8 +10,7 @@ using VRC.SDK3.Avatars.Components;
 namespace VF.Utils {
     internal class VFAvatarController : VFControllerWithVrcType {
         private readonly Func<int> currentFeatureNumProvider;
-        private readonly Func<string> currentFeatureClipPrefixProvider;
-        private readonly Func<string, string> allocateUniqueParamName;
+        private readonly Func<string, string> internalParamName;
         private readonly LayerSourceService layerSourceService;
         internal readonly ExpressionParamsService expressionParams;
 
@@ -19,14 +18,12 @@ namespace VF.Utils {
             VFController ctrl,
             VRCAvatarDescriptor.AnimLayerType type,
             Func<int> currentFeatureNumProvider,
-            Func<string> currentFeatureClipPrefixProvider,
-            Func<string, string> allocateUniqueParamName,
+            Func<string, string> internalParamName,
             LayerSourceService layerSourceService,
             ExpressionParamsService expressionParams = null
         ) : base(ctrl, type) {
             this.currentFeatureNumProvider = currentFeatureNumProvider;
-            this.currentFeatureClipPrefixProvider = currentFeatureClipPrefixProvider;
-            this.allocateUniqueParamName = allocateUniqueParamName;
+            this.internalParamName = internalParamName;
             this.layerSourceService = layerSourceService;
             this.expressionParams = expressionParams;
 
@@ -36,8 +33,12 @@ namespace VF.Utils {
         }
 
         private VFAvatarController(VFAvatarController source) : this(
-            source, source.vrcType, source.currentFeatureNumProvider, source.currentFeatureClipPrefixProvider,
-            source.allocateUniqueParamName, source.layerSourceService, source.expressionParams
+            source,
+            source.vrcType,
+            source.currentFeatureNumProvider,
+            source.internalParamName,
+            source.layerSourceService,
+            source.expressionParams
         ) {
             randomPrefix = source.randomPrefix;
         }
@@ -81,11 +82,11 @@ namespace VF.Utils {
         private readonly int randomPrefix = (new System.Random()).Next(100_000_000, 999_999_999);
 
         public VFAParam CreateUniqueFloat(string name, FloatOrBool def = null) =>
-            GetOrCreateFloat(allocateUniqueParamName(name), def);
+            GetOrCreateFloat(internalParamName(name), def);
         public VFAParam CreateUniqueInt(string name, FloatOrBool def = null) =>
-            GetOrCreateInt(allocateUniqueParamName(name), def);
+            GetOrCreateInt(internalParamName(name), def);
         public VFAParam CreateUniqueBool(string name, FloatOrBool def = null) =>
-            GetOrCreateBool(allocateUniqueParamName(name), def);
+            GetOrCreateBool(internalParamName(name), def);
 
         public VFAParam One() {
             return GetOrCreateFloat($"VF_{randomPrefix}_One", def: 1f);

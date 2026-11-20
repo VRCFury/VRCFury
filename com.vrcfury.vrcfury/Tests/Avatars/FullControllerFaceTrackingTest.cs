@@ -84,12 +84,12 @@ namespace VF.Tests {
                 var parameters = new ExpressionParamsService();
                 Inject(parameters, "avatar", avatar);
                 Inject(parameters, "globals", globals);
-                Inject(controllers, "uniqueParams", new System.Lazy<UniqueParamService>(() => uniqueParams));
                 Inject(controllers, "expressionParams", parameters);
+                Inject(controllers, "uniqueParams", new System.Lazy<UniqueParamService>(() => uniqueParams));
                 Inject(uniqueParams, "controllers", controllers);
                 Inject(uniqueParams, "expressionParams", parameters);
-                Inject(uniqueParams, "globals", globals);
-                Inject(uniqueParams, "parameterSourceService", new ParameterSourceService());
+                Inject(uniqueParams, "avatarObject", (VFGameObject)root);
+                Inject(uniqueParams, "pipelineId", new PipelineIdService(root));
                 Inject(faceTracking, "avatar", avatar);
                 Inject(faceTracking, "controllers", controllers);
             }
@@ -169,8 +169,13 @@ namespace VF.Tests {
             public VF.Utils.Controller.VFBehaviour ControlSet(string name) {
                 var layerSource = new LayerSourceService();
                 Inject(layerSource, "globals", globals);
-                var controller = new VFAvatarController(VF.Utils.Controller.VFController.Create(),
-                    VRCAvatarDescriptor.AnimLayerType.FX, () => 0, () => "", uniqueParams.GetUniqueName, layerSource);
+                var controller = new VFAvatarController(
+                    VF.Utils.Controller.VFController.Create(),
+                    VRCAvatarDescriptor.AnimLayerType.FX,
+                    () => 0,
+                    uniqueParams.GetInternalName,
+                    layerSource
+                );
                 var cache = (Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController>)typeof(ControllersService)
                     .VFField("_controllers").GetValue(controllers);
                 cache[VRCAvatarDescriptor.AnimLayerType.FX] = controller;
@@ -804,8 +809,10 @@ namespace VF.Tests {
                     .faceTrackingBlendshapeNames[(int)key], Is.Empty);
                 Assert.That(build.avatar.faceTrackingBlendshapesSetList.Single(set => set.setName == "VF1_Face")
                     .faceTrackingBlendshapeNames[(int)key], Is.Not.Empty);
-                Assert.That(build.avatar.faceTrackingParameterBehaviors.Select(b => b.outputParameterName),
-                    Is.EquivalentTo(new[] { "VoiceOnly", "VF1_ImportedInput" }));
+                var outputs = build.avatar.faceTrackingParameterBehaviors.Select(b => b.outputParameterName).ToArray();
+                Assert.That(outputs, Has.Length.EqualTo(2));
+                Assert.That(outputs, Does.Contain("VoiceOnly"));
+                Assert.That(outputs, Does.Contain("VF_yift6rAF_ImportedInput"));
                 Assert.That(source.faceTrackingBlendshapeNames[(int)key], Is.EqualTo("Smile"));
             }
         }
@@ -934,7 +941,7 @@ namespace VF.Tests {
                 var outputs = build.avatar.faceTrackingParameterBehaviors.Select(behavior => behavior.outputParameterName).ToArray();
                 Assert.That(outputs.Contains("StaleViseme"), Is.EqualTo(alreadyEnabled));
                 Assert.That(outputs, Does.Contain("VoiceOnly"));
-                Assert.That(outputs, Does.Contain("VF1_ImportedViseme"));
+                Assert.That(outputs, Does.Contain("VF_yift6rAF_ImportedViseme"));
             }
         }
 
@@ -1562,7 +1569,7 @@ namespace VF.Tests {
                 Assert.That(result.Single(b => b.targetMode == VRCAvatarDescriptor.ParameterBehaviorTargetMode.ApplyBlendSetWeight)
                     .targetBlendSetName, Is.EqualTo("VF1_Face"));
                 Assert.That(result.Single(b => b.targetMode == VRCAvatarDescriptor.ParameterBehaviorTargetMode.ForwardToAnimator)
-                    .outputParameterName, Is.Not.EqualTo("Output").And.EndsWith("Output"));
+                    .outputParameterName, Does.EndWith("_Output"));
                 Assert.That(shape.targetBlendshapeName, Is.EqualTo("Smile"));
                 Assert.That(shape.weightBlendSetName, Is.EqualTo("Face"));
             }

@@ -43,6 +43,11 @@
         },
         {
             "name": "com.vrchat.avatars",
+            "expression": "3.11.0-beta",
+            "define": "VRCSDK_HAS_NAME_BASED_PARAMETER_SYNC"
+        },
+        {
+            "name": "com.vrchat.avatars",
             "expression": "3.1.12",
             "define": "VRCSDK_HAS_NETWORK_SYNCED"
         },

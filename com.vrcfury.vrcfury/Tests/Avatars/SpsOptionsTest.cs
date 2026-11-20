@@ -501,6 +501,8 @@ namespace VF.Tests {
                     return;
                 }
                 Assert.That(service.GetAutoParameter(), Is.SameAs(auto));
+                Assert.That(auto.name, Is.EqualTo("VF_" + UniqueParamService.Hash(injector.GetService<PipelineIdService>().Get()) + "_SpsAutoMode"));
+                Assert.That(avatar.expressionParameters.parameters.Single(p => p.name == auto.name).IsNetworkSynced(), Is.False);
                 Assert.That(service.GetLegacyParameter(), Is.SameAs(legacy));
                 Assert.That(service.GetLegacyOnClip(), Is.Not.Null);
                 foreach (var parameter in new[] { auto, legacy }) {

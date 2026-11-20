@@ -8,6 +8,7 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Avatars.ScriptableObjects;
 using VRC.SDK3.Dynamics.Contact.Components;
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
 using AdvancedParameter = VRC.Dynamics.ContactReceiver.AdvancedParameter;
@@ -38,8 +39,17 @@ namespace VF.Tests {
         }
 
         [TestCaseSource(nameof(Outputs))]
-        public void FullControllerRenamesReceiverWhenOnlyOneOutputIsUsed(string suffix) {
+        public void FullControllerRenamesReceiverWhenOnlyOneOutputIsUsed(string suffix) =>
+            CheckFullControllerReceiver(suffix, null);
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void FullControllerReceiverUsesObjectScopeRegardlessOfSync(bool synced) =>
+            CheckFullControllerReceiver("_PointSeparation", synced);
+
+        private static void CheckFullControllerReceiver(string suffix, bool? synced) {
             var root = new GameObject("Avatar");
+            var asset = ScriptableObject.CreateInstance<VRCExpressionParameters>();
             try {
                 var avatar = root.AddComponent<VRCAvatarDescriptor>();
                 avatar.baseAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
@@ -61,9 +71,14 @@ namespace VF.Tests {
                 Inject(controllers, "expressionParams", parameters);
                 Inject(uniqueParams, "controllers", controllers);
                 Inject(uniqueParams, "expressionParams", parameters);
-                Inject(uniqueParams, "globals", globals);
-                Inject(uniqueParams, "parameterSourceService", new ParameterSourceService());
+                Inject(uniqueParams, "avatarObject", (VFGameObject)root);
+                Inject(uniqueParams, "pipelineId", new PipelineIdService(root));
                 var builder = new FullControllerBuilder { featureBaseObject = root, model = new FullController() };
+                if (synced.HasValue) {
+                    asset.parameters = new[] { ExpressionParam.Create("Contact" + suffix).Float().Synced(synced.Value) };
+                    builder.model.prms.Add(new FullController.ParamsEntry { parameters = asset });
+                    Inject(builder, "expressionParams", parameters);
+                }
                 Inject(builder, "avatar", avatar);
                 Inject(builder, "globals", globals);
                 Inject(builder, "controllers", controllers);
@@ -77,10 +92,13 @@ namespace VF.Tests {
 #endif
                 var rewrite = builder.GetType().VFMethod("RewriteParamName");
                 var output = (string)rewrite.Invoke(builder, new object[] { "Contact" + suffix });
+                var unrelated = (string)rewrite.Invoke(builder, new object[] { "Camera_Angle" });
+                Assert.That(unrelated, Is.EqualTo("VF_sGqeWWch_Camera_Angle"));
                 builder.Apply();
-                Assert.That(receiver.parameter, Is.Not.EqualTo("Contact"));
+                Assert.That(receiver.parameter, Is.EqualTo("VF_sGqeWWch_Contact"));
                 Assert.That(output, Is.EqualTo(receiver.parameter + suffix));
             } finally {
+                Object.DestroyImmediate(asset);
                 Object.DestroyImmediate(root);
             }
         }

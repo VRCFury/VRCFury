@@ -17,6 +17,7 @@ namespace VF.Feature {
 
     [FeatureTitle("Blink Controller")]
     internal class BlinkingBuilder : FeatureBuilder<Blinking> {
+        [VFAutowired] private readonly UniqueParamService uniqueParams;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly TrackingConflictResolverService trackingConflictResolverService;
         [VFAutowired] private readonly ControllersService controllers;
@@ -30,7 +31,7 @@ namespace VF.Feature {
             var state = GetBlinkState();
             if (state.actions.Count == 0) return;
 
-            var blinkTriggerSynced = fx.CreateUniqueBool("BlinkTriggerSynced");
+            var blinkTriggerSynced = fx.GetOrCreateBool(uniqueParams.GetObjectScopedName(featureBaseObject, "BlinkTriggerSynced"));
             blinkTriggerSynced.MakeExpressionBool();
             blinkTriggerSynced.CopyTo(actionController);
 

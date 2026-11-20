@@ -23,6 +23,7 @@ namespace VF.Service {
     [VFService]
     internal class BakeHapticSocketsService {
 
+        [VFAutowired] private readonly UniqueParamService uniqueParams;
         [VFAutowired] private readonly SelfAndOthersReceiverAnimatorService receiverAnimator;
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly VFGameObject avatarObject;
@@ -106,7 +107,7 @@ namespace VF.Service {
 
                     VFAParam toggleParam = null;
                     if (socket.addMenuItem) {
-                        toggleParam = fx.CreateUniqueBool(oscId);
+                        toggleParam = fx.GetOrCreateBool(uniqueParams.GetObjectScopedName(obj, "Socket"));
                         toggleParam.MakeExpressionBool(saved: saved);
                         var icon = socket.menuIcon?.Get();
                         menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/{menuName}", toggleParam, icon: icon);

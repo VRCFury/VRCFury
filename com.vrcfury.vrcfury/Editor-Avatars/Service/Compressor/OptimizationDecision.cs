@@ -8,14 +8,13 @@ namespace VF.Service.Compressor {
     internal class OptimizationDecision {
         public int numberSlots = 0;
         public int boolSlots = 0;
-        public bool useBadPriorityMethod;
+
         public IList<VRCExpressionParameters.Parameter> compress = new VRCExpressionParameters.Parameter[] { };
 
         private OptimizationDecision TempCopy(Action<OptimizationDecision> with) {
             var copy = new OptimizationDecision {
                 numberSlots = numberSlots,
                 boolSlots = boolSlots,
-                useBadPriorityMethod = useBadPriorityMethod,
                 compress = compress.ToList()
             };
             with.Invoke(copy);
@@ -23,10 +22,6 @@ namespace VF.Service.Compressor {
         }
 
         public int GetIndexBitCount() {
-            if (useBadPriorityMethod) {
-                return 8;
-            }
-
             return GetIndexBitCount(GetBatchCount());
         }
 

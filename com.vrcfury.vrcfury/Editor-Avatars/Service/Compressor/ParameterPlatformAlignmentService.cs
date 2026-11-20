@@ -1,43 +1,42 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text;
 using JetBrains.Annotations;
 using UnityEngine;
 using VF.Exceptions;
+using VF.Feature;
+using VF.Feature.Base;
 using VF.Hooks;
 using VF.Injector;
 using VF.Menu;
 using VF.Utils;
-using VRC.Core;
-using VRC.SDK3.Avatars.ScriptableObjects;
-using Random = System.Random;
+using Parameter = VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters.Parameter;
 
 namespace VF.Service.Compressor {
     [VFService]
     internal class ParameterPlatformAlignmentService {
-        [VFAutowired] private readonly VFGameObject avatarObject;
-        [VFAutowired] private readonly ParameterSourceService parameterSourceService;
-        [VFAutowired] private readonly OriginalAvatarService originalAvatarService;
+        [VFAutowired] private readonly PipelineIdService pipelineId;
+        [VFAutowired] private readonly GlobalsService globals;
+        private Lazy<SavedData> desktopUpload;
+        private FullControllerPathAlignment.Controller[] fullControllers = Array.Empty<FullControllerPathAlignment.Controller>();
+
+#if VRCSDK_HAS_NAME_BASED_PARAMETER_SYNC
+        private const int SaveVersion = 12;
+#else
+        private const int SaveVersion = 13;
+#endif
 
         [Serializable]
-        public class SavedData {
-            public List<SavedParam> parameters = new List<SavedParam>();
+        internal class SavedData {
+            public FullControllerPathAlignment.Controller[] fullControllers;
+            public Parameter[] parameters;
+            public string[] compressed;
             public int numberSlots;
             public int boolSlots;
-            public bool useBadPriorityMethod;
             public string unityVersion;
             public string vrcfuryVersion;
             public int saveVersion;
-        }
-
-        [Serializable]
-        public struct SavedParam {
-            public ParameterSourceService.Source source;
-            public VRCExpressionParameters.Parameter parameter;
-            public bool compressed;
         }
 
         [CanBeNull]
@@ -48,181 +47,133 @@ namespace VF.Service.Compressor {
             return Path.Combine(localAppData, "VRCFury", "DesktopSyncData", blueprintId + ".json");
         }
 
-        [CanBeNull]
-        public ParameterCompressorSolverOutput AlignForMobile(List<VRCExpressionParameters.Parameter> paramz) {
-            if (!AlignMobileParamsMenuItem.Get()) {
-                return null;
-            }
+        private static void Warn(string message) => DialogUtils.DisplayDialog("VRCFury Mobile Sync", message, "Ok");
 
-            var blueprintId = avatarObject.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
-            var savePath = GetSavePath(blueprintId);
-            if (savePath == null || !File.Exists(savePath)) {
-                DialogUtils.DisplayDialog(
-                    "VRCFury Mobile Sync",
-                    "Warning: You have not uploaded the desktop version of this avatar yet." +
-                    " If you want parameters to sync properly, please upload the desktop version first.\n\n"
-                    + blueprintId,
-                    "Ok"
-                );
-                return null;
-            }
-
-            var desktopDataStr = File.ReadAllText(savePath);
-            var desktopData = JsonUtility.FromJson<SavedData>(desktopDataStr);
-
-            if (desktopData.saveVersion != 3) {
-                throw new SneakyException(
-                    "The desktop version of this avatar was uploaded with an incompatible version of VRCFury." + 
-                    " Please ensure the VRCFury version matches, and upload the desktop version first.\n\n" +
-                    $"Desktop VRCFury Version: {desktopData.vrcfuryVersion}\n" +
-                    $"This project's VRCFury Version: {VRCFPackageUtils.Version}"
-                );
-            }
-            if (desktopData.vrcfuryVersion != VRCFPackageUtils.Version) {
-                DialogUtils.DisplayDialog(
-                    "VRCFury Mobile Sync",
-                    "Warning: The desktop version of this avatar was uploaded with a different version of VRCFury." +
-                    " If you want parameters to sync properly, please ensure the VRCFury version matches, and upload the desktop version first.\n\n" +
-                    $"Desktop VRCFury Version: {desktopData.vrcfuryVersion}\n" +
-                    $"This project's VRCFury Version: {VRCFPackageUtils.Version}",
-                    "Ok"
-                );
-            }
-            
-            // Align params with desktop copy
-            var mobileParams = paramz.Select(p => p.Clone()).ToArray();
-            var mobileParamsBySource = mobileParams.ToDictionary(
-                p => parameterSourceService.GetSource(p.name),
-                p => p
-            );
-
-            // Find object path aliases (when two objects are supposed to sync, but are not named exactly the same)
-            var desktopToMobilePathAliases = new Dictionary<string, string>();
-            {
-                var mobileParamSourcesByPath = mobileParamsBySource
-                    .Select(pair => pair.Key)
-                    .GroupBy(source => source.objectPath)
-                    .ToDictionary(group => group.Key, group => group.ToList());
-                var desktopParamSourcesByPath = desktopData.parameters
-                    .Select(p => p.source)
-                    .GroupBy(source => source.objectPath)
-                    .ToDictionary(group => group.Key, group => group.ToList());
-
-                desktopToMobilePathAliases["__global"] = "__global";
-                foreach (var mobilePair in mobileParamSourcesByPath) {
-                    var mobilePath = mobilePair.Key;
-                    if (desktopParamSourcesByPath.ContainsKey(mobilePath)) {
-                        desktopToMobilePathAliases[mobilePath] = mobilePath;
-                    }
+        private SavedData GetDesktopUpload() {
+            desktopUpload ??= new Lazy<SavedData>(() => {
+                var id = pipelineId.Get();
+                var path = GetSavePath(id);
+                if (path == null || !File.Exists(path)) {
+                    Warn("You have not uploaded the desktop version of this avatar yet." +
+                        " To align mobile parameters, upload the desktop version first.\n\n" + id);
+                    return null;
                 }
-                foreach (var mobilePair in mobileParamSourcesByPath) {
-                    var mobilePath = mobilePair.Key;
-                    if (desktopToMobilePathAliases.ContainsValue(mobilePath)) continue;
-                    var mobileParamSourcesAtPath = mobilePair.Value;
-                    var matchingDesktopPaths = desktopParamSourcesByPath.Where(desktopPair => {
-                        var desktopPath = desktopPair.Key;
-                        if (desktopToMobilePathAliases.ContainsKey(desktopPath)) return false;
-                        var desktopParamSourcesAtPath = desktopPair.Value;
-                        var matchingParams = mobileParamSourcesAtPath.Where(m =>
-                            desktopParamSourcesAtPath.Any(d =>
-                                m.originalParamName == d.originalParamName && m.offset == d.offset)).ToList();
-                        return matchingParams.Count == mobileParamSourcesAtPath.Count;
-                    }).Select(desktopPair => desktopPair.Key).ToList();
-                    if (matchingDesktopPaths.Count == 1) {
-                        desktopToMobilePathAliases[matchingDesktopPaths.First()] = mobilePath;
-                    }
+                var data = JsonUtility.FromJson<SavedData>(File.ReadAllText(path));
+                if (data.saveVersion != SaveVersion) {
+                    throw new SneakyException(
+                        "The desktop upload uses an incompatible parameter sync format. " +
+                        "Use matching VRChat SDK and VRCFury versions and upload desktop first.\n\n" +
+                        $"Desktop VRCFury Version: {data.vrcfuryVersion}\n" +
+                        $"This project's VRCFury Version: {VRCFPackageUtils.Version}"
+                    );
                 }
+                return data;
+            });
+            return desktopUpload.Value;
+        }
+
+        [FeatureBuilderAction(FeatureOrder.AlignFullControllerPaths)]
+        public void PrepareFullControllers() {
+            var builders = globals.allBuildersInRun.OfType<FullControllerBuilder>().ToArray();
+            if (builders.Length == 0) return;
+            if (BuildTargetUtils.IsDesktop()) {
+                if (IsActuallyUploadingHook.Get()) {
+                    fullControllers = FullControllerPathAlignment.Capture(globals.avatarObject, builders);
+                }
+            } else if (AlignMobileParamsMenuItem.Get() && GetDesktopUpload() is SavedData desktop) {
+                FullControllerPathAlignment.Align(globals.avatarObject, builders, desktop.fullControllers);
             }
+        }
 
-            var paramsToOptimize = new List<VRCExpressionParameters.Parameter>();
-            var reordered = new List<VRCExpressionParameters.Parameter>();
-            var matchedMobileParams = new List<VRCExpressionParameters.Parameter>();
-            var rand = new Random().Next(100_000_000, 900_000_000);
-            var fillerI = 0;
-            foreach (var desktopEntry in desktopData.parameters) {
-                var desktopSource = desktopEntry.source;
-                var desktopParam = desktopEntry.parameter;
-                if (desktopToMobilePathAliases.TryGetValue(desktopSource.objectPath, out var mobilePathAlias)) {
-                    desktopSource.objectPath = mobilePathAlias;
-                }
+        public ParameterCompressorSolverOutput AlignForMobile(List<Parameter> parameters) {
+            if (!AlignMobileParamsMenuItem.Get()) return null;
+            var desktop = GetDesktopUpload();
+            return desktop == null ? null : AlignForMobile(parameters, desktop, Warn);
+        }
 
-                var newParam = desktopParam.Clone();
-                if (mobileParamsBySource.TryGetValue(desktopSource, out var matchingMobileParam)) {
-                    newParam.name = matchingMobileParam.name;
-                    matchedMobileParams.Add(matchingMobileParam);
+        internal static ParameterCompressorSolverOutput AlignForMobile(
+            List<Parameter> mobile,
+            SavedData desktop,
+            Action<string> warn = null
+        ) {
+            var byName = mobile.ToDictionary(p => p.name);
+            var slots = new Dictionary<string, Parameter>();
+            var matched = new HashSet<string>();
+            foreach (var p in desktop.parameters) {
+                var slot = p.Clone();
+                if (byName.TryGetValue(p.name, out var local) && (!p.IsNetworkSynced() || local.IsNetworkSynced())) {
+                    matched.Add(p.name);
                 } else {
-                    newParam.name = $"__missing_param_from_desktop_{rand}_{fillerI++}_{desktopParam.name}";
+                    slot.name = "__missing_param_from_desktop_" + Guid.NewGuid().ToString("N");
                 }
-                if (desktopEntry.compressed) {
-                    paramsToOptimize.Add(newParam);
-                }
-                reordered.Add(newParam);
+                slots.Add(p.name, slot);
+            }
+            // Keep desktop types and order for the wire. The drivers convert to each local declaration.
+            var compressed = desktop.compressed.Select(name => slots[name]).ToArray();
+            var wireNames = compressed.Select(p => p.name).ToHashSet();
+            var extras = mobile.Where(p => !matched.Contains(p.name)).ToArray();
+#if VRCSDK_HAS_NAME_BASED_PARAMETER_SYNC
+            bool overBudget = mobile.Where(p => p.IsNetworkSynced()).Sum(p => p.TypeCost()) > ExpressionParamsService.GetMaxCost();
+            if (compressed.Length > 0 || overBudget) DisableExtraSync();
+            foreach (var p in compressed.Where(p => !byName.ContainsKey(p.name))) mobile.Add(p.Clone().Unsynced());
+#else
+            // Older SDKs also sync ordinary expression parameters by bit position.
+            DisableExtraSync();
+            mobile.Clear();
+            mobile.AddRange(desktop.parameters.Select(p => wireNames.Contains(p.name) && matched.Contains(p.name)
+                ? byName[p.name] : slots[p.name]));
+            mobile.AddRange(extras);
+#endif
+            void DisableExtraSync() {
+                var unsynced = extras.Where(p => p.IsNetworkSynced()).ToArray();
+                if (unsynced.Length == 0) return;
+                foreach (var p in unsynced) p.Unsynced();
+                warn?.Invoke("These mobile parameters will not sync because they are missing from the desktop upload.\n\n" +
+                    string.Join("\n", unsynced.Select(p => p.name)));
             }
 
-            var mobileExtras = mobileParams.Where(p => !matchedMobileParams.Contains(p)).ToArray();
-            var warnAboutExtras = mobileExtras.Where(p => p.IsNetworkSynced()).Select(p => {
-                var source = parameterSourceService.GetSource(p.name);
-                return source.originalParamName + " from " + source.objectPath;
-            }).ToArray();
-            foreach (var p in mobileExtras) {
-                p.Unsynced();
+            var decision = new OptimizationDecision {
+                boolSlots = desktop.boolSlots,
+                numberSlots = desktop.numberSlots,
+                compress = compressed
+            };
+            var cost = mobile.Where(p => p.IsNetworkSynced() && !wireNames.Contains(p.name)).Sum(p => p.TypeCost());
+            if (compressed.Length > 0) cost += decision.GetIndexBitCount() + decision.numberSlots * 8 + decision.boolSlots;
+            if (cost > ExpressionParamsService.GetMaxCost()) {
+                throw new SneakyException($"The aligned mobile avatar needs {cost} synced bits, exceeding its {ExpressionParamsService.GetMaxCost()}-bit budget. " +
+                    "Reduce the bit widths of shared mobile parameters or compress more parameters on desktop.");
             }
-            reordered.AddRange(mobileExtras);
-            if (warnAboutExtras.Any()) {
-                DialogUtils.DisplayDialog(
-                    "VRCFury Mobile Sync",
-                    "Warning: This mobile avatar contains parameters which will NOT sync, because they are not present in the desktop version." +
-                    " If this is unexpected, make sure you upload the desktop version FIRST, and ensure the missing prefabs are in the same location in the hierarchy.\n\n"
-                    + warnAboutExtras.Join('\n'),
-                    "Ok"
-                );
-            }
-
-            paramz.Clear();
-            paramz.AddRange(reordered);
-
             return new ParameterCompressorSolverOutput {
-                decision = new OptimizationDecision {
-                    boolSlots = desktopData.boolSlots,
-                    numberSlots = desktopData.numberSlots,
-                    compress = paramsToOptimize,
-                    useBadPriorityMethod = desktopData.useBadPriorityMethod
-                },
+                decision = decision
             };
         }
 
-        public void SaveToDiskAfterBuild(OptimizationDecision decision, IEnumerable<VRCExpressionParameters.Parameter> paramz) {
+        public void SaveToDiskAfterBuild(OptimizationDecision decision, IEnumerable<Parameter> parameters) {
             if (!IsActuallyUploadingHook.Get()) return;
+            var path = GetSavePath(pipelineId.Get());
+            if (path == null) return;
+            var data = CaptureDesktopData(decision, parameters);
+            WhenBlueprintIdReadyHook.Add(() => {
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                File.WriteAllText(path, JsonUtility.ToJson(data, true));
+            });
+        }
 
-            var compressNames = decision.compress.Select(p => p.name).ToImmutableHashSet();
-            var paramList = paramz.Select(p => {
-                var source = parameterSourceService.GetSource(p.name);
-                return new SavedParam() {
-                    parameter = p.Clone(),
-                    source = source,
-                    compressed = compressNames.Contains(p.name)
-                };
-            }).ToList();
-            var saveData = new SavedData() {
-                parameters = paramList,
-                saveVersion = 3,
+        internal SavedData CaptureDesktopData(OptimizationDecision decision, IEnumerable<Parameter> parameters) {
+            return new SavedData {
+                saveVersion = SaveVersion,
                 unityVersion = Application.unityVersion,
                 vrcfuryVersion = VRCFPackageUtils.Version,
-                boolSlots = decision.boolSlots,
+                fullControllers = fullControllers,
+#if VRCSDK_HAS_NAME_BASED_PARAMETER_SYNC
+                parameters = parameters.Where(p => p.IsNetworkSynced()).Select(p => p.Clone()).ToArray(),
+#else
+                parameters = parameters.Select(p => p.Clone()).ToArray(),
+#endif
+                compressed = decision.compress.Select(p => p.name).ToArray(),
                 numberSlots = decision.numberSlots,
-                useBadPriorityMethod = decision.useBadPriorityMethod
+                boolSlots = decision.boolSlots
             };
-            var saveText = JsonUtility.ToJson(saveData, true);
-            var originalAvatar = originalAvatarService.GetOriginal();
-            WhenBlueprintIdReadyHook.Add(() => {
-                var blueprintId = originalAvatar.NullSafe()?.GetComponent<PipelineManager>().NullSafe()?.blueprintId;
-                var savePath = GetSavePath(blueprintId);
-                if (savePath != null) {
-                    var dir = Path.GetDirectoryName(savePath);
-                    if (dir != null) Directory.CreateDirectory(dir);
-                    File.WriteAllBytes(savePath, Encoding.UTF8.GetBytes(saveText));
-                }
-            });
         }
     }
 }

@@ -1108,8 +1108,8 @@ namespace VF.Tests {
             Assert.That(layer.allStates.Select(s => s.name), Is.EquivalentTo(new[] { "Start", "SocketA", "SocketB" }),
                 "Even private-channel sockets must be exclusive, before any channel-change requests are known");
             var legacy = injector.GetService<SpsOptionsService>().GetLegacyParameter();
-            var toggles = new[] { "SocketA", "SocketB" }.Select(name => controllers.GetFx().parameters
-                .Single(p => p.name.EndsWith("_" + name))).ToArray();
+            var menu = injector.GetService<MenuService>().GetMenu().GetSubmenu("SPS");
+            var toggles = new[] { "SocketA", "SocketB" }.Select(name => menu.controls.Single(c => c.name == name).parameter).ToArray();
             for (var i = 0; i < toggles.Length; i++) {
                 var state = layer.allStates.Single(s => s.name == (i == 0 ? "SocketA" : "SocketB"));
                 var transition = layer.stateMachine.anyStateTransitions.Single(t => t.destinationState == state);

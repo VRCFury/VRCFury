@@ -345,23 +345,26 @@ namespace VF.Feature {
         
         private readonly Dictionary<string, string> rewrittenParams = new Dictionary<string, string>();
 
+        internal IEnumerable<string> GetPrivateSyncedParameters() {
+            return model.prms.Select(p => p.parameters.Get())
+                .Where(asset => asset != null)
+                .SelectMany(asset => asset.parameters)
+                .Where(p => p.IsNetworkSynced())
+                .Select(p => p.name)
+                .Append(model.toggleParam)
+                .Where(name => !string.IsNullOrWhiteSpace(name) && GetGlobalParamName(name) == null);
+        }
+
         string RewriteParamName(string name) {
             if (!rewrittenParams.TryGetValue(name, out var cached)) {
-                cached = rewrittenParams[name] = RewriteParamNameUncached(name);
+                cached = rewrittenParams[name] = GetGlobalParamName(name) ?? uniqueParams.GetObjectScopedName(featureBaseObject, name);
             }
             return cached;
         }
-        private string RewriteParamNameUncached(string name) {
+        private string GetGlobalParamName(string name) {
             if (string.IsNullOrWhiteSpace(name)) return name;
             if (VRChatGlobalParams.Contains(name)) return name;
-            if (name == InhibitHandControlsParam) return uniqueParams.GetUniqueName(name);
-            if (model.allNonsyncedAreGlobal) {
-                var synced = model.prms.Any(p => {
-                    var prms = p.parameters.Get();
-                    return prms != null && prms.parameters.Any(param => param.name == name);
-                });
-                if (!synced) return name;
-            }
+            if (name == InhibitHandControlsParam) return null;
             
             var hasGogoParam = model.prms
                 .Select(p => p?.parameters?.Get())
@@ -400,11 +403,7 @@ namespace VF.Feature {
                 }
             }
 
-            if (isGlobal) {
-                return name;
-            } else {
-                return uniqueParams.GetUniqueName(name);
-            }
+            return isGlobal ? name : null;
         }
 
         private readonly HashSet<VFLayer> appendedLocomotionLayers = new HashSet<VFLayer>();
@@ -802,7 +801,6 @@ namespace VF.Feature {
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootBindingsApplyToAvatar"), "Root bindings always apply to avatar (Basically only for gogoloco)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("toggleParam"), "(Deprecated) Toggle using param"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("rootObjOverride"), "(Deprecated) Root object override"));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allNonsyncedAreGlobal"), "(Deprecated) Make all unsynced params global"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("allowMissingAssets"), "(Deprecated) Don't fail if assets are missing"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsDepthParam"), "(Deprecated) Inject nearest SPS depth (use Inject Parameters instead)"));
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("injectSpsVelocityParam"), "(Deprecated) Inject nearest SPS velocity (use Inject Parameters instead)"));

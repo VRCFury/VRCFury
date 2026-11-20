@@ -17,9 +17,7 @@ namespace VF.Service {
         public List<FeatureBuilder> allBuildersInRun;
         public int currentFeatureNum = 0;
         public string currentFeatureName = "";
-        public string currentFeatureClipPrefix = "";
         public int currentMenuSortPosition = 0;
-        public string currentFeatureObjectPath = "";
 
         public bool IsFirst(FeatureBuilder builder) {
             var first = allBuildersInRun.FirstOrDefault(b => b.GetType() == builder.GetType());

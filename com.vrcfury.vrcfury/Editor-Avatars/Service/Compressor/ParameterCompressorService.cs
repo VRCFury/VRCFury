@@ -1,6 +1,5 @@
 ﻿using System.Collections.Immutable;
 using System.Linq;
-using VF.Exceptions;
 using VF.Injector;
 using VF.Model;
 using VF.Utils;
@@ -16,8 +15,7 @@ namespace VF.Service.Compressor {
         [VFAutowired] private readonly ExpressionParamsService expressionParams;
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ParameterCompressorSolverService solverService;
-        [VFAutowired] private readonly ParameterCompressorLayerService newLayerService;
-        [VFAutowired] private readonly ParameterCompressorLegacyLayerService legacyLayerService;
+        [VFAutowired] private readonly ParameterCompressorLayerService layerService;
         [VFAutowired] private readonly ParameterPlatformAlignmentService platformAlignmentService;
         [VFAutowired] private readonly SaveAssetsService saveAssetsService;
 
@@ -46,12 +44,6 @@ namespace VF.Service.Compressor {
             }
 
             var decision = decisionWithInfo.decision;
-            var unsupported = decision.compress.FirstOrDefault(p => !p.HasStandardNetworkEncoding());
-            if (unsupported != null) {
-                throw new SneakyException(
-                    $"Parameter compression cannot preserve the network bit width or signedness of {unsupported.name}."
-                    + " If this came from desktop sync data, rebuild and upload the desktop avatar first.");
-            }
             if (!decision.compress.Any()) {
                 saveAssetsService.Run(Enumerable.Empty<VFAvatarController>());
                 return;
@@ -59,11 +51,7 @@ namespace VF.Service.Compressor {
 
             var originalCost = expressionParams.CalcTotalCost();
 
-            if (decision.useBadPriorityMethod) {
-                legacyLayerService.BuildLayer(decision, actionController);
-            } else {
-                newLayerService.BuildLayer(decision, actionController);
-            }
+            layerService.BuildLayer(decision, actionController);
             actionController.WorkLog(
                 $"Added parameter compression logic to Action controller for {decision.compress.Count} parameters"
             );
@@ -96,27 +84,14 @@ namespace VF.Service.Compressor {
             // Assume we just missed to the batch, so it has to do 2 full loops
             var maxSyncTime = minSyncTime * 2;
 
-            string syncDelay;
-            string legacyWarning = "";
-            if (decision.useBadPriorityMethod) {
-                syncDelay = $"Full sync time: {minSyncTime.ToString("N1")} seconds";
-                legacyWarning =
-                    "\n\nWARNING: The creator of this avatar has opted into the legacy compression system, which is worse for performance,"
-                    + " wastes index bits, can sync params out of order (you may appear naked momentarily if toggles sync out of order), wastes a ton of FX parameters,"
-                    + " and makes avatar load time worse. The only benefit of the legacy system is reduced delay for toggle sync in some situations.";
-            } else {
-                syncDelay = $"Sync delay: {minSyncTime.ToString("N1")} - {maxSyncTime.ToString("N1")} seconds";
-            }
-
             var debug = avatarObject.AddComponent<VRCFuryDebugInfo>();
             debug.title = "Parameter Compressor";
             debug.debugInfo =
                 "VRCFury compressed the parameters on this avatar to make them fit VRC's limit."
-                + legacyWarning
                 + $"\n\nOld Total: {FormatBitsPlural(originalCost)}"
                 + $"\nNew Total: {FormatBitsPlural(newCost)}"
                 + (!string.IsNullOrEmpty(types) ? $"\nCompressed types: {types}" : "")
-                + $"\n{syncDelay}"
+                + $"\nSync delay: {minSyncTime.ToString("N1")} - {maxSyncTime.ToString("N1")} seconds"
                 + $"\nBools per batch: {decision.boolSlots}"
                 + $"\nNumbers per batch: {decision.numberSlots}"
                 + $"\nBatches per sync: {batchCount}"

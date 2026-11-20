@@ -20,6 +20,7 @@ namespace VF.Feature {
 
     [FeatureTitle("Toggle")]
     internal class ToggleBuilder : FeatureBuilder<Toggle> {
+        [VFAutowired] private readonly UniqueParamService uniqueParams;
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly RestingStateService restingState;
         [VFAutowired] private readonly FixWriteDefaultsService writeDefaultsManager;
@@ -65,14 +66,14 @@ namespace VF.Feature {
             return new HashSet<string>(); 
         }
 
-        private (string,bool) GetParamName() {
+        private string GetParamName() {
             if (model.paramOverride != null) {
-                return (model.paramOverride, false);
+                return model.paramOverride;
             }
             if (model.useGlobalParam && !string.IsNullOrWhiteSpace(model.globalParam)) {
-                return (model.globalParam, false);
+                return model.globalParam;
             }
-            return (model.name, model.usePrefixOnParam);
+            return model.usePrefixOnParam ? uniqueParams.GetObjectScopedName(featureBaseObject, model.name) : model.name;
         }
 
         [FeatureBuilderAction]
@@ -86,16 +87,16 @@ namespace VF.Feature {
                 synced = false;
             }
 
-            var (paramName, usePrefixOnParam) = GetParamName();
+            var paramName = GetParamName();
             FloatOrBool defaultValue = model.slider ? model.defaultSliderValue : model.defaultOn;
             var isInt = !model.slider && model.useInt;
             VFAParam param;
             if (model.slider) {
-                param = usePrefixOnParam ? fx.CreateUniqueFloat(paramName) : fx.GetOrCreateFloat(paramName);
+                param = fx.GetOrCreateFloat(paramName);
             } else if (isInt) {
-                param = usePrefixOnParam ? fx.CreateUniqueInt(paramName) : fx.GetOrCreateInt(paramName);
+                param = fx.GetOrCreateInt(paramName);
             } else {
-                param = usePrefixOnParam ? fx.CreateUniqueBool(paramName) : fx.GetOrCreateBool(paramName);
+                param = fx.GetOrCreateBool(paramName);
             }
             // Override the default even if the parameter already existed in the controller.
             param.SetDefault(defaultValue);

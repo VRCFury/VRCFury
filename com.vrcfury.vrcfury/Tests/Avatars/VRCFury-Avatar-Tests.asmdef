@@ -7,6 +7,7 @@
         "VRCFury",
         "VRCFury-Editor-Common",
         "VRCFury-Editor-Avatars",
+        "VRC.SDKBase.Editor",
         "VRC.SDK3A.Editor",
         "com.vrcfury.api"
     ],
@@ -20,6 +21,9 @@
         "nunit.framework.dll",
         "System.Collections.Immutable.dll",
         "VRCSDKBase.dll",
+        "VRCCore-Editor.dll",
+        "VRCSDKBase-Editor.dll",
+        "0Harmony.dll",
         "VRCSDK3A.dll",
         "VRC.Dynamics.dll",
         "VRC.SDK3.Dynamics.Contact.dll",
@@ -35,6 +39,16 @@
             "name": "com.vrchat.avatars",
             "expression": "3.11.0-beta.1",
             "define": "VRCSDK_HAS_UNIQUE_EDITOR_PLAYER_IDS"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.7.5",
+            "define": "VRCSDK_HAS_ACTIVE_BUILD_TYPE"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.11.0-beta",
+            "define": "VRCSDK_HAS_NAME_BASED_PARAMETER_SYNC"
         },
         {
             "name": "com.vrchat.base",

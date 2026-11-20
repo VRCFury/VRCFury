@@ -15,9 +15,13 @@ namespace VF.Service {
         [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly VRCFObjectPathCache objectPaths;
+        [VFAutowired] private readonly ExpressionParamsService expressionParams;
         [VFAutowired] private readonly VRCFuryInjector injector;
         private readonly Lazy<UniqueParamService> uniqueParams;
-        [VFAutowired] private readonly ExpressionParamsService expressionParams;
+
+        public ControllersService() {
+            uniqueParams = new Lazy<UniqueParamService>(() => injector.GetService<UniqueParamService>());
+        }
 
         private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController> _controllers
             = new Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController>();
@@ -25,11 +29,6 @@ namespace VF.Service {
         private bool controllerLoadingAllowed;
         private readonly Dictionary<VFAvatarController, (HashSet<VFLayer> layers, HashSet<string> parameters)> originals
             = new Dictionary<VFAvatarController, (HashSet<VFLayer>, HashSet<string>)>();
-
-        public ControllersService() {
-            // The allocator also depends on this service, so resolve it only when allocating a name.
-            uniqueParams = new Lazy<UniqueParamService>(() => injector.GetService<UniqueParamService>());
-        }
 
         public VFAvatarController GetController(VRCAvatarDescriptor.AnimLayerType type) {
             return _controllers.GetOrCreate(type, () => MakeController(type));
@@ -64,8 +63,7 @@ namespace VF.Service {
                 ctrl,
                 type,
                 () => globals.currentFeatureNum,
-                () => globals.currentFeatureClipPrefix,
-                name => uniqueParams.Value.GetUniqueName(name),
+                name => uniqueParams.Value.GetInternalName(name),
                 layerSourceService,
                 expressionParams
             );
