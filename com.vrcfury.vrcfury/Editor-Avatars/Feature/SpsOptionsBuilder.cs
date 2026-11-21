@@ -49,9 +49,9 @@ namespace VF.Feature {
                 compatibility.Add(subtitle);
             }
             CompatibilityCheckbox("legacyModeAvailable", "DPS/TPS/SPS1/SPS2 Plugs",
-                "Adds 2 lights per socket\nRequires Legacy Mode On");
+                "Makes your sockets work with other player's legacy plugs\nAdds 2 lights per socket\nRequires Legacy Mode On");
             CompatibilityCheckbox("legacySocketCompatibility", "DPS/TPS/SPS1/SPS2 Sockets",
-                "Adds 2 contact senders per plug");
+                "Makes your plugs work with other player's legacy sockets\nAdds 2 contact senders per plug");
             CompatibilityCheckbox("tpsDepthAnimationCompatibility", "TPS Plug Animations (Not Recommended, Rare)",
                 "Adds 1 contact sender per socket\nRequires Legacy Mode On", enabledWhen: plugs);
             CompatibilityCheckbox("addDpsTipLight", "DPS Socket Animations (Not Recommended, Rare)",
@@ -62,18 +62,18 @@ namespace VF.Feature {
                 if (!plugs.boolValue && !(sockets.boolValue && dps.boolValue)) return controls;
                 controls.Add(VRCFuryEditorUtils.WrappedLabel("Legacy Mode Menu").Bold());
                 controls.Add(VRCFuryEditorUtils.WrappedLabel("Only one socket can be active at a time"));
-                controls.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("legacyModeEnabledOnAvatarLoad"), "Default On"));
-                controls.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("legacyModeSaved"), "Save Setting Between Worlds"));
+                controls.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("legacyModeEnabledOnAvatarLoad"), "Default On"));
+                controls.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("legacyModeSaved"), "Save Setting Between Worlds"));
                 return controls;
             }, plugs, sockets, dps));
             c.Add(compatibility);
             var autoAvailable = prop.FindPropertyRelative("autoModeAvailable");
-            c.Add(VRCFuryEditorUtils.Prop(autoAvailable, "Include Auto Mode in Avatar"));
+            c.Add(VRCFuryEditorUtils.BetterProp(autoAvailable, "Include Auto Mode in Avatar"));
             c.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (!autoAvailable.boolValue) return new VisualElement();
                 var auto = VRCFuryEditorUtils.Section("Auto Mode", "Automatically activates socket that touches a plug.");
-                auto.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("autoModeDefaultOn"), "Default On"));
-                auto.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("autoModeSaved"), "Save Setting Between Worlds"));
+                auto.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("autoModeDefaultOn"), "Default On"));
+                auto.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("autoModeSaved"), "Save Setting Between Worlds"));
                 return auto;
             }, autoAvailable));
             return c;
