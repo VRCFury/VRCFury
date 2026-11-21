@@ -35,6 +35,7 @@ namespace VF.Inspector {
                 foreach (var menuItem in FeatureFinder.GetAllFeaturesForMenu<ActionBuilder>()) {
                     menu.AddItem(new GUIContent(menuItem.title), false, () => {
                         var instance = Activator.CreateInstance(menuItem.modelType);
+                        if (instance is BlendShapeAction blendshape) blendshape.allRenderers = false;
                         VRCFuryEditorUtils.AddToList(list, entry => entry.managedReferenceValue = instance);
                     });
                 }

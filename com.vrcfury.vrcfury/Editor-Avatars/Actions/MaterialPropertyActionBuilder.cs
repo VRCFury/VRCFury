@@ -287,8 +287,10 @@ namespace VF.Actions {
         public static VisualElement RendererSelector(SerializedProperty allRenderersProp, SerializedProperty rendererProp) {
             var content = new VisualElement();
 
-            var allRenderersField = VRCFuryEditorUtils.Prop(allRenderersProp, "Apply to all renderers");
+            var allRenderersField = VRCFuryEditorUtils.Prop(allRenderersProp, "Apply to all renderers on avatar");
             content.Add(allRenderersField);
+            var warning = VRCFuryEditorUtils.Warn("Applying to all renderers is not recommended. This may conflict with other assets.");
+            content.Add(warning);
 
             VisualElement rendererField;
             if (VRCFuryEditorUtils.GetPropertyType(rendererProp) == typeof(GameObject)) {
@@ -305,6 +307,7 @@ namespace VF.Actions {
             void UpdateVisibility() {
                 var visible = !allRenderersProp.boolValue;
                 rendererField.SetVisible(visible);
+                warning.SetVisible(!visible);
                 if (!visible) {
                     rendererProp.objectReferenceValue = null;
                     rendererProp.serializedObject.ApplyModifiedPropertiesWithoutUndo();
