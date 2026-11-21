@@ -24,29 +24,25 @@ namespace VF.Feature {
             foreach (var receiver in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticTouchReceiver>()) {
                 var name = HapticUtils.MakeUniqueOgbId(usedNames, HapticUtils.GetPreferredId(receiver, r => r.name, r => HapticUtils.GetFallbackId(r.owner())));
                 var paramPrefix = "OGB/Touch/" + name;
-                
-                hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
-                    obj = receiver.owner(),
-                    paramName = paramPrefix + "/Self",
-                    objName = "Self",
-                    radius = receiver.radius,
-                    tags = HapticUtils.SelfContacts.Concat(new [] { SpsTags.PlugClose }).ToArray(),
-                    party = HapticUtils.ReceiverParty.Self,
-                    worldScale = false,
-                    usePrefix = false,
-                    localOnly = true
-                });
-                hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest() {
-                    obj = receiver.owner(),
-                    paramName = paramPrefix + "/Others",
-                    objName = "Others",
-                    radius = receiver.radius,
-                    tags = HapticUtils.BodyContacts.Concat(new [] { SpsTags.PlugClose }).ToArray(),
-                    party = HapticUtils.ReceiverParty.Others,
-                    worldScale = false,
-                    usePrefix = false,
-                    localOnly = true
-                });
+
+                void AddReceiver(HapticUtils.ReceiverParty party, IEnumerable<string> tags) {
+                    hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest {
+                        obj = receiver.owner(),
+                        paramName = paramPrefix + "/" + party,
+                        objName = party.ToString(),
+                        radius = receiver.radius,
+                        height = receiver.height,
+                        rotation = Quaternion.identity,
+                        tags = tags.Concat(new[] { SpsTags.PlugClose }).ToArray(),
+                        party = party,
+                        worldScale = false,
+                        usePrefix = false,
+                        localOnly = true
+                    });
+                }
+
+                AddReceiver(HapticUtils.ReceiverParty.Self, HapticUtils.SelfContacts);
+                AddReceiver(HapticUtils.ReceiverParty.Others, HapticUtils.BodyContacts);
             }
         }
 
@@ -57,11 +53,16 @@ namespace VF.Feature {
                 
                 container.Add(VRCFuryEditorUtils.Info(
                     "This will add an extra SPS Touch Zone (for purposes unrelated to Plugs / Sockets), which will activate OGB haptics when touched. " +
-                    "Haptic level will increase to 100% at the center of the sphere. " +
+                    "Haptic level increases toward the center of the zone. " +
                     "This touch zone can be activated by Hands, Fingers, Feet, SPS Plugs, VRCFury Touch Senders, and Heads (other players only)."));
 
                 container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target));
                 container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("radius"), "Radius"));
+                container.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("height"),
+                    "Height",
+                    tooltip: "Total capsule height including both rounded ends. Set to 0 for a sphere."
+                ));
                 container.Add(SpsEditorUtils.AutoHapticIdProp(
                     serializedObject.FindProperty("name"),
                     "ID sent to OGB",
@@ -80,9 +81,17 @@ namespace VF.Feature {
         
             [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
             static void DrawGizmo(VRCFuryHapticTouchReceiver c, GizmoType gizmoType) {
-                var worldPos = c.owner().worldPosition;
-                var worldScale = c.owner().worldScale.x;
-                VRCFuryGizmoUtils.DrawSphere(worldPos, worldScale * c.radius, Color.red);
+                var owner = c.owner();
+                var worldPos = owner.worldPosition;
+                var scale = owner.worldScale;
+                var worldScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+                VRCFuryGizmoUtils.DrawCapsule(
+                    worldPos,
+                    owner.worldRotation,
+                    worldScale * c.height,
+                    worldScale * c.radius,
+                    Color.red
+                );
                 VRCFuryGizmoUtils.DrawText(worldPos, "SPS Touch Zone", Color.white, true);
             }
         }

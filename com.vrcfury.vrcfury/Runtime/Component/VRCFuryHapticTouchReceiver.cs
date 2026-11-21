@@ -5,5 +5,6 @@ namespace VF.Component {
     internal class VRCFuryHapticTouchReceiver : VRCFuryComponent {
         public new string name;
         public float radius = 0.1f;
+        [Min(0)] public float height;
     }
 }

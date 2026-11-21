@@ -21,7 +21,7 @@ namespace VF.Builder {
         }
         
         private static IList<FoundController> GetAllControllers(VRCAvatarDescriptor avatar, VRCAvatarDescriptor.CustomAnimLayer[] layers) {
-            
+            if (layers == null) return Array.Empty<FoundController>();
             var output = new List<FoundController>();
 
             for (var i = 0; i < layers.Length; i++) {
