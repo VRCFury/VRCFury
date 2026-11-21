@@ -304,11 +304,6 @@ namespace VF.Service {
             links.Add((new FtBlendshapeRef(source, sourceName), new FtBlendshapeRef(target, targetName)));
         }
 
-        private static bool TargetsShape(FtBehavior behavior) =>
-            behavior.targetMode == VRCAvatarDescriptor.ParameterBehaviorTargetMode.ApplyToBlendshape
-            || behavior.targetMode == VRCAvatarDescriptor.ParameterBehaviorTargetMode.LimitBlendshapeMax
-            || behavior.targetMode == VRCAvatarDescriptor.ParameterBehaviorTargetMode.LimitBlendshapeMin;
-
         // All features and ordinary link animation copies have finished using original shape names.
         [FeatureBuilderAction(FeatureOrder.BlendShapeLinkFixAnimations, 1)]
         public void Apply() {
@@ -324,7 +319,7 @@ namespace VF.Service {
             var lastSets = sets.GroupBy(set => set.name).ToDictionary(group => group.Key, group => group.Last());
             var activeSets = sets.Where(set => ReferenceEquals(lastSets[set.name], set)).ToArray();
             var mappings = activeSets.SelectMany(set => set.mappings).Where(mapping => !string.IsNullOrEmpty(mapping.name)).ToList();
-            mappings.AddRange(behaviors.Where(behavior => TargetsShape(behavior.settings)).Select(behavior => behavior.targets));
+            mappings.AddRange(behaviors.Where(behavior => FaceTrackingUtils.TargetsBlendshape(behavior.settings)).Select(behavior => behavior.targets));
 
             var finalNames = mappings.Distinct().ToDictionary(mapping => mapping, _ => new HashSet<string>());
             var names = ResolveNames(mappings, finalNames);
@@ -473,14 +468,14 @@ namespace VF.Service {
         ) {
             var output = new List<FtBehavior>();
             foreach (var (settings, targets) in behaviors) {
-                var names = TargetsShape(settings) ? finalNames[targets].OrderBy(name => name, StringComparer.Ordinal).ToArray()
+                var names = FaceTrackingUtils.TargetsBlendshape(settings) ? finalNames[targets].OrderBy(name => name, StringComparer.Ordinal).ToArray()
                     : settings.targetMode == VRCAvatarDescriptor.ParameterBehaviorTargetMode.ApplyBlendSetWeight
                         && expansions.TryGetValue(settings.targetBlendSetName ?? "", out var expanded) ? expanded : new[] { settings.targetBlendSetName };
-                if (TargetsShape(settings) && names.Length == 0 && !string.IsNullOrEmpty(settings.targetBlendshapeName))
+                if (FaceTrackingUtils.TargetsBlendshape(settings) && names.Length == 0 && !string.IsNullOrEmpty(settings.targetBlendshapeName))
                     warnings.Add($"Parameter behavior: blendshape '{settings.targetBlendshapeName}' was not found on any configured renderer.");
                 foreach (var name in names) {
                     var copy = UnitySerializationUtils.CloneSerializable(settings);
-                    if (TargetsShape(settings)) copy.targetBlendshapeName = name;
+                    if (FaceTrackingUtils.TargetsBlendshape(settings)) copy.targetBlendshapeName = name;
                     else if (settings.targetMode == VRCAvatarDescriptor.ParameterBehaviorTargetMode.ApplyBlendSetWeight) copy.targetBlendSetName = name;
                     if (expansions.TryGetValue(settings.weightBlendSetName ?? "", out var weights)) copy.weightBlendSetName = weights[0];
                     output.Add(copy);

@@ -13,6 +13,11 @@ using FtBehaviourControl = VRC.SDKBase.VRC_AnimatorFaceTrackingBlendshapesSet.Bl
 
 namespace VF.Utils {
     internal static class FaceTrackingUtils {
+        public static bool TargetsBlendshape(FtBehavior behavior) =>
+            behavior.targetMode == VRCAvatarDescriptor.ParameterBehaviorTargetMode.ApplyToBlendshape
+            || behavior.targetMode == VRCAvatarDescriptor.ParameterBehaviorTargetMode.LimitBlendshapeMax
+            || behavior.targetMode == VRCAvatarDescriptor.ParameterBehaviorTargetMode.LimitBlendshapeMin;
+
         public const int FaceTrackingCount = (int)VRCAvatarDescriptor.FaceTrackingKey.Max;
         public const int VisemeCount = (int)VRC_AvatarDescriptor.Viseme.Count;
         // SDK editor limits are private/internal or inline literals in the referenced drawers.

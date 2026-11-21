@@ -280,9 +280,7 @@ namespace VF.Feature {
             foreach (var behavior in (avatar.faceTrackingParameterBehaviors
                                       ?? Enumerable.Empty<VRCAvatarDescriptor.FaceTrackingParameterBehavior>())
                          .Where(behavior => behavior != null)) {
-                if (behavior.targetMode != VRCAvatarDescriptor.ParameterBehaviorTargetMode.ApplyToBlendshape
-                    && behavior.targetMode != VRCAvatarDescriptor.ParameterBehaviorTargetMode.LimitBlendshapeMax
-                    && behavior.targetMode != VRCAvatarDescriptor.ParameterBehaviorTargetMode.LimitBlendshapeMin) continue;
+                if (!FaceTrackingUtils.TargetsBlendshape(behavior)) continue;
                 if (!string.IsNullOrEmpty(behavior.targetBlendshapeName)) yield return behavior.targetBlendshapeName;
             }
         }

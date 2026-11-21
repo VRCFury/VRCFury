@@ -315,13 +315,17 @@ namespace VF.Tests {
                     outputFolder = VRCFuryAssetDatabase.GetDirectoryName(AssetDatabase.GetAssetPath(fx));
                     var ft = avatar.faceTrackingBlendshapesSetList.Single(entry => entry.faceTrackingBlendshapeNames[(int)VRCAvatarDescriptor.FaceTrackingKey.JawOpen] != "");
                     var name = ft.faceTrackingBlendshapeNames[(int)VRCAvatarDescriptor.FaceTrackingKey.JawOpen];
-                    Assert.That(name, Is.Not.EqualTo("Smile"));
+                    Assert.That(name, Does.StartWith("VF_FT_"));
+                    var animatorName = "VF_Animated_" + name;
                     foreach (var skin in new[] { body, accessory }) {
                         Assert.That(skin.HasBlendshape(name), Is.True);
+                        Assert.That(skin.HasBlendshape(animatorName), Is.True);
                         Assert.That(skin.HasBlendshape("Unused"), Is.False, "The optimizer must actually have run");
                         var path = AnimationUtility.CalculateTransformPath(skin.transform, root.transform);
-                        Assert.That(fx.animationClips.SelectMany(AnimationUtility.GetCurveBindings)
-                            .Any(binding => binding.path == path && binding.propertyName == "blendShape." + name), Is.True);
+                        var bindings = fx.animationClips.SelectMany(AnimationUtility.GetCurveBindings)
+                            .Where(binding => binding.path == path).Select(binding => binding.propertyName).ToArray();
+                        Assert.That(bindings, Does.Contain("blendShape." + animatorName));
+                        Assert.That(bindings, Does.Not.Contain("blendShape." + name));
                     }
                     var migrated = avatar.faceTrackingBlendshapesSetList.Single(entry => entry.visemeBlendshapeNames[10] != "");
                     Assert.That(migrated.visemeBlendshapeNames[0], Is.Empty);

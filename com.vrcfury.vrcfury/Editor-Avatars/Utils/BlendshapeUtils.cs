@@ -58,7 +58,7 @@ namespace VF.Utils {
             mesh.Dirty();
         }
 
-        private class BlendshapeFrames {
+        internal class BlendshapeFrames {
             private readonly List<(float weight, Vector3[] vertices, Vector3[] normals, Vector3[] tangents)> frames = new();
 
             public BlendshapeFrames(Mesh mesh, int index) {

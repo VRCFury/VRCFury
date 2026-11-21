@@ -101,6 +101,7 @@ namespace VF.Feature.Base {
         RemoveVrcGlobalsFromExpressionParams,
         FixGestureFxConflict, // Needs to run before DirectTreeOptimizer messes with FX parameters
         BlendShapeLinkFixAnimations, // Needs to run after most things are done messing with animations, since it'll make copies of the blendshape curves
+        SeparateDescriptorBlendshapes, // After face tracking and blendshape links have resolved their final names
         ApplyModifiedMaterialProperties, // Needs to run before RecordAllDefaults
         // Capture off values after final material and resting-state changes.
         BuildObjectTreeDefaults,
