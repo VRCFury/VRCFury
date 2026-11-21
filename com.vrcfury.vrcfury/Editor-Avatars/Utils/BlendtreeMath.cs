@@ -107,15 +107,17 @@ namespace VF.Utils {
 
             var output = controller.CreateUniqueFloat(name, def: defaultValue);
 
-            var targetMotions = targets
+            var fallbackIndex = Array.FindIndex(targets, target => target.condition == null);
+            var targetMotions = (fallbackIndex < 0 ? targets : targets.Take(fallbackIndex + 1))
                 .Select(target => (
                     target.value.param != null ? output.MakeCopier(target.value.param) : output.MakeSetter(target.value.constt),
                     target.condition
-                ))
-                // The "fall through" (if all conditions are false) is to maintain the current output value
-                .Append((output.MakeCopier(output), null))
-                .ToArray();
-            SetValueWithConditions(targetMotions);
+                ));
+            if (fallbackIndex < 0) {
+                // Keep the current output when none of the conditions match.
+                targetMotions = targetMotions.Append((output.MakeCopier(output), null));
+            }
+            SetValueWithConditions(targetMotions.ToArray());
 
             return output;
         }
@@ -204,19 +206,29 @@ namespace VF.Utils {
         }
 
         /**
-         * a,b : [-10000,10000]
+         * a,b : [-10000,10000], or [-1,1] when unitRange is true
          */
-        public static Condition GreaterThan(VFAParam a, VFAParam b, string name = null) {
-            name = name ?? $"{a} > {b}";
+        public static Condition GreaterThan(VFAParam a, VFAParam b, string name = null, bool unitRange = false) {
+            if (a.name == b.name) return False();
+            name ??= $"{a} > {b}";
             return new Condition((whenTrue, whenFalse) => {
-                if (whenTrue == null) whenTrue = VFClip.Create();
-                if (whenFalse == null) whenFalse = VFClip.Create();
+                whenTrue ??= VFClip.Create();
+                whenFalse ??= VFClip.Create();
+                if (unitRange) {
+                    // The bias survives rounding for inputs in [-1, 1] and selects false at ties.
+                    const float off = 1f / (1 << 25);
+                    const float on = off * 1.25f;
+                    var unitTree = VFBlendTree2D.CreateFreeformCartesian(name, a, b);
+                    unitTree.Add(new Vector2(off, -off), whenFalse);
+                    unitTree.Add(new Vector2(on, -on), whenTrue);
+                    return unitTree;
+                }
                 var tree = VFBlendTree2D.CreateSimpleDirectional(name, a, b);
+                // The diagonal marks equality. The unfilled half-plane falls back to the origin.
                 tree.Add(new Vector2(-10000, -10000), whenFalse);
                 tree.Add(new Vector2(10000, 10000), whenFalse);
-                tree.Add(new Vector2(0, 0), whenFalse);
-                tree.Add(new Vector2(-10000, 10000), whenFalse);
-                tree.Add(new Vector2(0.000001f, -0.000001f), whenTrue);
+                tree.Add(Vector2.zero, whenFalse);
+                tree.Add(new Vector2(1e-6f, -1e-6f), whenTrue);
                 return tree;
             }, a.GetDefault() > b.GetDefault());
         }
@@ -359,14 +371,6 @@ namespace VF.Utils {
             return output;
         }
 
-        public VFAParam Max(VFAParam a, VFAParam b, string name = null) {
-            name = name ?? $"MAX({a},{b})";
-            return SetValueWithConditions(name,
-                (a, GreaterThan(a, b)),
-                (b, null)
-            );
-        }
-        
         /**
          * a : [0,Infinity)
          * b : [0,Infinity) (may be negative if constant)

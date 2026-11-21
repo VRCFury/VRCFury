@@ -22,6 +22,10 @@ namespace VF.Utils {
             return new VFBlendTree2D(VFTree.Create(name, BlendTreeType.SimpleDirectional2D, blendParameterX, blendParameterY));
         }
 
+        public static VFBlendTree2D CreateFreeformCartesian(string name, string blendParameterX, string blendParameterY) {
+            return new VFBlendTree2D(VFTree.Create(name, BlendTreeType.FreeformCartesian2D, blendParameterX, blendParameterY));
+        }
+
         public static VFBlendTree2D CreateFreeformDirectional(string name, string blendParameterX, string blendParameterY) {
             return new VFBlendTree2D(VFTree.Create(name, BlendTreeType.FreeformDirectional2D, blendParameterX, blendParameterY));
         }

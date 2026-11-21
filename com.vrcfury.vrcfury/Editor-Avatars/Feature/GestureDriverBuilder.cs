@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -62,9 +61,8 @@ namespace VF.Feature {
                 }
             }
 
-            var directTree = new Lazy<VFBlendTreeDirect>(() => dbtLayerService.Create());
-            var blendtreeMath = new Lazy<BlendtreeMath>(() => dbtLayerService.GetMath(directTree.Value));
-            void MakeHand(bool right, ref VFCondition aggCondition, ref VFAParam aggWeight) {
+            var weights = new List<VFAParam>(2);
+            void MakeHand(bool right, ref VFCondition aggCondition) {
                 if (hand == GestureDriver.Hand.LEFT && right) return;
                 if (hand == GestureDriver.Hand.RIGHT && !right) return;
                 var sign = (right && hand == GestureDriver.Hand.COMBO) ? gesture.comboSign : gesture.sign;
@@ -75,24 +73,21 @@ namespace VF.Feature {
                 else if (hand == GestureDriver.Hand.COMBO) aggCondition = aggCondition.And(myCondition);
 
                 if (sign == GestureDriver.HandSign.FIST && gesture.enableWeight) {
-                    var myWeight = right ? fx.GestureRightWeight() : fx.GestureLeftWeight();
-                    if (aggWeight == null) aggWeight = myWeight;
-                    else aggWeight = blendtreeMath.Value.Max(aggWeight, myWeight);
+                    weights.Add(right ? fx.GestureRightWeight() : fx.GestureLeftWeight());
                 }
             }
 
             VFCondition onCondition = null;
-            VFAParam weight = null;
-            MakeHand(false, ref onCondition, ref weight);
-            MakeHand(true, ref onCondition, ref weight);
+            MakeHand(false, ref onCondition);
+            MakeHand(true, ref onCondition);
 
             var transitionTime = gesture.customTransitionTime && gesture.transitionTime >= 0 ? gesture.transitionTime : 0.1f;
             
-            if (weight != null) {
+            if (weights.Count > 0) {
                 var clip = actionClipService.LoadState(uid, gesture.state, motionTime: ActionClipService.MotionTimeMode.Always);
                 var smoothedWeight = MakeWeightLayer(
-                    directTree.Value,
-                    weight,
+                    dbtLayerService.Create(),
+                    weights,
                     onCondition
                 );
                 onCondition = smoothedWeight.IsGreaterThan(0.05f);
@@ -129,17 +124,24 @@ namespace VF.Feature {
             on.TransitionsTo(off).WithTransitionDurationSeconds(transitionTime).When(onCondition.Not()).Interruptable();
         }
 
-        private VFAParam MakeWeightLayer(VFBlendTreeDirect directTree, VFAParam input, VFCondition enabled) {
-            var layer = fx.NewLayer($"{input.name} Target");
+        private VFAParam MakeWeightLayer(VFBlendTreeDirect directTree, IReadOnlyList<VFAParam> weights, VFCondition enabled) {
+            var first = weights[0];
+            var second = weights.Count > 1 ? weights[1] : null;
+            var name = second == null ? first.name : $"MAX({first},{second})";
+            var defaultWeight = second == null ? first.GetDefault() : Mathf.Max(first.GetDefault(), second.GetDefault());
+            var layer = fx.NewLayer($"{name} Target");
 
-            var target = fx.CreateUniqueFloat($"{input.name}/Target", def: input.GetDefault());
+            var target = fx.CreateUniqueFloat($"{name}/Target", def: defaultWeight);
+            var firstMotion = target.MakeCopier(first);
+            var activeMotion = second == null ? firstMotion : BlendtreeMath.GreaterThan(first, second, unitRange: true)
+                .create(firstMotion, target.MakeCopier(second));
 
             var off = layer.NewState("Off").WithAnimation(target.MakeSetter(0));
-            var on = layer.NewState("On").WithAnimation(target.MakeCopier(input));
+            var on = layer.NewState("On").WithAnimation(activeMotion);
             off.TransitionsTo(on).When(enabled);
             on.TransitionsTo(off).When(enabled.Not());
 
-            return smoothing.Smooth(directTree, $"{input.name}/Smoothed", target, 0.15f);
+            return smoothing.Smooth(directTree, $"{name}/Smoothed", target, 0.15f);
         }
 
         [FeatureEditor]

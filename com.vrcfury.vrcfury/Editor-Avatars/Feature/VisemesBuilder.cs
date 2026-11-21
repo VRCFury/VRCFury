@@ -60,55 +60,48 @@ namespace VF.Feature {
                 avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeParameterOnly;
             }
 
-            var VisemeParam = fx.GetOrCreateFloat("Viseme");
-            var VolumeParam = fx.GetOrCreateFloat("Voice");
-            
+            var visemeParam = fx.GetOrCreateFloat("Viseme");
+            var volumeParam = fx.GetOrCreateFloat("Voice");
             var enabled = fx.CreateUniqueFloat("AdvancedVisemesEnabled", def: 1);
             var directTree = dbtLayerService.Create();
-            var math = dbtLayerService.GetMath(directTree);
-            VFAParam volumeToUse;
+            var motions = visemeNames.Select((name, index) => {
+                var clipState = (State)Reflection.StateFields[index].GetValue(model);
+                return actionClipService.LoadState("Viseme " + name, clipState).EvaluateMotion(1);
+            }).ToArray();
+
+            VFMotion voiceMotion;
             if (model.instant) {
-                volumeToUse = math.SetValueWithConditions(
-                    $"InstantVolume",
-                    (1, BlendtreeMath.GreaterThan(VolumeParam, 0.1f)),
-                    (0, null)
-                );
+                var lookup = CreateLookup("Select viseme", visemeParam, motions);
+                voiceMotion = BlendtreeMath.GreaterThan(volumeParam, 0.1f, name: "Instant volume")
+                    .create(lookup, clipFactory.GetEmptyClip());
             } else {
                 var scaledVolume = fx.CreateUniqueFloat("ScaledVolume");
-                directTree.Add(VFBlendTree1D.CreateWithData("ScaledVolume", VolumeParam,
+                directTree.Add(VFBlendTree1D.CreateWithData(
+                    "ScaledVolume",
+                    volumeParam,
                     (0, scaledVolume.MakeSetter(0)),
                     (0.05f, scaledVolume.MakeSetter(0f)),
                     (0.15f, scaledVolume.MakeSetter(0.8f)),
                     (1f, scaledVolume.MakeSetter(1f))
                 ));
-                volumeToUse = smooth.Smooth(directTree, "SmoothedVolume", scaledVolume, 0.07f, false);
-            }
-            var voiceTree = VFBlendTreeDirect.Create("Advanced Visemes");
-            var volumeTree = VFBlendTreeDirect.Create("Advanced Visemes");
-            volumeTree.Add(volumeToUse, voiceTree);
-            directTree.Add(enabled, volumeTree);
+                var volumeToUse = smooth.Smooth(directTree, "SmoothedVolume", scaledVolume, 0.07f, false);
 
-            void addViseme(int index, string text, State clipState) {
-                var motion = actionClipService.LoadState("Viseme " + text, clipState).EvaluateMotion(1);
-
-                var intensityRaw = math.SetValueWithConditions(
-                    $"{text}Raw",
-                    (1, BlendtreeMath.Equals(VisemeParam, index)),
-                    (0, null)
-                );
-                VFAParam intensityToUse;
-                if (model.instant) {
-                    intensityToUse = intensityRaw;
-                } else {
-                    intensityToUse = smooth.Smooth(directTree, $"{text}Smooth", intensityRaw, 0.05f, false);
+                var voiceTree = VFBlendTreeDirect.Create("Advanced Visemes");
+                var weights = new VFMotion[motions.Length];
+                for (var index = 0; index < motions.Length; index++) {
+                    var name = visemeNames[index];
+                    var intensityRaw = fx.CreateUniqueFloat($"{name}Raw", def: visemeParam.GetDefault() == index ? 1 : 0);
+                    // The layer's AAP zero clip clears unselected weights before smoothing.
+                    weights[index] = intensityRaw.MakeSetter(1);
+                    var intensity = smooth.Smooth(directTree, $"{name}Smooth", intensityRaw, 0.05f, false);
+                    voiceTree.Add(intensity, motions[index]);
                 }
-                voiceTree.Add(intensityToUse, motion);
+                directTree.Add(CreateLookup("Viseme weights", visemeParam, weights));
+                var volumeTree = VFBlendTreeDirect.Create("Advanced Visemes");
+                volumeTree.Add(volumeToUse, voiceTree);
+                voiceMotion = volumeTree;
             }
-
-            for (var i = 0; i < visemeNames.Length; i++) {
-                var name = visemeNames[i];
-                addViseme(i, name, (State)Reflection.StateFields[i].GetValue(model));
-            }
+            directTree.Add(enabled, voiceMotion);
 
             trackingConflictResolverService.WhenCollected(() => {
                 var inhibitors =
@@ -124,6 +117,18 @@ namespace VF.Feature {
                     clipFactory.GetEmptyClip()
                 ));
             });
+        }
+
+        private VFMotion CreateLookup(string name, VFAParam visemeParam, IReadOnlyList<VFMotion> motions) {
+            var lookup = VFBlendTree1D.Create(name, visemeParam);
+            var noViseme = clipFactory.GetEmptyClip();
+            for (var index = 0; index < motions.Count; index++) {
+                // Adjacent float stops preserve exact selection between viseme indices.
+                lookup.Add(VRCFuryEditorUtils.NextFloatDown(index), noViseme);
+                lookup.Add(index, motions[index]);
+                lookup.Add(VRCFuryEditorUtils.NextFloatUp(index), noViseme);
+            }
+            return lookup;
         }
 
 #if VRCSDK_HAS_FACE_TRACKING

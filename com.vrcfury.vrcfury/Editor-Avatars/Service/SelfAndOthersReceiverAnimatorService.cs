@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Injector;
-using VF.Inspector;
 using VF.Utils;
 using VF.Utils.Controller;
 using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
@@ -161,31 +159,24 @@ namespace VF.Service {
             }
             var chooseSelf = Select(true);
             var chooseOthers = Select(false);
-            // Compare live SDK outputs directly. Only receiver enable
-            // states are animated; the selected SDK receiver writes the merged value directly.
-            VFMotion Compare(string name, string a, string b) {
-                var tree = VFBlendTree2D.CreateSimpleDirectional(receivers.request.name + name, a, b);
-                tree.Add(new Vector2(-10000, -10000), chooseOthers);
-                tree.Add(new Vector2(10000, 10000), chooseOthers);
-                tree.Add(Vector2.zero, chooseOthers);
-                tree.Add(new Vector2(-10000, 10000), chooseOthers);
-                tree.Add(new Vector2(0.000001f, -0.000001f), chooseSelf);
-                return tree;
-            }
+            var selfProximity = GetParameter(receivers, true);
+            var othersProximity = GetParameter(receivers, false);
+            var bothPresent = VFBlendTreeDirect.Create(receivers.request.name + " compare contacts");
+            var math = new BlendtreeMath(controllers.GetFx(), bothPresent);
+            var differenceName = receivers.request.name + "/MergeDifference";
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             var selfDistance = GetAdvancedParam(receivers, Party.Self, "PointSeparation");
             var othersDistance = GetAdvancedParam(receivers, Party.Others, "PointSeparation");
-            var separation = Compare(" closest point separation", othersDistance, selfDistance);
-            // Negative separation means no contact. Zero is valid; equal distances and
-            // two missing contacts select others. No AAP or proximity conversion is needed.
-            var othersPresent = VFBlendTree1D.CreateWithData(receivers.request.name + " others present", othersDistance,
-                (VRCFuryEditorUtils.NextFloatDown(0), chooseSelf), (0, separation));
-            VFMotion selector = VFBlendTree1D.CreateWithData(receivers.request.name + " self present", selfDistance,
-                (VRCFuryEditorUtils.NextFloatDown(0), chooseOthers), (0, othersPresent));
+            var difference = math.Subtract(othersDistance, selfDistance, differenceName);
 #else
-            VFMotion selector = Compare(" closest proximity", GetParameter(receivers, true), GetParameter(receivers, false));
+            var difference = math.Subtract(selfProximity, othersProximity, differenceName);
 #endif
-            return selector;
+            bothPresent.Add(BlendtreeMath.GreaterThan(difference, 0).create(chooseSelf, chooseOthers));
+
+            // The selected SDK receiver writes the merged outputs. Keep Others selected while idle
+            // so the outputs can clear, and only run the comparison while both sources are in range.
+            var whenSelfPresent = BlendtreeMath.GreaterThan(othersProximity, 0).create(bothPresent, chooseSelf);
+            return BlendtreeMath.GreaterThan(selfProximity, 0).create(whenSelfPresent, chooseOthers);
         }
     }
 }

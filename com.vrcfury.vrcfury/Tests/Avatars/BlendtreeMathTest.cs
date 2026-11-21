@@ -74,6 +74,79 @@ namespace VF.Tests {
             for (var i = 0; i < frames; i++) graph.Evaluate(1f / 60);
         }
 
+        [Test]
+        public void LiveComparisonUsesFourStopsAndSelectsFalseAtTies() {
+            var a = fx.CreateUniqueFloat("A");
+            var b = fx.CreateUniqueFloat("B");
+            var output = fx.CreateUniqueFloat("Comparison output");
+            var comparison = (VFTree)BlendtreeMath.GreaterThan(a, b).create(output.MakeSetter(1), output.MakeSetter(0));
+            Assert.That(comparison.children.Count, Is.EqualTo(4));
+            tree.Add(comparison);
+            Start();
+
+            var cases = new[] {
+                (0f, 0f, 0f),
+                (1f, 1f, 0f),
+                (-10000f, -10000f, 0f),
+                (10000f, 10000f, 0f),
+                (-10000f, 10000f, 0f),
+                (0f, 1f, 0f),
+                (-1f, -2f, 1f),
+                (1f, 0f, 1f),
+                (1e-5f, 0f, 1f),
+                (0f, 4e-9f, 0f)
+            };
+            var ties = Enumerable.Range(-126, 140).SelectMany(power => {
+                var value = Mathf.Pow(2, power) * 1.125f;
+                return new[] { (value, value, 0f), (-value, -value, 0f) };
+            });
+            foreach (var (x, y, expected) in cases.Concat(ties)) {
+                playable.SetFloat(a, x);
+                playable.SetFloat(b, y);
+                Evaluate();
+                Assert.That(playable.GetFloat(output), Is.EqualTo(expected), $"Comparing {x:R} to {y:R}");
+            }
+        }
+
+        [Test]
+        public void ComparingAParameterToItselfUsesTheFalseMotionDirectly() {
+            var input = fx.CreateUniqueFloat("Input");
+            var output = fx.CreateUniqueFloat("Comparison output");
+            var whenFalse = output.MakeSetter(0);
+            var comparison = BlendtreeMath.GreaterThan(input, input);
+            Assert.That(comparison.defaultIsTrue, Is.False);
+            Assert.That(comparison.create(output.MakeSetter(1), whenFalse), Is.SameAs(whenFalse));
+        }
+
+        [Test]
+        public void UnitRangeComparisonUsesTwoStopsAndPreservesTies() {
+            var a = fx.CreateUniqueFloat("A");
+            var b = fx.CreateUniqueFloat("B");
+            var output = fx.CreateUniqueFloat("Comparison output");
+            var comparison = (VFTree)BlendtreeMath.GreaterThan(a, b, unitRange: true)
+                .create(output.MakeSetter(1), output.MakeSetter(0));
+            Assert.That(comparison.children.Count, Is.EqualTo(2));
+            tree.Add(comparison);
+            Start();
+
+            void Check(float x, float y, float expected) {
+                playable.SetFloat(a, x);
+                playable.SetFloat(b, y);
+                Evaluate();
+                Assert.That(playable.GetFloat(output), Is.EqualTo(expected), $"Comparing {x:R} to {y:R}");
+            }
+
+            for (var i = -256; i <= 256; i++) {
+                var tie = i / 256f;
+                Check(tie, tie, 0);
+            }
+            Check(1, 1 - 0.000001f, 1);
+            Check(1 - 0.000001f, 1, 0);
+            Check(-1 + 0.000001f, -1, 1);
+            Check(-1, -1 + 0.000001f, 0);
+            Check(0.000001f, 0, 1);
+        }
+
         [TestCase(false, false)]
         [TestCase(false, true)]
         [TestCase(true, false)]
