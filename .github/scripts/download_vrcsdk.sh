@@ -41,6 +41,10 @@ patch_udonsharp_for_ci() {
   local locator_file="$PROJECT_PATH/Packages/com.vrchat.worlds/Integrations/UdonSharp/Runtime/UdonSharpDataLocator.cs"
   perl -0pi -e 's/foundLocators\.Add\(InitializeUdonSharpData\(\)\);/return "Assets\/UdonSharp";/' "$locator_file"
 
+  # The fresh import already loads the SDK DLLs. Skip their forced second import and domain reload in batch mode.
+  mkdir -p "$PROJECT_PATH/Library"
+  printf '%s' WORLDS_REIMPORTED > "$PROJECT_PATH/Library/WORLDS_REIMPORTED"
+
   # Seed SDK/world defines before the first compile instead of forcing a reload during tests.
   local project_settings="$PROJECT_PATH/ProjectSettings/ProjectSettings.asset"
   local define
