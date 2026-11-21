@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Injector;
@@ -134,12 +135,11 @@ namespace VF.Service {
             , AdvancedParameter advancedParameters = 0
 #endif
         ) {
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             var mergedSelf = receivers.Find(true, true);
             var mergedOthers = receivers.Find(false, true);
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             mergedSelf.advancedParameters |= advancedParameters;
             mergedOthers.advancedParameters |= advancedParameters;
-#endif
             var mergedParameter = RegisterParameter(mergedSelf, receivers.request.name + "/Merged");
             mergedOthers.parameter = mergedParameter;
             RegisterParameter(mergedOthers, receivers.request.name + "/Merged");
@@ -147,36 +147,44 @@ namespace VF.Service {
                 GetTree(receivers).Add(CreateSelector(receivers, mergedSelf, mergedOthers));
             }
             return mergedParameter;
+#else
+            throw new InvalidOperationException(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
+#endif
         }
 
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
         private VFMotion CreateSelector(SelfAndOthersReceiverService.Receivers receivers,
             SelfAndOthersReceiverService.Receiver mergedSelf, SelfAndOthersReceiverService.Receiver mergedOthers) {
-            VFClip Select(bool selectSelf) {
-                var clip = VFClip.Create(receivers.request.name + (selectSelf ? " select self" : " select others"));
-                clip.SetEnabled(mergedSelf.obj, selectSelf);
-                clip.SetEnabled(mergedOthers.obj, !selectSelf);
+            VFClip Select(string name, bool self = false, bool others = false) {
+                var clip = VFClip.Create(receivers.request.name + " " + name);
+                clip.SetEnabled(mergedSelf.obj, self);
+                clip.SetEnabled(mergedOthers.obj, others);
                 return clip;
             }
-            var chooseSelf = Select(true);
-            var chooseOthers = Select(false);
-            var selfProximity = GetParameter(receivers, true);
-            var othersProximity = GetParameter(receivers, false);
-            var bothPresent = VFBlendTreeDirect.Create(receivers.request.name + " compare contacts");
-            var math = new BlendtreeMath(controllers.GetFx(), bothPresent);
-            var differenceName = receivers.request.name + "/MergeDifference";
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            var chooseSelf = Select("select self", self: true);
+            var chooseOthers = Select("select others", others: true);
+            var chooseNeither = Select("no contact");
             var selfDistance = GetAdvancedParam(receivers, Party.Self, "PointSeparation");
             var othersDistance = GetAdvancedParam(receivers, Party.Others, "PointSeparation");
-            var difference = math.Subtract(othersDistance, selfDistance, differenceName);
-#else
-            var difference = math.Subtract(selfProximity, othersProximity, differenceName);
-#endif
-            bothPresent.Add(BlendtreeMath.GreaterThan(difference, 0).create(chooseSelf, chooseOthers));
+            selfDistance.SetDefault(-1);
+            othersDistance.SetDefault(-1);
 
-            // The selected SDK receiver writes the merged outputs. Keep Others selected while idle
-            // so the outputs can clear, and only run the comparison while both sources are in range.
-            var whenSelfPresent = BlendtreeMath.GreaterThan(othersProximity, 0).create(bothPresent, chooseSelf);
-            return BlendtreeMath.GreaterThan(selfProximity, 0).create(whenSelfPresent, chooseOthers);
+            var tree = VFBlendTree2D.CreateFreeformCartesian(receivers.request.name + " closest contact", othersDistance, selfDistance);
+            // With both distances nonnegative, compare near the origin. Tilt the Others stop
+            // along the equality diagonal so equal distances continue to pick Others.
+            const float step = 1f / (1 << 30);
+            const float tie = step * 1e-7f;
+            tree.Add(new Vector2(tie, tie), chooseOthers);
+            tree.Add(new Vector2(step, -step), chooseSelf);
+
+            // The SDK reports -1 for an absent sender. Stops between -1 and 0 select
+            // the surviving receiver, or disable both when neither source has a sender.
+            const float absent = -0.001f;
+            tree.Add(new Vector2(absent, 0), chooseSelf);
+            tree.Add(new Vector2(0, absent), chooseOthers);
+            tree.Add(new Vector2(absent, absent), chooseNeither);
+            return tree;
         }
+#endif
     }
 }

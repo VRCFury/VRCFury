@@ -80,8 +80,8 @@ namespace VF.Builder.Haptics {
                     ?? request.name + (merged ? "Merged" : "") + (self ? "Self" : "Others");
                 var obj = GameObjects.Create(name + (list.Count < 2 ? "" : " " + list.Count), request.frame);
                 var receiver = new Receiver(obj, self);
-                // Ties select others, matching the comparison tree's false branch.
-                obj.active = !merged || !self;
+                // Source receivers stay on. The selector starts with neither merged receiver active.
+                obj.active = !merged;
                 list.Add(receiver);
                 string[] Tags(SpsChannelsService.ChannelSet set) => request.getTags(set, self).Distinct().ToArray();
                 request.channels.OnAllSetsAvailable(sets => {

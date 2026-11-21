@@ -652,26 +652,27 @@ namespace VF.Tests {
         [Test]
         public void SelectsOneMergedReceiverWithoutBufferingItsParameter() {
             Start();
-            var r = bake.socketReceivers;
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(4));
             Assert.That(MergedReceiver(true).gameObject.activeSelf, Is.False);
-            Assert.That(MergedReceiver(false).gameObject.activeSelf, Is.True);
+            Assert.That(MergedReceiver(false).gameObject.activeSelf, Is.False);
             foreach (var values in new[] { (0.9f, 0.1f, true), (0.1f, 0.9f, false), (0.8f, 0.2f, true), (0f, 0f, false) }) {
+                var hasContact = values.Item1 > 0 || values.Item2 > 0;
                 playable.SetFloat(SourceReceiver(true).parameter, values.Item1);
                 playable.SetFloat(SourceReceiver(false).parameter, values.Item2);
                 playable.SetFloat(SourceReceiver(true).parameter + "_PointSeparation", values.Item1 == 0 ? -1 : 1 - values.Item1);
                 playable.SetFloat(SourceReceiver(false).parameter + "_PointSeparation", values.Item2 == 0 ? -1 : 1 - values.Item2);
                 // SDK output deliberately differs from both selector inputs. Sampling must use
                 // this current merged value immediately, rather than max/self/other from a DBT.
-                SetMergedProximity( 0.6f);
+                SetMergedProximity(hasContact ? 0.6f : 0);
                 graph.Evaluate(1f / 60);
                 Assert.That(SourceReceiver(true).gameObject.activeSelf && SourceReceiver(false).gameObject.activeSelf, Is.True);
                 Assert.That(MergedReceiver(true).enabled && MergedReceiver(false).enabled, Is.True);
                 Assert.That(MergedReceiver(true).gameObject.activeSelf, Is.EqualTo(values.Item3));
-                Assert.That(MergedReceiver(false).gameObject.activeSelf, Is.EqualTo(!values.Item3));
+                Assert.That(MergedReceiver(false).gameObject.activeSelf, Is.EqualTo(hasContact && !values.Item3));
                 Assert.That(playable.IsParameterControlledByCurve(MergedReceiver(true).parameter), Is.False);
                 for (var i = 0; i < 3; i++) graph.Evaluate(1f / 60);
-                Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(0.0216f + MinimumRadius * 0.64f).Within(0.00002f));
+                var expected = hasContact ? 0.0216f + MinimumRadius * 0.64f : MinimumRadius;
+                Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(expected).Within(0.00002f));
             }
         }
 
@@ -698,16 +699,18 @@ namespace VF.Tests {
                          (VRCFuryEditorUtils.NextFloatDown(1), 1f, 0.1f, 0.3f, true),
                          (1f, VRCFuryEditorUtils.NextFloatDown(1), 0.3f, 0.1f, false)
                      }) {
+                var hasContact = values.Item3 >= 0 || values.Item4 >= 0;
                 playable.SetFloat(self, values.Item1);
                 playable.SetFloat(others, values.Item2);
                 playable.SetFloat(self + "_PointSeparation", values.Item3);
                 playable.SetFloat(others + "_PointSeparation", values.Item4);
-                SetMergedProximity( 0.6f);
+                SetMergedProximity(hasContact ? 0.6f : 0);
                 graph.Evaluate(1f / 60);
                 Assert.That(MergedReceiver(true).gameObject.activeSelf, Is.EqualTo(values.Item5), values.ToString());
-                Assert.That(MergedReceiver(false).gameObject.activeSelf, Is.EqualTo(!values.Item5), values.ToString());
+                Assert.That(MergedReceiver(false).gameObject.activeSelf, Is.EqualTo(hasContact && !values.Item5), values.ToString());
                 for (var i = 0; i < 3; i++) graph.Evaluate(1f / 60);
-                Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(0.0216f + MinimumRadius * 0.64f).Within(0.00002f));
+                var expected = hasContact ? 0.0216f + MinimumRadius * 0.64f : MinimumRadius;
+                Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(expected).Within(0.00002f));
             }
         }
 #endif

@@ -366,12 +366,16 @@ namespace VF.Tests {
 
         [Test]
         public void SingleSetDoesNotControlMergedReceiverActivation() {
+#if !VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            Assert.Ignore(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
+#endif
             if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var bake = BakePlug(Plug(obj, true));
             injector.GetService<SelfAndOthersReceiverAnimatorService>().GetParameter(bake.socketReceivers, Party.Merged);
             var self = bake.socketReceivers.Find(true, true).obj;
             var others = bake.socketReceivers.Find(false, true).obj;
+            others.active = true;
             injector.GetService<ChangeSpsChannelsService>().Apply();
             Assert.That(self.active, Is.False);
             Assert.That(others.active, Is.True);
@@ -504,6 +508,9 @@ namespace VF.Tests {
         [TestCase(true, false)]
         [TestCase(true, true)]
         public void SwitchesContactsAndRestoresOriginalChannels(bool socket, bool shared) {
+#if !VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            Assert.Ignore(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
+#endif
             if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Target", root);
             var action = Action(obj, !shared);
@@ -522,6 +529,9 @@ namespace VF.Tests {
             }
             var receiverAnimator = injector.GetService<SelfAndOthersReceiverAnimatorService>();
             var merged = receiverAnimator.GetParameter(main, Party.Merged);
+            var distance = receiverAnimator.GetAdvancedParam(main, Party.Others, "PointSeparation");
+            // Simulate an already selected Others receiver for the pre-animation channel check.
+            main.Find(false, true).obj.active = true;
             var senderCount = obj.GetComponentsInChildren<VRCContactSender>(true).Length;
             var builder = injector.GetService<ChangeSpsChannelsActionBuilder>();
             var on = Track(builder.Build(action, false));
@@ -549,10 +559,16 @@ namespace VF.Tests {
                             Is.EqualTo(publicChannel ? 1 : 0), "Legacy plug senders must follow the public channel");
                 }
             }
+            void SampleWithContact(VFClip clip) {
+                RunAnimation(clip, (graph, playable) => {
+                    playable.SetFloat(distance, 0.1f);
+                    for (var i = 0; i < 5; i++) graph.Evaluate(1f / 60);
+                });
+            }
             AssertTags("old", shared);
-            Sample(on);
+            SampleWithContact(on);
             AssertTags("new", !shared);
-            Sample(off);
+            SampleWithContact(off);
             AssertTags("old", shared);
             Assert.That(obj.GetComponentsInChildren<VRCContactSender>(true).Length, Is.GreaterThan(senderCount));
         }
@@ -611,19 +627,17 @@ namespace VF.Tests {
 
         [Test]
         public void SharesRadiusAndMergedSelectorBindingsWithoutBufferingMeasurements() {
+#if !VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            Assert.Ignore(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
+#endif
             if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var action = Action(obj, false);
             var bake = BakePlug(Plug(obj, true));
             var animator = injector.GetService<SelfAndOthersReceiverAnimatorService>();
             var merged = animator.GetParameter(bake.socketReceivers, Party.Merged);
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             var selfInput = animator.GetAdvancedParam(bake.socketReceivers, Party.Self, "PointSeparation");
             var othersInput = animator.GetAdvancedParam(bake.socketReceivers, Party.Others, "PointSeparation");
-#else
-            var selfInput = animator.GetParameter(bake.socketReceivers, Party.Self);
-            var othersInput = animator.GetParameter(bake.socketReceivers, Party.Others);
-#endif
             var fx = injector.GetService<ControllersService>().GetFx();
             var paramCount = fx.parameters.Count();
             var animation = Track(VFClip.Create());
@@ -638,13 +652,8 @@ namespace VF.Tests {
             var senderRadius = bake.mainSender.GetComponentsInSelfAndChildren<VRCContactSender>().First().radius;
             Sample(animation);
             RunAnimation(on, (graph, playable) => {
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
                 playable.SetFloat(selfInput, 0.1f);
                 playable.SetFloat(othersInput, 0.3f);
-#else
-                playable.SetFloat(selfInput, 0.9f);
-                playable.SetFloat(othersInput, 0.7f);
-#endif
                 for (var i = 0; i < 5; i++) graph.Evaluate(1f / 60);
                 var active = obj.GetComponentsInChildren<VRCContactReceiver>().Where(r => r.parameter == merged.name).ToArray();
                 Assert.That(active, Has.Length.EqualTo(1));

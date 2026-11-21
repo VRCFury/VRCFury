@@ -19,7 +19,7 @@ namespace VF.Tests {
     [Category("VRCFury")]
     internal class SelfAndOthersReceiverAnimatorServiceTest {
         [Test]
-        public void OnlyComparesWhenBothContactsArePresent() {
+        public void SelectsTheClosestContactAndDisablesBothReceiversAtIdle() {
             var root = new GameObject("Avatar");
             var assets = new List<Object>();
             var graph = default(PlayableGraph);
@@ -45,13 +45,18 @@ namespace VF.Tests {
                     getTags = (_, _) => tags
                 });
                 var receiverAnimator = injector.GetService<SelfAndOthersReceiverAnimatorService>();
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
                 receiverAnimator.GetParameter(receivers, Party.Merged);
-                var self = receiverAnimator.GetParameter(receivers, true);
-                var others = receiverAnimator.GetParameter(receivers, false);
+                var self = receiverAnimator.GetAdvancedParam(receivers, Party.Self, "PointSeparation");
+                var others = receiverAnimator.GetAdvancedParam(receivers, Party.Others, "PointSeparation");
+                Assert.That(self.GetDefault(), Is.EqualTo(-1));
+                Assert.That(others.GetDefault(), Is.EqualTo(-1));
+                var selector = new AnimatorIterator.Trees().From(fx).Single(tree => tree.BlendParameter == others.name);
+                Assert.That(selector.children.Count, Is.EqualTo(5));
                 var mergedSelf = receivers.Find(true, true).obj;
                 var mergedOthers = receivers.Find(false, true).obj;
-                var difference = fx.parameters.Single(param => param.name.EndsWith("/MergeDifference", StringComparison.Ordinal));
                 injector.GetService<SpsChannelsService>().Apply(channels, _ => { });
+                Assert.That(mergedSelf.active || mergedOthers.active, Is.False);
                 injector.GetService<IsObjectEnabledService>().Apply();
                 injector.GetService<ObjectTreeService>().Apply();
                 injector.GetService<NoBadControllerParamsService>().Apply();
@@ -69,34 +74,28 @@ namespace VF.Tests {
                 AnimationPlayableOutput.Create(graph, "FX", animator).SetSourcePlayable(playable);
                 graph.Play();
 
-                void Check(float selfProx, float othersProx, float selfDistance, float othersDistance, int frames,
-                    bool expectSelf, float expectDifference) {
-                    playable.SetFloat(self, selfProx);
-                    playable.SetFloat(others, othersProx);
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-                    playable.SetFloat(self.name + "_PointSeparation", selfDistance);
-                    playable.SetFloat(others.name + "_PointSeparation", othersDistance);
-#endif
+                void Check(float selfValue, float othersValue, bool expectSelf, bool expectOthers, int frames = 1) {
+                    playable.SetFloat(self, selfValue);
+                    playable.SetFloat(others, othersValue);
                     for (var i = 0; i < frames; i++) graph.Evaluate(1f / 60);
                     Assert.That(mergedSelf.active, Is.EqualTo(expectSelf));
-                    Assert.That(mergedOthers.active, Is.EqualTo(!expectSelf));
-                    Assert.That(playable.GetFloat(difference), Is.EqualTo(expectDifference).Within(0.00001f));
+                    Assert.That(mergedOthers.active, Is.EqualTo(expectOthers));
                 }
 
-                Check(0, 0, .25f, .75f, 2, false, 0);
-                Check(.75f, 0, .25f, .75f, 1, true, 0);
-                Check(0, .75f, .25f, .75f, 1, false, 0);
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-                // Saturated proximity should still choose the nearest point, including zero separation.
-                Check(1, 1, 0, .5f, 1, false, .5f);
-                Check(1, 1, 0, .5f, 1, true, .5f);
-                Check(1, 1, .5f, .5f, 2, false, 0);
+                graph.Evaluate(1f / 60);
+                Assert.That(mergedSelf.active || mergedOthers.active, Is.False);
+                Check(0, -1, true, false);
+                Check(-1, 0, false, true);
+                Check(0, .5f, true, false);
+                Check(.5f, 0, false, true);
+                Check(.5f, .5f, false, true);
+                Check(0, 0, false, true);
+                Check(-1, -1, false, false);
 #else
-                Check(.75f, .25f, 0, .5f, 1, false, .5f);
-                Check(.75f, .25f, 0, .5f, 1, true, .5f);
-                Check(.75f, .75f, .5f, .5f, 2, false, 0);
+                Assert.That(() => receiverAnimator.GetParameter(receivers, Party.Merged),
+                    Throws.TypeOf<InvalidOperationException>().With.Message.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
+                Assert.That(receivers.IsCreated, Is.False);
 #endif
-                Check(0, 0, .25f, .75f, 1, false, 0);
             } finally {
                 if (graph.IsValid()) graph.Destroy();
                 Object.DestroyImmediate(root);
