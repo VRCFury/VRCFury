@@ -56,12 +56,20 @@ namespace VF.Service {
                     present.Value.CreateBranches(tree, prefix + "/Present"));
                 var encoding = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
                     native.Value.CreateBranches(presence.Value.whenTrue, prefix + "/Native"));
+                var estimateMath = new Lazy<BlendtreeMath>(() => {
+                    var estimates = VFBlendTreeDirect.Create(prefix + "/LegacyEstimates");
+                    main.request.channels.OnAllSetsAvailable(sets => {
+                        // Capture the first in-range sample before the buffered encoding flag switches to legacy.
+                        if (sets.Any(set => set.isPublic)) presence.Value.whenTrue.Add(estimates);
+                    });
+                    return new BlendtreeMath(fx, estimates);
+                });
                 // Outside the length sphere, infer B = centerDistance - A * (1 - proximity).
                 // At saturation this is a lower bound; use it to seed a missing estimate.
                 var length = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Length", 0.3f);
                     var nativeInput = Field("SenderLossyScaleZ");
-                    var estimate = legacy ? math.Add(prefix + "/LegacyLengthEstimate",
+                    var estimate = legacy ? estimateMath.Value.Add(prefix + "/LegacyLengthEstimate",
                         (Field("PointSeparation"), 1), (proximity.Value, worldRadius), (1, -worldRadius)) : null;
                     AddSize("Length", output, nativeInput, 0.3f, estimate);
                     return output;
@@ -74,9 +82,9 @@ namespace VF.Service {
                         var helper = receiverAnimator.GetParameter(legacyWidthReceiver, Party.Others);
                         VFAParam HelperField(string suffix) => receiverAnimator.GetAdvancedParam(legacyWidthReceiver, Party.Others, suffix);
                         var helperPresent = BlendtreeMath.GreaterThan(helper, 0);
-                        var helperRadius = math.Add(prefix + "/LegacyHelperRadius",
+                        var helperRadius = estimateMath.Value.Add(prefix + "/LegacyHelperRadius",
                             (HelperField("PointSeparation"), 1), (helper, worldRadius), (1, -worldRadius));
-                        var estimate = math.Add(prefix + "/LegacyRadiusEstimate", (proximity.Value, worldRadius / 2), (helper, -worldRadius / 2));
+                        var estimate = estimateMath.Value.Add(prefix + "/LegacyRadiusEstimate", (proximity.Value, worldRadius / 2), (helper, -worldRadius / 2));
                         var measurable = BlendtreeMath.GreaterThan(helperRadius, 0.01001f)
                             .And(BlendtreeMath.LessThan(helper, 1));
                         AddSize("Radius", output, nativeInput, 0.03f, estimate, helperPresent, measurable,
@@ -106,8 +114,11 @@ namespace VF.Service {
                     presence.Value.whenFalse.Add(output.MakeSetter(0));
                     return output;
                 });
-                // Read the cached size instead of extending its decoding branches with inversion writers.
-                var inverseLength = new Lazy<VFAParam>(() => math.Invert(prefix + "/Length/Inverted", length.Value));
+                var inverseLength = new Lazy<VFAParam>(() => new BlendtreeMath(fx, presence.Value.whenTrue).Invert(
+                    prefix + "/Length/Inverted",
+                    length.Value,
+                    idleTree: presence.Value.whenFalse
+                ));
                 var outputs = new Dictionary<(string parameter, string units), VFAParam>();
                 VFAParam entryRadius = null;
                 VFAParam CreateEntryRadius() {

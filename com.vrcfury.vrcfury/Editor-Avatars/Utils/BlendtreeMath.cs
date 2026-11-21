@@ -349,8 +349,14 @@ namespace VF.Utils {
         /**
          * Returns 1 / (input * inputMultiplier), with a runtime minimum denominator of 0.0001.
          * Uses two AAP stages.
+         * If idleTree is supplied, this instance computes the active branch and idleTree assumes the input's default.
          */
-        public VFAParam Invert(string name, VFAParam input, float inputMultiplier = 1) {
+        public VFAParam Invert(
+            string name,
+            VFAParam input,
+            float inputMultiplier = 1,
+            VFBlendTreeDirect idleTree = null
+        ) {
             var inputDefault = input.GetDefault() * inputMultiplier;
             var def = inputDefault == 0 ? 0 : 1f / inputDefault;
             var output = controller.CreateUniqueFloat(name, def: def);
@@ -361,6 +367,12 @@ namespace VF.Utils {
             tree.Add(tmp, output.MakeSetter(0));
             tree.Add(output.MakeSetter(10000));
             directTree.Add(tree);
+            if (idleTree != null) {
+                // Seed both stages so re-entry starts from the idle denominator.
+                var idle = output.MakeSetter(1 / Math.Max(inputDefault, 0.0001f));
+                idle.SetAap(tmp, tmp.GetDefault());
+                idleTree.Add(idle);
+            }
             return output;
         }
 

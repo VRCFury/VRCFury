@@ -103,9 +103,9 @@ namespace VF.Tests {
             var service = injector.GetService<SpsSocketMeasurementsService>();
             var contacts = service.GetReceivers(socket, root, "Test");
             var detector = injector.GetService<WorldScaleDetectorService>();
-            ((Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
+            ((Dictionary<VFGameObject, (VFAParam raw, float multiplier, Lazy<VFAParam> inverse)>)
                 typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector))
-                [root] = (null, new Lazy<VFAParam>(() => scale), inverseScale);
+                [root] = (scale, 1, inverseScale);
             return service.GetMeasurements(socket, new VRCFuryHapticSocketEditor.BakeResult {
                 bakeRoot = root,
                 plugReceivers = contacts
@@ -121,9 +121,9 @@ namespace VF.Tests {
                 localLength = 0.4f, localRadius = 0.05f
             };
             var detector = injector.GetService<WorldScaleDetectorService>();
-            ((Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
+            ((Dictionary<VFGameObject, (VFAParam raw, float multiplier, Lazy<VFAParam> inverse)>)
                 typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector))
-                [bakeRoot] = (null, new Lazy<VFAParam>(() => scale), inverseScale);
+                [bakeRoot] = (scale, 1, inverseScale);
             return injector.GetService<SpsPlugMeasurementsService>().GetMeasurements(bake, "Plug");
         }
 
@@ -308,7 +308,7 @@ namespace VF.Tests {
             var meters = outputs(SpsPlugEntryRadiusMeters);
             var local = outputs(SpsPlugEntryRadiusLocal);
             var detector = injector.GetService<WorldScaleDetectorService>();
-            var cache = (Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
+            var cache = (Dictionary<VFGameObject, (VFAParam raw, float multiplier, Lazy<VFAParam> inverse)>)
                 typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector);
             Assert.That(cache.ContainsKey(bake.bakeRoot), Is.True,
                 "Local-unit conversion must measure the head-chop-protected bake root");
@@ -333,28 +333,76 @@ namespace VF.Tests {
             }
         }
 
-        [Test]
-        public void PrivateOnlyMeasurementsRemoveNativeComparisonAndLegacyCacheBranches() {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void MeasurementsOnlyGenerateLegacyMathWhenAPublicChannelIsAvailable(bool publicAlternative) {
             optimizeTrees = true;
             var outputs = Socket(false)(Party.Others);
             var depth = outputs(SpsDepthLocal);
             var radius = outputs(SpsPlugRadiusLocal);
             _ = outputs(SpsPlugEntryRadiusLocal);
-            new BlendtreeMath(fx, receiverAnimator.GetTree(
-                injector.GetService<SpsSocketMeasurementsService>().GetReceivers(
-                    root.GetComponent<VRCFuryHapticSocket>(), root, "Test")))
-                .CopyInPlace(depth, "Injected depth");
+            var socket = root.GetComponent<VRCFuryHapticSocket>();
+            var receivers = injector.GetService<SpsSocketMeasurementsService>().GetReceivers(socket, root, "Test");
+            var tree = receiverAnimator.GetTree(receivers);
+            new BlendtreeMath(fx, tree).CopyInPlace(depth, "Injected depth");
+            if (publicAlternative) {
+                injector.GetService<SpsChannelsService>().Register(socket, new Lazy<VFBlendTreeDirect>(() => tree));
+                injector.GetService<ChangeSpsChannelsService>().Request(new VF.Model.StateAction.ChangeSpsChannelsAction {
+                    target = root,
+                    channelSettings = new VF.Model.SpsChannelSettings { useSharedTag = true }
+                });
+            }
             Start();
             Assert.That(new AnimatorIterator.Trees().From(fx)
-                .Any(t => t.BlendParameter?.EndsWith("/Native") == true), Is.False);
+                .Any(t => t.BlendParameter?.EndsWith("/Native") == true), Is.EqualTo(publicAlternative));
             Assert.That(new AnimatorIterator.Trees().From(fx)
                 .Any(t => t.BlendParameter?.EndsWith("/LegacyLengthValid") == true || t.BlendParameter?.EndsWith("/LegacyRadiusValid") == true
-                    || t.BlendParameter?.EndsWith("/LegacyLengthSample") == true || t.BlendParameter?.EndsWith("/LegacyRadiusSample") == true), Is.False);
-            Set(Main(false), 1, 0.2f, length: 0.4f, radius: 0.05f);
+                    || t.BlendParameter?.EndsWith("/LegacyLengthSample") == true || t.BlendParameter?.EndsWith("/LegacyRadiusSample") == true),
+                Is.EqualTo(publicAlternative));
+            var legacyWriters = new AnimatorIterator.Clips().From(fx)
+                .SelectMany(clip => clip.GetFloatBindings())
+                .Select(binding => binding.propertyName)
+                .Where(name => name.Contains("/Legacy") && (name.EndsWith("Estimate") || name.EndsWith("HelperRadius")))
+                .Distinct();
+            Assert.That(legacyWriters.Count(), Is.EqualTo(publicAlternative ? 3 : 0));
+            var receiver = root.GetComponentsInChildren<VRCContactReceiver>()
+                .Single(r => r.allowOthers && r.collisionTags.Any(t => t.StartsWith(SpsTags.Prefix)));
+            Set(receiver, 1, 0.2f, length: 0.4f, radius: 0.05f, native: true);
             Evaluate();
             Assert.That(playable.GetFloat(depth), Is.EqualTo(-0.2f).Within(0.001f));
             Assert.That(playable.GetFloat("Injected depth"), Is.EqualTo(-0.2f).Within(0.001f));
             Assert.That(playable.GetFloat(radius), Is.EqualTo(0.05f).Within(0.001f));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SocketReciprocalResetsOnContactLossAndSettlesAfterImmediateReentry(bool optimize) {
+            optimizeTrees = optimize;
+            var outputs = Socket(false)(Party.Self);
+            var depth = outputs(SpsDepthPlugLengths);
+            var entryRadius = outputs(SpsPlugEntryRadiusMeters);
+            var inverse = fx.parameters.Single(p => p.name.EndsWith("/Length/Inverted"));
+            Start();
+            var receiver = Main();
+            Set(receiver, 1, 0.6f, length: 0.8f, radius: 0.02f);
+            Evaluate();
+            Assert.That(playable.GetFloat(depth), Is.EqualTo(-0.25f).Within(0.0001f));
+            Assert.That(playable.GetFloat(entryRadius), Is.EqualTo(0.02f).Within(0.0001f));
+
+            Set(receiver, 0, -1);
+            Evaluate(1);
+            Assert.That(playable.GetFloat(inverse.name), Is.EqualTo(1 / 0.3f).Within(0.0001f));
+            Assert.That(playable.GetFloat(entryRadius), Is.Zero);
+
+            Set(receiver, 1, 0.3f, length: 0.6f, radius: 0.04f);
+            Evaluate(1);
+            Assert.That(playable.GetFloat(depth), Is.EqualTo(-1).Within(0.0001f));
+            Assert.That(playable.GetFloat(entryRadius), Is.Zero);
+            Evaluate(1);
+            Assert.That(playable.GetFloat(depth), Is.EqualTo(-1).Within(0.0001f));
+            Assert.That(playable.GetFloat(entryRadius), Is.EqualTo(0.04f).Within(0.0001f));
+            Evaluate(2);
+            Assert.That(playable.GetFloat(depth), Is.EqualTo(-0.5f).Within(0.0001f));
         }
 
         [Test]
@@ -824,6 +872,34 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void LegacySizeEstimatesSkipIdleAndCaptureTheFirstSampleAfterNativeContact() {
+            var outputs = Socket()(Party.Others);
+            var length = outputs(SpsPlugLengthMeters);
+            _ = outputs(SpsPlugRadiusMeters);
+            var estimates = fx.parameters.Where(p => p.name.EndsWith("/LegacyLengthEstimate")
+                || p.name.EndsWith("/LegacyHelperRadius") || p.name.EndsWith("/LegacyRadiusEstimate")).ToArray();
+            Assert.That(estimates, Has.Length.EqualTo(3));
+            Start();
+
+            // A stale separation and a nearby width helper must not keep the estimates running.
+            Set(Main(false), 0, 2);
+            Set(Width(false), .6f, 1);
+            Evaluate();
+            foreach (var estimate in estimates) Assert.That(playable.GetFloat(estimate), Is.Zero);
+
+            Set(Main(false), .8f, .8f, length: .7f, native: true);
+            Evaluate();
+            Assert.That(playable.GetFloat(length), Is.EqualTo(.7f).Within(.001f));
+
+            Set(Main(false), .8f, .8f);
+            Evaluate(1);
+            Set(Main(false), 1, .4f);
+            Evaluate();
+            Assert.That(playable.GetFloat(length), Is.EqualTo(.6f).Within(.001f),
+                "Keep the one available unsaturated sample even when the previous contact was native");
+        }
+
+        [Test]
         public void LegacySizeValidationDoesNotDuplicateTheCacheFallback() {
             var outputs = Socket()(Party.Others);
             _ = outputs(SpsPlugLengthMeters);
@@ -1006,6 +1082,50 @@ namespace VF.Tests {
             Evaluate();
             Assert.That(playable.GetFloat(depth), Is.EqualTo(-0.1f).Within(0.001f));
             Assert.That(playable.GetFloat(length), Is.EqualTo(0.2f).Within(0.001f));
+        }
+
+        [Test]
+        public void PlugMeasurementsUseCalibratedRawScale() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            optimizeTrees = true;
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.05f;
+            var frame = injector.GetService<PlugFrameService>().Get(plug);
+            frame.localScale = Vector3.one * 2;
+            var receivers = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
+            var bake = new VRCFuryHapticPlugEditor.BakeResult {
+                bakeRoot = frame,
+                socketReceivers = receivers,
+                localLength = 0.4f,
+                localRadius = 0.05f
+            };
+            var detector = injector.GetService<WorldScaleDetectorService>();
+            var raw = detector.GetRawWorldScale(frame, "Test");
+            var measurements = injector.GetService<SpsPlugMeasurementsService>().GetMeasurements(bake, "Test")(Party.Self);
+            var length = measurements(SpsPlugLengthMeters);
+            var radius = measurements(SpsPlugRadiusMeters);
+            var depth = measurements(SpsDepthMeters);
+            var source = receiverAnimator.GetParameter(receivers, Party.Self);
+            Start();
+            var rawScaleBindings = new AnimatorIterator.Trees().From(fx)
+                .SelectMany(tree => tree.children)
+                .Where(child => child.directBlendParameter == raw.name)
+                .SelectMany(child => new AnimatorIterator.Clips().From(child.motion))
+                .SelectMany(clip => clip.GetFloatBindings())
+                .Select(binding => binding.propertyName)
+                .ToArray();
+            Assert.That(rawScaleBindings, Is.EquivalentTo(new[] { length.name, radius.name, depth.name }));
+            var contact = root.GetComponentsInChildren<VRCContactReceiver>(true).Single(r => r.parameter == source.name);
+            Set(contact, 0.5f, 0.5f);
+            Evaluate();
+            playable.SetFloat(raw, 0.02f);
+            Evaluate(1);
+            Assert.That(playable.GetFloat(length), Is.EqualTo(1.6f).Within(0.0001f));
+            Assert.That(playable.GetFloat(radius), Is.EqualTo(0.2f).Within(0.0001f));
+            Assert.That(playable.GetFloat(depth), Is.EqualTo(-1.1f).Within(0.0001f));
         }
 
         [Test]
@@ -1284,7 +1404,6 @@ namespace VF.Tests {
             calculations.Add(output.MakeSetter(9));
             var detector = injector.GetService<WorldScaleDetectorService>();
             var raw = detector.GetRawWorldScale(owner, "Owner");
-            var scale = detector.GetWorldScale(owner, "Owner");
             var inverse = detector.GetInverseWorldScale(owner, "Owner");
             // Defaults are captured after helpers have contributed and resting values have changed.
             output.SetDefault(5);
@@ -1292,12 +1411,10 @@ namespace VF.Tests {
             playable.SetFloat(raw, 0.02f);
             Evaluate();
             Assert.That(playable.GetFloat(output), Is.EqualTo(9));
-            Assert.That(playable.GetFloat(scale), Is.EqualTo(4).Within(0.001f));
             Assert.That(playable.GetFloat(inverse), Is.EqualTo(0.25f).Within(0.001f));
             playable.SetFloat(enabled, 0);
             Evaluate(4);
             Assert.That(playable.GetFloat(output), Is.EqualTo(5));
-            Assert.That(playable.GetFloat(scale), Is.EqualTo(4).Within(0.001f));
             Assert.That(playable.GetFloat(inverse), Is.EqualTo(0.25f).Within(0.001f));
             Assert.That(playable.IsParameterControlledByCurve(raw), Is.False);
         }
@@ -1339,11 +1456,10 @@ namespace VF.Tests {
             var detector = injector.GetService<WorldScaleDetectorService>();
             const float bakedLength = 0.4f;
             var rawParameter = detector.GetRawWorldScale(root, "Scale consumer", reportLength ? "OGB/Plug/Test/LengthMult1" : null);
-            Assert.That(fx.parameters.Any(p => p.name.Contains("WSD - Scale consumer - Final")), Is.False);
             var inverse = detector.GetInverseWorldScale(root, "Inverse consumer");
             Assert.That(detector.GetInverseWorldScale(root, "Another inverse consumer"), Is.SameAs(inverse));
-            Assert.That(fx.parameters.Any(p => p.name.Contains("WSD - Scale consumer - Final")), Is.False);
-            var measuredScale = detector.GetWorldScale(root, "Scale consumer");
+            var scaleInput = detector.GetRawWorldScaleWithMultiplier(root, "Cached consumer");
+            Assert.That(scaleInput.raw, Is.SameAs(rawParameter));
             var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).Single();
             Assert.That(receiver.parameter, Is.EqualTo(rawParameter.name));
             var sender = root.GetComponentsInChildren<VRCContactSender>(true).Single();
@@ -1351,10 +1467,8 @@ namespace VF.Tests {
             var anchor = outer.parent;
             Assert.That(receiver.transform.localPosition.x, Is.EqualTo(1 / (100 * uploadScale)).Within(0.000001f));
             Assert.That(outer.GetComponent<ScaleConstraint>().GetSource(0).sourceTransform, Is.EqualTo(root.transform));
-            Assert.That(detector.GetWorldScale(root, "Cached consumer"), Is.SameAs(measuredScale));
             if (reportLength) {
                 Assert.That(receiver.parameter, Is.EqualTo("OGB/Plug/Test/LengthMult1"));
-                Assert.That(detector.GetWorldScale(root, "OGB consumer", "OGB/Plug/Test/LengthMult1"), Is.SameAs(measuredScale));
             }
             injector.GetService<IsObjectEnabledService>().Get(root).SetDefault(true);
             Start();
@@ -1413,7 +1527,7 @@ namespace VF.Tests {
                     if (reportLength) Assert.That(raw * (bakedLength * 100),
                         Is.EqualTo(bakedLength * resize).Within(0.002f), "OGB world length at resize " + resize);
                     Evaluate();
-                    Assert.That(playable.GetFloat(measuredScale), Is.EqualTo(uploadScale * resize).Within(0.005f * uploadScale));
+                    Assert.That(raw * scaleInput.multiplier, Is.EqualTo(uploadScale * resize).Within(0.005f * uploadScale));
                     Assert.That(playable.GetFloat(inverse), Is.EqualTo(1 / (uploadScale * resize)).Within(0.005f / (uploadScale * resize)));
                 }
             } finally {
@@ -2196,7 +2310,8 @@ namespace VF.Tests {
                 Assert.That(plugHaptics.All(r => !r.gameObject.activeSelf), Is.True);
                 Assert.That(plugSelf.gameObject.activeSelf && plugOthers.gameObject.activeSelf, Is.True);
                 var scaleDetector = injector.GetService<WorldScaleDetectorService>();
-                var measuredScale = scaleDetector.GetWorldScale(plugRoot, "Another consumer");
+                var rawScale = scaleDetector.GetRawWorldScale(plugRoot, "Another consumer");
+                Assert.That(rawScale.name, Is.EqualTo(lengthReceiver.parameter));
                 Assert.That(receivers.Count(r => r.collisionTags.Contains("VRCF_WSD")
                     && r.transform.parent.GetComponent<ScaleConstraint>().GetSource(0).sourceTransform == plugRoot), Is.EqualTo(1));
                 Assert.That(fx.parameters.Single(p => p.name == lengthReceiver.parameter).GetDefault(), Is.EqualTo(0.01f).Within(0.000001f));
@@ -2237,11 +2352,9 @@ namespace VF.Tests {
                 Assert.That(playable.GetFloat(socketSelf.parameter + "_PointSeparation"), Is.EqualTo(0.6f));
                 Assert.That(playable.GetFloat(plugSelf.parameter), Is.EqualTo(0.6875f));
                 Assert.That(playable.GetFloat(plugSelf.parameter + "_PointSeparation"), Is.EqualTo(0.2f));
-                Assert.That(playable.GetFloat(measuredScale), Is.EqualTo(1).Within(0.001f));
                 playable.SetFloat(lengthReceiver.parameter, 0.02f);
                 Evaluate();
                 Assert.That(playable.GetFloat(lengthReceiver.parameter) * lengthMult.defaultValue, Is.EqualTo(0.8f).Within(0.001f));
-                Assert.That(playable.GetFloat(measuredScale), Is.EqualTo(2).Within(0.001f));
                 Set(socketSelf, 0, -1);
                 Set(plugSelf, 0, -1);
                 Evaluate();
@@ -2286,8 +2399,6 @@ namespace VF.Tests {
             baker.Apply();
             var multiplier = injector.GetService<ExpressionParamsService>().Single(p => p.name == "OGB/Plug/Test/LengthMult2");
             Assert.That(multiplier.defaultValue, Is.EqualTo(40 * resize).Within(0.0001f));
-            Assert.That(fx.parameters.Any(p => p.name.Contains("WSD - Test - Final")), Is.False,
-                "Naming the public raw detector and requesting constant dimensions must not force decoded scale");
             Start();
             Evaluate();
             foreach (var (source, expected) in constants) {
@@ -2713,26 +2824,68 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void IndependentStaticDepthActionCanBeOptimized() {
+        public void IndependentStaticSpsActionFoldsEmptyRampEnd(
+            [Values] bool increasing,
+            [Values] bool toggleOwner,
+            [Values] bool drivesParameter
+        ) {
             optimizeTrees = true;
-            injector.Set("componentObject", new Func<VFGameObject>(() => root));
-            var input = fx.CreateUniqueFloat("Depth", 0.1f);
+            var owner = toggleOwner ? GameObjects.Create("Socket frame", root) : root.asVf();
+            injector.Set("componentObject", new Func<VFGameObject>(() => owner));
+            VFAParam enable = null;
+            if (toggleOwner) {
+                enable = fx.CreateUniqueFloat("Enable socket", 1);
+                enable.MakeExpressionFloat(synced: false);
+                var off = VFClip.Create("Disable socket");
+                var on = VFClip.Create("Enable socket");
+                off.SetEnabled(owner, false);
+                on.SetEnabled(owner, true);
+                fx.NewLayer("Socket enabled").NewState("Enabled").WithAnimation(
+                    VFBlendTree1D.CreateWithData("Socket enabled", enable, (0, off), (1, on)));
+            }
+
+            var sign = increasing ? 1 : -1;
+            var input = fx.CreateUniqueFloat("Measurement", -sign * 0.1f);
             var output = fx.GetOrCreateFloat("Independent output");
+            var light = GameObjects.Create("Test light", root).AddComponent<Light>();
+            light.intensity = 0;
             var action = new VRCFuryHapticSocket.DepthActionNew {
-                range = new Vector2(-0.25f, 0), smoothingSeconds = 0
+                range = increasing ? new Vector2(0, 0.25f) : new Vector2(-0.25f, 0),
+                smoothingSeconds = 0
             };
-            action.actionSet.actions.Add(new VF.Model.StateAction.FxFloatAction { name = output.name, value = 1 });
-            injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Independent",
-                _ => _ => input, root);
+            var clip = VFClip.Create("Static action");
+            if (drivesParameter) clip.SetAap(output, 1);
+            else clip.SetCurve(light, "m_Intensity", 1);
+            action.actionSet.actions.Add(new VF.Model.StateAction.AnimationClipAction { vfClip = clip });
+            injector.GetService<SpsDepthAnimationService>().CreateAnims(
+                new[] { action },
+                owner,
+                "Independent",
+                _ => _ => input,
+                owner,
+                measurement: increasing ? SpsParamPlugEntryRadius : SpsParamDepth
+            );
             Start();
-            Assert.That(fx.GetLayers().Any(layer => layer.name.Contains("Independent - Depth Animations")), Is.False,
+            Assert.That(fx.GetLayers().Any(layer => layer.name.StartsWith("Independent - ")), Is.False,
                 "Independent actions should remain eligible for the layer optimizer");
-            playable.SetFloat(input, -0.125f);
+            Assert.That(new AnimatorIterator.Trees().From(fx).Count(tree => tree.BlendParameter == input.name),
+                Is.EqualTo(drivesParameter ? 2 : 1));
+            float ReadOutput() => drivesParameter ? playable.GetFloat(output) : light.intensity;
+            playable.SetFloat(input, sign * 0.125f);
             Evaluate(12);
-            Assert.That(playable.GetFloat(output), Is.EqualTo(0.5f).Within(0.001f));
-            playable.SetFloat(input, 0.1f);
+            Assert.That(ReadOutput(), Is.EqualTo(0.5f).Within(0.001f));
+            if (enable != null) {
+                playable.SetFloat(enable, 0);
+                Evaluate(12);
+                Assert.That(ReadOutput(), Is.Zero.Within(0.001f));
+                playable.SetFloat(enable, 1);
+            }
+            playable.SetFloat(input, 0);
             Evaluate(12);
-            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
+            Assert.That(ReadOutput(), Is.Zero.Within(0.001f));
+            playable.SetFloat(input, -sign * 0.1f);
+            Evaluate(12);
+            Assert.That(ReadOutput(), Is.Zero.Within(0.001f));
         }
 
         [Test]

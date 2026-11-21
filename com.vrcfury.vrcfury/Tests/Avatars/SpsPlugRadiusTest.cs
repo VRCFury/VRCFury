@@ -81,9 +81,9 @@ namespace VF.Tests {
             Assert.That(bake.socketReceivers, Is.SameAs(receivers));
             var scaleDetector = injector.GetService<WorldScaleDetectorService>();
             var inverseScale = fx.GetOrCreateFloat("TestInverseWorldScale", 1 / bake.bakeRoot.worldScale.x);
-            ((Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
+            ((Dictionary<VFGameObject, (VFAParam raw, float multiplier, Lazy<VFAParam> inverse)>)
                     typeof(WorldScaleDetectorService).VFField("cache").GetValue(scaleDetector))
-                [bake.bakeRoot] = (null, null, new Lazy<VFAParam>(() => inverseScale));
+                [bake.bakeRoot] = (null, 0, new Lazy<VFAParam>(() => inverseScale));
         }
 
         [TearDown]
@@ -338,9 +338,8 @@ namespace VF.Tests {
                 graph.Evaluate(1f / 60);
                 Assert.That(light.intensity, Is.EqualTo(1.5f * multiplier * weight).Within(0.0001f));
             }
-            var cache = (Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
+            var cache = (Dictionary<VFGameObject, (VFAParam raw, float multiplier, Lazy<VFAParam> inverse)>)
                 typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector);
-            Assert.That(cache[reference].scale.IsValueCreated, Is.False);
             Assert.That(cache[reference].inverse.IsValueCreated, Is.False);
         }
 
@@ -434,7 +433,7 @@ namespace VF.Tests {
             Assert.That(UnityEditor.ShaderUtil.ShaderHasError(material.shader), Is.False);
             var detector = injector.GetService<WorldScaleDetectorService>();
             var raw = detector.GetRawWorldScale(upperLeg, "SPS Leg Spacing");
-            var cache = (Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)>)
+            var cache = (Dictionary<VFGameObject, (VFAParam raw, float multiplier, Lazy<VFAParam> inverse)>)
                 typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector);
             Start(() => {
                 var initialRadius = overridden ? localRadius * uploadScale : 0;
@@ -465,7 +464,7 @@ namespace VF.Tests {
                 }
             }
             Assert.That(cache.Keys.Count(obj => obj == upperLeg), Is.EqualTo(1));
-            Assert.That(cache[upperLeg].scale.IsValueCreated, Is.False);
+            Assert.That(cache[upperLeg].inverse.IsValueCreated, Is.False);
         }
 
         [TestCase(0f)]
@@ -519,11 +518,13 @@ namespace VF.Tests {
             }
             playable.SetFloat(mergedParameterName, 0);
             playable.SetFloat(mergedParameterName + "_PointSeparation", -1);
-            for (var i = 0; i < 3; i++) graph.Evaluate(1f / 60);
+            graph.Evaluate(1f / 60);
             Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(MinimumRadius * scale).Within(0.0001f));
             playable.SetFloat(mergedParameterName, 1);
             playable.SetFloat(mergedParameterName + "_PointSeparation", 0);
-            for (var i = 0; i < 3; i++) graph.Evaluate(1f / 60);
+            graph.Evaluate(1f / 60);
+            Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(MinimumRadius * scale).Within(0.0001f));
+            graph.Evaluate(1f / 60);
             Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(0.06f * scale).Within(0.0001f));
         }
 

@@ -22,12 +22,17 @@ namespace VF.Service {
             var fx = controllers.GetFx();
             var localLength = bake.localLength;
             var localRadius = bake.localRadius;
-            var worldScale = new Lazy<VFAParam>(() => worldScaleService.GetWorldScale(bake.bakeRoot, name));
+            var scaleInput = new Lazy<(VFAParam raw, float multiplier)>(() =>
+                worldScaleService.GetRawWorldScaleWithMultiplier(bake.bakeRoot, name));
             var inverseWorldScale = new Lazy<VFAParam>(() => worldScaleService.GetInverseWorldScale(bake.bakeRoot, name));
             var tree = receiverAnimator.GetTree(main);
             var math = new BlendtreeMath(fx, tree);
-            var length = new Lazy<VFAParam>(() => math.Multiply(name + "/LengthMeters", worldScale.Value, localLength));
-            var radius = new Lazy<VFAParam>(() => math.Multiply(name + "/RadiusMeters", worldScale.Value, localRadius));
+            var length = new Lazy<VFAParam>(() => ToMeters(name + "/LengthMeters", localLength));
+            var radius = new Lazy<VFAParam>(() => ToMeters(name + "/RadiusMeters", localRadius));
+            VFAParam ToMeters(string label, float localSize) {
+                var (raw, multiplier) = scaleInput.Value;
+                return math.Multiply(label, raw, localSize * multiplier);
+            }
             var localLengthParam = new Lazy<VFAParam>(() => fx.CreateUniqueFloat(name + "/PlugLengthLocal", localLength));
             var localRadiusParam = new Lazy<VFAParam>(() => fx.CreateUniqueFloat(name + "/PlugRadiusLocal", localRadius));
             var normalizedRadius = new Lazy<VFAParam>(() => fx.CreateUniqueFloat(name + "/PlugRadiusInPlugLengths",
@@ -47,8 +52,13 @@ namespace VF.Service {
                     native.Value.CreateBranches(presence.Value.whenTrue, prefix + "/Native"));
                 var distance = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Dist/Meters", 100);
-                    presence.Value.whenTrue.Add(BlendtreeMath.Add(prefix + "/Dist/Socket", output,
-                        (Field("PointSeparation"), 1), (worldScale.Value, -localLength)));
+                    var (raw, multiplier) = scaleInput.Value;
+                    presence.Value.whenTrue.Add(BlendtreeMath.Add(
+                        prefix + "/Dist/Socket",
+                        output,
+                        (Field("PointSeparation"), 1),
+                        (raw, -localLength * multiplier)
+                    ));
                     presence.Value.whenFalse.Add(output.MakeSetter(100));
                     return output;
                 });

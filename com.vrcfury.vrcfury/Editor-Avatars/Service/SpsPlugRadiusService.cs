@@ -55,24 +55,30 @@ namespace VF.Service {
             // inversion is cached. Moving the socket passes through one multiplication AAP.
             var product = VFBlendTreeDirect.Create("Socket distance in plug lengths");
             product.Add(separation, normalizedDistance.MakeSetter(1 / bake.localLength));
-            var scaled = VFBlendTreeDirect.Create("Normalize socket distance");
-            scaled.Add(inverseScale, product);
+            var contact = VFBlendTreeDirect.Create("Sample plug radius at socket");
+            contact.Add(inverseScale, product);
+            contact.Add(MakeSampler(bake, normalizedDistance));
+            var idle = normalizedDistance.MakeSetter(1);
+            SetSenderRadius(bake, idle, bake.radiusCurve.Evaluate(1));
             tree.Add(normalizedDistance.MakeSetter(0));
             tree.Add(BlendtreeMath.GreaterThan(proximity, 0).And(BlendtreeMath.GreaterThan(separation, 0, true))
-                .create(scaled, normalizedDistance.MakeSetter(1)));
-            tree.Add(MakeSampler(bake, normalizedDistance));
+                .create(contact, idle));
         }
 
         private static VFMotion MakeSampler(VRCFuryHapticPlugEditor.BakeResult bake, VFAParam normalizedDistance) {
             var sampler = VFBlendTree1D.Create("Radius at socket", normalizedDistance);
             foreach (var key in bake.radiusCurve.keys) {
                 var clip = VFClip.Create("Radius at " + key.time);
-                clip.SetScale(bake.mainSender, new Vector3(bake.mainSender.localScale.x,
-                    Mathf.Clamp(key.value, bake.localMinimumRadius, bake.localLength),
-                    bake.mainSender.localScale.z));
+                SetSenderRadius(bake, clip, key.value);
                 sampler.Add(key.time, clip);
             }
             return sampler;
+        }
+
+        private static void SetSenderRadius(VRCFuryHapticPlugEditor.BakeResult bake, VFClip clip, float radius) {
+            var scale = bake.mainSender.localScale;
+            scale.y = Mathf.Clamp(radius, bake.localMinimumRadius, bake.localLength);
+            clip.SetScale(bake.mainSender, scale);
         }
 
     }

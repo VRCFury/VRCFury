@@ -10,6 +10,7 @@ using VF.Builder;
 using VF.Feature;
 using VF.Feature.Base;
 using VF.Injector;
+using VF.Inspector;
 using VF.Menu;
 using VF.Model.Feature;
 using VF.Utils;
@@ -209,8 +210,14 @@ namespace VF.Service {
                 }
             }
 
+            var motion0 = Make0LengthClipForState(layer, state0);
+            var motion1 = Make0LengthClipForState(layer, state1);
+            var valid0 = validateBindingsService.HasValidBinding(motion0, avatarObject);
+            var valid1 = validateBindingsService.HasValidBinding(motion1, avatarObject);
+            if (!valid0 && !valid1) throw new DoNotOptimizeException($"Contains no valid bindings");
+
             var condition = BlendtreeMath.False();
-            foreach (var transition in to0) {
+            foreach (var transition in RemoveTransitionsCoveredByTree(to0, motion0, motion1)) {
                 var all = BlendtreeMath.True();
                 foreach (var c in transition) {
                     var input = GetExistingParameter(c.parameter);
@@ -227,11 +234,6 @@ namespace VF.Service {
                 }
                 condition = condition.Or(all);
             }
-            var motion0 = Make0LengthClipForState(layer, state0);
-            var motion1 = Make0LengthClipForState(layer, state1);
-            var valid0 = validateBindingsService.HasValidBinding(motion0, avatarObject);
-            var valid1 = validateBindingsService.HasValidBinding(motion1, avatarObject);
-            if (!valid0 && !valid1) throw new DoNotOptimizeException("Contains no valid bindings");
             var candidate = condition.create(motion0, motion1);
             var trees = new AnimatorIterator.Trees();
             var addedTrees = trees.From(candidate).Count - trees.From(state0.motion).Count() - trees.From(state1.motion).Count();
@@ -239,6 +241,33 @@ namespace VF.Service {
             directTree.Value.Add(candidate);
         }
         
+        private IEnumerable<AnimatorCondition[]> RemoveTransitionsCoveredByTree(
+            AnimatorCondition[][] transitions,
+            VFMotion off,
+            VFMotion on
+        ) {
+            static bool IsEmpty(VFMotion motion) => motion == null
+                || motion is VFClip clip && clip.GetAllBindings().Length == 0 && clip.GetLengthInSeconds() == 0;
+
+            if (!IsEmpty(off) || on is not VFTree tree || tree.blendType != BlendTreeType.Simple1D
+                || tree.children.Count != 2 || !fx.TryGetParam(tree.BlendParameter, out var input)
+                || input.type != AnimatorControllerParameterType.Float) return transitions;
+            var stops = tree.children.OrderBy(child => child.threshold).ToArray();
+            var low = stops[0];
+            var high = stops[1];
+            if (!(low.threshold < high.threshold)
+                || float.IsInfinity(low.threshold) || float.IsInfinity(high.threshold)) return transitions;
+
+            // The On tree already clamps to an empty clip on this side of the comparison.
+            return transitions.Where(transition => transition.Length != 1 || !AlreadyCoveredByTree(transition[0]));
+
+            bool AlreadyCoveredByTree(AnimatorCondition condition) => condition.parameter == tree.BlendParameter && (condition.mode switch {
+                AnimatorConditionMode.Less => VRCFuryEditorUtils.NextFloatDown(condition.threshold) == low.threshold && IsEmpty(low.motion),
+                AnimatorConditionMode.Greater => VRCFuryEditorUtils.NextFloatUp(condition.threshold) == high.threshold && IsEmpty(high.motion),
+                _ => false
+            });
+        }
+
         private static bool IsEntryOnlyState(VFLayer layer, VFState state) {
             return layer.defaultState == state && GetTransitionsTo(layer, state).Count == 0;
         }

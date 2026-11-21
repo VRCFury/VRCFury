@@ -34,7 +34,7 @@ namespace VF.Service {
         private readonly Lazy<BlendtreeMath> math;
         private readonly Lazy<Vector3> offset;
         private readonly Lazy<VFGameObject> senderObject;
-        private readonly Dictionary<VFGameObject, (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse)> cache = new();
+        private readonly Dictionary<VFGameObject, (VFAParam raw, float multiplier, Lazy<VFAParam> inverse)> cache = new();
 
         public WorldScaleDetectorService() {
             directTree = new Lazy<VFBlendTreeDirect>(() => dbtLayerService.Create());
@@ -54,9 +54,8 @@ namespace VF.Service {
             VFBlendTreeDirect tree = null,
             float offset = 0
         ) {
-            var rawScale = GetRawWorldScale(scaleReference, "Property scale compensation");
+            var (rawScale, multiplier) = GetRawWorldScaleWithMultiplier(scaleReference, "Property scale compensation");
             if (rawScale == null) return;
-            var multiplier = MaxDetectedScale * scaleReference.worldScale.x;
             tree ??= objectTrees.Get(scaleReference);
             // Prevent Unity from adding authored defaults when the raw weight is below one.
             var baseClip = VFClip.Create("Scale compensation base");
@@ -77,14 +76,14 @@ namespace VF.Service {
             }
         }
 
-        [CanBeNull]
-        // Returns the live absolute world scale of localSpace.
-        // An explicit receiver parameter name must be supplied on the first request.
-        public VFAParam GetWorldScale(VFGameObject localSpace, string name, string parameterName = null) {
-            return GetDetector(localSpace, name, parameterName).scale?.Value;
+        // Multiply the raw receiver value by this factor to get absolute world scale.
+        public (VFAParam raw, float multiplier) GetRawWorldScaleWithMultiplier(VFGameObject localSpace, string name) {
+            var detector = GetDetector(localSpace, name);
+            return (detector.raw, detector.multiplier);
         }
 
         [CanBeNull]
+        // Supply an explicit receiver parameter name on the first request.
         public VFAParam GetRawWorldScale(VFGameObject localSpace, string name, string parameterName = null) {
             return GetDetector(localSpace, name, parameterName).raw;
         }
@@ -94,11 +93,11 @@ namespace VF.Service {
             return GetDetector(localSpace, name).inverse?.Value;
         }
 
-        private (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse) GetDetector(
+        private (VFAParam raw, float multiplier, Lazy<VFAParam> inverse) GetDetector(
             VFGameObject localSpace, string name, string parameterName = null) =>
             cache.GetOrCreate(localSpace, () => Create(localSpace, name, parameterName));
 
-        private (VFAParam raw, Lazy<VFAParam> scale, Lazy<VFAParam> inverse) Create(
+        private (VFAParam raw, float multiplier, Lazy<VFAParam> inverse) Create(
             VFGameObject localSpace, string name, string parameterName) {
             if (!BuildTargetUtils.IsDesktop()) {
                 return default;
@@ -118,8 +117,9 @@ namespace VF.Service {
 
             overlappingService.Activate();
 
+            var multiplier = MaxDetectedScale * localSpace.worldScale.x;
             var innerObj = GameObjects.Create("Inner", outerObj);
-            innerObj.localPosition = new Vector3(ContactRadius / (MaxDetectedScale * localSpace.worldScale.x), 0, 0);
+            innerObj.localPosition = new Vector3(ContactRadius / multiplier, 0, 0);
             ConstraintUtils.MakeWorldSpace(innerObj);
 
             var localReceiver = innerObj.AddComponent<VRCContactReceiver>();
@@ -137,10 +137,9 @@ namespace VF.Service {
             directTree.Value.Add(BlendtreeMath.GreaterThan(isObjectEnabledService.Get(localSpace), 0)
                 .create(receiverOn, null));
 
-            var multiplier = MaxDetectedScale * localSpace.worldScale.x;
             return (
                 receiverParam,
-                new Lazy<VFAParam>(() => math.Value.Multiply($"WSD - {name} - Final", receiverParam, multiplier)),
+                multiplier,
                 new Lazy<VFAParam>(() => math.Value.Invert($"WSD - {name} - Inverse", receiverParam, multiplier))
             );
         }
