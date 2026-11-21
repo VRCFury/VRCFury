@@ -53,5 +53,33 @@ namespace com.vrcfury.api.Actions {
             a.value = value;
             s.actions.Add(a);
         }
+
+        private MaterialPropertyAction CreateMaterialPropertyAction(string propertyName, GameObject renderer) {
+            var m = new MaterialPropertyAction();
+            if (renderer != null) {
+                m.affectAllMeshes = false;
+                m.renderer2 = renderer;
+            } else {
+                m.affectAllMeshes = true;
+            }
+            m.propertyName = propertyName;
+            s.actions.Add(m);
+            return m;
+        }
+
+        public void AddMaterialProperty(string propertyName, float value, GameObject renderer = null) {
+            var m = CreateMaterialPropertyAction(propertyName, renderer);
+            m.value = value;
+        }
+
+        public void AddMaterialProperty(string propertyName, Vector4 value, GameObject renderer = null) {
+            var m = CreateMaterialPropertyAction(propertyName, renderer);
+            m.valueVector = value;
+        }
+
+        public void AddMaterialProperty(string propertyName, Color value, GameObject renderer = null) {
+            var m = CreateMaterialPropertyAction(propertyName, renderer);
+            m.valueColor = value;
+        }
     }
 }
