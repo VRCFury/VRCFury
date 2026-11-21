@@ -11,8 +11,12 @@ import { ZipArchive } from 'archiver';
 import { once } from 'node:events';
 
 const [vrcfuryRepoPathArg, versionManifestRepoPathArg] = process.argv.slice(2);
+const sourceCommit = process.env.GITHUB_SHA;
 if (!vrcfuryRepoPathArg || !versionManifestRepoPathArg) {
     throw new Error('Usage: bundle.js <vrcfury-repo-path> <version-manifest-repo-path>');
+}
+if (!sourceCommit) {
+    throw new Error('GITHUB_SHA must be set to the tested source commit');
 }
 
 const updatesJsonPath = path.join(versionManifestRepoPathArg, 'updates.json');
@@ -101,12 +105,10 @@ try {
             existingVcc.versions[version] = vccPackage;
         }
 
-        await spawn('git', [ 'config', '--global', 'user.email', 'noreply@vrcfury.com' ], { stdio: "inherit", cwd: vrcfuryRepoPathArg });
-        await spawn('git', [ 'config', '--global', 'user.name', 'VRCFury Releases' ], { stdio: "inherit", cwd: vrcfuryRepoPathArg });
-        await spawn('git', [ 'commit', '-m', `${json.displayName} v${version}`, path.relative(vrcfuryRepoPathArg, packageJsonPath) ], { stdio: "inherit", cwd: vrcfuryRepoPathArg });
-        await spawn('git', [ 'tag', tagName ], { stdio: "inherit", cwd: vrcfuryRepoPathArg });
-        await spawn('git', [ 'push', 'origin', tagName ], { stdio: "inherit", cwd: vrcfuryRepoPathArg });
-        await spawn('git', [ 'checkout', process.env.GITHUB_SHA ], { stdio: "inherit", cwd: vrcfuryRepoPathArg });
+        await spawn('git', [ 'push', 'origin', `${sourceCommit}:refs/tags/${tagName}` ], {
+            stdio: "inherit",
+            cwd: vrcfuryRepoPathArg
+        });
 
         await spawn('gh', [
             'release',

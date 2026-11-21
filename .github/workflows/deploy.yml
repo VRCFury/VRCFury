@@ -2,7 +2,7 @@ name: 'Deploy'
 on: push
 
 env:
-  GAMECI_VERSION: 4.0.0
+  GAMECI_VERSION: 3.2.2
 
 jobs:
   test:
@@ -12,9 +12,9 @@ jobs:
       fail-fast: false
       matrix:
         vrcsdkUnityVersion:
-          - [ 3.10.6, 2022.3.22f1 ]
-          - [ 3.11.0-beta.1, 6000.6.10f1 ]
+          - [ 3.11.0-beta.1, 6000.6.9f1 ]
           - [ 3.11.0-beta.1, 6000.0.67f1 ]
+          - [ 3.10.6, 2022.3.22f1 ]
           - [ 3.10.5, 2022.3.22f1 ]
           - [ 3.7.0, 2022.3.6f1 ]
           - [ 3.6.1, 2022.3.6f1 ]
