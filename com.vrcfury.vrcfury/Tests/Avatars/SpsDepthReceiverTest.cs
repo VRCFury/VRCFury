@@ -60,6 +60,13 @@ namespace VF.Tests {
             public Vector3? GetAvatarViewPosition(VFGameObject obj) => new Vector3(0, 2, 0);
         }
 
+        private sealed class AutoSelectionBones : SpsAutoChannelGenerator {
+            public HumanBodyBones? GetClosestBone(VFGameObject obj) =>
+                obj.name == "SocketB" ? HumanBodyBones.Chest : HumanBodyBones.Hips;
+            public VFGameObject GetBone(VFGameObject obj, HumanBodyBones requested) => null;
+            public Vector3? GetAvatarViewPosition(VFGameObject obj) => new Vector3(0, 1.8f, 0);
+        }
+
         [SetUp]
         public void SetUp() {
             optimizeTrees = false;
@@ -1461,11 +1468,12 @@ namespace VF.Tests {
             }
         }
 
-        [TestCase(false, false)]
-        [TestCase(true, false)]
-        [TestCase(false, true)]
-        [TestCase(true, true)]
-        public void AutoSelectionUsesCloseContactHysteresisAndLocksActiveSocket(bool remote, bool manualSocket) {
+        [TestCase(false, false, false)]
+        [TestCase(true, false, false)]
+        [TestCase(false, true, false)]
+        [TestCase(true, true, false)]
+        [TestCase(false, false, true)]
+        public void AutoSelectionUsesCloseContactHysteresisAndLocksActiveSocket(bool remote, bool manualSocket, bool sharedBone) {
             if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             root.GetComponent<VRCAvatarDescriptor>().ViewPosition = new Vector3(0, 1.8f, 0);
             foreach (var name in new[] { "SocketA", "SocketB", "NoMenu" }) {
@@ -1479,6 +1487,23 @@ namespace VF.Tests {
             globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
             globals.allFeaturesInRun = new List<FeatureModel> { new SpsOptions { autoModeAvailable = true, legacyModeAvailable = false } };
             globals.addOtherFeature = _ => { };
+            VFAParam plugOn = null;
+            if (sharedBone) {
+                injector.Set("autoChannelGenerator", new AutoSelectionBones());
+                var plugOwner = GameObjects.Create("Plug", root);
+                var plug = plugOwner.AddComponent<VRCFuryHapticPlug>();
+                plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+                plug.unitsInMeters = true;
+                plug.length = .4f;
+                plug.radius = .04f;
+                injector.GetService<BakeHapticPlugsService>().ApplyEarlyBake();
+                plugOn = fx.GetOrCreateFloat("Plug On", 1);
+                var on = VFClip.Create("Plug On");
+                var off = VFClip.Create("Plug Off");
+                on.SetEnabled(plugOwner, true);
+                off.SetEnabled(plugOwner, false);
+                tree.Add(BlendtreeMath.GreaterThan(plugOn, .5f).create(on, off));
+            }
             injector.GetService<BakeHapticSocketsService>().Apply();
             var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).Single(r => r.gameObject.name == "SpsAutoDistance");
             Assert.That(receiver.collisionTags, Is.EqualTo(new[] { SpsTags.PlugClose }));
@@ -1524,6 +1549,18 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(b), Is.Zero);
             Assert.That(receiver.gameObject.activeSelf, Is.EqualTo(!remote));
             if (remote) return;
+            if (sharedBone) {
+                proximityA = proximityB = 1;
+                Tick(120);
+                Assert.That(playable.GetFloat(a), Is.Zero, "An active plug on the same bone blocks this socket");
+                Assert.That(playable.GetFloat(b), Is.EqualTo(1), "A socket on a different bone remains eligible");
+                playable.SetFloat(plugOn, 0);
+                proximityB = 0;
+                Tick(120);
+                Assert.That(playable.GetFloat(a), Is.EqualTo(1), "The socket becomes eligible when the plug's parent turns off");
+                Assert.That(playable.GetFloat(b), Is.Zero);
+                return;
+            }
             if (manualSocket) {
                 proximityA = 1;
                 Tick(120);

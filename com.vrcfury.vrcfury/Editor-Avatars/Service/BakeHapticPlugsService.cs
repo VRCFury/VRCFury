@@ -46,6 +46,9 @@ namespace VF.Service {
         private readonly Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
             new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
 
+        public IEnumerable<(VRCFuryHapticPlug plug, VFGameObject bakeRoot)> GetBakedPlugs() =>
+            bakeResults.Select(pair => (pair.Key, pair.Value.bakeRoot));
+
         /**
          * We do mesh analysis early, and in a separate step from the rest, so that the post-bake action can be applied
          * before things like toggles are built

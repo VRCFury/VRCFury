@@ -41,6 +41,7 @@ namespace VF.Service {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly VRCFuryHapticSocketBaker socketBaker;
+        [VFAutowired] private readonly BakeHapticPlugsService bakedPlugs;
         [VFAutowired] private readonly SpsChannelsService channels;
         [VFAutowired] private readonly SpsAutoChannelGenerator autoChannelGenerator;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
@@ -88,7 +89,7 @@ namespace VF.Service {
             var legacyOn = hasSockets ? spsOptions.GetLegacyParameter() : null;
             var legacyOnClip = hasSockets ? spsOptions.GetLegacyOnClip() : null;
 
-            var autoSockets = new List<Tuple<string, VFAParam, VFGameObject>>();
+            var autoSockets = new List<(string name, VFAParam enabled, VFGameObject receiverSpace, HumanBodyBones? bone)>();
             var exclusiveTriggers = new List<(string name, VFAParam on)>();
             var usedMenuNames = new HashSet<string>();
             var usedOscIds = new HashSet<string>();
@@ -269,7 +270,7 @@ namespace VF.Service {
                         }
 
                         if (autoOnClip != null && socket.enableAuto) {
-                            autoSockets.Add(Tuple.Create(oscId, toggleParam, receiverSpace));
+                            autoSockets.Add((oscId, toggleParam, receiverSpace, autoChannelGenerator.GetClosestBone(obj)));
                         }
                     }
                 } catch (Exception e) {
@@ -294,6 +295,7 @@ namespace VF.Service {
             }
 
             if (autoOn != null && autoSockets.Count > 0) {
+                var plugsByBone = bakedPlugs.GetBakedPlugs().ToLookup(plug => autoChannelGenerator.GetClosestBone(plug.plug.owner()));
                 var autoProximity = fx.CreateUniqueFloat("AutoContact");
 
                 var autoReceiverObj = GameObjects.Create("SpsAutoDistance", avatarObject);
@@ -329,7 +331,7 @@ namespace VF.Service {
                 var settleTime = 0.05f;
 
                 for (var i = 0; i < autoSockets.Count && i < 16; i++) {
-                    var (name, enabled, obj) = autoSockets[i];
+                    var (name, enabled, obj, bone) = autoSockets[i];
                     constraint.AddSource(obj);
 
                     // We need to settle for a frame for the constraint to move
@@ -349,8 +351,13 @@ namespace VF.Service {
 
                     var switchToState = layer.NewState($"Switch To {name}").WithAnimation(evalClip);
                     switchToState.Drives(enabled, true);
-                    settleState3.TransitionsTo(switchToState).When(autoOn.IsTrue()
-                        .And(enabled.IsFalse()).And(autoProximity.IsGreaterThan(0.5f)));
+                    var canSwitch = autoOn.IsTrue().And(enabled.IsFalse()).And(autoProximity.IsGreaterThan(0.5f));
+                    if (bone.HasValue) {
+                        foreach (var plug in plugsByBone[bone]) {
+                            canSwitch = canSwitch.And(objectEnabled.Get(plug.bakeRoot).IsLessThan(0.5f));
+                        }
+                    }
+                    settleState3.TransitionsTo(switchToState).When(canSwitch);
                     // Hold the receiver at this socket; do not scan or switch while it remains active.
                     // A manual off relinquishes ownership without writing the toggle again.
                     switchToState.TransitionsTo(idle).When(enabled.IsFalse());
