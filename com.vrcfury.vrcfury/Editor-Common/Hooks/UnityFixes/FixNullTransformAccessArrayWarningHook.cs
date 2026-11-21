@@ -43,7 +43,8 @@ namespace VF.Hooks.UnityFixes {
                     HideFlags.HideAndDontSave
                 ).transform;
             }
-            __instance.Add(placeholder.GetInstanceID());
+            // A non-null transform passes through this prefix to the original Add.
+            __instance.Add(placeholder);
             __instance[index] = null;
             return false;
         }
