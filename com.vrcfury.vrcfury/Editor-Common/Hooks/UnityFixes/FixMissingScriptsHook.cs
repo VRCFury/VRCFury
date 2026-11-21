@@ -117,9 +117,12 @@ namespace VF.Hooks.UnityFixes {
 
                 // ForceUpdate can still reuse a corrupt content-addressed artifact. Evict only this script's outputs.
                 var artifact = AssetDatabaseExperimental.LookupArtifact(new ArtifactKey(new GUID(guid)));
-                if (AssetDatabaseExperimental.GetArtifactPaths(artifact, out var paths)) RemoveArtifacts(paths);
-                Reimport();
-                if (!IsBroken(path, type)) return true;
+                // Unity's packed data store can return an artifact with no loose files to evict.
+                if (AssetDatabaseExperimental.GetArtifactPaths(artifact, out var paths) && paths.Length > 0) {
+                    RemoveArtifacts(paths);
+                    Reimport();
+                    if (!IsBroken(path, type)) return true;
+                }
                 throw new Exception("The reimported script still does not resolve to " + type.FullName + ".");
             } catch (Exception e) {
                 VFLog.Warning("Could not repair Unity's script import for " + path + ": " + e.Message);

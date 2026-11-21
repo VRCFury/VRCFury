@@ -3,6 +3,7 @@ set -euo pipefail
 
 VERSION="${1:?usage: download_vrcsdk.sh <version> <kind>}"
 SDK_KIND="${2:?usage: download_vrcsdk.sh <version> <kind>}"
+UNITY_VERSION="${3:-}"
 PROJECT_PATH="${PROJECT_PATH:?PROJECT_PATH must be set}"
 
 echo "Downloading VRCSDK $VERSION"
@@ -56,6 +57,29 @@ patch_udonsharp_for_ci() {
   fi
 }
 
+patch_unity_6_5_for_ci() {
+  local base="$PROJECT_PATH/Packages/com.vrchat.base"
+  local avatars="$PROJECT_PATH/Packages/com.vrchat.avatars/Editor/VRCSDK/SDK3A"
+
+  # UniTask's tracker uses integer task IDs with the generic TreeView APIs.
+  perl -pi -e 's/\b(TreeView|TreeViewItem|TreeViewState)\b(?!<)/$1<int>/g' \
+    "$base/Editor/VRCSDK/Plugins/UniTask/Editor/UniTaskTrackerTreeView.cs"
+  perl -pi -e 's/HashSet<int>/HashSet<EntityId>/g if /\bscannedObjects\b/; s/obj\.GetInstanceID\(\)/obj.GetEntityId()/g' \
+    "$base/Runtime/VRCSDK/Dependencies/VRChat/Scripts/Validation/WorldValidation.cs"
+  perl -pi -e 's/AssetDatabase\.GetAssetPath\(clip\.GetInstanceID\(\)\)/AssetDatabase.GetAssetPath(clip)/g' \
+    "$avatars/VRCSdkControlPanelAvatarBuilder.cs"
+  perl -pi -e 's/\bint(?= target, string path|, string\),)/EntityId/g; s/\.GetInstanceID\(\)/.GetEntityId()/g' \
+    "$avatars/Components3/FaceTrackingEditorContext.cs" \
+    "$avatars/Components3/FaceTrackingBlendshapesSetDrawer.cs" \
+    "$avatars/Components3/FaceTrackingParameterBehaviorDrawer.cs"
+  # XR Plug-in Management configures VR in Unity 6.6.
+  perl -pi -e 's/^\s*"com\.unity\.modules\.vr": "[^"]+",\r?\n$//' "$PROJECT_PATH/Packages/manifest.json"
+  perl -0pi -e 's/^ +if \(!EditorApplication\.isPlaying\)\r?\n +\{\r?\n +#pragma warning disable 618\r?\n +PlayerSettings\.SetVirtualRealitySupported\([^\r\n]+\r?\n +#pragma warning restore 618\r?\n +\}\r?\n//m' \
+    "$base/Editor/VRCSDK/Dependencies/VRChat/EnvConfig.cs"
+  dotnet run --project "$(dirname "${BASH_SOURCE[0]}")/UnitySdkMathPatch" -- \
+    "$base/Runtime/VRCSDK/Plugins/VRC.Dynamics.dll"
+}
+
 MANIFEST_URL="https://vrchat.github.io/packages/index.json"
 echo "Downloading manifest from $MANIFEST_URL"
 MANIFEST="$(curl "$MANIFEST_URL")"
@@ -68,6 +92,11 @@ else
 fi
 
 download_manifest_package "$SDK_PACKAGE" "$VERSION"
+
+if [[ "$VERSION" == 3.11.0-beta.1 && "$SDK_KIND" == avatars && "$UNITY_VERSION" =~ ^([0-9]+)\.([0-9]+)\. ]] &&
+  (( BASH_REMATCH[1] > 6000 || (BASH_REMATCH[1] == 6000 && BASH_REMATCH[2] >= 5) )); then
+  patch_unity_6_5_for_ci
+fi
 
 if [[ "$SDK_KIND" == "worlds" ]]; then
   patch_udonsharp_for_ci

@@ -247,7 +247,7 @@ namespace VF.Utils {
         }
 
         private static string BuildAssemblySignature(Assembly assembly) {
-            var location = assembly.Location;
+            var location = ReflectionUtils.GetAssemblyPath(assembly);
             if (string.IsNullOrEmpty(location) || !File.Exists(location)) {
                 return $"{assembly.FullName}@dynamic";
             }

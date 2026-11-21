@@ -58,7 +58,11 @@ namespace VF.Updater {
 
             await AsyncUtils.InMainThread(() => {
                 Log("Importing installer ...");
+#if UNITY_6000_6_OR_NEWER
+                UnityEditor.AssetPackage.Package.Import(tempFile, false);
+#else
                 AssetDatabase.ImportPackage(tempFile, false);
+#endif
             });
         }
 

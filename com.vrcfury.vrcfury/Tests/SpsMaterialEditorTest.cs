@@ -137,7 +137,13 @@ Shader ""Hidden/VRCFury/Tests/SpsInspector"" {
             const BindingFlags flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
             var panelType = typeof(VisualElement).Assembly.GetType("UnityEngine.UIElements.Panel");
             var panel = (IPanel)panelType.GetMethod("CreateEditorPanel", flags).Invoke(null, new object[] { editor });
+#if UNITY_6000_6_OR_NEWER
+            var utility = typeof(IMGUIContainer);
+#elif UNITY_6000_5_OR_NEWER
+            var utility = typeof(VisualElement).Assembly.GetType("UnityEngine.UIElements.UIElementsIMGUIUtility");
+#else
             var utility = typeof(VisualElement).Assembly.GetType("UnityEngine.UIElements.UIElementsUtility");
+#endif
             var container = new IMGUIContainer();
             panel.visualTree.Add(container);
             var cacheType = typeof(GUILayoutUtility).GetNestedType("LayoutCache", BindingFlags.Public | BindingFlags.NonPublic);

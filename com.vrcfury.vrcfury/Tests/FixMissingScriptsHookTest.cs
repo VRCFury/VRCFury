@@ -98,20 +98,22 @@ namespace VF.Tests {
         [TestCase("Library/Artifacts-other/ScriptImportRecoveryTest.txt")]
         [TestCase("Library/Artifacts/../ScriptImportRecoveryTest.txt")]
         public void RejectsPathsOutsideArtifactDirectoryBeforeDeletingAnything(string outside) {
-            var artifact = "Library/Artifacts/ScriptImportRecoveryTest-" + Guid.NewGuid().ToString("N");
+            var folder = CreateArtifactTestFolder();
+            var artifact = folder + "/artifact";
             File.WriteAllText(artifact, "Keep this when another output is invalid.");
             try {
                 Assert.Throws<Exception>(() => FixMissingScriptsHook.RemoveArtifacts(new[] { artifact, outside }));
                 Assert.That(File.Exists(artifact), Is.True);
             } finally {
-                File.Delete(artifact);
+                Directory.Delete(folder, true);
             }
         }
 
         [Test]
         public void RemovesOnlyTheSpecifiedArtifact() {
-            var first = "Library/Artifacts/ScriptImportRecoveryTest-" + Guid.NewGuid().ToString("N");
-            var second = "Library/Artifacts/ScriptImportRecoveryTest-" + Guid.NewGuid().ToString("N");
+            var folder = CreateArtifactTestFolder();
+            var first = folder + "/first";
+            var second = folder + "/second";
             File.WriteAllText(first, "Damaged derived output.");
             File.WriteAllText(second, "Unrelated derived output.");
             try {
@@ -119,9 +121,15 @@ namespace VF.Tests {
                 Assert.That(File.Exists(first), Is.False);
                 Assert.That(File.Exists(second), Is.True);
             } finally {
-                File.Delete(first);
-                File.Delete(second);
+                Directory.Delete(folder, true);
             }
+        }
+
+        private static string CreateArtifactTestFolder() {
+            // Unity's packed data store does not create Library/Artifacts.
+            var folder = "Library/Artifacts/ScriptImportRecoveryTest-" + Guid.NewGuid().ToString("N");
+            Directory.CreateDirectory(folder);
+            return folder;
         }
     }
 }

@@ -21,7 +21,7 @@ namespace VF.Hooks.UnityFixes {
             public static readonly FieldInfo m_ImportPackageItems = PackageImportWindow?.VFField("m_ImportPackageItems");
             public static readonly FieldInfo m_Tree = PackageImportWindow?.VFField("m_Tree");
             public static readonly FieldInfo m_TreeViewState = PackageImportWindow?.VFField("m_TreeViewState");
-            public static readonly Type ImportPackageItem = ReflectionUtils.GetTypeFromAnyAssembly("UnityEditor.ImportPackageItem");
+            public static readonly Type ImportPackageItem = m_ImportPackageItems?.FieldType.GetElementType();
             public static readonly FieldInfo AssetPath = ImportPackageItem?.VFField("exportedAssetPath");
         }
 

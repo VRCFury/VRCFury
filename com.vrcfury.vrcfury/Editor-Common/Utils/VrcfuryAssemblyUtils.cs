@@ -7,7 +7,7 @@ using Assembly = System.Reflection.Assembly;
 namespace VF.Utils {
     internal static class VrcfuryAssemblyUtils {
         private static readonly Lazy<IReadOnlyList<(Assembly assembly, string asmdefPath)>> Cache = new(() =>
-            AppDomain.CurrentDomain.GetAssemblies()
+            ReflectionUtils.GetLoadedAssemblies()
                 .Select(assembly => (
                     assembly,
                     asmdefPath: CompilationPipeline.GetAssemblyDefinitionFilePathFromAssemblyName(assembly.GetName().Name)

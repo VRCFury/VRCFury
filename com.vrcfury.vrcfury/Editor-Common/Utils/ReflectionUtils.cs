@@ -10,22 +10,38 @@ namespace VF.Utils {
     internal static class ReflectionUtils {
         private static IList<Assembly> userAssemblies;
 
+        public static IEnumerable<Assembly> GetLoadedAssemblies() {
+#if UNITY_6000_5_OR_NEWER
+            return UnityEngine.Assemblies.CurrentAssemblies.GetLoadedAssemblies();
+#else
+            return AppDomain.CurrentDomain.GetAssemblies();
+#endif
+        }
+
+        public static string GetAssemblyPath(Assembly assembly) {
+#if UNITY_6000_5_OR_NEWER
+            return UnityEngine.AssemblyExtension.GetLoadedAssemblyPath(assembly);
+#else
+            return assembly.Location;
+#endif
+        }
+
         public static Type GetTypeFromAnyAssembly(string type) {
-            return AppDomain.CurrentDomain.GetAssemblies()
+            return GetLoadedAssemblies()
                 .Select(assembly => assembly.GetType(type))
                 .FirstOrDefault(t => t != null);
         }
 
         public static IList<Assembly> GetUserAssemblies() {
             if (userAssemblies != null) return userAssemblies;
-            return userAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+            return userAssemblies = GetLoadedAssemblies()
                 .Where(assembly => {
                     if (assembly.IsDynamic) return false;
                     var name = assembly.GetName().Name;
                     if (name.StartsWith("Unity")) return false;
                     if (name.StartsWith("UniTask")) return false;
                     if (name.StartsWith("Bakery")) return false;
-                    var location = assembly.Location?.Replace('\\', '/');
+                    var location = GetAssemblyPath(assembly)?.Replace('\\', '/');
                     return !string.IsNullOrEmpty(location)
                            && location.Contains("/Library/ScriptAssemblies/");
                 })
