@@ -12,11 +12,28 @@ namespace VF.Service.Compressor {
             public string[] parameters;
         }
 
-        private static Dictionary<VFGameObject, Controller> Collect(VFGameObject root, IEnumerable<FullControllerBuilder> builders) {
+        internal static bool HasPrivateMenuPath(ToggleBuilder builder) {
+            var toggle = builder.model;
+            return toggle.addMenuItem && (!toggle.useInt || toggle.slider)
+                && toggle.usePrefixOnParam && toggle.paramOverride == null && !toggle.useGlobalParam
+                && !string.IsNullOrWhiteSpace(toggle.name);
+        }
+
+        // Keep menu paths distinct from actual animator parameter names in the saved list.
+        private static string MenuPathKey(ToggleBuilder builder) => "\u001fToggleMenu:" + builder.model.name;
+
+        private static Dictionary<VFGameObject, Controller> Collect(
+            VFGameObject root,
+            IEnumerable<FullControllerBuilder> builders,
+            IEnumerable<ToggleBuilder> toggles
+        ) {
+            var controllerParameters = builders.SelectMany(b => b.GetPrivateSyncedParameters()
+                .Select(parameter => (owner: b.featureBaseObject, parameter)));
+            var toggleParameters = (toggles ?? Array.Empty<ToggleBuilder>()).Where(HasPrivateMenuPath)
+                .Select(b => (owner: b.featureBaseObject, parameter: MenuPathKey(b)));
             var controllers = new Dictionary<VFGameObject, Controller>();
-            foreach (var group in builders.GroupBy(b => b.featureBaseObject)) {
-                var parameters = group.SelectMany(b => b.GetPrivateSyncedParameters()).Distinct().ToArray();
-                if (parameters.Length == 0) continue;
+            foreach (var group in controllerParameters.Concat(toggleParameters).GroupBy(entry => entry.owner)) {
+                var parameters = group.Select(entry => entry.parameter).Distinct().ToArray();
                 var path = group.Key.GetSelfAndAllParents().TakeWhile(o => o != root).Reverse();
                 controllers.Add(group.Key, new Controller {
                     path = path.Select(o => o.name).ToArray(),
@@ -26,12 +43,22 @@ namespace VF.Service.Compressor {
             return controllers;
         }
 
-        public static Controller[] Capture(VFGameObject root, IEnumerable<FullControllerBuilder> builders) {
-            return Collect(root, builders).Values.ToArray();
+        public static Controller[] Capture(
+            VFGameObject root,
+            IEnumerable<FullControllerBuilder> builders,
+            IEnumerable<ToggleBuilder> toggles = null
+        ) {
+            return Collect(root, builders, toggles).Values.ToArray();
         }
 
-        public static void Align(VFGameObject root, IEnumerable<FullControllerBuilder> builders, Controller[] desktop) {
-            var mobile = Collect(root, builders);
+        public static void Align(
+            VFGameObject root,
+            IEnumerable<FullControllerBuilder> builders,
+            Controller[] desktop,
+            IEnumerable<ToggleBuilder> toggles = null
+        ) {
+            var desktopParameters = desktop.SelectMany(d => d.parameters).ToHashSet();
+            var mobile = Collect(root, builders, toggles?.Where(b => desktopParameters.Contains(MenuPathKey(b))));
             var unmatched = desktop.Where(d => !mobile.Values.Any(m => m.path.SequenceEqual(d.path))).ToArray();
             var proposals = new Dictionary<VFGameObject, (VFGameObject obj, string name)>();
             foreach (var (owner, controller) in mobile) {

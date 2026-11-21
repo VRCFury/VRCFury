@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -32,7 +33,7 @@ namespace VF.Tests {
             assets.Clear();
         }
 
-        private FullControllerBuilder Add(GameObject root, string path, params string[] names) {
+        private static GameObject GetOwner(GameObject root, string path) {
             var owner = root.transform;
             foreach (var part in path.Split('/')) {
                 var child = owner.Find(part);
@@ -42,11 +43,15 @@ namespace VF.Tests {
                 }
                 owner = child;
             }
+            return owner.gameObject;
+        }
+
+        private FullControllerBuilder Add(GameObject root, string path, params string[] names) {
             var asset = ScriptableObject.CreateInstance<VRCExpressionParameters>();
             assets.Add(asset);
             asset.parameters = names.Select(n => ExpressionParam.Create(n).Bool()).ToArray();
             var builder = new FullControllerBuilder {
-                featureBaseObject = owner.gameObject,
+                featureBaseObject = GetOwner(root, path),
                 model = new FullController()
             };
             builder.model.prms.Add(new FullController.ParamsEntry { parameters = asset });
@@ -136,6 +141,43 @@ namespace VF.Tests {
             local.model.globalParams.Add("Global");
             Align(new[] { desktop }, local);
             Assert.That(local.featureBaseObject.name, Is.EqualTo("Quest"));
+        }
+
+        private static ToggleBuilder AddToggle(GameObject root, string path, string menuPath, bool global = false) =>
+            new ToggleBuilder {
+                featureBaseObject = GetOwner(root, path),
+                model = new Toggle { name = menuPath, useGlobalParam = global, globalParam = global ? "Shared" : "" }
+            };
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void OnlyPrivateToggleMenuPathsProvideMatchingEvidence(bool global) {
+            var desktop = AddToggle(pc, "Props/Hat", "Clothes/Hat", global);
+            var local = AddToggle(mobile, "Props/Quest Hat", "Clothes/Hat", global);
+            var controllers = Array.Empty<FullControllerBuilder>();
+            var saved = new ParameterPlatformAlignmentService.SavedData {
+                fullControllers = FullControllerPathAlignment.Capture(pc, controllers, new[] { desktop })
+            };
+            saved = JsonUtility.FromJson<ParameterPlatformAlignmentService.SavedData>(JsonUtility.ToJson(saved));
+            FullControllerPathAlignment.Align(mobile, controllers, saved.fullControllers, new[] { local });
+
+            Assert.That(local.featureBaseObject.name, Is.EqualTo(global ? "Quest Hat" : "Hat"));
+        }
+
+        [Test]
+        public void MenuPathsDisambiguateControllersWithTheSameParameters() {
+            var hat = Add(pc, "Props/Hat", "Color");
+            var coat = Add(pc, "Props/Coat", "Color");
+            var local = Add(mobile, "Props/Quest", "Color");
+            var hatToggle = AddToggle(pc, "Props/Hat", "Clothes/Hat");
+            var coatToggle = AddToggle(pc, "Props/Coat", "Clothes/Coat");
+            var localToggle = AddToggle(mobile, "Props/Quest", "Clothes/Hat");
+            var mobileOnly = AddToggle(mobile, "Props/Quest", "Clothes/Mobile only");
+            var saved = FullControllerPathAlignment.Capture(pc, new[] { hat, coat }, new[] { hatToggle, coatToggle });
+
+            FullControllerPathAlignment.Align(mobile, new[] { local }, saved, new[] { localToggle, mobileOnly });
+
+            Assert.That(local.featureBaseObject.name, Is.EqualTo("Hat"));
         }
     }
 }

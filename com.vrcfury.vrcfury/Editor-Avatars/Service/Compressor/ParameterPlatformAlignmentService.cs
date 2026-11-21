@@ -75,13 +75,14 @@ namespace VF.Service.Compressor {
         [FeatureBuilderAction(FeatureOrder.AlignFullControllerPaths)]
         public void PrepareFullControllers() {
             var builders = globals.allBuildersInRun.OfType<FullControllerBuilder>().ToArray();
-            if (builders.Length == 0) return;
+            var toggles = globals.allBuildersInRun.OfType<ToggleBuilder>().Where(FullControllerPathAlignment.HasPrivateMenuPath).ToArray();
+            if (builders.Length == 0 && toggles.Length == 0) return;
             if (BuildTargetUtils.IsDesktop()) {
                 if (IsActuallyUploadingHook.Get()) {
-                    fullControllers = FullControllerPathAlignment.Capture(globals.avatarObject, builders);
+                    fullControllers = FullControllerPathAlignment.Capture(globals.avatarObject, builders, toggles);
                 }
             } else if (AlignMobileParamsMenuItem.Get() && GetDesktopUpload() is SavedData desktop) {
-                FullControllerPathAlignment.Align(globals.avatarObject, builders, desktop.fullControllers);
+                FullControllerPathAlignment.Align(globals.avatarObject, builders, desktop.fullControllers, toggles);
             }
         }
 
