@@ -456,7 +456,7 @@ namespace VF.Tests {
                     playable.SetFloat(merged.parameter + "_SenderType", selectSelf ? 1 : othersDistance < 0 ? 0 : othersDistance == 0 ? 3 : 2);
                 }
                 Evaluate();
-                var expected = party != Party.Self && proximity > 0 && othersDistance >= 0
+                var expected = party != Party.Self && othersDistance >= 0
                     && (party == Party.Others || selfDistance < 0 || othersDistance <= selfDistance);
                 Assert.That(playable.GetFloat(output), Is.EqualTo(expected ? 1 : 0).Within(0.000001f),
                     $"{party}: self={selfDistance}, others={othersDistance}, proximity={proximity}");
