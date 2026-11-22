@@ -3,13 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
+using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
+using VF.Builder;
 using VF.Builder.Haptics;
 using VF.Component;
 using VF.Injector;
 using VF.Inspector;
+using VF.Model.Feature;
+using VF.Service;
 using VF.Utils;
+using VF.Utils.Controller;
 using VRC.Dynamics;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
 
@@ -251,7 +259,7 @@ namespace VF.Tests {
             var frame = injector.GetService<PlugFrameService>().Get(plug);
             var renderers = Enumerable.Range(0, rendererCount)
                 .Select(i => (Renderer)GameObjects.Create("Renderer " + i, root).AddComponent<MeshRenderer>()).ToArray();
-            service.Create(plug, renderers.Concat(renderers));
+            var pathRoot = service.Create(plug, renderers.Concat(renderers));
             FinalizeChannels();
             var receivers = root.GetComponentsInChildren<VRCContactReceiver>().Where(r => r.writeToMaterials).ToArray();
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true).Length, Is.EqualTo(receiverCount));
@@ -260,7 +268,8 @@ namespace VF.Tests {
             }
             foreach (var receiver in receivers) {
                 Assert.That(receiver.shaderTargetRenderers.Length, Is.LessThanOrEqualTo(ContactReceiver.SHADER_MAX_UPDATED_RENDERERS));
-                Assert.That(receiver.transform.parent, Is.EqualTo((Transform)frame));
+                var expectedParent = receiver.separateShaderParameter == "SPS_Path" ? pathRoot : frame;
+                Assert.That(receiver.transform.parent, Is.EqualTo((Transform)expectedParent));
                 Assert.That(receiver.transform.localPosition, Is.EqualTo(Vector3.zero));
                 Assert.That(receiver.transform.localRotation, Is.EqualTo(Quaternion.identity));
                 if (receiver.separateShaderParameter == "SPS_Path") {
@@ -289,6 +298,85 @@ namespace VF.Tests {
 #endif
 
 #if VRCSDK_HAS_MATERIAL_CONTACTS
+        [Test]
+        public void AvatarPathReceiverRunsOnlyWhileAnEntranceIsInRange() {
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var avatar = root.AddComponent<VRCAvatarDescriptor>();
+            avatar.customizeAnimationLayers = true;
+            avatar.baseAnimationLayers = new[] {
+                new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX }
+            };
+            avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+            injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allFeaturesInRun = new List<FeatureModel>();
+            globals.addOtherFeature = _ => { };
+            var controllers = injector.GetService<ControllersService>();
+            controllers.ClearCache(applyBaseMask: false);
+            var fx = controllers.GetFx();
+            fx.GetOrCreateFloat(VFBlendTreeDirect.AlwaysOneParam, 1);
+            var mesh = new Mesh {
+                vertices = new[] { Vector3.zero, Vector3.right * 0.02f, Vector3.forward * 0.2f },
+                triangles = new[] { 0, 1, 2 }
+            };
+            mesh.RecalculateNormals();
+            var source = VrcfObjectFactory.CreateMaterial(Shader.Find("Unlit/Color"));
+            var assets = new List<Object> { mesh, source };
+            PlayableGraph graph = default;
+            try {
+                var obj = GameObjects.Create("Mesh", root);
+                obj.AddComponent<MeshFilter>().sharedMesh = mesh;
+                var renderer = obj.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = source;
+                plug.configureTpsMesh.Add(renderer);
+                plug.enableSps = true;
+                plug.spsAutorig = false;
+                var baker = injector.GetService<BakeHapticPlugsService>();
+                baker.ApplyEarlyBake();
+                baker.Apply();
+                injector.GetService<ChangeSpsChannelsService>().Apply();
+                injector.GetService<IsObjectEnabledService>().Apply();
+                injector.GetService<ObjectTreeService>().Apply();
+                injector.GetService<NoBadControllerParamsService>().Apply();
+
+                var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
+                var path = contacts.Single(c => c.separateShaderParameter == "SPS_Path");
+                var self = contacts.Single(c => c.separateShaderParameter == "SPS_Self");
+                var others = contacts.Single(c => c.separateShaderParameter == "SPS_Others");
+                Assert.That(path.gameObject.activeInHierarchy, Is.False);
+                Assert.That(self.localOnly || others.localOnly, Is.False);
+                var context = new VFSaveContext(root, false);
+                var controller = new AnimatorController {
+                    parameters = fx.parameters.Select(p => p.Save()).ToArray(),
+                    layers = fx.GetLayers().Select(layer => layer.Save(context)).ToArray()
+                };
+                assets.Add(controller);
+                assets.AddRange(context.NewAssets);
+                var animator = root.AddComponent<Animator>();
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                graph = PlayableGraph.Create("SPS path receiver activation");
+                graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
+                var playable = AnimatorControllerPlayable.Create(graph, controller);
+                AnimationPlayableOutput.Create(graph, "FX", animator).SetSourcePlayable(playable);
+                graph.Play();
+
+                void Check(float selfValue, float othersValue, bool expected) {
+                    playable.SetFloat(self.parameter, selfValue);
+                    playable.SetFloat(others.parameter, othersValue);
+                    graph.Evaluate(1f / 60);
+                    Assert.That(path.gameObject.activeInHierarchy, Is.EqualTo(expected));
+                }
+                Check(0, 0, false);
+                Check(0.5f, 0, true);
+                Check(0, 0.5f, true);
+                Check(0, 0, false);
+            } finally {
+                if (graph.IsValid()) graph.Destroy();
+                foreach (var asset in assets.Distinct()) if (asset != null) Object.DestroyImmediate(asset);
+            }
+        }
+
         [TestCase(true, true)]
         [TestCase(true, false)]
         [TestCase(false, true)]

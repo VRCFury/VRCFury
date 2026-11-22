@@ -236,6 +236,20 @@ namespace VF.Service {
                     parameterInjectService.MarkResolved(inject);
                 }
             }
+
+            if (bakeInfo.pathReceiverRoot != null) {
+                var self = receiverAnimator.GetParameter(bakeInfo.socketReceivers, Party.Self);
+                var others = receiverAnimator.GetParameter(bakeInfo.socketReceivers, Party.Others);
+                var hasSocket = BlendtreeMath.GreaterThan(self, 0).Or(BlendtreeMath.GreaterThan(others, 0));
+                var pathRoot = bakeInfo.pathReceiverRoot;
+                pathRoot.active = false;
+                // Channel changes control the individual variants under this shared gate.
+                var on = VFClip.Create("Enable SPS Path Receivers");
+                on.SetEnabled(pathRoot, true);
+                var off = VFClip.Create("Disable SPS Path Receivers");
+                off.SetEnabled(pathRoot, false);
+                objectTrees.Get(bakeRoot).Add(hasSocket.create(on, off));
+            }
         }
         
         public class SpsRewriteToDo {

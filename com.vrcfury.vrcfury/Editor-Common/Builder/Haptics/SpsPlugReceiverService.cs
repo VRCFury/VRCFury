@@ -42,10 +42,11 @@ namespace VF.Builder.Haptics {
 #endif
         }
 
-        public void Create(VRCFuryHapticPlug plug, IEnumerable<Renderer> renderers, bool legacySocketCompatibility = true) {
+        public VFGameObject Create(VRCFuryHapticPlug plug, IEnumerable<Renderer> renderers, bool legacySocketCompatibility = true) {
             RequireMaterialContacts();
 #if VRCSDK_HAS_MATERIAL_CONTACTS
             var targets = renderers.Where(r => r != null).Distinct().ToArray();
+            if (targets.Length == 0) return null;
             var main = GetReceivers(plug, legacySocketCompatibility);
             var data = main.request.channels;
             var frame = main.request.frame;
@@ -61,6 +62,7 @@ namespace VF.Builder.Haptics {
             });
             main.SetMaterials(targets, self: true, needsContactTags: false, shaderParameter: "SPS_Self");
             main.SetMaterials(targets, self: false, needsContactTags: true, shaderParameter: "SPS_Others");
+            var pathRoot = GameObjects.Create("SPS Path Receivers", frame);
             for (var i = 0; i < targets.Length; i += ContactReceiver.SHADER_MAX_UPDATED_RENDERERS) {
                 var name = "Receiver - Socket Paths" + (i == 0 ? "" : " " + i / ContactReceiver.SHADER_MAX_UPDATED_RENDERERS);
                 var pathTargets = targets.Skip(i).Take(ContactReceiver.SHADER_MAX_UPDATED_RENDERERS).ToArray();
@@ -72,7 +74,7 @@ namespace VF.Builder.Haptics {
                         var tags = set.paths.Select(SpsTags.FormatSocketPath).ToArray();
                         var owner = variants.GetOrCreate(string.Join("\n", tags), () => {
                             var obj = GameObjects.Create(sets.Count == 1 ? name
-                                : name + " (" + string.Join(", ", set.paths.DefaultIfEmpty("none")) + ")", frame);
+                                : name + " (" + string.Join(", ", set.paths.DefaultIfEmpty("none")) + ")", pathRoot);
                             var receiver = obj.AddComponent<VRCContactReceiver>();
                             receiver.shapeType = ContactBase.ShapeType.Sphere;
                             receiver.radius = localRadius;
@@ -91,6 +93,9 @@ namespace VF.Builder.Haptics {
                     }
                 });
             }
+            return pathRoot;
+#else
+            return null;
 #endif
         }
 

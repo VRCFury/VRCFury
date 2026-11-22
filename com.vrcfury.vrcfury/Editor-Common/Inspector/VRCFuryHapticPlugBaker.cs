@@ -203,9 +203,9 @@ namespace VF.Inspector {
                 }).ToArray();
             }
 
-            if (plug.enableSps) {
-                spsPlugReceiverService.Create(plug, rendererResults.Select(r => r.renderer), legacySocketCompatibility);
-            }
+            var pathReceiverRoot = plug.enableSps
+                ? spsPlugReceiverService.Create(plug, rendererResults.Select(r => r.renderer), legacySocketCompatibility)
+                : null;
 
             if (!deferMaterialConfig) {
                 foreach (var r in rendererResults) {
@@ -226,6 +226,7 @@ namespace VF.Inspector {
                 mainSender = mainSender,
                 radiusCurve = radiusCurve,
                 socketReceivers = socketReceivers,
+                pathReceiverRoot = pathReceiverRoot,
                 oscId = oscId,
             };
         }

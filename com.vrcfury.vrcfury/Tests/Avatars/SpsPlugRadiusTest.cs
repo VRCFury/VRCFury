@@ -636,7 +636,7 @@ namespace VF.Tests {
             Start(shaderFirst ? null : Shader);
             var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
             Assert.That(contacts, Has.Length.EqualTo(5)); // Quartet plus shader-only path buffer.
-            Assert.That(contacts.All(c => c.transform.parent == (Transform)bake.bakeRoot), Is.True);
+            Assert.That(contacts.All(c => c.transform.IsChildOf((Transform)bake.bakeRoot)), Is.True);
             Assert.That(contacts.Select(c => c.name), Is.EquivalentTo(new[] {
                 "Receiver - Sockets (Self)", "Receiver - Sockets (Others)", "Receiver - Socket Paths",
                 "Receiver - Sockets (Self Merged)", "Receiver - Sockets (Others Merged)"
