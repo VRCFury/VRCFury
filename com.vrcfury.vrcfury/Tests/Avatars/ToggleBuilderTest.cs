@@ -22,17 +22,21 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     public class ToggleBuilderTest {
-        [TestCase(0, false, true, false, 3, false)]
-        [TestCase(0, false, true, true, 3, false)]
+        [TestCase(0, false, true, false, 3, false, 0)]
+        [TestCase(0, false, true, true, 3, false, 0)]
 #if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
-        [TestCase(0, false, true, false, 4, false)]
-        [TestCase(0, false, true, false, 2, true)]
-        [TestCase(0, false, true, false, 3, true)]
-        [TestCase(2, false, true, false, 2, false)]
-        [TestCase(2, false, true, false, 3, false)]
-        [TestCase(4, false, true, false, 3, false)]
-        [TestCase(4, true, true, false, 3, false)]
-        [TestCase(2, false, false, false, 3, false)]
+        [TestCase(0, false, true, false, 4, false, 0)]
+        [TestCase(0, false, true, false, 2, true, 0)]
+        [TestCase(0, false, true, false, 3, true, 0)]
+        [TestCase(2, false, true, false, 2, false, 0)]
+        [TestCase(2, false, true, false, 3, false, 0)]
+        [TestCase(4, false, true, false, 3, false, 0)]
+        [TestCase(4, true, true, false, 3, false, 0)]
+        [TestCase(2, false, false, false, 3, false, 0)]
+        [TestCase(0, false, true, false, 3, false, 5)]
+        [TestCase(0, false, true, false, 4, false, 2)]
+        [TestCase(4, true, true, false, 3, false, 4)]
+        [TestCase(4, true, true, false, 3, false, 3)]
 #endif
         public void SliderFlipbookUsesTheParameterNetworkGrid(
             int existingBits,
@@ -40,7 +44,8 @@ namespace VF.Tests {
             bool synced,
             bool objectsOnly,
             int pages,
-            bool inactiveAtZero
+            bool inactiveAtZero,
+            int overrideBits
         ) {
             var root = new GameObject("Avatar");
             var assets = new List<Object>();
@@ -74,6 +79,7 @@ namespace VF.Tests {
                 var shader = Shader.Find("Standard");
                 var toggle = new Toggle {
                     slider = true,
+                    sliderBitWidthOverride = overrideBits,
                     sliderInactiveAtZero = inactiveAtZero,
                     name = parameterName,
                     usePrefixOnParam = false,
@@ -97,7 +103,13 @@ namespace VF.Tests {
                 builder.featureBaseObject = root;
                 var first = inactiveAtZero ? 1 : 0;
 #if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
-                var width = existingBits > 0 ? existingBits : Math.Max(2, Mathf.CeilToInt(Mathf.Log(pages + first + 1, 2)));
+                if (existingBits > 0 && overrideBits > 0 && (overrideBits != existingBits || !unsigned)) {
+                    var error = Assert.Throws<Exception>(() => builder.Apply());
+                    Assert.That(error.Message, Does.Contain("conflicts with the existing parameter"));
+                    return;
+                }
+                var width = Math.Max(existingBits, overrideBits);
+                if (width == 0) width = Math.Max(2, Mathf.CeilToInt(Mathf.Log(pages + first + 1, 2)));
                 var isUnsigned = existingBits == 0 || unsigned;
                 var intervals = synced ? ((1 << width) - 2) / (isUnsigned ? 1 : 2) : 0;
 #else

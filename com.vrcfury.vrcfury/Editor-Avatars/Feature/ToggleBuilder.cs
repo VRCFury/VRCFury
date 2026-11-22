@@ -109,11 +109,20 @@ namespace VF.Feature {
                 if (model.slider) {
                     expressionParam.Float();
                     var existing = expressionParams.FirstOrDefault(p => p.name == param.name);
-                    if (existing?.valueType == expressionParam.valueType) {
+                    var useExisting = existing?.valueType == expressionParam.valueType;
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+                    var bits = model.sliderBitWidthOverride == 0
+                        ? GetSliderBitWidth(flipbookPages)
+                        : ClampSliderBitWidth(model.sliderBitWidthOverride);
+                    if (useExisting && model.sliderBitWidthOverride != 0) {
+                        useExisting = existing.flippedRepresentation && existing.TypeCost() == bits;
+                    }
+#endif
+                    if (useExisting) {
                         expressionParam = existing;
                     } else {
 #if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
-                        expressionParam.bitWidth = GetSliderBitWidth(flipbookPages);
+                        expressionParam.bitWidth = (byte)bits;
                         expressionParam.flippedRepresentation = true;
 #endif
                     }
@@ -240,14 +249,52 @@ namespace VF.Feature {
         }
 
 #if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+        private const int DefaultSliderBitWidth = 7;
+
+        private static int ClampSliderBitWidth(int bits) => Mathf.Clamp(
+            bits,
+            VRCExpressionParameters.Parameter.MinBitWidth,
+            VRCExpressionParameters.Parameter.MaxBitWidth
+        );
+
         private byte GetSliderBitWidth(int pages) {
-            if (pages == 0) return 7;
+            if (pages == 0) return DefaultSliderBitWidth;
 
             var requiredValues = pages + (model.sliderInactiveAtZero ? 1 : 0);
             var bits = (int)VRCExpressionParameters.Parameter.MinBitWidth;
             // Unsigned float sync provides 2^bits - 1 values including both endpoints.
             while (bits < VRCExpressionParameters.Parameter.MaxBitWidth && (1 << bits) - 1 < requiredValues) bits++;
             return (byte)bits;
+        }
+
+        private static VisualElement SliderBitWidthEditor(SerializedProperty bitsProp) {
+            var row = new VisualElement().Row();
+            var slider = new SliderInt(
+                VRCExpressionParameters.Parameter.MinBitWidth,
+                VRCExpressionParameters.Parameter.MaxBitWidth
+            ) { showInputField = true };
+            var precision = new Label();
+            precision.style.marginLeft = 8;
+            row.Add(slider.FlexGrow(1));
+            row.Add(precision);
+            var editor = VRCFuryEditorUtils.Prop(null, "Slider Parameter Bits", fieldOverride: row);
+
+            void Refresh() {
+                var bits = ClampSliderBitWidth(bitsProp.intValue);
+                slider.SetValueWithoutNotify(bits);
+                var intervals = VRCExpressionParameterExtensions.GetFloatNetworkIntervals(bits);
+                precision.text = $"Precision: {1f / intervals:G4}";
+                editor.SetVisible(bitsProp.intValue != 0);
+            }
+
+            slider.RegisterValueChangedCallback(evt => {
+                bitsProp.intValue = evt.newValue;
+                bitsProp.serializedObject.ApplyModifiedProperties();
+                Refresh();
+            });
+            editor.TrackProperty(bitsProp, _ => Refresh());
+            Refresh();
+            return editor;
         }
 #endif
 
@@ -493,6 +540,9 @@ namespace VF.Feature {
 
             var savedProp = prop.FindPropertyRelative("saved");
             var sliderProp = prop.FindPropertyRelative("slider");
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+            var sliderBitWidthProp = prop.FindPropertyRelative("sliderBitWidthOverride");
+#endif
             var securityEnabledProp = prop.FindPropertyRelative("securityEnabled");
             var defaultOnProp = prop.FindPropertyRelative("defaultOn");
             var invertRestLogicProp = prop.FindPropertyRelative("invertRestLogic");
@@ -542,6 +592,21 @@ namespace VF.Feature {
                         invertRestLogicProp.boolValue = false;
                         prop.serializedObject.ApplyModifiedProperties();
                     });
+
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+                    if (sliderProp.boolValue) {
+                        advMenu.AddItem(
+                            new GUIContent("Override Slider Parameter Bits"),
+                            sliderBitWidthProp.intValue != 0,
+                            () => {
+                                sliderBitWidthProp.intValue = sliderBitWidthProp.intValue == 0
+                                    ? DefaultSliderBitWidth
+                                    : 0;
+                                prop.serializedObject.ApplyModifiedProperties();
+                            }
+                        );
+                    }
+#endif
 
                     advMenu.AddItem(new GUIContent("Protect with Security"), securityEnabledProp.boolValue, () => {
                         securityEnabledProp.boolValue = !securityEnabledProp.boolValue;
@@ -695,6 +760,9 @@ namespace VF.Feature {
                 if (sliderProp.boolValue) {
                     var sliderOptions = new VisualElement();
                     sliderOptions.Add(VRCFuryEditorUtils.Prop(null, "Default %", fieldOverride: new PercentSlider2(prop.FindPropertyRelative("defaultSliderValue"))));
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+                    sliderOptions.Add(SliderBitWidthEditor(sliderBitWidthProp));
+#endif
                     sliderOptions.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("sliderInactiveAtZero"), "Passthrough at 0% (Unusual)", tooltip: "" +
                         "When checked, the slider will be bypassed when set to 0%, meaning that it will not control any properties at all, allowing the properties to resume" +
                         " being controlled by some other toggle or animator layer." +

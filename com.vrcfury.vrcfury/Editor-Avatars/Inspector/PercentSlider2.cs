@@ -18,7 +18,7 @@ namespace VF.Inspector {
             Clear();
 
             style.flexDirection = FlexDirection.Row;
-            slider = new Slider(0, 1).Margin(0).FlexShrink(1);
+            slider = new Slider(0, 1).Margin(0).FlexGrow(1).FlexShrink(1);
             slider.style.marginRight = 5;
             slider.RegisterValueChangedCallback(e => {
                 // When using slider, store in steps of 1%

@@ -121,8 +121,10 @@ namespace VF.Utils {
 #else
             const int min = -1;
 #endif
-            return (min, (1 << param.TypeCost()) - 2);
+            return (min, GetFloatNetworkIntervals(param.TypeCost()));
         }
+
+        public static int GetFloatNetworkIntervals(int bits) => (1 << bits) - 2;
 
         // Find the first slider value that rounds to this code with Unity's nearest-even rule.
         public static float GetFloatNetworkThreshold(int code, int intervals) {

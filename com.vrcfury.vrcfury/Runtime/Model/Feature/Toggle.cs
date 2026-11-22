@@ -11,6 +11,7 @@ namespace VF.Model.Feature {
         public State state = new State();
         public bool saved;
         public bool slider;
+        public int sliderBitWidthOverride;
         public bool sliderInactiveAtZero;
         public bool securityEnabled;
         public bool defaultOn;
