@@ -48,18 +48,16 @@ namespace VF.Actions {
             content.Add(row);
 
             var valueProp = prop.FindPropertyRelative("blendShapeValue");
-            var valueField = VRCFuryEditorUtils.Prop(valueProp, "Value (0-100)");
-            valueField.RegisterCallback<ChangeEvent<float>>(e => {
-                if (e.newValue < 0) {
-                    valueProp.floatValue = 0;
-                    valueProp.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-                }
-                if (e.newValue > 100) {
-                    valueProp.floatValue = 100;
-                    valueProp.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-                }
+            var valueField = new FloatField();
+            valueField.SetValueWithoutNotify(valueProp.floatValue);
+            valueField.TrackProperty(valueProp, p => valueField.SetValueWithoutNotify(p.floatValue));
+            valueField.RegisterValueChangedCallback(e => {
+                var weight = Mathf.Clamp(e.newValue, 0, 100);
+                valueField.SetValueWithoutNotify(weight);
+                valueProp.floatValue = weight;
+                valueProp.serializedObject.ApplyModifiedProperties();
             });
-            content.Add(valueField);
+            content.Add(VRCFuryEditorUtils.Prop(null, "Value (0-100)", fieldOverride: valueField));
 
             void SelectButtonPress() {
                 var allRenderers = allRenderersProp.boolValue;

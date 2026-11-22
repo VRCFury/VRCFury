@@ -139,15 +139,27 @@ namespace VF.Injector {
                 var receiverAnimator = injector.GetService<SelfAndOthersReceiverAnimatorService>();
                 receiverAnimator.GetParameter(receivers, Party.Self);
                 Assert.That(controllers.GetFx().GetLayers(), Is.Empty, "Unmerged receiver outputs don't need an animator tree");
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
                 var parameter = receiverAnimator.GetParameter(receivers, Party.Merged);
                 Assert.That(controllers.GetFx().GetLayers(), Is.Not.Empty);
                 Assert.That(controllers.GetFx().parameters.FirstOrDefault(p => p.name == parameter.name), Is.Not.Null);
                 var layers = controllers.GetFx().GetLayers().Count();
                 Assert.That(receiverAnimator.GetParameter(receivers, Party.Merged).name, Is.EqualTo(parameter.name));
                 Assert.That(controllers.GetFx().GetLayers().Count(), Is.EqualTo(layers));
+                const int expectedReceivers = 4;
+#else
+                Assert.That(
+                    () => receiverAnimator.GetParameter(receivers, Party.Merged),
+                    Throws.TypeOf<InvalidOperationException>().With.Message.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired)
+                );
+                Assert.That(controllers.GetFx().GetLayers(), Is.Empty);
+                const int expectedReceivers = 1;
+#endif
                 channels.Apply(data);
-                Assert.That(root.GetComponentsInChildren<VRC.SDK3.Dynamics.Contact.Components.VRCContactReceiver>(true),
-                    Has.Length.EqualTo(4));
+                Assert.That(
+                    root.GetComponentsInChildren<VRC.SDK3.Dynamics.Contact.Components.VRCContactReceiver>(true),
+                    Has.Length.EqualTo(expectedReceivers)
+                );
             } finally {
                 UnityEngine.Object.DestroyImmediate(root);
             }
@@ -235,6 +247,7 @@ namespace VF.Injector {
                         injector.Set("actionName", "Test action");
                         injector.Set("animObject", root.asVf());
                         injector.Set("debugMode", false);
+                        injector.Set("sliderNetworkCodes", default((int first, int last)));
                         injector.Set(actionClipService);
                         var buildMethod = builderType.VFMethod("Build");
                         injector.VerifyMethod(buildMethod);
