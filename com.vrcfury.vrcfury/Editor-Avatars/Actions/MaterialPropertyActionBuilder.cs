@@ -40,8 +40,7 @@ namespace VF.Actions {
             var type = GetMaterialPropertyActionTypeToUse(
                 renderers,
                 materialPropertyAction.propertyName,
-                materialPropertyAction.propertyType,
-                false
+                materialPropertyAction.propertyType
             );
 
             foreach (var renderer in renderers) {
@@ -99,16 +98,20 @@ namespace VF.Actions {
 
             var propertyTypeProp = prop.FindPropertyRelative("propertyType");
             var propertyNameProp = prop.FindPropertyRelative("propertyName");
+            var propertyNameField = new TextField();
+            propertyNameField.RegisterValueChangedCallback(evt => SetPropertyName(evt.newValue));
             {
                 var row = new VisualElement().Row();
-                row.Add(VRCFuryEditorUtils.Prop(propertyNameProp, "Property").FlexGrow(1));
-                row.Add(VRCFuryEditorUtils.OnChange(propertyNameProp, () => UpdateValueType(true)));
+                row.Add(VRCFuryEditorUtils.Prop(null, "Property", fieldOverride: propertyNameField).FlexGrow(1));
                 row.Add(new Button(SearchClick) { text = "Search" }.Margin(0));
                 content.Add(row);
             }
 
             var typeBox = new VisualElement().AddTo(content);
-            typeBox.Add(VRCFuryEditorUtils.OnChange(propertyTypeProp, () => UpdateValueType(false)));
+            typeBox.Add(VRCFuryEditorUtils.OnChange(propertyNameProp, Refresh));
+            typeBox.Add(VRCFuryEditorUtils.OnChange(propertyTypeProp, Refresh));
+            typeBox.Add(VRCFuryEditorUtils.OnChange(affectAllMeshesProp, Refresh));
+            typeBox.Add(VRCFuryEditorUtils.OnChange(rendererProp, Refresh));
             typeBox.Add(valueFloat);
             typeBox.Add(valueVector);
             typeBox.Add(valueColor);
@@ -136,23 +139,22 @@ namespace VF.Actions {
                 }, propertyTypeProp.enumValueIndex == (int)MaterialPropertyAction.Type.St ? DropdownMenuAction.Status.Checked : DropdownMenuAction.Status.Normal);
             }));
             
-            UpdateValueType(false);
+            content.RegisterCallback<AttachToPanelEvent>(_ => Refresh());
+            Refresh();
 
-            void UpdateValueType(bool redetectType) {
+            IList<Renderer> CurrentRenderers() => FindRenderers(
+                affectAllMeshesProp.boolValue,
+                rendererProp.GetComponent<Renderer>(),
+                avatarObject
+            );
+
+            void Refresh() {
                 var propName = propertyNameProp.stringValue;
-                var renderers = FindRenderers(
-                    affectAllMeshesProp.boolValue,
-                    rendererProp.GetComponent<Renderer>(),
-                    avatarObject
-                );
-                var oldType = (MaterialPropertyAction.Type)propertyTypeProp.enumValueIndex;
-                var newType = GetMaterialPropertyActionTypeToUse(
-                    renderers, propName, oldType, redetectType);
-                if (newType != oldType) {
-                    propertyTypeProp.enumValueIndex = (int)newType;
-                    propertyTypeProp.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-                }
-
+                propertyNameField.SetValueWithoutNotify(propName);
+                var setting = (MaterialPropertyAction.Type)propertyTypeProp.enumValueIndex;
+                var newType = setting == MaterialPropertyAction.Type.LegacyAuto
+                    ? GetMaterialPropertyActionTypeToUse(CurrentRenderers(), propName, setting)
+                    : setting;
                 valueFloat.SetVisible(newType == MaterialPropertyAction.Type.Float);
                 valueVector.SetVisible(newType == MaterialPropertyAction.Type.Vector);
                 valueColor.SetVisible(newType == MaterialPropertyAction.Type.Color);
@@ -161,22 +163,24 @@ namespace VF.Actions {
 
             return content;
 
+            void SetPropertyName(string name) {
+                if (propertyNameProp.stringValue == name) return;
+                propertyNameProp.stringValue = name;
+                var detected = DetectMaterialPropertyActionType(CurrentRenderers(), name);
+                if (detected.HasValue) propertyTypeProp.enumValueIndex = (int)detected.Value;
+                propertyNameProp.serializedObject.ApplyModifiedProperties();
+                Refresh();
+            }
+
             void SearchClick() {
                 var searchWindow = new VrcfSearchWindow("Material Properties");
                 GetTreeEntries(searchWindow);
-                searchWindow.Open(value => {
-                    propertyNameProp.stringValue = value;
-                    propertyNameProp.serializedObject.ApplyModifiedProperties();
-                });
+                searchWindow.Open(SetPropertyName);
             }
 
             void GetTreeEntries(VrcfSearchWindow searchWindow) {
                 var mainGroup = searchWindow.GetMainGroup();
-                var renderers = FindRenderers(
-                    affectAllMeshesProp.boolValue,
-                    rendererProp.GetComponent<Renderer>(),
-                    avatarObject
-                );
+                var renderers = CurrentRenderers();
                 if (renderers.Count == 0) return;
 
                 foreach (var renderer in renderers) {
@@ -308,10 +312,6 @@ namespace VF.Actions {
                 var visible = !allRenderersProp.boolValue;
                 rendererField.SetVisible(visible);
                 warning.SetVisible(!visible);
-                if (!visible) {
-                    rendererProp.objectReferenceValue = null;
-                    rendererProp.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-                }
             }
             UpdateVisibility();
             content.Add(VRCFuryEditorUtils.OnChange(allRenderersProp, UpdateVisibility));
@@ -347,12 +347,14 @@ namespace VF.Actions {
         private static MaterialPropertyAction.Type GetMaterialPropertyActionTypeToUse(
             IList<Renderer> renderers,
             string propName,
-            MaterialPropertyAction.Type setting,
-            bool forceRedetect
+            MaterialPropertyAction.Type setting
         ) {
-            if (!forceRedetect && setting != MaterialPropertyAction.Type.LegacyAuto) {
-                return setting;
-            }
+            return setting == MaterialPropertyAction.Type.LegacyAuto
+                ? DetectMaterialPropertyActionType(renderers, propName) ?? MaterialPropertyAction.Type.Float
+                : setting;
+        }
+
+        private static MaterialPropertyAction.Type? DetectMaterialPropertyActionType(IList<Renderer> renderers, string propName) {
             switch (FindMaterialPropertyType(renderers, propName)) {
                 case ShaderPropertyType.Color:
                     return MaterialPropertyAction.Type.Color;
@@ -361,9 +363,7 @@ namespace VF.Actions {
                 case ShaderExtensions.StPropertyType:
                     return MaterialPropertyAction.Type.St;
                 case null:
-                    return setting == MaterialPropertyAction.Type.LegacyAuto
-                        ? MaterialPropertyAction.Type.Float
-                        : setting;
+                    return null;
                 default:
                     return MaterialPropertyAction.Type.Float;
             }

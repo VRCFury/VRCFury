@@ -17,10 +17,7 @@ namespace VF.Inspector {
         }
         public static void SetValue(SerializedProperty prop, Object val) {
             GetObjRefProp(prop).objectReferenceValue = val;
-            UpdateFallbackId(prop);
-        }
-        public static void UpdateFallbackId(SerializedProperty prop) {
-            GetIdProp(prop).stringValue = VrcfObjectId.ObjectToId(GetObjRefProp(prop).objectReferenceValue);
+            GetIdProp(prop).stringValue = VrcfObjectId.ObjectToId(val);
         }
 
         public override VisualElement CreatePropertyGUI(SerializedProperty prop) {
@@ -32,14 +29,15 @@ namespace VF.Inspector {
             var objField = new ObjectField();
             var type = fieldInfo.FieldType.VFField("typeDetector").FieldType;
             objField.objectType = type;
-            objField.bindingPath = objRefProp.propertyPath;
             output.Add(objField);
 
             var lastSeenLabel = VRCFuryEditorUtils.WrappedLabel("");
             output.Add(lastSeenLabel);
 
-            void UpdateLastSeenLabel() {
-                if (objRefProp.objectReferenceValue != null || idProp.stringValue == "") {
+            void Refresh() {
+                var reference = objRefProp.objectReferenceValue;
+                objField.SetValueWithoutNotify(reference);
+                if (reference != null || string.IsNullOrEmpty(idProp.stringValue)) {
                     lastSeenLabel.text = "";
                     lastSeenLabel.SetVisible(false);
                 } else {
@@ -59,22 +57,21 @@ namespace VF.Inspector {
                 }
             }
 
-            objField.RegisterValueChangedCallback(change => {
-                if (change.newValue != null || change.previousValue != null) {
-                    UpdateFallbackId(prop);
-                    prop.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-                }
-                UpdateLastSeenLabel();
-            });
-            objField.RegisterCallback<KeyDownEvent>(evt => {
-                if (evt.keyCode == KeyCode.Delete) {
-                    SetValue(prop, null);
-                    prop.serializedObject.ApplyModifiedProperties();
-                    UpdateLastSeenLabel();
-                }
-            });
+            void Save(Object value) {
+                SetValue(prop, value);
+                prop.serializedObject.ApplyModifiedProperties();
+                Refresh();
+            }
 
-            UpdateLastSeenLabel();
+            objField.RegisterValueChangedCallback(change => Save(change.newValue));
+            objField.RegisterCallback<KeyDownEvent>(evt => {
+                if (evt.keyCode == KeyCode.Delete) Save(null);
+            });
+            output.Add(VRCFuryEditorUtils.OnChange(objRefProp, Refresh));
+            output.Add(VRCFuryEditorUtils.OnChange(idProp, Refresh));
+            output.RegisterCallback<AttachToPanelEvent>(_ => Refresh());
+
+            Refresh();
             return output;
         }
     }
