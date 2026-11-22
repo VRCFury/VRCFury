@@ -502,7 +502,8 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(output), Is.Zero, "Invalid separation must not count as a contact");
             Set(receiver, 0, 0.2f, native: false);
             Evaluate();
-            Assert.That(playable.GetFloat(output), Is.Zero, "Stale advanced outputs must not count as a contact");
+            Assert.That(playable.GetFloat(output), Is.EqualTo(shared && party != Party.Self ? 1 : 0),
+                "Valid point separation counts as a contact even at zero proximity");
         }
 
         [Test]
@@ -531,7 +532,7 @@ namespace VF.Tests {
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true)
                 .Any(r => r.collisionTags.Contains(SpsTags.LegacyPlugRoot)), Is.False);
             foreach (var receiver in root.GetComponentsInChildren<VRCContactReceiver>(true)) {
-                Assert.That(receiver.radius * receiver.transform.lossyScale.x, Is.EqualTo(1).Within(0.0001f));
+                Assert.That(receiver.radius * receiver.transform.lossyScale.x, Is.EqualTo(0.2f).Within(0.0001f));
             }
         }
 
@@ -610,7 +611,7 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(outputs[6]), Is.EqualTo(radius).Within(0.002f));
             Assert.That(playable.GetFloat(outputs[7]), Is.EqualTo(radius / length).Within(0.002f));
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(1));
-            Set(Main(), 0, 0);
+            Set(Main(), 0, -1);
             Evaluate();
             Assert.That(playable.GetFloat(outputs[2]), Is.EqualTo(100).Within(0.0001f));
         }
@@ -816,15 +817,15 @@ namespace VF.Tests {
             }
             Contact(0.3f, 1, 0);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f), "A fresh plug without a helper stays at zero");
-            Contact(0.63f, 0.97f, 0.85f);
+            Contact(0.63f, 0.85f, 0.25f);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f), "Before insertion");
-            Contact(0.6f, 1, 0.88f);
+            Contact(0.6f, 1, 0.4f);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f), "Tip touching entrance");
-            Contact(0.585f, 1, 0.88f);
+            Contact(0.585f, 1, 0.475f);
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.03f).Within(0.001f), "2.5% insertion");
-            Contact(0.57f, 1, 0.88f);
+            Contact(0.57f, 1, 0.55f);
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.06f).Within(0.001f), "5% insertion");
-            Contact(0.3f, 1, 0.88f);
+            Contact(0.3f, 1, 1);
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.06f).Within(0.001f), "Further insertion");
             var receiver = merged ? Merged() : Main(false);
             Set(receiver, 1, 0.3f, length: 0.6f, radius: 0.2f, native: true);
@@ -833,7 +834,7 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.04f).Within(0.001f), "Native plugs use sampled radius even with a stale legacy helper");
             Contact(0.3f, 1, 0);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f), "A plug without a radius helper must not use the assumed radius");
-            Contact(0, 0, 0);
+            Contact(-1, 0, 0);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
         }
 
@@ -844,20 +845,20 @@ namespace VF.Tests {
             var depth = measurements(SpsDepthMeters);
             Assert.That(fx.parameters.Any(p => p.name.Contains("LegacySourceStable") || p.name.EndsWith("_b")), Is.False);
             Start();
-            Set(Main(false), 0.4f, 1.2f, length: 20, radius: 20, z: 1.2f);
+            Set(Main(false), 0.4f, 0.72f, length: 20, radius: 20, z: 1.2f);
             Evaluate();
             Assert.That(playable.GetFloat(length), Is.EqualTo(0.6f).Within(0.001f));
-            Assert.That(playable.GetFloat(depth), Is.EqualTo(0.6f).Within(0.001f));
+            Assert.That(playable.GetFloat(depth), Is.EqualTo(0.12f).Within(0.001f));
             Set(Main(false), 1, 0.4f, length: 20, radius: 20, z: 1.2f);
             Evaluate();
             Assert.That(playable.GetFloat(length), Is.EqualTo(0.6f).Within(0.001f));
             Assert.That(playable.GetFloat(depth), Is.EqualTo(-0.2f).Within(0.001f));
-            Set(Main(false), 0, 0);
+            Set(Main(false), 0, -1);
             Evaluate();
             Set(Main(false), 1, 0.1f, z: 1.2f);
             Evaluate();
             Assert.That(playable.GetFloat(length), Is.EqualTo(0.1f).Within(0.001f));
-            Set(Main(false), 0.4f, 1.2f, z: 1.2f);
+            Set(Main(false), 0.4f, 0.72f, z: 1.2f);
             Evaluate();
             Set(Main(false), 1, 0.1f, z: -1.2f);
             Evaluate();
@@ -881,8 +882,8 @@ namespace VF.Tests {
             Assert.That(estimates, Has.Length.EqualTo(3));
             Start();
 
-            // A stale separation and a nearby width helper must not keep the estimates running.
-            Set(Main(false), 0, 2);
+            // A nearby width helper alone must not keep the estimates running.
+            Set(Main(false), 0, -1);
             Set(Width(false), .6f, 1);
             Evaluate();
             foreach (var estimate in estimates) Assert.That(playable.GetFloat(estimate), Is.Zero);
@@ -891,7 +892,7 @@ namespace VF.Tests {
             Evaluate();
             Assert.That(playable.GetFloat(length), Is.EqualTo(.7f).Within(.001f));
 
-            Set(Main(false), .8f, .8f);
+            Set(Main(false), .8f, .64f);
             Evaluate(1);
             Set(Main(false), 1, .4f);
             Evaluate();
@@ -952,7 +953,7 @@ namespace VF.Tests {
                 void Update(ref float value, ref bool known, VFAParam sample, bool width) {
                     var candidate = playable.GetFloat(sample);
                     var assumed = width ? 0.03f : 0.3f;
-                    if (proximity <= 0 || separation < 0) { value = assumed; known = false; }
+                    if (separation < 0) { value = assumed; known = false; }
                     else if (playable.GetFloat(native) > 0) { value = width ? 0.08f : 0.7f; known = false; }
                     else if (width && helper <= 0) { value = assumed; known = false; }
                     else if (candidate > 0 && (proximity < 1 || !known)) { value = candidate; known = true; }
@@ -985,14 +986,19 @@ namespace VF.Tests {
             var depth = outputs(SpsDepthMeters);
             var velocity = outputs(SpsVelocityMeters);
             Start();
-            var samples = new (float distance, float helper)[] {
-                (0.8f, 0.68f), (1f, 0.72f), (4f, 0.68f),
-                (0.1f, 0.68f), (0.8f, 0.9f), (0.8f, 0.21f), (0.8f, 0f)
+            var samples = new (float distance, float helperDistance, float helper)[] {
+                (0.64f, 0.64f, 0.2f),
+                (0.84f, 0.84f, 0.4f),
+                (4f, 4f, 0.2f),
+                (0.03f, 0.03f, 0.2f),
+                (0.64f, 0.64f, 0.9f),
+                (0.64f, 0.168f, 0.21f),
+                (0.64f, -1f, 0f)
             };
             for (var frame = 0; frame < 70; frame++) {
                 var sample = samples[frame % samples.Length];
                 Set(Main(false), 0.8f, sample.distance);
-                Set(Width(false), sample.helper, sample.distance);
+                Set(Width(false), sample.helper, sample.helperDistance);
                 var speed = frame % 2 == 0 ? -0.4f : 0.7f;
                 playable.SetFloat(Main(false).parameter + "_SenderVelocityZ", speed);
                 Evaluate(1);
@@ -1000,7 +1006,7 @@ namespace VF.Tests {
                     "A stale validity decision must not accept a negative or oversized length");
                 Assert.That(new[] { 0.03f, 0.04f, 0.06f }.Any(v => Mathf.Abs(v - playable.GetFloat(radius)) < 0.001f), Is.True,
                     "A stale validity decision must not accept a negative radius or the helper's minimum-radius artifact");
-                Assert.That(playable.GetFloat(depth), Is.EqualTo(0.2f).Within(0.001f));
+                Assert.That(playable.GetFloat(depth), Is.EqualTo(0.04f).Within(0.001f));
                 Assert.That(playable.GetFloat(velocity), Is.EqualTo(speed).Within(0.001f));
             }
         }
@@ -1018,17 +1024,17 @@ namespace VF.Tests {
                 Set(Width(false), helper, distance, z: distance);
                 Evaluate();
             }
-            Contact(0.58f, 1, 0.9f);
+            Contact(0.58f, 1, 0.5f);
             Assert.That(playable.GetFloat(length), Is.EqualTo(0.58f).Within(0.001f));
             Assert.That(playable.GetFloat(radius), Is.EqualTo(0.05f).Within(0.001f));
-            Contact(0.48f, 1, 0.99f);
+            Contact(0.48f, 1, 1);
             Assert.That(playable.GetFloat(length), Is.EqualTo(0.58f).Within(0.001f));
             Assert.That(playable.GetFloat(radius), Is.EqualTo(0.05f).Within(0.001f));
             Assert.That(playable.GetFloat(depth), Is.EqualTo(-0.1f).Within(0.001f));
-            Contact(0.62f, 0.98f, 0.86f);
+            Contact(0.62f, 0.9f, 0.3f);
             Assert.That(playable.GetFloat(length), Is.EqualTo(0.6f).Within(0.001f));
             Assert.That(playable.GetFloat(radius), Is.EqualTo(0.06f).Within(0.001f));
-            Contact(0.5f, 1, 0.98f);
+            Contact(0.5f, 1, 0.9f);
             Assert.That(playable.GetFloat(length), Is.EqualTo(0.6f).Within(0.001f));
             Assert.That(playable.GetFloat(radius), Is.EqualTo(0.06f).Within(0.001f));
         }
@@ -1052,19 +1058,19 @@ namespace VF.Tests {
             Assert.That(fx.parameters.Any(p => p.name.Contains("LegacyWidthMatched") || p.name.Contains("Difference")), Is.False);
             Start();
             Set(Main(false), 0.8f, 0.8f, x: -0.4f, z: 1.2f);
-            Set(Width(false), 0.68f, 0.8f, x: -0.4f, z: 1.2f);
+            Set(Width(false), 0.2f, 0.8f, x: -0.4f, z: 1.2f);
             Evaluate();
             Assert.That(playable.GetFloat(radius), Is.EqualTo(0.06f).Within(0.001f));
-            Set(Width(false), 0.68f, 0.8f, x: 0.4f, z: 1.2f);
+            Set(Width(false), 0.2f, 0.8f, x: 0.4f, z: 1.2f);
             Evaluate();
             Assert.That(playable.GetFloat(radius), Is.EqualTo(0.06f).Within(0.001f));
-            Set(Width(false), 0.21f, 0.8f, x: -0.4f, z: 1.2f);
+            Set(Width(false), 0.21f, 0.168f, x: -0.4f, z: 1.2f);
             Evaluate();
             Assert.That(playable.GetFloat(radius), Is.EqualTo(0.03f).Within(0.001f));
-            Set(Width(false), 0.68f, 0.8f, x: -0.4f, z: 1.2f);
+            Set(Width(false), 0.2f, 0.8f, x: -0.4f, z: 1.2f);
             Evaluate();
             Assert.That(playable.GetFloat(radius), Is.EqualTo(0.06f).Within(0.001f));
-            Set(Width(false), 0.21f, 0.8f, x: -0.4f, z: 1.2f);
+            Set(Width(false), 0.21f, 0.168f, x: -0.4f, z: 1.2f);
             Evaluate();
             Assert.That(playable.GetFloat(radius), Is.EqualTo(0.03f).Within(0.001f));
         }
@@ -1307,7 +1313,7 @@ namespace VF.Tests {
                     () => ordinaryAnimator.TryGetValue(name, out var value) ? value : 0,
                     value => ordinaryAnimator[name] = value));
                 var senderObject = GameObjects.Create("Native plug", root);
-                senderObject.localPosition = Vector3.forward * 0.8f;
+                senderObject.localPosition = Vector3.forward * 0.5f;
                 senderObject.localScale = new Vector3(0.04f, 0.04f, 0.4f);
                 var sender = senderObject.AddComponent<VRCContactSender>();
                 sender.radius = 1;
@@ -1326,10 +1332,10 @@ namespace VF.Tests {
                 Tick(); Tick();
                 Evaluate();
                 Assert.That(ordinaryAnimator[receiver.parameter + "_SenderLossyScaleZ"], Is.EqualTo(0.4f).Within(0.001f));
-                Assert.That(ordinaryAnimator[receiver.parameter + "_PointSeparation"], Is.EqualTo(0.8f).Within(0.001f));
+                Assert.That(ordinaryAnimator[receiver.parameter + "_PointSeparation"], Is.EqualTo(0.5f).Within(0.001f));
                 Assert.That(playable.GetFloat(receiver.parameter + "_SenderLossyScaleZ"), Is.Zero);
-                Assert.That(playable.GetFloat(length), Is.Zero);
-                Assert.That(playable.GetFloat(radius), Is.Zero);
+                Assert.That(playable.GetFloat(length), Is.EqualTo(0.3f).Within(0.001f));
+                Assert.That(playable.GetFloat(radius), Is.EqualTo(0.03f).Within(0.001f));
 
                 if (av3Emu) {
                     receiver.paramAccess = new Av3EmuParameterAccess { runtime = playableAccess, paramName = receiver.parameter };
@@ -1347,7 +1353,7 @@ namespace VF.Tests {
                 Evaluate();
                 Assert.That(playable.GetFloat(length), Is.EqualTo(0.4f).Within(0.001f));
                 Assert.That(playable.GetFloat(radius), Is.EqualTo(0.04f).Within(0.001f));
-                Assert.That(playable.GetFloat(depth), Is.EqualTo(0.4f).Within(0.001f));
+                Assert.That(playable.GetFloat(depth), Is.EqualTo(0.1f).Within(0.001f));
                 Assert.That(playable.GetFloat(velocity), Is.EqualTo(-0.6f).Within(0.001f));
                 foreach (var distance in new[] { 0.2f, 0.05f }) {
                     senderObject.localPosition = Vector3.forward * distance;
@@ -2023,7 +2029,7 @@ namespace VF.Tests {
                 Assert.That(playable.GetFloat("Depth local"), Is.EqualTo(-0.4f / resize).Within(0.001f));
                 Assert.That(playable.GetFloat("Radius local"), Is.EqualTo(0.06f / resize).Within(0.001f));
                 foreach (var receiver in contacts.Where(r => !r.localOnly)) {
-                    Assert.That(receiver.radius * receiver.transform.lossyScale.x, Is.EqualTo(1).Within(0.0001f));
+                    Assert.That(receiver.radius * receiver.transform.lossyScale.x, Is.EqualTo(0.2f).Within(0.0001f));
                 }
                 var touch = haptics.Single(r => r.parameter.EndsWith("/TouchSelf"));
                 Assert.That(touch.radius * touch.transform.lossyScale.x, Is.EqualTo(0.06f).Within(0.0001f));
