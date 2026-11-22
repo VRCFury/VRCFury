@@ -14,6 +14,7 @@ using VF.Model.StateAction;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.SDK3.Avatars.ScriptableObjects;
 using Toggle = VF.Model.Feature.Toggle;
 
 namespace VF.Feature {
@@ -38,6 +39,7 @@ namespace VF.Feature {
         private Action<VFState, bool> drive;
         private VFClip savedRestingClip;
         private bool loadedRestingClip = false;
+        private bool sliderDefaultOn;
 
         public const string menuPathTooltip = "This is where you'd like the toggle to be located in the menu. This is unrelated"
             + " to the menu filenames -- simply enter the title you'd like to use. If you'd like the toggle to be in a submenu, use slashes. For example:\n\n"
@@ -90,6 +92,8 @@ namespace VF.Feature {
             var paramName = GetParamName();
             FloatOrBool defaultValue = model.slider ? model.defaultSliderValue : model.defaultOn;
             var isInt = !model.slider && model.useInt;
+            var flipbookPages = model.slider ? GetFlipbookPageCount() : 0;
+            (int first, int last) sliderNetworkCodes = default;
             VFAParam param;
             if (model.slider) {
                 param = fx.GetOrCreateFloat(paramName);
@@ -102,22 +106,39 @@ namespace VF.Feature {
             param.SetDefault(defaultValue);
             if (synced || isInt) {
                 var expressionParam = ExpressionParam.Create(param.name).Default(param.GetDefault()).Saved(model.saved);
-                if (model.slider) expressionParam.Float();
-                else if (isInt) expressionParam.Int();
+                if (model.slider) {
+                    expressionParam.Float();
+                    var existing = expressionParams.FirstOrDefault(p => p.name == param.name);
+                    if (existing?.valueType == expressionParam.valueType) {
+                        expressionParam = existing;
+                    } else {
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+                        expressionParam.bitWidth = GetSliderBitWidth(flipbookPages);
+                        expressionParam.flippedRepresentation = true;
+#endif
+                    }
+                } else if (isInt) expressionParam.Int();
                 else expressionParam.Bool();
                 if (isInt) expressionParam.DisableInterpolation();
-                expressionParams.AddOrMerge(expressionParam);
+                var registered = expressionParams.AddOrMerge(expressionParam);
+                if (flipbookPages > 0 && registered.IsNetworkSynced()) {
+                    registered.DisableInterpolation();
+                    expressionParams.Dirty();
+                    var (min, networkIntervals) = registered.GetFloatNetworkFormat();
+                    sliderNetworkCodes = (model.sliderInactiveAtZero ? 1 : 0, networkIntervals / (1 - min));
+                }
             }
             VFCondition onCase;
             VFAParam weight = null;
             bool defaultOn;
             if (model.slider) {
-                onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(0) : fx.Always();
+                var offThreshold = sliderNetworkCodes.last > 0 ? 0.5f / sliderNetworkCodes.last : 0;
+                onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(offThreshold) : fx.Always();
                 exclusiveParam = model.sliderInactiveAtZero ? param : null;
                 if (model.sliderInactiveAtZero) {
                     drive = (state,on) => { if (!on) state.Drives(param, 0); };
                 }
-                defaultOn = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
+                defaultOn = sliderDefaultOn = !model.sliderInactiveAtZero || model.defaultSliderValue > offThreshold;
                 weight = param;
                 if (addMenuItem) {
                     menu.NewMenuSlider(
@@ -164,12 +185,69 @@ namespace VF.Feature {
 
             if (model.separateLocal) {
                 var isLocal = fx.IsLocal().IsTrue();
-                Apply(layer, off, onCase.And(isLocal.Not()), weight, defaultOn, "On Remote", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
-                Apply(layer, off, onCase.And(isLocal), weight, defaultOn, "On Local", model.localState, model.localTransitionStateIn, model.localTransitionStateOut, model.localTransitionTimeIn, model.localTransitionTimeOut);
+                Apply(
+                    layer,
+                    off,
+                    onCase.And(isLocal.Not()),
+                    weight,
+                    defaultOn,
+                    "On Remote",
+                    model.state,
+                    model.transitionStateIn,
+                    model.transitionStateOut,
+                    model.transitionTimeIn,
+                    model.transitionTimeOut,
+                    sliderNetworkCodes
+                );
+                Apply(
+                    layer,
+                    off,
+                    onCase.And(isLocal),
+                    weight,
+                    defaultOn,
+                    "On Local",
+                    model.localState,
+                    model.localTransitionStateIn,
+                    model.localTransitionStateOut,
+                    model.localTransitionTimeIn,
+                    model.localTransitionTimeOut,
+                    sliderNetworkCodes
+                );
             } else {
-                Apply(layer, off, onCase, weight, defaultOn, "On", model.state, model.transitionStateIn, model.transitionStateOut, model.transitionTimeIn, model.transitionTimeOut);
+                Apply(
+                    layer,
+                    off,
+                    onCase,
+                    weight,
+                    defaultOn,
+                    "On",
+                    model.state,
+                    model.transitionStateIn,
+                    model.transitionStateOut,
+                    model.transitionTimeIn,
+                    model.transitionTimeOut,
+                    sliderNetworkCodes
+                );
             }
         }
+
+        private int GetFlipbookPageCount() {
+            var actions = ActionClipService.GetActiveActions(model.state).AsEnumerable();
+            if (model.separateLocal) actions = actions.Concat(ActionClipService.GetActiveActions(model.localState));
+            return actions.OfType<FlipBookBuilderAction>().Select(action => action.pages.Count).DefaultIfEmpty(0).Max();
+        }
+
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+        private byte GetSliderBitWidth(int pages) {
+            if (pages == 0) return 7;
+
+            var requiredValues = pages + (model.sliderInactiveAtZero ? 1 : 0);
+            var bits = (int)VRCExpressionParameters.Parameter.MinBitWidth;
+            // Unsigned float sync provides 2^bits - 1 values including both endpoints.
+            while (bits < VRCExpressionParameters.Parameter.MaxBitWidth && (1 << bits) - 1 < requiredValues) bits++;
+            return (byte)bits;
+        }
+#endif
 
         private void Apply(
             VFLayer layer,
@@ -182,7 +260,8 @@ namespace VF.Feature {
             State inAction,
             State outAction,
             float inTime,
-            float outTime
+            float outTime,
+            (int first, int last) sliderNetworkCodes
         ) {
             if (model.securityEnabled) {
                 var securityLockUnlocked = globals.allBuildersInRun
@@ -202,7 +281,12 @@ namespace VF.Feature {
             VFMotion restingMotion = null;
             VFClip restingClip = null;
             if (weight != null) {
-                var builtAction = actionClipService.LoadStateAdv(onName, action, motionTime: ActionClipService.MotionTimeMode.Always);
+                var builtAction = actionClipService.LoadStateAdv(
+                    onName,
+                    action,
+                    motionTime: ActionClipService.MotionTimeMode.Always,
+                    sliderNetworkCodes: sliderNetworkCodes
+                );
                 inState = onState = layer.NewState(onName);
                 onState.WithAnimation(builtAction.onClip).MotionTime(weight);
                 onState.TransitionsToExit().When(onCase.Not());
@@ -385,7 +469,7 @@ namespace VF.Feature {
 
             bool includeInRest;
             if (model.slider) {
-                includeInRest = model.sliderInactiveAtZero ? model.defaultSliderValue > 0 : true;
+                includeInRest = sliderDefaultOn;
             } else {
                 includeInRest = model.defaultOn;
             }

@@ -48,7 +48,7 @@ namespace VF.Service {
             public bool useMotionTime;
         }
 
-        private static IList<Action> GetActiveActions([CanBeNull] State actionSet) {
+        internal static IList<Action> GetActiveActions([CanBeNull] State actionSet) {
             if (actionSet == null) return new List<Action>();
             return actionSet.actions.Where(action => {
                 if (action == null) throw new Exception("Action list contains a corrupt action");
@@ -66,12 +66,13 @@ namespace VF.Service {
             State state,
             VFGameObject animObjectOverride = null,
             MotionTimeMode motionTime = MotionTimeMode.Never,
-            bool debugMode = false
+            bool debugMode = false,
+            (int first, int last) sliderNetworkCodes = default
         ) {
             var animObject = animObjectOverride ?? componentObject();
 
             var outputMotions = GetActiveActions(state)
-                .Select(a => LoadAction(name, a, animObject, debugMode))
+                .Select(a => LoadAction(name, a, animObject, debugMode, sliderNetworkCodes))
                 .Where(motion => new AnimatorIterator.Clips().From(motion).SelectMany(clip => clip.GetAllBindings()).Any())
                 .ToList();
 
@@ -127,7 +128,8 @@ namespace VF.Service {
             string name,
             Action action,
             VFGameObject animObject,
-            bool debugMode
+            bool debugMode,
+            (int first, int last) sliderNetworkCodes
         ) {
             if (!modelTypeToBuilder.TryGetValue(action.GetType(), out var builder)) {
                 throw new Exception($"Unknown action type {action.GetType().Name}");
@@ -139,6 +141,7 @@ namespace VF.Service {
             methodInjector.Set("actionName", name);
             methodInjector.Set("animObject", animObject);
             methodInjector.Set("debugMode", debugMode);
+            methodInjector.Set("sliderNetworkCodes", sliderNetworkCodes);
             var buildMethod = builder.GetType().VFMethod("Build");
             var clip = (VFMotion)methodInjector.FillMethod(buildMethod, builder);
 

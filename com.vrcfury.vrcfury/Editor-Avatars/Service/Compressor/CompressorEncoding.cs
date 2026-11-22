@@ -38,9 +38,8 @@ namespace VF.Service.Compressor {
                         max = min + intervals;
                         break;
                     case ValueType.Float:
-                        min = flipped ? 0 : -1;
+                        (min, intervals) = p.GetFloatNetworkFormat();
                         max = 1;
-                        intervals = codes - 2;
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(p));

@@ -113,5 +113,14 @@ namespace VF.Utils {
             return VRCExpressionParameters.TypeCost(param.valueType);
 #endif
         }
+
+        public static (int min, int intervals) GetFloatNetworkFormat(this VRCExpressionParameters.Parameter param) {
+#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
+            var min = param.flippedRepresentation ? 0 : -1;
+#else
+            const int min = -1;
+#endif
+            return (min, (1 << param.TypeCost()) - 2);
+        }
     }
 }

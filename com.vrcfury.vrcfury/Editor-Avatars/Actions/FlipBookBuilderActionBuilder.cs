@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using VF.Exceptions;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Inspector;
@@ -17,21 +18,38 @@ namespace VF.Actions {
     internal class FlipBookBuilderActionBuilder : ActionBuilder<FlipBookBuilderAction> {
         [VFAutowired] [CanBeNull] private readonly ClipBuilderService clipBuilder;
 
-        public VFClip Build(FlipBookBuilderAction model, VFGameObject animObject, ActionClipService actionClipService) {
+        public VFClip Build(
+            FlipBookBuilderAction model,
+            VFGameObject animObject,
+            ActionClipService actionClipService,
+            (int first, int last) sliderNetworkCodes
+        ) {
             var onClip = NewClip();
             var states = model.pages.Select(page => page.state).ToList();
             if (states.Count == 0) return onClip;
-            // Duplicate the last state so the last state still gets an entire frame
-            states.Add(states.Last());
+            var pageCount = states.Count;
+            var (first, last) = sliderNetworkCodes;
+            var snapPageTimes = last > 0;
+            var maxPages = last - first + 1;
+            if (snapPageTimes && pageCount > maxPages) {
+                throw new VRCFBuilderException($"Flipbook Builder has {pageCount} pages, but this slider can sync only {maxPages}.");
+            }
+            float GetPageTime(int page) {
+                if (!snapPageTimes || page == 0) return page;
+                // Switch at the rounding boundary just before the first network value on this page.
+                var firstCode = System.Math.Max(first + page, System.Math.Ceiling((double)page * last / pageCount));
+                return (float)((firstCode - 0.5) / last * pageCount);
+            }
             var sources = states
                 .Select((substate,i) => {
                     var loaded = actionClipService.LoadStateAdv("tmp", substate, animObject);
-                    return ((float)i, loaded.onClip.EvaluateMotion(1).FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips));
+                    return (GetPageTime(i), loaded.onClip.EvaluateMotion(1).FlattenToClip(VFMotionFlattenMode.DefaultVisibleClips));
                 })
                 .ToArray();
 
             if (clipBuilder != null) {
                 var built = clipBuilder.MergeSingleFrameClips(sources);
+                built.UpdateLengthIfLonger(pageCount);
                 built.UseConstantTangents();
                 onClip.CopyFrom(built);
             } else {
