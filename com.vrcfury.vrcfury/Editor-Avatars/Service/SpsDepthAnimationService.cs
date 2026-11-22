@@ -117,10 +117,12 @@ namespace VF.Service {
                 if (action.useMotionTime && reverseClip) {
                     onWhen = allowedInState;
                 } else {
-                    onWhen = (useRawInput && !increasing
+                    // Ignore residuals from smoothing. Adjacent floats at this cutoff are
+                    // far enough apart that the animator can interpolate without subnormals.
+                    const float smoothedOffThreshold = 1e-30f;
+                    onWhen = useRawInput && !increasing
                         ? parameter.IsLessThan(offThreshold)
-                        // Smoothing can settle at the smallest positive float instead of exactly zero.
-                        : parameter.IsGreaterThan(useRawInput ? offThreshold : float.Epsilon));
+                        : parameter.IsGreaterThan(useRawInput ? offThreshold : smoothedOffThreshold);
                     if (useRawInput) {
                         if (filters.Count > 0) onWhen = onWhen.And(allowedInState);
                     }

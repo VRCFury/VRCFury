@@ -143,7 +143,7 @@ namespace VF.Feature {
             if (model.slider) {
                 var firstActiveValue = sliderNetworkCodes.last > 0
                     ? VRCExpressionParameterExtensions.GetFloatNetworkThreshold(1, sliderNetworkCodes.last)
-                    : float.Epsilon;
+                    : VRCFuryEditorUtils.MinNormalFloat;
                 onCase = model.sliderInactiveAtZero ? param.IsGreaterThanOrEquals(firstActiveValue) : fx.Always();
                 exclusiveParam = model.sliderInactiveAtZero ? param : null;
                 if (model.sliderInactiveAtZero) {

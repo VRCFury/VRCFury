@@ -580,23 +580,21 @@ namespace VF.Inspector {
             return container;
         }
 
+        public const float MinNormalFloat = 1.17549435e-38f;
+
+        // Animator evaluation can flush subnormals to zero. Step through normal floats and zero.
         private static float NextFloat(float input, int offset) {
             if (float.IsNaN(input) || float.IsPositiveInfinity(input) || float.IsNegativeInfinity(input))
                 return input;
 
-            var bytes = BitConverter.GetBytes(input);
-            var bits = BitConverter.ToInt32(bytes, 0);
-
-            if (input > 0) {
-                bits += offset;
-            } else if (input < 0) {
-                bits -= offset;
-            } else if (input == 0) {
-                return (offset > 0) ? float.Epsilon : -float.Epsilon;
-            }
-
-            bytes = BitConverter.GetBytes(bits);
-            return BitConverter.ToSingle(bytes, 0);
+            const int minNormalBits = 0x00800000;
+            var bits = BitConverter.SingleToInt32Bits(input);
+            var magnitude = bits & int.MaxValue;
+            if (magnitude == 0) return offset > 0 ? MinNormalFloat : -MinNormalFloat;
+            var step = bits < 0 ? -offset : offset;
+            var next = magnitude + step;
+            if (next < minNormalBits) next = step > 0 ? minNormalBits : 0;
+            return BitConverter.Int32BitsToSingle(next | (bits & int.MinValue));
         }
 
         public static float NextFloatUp(float input) {

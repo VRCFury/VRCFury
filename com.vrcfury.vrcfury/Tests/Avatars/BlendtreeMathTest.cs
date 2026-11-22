@@ -75,6 +75,31 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void ZeroComparisonsUseNormalThresholds() {
+            const float minNormal = 1.17549435e-38f;
+            var input = fx.CreateUniqueFloat("Input");
+            var equal = fx.CreateUniqueFloat("Equal");
+            var positive = fx.CreateUniqueFloat("Positive");
+            var nonnegative = fx.CreateUniqueFloat("Nonnegative");
+            void AddComparison(BlendtreeMath.Condition condition, VFAParam output, params float[] thresholds) {
+                var comparison = (VFTree)condition.create(output.MakeSetter(1), output.MakeSetter(0));
+                Assert.That(comparison.children.Select(child => child.threshold), Is.EqualTo(thresholds));
+                tree.Add(comparison);
+            }
+            AddComparison(BlendtreeMath.Equals(input, 0), equal, -minNormal, 0, minNormal);
+            AddComparison(BlendtreeMath.GreaterThan(input, 0), positive, 0, minNormal);
+            AddComparison(BlendtreeMath.GreaterThan(input, 0, orEqual: true), nonnegative, -minNormal, 0);
+            Start();
+            foreach (var value in new[] { -1f, -minNormal, 0f, minNormal, 1f, 0f }) {
+                playable.SetFloat(input, value);
+                Evaluate();
+                Assert.That(playable.GetFloat(equal), Is.EqualTo(value == 0 ? 1 : 0));
+                Assert.That(playable.GetFloat(positive), Is.EqualTo(value > 0 ? 1 : 0));
+                Assert.That(playable.GetFloat(nonnegative), Is.EqualTo(value >= 0 ? 1 : 0));
+            }
+        }
+
+        [Test]
         public void LiveComparisonUsesFourStopsAndSelectsFalseAtTies() {
             var a = fx.CreateUniqueFloat("A");
             var b = fx.CreateUniqueFloat("B");
