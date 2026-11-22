@@ -1106,7 +1106,8 @@ namespace VF.Tests {
                     var receivers = result.bakeRoot.GetComponentsInSelfAndChildren<VRCContactReceiver>();
                     Assert.That(receivers.Length, Is.EqualTo(3));
                     foreach (var receiver in receivers) {
-                        Assert.That(receiver.transform.parent, Is.EqualTo((Transform)result.bakeRoot));
+                        var parent = receiver.name == "Receiver - Socket Paths" ? result.pathReceiverRoot : result.bakeRoot;
+                        Assert.That(receiver.transform.parent, Is.EqualTo((Transform)parent));
                         CheckVector(receiver.transform.lossyScale, Vector3.one);
                         CheckVector(receiver.transform.position, result.bakeRoot.worldPosition);
                     }
