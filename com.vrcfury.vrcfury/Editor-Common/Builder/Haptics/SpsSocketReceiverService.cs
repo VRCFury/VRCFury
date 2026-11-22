@@ -18,7 +18,7 @@ namespace VF.Builder.Haptics {
         ) => cache.GetOrCreate(socket, () => {
             var data = channels.Get(socket);
             return receivers.Create(new SelfAndOthersReceiverService.Request {
-                frame = frame, name = name + "/Depth", worldRadius = includeLegacy ? 1 : 0.2f, channels = data,
+                frame = frame, name = name + "/Depth", worldRadius = 0.2f, channels = data,
                 objectName = (self, merged) => "Receiver - Plugs (" + (self ? "Self" : "Others") + (merged ? " Merged" : "") + ")",
                 supportsLegacy = includeLegacy,
                 getTags = (set, self) => (self ? set.self : set.others)

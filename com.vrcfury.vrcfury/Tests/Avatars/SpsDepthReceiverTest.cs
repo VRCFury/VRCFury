@@ -555,7 +555,7 @@ namespace VF.Tests {
             var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
             foreach (var receiver in contacts) {
                 Assert.That(receiver.radius * receiver.transform.lossyScale.x,
-                    Is.EqualTo(available ? 1 : 0.2f).Within(0.0001f));
+                    Is.EqualTo(0.2f).Within(0.0001f));
                 if (receiver.collisionTags.Contains(SpsTags.FormatPlug("test"))) {
                     Assert.That(receiver.collisionTags.Contains(SpsTags.LegacyPlugSphere),
                         Is.EqualTo(available && receiver.allowOthers));
@@ -1034,15 +1034,15 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void OneMeterReceiverCanMeasureALongerLegacyPlug() {
+        public void TwentyCentimeterReceiverCanMeasureALongerLegacyPlug() {
             measurements = Socket()(Party.Others);
             var length = measurements(SpsPlugLengthMeters);
             var depth = measurements(SpsDepthMeters);
             Start();
-            Set(Main(false), 0.6f, 1.6f, z: 1.6f);
+            Set(Main(false), 0.6f, 1.28f, z: 1.28f);
             Evaluate();
             Assert.That(playable.GetFloat(length), Is.EqualTo(1.2f).Within(0.001f));
-            Assert.That(playable.GetFloat(depth), Is.EqualTo(0.4f).Within(0.001f));
+            Assert.That(playable.GetFloat(depth), Is.EqualTo(0.08f).Within(0.001f));
         }
 
         [Test]
