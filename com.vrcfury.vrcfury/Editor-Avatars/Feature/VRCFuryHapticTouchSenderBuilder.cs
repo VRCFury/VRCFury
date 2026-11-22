@@ -23,6 +23,8 @@ namespace VF.Feature {
                     obj = sender.owner(),
                     objName = "Sender",
                     radius = sender.radius,
+                    height = sender.height,
+                    rotation = Quaternion.identity,
                     tags = new string[] { "Finger", "FingerR", "FingerIndex", "FingerIndexR" },
                     useWorldUnits = false
                 });
@@ -43,15 +45,28 @@ namespace VF.Feature {
                 container.Add(VRCFuryHapticPlugEditor.ConstraintWarning(target));
             
                 container.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("radius"), "Radius"));
+                container.Add(VRCFuryEditorUtils.BetterProp(
+                    serializedObject.FindProperty("height"),
+                    "Height",
+                    tooltip: "Total capsule height including both rounded ends. Set to 0 for a sphere."
+                ));
 
                 return container;
             }
         
             [DrawGizmo(GizmoType.Selected | GizmoType.Active | GizmoType.InSelectionHierarchy)]
             static void DrawGizmo(VRCFuryHapticTouchSender c, GizmoType gizmoType) {
-                var worldPos = c.owner().worldPosition;
-                var worldScale = c.owner().worldScale.x;
-                VRCFuryGizmoUtils.DrawSphere(worldPos, worldScale * c.radius, Color.blue);
+                var owner = c.owner();
+                var worldPos = owner.worldPosition;
+                var scale = owner.worldScale;
+                var worldScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+                VRCFuryGizmoUtils.DrawCapsule(
+                    worldPos,
+                    owner.worldRotation,
+                    worldScale * c.height,
+                    worldScale * c.radius,
+                    Color.blue
+                );
                 VRCFuryGizmoUtils.DrawText(worldPos, "Touch Sender", Color.white, true);
             }
         }

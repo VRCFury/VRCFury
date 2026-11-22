@@ -4,5 +4,6 @@ namespace VF.Component {
     [AddComponentMenu("VRCFury/Touch Sender (VRCFury)")]
     internal class VRCFuryHapticTouchSender : VRCFuryComponent {
         public float radius = 0.1f;
+        [Min(0)] public float height;
     }
 }
