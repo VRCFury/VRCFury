@@ -124,7 +124,9 @@ namespace VF.Service {
             var fullSuffix = "_" + suffix;
             var flag = VRCContactReceiverExtensions.GetAdvancedParameterFlag(suffix);
             var parameter = GetParameter(receivers, party, advancedParameters: flag);
-            return parameter.Controller.GetOrCreateFloat(parameter.name + fullSuffix);
+            var output = parameter.Controller.GetOrCreateFloat(parameter.name + fullSuffix);
+            if (flag == AdvancedParameter.PointSeparation) output.SetDefault(-1);
+            return output;
 #else
             throw new InvalidOperationException(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
 #endif
@@ -166,8 +168,6 @@ namespace VF.Service {
             var chooseNeither = Select("no contact");
             var selfDistance = GetAdvancedParam(receivers, Party.Self, "PointSeparation");
             var othersDistance = GetAdvancedParam(receivers, Party.Others, "PointSeparation");
-            selfDistance.SetDefault(-1);
-            othersDistance.SetDefault(-1);
 
             var tree = VFBlendTree2D.CreateFreeformCartesian(receivers.request.name + " closest contact", othersDistance, selfDistance);
             // With both distances nonnegative, compare near the origin. Tilt the Others stop

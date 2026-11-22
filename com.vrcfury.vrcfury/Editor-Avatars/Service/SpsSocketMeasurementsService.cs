@@ -49,8 +49,7 @@ namespace VF.Service {
                 var prefix = name + "/" + party;
                 var proximity = new Lazy<VFAParam>(() => receiverAnimator.GetParameter(main, party));
                 VFAParam Field(string suffix) => receiverAnimator.GetAdvancedParam(main, party, suffix);
-                var present = new Lazy<BlendtreeMath.Condition>(() => BlendtreeMath.GreaterThan(proximity.Value, 0)
-                    .And(BlendtreeMath.GreaterThan(Field("PointSeparation"), 0, true)));
+                var present = new Lazy<BlendtreeMath.Condition>(() => BlendtreeMath.GreaterThan(Field("PointSeparation"), 0, true));
                 var native = new Lazy<BlendtreeMath.Condition>(() => receiverAnimator.GetNative(main, party));
                 var presence = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
                     present.Value.CreateBranches(tree, prefix + "/Present"));

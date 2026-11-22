@@ -40,10 +40,8 @@ namespace VF.Service {
             var byParty = new Dictionary<Party, Func<string, VFAParam>>();
             return party => byParty.GetOrCreate(party, () => {
                 var prefix = name + "/" + party;
-                var proximity = new Lazy<VFAParam>(() => receiverAnimator.GetParameter(main, party));
                 VFAParam Field(string suffix) => receiverAnimator.GetAdvancedParam(main, party, suffix);
-                var present = new Lazy<BlendtreeMath.Condition>(() => BlendtreeMath.GreaterThan(proximity.Value, 0)
-                    .And(BlendtreeMath.GreaterThan(Field("PointSeparation"), 0, true)));
+                var present = new Lazy<BlendtreeMath.Condition>(() => BlendtreeMath.GreaterThan(Field("PointSeparation"), 0, true));
                 var presence = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
                     present.Value.CreateBranches(tree, prefix + "/Present"));
                 var legacy = party != Party.Self && main.request.supportsLegacy;
