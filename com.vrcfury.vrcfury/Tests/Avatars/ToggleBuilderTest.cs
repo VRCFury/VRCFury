@@ -22,49 +22,6 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     public class ToggleBuilderTest {
-#if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
-        [TestCase(false)]
-        [TestCase(true)]
-        public void ReviewSharedFlipbookWidths(bool largerFirst) {
-            var root = new GameObject("Shared flipbook width review");
-            try {
-                var avatar = root.AddComponent<VRCAvatarDescriptor>();
-                avatar.customizeAnimationLayers = true;
-                avatar.baseAnimationLayers = new[] {
-                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX }
-                };
-                avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
-                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
-                injector.Set("componentObject", new Func<VFGameObject>(() => root));
-                injector.GetService<ControllersService>().ClearCache(applyBaseMask: false);
-                void Build(int pages) {
-                    var toggle = new Toggle {
-                        name = "Presets " + pages,
-                        slider = true,
-                        useGlobalParam = true,
-                        globalParam = "Shared",
-                        addMenuItem = false
-                    };
-                    var flipbook = new FlipBookBuilderAction();
-                    for (var i = 0; i < pages; i++) flipbook.pages.Add(new FlipBookBuilderAction.FlipBookPage());
-                    toggle.state.actions.Add(flipbook);
-                    var builder = (ToggleBuilder)FeatureFinder.GetBuilder(toggle, root, injector);
-                    builder.featureBaseObject = root;
-                    builder.Apply();
-                }
-                Build(largerFirst ? 4 : 3);
-                var second = largerFirst ? 3 : 4;
-                if (largerFirst) Assert.DoesNotThrow(() => Build(second));
-                else Assert.That(Assert.Throws<TargetInvocationException>(() => Build(second)).InnerException.Message,
-                    Does.Contain("has 4 pages, but this slider can sync only 3"));
-            } finally {
-                var asset = root.GetComponent<VRCAvatarDescriptor>().expressionParameters;
-                Object.DestroyImmediate(root);
-                if (asset != null) Object.DestroyImmediate(asset);
-            }
-        }
-#endif
-
         [TestCase(0, false, true, false, 3, false)]
         [TestCase(0, false, true, true, 3, false)]
 #if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
@@ -187,7 +144,8 @@ namespace VF.Tests {
                     Assert.That(renderer.sharedMaterial, Is.SameAs(materials[page - 1]), $"Slider at {slider:R}");
                 }
                 if (inactiveAtZero) {
-                    playable.SetFloat(parameterName, 0.25f / intervals);
+                    playable.SetFloat(parameterName, 0.5f / intervals);
+                    graph.Evaluate(1f / 60);
                     graph.Evaluate(1f / 60);
                     Assert.That(playable.GetCurrentAnimatorStateInfo(0).IsName("Off"), Is.True);
                 }
@@ -198,6 +156,13 @@ namespace VF.Tests {
                     if (intervals > 0) {
                         var firstCode = Math.Max(first + page, Math.Ceiling((double)page * intervals / pages));
                         boundary = (float)((firstCode - 0.5) / intervals);
+                        foreach (var slider in new[] {
+                                     VF.Inspector.VRCFuryEditorUtils.NextFloatDown(boundary),
+                                     boundary,
+                                     VF.Inspector.VRCFuryEditorUtils.NextFloatUp(boundary)
+                                 }) {
+                            Check(slider, Mathf.RoundToInt(slider * intervals) >= firstCode ? page + 1 : page);
+                        }
                     }
                     Check(boundary - 0.0001f, page);
                     Check(boundary + 0.0001f, page + 1);

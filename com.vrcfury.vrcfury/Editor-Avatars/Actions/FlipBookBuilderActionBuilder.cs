@@ -30,6 +30,8 @@ namespace VF.Actions {
             var pageCount = states.Count;
             var (first, last) = sliderNetworkCodes;
             var snapPageTimes = last > 0;
+            // A power-of-two duration preserves adjacent slider float values in clip time.
+            var duration = snapPageTimes ? Mathf.NextPowerOfTwo(pageCount) : pageCount;
             var maxPages = last - first + 1;
             if (snapPageTimes && pageCount > maxPages) {
                 throw new VRCFBuilderException($"Flipbook Builder has {pageCount} pages, but this slider can sync only {maxPages}.");
@@ -37,8 +39,8 @@ namespace VF.Actions {
             float GetPageTime(int page) {
                 if (!snapPageTimes || page == 0) return page;
                 // Switch at the rounding boundary just before the first network value on this page.
-                var firstCode = System.Math.Max(first + page, System.Math.Ceiling((double)page * last / pageCount));
-                return (float)((firstCode - 0.5) / last * pageCount);
+                var firstCode = System.Math.Max(first + page, (int)System.Math.Ceiling((double)page * last / pageCount));
+                return VRCExpressionParameterExtensions.GetFloatNetworkThreshold(firstCode, last) * duration;
             }
             var sources = states
                 .Select((substate,i) => {
@@ -49,7 +51,7 @@ namespace VF.Actions {
 
             if (clipBuilder != null) {
                 var built = clipBuilder.MergeSingleFrameClips(sources);
-                built.UpdateLengthIfLonger(pageCount);
+                built.UpdateLengthIfLonger(duration);
                 built.UseConstantTangents();
                 onClip.CopyFrom(built);
             } else {

@@ -34,6 +34,11 @@ namespace VF.Tests {
         [TestCase(ValueType.Int, 8, false, ValueType.Int, 8, false, 999, 255, 255, 255)]
         [TestCase(ValueType.Float, 3, true, ValueType.Float, 8, false, -0.6f, 0, 3, 0.503937f)]
         [TestCase(ValueType.Float, 3, false, ValueType.Float, 3, false, 0.54f, 5, 1, -0.666667f)]
+        [TestCase(ValueType.Float, 8, false, ValueType.Float, 8, false, -0.5f, 63, 63, -0.503937f)]
+        [TestCase(ValueType.Float, 8, false, ValueType.Float, 8, false, 0.5f, 191, 191, 0.503937f)]
+        [TestCase(ValueType.Float, 2, true, ValueType.Float, 2, true, 0.25f, 0, 0, 0)]
+        [TestCase(ValueType.Float, 3, true, ValueType.Float, 3, true, 0.75f, 4, 4, 0.666667f)]
+        [TestCase(ValueType.Float, 2, true, ValueType.Float, 2, false, 0.25f, 0, 1, 0)]
         public void CompressorCopiesTheClosestRepresentableValue(
             ValueType wireType,
             byte wireBits,

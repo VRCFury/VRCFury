@@ -1,5 +1,6 @@
 ﻿using System;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VF.Inspector;
 
 namespace VF.Utils {
     internal static class VRCExpressionParameterExtensions {
@@ -121,6 +122,20 @@ namespace VF.Utils {
             const int min = -1;
 #endif
             return (min, (1 << param.TypeCost()) - 2);
+        }
+
+        // Find the first slider value that rounds to this code with Unity's nearest-even rule.
+        public static float GetFloatNetworkThreshold(int code, int intervals) {
+            var threshold = (code - 0.5f) / intervals;
+            while (UnityEngine.Mathf.Round(threshold * intervals) < code) {
+                threshold = VRCFuryEditorUtils.NextFloatUp(threshold);
+            }
+            var previous = VRCFuryEditorUtils.NextFloatDown(threshold);
+            while (UnityEngine.Mathf.Round(previous * intervals) >= code) {
+                threshold = previous;
+                previous = VRCFuryEditorUtils.NextFloatDown(threshold);
+            }
+            return threshold;
         }
     }
 }

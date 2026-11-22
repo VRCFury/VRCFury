@@ -132,13 +132,15 @@ namespace VF.Feature {
             VFAParam weight = null;
             bool defaultOn;
             if (model.slider) {
-                var offThreshold = sliderNetworkCodes.last > 0 ? 0.5f / sliderNetworkCodes.last : 0;
-                onCase = model.sliderInactiveAtZero ? param.IsGreaterThan(offThreshold) : fx.Always();
+                var firstActiveValue = sliderNetworkCodes.last > 0
+                    ? VRCExpressionParameterExtensions.GetFloatNetworkThreshold(1, sliderNetworkCodes.last)
+                    : float.Epsilon;
+                onCase = model.sliderInactiveAtZero ? param.IsGreaterThanOrEquals(firstActiveValue) : fx.Always();
                 exclusiveParam = model.sliderInactiveAtZero ? param : null;
                 if (model.sliderInactiveAtZero) {
                     drive = (state,on) => { if (!on) state.Drives(param, 0); };
                 }
-                defaultOn = sliderDefaultOn = !model.sliderInactiveAtZero || model.defaultSliderValue > offThreshold;
+                defaultOn = sliderDefaultOn = !model.sliderInactiveAtZero || model.defaultSliderValue >= firstActiveValue;
                 weight = param;
                 if (addMenuItem) {
                     menu.NewMenuSlider(
