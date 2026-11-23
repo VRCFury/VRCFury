@@ -1,8 +1,6 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -20,14 +18,6 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     [Category("VRCFury")]
     internal class ObjectReferenceTest {
-        private static VRCFArmatureCache CachedHips(GameObject hips) {
-            var cache = new VRCFArmatureCache();
-            var snapshot = Activator.CreateInstance(typeof(VRCFArmatureCache).GetNestedType("Snapshot", BindingFlags.NonPublic), true);
-            ((IDictionary)snapshot.GetType().VFField("boneObjects").GetValue(snapshot))[HumanBodyBones.Hips] = (VFGameObject)hips;
-            ((IList)typeof(VRCFArmatureCache).VFField("snapshots").GetValue(cache)).Add(snapshot);
-            return cache;
-        }
-
         private class Fields : ScriptableObject {
             public ObjectReference target = new ObjectReference();
             public List<ObjectReference> targets = new List<ObjectReference>();
@@ -394,15 +384,15 @@ namespace VF.Tests {
         [Test]
         public void BoneGuidanceUsesTheAvatarsArmatureCache() {
             var avatar = new GameObject("Avatar");
-            var bone = new GameObject("Bone");
             var other = new GameObject("Other");
-            var caches = (IDictionary)typeof(VRCFArmatureCache)
-                .GetField("perFrame", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
+            Avatar rig = null;
             try {
-                bone.transform.SetParent(avatar.transform);
+                var (humanoid, _, hips) = HumanoidTestRig.Create(avatar);
+                rig = humanoid;
+                var bone = hips.gameObject;
                 other.transform.SetParent(avatar.transform);
                 Assert.That(ObjectReferenceDrawer.IsBone(bone, avatar), Is.False);
-                caches[(VFGameObject)avatar] = CachedHips(bone);
+                avatar.AddComponent<Animator>().avatar = rig;
                 Assert.That(ObjectReferenceDrawer.IsBone(bone, avatar), Is.True);
                 bone.SetActive(false);
                 Assert.That(ObjectReferenceDrawer.IsBone(bone, avatar), Is.True);
@@ -410,8 +400,8 @@ namespace VF.Tests {
                 Assert.That(ObjectReferenceDrawer.IsBone(null, avatar), Is.False);
                 Assert.That(ObjectReferenceDrawer.IsBone(bone, null), Is.False);
             } finally {
-                caches.Remove((VFGameObject)avatar);
                 Object.DestroyImmediate(avatar);
+                Object.DestroyImmediate(rig);
             }
         }
 
@@ -476,14 +466,17 @@ namespace VF.Tests {
         [Test]
         public void BoneOffsetsAndArmatureLinkShareTheCachedResolver() {
             var root = new GameObject("Avatar");
-            var hips = new GameObject("Hips");
             var target = new GameObject("Target");
             var prop = new GameObject("Prop");
-            hips.transform.SetParent(root.transform);
-            target.transform.SetParent(hips.transform);
+            target.transform.SetParent(root.transform);
             prop.transform.SetParent(root.transform);
+            Avatar rig = null;
             try {
-                var bones = CachedHips(hips);
+                var (humanoid, _, hips) = HumanoidTestRig.Create(root);
+                rig = humanoid;
+                target.transform.SetParent(hips, false);
+                root.AddComponent<Animator>().avatar = rig;
+                var bones = VRCFArmatureCache.GetPerFrame(root);
                 var reference = new ObjectReference { offset = "Target" };
                 var paths = VRCFObjectPathCache.GetPerFrame(root);
                 Assert.That((GameObject)reference.Resolve(root, paths, bones), Is.SameAs(target));
@@ -494,6 +487,7 @@ namespace VF.Tests {
                 Assert.That((GameObject)links.mergeBones.Single().Item2, Is.SameAs(target));
             } finally {
                 Object.DestroyImmediate(root);
+                Object.DestroyImmediate(rig);
             }
         }
 
@@ -501,15 +495,18 @@ namespace VF.Tests {
         [Test]
         public void FullControllerResolvesFaceTrackingMeshFromCachedBoneAndOffset() {
             var root = new GameObject("Avatar");
-            var hips = new GameObject("Hips");
             var target = new GameObject("Mesh");
-            hips.transform.SetParent(root.transform);
-            target.transform.SetParent(hips.transform);
+            target.transform.SetParent(root.transform);
             var mesh = new Mesh { vertices = new[] { Vector3.zero } };
             var skin = target.AddComponent<SkinnedMeshRenderer>();
             mesh.AddBlendShapeFrame("Smile", 100, new[] { Vector3.up }, null, null);
             skin.sharedMesh = mesh;
+            Avatar rig = null;
             try {
+                var (humanoid, _, hips) = HumanoidTestRig.Create(root);
+                rig = humanoid;
+                target.transform.SetParent(hips, false);
+                root.AddComponent<Animator>().avatar = rig;
                 var avatar = root.AddComponent<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor>();
                 avatar.baseAnimationLayers = Array.Empty<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.CustomAnimLayer>();
                 avatar.specialAnimationLayers = Array.Empty<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.CustomAnimLayer>();
@@ -533,7 +530,7 @@ namespace VF.Tests {
                 Inject(builder, "avatar", avatar);
                 Inject(builder, "controllers", controllers);
                 Inject(builder, "faceTracking", ft);
-                Inject(builder, "armatureCache", CachedHips(hips));
+                Inject(builder, "armatureCache", VRCFArmatureCache.GetPerFrame(root));
                 Inject(builder, "animatorLayerControlManager", new AnimatorLayerControlOffsetService());
                 builder.Apply();
                 ft.Apply();
@@ -545,6 +542,7 @@ namespace VF.Tests {
                 if (skin.sharedMesh != mesh) Object.DestroyImmediate(skin.sharedMesh);
                 Object.DestroyImmediate(mesh);
                 Object.DestroyImmediate(root);
+                Object.DestroyImmediate(rig);
             }
         }
 #endif
