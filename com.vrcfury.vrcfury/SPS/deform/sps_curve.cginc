@@ -47,6 +47,12 @@ inline float sps_taper_radius(SpsHoleTaper taper, bool fullAtCut) {
     return fullAtCut ? taper.distanceToEnd >= 0 : taper.distanceToEnd > 0;
 }
 
+inline bool sps_instant_taper(uint flags, bool defaultInstant) {
+    return sps_has_flag(flags, SPS_SOCKET_FLAG_OVERRIDE_INSTANT_COLLAPSE)
+        ? sps_has_flag(flags, SPS_SOCKET_FLAG_INSTANT_COLLAPSE)
+        : defaultInstant;
+}
+
 inline void sps_deform_walk_chain(
     SpsDeformPathInfo path,
     float targetDistance,
@@ -59,7 +65,13 @@ inline void sps_deform_walk_chain(
     float remainingDistance = max(targetDistance, 0);
     bool inHole = false;
     bool instantClosing = false;
-    bool instantExit = path.terminalGuidedHole ? SPS_TAPER_USE_INSTANT_FOR_PATH_TERMINAL_HOLES : SPS_TAPER_USE_INSTANT_FOR_STANDALONE_HOLES;
+    uint terminalFlags = sps_path_flags[path.nodeCount];
+    bool terminalGuidedHole = sps_has_flag(terminalFlags, SPS_SOCKET_FLAG_GUIDED)
+        && sps_has_flag(terminalFlags, SPS_SOCKET_FLAG_HOLE);
+    bool instantExit = sps_instant_taper(
+        terminalFlags,
+        terminalGuidedHole ? SPS_TAPER_USE_INSTANT_FOR_PATH_TERMINAL_HOLES : SPS_TAPER_USE_INSTANT_FOR_STANDALONE_HOLES
+    );
     SpsHoleTaper taper = (SpsHoleTaper)0;
     float distanceFromJoin = 0;
     uint lastRing = path.nodeCount;
@@ -115,13 +127,17 @@ inline void sps_deform_walk_chain(
             if (distanceToNode <= distanceFromJoin) {
                 if (sps_path_hole_weights[sampleIndex] >= 0) continue;
                 // Measure the reopening profile backward from the ring.
-                taper = sps_configured_taper(path.worldLength, SPS_TAPER_USE_INSTANT_FOR_PATH_UNCOLLAPSE);
+                bool instantOpening = sps_instant_taper(
+                    sps_path_flags[sampleIndex],
+                    SPS_TAPER_USE_INSTANT_FOR_PATH_UNCOLLAPSE
+                );
+                taper = sps_configured_taper(path.worldLength, instantOpening);
                 float length = sps_transition_taper_length(taper.distanceToEnd, distanceFromJoin + distanceToNode);
                 if (taper.distanceToEnd > 0) taper.collapseLength *= length / taper.distanceToEnd;
                 taper.distanceToEnd = length;
                 taper.distanceToEnd -= distanceToNode;
                 vertex = pathSample;
-                if (SPS_TAPER_USE_INSTANT_FOR_PATH_UNCOLLAPSE) vertex = frame;
+                if (instantOpening) vertex = frame;
             }
             remainingDistance = 0;
             break;
@@ -134,7 +150,8 @@ inline void sps_deform_walk_chain(
             taperEnd = frame.position;
             distanceFromJoin = remainingDistance;
             holeFrame = frame;
-            instantClosing = sampleIndex == path.nodeCount ? instantExit : SPS_TAPER_USE_INSTANT_FOR_PATH_HOLES;
+            instantClosing = sampleIndex == path.nodeCount ? instantExit
+                : sps_instant_taper(sps_path_flags[sampleIndex], SPS_TAPER_USE_INSTANT_FOR_PATH_HOLES);
             SpsHoleTaper configured = sps_configured_taper(path.worldLength, instantClosing);
             float lengthToEnd = configured.distanceToEnd
                 + (1 - sps_path_hole_weights[sampleIndex]) * (path.worldLength + configured.collapseLength);
@@ -149,7 +166,7 @@ inline void sps_deform_walk_chain(
     if (inHole) {
         outRadiusMult = sps_taper_radius(taper, remainingDistance > 0);
         // A terminal guide can shorten a taper already in progress, but cannot reopen it.
-        if (path.terminalGuidedHole && remainingDistance > 0) {
+        if (terminalGuidedHole && remainingDistance > 0) {
             vertex = frame;
             SpsHoleTaper exit = sps_configured_taper(path.worldLength, instantExit);
             exit.distanceToEnd -= remainingDistance;

@@ -14,6 +14,7 @@
 // Per-invocation scratch arrays avoid copying the path between helpers.
 static float3 sps_path_worlds[SPS_CHAIN_SOCKETS_MAX + 1];
 static float3 sps_path_forwards[SPS_CHAIN_SOCKETS_MAX + 1];
+static uint sps_path_flags[SPS_CHAIN_SOCKETS_MAX + 1];
 // Rings are open. Guided holes do not apply their own fade.
 static const float SPS_PATH_OPEN = -1;
 static float sps_path_hole_weights[SPS_CHAIN_SOCKETS_MAX + 1];
@@ -35,7 +36,6 @@ struct SpsDeformPathInfo {
     float bakeScale;
     float deformationWeight;
     uint nodeCount;
-    bool terminalGuidedHole;
 };
 
 inline void sps_store_path_node(
@@ -53,6 +53,7 @@ inline void sps_store_path_node(
     // so an already-faded bend is not applied again by a later node.
     sps_path_worlds[index] = start + lerp(forward * length(offset), offset, curveWeight);
     sps_path_forwards[index] = sps_normalize(forward + (node.forward - previous.forward) * curveWeight);
+    sps_path_flags[index] = node.flags;
     float holeWeight = sps_has_flag(node.flags, SPS_SOCKET_FLAG_GUIDED) ? 1 : curveWeight;
     sps_path_hole_weights[index] = sps_has_flag(node.flags, SPS_SOCKET_FLAG_HOLE) ? holeWeight : SPS_PATH_OPEN;
 }
@@ -269,7 +270,7 @@ bool sps_prepare_socket(
     }
     node.forward = -normal;
     node.up = up;
-    node.flags = socket.control & 0xfc00u; // Flags in bits 10-15, without path key or validity.
+    node.flags = socket.control;
     node.deformationWeight = 1;
     if (!guided) {
         // Capture and fade use the effective entrance, including late joining.
@@ -321,6 +322,7 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
     if (!(frameScale > 0)) return false;
     sps_path_worlds[0] = frame._m03_m13_m23;
     sps_path_forwards[0] = sps_normalize(frame._m02_m12_m22);
+    sps_path_flags[0] = 0;
     path.plugUp = sps_nearest_normal(sps_path_forwards[0], frame._m01_m11_m21);
     path.bakeScale = frameScale;
     path.worldLength = _SPS_BakedLength * path.bakeScale;
@@ -452,8 +454,6 @@ bool sps_try_get_path(out SpsDeformPathInfo path) {
         previousNode = chosenNode;
         used |= 1u << chosen;
     }
-    path.terminalGuidedHole = sps_has_flag(previousNode.flags, SPS_SOCKET_FLAG_GUIDED)
-        && sps_has_flag(previousNode.flags, SPS_SOCKET_FLAG_HOLE);
     return sps_socket_valid(previous);
 }
 

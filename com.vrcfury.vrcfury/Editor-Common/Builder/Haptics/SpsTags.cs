@@ -8,6 +8,7 @@ namespace VF.Builder.Haptics {
         [Flags]
         public enum SocketScaleFlagsX {
             None = 0,
+            // Bits 0–6 are the group ID. Bits 7–9 are the path index.
             UnlockAll = 1 << 10,
             UnlockLocalX = 1 << 11,
             RadiusOffset = 1 << 12,
@@ -18,6 +19,10 @@ namespace VF.Builder.Haptics {
         [Flags]
         public enum SocketScaleFlagsZ {
             None = 0,
+            // Bit 0 is always set to keep the transform scale positive.
+            // OverrideInstantCollapse = 1 << 1, // Use InstantCollapse instead of the shader's default.
+            // InstantCollapse = 1 << 2, // Pin the centerline while a hole closes or a ring reopens.
+            // Bits 3–13 are reserved and left clear.
             AnimatorHole = 1 << 14 // should be counted as a "hole" for animator purposes (added in 1.1500)
         }
 
@@ -33,7 +38,7 @@ namespace VF.Builder.Haptics {
         // SPS3 Socket
         // At the entrance, +Z outward, radius = 0
         // World scale: Y = 1 (unlimited), or 2 + maximum radius offset in world meters.
-        // Z = 1, with bit 14 set on the main sender for holes and guided paths that collapse anywhere.
+        // Z = 1 plus SocketScaleFlagsZ.
         // X = packed word:
         //   Bits 0-6: group ID (1-127)
         //   Bits 7-9: path index

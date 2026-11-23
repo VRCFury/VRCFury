@@ -984,14 +984,22 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
 
         private void SetPath(params (Vector3 position, Vector3 forward, int flags)[] nodes) => SetPath(pathShader, nodes);
 
-        private void SetPath(Shader targetShader, params (Vector3 position, Vector3 forward, int flags)[] nodes) {
+        private void SetPath(Shader targetShader, params (Vector3 position, Vector3 forward, int flags)[] nodes) =>
+            SetPath(targetShader, nodes, -1, 0);
+
+        private void SetPath(
+            Shader targetShader,
+            (Vector3 position, Vector3 forward, int flags)[] nodes,
+            int zFlagNode,
+            int zFlags
+        ) {
             Read(Vector3.zero, Vector3.forward);
             material.shader = targetShader;
             Read(Vector3.zero, Vector3.forward);
             var contacts = nodes.Select((node, index) => Matrix4x4.TRS(
                 node.position,
                 Quaternion.LookRotation(-node.forward, Vector3.up),
-                new Vector3(1 | (index << 7) | node.flags, 1, 1)
+                new Vector3(1 | (index << 7) | node.flags, 1, index == zFlagNode ? 1 | zFlags : 1)
             )).ToArray();
             SetContacts("SPS_Self", Matrix4x4.identity, contacts[0]);
             SetContacts("SPS_Others", Matrix4x4.identity);
@@ -1362,6 +1370,41 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
             Check(.6f, .6f);
             SetPath(alternateTaperShader, (Vector3.forward * .1f, Vector3.forward, 0), hole);
             Check(.3f, .3f);
+        }
+
+        [TestCase(false, false, 4, false)]
+        [TestCase(false, false, 6, true)]
+        [TestCase(true, false, 6, true)]
+        [TestCase(false, true, 0, true)]
+        [TestCase(false, true, 2, false)]
+        public void NativeZFlagsOverrideInstantCollapse(bool reopens, bool terminalGuide, int zFlags, bool instant) {
+            const float holePosition = .2f;
+            const float sampleDistance = holePosition + TaperFullRadiusLength + SmoothCollapseLength / 2;
+            var hole = (Vector3.forward * holePosition, Vector3.forward, 1 << 14);
+            var nodes = terminalGuide
+                ? new[] { (Vector3.forward * .1f, Vector3.forward, 0), hole }
+                : reopens ? new[] { hole, (Vector3.forward * .7f, Vector3.forward, 0) } : new[] { hole };
+            SetPath(deformationShader, nodes, terminalGuide ? 1 : 0, zFlags | (1 << 14));
+            material.SetFloat("_SampleDistance", sampleDistance);
+            var sample = Render();
+            Assert.That(sample.b, Is.EqualTo(instant ? holePosition : sampleDistance).Within(.0001f));
+            Assert.That(sample.a, Is.EqualTo(.5f).Within(.0001f));
+        }
+
+        [TestCase(2, false)]
+        [TestCase(6, true)]
+        public void NativeZFlagsOverrideInstantReopening(int zFlags, bool instant) {
+            const float ringPosition = .7f;
+            const float sampleDistance = ringPosition - TaperFullRadiusLength - SmoothCollapseLength / 2;
+            var nodes = new[] {
+                (Vector3.forward * .2f, Vector3.forward, 1 << 14),
+                (Vector3.forward * ringPosition, Vector3.forward, 0)
+            };
+            SetPath(deformationShader, nodes, 1, zFlags);
+            material.SetFloat("_SampleDistance", sampleDistance);
+            var sample = Render();
+            Assert.That(sample.b, Is.EqualTo(instant ? ringPosition : sampleDistance).Within(.0001f));
+            Assert.That(sample.a, Is.EqualTo(.5f).Within(.0001f));
         }
 
         [Test]

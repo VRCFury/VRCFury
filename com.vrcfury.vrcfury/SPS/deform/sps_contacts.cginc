@@ -61,7 +61,7 @@ struct SpsSocketCandidate {
     float3 normal;
     float3 up;
     float radiusOffsetLimit; // Maximum offset in world meters; infinity means unlimited.
-    uint control; // Sender word in bits 0-14, plus shader-only traversal/validity bits.
+    uint control; // X-scale word, traversal/validity bits, and Z-scale taper flags.
     int owner;
 };
 
@@ -98,6 +98,8 @@ SpsSocketCandidate sps_read_contact(uint index) {
         uint packed = (uint)round(scale.x);
         if (packed > 32767 || packed == 0) return socket;
         socket.control = packed | (path ? SPS_SOCKET_FLAG_GUIDED : 0u);
+        uint packedZ = (uint)round(scale.z);
+        socket.control |= (packedZ << 16) & (SPS_SOCKET_FLAG_OVERRIDE_INSTANT_COLLAPSE | SPS_SOCKET_FLAG_INSTANT_COLLAPSE);
         uint pathKey = packed & 1023u;
         socket.control |= (pathKey & 127u) != 0 && (path ? pathKey >= 128u : pathKey < 128u) ? SPS_SOCKET_VALID : 0u;
     } else {

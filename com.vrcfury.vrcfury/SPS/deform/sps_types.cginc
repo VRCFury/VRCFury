@@ -3,7 +3,7 @@
 
 #include "sps_flags.cginc"
 
-// Keep transmitted flags in their sender-scale bit positions to avoid unpacking each bit.
+// X-scale flags retain their transmitted bit positions.
 #define SPS_SOCKET_FLAG_HOLE (1u << 14)
 #define SPS_SOCKET_FLAG_DOUBLE_SIDED (1u << 13)
 #define SPS_SOCKET_FLAG_PORTAL 4u
@@ -13,5 +13,8 @@
 // Shader-only flags, not transmitted sender-scale bits.
 #define SPS_SOCKET_FLAG_GUIDED (1u << 15)
 #define SPS_SOCKET_VALID (1u << 16)
+// Z-scale bits 1–2 are carried in bits 17–18 of the internal flags.
+#define SPS_SOCKET_FLAG_OVERRIDE_INSTANT_COLLAPSE (1u << 17)
+#define SPS_SOCKET_FLAG_INSTANT_COLLAPSE (1u << 18)
 
 #endif
