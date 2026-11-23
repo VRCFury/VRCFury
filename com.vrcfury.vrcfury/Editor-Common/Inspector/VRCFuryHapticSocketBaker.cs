@@ -25,8 +25,13 @@ namespace VF.Inspector {
             bool tpsDepthAnimationCompatibility = false, VFGameObject avatarRoot = null) {
             if (!BuildTargetUtils.IsDesktop()) return null;
             var closestBone = autoChannelGenerator?.GetClosestBone(socket.owner());
+            var (lightType, localPosition, localRotation) = GetSocketTransform(socket, closestBone);
+            var nodes = GetDeformationNodes(socket, lightType);
             var contacts = channels.Get(socket);
-            var result = new BakeResult { channelContacts = contacts };
+            var result = new BakeResult {
+                channelContacts = contacts,
+                animatorHole = nodes.Any(node => node.collapse)
+            };
             var transform = socket.owner();
             var relocate = false;
             try {
@@ -34,8 +39,6 @@ namespace VF.Inspector {
             } catch (Exception) when (avatarRoot != null) {
                 relocate = true;
             }
-
-            var (lightType, localPosition, localRotation) = GetSocketTransform(socket, closestBone);
 
             var bakeRoot = GameObjects.Create("BakedSpsSocket", transform);
             bakeRoot.localPosition = localPosition;
@@ -57,57 +60,37 @@ namespace VF.Inspector {
             var worldSpace = GameObjects.Create("WorldSpace", bakeRoot);
             ConstraintUtils.MakeWorldSpace(worldSpace);
 
-            var legacyLightType = GetLegacyLightType(socket, lightType);
-            var pathRoots = Array.Empty<VFGameObject>();
-
-            // Senders
-            var enableDeformation = lightType != VRCFuryHapticSocket.AddLight.None;
-            if (enableDeformation) {
+            var pathRoots = new VFGameObject[Math.Max(0, nodes.Length - 1)];
+            if (nodes.Length > 0) {
                 var rootSender = GameObjects.Create("Sender - Root", worldSpace);
                 result.mainSender = rootSender;
-                var stops = socket.guidedPathStops;
-                for (var i = 0; i < stops.Count; i++) {
-                    var stop = stops[i];
-                    if (stop == null || stop.transform == null)
-                        throw new Exception($"SPS guided path stop {i + 1} is missing its transform.");
-                }
-                foreach (var stop in stops) {
-                    if (stop.transform.asVf().GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any())
-                        throw new Exception("SPS guided path stops should not contain their own sockets. Invalid stop: "
-                            + stop.transform.asVf().GetDebugPath());
-                }
                 var group = nextGroupId++;
                 if (group > HapticUtils.GroupCount)
                     throw new Exception($"SPS3 supports at most {HapticUtils.GroupCount} sockets per build.");
-                pathRoots = new VFGameObject[Math.Min(stops.Count, SpsTags.MaxUserPathStops)];
-                var animatorHole = IsHoleForAnimator(socket, lightType);
-                for (var index = 0; index <= pathRoots.Length; index++) {
+                for (var index = 0; index < nodes.Length; index++) {
                     var pathIndex = index;
+                    var node = nodes[index];
                     var sender = rootSender;
-                    var nodeType = GetNodeType(socket, lightType, pathIndex);
+                    var scaleReference = bakeRoot;
                     if (pathIndex > 0) {
                         sender = GameObjects.Create($"Sender - Path Stop {pathIndex}", worldSpace);
-                        var target = GameObjects.Create("BakedSpsPath", stops[pathIndex - 1].transform.asVf());
+                        var target = GameObjects.Create("BakedSpsPath", node.source);
                         pathRoots[pathIndex - 1] = target;
+                        scaleReference = target;
                         sender.worldPosition = target.worldPosition;
                         sender.worldRotation = target.worldRotation;
                         VFConstraint.CreateParent(sender).AddSource(target, 1);
                     }
                     var tags = new List<string>();
                     var flagsX = SpsTags.SocketScaleFlagsX.None;
-                    var radiusOffset = pathIndex == 0 ? socket.useRadiusOffset : stops[pathIndex - 1].useRadiusOffset;
-                    var radiusLimit = radiusOffset
-                        ? pathIndex == 0 ? socket.maxRadiusOffset : stops[pathIndex - 1].maxRadiusOffset
-                        : 0;
-                    var scaleReference = pathIndex == 0 ? bakeRoot : pathRoots[pathIndex - 1];
-                    if (radiusOffset) {
+                    if (node.radiusOffset) {
                         tags.Add(SpsTags.SocketRadiusOffset);
                         flagsX |= SpsTags.SocketScaleFlagsX.RadiusOffset;
                     }
-                    if (nodeType == VRCFuryHapticSocket.AddLight.Hole) {
+                    if (node.collapse) {
                         tags.Add(SpsTags.SocketCollapse);
                         flagsX |= SpsTags.SocketScaleFlagsX.Collapse;
-                    } else if (nodeType == VRCFuryHapticSocket.AddLight.Ring) {
+                    } else if (node.twoWay) {
                         tags.Add(SpsTags.SocketTwoway);
                         flagsX |= SpsTags.SocketScaleFlagsX.Twoway;
                     }
@@ -116,11 +99,11 @@ namespace VF.Inspector {
                         group,
                         pathIndex,
                         flagsX,
-                        radiusLimit * scaleReference.worldScale.x,
-                        pathIndex == 0 && animatorHole ? SpsTags.SocketScaleFlagsZ.AnimatorHole : SpsTags.SocketScaleFlagsZ.None
+                        node.radiusLimit * scaleReference.worldScale.x,
+                        pathIndex == 0 && result.animatorHole ? SpsTags.SocketScaleFlagsZ.AnimatorHole : SpsTags.SocketScaleFlagsZ.None
                     );
-                    if (radiusLimit > 0 && !float.IsPositiveInfinity(radiusLimit)) {
-                        result.radiusOffsetLimits.Add((sender, scaleReference, radiusLimit));
+                    if (node.radiusLimit > 0 && !float.IsPositiveInfinity(node.radiusLimit)) {
+                        result.radiusOffsetLimits.Add((sender, scaleReference, node.radiusLimit));
                     }
                     contacts.OnAllSetsAvailable(sets => {
                         var variants = new Dictionary<string, VFGameObject>();
@@ -149,6 +132,7 @@ namespace VF.Inspector {
                 }
 
                 if (legacyPlugCompatibility) {
+                    var legacyLightType = GetLegacyLightType(socket, lightType);
                     Vector3 legacyOffset;
                     if (socket.overrideLegacyOffset) {
                         legacyOffset = socket.legacyOffsetLocal;
@@ -254,26 +238,45 @@ namespace VF.Inspector {
         }
 
 
-        internal bool IsHoleForAnimator(VRCFuryHapticSocket socket) =>
-            IsHoleForAnimator(socket, GetSocketTransform(socket, autoChannelGenerator?.GetClosestBone(socket.owner())).Item1);
-
-        private static bool IsHoleForAnimator(VRCFuryHapticSocket socket, VRCFuryHapticSocket.AddLight type) {
-            var lastNode = Math.Min(socket.guidedPathStops.Count, SpsTags.MaxUserPathStops);
-            for (var node = 0; node <= lastNode; node++) {
-                if (GetNodeType(socket, type, node) == VRCFuryHapticSocket.AddLight.Hole) return true;
-            }
-            return false;
+        private struct DeformationNode {
+            public VFGameObject source;
+            public bool collapse;
+            public bool twoWay;
+            public bool radiusOffset;
+            public float radiusLimit;
         }
 
-        private static VRCFuryHapticSocket.AddLight GetNodeType(
+        private static DeformationNode[] GetDeformationNodes(
             VRCFuryHapticSocket socket,
-            VRCFuryHapticSocket.AddLight type,
-            int node
+            VRCFuryHapticSocket.AddLight type
         ) {
-            if (type == VRCFuryHapticSocket.AddLight.None || socket.guidedPathStops.Count == 0) return type;
-            if (node == socket.guidedPathStops.Count) return GetGuidedPathTerminalType(type);
-            return socket.guidedPathStops[node]?.shrink == true
-                ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay;
+            if (type == VRCFuryHapticSocket.AddLight.None) return Array.Empty<DeformationNode>();
+
+            var stops = socket.guidedPathStops;
+            for (var i = 0; i < stops.Count; i++) {
+                var stop = stops[i];
+                if (stop == null || stop.transform == null)
+                    throw new Exception($"SPS guided path stop {i + 1} is missing its transform.");
+                var source = stop.transform.asVf();
+                if (source.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any())
+                    throw new Exception("SPS guided path stops should not contain their own sockets. Invalid stop: "
+                        + source.GetDebugPath());
+            }
+
+            var nodes = new DeformationNode[1 + Math.Min(stops.Count, SpsTags.MaxUserPathStops)];
+            for (var i = 0; i < nodes.Length; i++) {
+                var stop = i == 0 ? null : stops[i - 1];
+                var radiusOffset = stop?.useRadiusOffset ?? socket.useRadiusOffset;
+                // Each authored stop describes collapse on the segment leading into it.
+                nodes[i] = new DeformationNode {
+                    source = stop?.transform.asVf(),
+                    collapse = i < stops.Count ? stops[i].shrink : type == VRCFuryHapticSocket.AddLight.Hole,
+                    twoWay = stops.Count == 0 && type == VRCFuryHapticSocket.AddLight.Ring,
+                    radiusOffset = radiusOffset,
+                    radiusLimit = radiusOffset ? stop?.maxRadiusOffset ?? socket.maxRadiusOffset : 0
+                };
+            }
+            return nodes;
         }
 
         private static Tuple<VRCFuryHapticSocket.AddLight, Vector3, Quaternion> GetSocketTransform(

@@ -106,7 +106,7 @@ namespace VF.Tests {
             ((Dictionary<VFGameObject, (VFAParam raw, float multiplier, Lazy<VFAParam> inverse)>)
                 typeof(WorldScaleDetectorService).VFField("cache").GetValue(detector))
                 [root] = (scale, 1, inverseScale);
-            return service.GetMeasurements(socket, new VRCFuryHapticSocketEditor.BakeResult {
+            return service.GetMeasurements(new VRCFuryHapticSocketEditor.BakeResult {
                 bakeRoot = root,
                 plugReceivers = contacts
             }, "Test");
@@ -253,15 +253,25 @@ namespace VF.Tests {
         [TestCase(2, true, false, true)]
         [TestCase(0, false, true)]
         public void SocketFlagsAreConstantsMatchingTheWholePath(int type, bool hole, bool? shrink = null, bool? innerShrink = null) {
-            var factory = Socket(false);
-            var socket = root.GetComponent<VRCFuryHapticSocket>();
+            if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
+            var socket = GameObjects.Create("Socket", root).AddComponent<VRCFuryHapticSocket>();
             socket.addLight = (VRCFuryHapticSocket.AddLight)type;
-            if (shrink != null) socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { shrink = shrink.Value });
-            if (innerShrink != null) socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { shrink = innerShrink.Value });
+            AddStop(shrink);
+            AddStop(innerShrink);
+            var bake = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
+            var factory = injector.GetService<SpsSocketMeasurementsService>().GetMeasurements(bake, "Socket");
             foreach (var party in new[] { Party.Self, Party.Others, Party.Merged }) {
                 Assert.That(factory(party)(SpsSocketIsHole).GetDefault(), Is.EqualTo(hole ? 1 : 0));
             }
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
+
+            void AddStop(bool? collapse) {
+                if (collapse == null) return;
+                socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop {
+                    transform = socket.addLight == VRCFuryHapticSocket.AddLight.None ? null : GameObjects.Create("Stop", root),
+                    shrink = collapse.Value
+                });
+            }
         }
 
         [TestCase(false)]
@@ -316,7 +326,7 @@ namespace VF.Tests {
             socket.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "test" });
             var bake = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket, avatarRoot: root);
             var outputs = injector.GetService<SpsSocketMeasurementsService>()
-                .GetMeasurements(socket, bake, "Head socket")(Party.Others);
+                .GetMeasurements(bake, "Head socket")(Party.Others);
             var meters = outputs(SpsPlugEntryRadiusMeters);
             var local = outputs(SpsPlugEntryRadiusLocal);
             var detector = injector.GetService<WorldScaleDetectorService>();

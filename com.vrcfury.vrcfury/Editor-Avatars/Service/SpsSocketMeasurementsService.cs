@@ -18,16 +18,11 @@ namespace VF.Service {
         [VFAutowired] private readonly SpsOptionsService spsOptions;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly WorldScaleDetectorService worldScaleService;
-        [VFAutowired] private readonly VF.Inspector.VRCFuryHapticSocketBaker socketBaker;
 
         public SelfAndOthersReceiverService.Receivers GetReceivers(VRCFuryHapticSocket socket, VFGameObject frame, string name) =>
             contacts.GetReceivers(socket, frame, name, spsOptions.GetOptions().legacyModeAvailable);
 
-        public Func<Party, Func<string, VFAParam>> GetMeasurements(
-            VRCFuryHapticSocket socket,
-            BakeResult bake,
-            string name
-        ) {
+        public Func<Party, Func<string, VFAParam>> GetMeasurements(BakeResult bake, string name) {
 
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
 
@@ -39,7 +34,6 @@ namespace VF.Service {
                 bake.bakeRoot, name));
             var worldRadius = main.request.worldRadius;
             var includeLegacy = main.request.supportsLegacy;
-            var isHole = new Lazy<bool>(() => socketBaker.IsHoleForAnimator(socket));
 
             var byParty = new Dictionary<Party, Func<string, VFAParam>>();
             return party => byParty.GetOrCreate(party, () => {
@@ -153,7 +147,7 @@ namespace VF.Service {
                             presence.Value.whenFalse.Add(othersOutput.MakeSetter(0));
                             return othersOutput;
                         }
-                        if (parameter == SpsParamSocketIsHole) return isHole.Value ? fx.One() : fx.Zero();
+                        if (parameter == SpsParamSocketIsHole) return bake.animatorHole ? fx.One() : fx.Zero();
                         if (parameter == SpsParamInteractingWithLegacy) {
                             if (!legacy) return fx.Zero();
                             var legacyOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithLegacy");

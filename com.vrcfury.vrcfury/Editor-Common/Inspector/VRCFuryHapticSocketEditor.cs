@@ -423,12 +423,6 @@ namespace VF.Inspector {
 
 
 
-        internal static VRCFuryHapticSocket.AddLight GetGuidedPathTerminalType(VRCFuryHapticSocket.AddLight lightType) {
-            return lightType == VRCFuryHapticSocket.AddLight.Hole
-                ? VRCFuryHapticSocket.AddLight.Hole
-                : VRCFuryHapticSocket.AddLight.RingOneWay;
-        }
-
         internal static VRCFuryHapticSocket.AddLight GetLegacyLightType(VRCFuryHapticSocket socket, VRCFuryHapticSocket.AddLight lightType) {
             if (socket.overrideLegacySocketType) {
                 return socket.legacySocketType switch {
@@ -448,6 +442,7 @@ namespace VF.Inspector {
         public class BakeResult {
             public SpsChannelContacts channelContacts;
             public SelfAndOthersReceiverService.Receivers plugReceivers;
+            public bool animatorHole;
             public VFGameObject bakeRoot;
             public VFGameObject mainSender;
             public readonly List<(VFGameObject sender, VFGameObject scaleReference, float localLimit)> radiusOffsetLimits = new();
