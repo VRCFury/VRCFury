@@ -41,6 +41,10 @@ namespace VF.Utils.Controller {
             _layers = source._layers.Select(layer => layer?.Clone(this, context)).ToList();
         }
 
+        /**
+         * Drops invalid parameter types, which can break the VRChat mirror clone.
+         * https://feedback.vrchat.com/bug-reports/p/invalid-parameter-type-within-a-controller-breaks-mirror-clone-and-spams-output
+         */
         private void InitFromRaw(AnimatorController ctrl, VFLoadContext context) {
             if (ctrl == null) throw new ArgumentNullException(nameof(ctrl));
             _name = ctrl.name;

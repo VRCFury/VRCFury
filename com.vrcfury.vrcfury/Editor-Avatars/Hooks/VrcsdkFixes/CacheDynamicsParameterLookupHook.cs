@@ -8,6 +8,10 @@ using UnityEngine;
 using VF.Utils;
 
 namespace VF.Hooks.VrcsdkFixes {
+    /**
+     * Avoids repeatedly copying the Animator parameter list during SDK dynamics initialization.
+     * https://feedback.vrchat.com/sdk-bug-reports/p/animparameteraccessavatarsdk-can-add-multiple-seconds-to-avatar-play-mode-entry
+     */
     internal static class CacheDynamicsParameterLookupHook {
         [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {

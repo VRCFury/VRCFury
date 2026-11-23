@@ -6,7 +6,7 @@ namespace VF.Hooks.VrcsdkFixes {
     /**
      * When UdonBehaviours run OnDisable during play mode teardown, lots of things break.
      * This seemingly doesn't happen in game, so it shouldn't happen in play mode either.
-     * https://feedback.vrchat.com/sdk-bug-reports/p/udon-behaviours-shouldnt-run-in-editor-when-play-mode-is-exiting
+     * https://feedback.vrchat.com/sdk-bug-reports/p/udon-behaviours-shouldnt-run-ondisable-in-the-editor-when-play-mode-is-exiting
      */
     internal static class DisableUdonBehaviourOnDisableOutsidePlaymodeHook {
         private abstract class Reflection : ReflectionHelper {

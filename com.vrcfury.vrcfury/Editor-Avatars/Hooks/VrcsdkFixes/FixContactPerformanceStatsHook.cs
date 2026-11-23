@@ -15,6 +15,8 @@ namespace VF.Hooks.VrcsdkFixes {
     /**
      * The SDK's contact scanner skips the EditorOnly filter used by the other component scanners.
      * Apply it before counting contacts, and exclude unsaved emulator senders in Play Mode.
+     *
+     * https://feedback.vrchat.com/sdk-bug-reports/p/sdk-3110-beta1-performance-rank-improperly-includes-editoronly-dontsaveinbuild-c
      */
     internal static class FixContactPerformanceStatsHook {
         private abstract class PerformanceScanner : ReflectionHelper {

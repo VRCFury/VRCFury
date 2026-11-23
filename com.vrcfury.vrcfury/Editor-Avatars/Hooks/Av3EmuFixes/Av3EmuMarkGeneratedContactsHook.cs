@@ -9,6 +9,8 @@ namespace VF.Hooks.Av3EmuFixes {
     /**
      * Marks default senders created by Av3Emulator so Play Mode performance scans can exclude them.
      * This also supports Av3Emulator versions that do not set DontSaveInBuild themselves.
+     *
+     * https://github.com/lyuma/Av3Emulator/pull/231
      */
     internal static class Av3EmuMarkGeneratedContactsHook {
         [ReflectionHelperOptional]

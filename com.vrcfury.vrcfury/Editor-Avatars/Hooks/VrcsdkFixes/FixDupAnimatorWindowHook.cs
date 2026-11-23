@@ -3,6 +3,10 @@ using UnityEditor.Animations;
 using VF.Utils;
 
 namespace VF.Hooks.VrcsdkFixes {
+    /**
+     * Looks up the previewed controller without opening a broken Animator window during a reload.
+     * https://feedback.vrchat.com/sdk-bug-reports/p/parameter-driver-editor-sometimes-causes-broken-animator-windows
+     */
     internal static class FixDupAnimatorWindowHook {
         private abstract class Reflection : ReflectionHelper {
             public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(

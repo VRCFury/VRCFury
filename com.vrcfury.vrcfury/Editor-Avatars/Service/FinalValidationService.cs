@@ -33,6 +33,10 @@ namespace VF.Service {
             }
         }
 
+        /**
+         * Checks the contact limit after VRCFury has finished generating contacts.
+         * https://feedback.vrchat.com/sdk-bug-reports/p/avatar-contact-hard-limit-is-not-documented-or-sdk-enforced
+         */
         private void CheckContacts() {
             var contacts = avatarObject.GetComponentsInSelfAndChildren<ContactBase>().ToArray();
             var contactLimit = 256;

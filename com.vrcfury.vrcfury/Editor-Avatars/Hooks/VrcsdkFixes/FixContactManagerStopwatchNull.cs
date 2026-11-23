@@ -9,6 +9,8 @@ namespace VF.Hooks.VrcsdkFixes {
     /**
      * The VRCSDK tries to use a variable before it is initialized, resulting in a consistent NPE the first time
      * you enter play mode after reloading scripts.
+     *
+     * https://feedback.vrchat.com/sdk-bug-reports/p/contactmanager-throws-an-npe-because-stopwatch-may-not-exist
      */
     internal static class FixContactManagerStopwatchNull {
         private abstract class Reflection : ReflectionHelper {

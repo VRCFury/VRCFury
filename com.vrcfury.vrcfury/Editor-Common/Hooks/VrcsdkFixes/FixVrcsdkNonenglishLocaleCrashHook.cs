@@ -15,6 +15,8 @@ namespace VF.Hooks.VrcsdkFixes {
      * the VRCSDK builder window fails to load.
      *
      * To fix this, we patch Assembly.GetName to never throw.
+     *
+     * https://feedback.vrchat.com/sdk-bug-reports/p/string-conversion-errors-from-runtimeassemblygetcodebase-with-japanese-locale-an
      */
     internal static class FixVrcsdkNonenglishLocaleCrashHook {
         private abstract class Reflection : ReflectionHelper {

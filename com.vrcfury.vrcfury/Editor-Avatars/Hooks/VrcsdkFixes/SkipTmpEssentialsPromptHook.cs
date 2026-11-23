@@ -4,6 +4,8 @@ namespace VF.Hooks.VrcsdkFixes {
     /**
      * The SDK reads TMP_Settings.instance during project setup, which opens Unity's
      * TMP Essentials importer even in avatar projects that don't use TextMesh Pro.
+     *
+     * https://feedback.vrchat.com/unity-6-sdk/p/avatar-6-template-immediately-opens-tmp-importer-prompt
      */
     internal static class SkipTmpEssentialsPromptHook {
         [ReflectionHelperOptional]

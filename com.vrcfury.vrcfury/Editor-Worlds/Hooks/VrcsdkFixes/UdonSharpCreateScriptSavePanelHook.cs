@@ -13,6 +13,8 @@ namespace VF.Hooks.VrcsdkFixes {
      * "Assets/Create/U# Script" fails if the destination file is in a package that is outside project root
      * This fixes it.
      * https://feedback.vrchat.com/sdk-bug-reports/p/assets-create-u-script-fails-if-destination-file-is-outside-project-root
+     *
+     * https://feedback.vrchat.com/sdk-bug-reports/p/assets-create-u-script-still-fails-if-destination-file-is-outside-project-root
      */
     internal static class UdonSharpCreateScriptSavePanelHook {
         [ReflectionHelperOptional]

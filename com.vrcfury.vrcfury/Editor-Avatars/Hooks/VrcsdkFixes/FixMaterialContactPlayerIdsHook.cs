@@ -8,6 +8,10 @@ using UnityEngine;
 using VF.Utils;
 
 namespace VF.Hooks.VrcsdkFixes {
+    /**
+     * Assigns distinct Play Mode player IDs so material contacts can distinguish avatars.
+     * https://feedback.vrchat.com/sdk-bug-reports/p/material-contacts-playerid-collision-is-very-likely-in-editor-play-mode
+     */
     internal static class FixMaterialContactPlayerIdsHook {
         [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {

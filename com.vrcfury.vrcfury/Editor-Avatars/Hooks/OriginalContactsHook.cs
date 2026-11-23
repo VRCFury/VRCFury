@@ -51,6 +51,8 @@ namespace VF.Hooks {
          * because it only updates the transforms when that property drawer is shown. This is a VRCSDK issue, and can result in
          * the colliders being unset or set improperly, which breaks things later like global collider finger detection.
          * We force the VRCSDK to update the global contacts immediately upon avatar build start to resolve this issue.
+         *
+         * https://feedback.vrchat.com/sdk-bug-reports/p/avatar-auto-collider-transforms-are-not-updated-before-an-upload
          */
         private static void FixInvalidDescriptorColliderInfo(VRCAvatarDescriptor avatar) {
             if (!ReflectionHelper.IsReady<Reflection>()) {

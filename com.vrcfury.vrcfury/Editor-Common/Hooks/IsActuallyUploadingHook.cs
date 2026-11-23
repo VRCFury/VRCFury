@@ -6,6 +6,10 @@ using VRC.SDKBase.Editor;
 #endif
 
 namespace VF.Hooks {
+    /**
+     * Detects real SDK builds, including later platforms where ActiveBuildType can be unset.
+     * https://feedback.vrchat.com/sdk-bug-reports/p/multi-platform-build-does-not-set-vrc-sdkbuilderactivebuildtype-after-the-first
+     */
     internal static class IsActuallyUploadingHook {
 
         public static bool IsPublishing() {

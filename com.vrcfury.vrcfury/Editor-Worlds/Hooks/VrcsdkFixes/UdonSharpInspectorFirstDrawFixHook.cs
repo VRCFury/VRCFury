@@ -11,6 +11,8 @@ namespace VF.Hooks.VrcsdkFixes {
      * U# mutates backing UdonBehaviour hideFlags during inspector OnEnable.
      * That can cause the first inspector draw to clip the next component's UI.
      * Detect this mutation and force an inspector rebuild on the next editor tick.
+     *
+     * https://feedback.vrchat.com/sdk-bug-reports/p/udonsharp-components-eat-the-body-of-the-component-beneath-them-on-first-view
      */
     internal static class UdonSharpInspectorFirstDrawFixHook {
         private abstract class Reflection : ReflectionHelper {

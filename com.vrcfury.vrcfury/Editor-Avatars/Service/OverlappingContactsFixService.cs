@@ -7,7 +7,7 @@ using VF.Utils.Controller;
 namespace VF.Service {
     /**
      * This attempts to resolve this issue:
-     * https://feedback.vrchat.com/feature-requests/p/overlapping-on-load-receivers-are-still-broken
+     * https://feedback.vrchat.com/bug-reports/p/overlapping-on-load-receivers-are-still-broken
      *
      * It does so by disabling all avatar receivers for the first 10 frames after load-in or re-scaling.
      */
