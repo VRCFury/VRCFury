@@ -33,7 +33,7 @@ namespace VF.Builder {
         internal static bool ShouldRun(VFGameObject avatarObject) {
             if (avatarObject
                 .GetComponentsInSelfAndChildren<VRCFuryComponent>()
-                .Any(c => !(c is VRCFuryDebugInfo))) {
+                .Any(c => c is not VRCFuryDebugInfo && !EditorOnlyUtils.IsInsideEditorOnly(c.owner(), avatarObject))) {
                 // There's a vrcfury component
                 return true;
             }

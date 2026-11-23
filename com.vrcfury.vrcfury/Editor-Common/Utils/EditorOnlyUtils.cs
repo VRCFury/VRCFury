@@ -18,8 +18,11 @@ namespace VF.Utils {
             }
         }
         
-        public static bool IsInsideEditorOnly(VFGameObject gameObject) {
-            return gameObject.GetSelfAndAllParents().Any(IsEditorOnly);
+        public static bool IsInsideEditorOnly(VFGameObject gameObject, VFGameObject stopBefore = null) {
+            for (var obj = gameObject; obj != null && obj != stopBefore; obj = obj.parent) {
+                if (IsEditorOnly(obj)) return true;
+            }
+            return false;
         }
 
         private static bool IsEditorOnly(VFGameObject obj) {
