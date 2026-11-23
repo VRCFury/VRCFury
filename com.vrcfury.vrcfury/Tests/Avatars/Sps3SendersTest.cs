@@ -589,7 +589,7 @@ namespace VF.Tests {
             socket.channelSettings.channels.AddRange(new[] { "  My Channel  ", "Other", "Ignored Third" }.Select(tag => new VF.Model.SpsChannelSettings.Channel { id = tag }));
             var configurer = injector.GetService<SpsConfigurer>();
             var expected = new[] { "my channel", "other", "hand", "handleft", "_public" }
-                .SelectMany(c => new[] { c, SelfTag(c) }).Concat(new[] { "nothips", SelfTag("nothips") }).ToArray();
+                .SelectMany(c => new[] { c, SelfTag(c) }).Append(SelfTag("nothips")).ToArray();
             Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings), Is.EquivalentTo(expected));
 
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
@@ -605,13 +605,13 @@ namespace VF.Tests {
         [TestCase(HumanBodyBones.Hips, false)]
         [TestCase(HumanBodyBones.Head, true)]
         [TestCase(HumanBodyBones.LastBone, true)]
-        public void SocketAutoChannelsAddNotHipsOutsideHips(HumanBodyBones bone, bool expected) {
+        public void SocketAutoChannelsAddSelfOnlyNotHipsOutsideHips(HumanBodyBones bone, bool expected) {
             injector.Set("autoChannelGenerator", new AutoChannels(bone));
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             var configurer = injector.GetService<SpsConfigurer>();
-            Assert.That(configurer.GetAutoSocketChannels(socket.owner()).Contains("nothips"), Is.EqualTo(expected));
+            Assert.That(configurer.GetAutoSocketChannels(socket.owner(), true).Contains("nothips"), Is.EqualTo(expected));
             Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings).Contains(SelfTag("nothips")), Is.EqualTo(expected));
-            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Others, socket.channelSettings).Contains("nothips"), Is.EqualTo(expected));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Others, socket.channelSettings), Does.Not.Contain("nothips"));
             socket.channelSettings.useSharedTag = false;
             Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings), Does.Not.Contain(SelfTag("nothips")));
         }
@@ -640,7 +640,7 @@ namespace VF.Tests {
             Assert.That(entrance.Contains("TPS_Orf_Root_SelfNotOnHips"), Is.False);
             Assert.That(entrance.Contains("SPS/Socket/_public"), Is.EqualTo(global));
             Assert.That(entrance.Contains(SelfTag("SPS/Socket/nothips")), Is.EqualTo(global && !onHips));
-            Assert.That(entrance.Contains("SPS/Socket/nothips"), Is.EqualTo(global && !onHips));
+            Assert.That(entrance, Does.Not.Contain("SPS/Socket/nothips"));
             Assert.That(entrance, Does.Not.Contain("SPSN1/Socket"));
             Assert.That(entrance, Does.Not.Contain("SPSN1/Socket_SelfNotOnHips"));
             Assert.That(entrance.Any(t => t.StartsWith("SPS/Socket/00000539")), Is.False);
@@ -649,7 +649,7 @@ namespace VF.Tests {
             Assert.That(contacts.SelectMany(c => c.collisionTags).Any(t => t.Contains("SCALE_DATA")), Is.False);
             Assert.That(guide.Contains("SPS/SocketPath/_public"), Is.EqualTo(global));
             Assert.That(guide.Contains(SelfTag("SPS/SocketPath/nothips")), Is.EqualTo(global && !onHips));
-            Assert.That(guide.Contains("SPS/SocketPath/nothips"), Is.EqualTo(global && !onHips));
+            Assert.That(guide, Does.Not.Contain("SPS/SocketPath/nothips"));
             Assert.That(entrance, Does.Contain("SPS/Socket/custom"));
             Assert.That(guide, Does.Contain("SPS/SocketPath/custom"));
         }
@@ -697,7 +697,7 @@ namespace VF.Tests {
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
             var sender = NativeSocketSenders(result.bakeRoot).Single();
-            Assert.That(sender.collisionTags.Count, Is.EqualTo(14));
+            Assert.That(sender.collisionTags.Count, Is.EqualTo(13));
             foreach (var legacyTag in new[] { SpsTags.LegacySocket, SpsTags.LegacySocket2 }) {
                 Assert.That(sender.collisionTags, Does.Contain(legacyTag));
                 Assert.That(sender.collisionTags, Does.Not.Contain(legacyTag + "_SelfNotOnHips"));
@@ -707,7 +707,7 @@ namespace VF.Tests {
                 Assert.That(sender.collisionTags, Does.Not.Contain(removedTag + "_SelfNotOnHips"));
             }
             var channels = new[] { "custom1", "custom2", "hand", "handleft", "_public" }
-                .SelectMany(c => new[] { c, SelfTag(c) }).Concat(new[] { "nothips", SelfTag("nothips") });
+                .SelectMany(c => new[] { c, SelfTag(c) }).Append(SelfTag("nothips"));
             Assert.That(sender.collisionTags.Where(t => t.StartsWith("SPS/Socket/")),
                 Is.EquivalentTo(channels.Select(channel => $"SPS/Socket/{channel}")));
         }
@@ -743,7 +743,7 @@ namespace VF.Tests {
             Assert.That(main.collisionTags.Where(t => t.StartsWith("SPS/Plug/")),
                 Is.EquivalentTo(expected.Select(SpsTags.FormatPlug)));
             Assert.That(entrance.collisionTags.Where(t => t.StartsWith("SPS/Socket/")),
-                Is.EquivalentTo(expected.Concat(shared ? new[] { "nothips", SelfTag("nothips") } : Array.Empty<string>()).Select(SpsTags.FormatSocket)));
+                Is.EquivalentTo(expected.Concat(shared ? new[] { SelfTag("nothips") } : Array.Empty<string>()).Select(SpsTags.FormatSocket)));
             Assert.That(main.collisionTags.Contains(SpsTags.LegacyPlugSphere + "_SelfNotOnHips"), Is.False);
             var legacyTags = root.GetComponentsInChildren<VRCContactSender>()
                 .SelectMany(c => c.collisionTags).Where(t => t.StartsWith("TPS_") || t.StartsWith("SPSLL_")).ToArray();
@@ -928,7 +928,6 @@ namespace VF.Tests {
                             expectedPlug.Add("_public");
                             expectedSocket.Add("_public");
                             expectedSocket.Add(auto);
-                            if (bone != HumanBodyBones.Hips) expectedSocket.Add("nothips");
                         }
                         if (party != Party.Others) {
                             expectedPlug.Add(SelfTag(bone == HumanBodyBones.Hips && avoidHips ? "nothips" : "_public"));

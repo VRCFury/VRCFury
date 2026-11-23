@@ -101,7 +101,7 @@ namespace VF.Builder.Haptics {
         internal HashSet<string> GetLogicalChannels(VFGameObject obj, bool isPlug, bool self, SpsChannelSettings settings) {
             var channels = GetRuleChannels(settings.channels, self);
             if (settings.useSharedTag) {
-                if (!isPlug) channels.UnionWith(GetAutoSocketChannels(obj));
+                if (!isPlug) channels.UnionWith(GetAutoSocketChannels(obj, self));
                 channels.Add(self && isPlug && settings.useHipAvoidance
                     && autoChannelGenerator?.GetClosestBone(obj) == HumanBodyBones.Hips
                     ? SpsTags.NotHipsChannel : SpsTags.PublicChannel);
@@ -157,7 +157,7 @@ namespace VF.Builder.Haptics {
             return null;
         }
 
-        internal HashSet<string> GetAutoSocketChannels(VFGameObject socket) {
+        internal HashSet<string> GetAutoSocketChannels(VFGameObject socket, bool self) {
             var bone = autoChannelGenerator?.GetClosestBone(socket);
             var channels = bone switch {
                 HumanBodyBones.Hips => new[] { "hips", GetAutoHipFrontBackChannel(socket, bone) },
@@ -170,7 +170,7 @@ namespace VF.Builder.Haptics {
                 _ => Array.Empty<string>()
             };
             var result = channels.Where(channel => !string.IsNullOrWhiteSpace(channel)).ToHashSet();
-            if (bone != HumanBodyBones.Hips) result.Add(SpsTags.NotHipsChannel);
+            if (self && bone != HumanBodyBones.Hips) result.Add(SpsTags.NotHipsChannel);
             return result;
         }
     }

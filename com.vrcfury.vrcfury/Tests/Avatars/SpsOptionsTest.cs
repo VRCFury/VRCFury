@@ -158,7 +158,7 @@ namespace VF.Tests {
                 var text = preview.Query<Label>().ToList().Single(l => l.text.StartsWith("Final channel list:")).text;
                 Assert.That(text, Is.EqualTo(action
                     ? "Final channel list:\noverride (Self)"
-                    : socket ? "Final channel list:\n_public\nhead\nnothips"
+                    : socket ? "Final channel list:\n_public\nhead\nnothips (Self)"
                     : "Final channel list:\n_public\nothersonly (Others)\nselfonly (Self)"));
             } finally { Object.DestroyImmediate(root); }
         }
