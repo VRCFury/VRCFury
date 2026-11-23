@@ -15,12 +15,13 @@ namespace VF.Builder {
         private static readonly Dictionary<VFGameObject, VRCFArmatureCache> perFrame
             = new Dictionary<VFGameObject, VRCFArmatureCache>();
         [VFAutowired] [CanBeNull] private VFGameObject avatarObject;
-        private readonly List<Snapshot> snapshots = new List<Snapshot>();
+        private Snapshot snapshot;
 
         private class Snapshot {
             public readonly Dictionary<HumanBodyBones, string> bonePaths = new Dictionary<HumanBodyBones, string>();
             public readonly Dictionary<HumanBodyBones, VFGameObject> boneObjects = new Dictionary<HumanBodyBones, VFGameObject>();
             public readonly HashSet<VFGameObject> nonEyeBoneParents = new HashSet<VFGameObject>();
+            public HumanoidHipsCorrection hipsCorrection;
         }
 
         public static VRCFArmatureCache GetPerFrame(VFGameObject avatarObject) {
@@ -40,14 +41,11 @@ namespace VF.Builder {
             Scheduler.Schedule(perFrame.Clear, 0);
         }
 
-        private IEnumerable<Snapshot> GetSnapshots(bool reverse = false) {
-            if (snapshots.Count == 0) Capture();
-            return reverse ? snapshots.AsEnumerable().Reverse() : snapshots;
-        }
-        public void Capture() {
-            var snapshot = CreateSnapshot(avatarObject);
-            if (snapshot != null) snapshots.Add(snapshot);
-        }
+        private Snapshot GetSnapshot() => snapshot ??= CreateSnapshot(avatarObject);
+
+        public void Capture() => snapshot = CreateSnapshot(avatarObject);
+
+        internal HumanoidHipsCorrection GetHipsCorrection() => GetSnapshot()?.hipsCorrection;
 
         private static Snapshot CreateSnapshot(VFGameObject avatarObject) {
             if (avatarObject == null) return null;
@@ -56,17 +54,32 @@ namespace VF.Builder {
 
             var snapshot = new Snapshot();
 
-            var so = new SerializedObject(animator.avatar);
+            using var so = new SerializedObject(animator.avatar);
             var skeletonIndexToBoneHash = GetSkeletonIndexToBoneHash(so);
             var boneHashToPath = GetBoneHashToPath(so);
 
             foreach (var bone in GetAllBoneTypes()) {
-                var skeletonIndex = GetSkeletonIndex(so, bone);
-                if (!skeletonIndexToBoneHash.TryGetValue(skeletonIndex, out var boneHash)) continue;
-                if (!boneHashToPath.TryGetValue(boneHash, out var path)) continue;
+                var path = GetBonePath(so, bone, skeletonIndexToBoneHash, boneHashToPath);
+                if (path == null) continue;
                 snapshot.bonePaths[bone] = path;
                 var obj = avatarObject.Find(path);
                 if (obj != null) snapshot.boneObjects[bone] = obj;
+            }
+
+            if (snapshot.boneObjects.TryGetValue(HumanBodyBones.Hips, out var mappedHips)
+                && snapshot.boneObjects.TryGetValue(HumanBodyBones.Spine, out var spine)) {
+                var correction = HumanoidHipsCorrection.Find(
+                    so,
+                    avatarObject,
+                    mappedHips,
+                    spine,
+                    boneHashToPath
+                );
+                if (correction != null) {
+                    snapshot.hipsCorrection = correction;
+                    snapshot.bonePaths[HumanBodyBones.Hips] = correction.hips.GetPath(avatarObject);
+                    snapshot.boneObjects[HumanBodyBones.Hips] = correction.hips;
+                }
             }
 
             snapshot.nonEyeBoneParents.Add(avatarObject);
@@ -81,33 +94,37 @@ namespace VF.Builder {
             return snapshot;
         }
 
-        public VFGameObject FindBoneOnArmatureOrNull(
-            HumanBodyBones findBone,
-            bool reverse = false
+        private static string GetBonePath(
+            SerializedObject avatar,
+            HumanBodyBones bone,
+            Dictionary<int, long> skeletonIndexToBoneHash,
+            Dictionary<long, string> boneHashToPath
         ) {
+            return skeletonIndexToBoneHash.TryGetValue(GetSkeletonIndex(avatar, bone), out var hash)
+                && boneHashToPath.TryGetValue(hash, out var path) ? path : null;
+        }
+
+        public VFGameObject FindBoneOnArmatureOrNull(HumanBodyBones findBone) {
             try {
-                return FindBoneOnArmatureOrException(findBone, reverse);
+                return FindBoneOnArmatureOrException(findBone);
             } catch (Exception) {
                 return null;
             }
         }
 
-        public VFGameObject FindBoneOnArmatureOrException(
-            HumanBodyBones findBone,
-            bool reverse = false
-        ) {
-            var snapshots = GetSnapshots(reverse).ToList();
-            foreach (var snapshot in snapshots) {
-                if (snapshot.boneObjects.TryGetValue(findBone, out var obj) && obj != null) return obj;
+        public VFGameObject FindBoneOnArmatureOrException(HumanBodyBones findBone) {
+            var current = GetSnapshot();
+            if (current != null) {
+                if (current.boneObjects.TryGetValue(findBone, out var obj) && obj != null) return obj;
+                if (current.bonePaths.TryGetValue(findBone, out var path)) {
+                    throw new VRCFBuilderException(
+                        "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +
+                        "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n" +
+                        path
+                    );
+                }
             }
-            foreach (var snapshot in snapshots) {
-                if (!snapshot.bonePaths.TryGetValue(findBone, out var path)) continue;
-                throw new VRCFBuilderException(
-                    "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +
-                    "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n" +
-                    path);
-            }
-            if (!snapshots.Any(snapshot => snapshot.bonePaths.ContainsKey(HumanBodyBones.Hips))) {
+            if (current?.bonePaths.ContainsKey(HumanBodyBones.Hips) != true) {
                 var animator = avatarObject == null ? null : avatarObject.GetComponent<Animator>();
                 if (animator == null)
                     throw new Exception($"{findBone} bone could not be found because the avatar's Animator is missing");
@@ -189,20 +206,14 @@ namespace VF.Builder {
                 .ToImmutableHashSet();
         }
 
-        public IReadOnlyDictionary<HumanBodyBones, VFGameObject> GetAllBones(
-            bool reverse = false
-        ) {
-            var output = new Dictionary<HumanBodyBones, VFGameObject>();
-            foreach (var snapshot in GetSnapshots(reverse)) {
-                foreach (var pair in snapshot.boneObjects) {
-                    if (pair.Value != null && !output.ContainsKey(pair.Key)) output[pair.Key] = pair.Value;
-                }
-            }
-            return output;
+        public IReadOnlyDictionary<HumanBodyBones, VFGameObject> GetAllBones() {
+            var current = GetSnapshot();
+            if (current == null) return ImmutableDictionary<HumanBodyBones, VFGameObject>.Empty;
+            return current.boneObjects.Where(pair => pair.Value != null).ToDictionary(pair => pair.Key, pair => pair.Value);
         }
 
         public bool IsNonEyeBoneParent(VFGameObject obj) {
-            return GetSnapshots().Any(snapshot => snapshot.nonEyeBoneParents.Contains(obj));
+            return GetSnapshot()?.nonEyeBoneParents.Contains(obj) == true;
         }
     }
 }

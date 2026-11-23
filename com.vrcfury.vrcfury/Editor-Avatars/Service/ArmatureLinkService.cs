@@ -511,14 +511,6 @@ namespace VF.Service {
                 throw firstException;
             }
             
-            if (avatarBone.name.ToLower().Contains("armature") || avatarBone.name.ToLower().Contains("skeleton")) {
-                var hips = armatureCache.FindBoneOnArmatureOrNull(HumanBodyBones.Hips);
-                var spine = armatureCache.FindBoneOnArmatureOrNull(HumanBodyBones.Spine);
-                if (hips == avatarBone && spine.parent != hips) {
-                    throw new Exception("Your avatar's fbx rig definition has the 'Hips' bone set incorrectly to the armature root instead of the actual Hips.");
-                }
-            }
-
             var removeBoneSuffix = model.removeBoneSuffix;
             if (string.IsNullOrWhiteSpace(model.removeBoneSuffix)) {
                 var avatarBoneName = avatarBone.name;

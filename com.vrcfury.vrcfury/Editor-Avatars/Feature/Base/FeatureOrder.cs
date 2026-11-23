@@ -3,6 +3,7 @@ namespace VF.Feature.Base {
 
         CleanTmpDir,
         CollectExistingComponents,
+        FixHumanoidHips,
 
         // Needs to happen before controllers load
         CaptureInitialState,
