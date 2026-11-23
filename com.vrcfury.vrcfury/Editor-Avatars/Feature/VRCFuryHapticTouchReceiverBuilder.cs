@@ -20,14 +20,19 @@ namespace VF.Feature {
 
         [FeatureBuilderAction]
         public void Apply() {
+            var desktop = BuildTargetUtils.IsDesktop();
             var usedNames = new HashSet<string>();
             foreach (var receiver in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticTouchReceiver>()) {
-                var name = HapticUtils.MakeUniqueOgbId(usedNames, HapticUtils.GetPreferredId(receiver, r => r.name, r => HapticUtils.GetFallbackId(r.owner())));
+                var obj = receiver.owner();
+                PhysboneUtils.RemoveFromPhysbones(obj);
+                if (!desktop) continue;
+
+                var name = HapticUtils.MakeUniqueOgbId(usedNames, HapticUtils.GetPreferredId(receiver, r => r.name, _ => HapticUtils.GetFallbackId(obj)));
                 var paramPrefix = "OGB/Touch/" + name;
 
                 void AddReceiver(HapticUtils.ReceiverParty party, IEnumerable<string> tags) {
                     hapticContacts.AddReceiver(new HapticContactsService.ReceiverRequest {
-                        obj = receiver.owner(),
+                        obj = obj,
                         paramName = paramPrefix + "/" + party,
                         objName = party.ToString(),
                         radius = receiver.radius,

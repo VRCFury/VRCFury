@@ -2,7 +2,6 @@ using static VF.Inspector.VRCFuryHapticPlugEditor;
 using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using VF.Builder.Haptics;
 using VF.Injector;
 using VF.Inspector;
@@ -90,22 +89,22 @@ namespace VF.Service {
                             return legacyOutput;
                         }
                         if (parameter == SpsParamSocketIsHole) {
-                            var flag = (int)HapticUtils.SocketScaleFlags.Collapse;
-                            var packed = Field("SenderLossyScaleX");
                             var flagOutput = fx.CreateUniqueFloat(prefix + "/SocketIsHole");
-                            var nativeFlag = VFBlendTree1D.Create(flagOutput.name + "/NativeFlag", packed);
                             var off = flagOutput.MakeSetter(0);
                             var on = flagOutput.MakeSetter(1);
-                            // Decode all intervals for this bit in one tree, rounding the packed word first.
-                            for (var start = flag; start < 32768; start += flag * 2) {
-                                var first = start - 0.5f;
-                                var end = start + flag - 0.5f;
-                                nativeFlag.Add(VRCFuryEditorUtils.NextFloatDown(first), off);
-                                nativeFlag.Add(first, on);
-                                nativeFlag.Add(VRCFuryEditorUtils.NextFloatDown(end), on);
-                                nativeFlag.Add(end, off);
-                            }
-                            encoding.Value.whenTrue.Add(nativeFlag);
+                            // Collapse is the highest bit in the packed X scale.
+                            var nativeCollapse = BlendtreeMath.GreaterThan(
+                                Field("SenderLossyScaleX"),
+                                (int)SpsTags.SocketScaleFlagsX.Collapse - 0.5f,
+                                orEqual: true,
+                                name: flagOutput.name + "/NativeFlag"
+                            );
+                            var animatorHole = BlendtreeMath.GreaterThan(
+                                Field("SenderLossyScaleZ"),
+                                (int)SpsTags.SocketScaleFlagsZ.AnimatorHole - 0.5f,
+                                orEqual: true
+                            );
+                            encoding.Value.whenTrue.Add(animatorHole.Or(nativeCollapse).create(on, off));
                             if (legacy) {
                                 var holeTag = BlendtreeMath.GreaterThan(Field("CollisionTag_" + SpsTags.LegacySocketHole), 0);
                                 var ringTag = BlendtreeMath.GreaterThan(Field("CollisionTag_" + SpsTags.LegacySocketRing), 0);

@@ -80,10 +80,11 @@ namespace VF.Inspector {
                 if (group > HapticUtils.GroupCount)
                     throw new Exception($"SPS3 supports at most {HapticUtils.GroupCount} sockets per build.");
                 pathRoots = new VFGameObject[Math.Min(stops.Count, SpsTags.MaxUserPathStops)];
+                var animatorHole = IsHoleForAnimator(socket, lightType);
                 for (var index = 0; index <= pathRoots.Length; index++) {
                     var pathIndex = index;
                     var sender = rootSender;
-                    var nodeType = GetEntranceType(socket, lightType);
+                    var nodeType = GetNodeType(socket, lightType, pathIndex);
                     if (pathIndex > 0) {
                         sender = GameObjects.Create($"Sender - Path Stop {pathIndex}", worldSpace);
                         var target = GameObjects.Create("BakedSpsPath", stops[pathIndex - 1].transform.asVf());
@@ -91,12 +92,9 @@ namespace VF.Inspector {
                         sender.worldPosition = target.worldPosition;
                         sender.worldRotation = target.worldRotation;
                         VFConstraint.CreateParent(sender).AddSource(target, 1);
-                        nodeType = pathIndex == stops.Count
-                            ? GetGuidedPathTerminalType(lightType)
-                            : stops[pathIndex].shrink ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay;
                     }
                     var tags = new List<string>();
-                    var flags = HapticUtils.SocketScaleFlags.None;
+                    var flagsX = SpsTags.SocketScaleFlagsX.None;
                     var radiusOffset = pathIndex == 0 ? socket.useRadiusOffset : stops[pathIndex - 1].useRadiusOffset;
                     var radiusLimit = radiusOffset
                         ? pathIndex == 0 ? socket.maxRadiusOffset : stops[pathIndex - 1].maxRadiusOffset
@@ -104,21 +102,22 @@ namespace VF.Inspector {
                     var scaleReference = pathIndex == 0 ? bakeRoot : pathRoots[pathIndex - 1];
                     if (radiusOffset) {
                         tags.Add(SpsTags.SocketRadiusOffset);
-                        flags |= HapticUtils.SocketScaleFlags.RadiusOffset;
+                        flagsX |= SpsTags.SocketScaleFlagsX.RadiusOffset;
                     }
                     if (nodeType == VRCFuryHapticSocket.AddLight.Hole) {
                         tags.Add(SpsTags.SocketCollapse);
-                        flags |= HapticUtils.SocketScaleFlags.Collapse;
+                        flagsX |= SpsTags.SocketScaleFlagsX.Collapse;
                     } else if (nodeType == VRCFuryHapticSocket.AddLight.Ring) {
                         tags.Add(SpsTags.SocketTwoway);
-                        flags |= HapticUtils.SocketScaleFlags.Twoway;
+                        flagsX |= SpsTags.SocketScaleFlagsX.Twoway;
                     }
                     // WorldSpace keeps metadata scale independent of avatar/stop scaling.
                     sender.worldScale = HapticUtils.EncodeSocketScale(
                         group,
                         pathIndex,
-                        flags,
-                        radiusLimit * scaleReference.worldScale.x
+                        flagsX,
+                        radiusLimit * scaleReference.worldScale.x,
+                        pathIndex == 0 && animatorHole ? SpsTags.SocketScaleFlagsZ.AnimatorHole : SpsTags.SocketScaleFlagsZ.None
                     );
                     if (radiusLimit > 0 && !float.IsPositiveInfinity(radiusLimit)) {
                         result.radiusOffsetLimits.Add((sender, scaleReference, radiusLimit));
@@ -255,12 +254,25 @@ namespace VF.Inspector {
         }
 
 
-        internal VRCFuryHapticSocket.AddLight GetEntranceType(VRCFuryHapticSocket socket) =>
-            GetEntranceType(socket, GetSocketTransform(socket, autoChannelGenerator?.GetClosestBone(socket.owner())).Item1);
+        internal bool IsHoleForAnimator(VRCFuryHapticSocket socket) =>
+            IsHoleForAnimator(socket, GetSocketTransform(socket, autoChannelGenerator?.GetClosestBone(socket.owner())).Item1);
 
-        private static VRCFuryHapticSocket.AddLight GetEntranceType(VRCFuryHapticSocket socket, VRCFuryHapticSocket.AddLight type) {
+        private static bool IsHoleForAnimator(VRCFuryHapticSocket socket, VRCFuryHapticSocket.AddLight type) {
+            var lastNode = Math.Min(socket.guidedPathStops.Count, SpsTags.MaxUserPathStops);
+            for (var node = 0; node <= lastNode; node++) {
+                if (GetNodeType(socket, type, node) == VRCFuryHapticSocket.AddLight.Hole) return true;
+            }
+            return false;
+        }
+
+        private static VRCFuryHapticSocket.AddLight GetNodeType(
+            VRCFuryHapticSocket socket,
+            VRCFuryHapticSocket.AddLight type,
+            int node
+        ) {
             if (type == VRCFuryHapticSocket.AddLight.None || socket.guidedPathStops.Count == 0) return type;
-            return socket.guidedPathStops[0].shrink
+            if (node == socket.guidedPathStops.Count) return GetGuidedPathTerminalType(type);
+            return socket.guidedPathStops[node]?.shrink == true
                 ? VRCFuryHapticSocket.AddLight.Hole : VRCFuryHapticSocket.AddLight.RingOneWay;
         }
 

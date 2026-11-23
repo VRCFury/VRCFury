@@ -25,32 +25,24 @@ namespace VF.Builder.Haptics {
 
         public const int GroupCount = 127;
 
-        [Flags]
-        public enum SocketScaleFlags {
-            None = 0,
-            UnlockAll = 1 << 10,
-            UnlockLocalX = 1 << 11,
-            RadiusOffset = 1 << 12,
-            Twoway = 1 << 13,
-            Collapse = 1 << 14
-        }
-
         public static Vector3 EncodeSocketScale(
             int group,
             int pathIndex,
-            SocketScaleFlags flags = SocketScaleFlags.None,
-            float maxRadiusOffset = 0
+            SpsTags.SocketScaleFlagsX flagsX = SpsTags.SocketScaleFlagsX.None,
+            float maxRadiusOffset = 0,
+            SpsTags.SocketScaleFlagsZ flagsZ = SpsTags.SocketScaleFlagsZ.None
         ) {
             if (group < 1 || group > GroupCount) throw new ArgumentOutOfRangeException(nameof(group));
             if (pathIndex < 0 || pathIndex >= 8) throw new ArgumentOutOfRangeException(nameof(pathIndex));
-            if (((int)flags & ~0x7C00) != 0) throw new ArgumentOutOfRangeException(nameof(flags));
+            if (((int)flagsX & ~0x7C00) != 0) throw new ArgumentOutOfRangeException(nameof(flagsX));
             if (float.IsNaN(maxRadiusOffset) || maxRadiusOffset < 0) throw new ArgumentOutOfRangeException(nameof(maxRadiusOffset));
             // X: group ID 0-6 (nonzero), path index 7-9, flags 10-14.
-            // Y: 1 means unlimited; otherwise 2 + the maximum offset in world meters. Z: 1.
+            // Y: 1 means unlimited; otherwise 2 + the maximum offset in world meters.
+            // Z: more flags
             return new Vector3(
-                group | (pathIndex << 7) | (int)flags,
+                group | (pathIndex << 7) | (int)flagsX,
                 maxRadiusOffset == 0 || float.IsPositiveInfinity(maxRadiusOffset) ? 1 : 2 + maxRadiusOffset,
-                1
+                1 | (int)flagsZ
             );
         }
 

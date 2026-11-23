@@ -19,7 +19,7 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
 using Object = UnityEngine.Object;
 using Flags = VF.Component.VRCFuryHapticSocket.AddLight;
-using ScaleFlags = VF.Builder.Haptics.HapticUtils.SocketScaleFlags;
+using ScaleFlags = VF.Builder.Haptics.SpsTags.SocketScaleFlagsX;
 using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 
 namespace VF.Tests {
@@ -400,7 +400,7 @@ namespace VF.Tests {
                 result.bakeRoot.worldPosition);
             Assert.That(legacy.SelectMany(c => c.collisionTags).Any(t => t.StartsWith("SPSN1/Legacy")), Is.False);
             var contact = NativeSocketSenders(result.bakeRoot).Single();
-            CheckNode(contact, 1, 0, flags, radiusOffset: true);
+            CheckNode(contact, 1, 0, flags, radiusOffset: true, animatorHole: flags == Flags.Hole);
             Assert.That(contact, Is.SameAs(legacy.Single(c => c.collisionTags.Contains(SpsTags.LegacySocket2))));
             Assert.That(contact.transform.parent.asVf(), Is.EqualTo(result.worldSpace));
             CheckVector(result.worldSpace.worldScale, Vector3.one);
@@ -414,14 +414,15 @@ namespace VF.Tests {
             CheckVector(contact.transform.forward, result.bakeRoot.TransformDirection(Vector3.forward));
             Assert.That(Vector3.Distance(contact.transform.position, lights.First().transform.position), Is.GreaterThan(0.05));
             root.transform.localScale *= 3;
-            CheckNode(contact, 1, 0, flags, 3, radiusOffset: true);
+            CheckNode(contact, 1, 0, flags, 3, radiusOffset: true, animatorHole: flags == Flags.Hole);
             result.bakeRoot.active = false;
             Assert.That(contact.gameObject.activeInHierarchy, Is.False);
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Is.Empty);
         }
 
-        [Test]
-        public void GuidedRecordsKeepOrderShrinkTerminalAndStopTransforms() {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GuidedRecordsKeepOrderShrinkTerminalAndStopTransforms(bool collapseAtEntrance) {
             if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             socket.addLight = VRCFuryHapticSocket.AddLight.Ring;
@@ -434,7 +435,8 @@ namespace VF.Tests {
                 stop.localRotation = Quaternion.Euler(i * 20, 10, 30);
                 stop.localScale = Vector3.one * (i + 1);
                 socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop {
-                    transform = stop, shrink = i != 1
+                    transform = stop,
+                    shrink = i == (collapseAtEntrance ? 0 : 2)
                 });
             }
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
@@ -443,16 +445,16 @@ namespace VF.Tests {
             Assert.That(result.bakeRoot.GetComponentsInSelfAndChildren<Renderer>(), Is.Empty);
             var contacts = NativeSocketSenders(result.bakeRoot);
             Assert.That(contacts.Length, Is.EqualTo(4));
-            CheckNode(contacts[0], 1, 0, Flags.Hole);
+            CheckNode(contacts[0], 1, 0, collapseAtEntrance ? Flags.Hole : Flags.RingOneWay, animatorHole: true);
             CheckNode(contacts[1], 1, 1, Flags.RingOneWay);
-            CheckNode(contacts[2], 1, 2, Flags.Hole);
+            CheckNode(contacts[2], 1, 2, collapseAtEntrance ? Flags.RingOneWay : Flags.Hole);
             CheckNode(contacts[3], 1, 3, Flags.RingOneWay);
             for (var i = 1; i < contacts.Length; i++) {
                 var target = socket.guidedPathStops[i - 1].transform;
                 var pathRoot = target.asVf().Children().Single(child => child.name == "BakedSpsPath");
                 CheckVector(contacts[i].transform.position, target.position);
                 CheckVector(contacts[i].transform.forward, target.forward);
-                Assert.That(contacts[i].transform.lossyScale.x, Is.EqualTo(1 | (i << 7) | (i == 2 ? 1 << 14 : 0)).Within(0.01));
+                Assert.That(contacts[i].transform.lossyScale.x, Is.EqualTo(1 | (i << 7) | (i == 2 && !collapseAtEntrance ? 1 << 14 : 0)).Within(0.01));
                 Assert.That(contacts[i].radius, Is.Zero);
                 Assert.That(contacts[i].transform.parent.asVf(), Is.EqualTo(result.worldSpace));
                 var constraints = VFConstraint.GetConstraintsInSelfAndChildren(new[] { result.bakeRoot })
@@ -512,7 +514,8 @@ namespace VF.Tests {
                 CheckNode(senders[0], 1, 0, Flags.RingOneWay);
                 CheckNode(senders[1], 1, 1, Flags.RingOneWay);
             } else {
-                CheckNode(senders.Single(), 1, 0, bone == HumanBodyBones.LeftHand ? Flags.Ring : Flags.Hole);
+                var hole = bone != HumanBodyBones.LeftHand;
+                CheckNode(senders.Single(), 1, 0, hole ? Flags.Hole : Flags.Ring, animatorHole: hole);
             }
         }
 
@@ -531,9 +534,9 @@ namespace VF.Tests {
             var channels = injector.GetService<SpsChannelsService>();
             channels.Apply(channels.Get(socketA));
             channels.Apply(channels.Get(socketB));
-            CheckNode(NativeSocketSenders(a.bakeRoot).Single(), 1, 0, Flags.Hole);
-            CheckNode(NativeSocketSenders(b.bakeRoot).Single(), 2, 0, Flags.Hole);
-            CheckNode(NativeSocketSenders(c.bakeRoot).Single(), 3, 0, Flags.Hole);
+            CheckNode(NativeSocketSenders(a.bakeRoot).Single(), 1, 0, Flags.Hole, animatorHole: true);
+            CheckNode(NativeSocketSenders(b.bakeRoot).Single(), 2, 0, Flags.Hole, animatorHole: true);
+            CheckNode(NativeSocketSenders(c.bakeRoot).Single(), 3, 0, Flags.Hole, animatorHole: true);
         }
 
         [Test]
@@ -547,7 +550,9 @@ namespace VF.Tests {
             socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { transform = stop });
             var result = injector.GetService<VRCFuryHapticSocketBaker>().Bake(socket);
             injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
-            var guide = NativeSocketSenders(result.bakeRoot).Last();
+            var senders = NativeSocketSenders(result.bakeRoot);
+            CheckNode(senders.First(), 1, 0, Flags.RingOneWay, animatorHole: true);
+            var guide = senders.Last();
             var expected = new Vector3(129 | (1 << 14), 1f, 1);
             CheckVector(guide.transform.lossyScale, expected);
             stop.localScale *= 10;
@@ -1404,12 +1409,21 @@ namespace VF.Tests {
         private static void CheckVector(Vector3 actual, Vector3 expected) =>
             Assert.That(Vector3.Distance(actual, expected), Is.LessThan(Mathf.Max(0.0001f, expected.magnitude * 0.000001f)));
 
-        private static void CheckNode(VRCContactSender sender, int group, int pathIndex, Flags flags, float inheritedScale = 1, bool radiusOffset = false) {
+        private static void CheckNode(
+            VRCContactSender sender,
+            int group,
+            int pathIndex,
+            Flags flags,
+            float inheritedScale = 1,
+            bool radiusOffset = false,
+            bool animatorHole = false
+        ) {
             var scale = sender.transform.lossyScale / inheritedScale;
-            var packed = Mathf.RoundToInt(scale.x / scale.z);
+            var packed = Mathf.RoundToInt(scale.x);
             Assert.That(packed & 127, Is.EqualTo(group));
             Assert.That((packed >> 7) & 7, Is.EqualTo(pathIndex));
-            Assert.That(scale.y / scale.z, Is.EqualTo(1f).Within(0.000001));
+            Assert.That(scale.y, Is.EqualTo(1f).Within(0.000001));
+            Assert.That(Mathf.RoundToInt(scale.z), Is.EqualTo(animatorHole ? (int)SpsTags.SocketScaleFlagsZ.AnimatorHole | 1 : 1));
             var expectedFlags = flags == Flags.Hole
                 ? new[] { SpsTags.SocketCollapse }
                 : flags == Flags.Ring

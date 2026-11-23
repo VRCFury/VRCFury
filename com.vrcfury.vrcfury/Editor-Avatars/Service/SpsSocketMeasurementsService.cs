@@ -39,7 +39,7 @@ namespace VF.Service {
                 bake.bakeRoot, name));
             var worldRadius = main.request.worldRadius;
             var includeLegacy = main.request.supportsLegacy;
-            var entranceType = new Lazy<VRCFuryHapticSocket.AddLight>(() => socketBaker.GetEntranceType(socket));
+            var isHole = new Lazy<bool>(() => socketBaker.IsHoleForAnimator(socket));
 
             var byParty = new Dictionary<Party, Func<string, VFAParam>>();
             return party => byParty.GetOrCreate(party, () => {
@@ -153,7 +153,7 @@ namespace VF.Service {
                             presence.Value.whenFalse.Add(othersOutput.MakeSetter(0));
                             return othersOutput;
                         }
-                        if (parameter == SpsParamSocketIsHole) return entranceType.Value == VRCFuryHapticSocket.AddLight.Hole ? fx.One() : fx.Zero();
+                        if (parameter == SpsParamSocketIsHole) return isHole.Value ? fx.One() : fx.Zero();
                         if (parameter == SpsParamInteractingWithLegacy) {
                             if (!legacy) return fx.Zero();
                             var legacyOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithLegacy");

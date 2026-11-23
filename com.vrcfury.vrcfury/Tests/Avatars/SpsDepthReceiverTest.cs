@@ -208,6 +208,7 @@ namespace VF.Tests {
             Assert.That(outputs(SpsSocketIsHole), Is.SameAs(hole));
             var flagTrees = new AnimatorIterator.Trees().From(fx).Where(t => t.name.EndsWith("/NativeFlag")).ToArray();
             Assert.That(flagTrees, Has.Length.EqualTo(1));
+            Assert.That(flagTrees.Single().children, Has.Count.EqualTo(2));
             Assert.That(flagTrees.All(t => t.children.All(child => child.motion is VFClip)), Is.True,
                 "Each native socket flag must decode directly to clips in a single 1D tree");
             Start();
@@ -216,12 +217,19 @@ namespace VF.Tests {
             foreach (var packed in new[] { 1, 8191, 8192, 16383, 16384, 24575, 24576, 32767 }) {
                 Set(receiver, 0.9f, 0.2f, radius: packed, native: true);
                 Evaluate();
-                Assert.That(playable.GetFloat(hole), Is.EqualTo((packed & (int)HapticUtils.SocketScaleFlags.Collapse) != 0 ? 1 : 0));
+                Assert.That(playable.GetFloat(hole), Is.EqualTo((packed & (int)SpsTags.SocketScaleFlagsX.Collapse) != 0 ? 1 : 0));
                 Assert.That(playable.GetFloat(isLegacy), Is.Zero);
             }
+            const int pathHole = (int)SpsTags.SocketScaleFlagsZ.AnimatorHole | 1;
+            Set(receiver, 0.9f, 0.2f, length: pathHole, radius: 1, native: true);
+            Evaluate();
+            Assert.That(playable.GetFloat(hole), Is.EqualTo(1));
+            Set(receiver, 0.9f, 0.2f, length: (int)SpsTags.SocketScaleFlagsZ.AnimatorHole - 1, radius: 1, native: true);
+            Evaluate();
+            Assert.That(playable.GetFloat(hole), Is.Zero);
             if (shared && party != Party.Self) {
                 foreach (var (holeTag, ringTag) in new[] { (0, 0), (1, 0), (0, 1), (1, 1) }) {
-                    Set(receiver, 0.9f, 0.2f, radius: 32767, native: false);
+                    Set(receiver, 0.9f, 0.2f, length: pathHole, radius: 32767, native: false);
                     playable.SetFloat(receiver.parameter + "_CollisionTag_" + SpsTags.LegacySocketHole, holeTag);
                     playable.SetFloat(receiver.parameter + "_CollisionTag_" + SpsTags.LegacySocketRing, ringTag);
                     Evaluate();
@@ -229,7 +237,7 @@ namespace VF.Tests {
                     Assert.That(playable.GetFloat(isLegacy), Is.EqualTo(1));
                 }
             }
-            Set(receiver, 0, -1, radius: 32767, native: true);
+            Set(receiver, 0, -1, length: pathHole, radius: 32767, native: true);
             Evaluate();
             Assert.That(playable.GetFloat(hole), Is.Zero);
         }
@@ -240,12 +248,16 @@ namespace VF.Tests {
         [TestCase(3, false)]
         [TestCase(4, false)]
         [TestCase(2, true, true)]
-        [TestCase(1, false, false)]
-        public void SocketFlagsAreConstantsMatchingEntranceType(int type, bool hole, bool? shrink = null) {
+        [TestCase(1, true, false)]
+        [TestCase(2, false, false)]
+        [TestCase(2, true, false, true)]
+        [TestCase(0, false, true)]
+        public void SocketFlagsAreConstantsMatchingTheWholePath(int type, bool hole, bool? shrink = null, bool? innerShrink = null) {
             var factory = Socket(false);
             var socket = root.GetComponent<VRCFuryHapticSocket>();
             socket.addLight = (VRCFuryHapticSocket.AddLight)type;
             if (shrink != null) socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { shrink = shrink.Value });
+            if (innerShrink != null) socket.guidedPathStops.Add(new VRCFuryHapticSocket.GuidedPathStop { shrink = innerShrink.Value });
             foreach (var party in new[] { Party.Self, Party.Others, Party.Merged }) {
                 Assert.That(factory(party)(SpsSocketIsHole).GetDefault(), Is.EqualTo(hole ? 1 : 0));
             }
@@ -2036,7 +2048,8 @@ namespace VF.Tests {
                 Assert.That(Vector3.Distance(lights[0].transform.position, lights[1].transform.position), Is.EqualTo(0.01f).Within(0.0001f));
                 foreach (var sender in bakeRoot.GetComponentsInSelfAndChildren<VRCContactSender>()) {
                     Assert.That(sender.transform.lossyScale.y, Is.EqualTo(1).Within(0.0001f));
-                    Assert.That(sender.transform.lossyScale.z, Is.EqualTo(1).Within(0.0001f));
+                    var expectedZ = sender.name == "Sender - Root" ? (int)SpsTags.SocketScaleFlagsZ.AnimatorHole | 1 : 1;
+                    Assert.That(Mathf.RoundToInt(sender.transform.lossyScale.z), Is.EqualTo(expectedZ));
                 }
             }
             playable.SetFloat("IsLocal", 1);

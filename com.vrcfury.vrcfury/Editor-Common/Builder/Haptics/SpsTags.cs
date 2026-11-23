@@ -1,7 +1,25 @@
+using System;
+
 namespace VF.Builder.Haptics {
     internal static class SpsTags {
         public const int MaxUserChannels = 2;
         public const int MaxUserPathStops = 4;
+
+        [Flags]
+        public enum SocketScaleFlagsX {
+            None = 0,
+            UnlockAll = 1 << 10,
+            UnlockLocalX = 1 << 11,
+            RadiusOffset = 1 << 12,
+            Twoway = 1 << 13,
+            Collapse = 1 << 14
+        }
+
+        [Flags]
+        public enum SocketScaleFlagsZ {
+            None = 0,
+            AnimatorHole = 1 << 14 // should be counted as a "hole" for animator purposes (added in 1.1500)
+        }
 
         public const string Prefix = "SPS/";
         public const string PublicChannel = "_public";
@@ -14,7 +32,8 @@ namespace VF.Builder.Haptics {
 
         // SPS3 Socket
         // At the entrance, +Z outward, radius = 0
-        // World scale: Y = 1 (unlimited), or 2 + maximum radius offset in world meters. Z = 1.
+        // World scale: Y = 1 (unlimited), or 2 + maximum radius offset in world meters.
+        // Z = 1, with bit 14 set on the main sender for holes and guided paths that collapse anywhere.
         // X = packed word:
         //   Bits 0-6: group ID (1-127)
         //   Bits 7-9: path index
@@ -22,7 +41,7 @@ namespace VF.Builder.Haptics {
         //   Bit 11: UnlockLocalX
         //   Bit 12: RadiusOffset
         //   Bit 13: Twoway
-        //   Bit 14: Collaps
+        //   Bit 14: Collapse
         // For entrance:
         public static string FormatSocket(string channel) => $"{Prefix}Socket/{channel}";
         // For path stops after entrance:
