@@ -93,7 +93,7 @@
         },
         {
             "name": "com.vrchat.base",
-            "expression": "3.10.5",
+            "expression": "3.7.6-beta.1",
             "define": "VRCSDK_HAS_FIXED_CONTACTS_RACE"
         },
         {
@@ -103,7 +103,7 @@
         },
         {
             "name": "com.vrchat.base",
-            "expression": "[3.7.3,3.10.5)",
+            "expression": "[3.7.3,3.7.6-beta.1)",
             "define": "VRCSDK_NEEDS_CONTACT_MANAGER_STOPWATCH_FIX"
         },
         {
