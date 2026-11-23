@@ -81,19 +81,10 @@ namespace VF.Inspector {
                         sender.worldRotation = target.worldRotation;
                         VFConstraint.CreateParent(sender).AddSource(target, 1);
                     }
-                    var tags = new List<string>();
                     var flagsX = SpsTags.SocketScaleFlagsX.None;
-                    if (node.radiusOffset) {
-                        tags.Add(SpsTags.SocketRadiusOffset);
-                        flagsX |= SpsTags.SocketScaleFlagsX.RadiusOffset;
-                    }
-                    if (node.collapse) {
-                        tags.Add(SpsTags.SocketCollapse);
-                        flagsX |= SpsTags.SocketScaleFlagsX.Collapse;
-                    } else if (node.twoWay) {
-                        tags.Add(SpsTags.SocketTwoway);
-                        flagsX |= SpsTags.SocketScaleFlagsX.Twoway;
-                    }
+                    if (node.radiusOffset) flagsX |= SpsTags.SocketScaleFlagsX.RadiusOffset;
+                    if (node.collapse) flagsX |= SpsTags.SocketScaleFlagsX.Collapse;
+                    else if (node.twoWay) flagsX |= SpsTags.SocketScaleFlagsX.Twoway;
                     // WorldSpace keeps metadata scale independent of avatar/stop scaling.
                     sender.worldScale = HapticUtils.EncodeSocketScale(
                         group,
@@ -108,12 +99,9 @@ namespace VF.Inspector {
                     contacts.OnAllSetsAvailable(sets => {
                         var variants = new Dictionary<string, VFGameObject>();
                         foreach (var set in sets) {
-                            var channelTags = new List<string>();
-                            if (set.sender.Length > 0) {
-                                channelTags.AddRange(pathIndex == 0 ? set.sender.Select(SpsTags.FormatSocket)
-                                    : set.sender.Select(SpsTags.FormatSocketPath));
-                                channelTags.AddRange(tags);
-                            }
+                            var channelTags = (pathIndex == 0
+                                ? set.sender.Select(SpsTags.FormatSocket)
+                                : set.sender.Select(SpsTags.FormatSocketPath)).ToList();
                             if (pathIndex == 0 && set.isPublic && legacyPlugCompatibility)
                                 channelTags.AddRange(new[] { SpsTags.LegacySocket2, SpsTags.LegacySocket });
                             if (channelTags.Count == 0) continue;

@@ -52,17 +52,6 @@ namespace VF.Builder.Haptics {
         // For path stops after entrance:
         public static string FormatSocketPath(string channel) => $"{Prefix}SocketPath/{channel}";
 
-        // Socket triggers plug to collapse (hole)
-        public const string SocketCollapse = "SPS/Flag/Collapse";
-        // Socket can be entered from both sides
-        public const string SocketTwoway = "SPS/Flag/Twoway";
-        // Socket uses radius offset
-        public const string SocketRadiusOffset = "SPS/Flag/RadiusOffset";
-        // Socket X axis points toward plug
-        public const string SocketUnlockLocalX = "SPS/Flag/UnlockLocalX";
-        // Socket points toward plug
-        public const string SocketUnlockAll = "SPS/Flag/UnlockAll";
-
         // SPS3 legacy discovery, SPS1/2 socket depth/haptics, and Poiyomi TPS depth/width
         // SPS1/2/3 use the base position and +Z toward the tip; Poiyomi TPS orientation is not guaranteed
         public const string LegacyPlugSphere = "TPS_Pen_Penetrating";

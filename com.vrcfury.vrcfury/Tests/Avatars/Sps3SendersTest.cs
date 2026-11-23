@@ -342,14 +342,12 @@ namespace VF.Tests {
             var envelope = contacts.Single(c => c.collisionTags.Contains(SpsTags.PlugClose));
             var legacyRoot = contacts.Single(c => c.collisionTags.Contains(SpsTags.LegacyPlugRoot));
             Assert.That(main.collisionTags, Does.Contain(SpsTags.FormatPlug("_public")));
-            Assert.That(main.collisionTags, Does.Not.Contain("SPS/Flag/ScaleV1"));
+            Assert.That(main.collisionTags.Any(tag => tag.StartsWith("SPS/Flag/")), Is.False);
             Assert.That(envelope.collisionTags, Is.EqualTo(new[] { SpsTags.PlugClose }));
             foreach (var tag in new[] { SpsTags.LegacyPlugWidth,
                          SpsTags.LegacyPlugRoot }) {
                 Assert.That(contacts.Single(c => c.collisionTags.Contains(tag)).collisionTags,
                     Is.EquivalentTo(new[] { tag }));
-                Assert.That(contacts.Single(c => c.collisionTags.Contains(tag)).collisionTags,
-                    Does.Not.Contain("SPS/Flag/ScaleV1"));
             }
             Assert.That(contacts.SelectMany(c => c.collisionTags).Any(t => t.StartsWith("SPSN1/Legacy")), Is.False);
             Assert.That(main.radius * MaxScale(main.transform), Is.EqualTo(0.4f).Within(0.00001));
@@ -867,7 +865,7 @@ namespace VF.Tests {
             Assert.That(close.height * MaxScale(close.transform), Is.EqualTo(0.4f).Within(0.000001));
             if (main != null) {
                 Assert.That(main.collisionTags.Any(t => t.StartsWith("TPS_")), Is.False);
-                Assert.That(main.collisionTags, Does.Not.Contain("SPS/Flag/ScaleV1"));
+                Assert.That(main.collisionTags.Any(tag => tag.StartsWith("SPS/Flag/")), Is.False);
             }
         }
 
@@ -1424,14 +1422,7 @@ namespace VF.Tests {
             Assert.That((packed >> 7) & 7, Is.EqualTo(pathIndex));
             Assert.That(scale.y, Is.EqualTo(1f).Within(0.000001));
             Assert.That(Mathf.RoundToInt(scale.z), Is.EqualTo(animatorHole ? (int)SpsTags.SocketScaleFlagsZ.AnimatorHole | 1 : 1));
-            var expectedFlags = flags == Flags.Hole
-                ? new[] { SpsTags.SocketCollapse }
-                : flags == Flags.Ring
-                    ? new[] { SpsTags.SocketTwoway }
-                    : Array.Empty<string>();
-            var expectedTags = expectedFlags.AsEnumerable();
-            if (radiusOffset) expectedTags = expectedTags.Append("SPS/Flag/RadiusOffset");
-            Assert.That(sender.collisionTags.Where(tag => tag.Contains("/Flag/")), Is.EquivalentTo(expectedTags));
+            Assert.That(sender.collisionTags.Any(tag => tag.StartsWith("SPS/Flag/")), Is.False);
             var expectedBits = flags == Flags.Hole ? 1 << 14 : flags == Flags.Ring ? 1 << 13 : 0;
             Assert.That(packed & 0x7C00, Is.EqualTo(expectedBits | (radiusOffset ? 1 << 12 : 0)));
             Assert.That(NativeSocketSenders(sender.owner()), Does.Contain(sender));
