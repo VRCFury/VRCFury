@@ -45,6 +45,7 @@ namespace VF.Service {
 
         private readonly Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult> bakeResults =
             new Dictionary<VRCFuryHapticPlug, VRCFuryHapticPlugEditor.BakeResult>();
+        private readonly List<Action> finishRendererSwaps = new();
 
         public IEnumerable<(VRCFuryHapticPlug plug, VFGameObject bakeRoot)> GetBakedPlugs() =>
             bakeResults.Select(pair => (pair.Key, pair.Value.bakeRoot));
@@ -61,8 +62,13 @@ namespace VF.Service {
                     PhysboneUtils.RemoveFromPhysbones(plug.owner());
                     if (!BuildTargetUtils.IsDesktop()) continue;
 
-                    bakeResults[plug] = plugBaker.Bake(plug, usedRenderers, deferMaterialConfig: true,
-                        legacySocketCompatibility: spsOptions.GetOptions().legacySocketCompatibility);
+                    bakeResults[plug] = plugBaker.Bake(
+                        plug,
+                        usedRenderers,
+                        deferMaterialConfig: true,
+                        legacySocketCompatibility: spsOptions.GetOptions().legacySocketCompatibility,
+                        finishRendererSwaps: finishRendererSwaps
+                    );
                     bakeResults[plug].bakeRoot.active = plug.spsAnimatedEnabled > 0;
                     channels.Register(plug, new Lazy<VFBlendTreeDirect>(() => objectTrees.Get(bakeResults[plug].bakeRoot)));
 
@@ -276,6 +282,9 @@ namespace VF.Service {
 
         [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
         public void ApplySpsRewrites() {
+            foreach (var finish in finishRendererSwaps) finish();
+            finishRendererSwaps.Clear();
+
             // Enable SPS also controls non-deforming plugs, which have no renderer rewrites.
             foreach (var clip in allClipsService.GetAllClips()) {
                 foreach (var (binding, curve) in clip.GetFloatCurves()) {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.Rendering;
 using VF.Exceptions;
@@ -11,7 +12,19 @@ using Object = UnityEngine.Object;
 
 namespace VF.Builder.Haptics {
     internal static class SpsAutoRigger {
-        public static Renderer AutoRig(Renderer renderer, VFGameObject bakeRoot, float worldLength, float worldRadius, float[] activeFromMask) {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Func<UnityEngine.Component, GameObject, bool> MoveComponentToGameObject =
+                typeof(ComponentUtility).GetMatchingDelegate<Func<UnityEngine.Component, GameObject, bool>>("MoveComponentToGameObject");
+        }
+
+        public static Renderer AutoRig(
+            Renderer renderer,
+            VFGameObject bakeRoot,
+            float worldLength,
+            float worldRadius,
+            float[] activeFromMask,
+            ICollection<Action> finishRendererSwaps
+        ) {
             if (renderer is SkinnedMeshRenderer existingSkin && existingSkin.bones.Length > 1) return renderer;
 
             SkinnedMeshRenderer skin;
@@ -20,18 +33,42 @@ namespace VF.Builder.Haptics {
                 var staticMesh = mr.GetMesh();
                 var meshFilter = obj.GetComponent<MeshFilter>();
                 var mats = mr.sharedMaterials;
+                var enabled = mr.enabled;
                 var shadowCastingMode = mr.shadowCastingMode;
                 var receiveShadows = mr.receiveShadows;
                 var lightProbeUsage = mr.lightProbeUsage;
                 var reflectionProbeUsage = mr.reflectionProbeUsage;
                 var probeAnchor = mr.probeAnchor;
 
-                Object.DestroyImmediate(mr);
-                Object.DestroyImmediate(meshFilter);
-
-                skin = obj.AddComponent<SkinnedMeshRenderer>();
+                if (finishRendererSwaps == null) {
+                    Object.DestroyImmediate(mr);
+                    Object.DestroyImmediate(meshFilter);
+                    skin = obj.AddComponent<SkinnedMeshRenderer>();
+                } else {
+                    // Adding directly replaces the MeshRenderer. Moving keeps both available while actions bind.
+                    var temporary = GameObjects.Create("SPS Renderer", obj, removeFromPhysbones: false);
+                    try {
+                        skin = temporary.AddComponent<SkinnedMeshRenderer>();
+                        if (Reflection.MoveComponentToGameObject?.Invoke(skin, obj) != true) {
+                            throw new VRCFBuilderException("Unity could not attach the skinned renderer for this SPS plug.");
+                        }
+                    } finally {
+                        temporary.Destroy();
+                    }
+                    finishRendererSwaps.Add(() => {
+                        if (mr != null && skin != null) {
+                            // Carry over changes made to the original by post-bake actions.
+                            if (mr.enabled != enabled) skin.enabled = mr.enabled;
+                            var currentMaterials = mr.sharedMaterials;
+                            if (!mats.SequenceEqual(currentMaterials)) skin.sharedMaterials = currentMaterials;
+                        }
+                        Object.DestroyImmediate(mr);
+                        Object.DestroyImmediate(meshFilter);
+                    });
+                }
                 skin.SetMesh(staticMesh);
                 skin.sharedMaterials = mats;
+                skin.enabled = enabled;
                 skin.shadowCastingMode = shadowCastingMode;
                 skin.receiveShadows = receiveShadows;
                 skin.lightProbeUsage = lightProbeUsage;

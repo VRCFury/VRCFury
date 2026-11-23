@@ -25,7 +25,8 @@ namespace VF.Inspector {
             VRCFuryHapticPlug plug,
             Dictionary<VFGameObject, VRCFuryHapticPlug> usedRenderers = null,
             bool deferMaterialConfig = false,
-            bool legacySocketCompatibility = true
+            bool legacySocketCompatibility = true,
+            ICollection<Action> finishRendererSwaps = null
         ) {
             if (!BuildTargetUtils.IsDesktop()) return null;
             var transform = plug.owner();
@@ -142,7 +143,14 @@ namespace VF.Inspector {
 
                         var activeFromMask = PlugMaskGenerator.GetMask(renderer, plug);
                         if (plug.spsAutorig) {
-                            renderer = SpsAutoRigger.AutoRig(renderer, localSpace, worldLength, worldRadius, activeFromMask);
+                            renderer = SpsAutoRigger.AutoRig(
+                                renderer,
+                                localSpace,
+                                worldLength,
+                                worldRadius,
+                                activeFromMask,
+                                finishRendererSwaps
+                            );
                         }
                         SpsConfigurer.ExtendBoundsForSps(renderer, localSpace, worldLength);
 
