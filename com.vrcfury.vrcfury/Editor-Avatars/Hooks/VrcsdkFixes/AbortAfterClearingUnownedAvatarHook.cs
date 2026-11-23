@@ -1,4 +1,4 @@
-#if VRCSDK_HAS_CLEAR_AVATAR_DATA
+#if VRCSDK_NEEDS_UNOWNED_AVATAR_FIX
 using System.Reflection;
 using VF.Utils;
 

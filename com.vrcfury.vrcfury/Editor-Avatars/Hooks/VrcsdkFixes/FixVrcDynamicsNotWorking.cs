@@ -1,3 +1,4 @@
+#if VRCSDK_NEEDS_DYNAMICS_PLAY_MODE_RESET
 using System;
 using System.Reflection;
 using UnityEditor;
@@ -26,3 +27,4 @@ namespace VF.Hooks.VrcsdkFixes {
         }
     }
 }
+#endif

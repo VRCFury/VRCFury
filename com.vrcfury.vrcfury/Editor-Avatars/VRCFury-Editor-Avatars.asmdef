@@ -107,9 +107,14 @@
             "define": "VRCSDK_NEEDS_CONTACT_MANAGER_STOPWATCH_FIX"
         },
         {
+            "name": "com.vrchat.base",
+            "expression": "[3.7.6-beta.1,3.7.7-beta.1)",
+            "define": "VRCSDK_NEEDS_DYNAMICS_PLAY_MODE_RESET"
+        },
+        {
             "name": "com.vrchat.avatars",
-            "expression": "3.8.1",
-            "define": "VRCSDK_HAS_CLEAR_AVATAR_DATA"
+            "expression": "[3.8.1,3.10.5)",
+            "define": "VRCSDK_NEEDS_UNOWNED_AVATAR_FIX"
         },
         {
             "name": "com.vrchat.avatars",
