@@ -233,7 +233,7 @@ namespace VF.Inspector {
                     : "This socket does not have the public SPS channel, so most plugs will not target it."), useSharedTag));
             if (isPlug) {
                 content.Add(VRCFuryEditorUtils.RefreshOnChange(() => useSharedTag.boolValue
-                    ? VRCFuryEditorUtils.BetterProp(Prop("useHipAvoidance"), "Exclude sockets on own Hips",
+                    ? VRCFuryEditorUtils.BetterProp(Prop("useHipAvoidance"), "Exclude own hip sockets if plug is on hips",
                         tooltip: "If this plug is on your hips, its public channel excludes sockets on your hips. Custom channels can still match them.")
                     : new VisualElement(), useSharedTag));
             }
