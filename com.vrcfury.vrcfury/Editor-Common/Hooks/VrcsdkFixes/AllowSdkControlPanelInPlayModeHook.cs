@@ -15,6 +15,7 @@ namespace VF.Hooks.VrcsdkFixes {
      * Allows the VRChat SDK Control Panel to switch tabs and display their contents in Play Mode.
      * The SDK checks Play Mode in both the tab handler and callbacks generated from CreateGUI.
      * The build panel uses the SDK's disabled-action message while Unity is playing.
+     * https://feedback.vrchat.com/sdk-bug-reports/p/sdk-3110-beta1-the-vrcsdk-panel-doesnt-work-properly-in-play-mode
      */
     internal static class AllowSdkControlPanelInPlayModeHook {
         private abstract class Reflection : ReflectionHelper {
