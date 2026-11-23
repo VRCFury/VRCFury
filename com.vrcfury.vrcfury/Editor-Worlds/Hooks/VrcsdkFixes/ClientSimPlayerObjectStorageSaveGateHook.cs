@@ -1,4 +1,4 @@
-#if !VRCSDK_HAS_FIXED_CLIENTSIM_PERSISTENCE_RACE
+#if VRCSDK_NEEDS_CLIENTSIM_PERSISTENCE_FIXES
 using System;
 using System.Linq;
 using System.Reflection;
@@ -12,7 +12,6 @@ namespace VF.Hooks.VrcsdkFixes {
      * https://feedback.vrchat.com/sdk-bug-reports/p/clientsimplayerobjectstorage-throws-an-error-if-persistence-updates-happen-too-f
      */
     internal static class ClientSimPlayerObjectStorageSaveGateHook {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type ClientSimPlayerObjectStorageType =
                 ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.ClientSim.Persistence.ClientSimPlayerObjectStorage");

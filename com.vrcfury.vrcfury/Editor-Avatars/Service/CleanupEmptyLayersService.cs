@@ -91,7 +91,7 @@ namespace VF.Service {
                 var hasValidAnimatorPlayAudio = controller.GetLayers()
                     .SelectMany(layer => layer.allBehaviours)
                     .Any(behaviour => {
-                        var target = behaviour.GetAudioPathTarget();
+                        var target = behaviour.GetObjectPathTarget();
                         return target != null && target.IsSameOrChildOf(owner);
                     });
                 if (hasValidBinding || hasValidAnimatorPlayAudio) continue;

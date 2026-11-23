@@ -1,44 +1,22 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using System.Threading;
 using UnityEngine;
 using VF.Builder;
-using VF.Utils;
+using Object = UnityEngine.Object;
 
 namespace VF.Utils.Controller {
     internal class VFBehaviour {
-        // Optional because these aren't in world projects or old avatar projects
-        [ReflectionHelperOptional]
-        private abstract class Reflection : ReflectionHelper {
-            public static readonly Type VRCAvatarParameterDriver =
-                ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Avatars.Components.VRCAvatarParameterDriver");
-            public static readonly FieldInfo DriverParametersField =
-                VRCAvatarParameterDriver?.VFField("parameters");
-            private static readonly Type DriverParameter =
-                DriverParametersField?.FieldType.GetGenericArguments().FirstOrDefault();
-            public static readonly FieldInfo DriverParameterName =
-                DriverParameter?.VFField("name");
-            public static readonly FieldInfo DriverParameterSource =
-                DriverParameter?.VFField("source");
-            public static readonly FieldInfo DriverParameterType =
-                DriverParameter?.VFField("type");
-            public static readonly Type VRCAnimatorPlayAudio =
-                ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.Avatars.Components.VRCAnimatorPlayAudio");
-            public static readonly FieldInfo SourcePath =
-                VRCAnimatorPlayAudio?.VFField("SourcePath");
-            public static readonly FieldInfo AudioParameterName =
-                VRCAnimatorPlayAudio?.VFField("ParameterName");
-            public static readonly FieldInfo AudioClips =
-                VRCAnimatorPlayAudio?.VFField("Clips");
-        }
+        internal static Action<StateMachineBehaviour, Func<string, string>, bool> rewriteParameters;
+        internal static Func<StateMachineBehaviour, string> getObjectPath;
+        internal static Action<StateMachineBehaviour, string> setObjectPath;
+        internal static Func<StateMachineBehaviour, IEnumerable<Object>> getReferencedAssets;
 
         private static long nextIdentity = 1;
 
         private readonly long identity;
         private readonly StateMachineBehaviour raw;
-        private VFResolvedObject? audioSource;
+        private VFResolvedObject? objectPath;
 
         internal VFBehaviour(StateMachineBehaviour raw) {
             if (raw == null) throw new ArgumentNullException(nameof(raw));
@@ -58,12 +36,16 @@ namespace VF.Utils.Controller {
             if (raw == null) return null;
             if (context == null) throw new ArgumentNullException(nameof(context));
             var behaviour = new VFBehaviour(raw);
-            return behaviour.InitializeAudioPath(context) ? behaviour : null;
+            var path = getObjectPath?.Invoke(behaviour.raw);
+            if (path == null) return behaviour;
+
+            behaviour.objectPath = VFResolvedObject.Load(path, context, typeof(GameObject));
+            return behaviour.objectPath.HasValue ? behaviour : null;
         }
 
         internal VFBehaviour Clone() {
             var clone = new VFBehaviour(identity, raw);
-            clone.audioSource = audioSource;
+            clone.objectPath = objectPath;
             return clone;
         }
 
@@ -77,17 +59,7 @@ namespace VF.Utils.Controller {
             return raw as T;
         }
 
-        internal VFGameObject GetAudioPathTarget() {
-            return audioSource?.target;
-        }
-
-        internal string GetAudioSourcePath() {
-            return audioSource?.SourcePath;
-        }
-
-        internal VFResolvedObject? GetAudioSource() {
-            return audioSource;
-        }
+        internal VFGameObject GetObjectPathTarget() => objectPath?.target;
 
         internal void Edit<T>(Action<T> action) where T : StateMachineBehaviour {
             if (action == null) return;
@@ -97,19 +69,7 @@ namespace VF.Utils.Controller {
         }
 
         internal void RewriteParameters(Func<string, string> rewriteParamName, bool includeWrites) {
-            if (rewriteParamName == null) return;
-
-            RewriteDriverParameters(rewriteParamName, includeWrites);
-            RewriteAudioParameter(rewriteParamName);
-#if VRCSDK_HAS_FACE_TRACKING
-            if (raw is VRC.SDKBase.VRC_AnimatorFaceTrackingBlendshapesSet faceTracking && faceTracking.blendSets != null) {
-                foreach (var set in faceTracking.blendSets) {
-                    if (set == null || set.type != VRC.SDKBase.VRC_AnimatorFaceTrackingBlendshapesSet.SourceType.Parameter) continue;
-                    if (!string.IsNullOrEmpty(set.sourceParameter))
-                        set.sourceParameter = rewriteParamName(set.sourceParameter);
-                }
-            }
-#endif
+            if (rewriteParamName != null) rewriteParameters?.Invoke(raw, rewriteParamName, includeWrites);
         }
 
         internal IEnumerable<VFBehaviour> Rewrite<T>(Func<VFBehaviour, T, OneOrMany<VFBehaviour>> action) where T : StateMachineBehaviour {
@@ -143,97 +103,18 @@ namespace VF.Utils.Controller {
                 }
 
                 yield return new VFBehaviour(rewritten) {
-                    audioSource = audioSource
+                    objectPath = objectPath
                 };
-            }
-        }
-
-        private bool InitializeAudioPath(VFLoadContext context) {
-            if (!TryGetAudioSourcePath(raw, out var sourcePath) || sourcePath == null) {
-                audioSource = null;
-                return true;
-            }
-            audioSource = VFResolvedObject.Load(sourcePath, context, typeof(GameObject));
-            if (!audioSource.HasValue) {
-                audioSource = null;
-                return false;
-            }
-            return true;
-        }
-
-        private static bool TryGetAudioSourcePath(StateMachineBehaviour raw, out string path) {
-            path = null;
-            var field = GetAudioSourcePathField(raw);
-            if (field == null || field.FieldType != typeof(string)) return false;
-            path = (string)field.GetValue(raw);
-            return true;
-        }
-
-        private static void TrySetAudioSourcePath(StateMachineBehaviour raw, string path) {
-            var field = GetAudioSourcePathField(raw);
-            if (field == null || field.FieldType != typeof(string)) return;
-            field.SetValue(raw, path);
-        }
-
-        private static FieldInfo GetAudioSourcePathField(StateMachineBehaviour raw) {
-            if (raw == null) return null;
-            if (Reflection.SourcePath == null) return null;
-            return Reflection.VRCAnimatorPlayAudio?.IsAssignableFrom(raw.GetType()) == true
-                ? Reflection.SourcePath
-                : null;
-        }
-
-        private static IEnumerable<AudioClip> GetAudioClips(StateMachineBehaviour raw) {
-            if (Reflection.VRCAnimatorPlayAudio?.IsAssignableFrom(raw?.GetType()) != true) {
-                return Array.Empty<AudioClip>();
-            }
-            return Reflection.AudioClips?.GetValue(raw) as AudioClip[] ?? Array.Empty<AudioClip>();
-        }
-
-        private void RewriteDriverParameters(Func<string, string> rewriteParamName, bool includeWrites) {
-            if (Reflection.DriverParametersField == null) return;
-            if (Reflection.VRCAvatarParameterDriver?.IsAssignableFrom(raw.GetType()) != true) return;
-
-            if (!(Reflection.DriverParametersField.GetValue(raw) is System.Collections.IEnumerable parameters)) return;
-            foreach (var parameter in parameters) {
-                if (parameter == null) continue;
-
-                if (includeWrites) {
-                    RewriteStringField(parameter, Reflection.DriverParameterName, rewriteParamName);
-                }
-
-                if (VFParameterRewriteSettings.ShouldRewriteCopyDriverSources && IsCopyDriverParameter(parameter)) {
-                    RewriteStringField(parameter, Reflection.DriverParameterSource, rewriteParamName);
-                }
-            }
-        }
-
-        private void RewriteAudioParameter(Func<string, string> rewriteParamName) {
-            if (Reflection.VRCAnimatorPlayAudio?.IsAssignableFrom(raw.GetType()) != true) return;
-            RewriteStringField(raw, Reflection.AudioParameterName, rewriteParamName);
-        }
-
-        private static bool IsCopyDriverParameter(object parameter) {
-            return Reflection.DriverParameterType?.GetValue(parameter)?.ToString() == "Copy";
-        }
-
-        private static void RewriteStringField(object target, FieldInfo field, Func<string, string> rewrite) {
-            if (target == null || rewrite == null) return;
-            if (field != null && field.FieldType == typeof(string)) {
-                var value = field.GetValue(target) as string;
-                if (!string.IsNullOrEmpty(value)) {
-                    field.SetValue(target, rewrite(value));
-                }
             }
         }
 
         internal StateMachineBehaviour Save(VFSaveContext context) {
             var output = CloneRaw(raw);
-            if (audioSource.HasValue) {
-                TrySetAudioSourcePath(output, audioSource.Value.GetPath(context.BindingRoot));
+            if (objectPath.HasValue) {
+                setObjectPath?.Invoke(output, objectPath.Value.GetPath(context.BindingRoot));
             }
-            foreach (var clip in GetAudioClips(output)) {
-                context.AddOtherAsset(clip);
+            foreach (var asset in getReferencedAssets?.Invoke(output) ?? Array.Empty<Object>()) {
+                context.AddOtherAsset(asset);
             }
             context.AddNewAsset(output);
             return output;

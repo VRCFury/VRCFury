@@ -13,7 +13,6 @@ namespace VF.Hooks.VrcsdkFixes {
      * https://feedback.vrchat.com/unity-6-sdk/p/u6sdk-3110-truncated-unsigned-parameters-arent-saved
      */
     internal static class FixExpressionParameterInspectorHook {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 FindTypeChangeHandler(),

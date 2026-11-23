@@ -1,4 +1,4 @@
-#if !VRCSDK_HAS_FIXED_ANIMATOR_PLAY_AUDIO_DEAD_EDITORS
+#if VRCSDK_NEEDS_ANIMATOR_PLAY_AUDIO_DEAD_EDITORS_FIX
 using UnityEditor;
 using VF.Utils;
 
@@ -10,7 +10,6 @@ namespace VF.Hooks.VrcsdkFixes {
      * because the target doesn't exist so the serializedObject can't be created.
      */
     internal static class RemoveDeadEditorsHook {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(RemoveDeadEditorsHook),

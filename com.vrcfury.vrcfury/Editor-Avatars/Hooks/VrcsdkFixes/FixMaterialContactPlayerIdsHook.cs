@@ -1,4 +1,4 @@
-#if !VRCSDK_HAS_UNIQUE_EDITOR_PLAYER_IDS
+#if VRCSDK_NEEDS_MATERIAL_CONTACT_PLAYER_IDS_FIX
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -13,7 +13,6 @@ namespace VF.Hooks.VrcsdkFixes {
      * https://feedback.vrchat.com/sdk-bug-reports/p/material-contacts-playerid-collision-is-very-likely-in-editor-play-mode
      */
     internal static class FixMaterialContactPlayerIdsHook {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             private const string Setup = "VRC.SDK3.Avatars.AvatarDynamicsSetup";
 

@@ -1,3 +1,4 @@
+#if VRCSDK_HAS_TMP_IMPORT
 using VF.Utils;
 
 namespace VF.Hooks.VrcsdkFixes {
@@ -8,7 +9,6 @@ namespace VF.Hooks.VrcsdkFixes {
      * https://feedback.vrchat.com/unity-6-sdk/p/avatar-6-template-immediately-opens-tmp-importer-prompt
      */
     internal static class SkipTmpEssentialsPromptHook {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(SkipTmpEssentialsPromptHook),
@@ -26,3 +26,4 @@ namespace VF.Hooks.VrcsdkFixes {
         private static bool Prefix() => false;
     }
 }
+#endif

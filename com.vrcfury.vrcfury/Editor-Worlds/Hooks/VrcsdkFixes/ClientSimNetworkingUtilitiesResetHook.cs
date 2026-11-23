@@ -1,4 +1,4 @@
-#if !VRCSDK_HAS_FIXED_CLIENTSIM_NETWORKING_UTILITIES_RESET
+#if VRCSDK_NEEDS_CLIENTSIM_PERSISTENCE_FIXES
 using System;
 using System.Reflection;
 using UnityEditor;
@@ -10,7 +10,6 @@ namespace VF.Hooks.VrcsdkFixes {
      * https://feedback.vrchat.com/sdk-bug-reports/p/clientsim-crashes-in-some-cases-when-play-mode-domain-reloading-is-disabled
      */
     internal static class ClientSimNetworkingUtilitiesResetHook {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type ClientSimNetworkingUtilities =
                 ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDK3.ClientSim.ClientSimNetworkingUtilities");

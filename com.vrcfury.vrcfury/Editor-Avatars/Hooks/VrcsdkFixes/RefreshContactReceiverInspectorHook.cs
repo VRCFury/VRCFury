@@ -9,7 +9,6 @@ namespace VF.Hooks {
      * only when you happen to hover over it to trigger a repaint. This fixed it.
      */
     internal static class RefreshContactReceiverInspectorHook {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(RefreshContactReceiverInspectorHook), nameof(Postfix),

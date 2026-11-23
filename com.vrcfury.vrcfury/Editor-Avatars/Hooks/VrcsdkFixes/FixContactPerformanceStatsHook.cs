@@ -9,7 +9,6 @@ using VF.Utils;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact;
 using VRC.SDK3.Dynamics.Contact.Components;
-using VRC.SDKBase.Validation;
 
 namespace VF.Hooks.VrcsdkFixes {
     /**
@@ -23,10 +22,13 @@ namespace VF.Hooks.VrcsdkFixes {
             public static readonly MethodInfo Scan = typeof(ContactPerformanceScanner)
                 .VFMethod(nameof(ContactPerformanceScanner.RunPerformanceScanEnumerator))
                 ?.GetCustomAttribute<IteratorStateMachineAttribute>()?.StateMachineType.VFMethod("MoveNext");
-            public static readonly MethodInfo Count = typeof(List<ContactBase>).GetProperty(nameof(List<ContactBase>.Count))?.GetGetMethod();
+            public static readonly MethodInfo CountContacts = typeof(List<ContactBase>).GetProperty(nameof(List<ContactBase>.Count))?.GetGetMethod();
+            public static readonly MethodInfo CountComponents = typeof(List<UnityEngine.Component>)
+                .GetProperty(nameof(List<UnityEngine.Component>.Count))?.GetGetMethod();
             public static readonly MethodInfo FilterAndCount = typeof(FixContactPerformanceStatsHook).VFStaticMethod(nameof(FilterAndCountContacts));
             public static readonly Func<UnityEngine.Component, bool> IsEditorOnly =
-                typeof(ValidationUtils).GetMatchingDelegate<Func<UnityEngine.Component, bool>>("IsEditorOnly");
+                ReflectionUtils.GetTypeFromAnyAssembly("VRC.SDKBase.Validation.ValidationUtils")
+                    ?.GetMatchingDelegate<Func<UnityEngine.Component, bool>>("IsEditorOnly");
             public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 Scan,
                 (typeof(FixContactPerformanceStatsHook), nameof(FilterContactBuffer)),
@@ -42,16 +44,17 @@ namespace VF.Hooks.VrcsdkFixes {
 
         private static IEnumerable<CodeInstruction> FilterContactBuffer(IEnumerable<CodeInstruction> instructions) {
             foreach (var instruction in instructions) {
-                if (instruction.Calls(PerformanceScanner.Count)) {
-                    // The SDK saves the total, then reuses this list to count non-local contacts for the rank.
+                if (instruction.Calls(PerformanceScanner.CountContacts) || instruction.Calls(PerformanceScanner.CountComponents)) {
+                    // Older SDKs count senders and receivers separately in a Component list.
                     instruction.opcode = OpCodes.Call;
-                    instruction.operand = PerformanceScanner.FilterAndCount;
+                    var listType = ((MethodInfo)instruction.operand).DeclaringType;
+                    instruction.operand = PerformanceScanner.FilterAndCount.MakeGenericMethod(listType.GetGenericArguments());
                 }
                 yield return instruction;
             }
         }
 
-        private static int FilterAndCountContacts(List<ContactBase> contacts) {
+        private static int FilterAndCountContacts<T>(List<T> contacts) where T : UnityEngine.Component {
             var playing = Application.isPlaying;
             contacts.RemoveAll(contact => contact == null
                 || PerformanceScanner.IsEditorOnly(contact)

@@ -13,7 +13,6 @@ namespace VF.Hooks.VrcsdkFixes {
      * https://feedback.vrchat.com/sdk-bug-reports/p/animparameteraccessavatarsdk-can-add-multiple-seconds-to-avatar-play-mode-entry
      */
     internal static class CacheDynamicsParameterLookupHook {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly MethodInfo Getter = typeof(Animator).GetProperty(nameof(Animator.parameters))?.GetGetMethod();
             public static readonly MethodInfo Snapshot = typeof(CacheDynamicsParameterLookupHook).VFStaticMethod(nameof(GetParameters));

@@ -87,13 +87,8 @@
         },
         {
             "name": "com.vrchat.worlds",
-            "expression": "3.10.5",
-            "define": "VRCSDK_HAS_FIXED_CLIENTSIM_PERSISTENCE_RACE"
-        },
-        {
-            "name": "com.vrchat.worlds",
-            "expression": "3.10.5",
-            "define": "VRCSDK_HAS_FIXED_CLIENTSIM_NETWORKING_UTILITIES_RESET"
+            "expression": "[3.7.4-persistence-beta.1,3.10.5)",
+            "define": "VRCSDK_NEEDS_CLIENTSIM_PERSISTENCE_FIXES"
         },
         {
             "name": "com.vrchat.worlds",

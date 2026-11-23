@@ -17,7 +17,6 @@ namespace VF.Hooks.VrcsdkFixes {
      * https://feedback.vrchat.com/sdk-bug-reports/p/assets-create-u-script-still-fails-if-destination-file-is-outside-project-root
      */
     internal static class UdonSharpCreateScriptSavePanelHook {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
 #if !VRCSDK_HAS_UDONSHARP_CREATE_SCRIPT_WITH_PATH
             public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(

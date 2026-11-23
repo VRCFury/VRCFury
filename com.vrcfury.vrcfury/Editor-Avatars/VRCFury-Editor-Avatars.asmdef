@@ -38,8 +38,13 @@
         },
         {
             "name": "com.vrchat.avatars",
+            "expression": "[3.10.6-beta.1,3.11.0-beta.1)",
+            "define": "VRCSDK_NEEDS_MATERIAL_CONTACT_PLAYER_IDS_FIX"
+        },
+        {
+            "name": "com.vrchat.base",
             "expression": "3.11.0-beta.1",
-            "define": "VRCSDK_HAS_UNIQUE_EDITOR_PLAYER_IDS"
+            "define": "VRCSDK_HAS_TMP_IMPORT"
         },
         {
             "name": "com.vrchat.avatars",
@@ -93,8 +98,8 @@
         },
         {
             "name": "com.vrchat.base",
-            "expression": "3.7.6-beta.1",
-            "define": "VRCSDK_HAS_FIXED_CONTACTS_RACE"
+            "expression": "[3.7.3,3.7.6-beta.1)",
+            "define": "VRCSDK_NEEDS_CONTACTS_RACE_FIX"
         },
         {
             "name": "com.vrchat.base",
@@ -128,8 +133,8 @@
         },
         {
             "name": "com.vrchat.avatars",
-            "expression": "3.10.5",
-            "define": "VRCSDK_HAS_FIXED_ANIMATOR_PLAY_AUDIO_DEAD_EDITORS"
+            "expression": "[3.5.2-beta.1,3.10.5)",
+            "define": "VRCSDK_NEEDS_ANIMATOR_PLAY_AUDIO_DEAD_EDITORS_FIX"
         },
         {
             "name": "com.vrchat.avatars",
@@ -142,8 +147,8 @@
             "define": "VRCSDK_HAS_DRIVER_COPY"
         },
         {
-            "name": "com.vrchat.base",
-            "expression": "3.5.2",
+            "name": "com.vrchat.avatars",
+            "expression": "3.5.2-beta.1",
             "define": "VRCSDK_HAS_ANIMATOR_PLAY_AUDIO"
         },
         {

@@ -1,4 +1,4 @@
-#if !VRCSDK_HAS_FIXED_CONTACTS_RACE
+#if VRCSDK_NEEDS_CONTACTS_RACE_FIX
 using System;
 using System.Reflection;
 using UnityEditor;
@@ -11,7 +11,6 @@ namespace VF.Hooks.VrcsdkFixes {
      * We can fix this by forcing the VRCSDK to finalize the background processing before the any new contact is attempted to be added.
      */
     internal static class FixContactsCrashHook {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly Type VRCAvatarDynamicsScheduler = ReflectionUtils
                 .GetTypeFromAnyAssembly("VRC.Dynamics.VRCAvatarDynamicsScheduler");

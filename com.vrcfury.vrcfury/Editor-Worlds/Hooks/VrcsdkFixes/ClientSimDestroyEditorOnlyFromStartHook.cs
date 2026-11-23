@@ -11,7 +11,6 @@ namespace VF.Hooks.VrcsdkFixes {
      * https://feedback.vrchat.com/sdk-bug-reports/p/editoronly-objects-are-deleted-too-early-by-clientsim-when-you-use-play-mode-opt
      */
     internal static class ClientSimDestroyEditorOnlyFromStartHook {
-        [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly HarmonyUtils.PatchObj PatchStartPrefix = HarmonyUtils.Patch(
                 typeof(ClientSimDestroyEditorOnlyFromStartHook),

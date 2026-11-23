@@ -24,8 +24,9 @@ namespace VF.Tests {
                 var stats = new AvatarPerformanceStats(false);
                 new ContactPerformanceScanner().RunPerformanceScan(avatar, stats, _ => false);
 
-                Assert.That(stats.contactCount, Is.EqualTo(1));
-                Assert.That(stats.contactCompleteCount, Is.EqualTo(2));
+                var completeCount = typeof(AvatarPerformanceStats).GetField("contactCompleteCount");
+                Assert.That(stats.contactCount, Is.EqualTo(completeCount == null ? 2 : 1));
+                if (completeCount != null) Assert.That(completeCount.GetValue(stats), Is.EqualTo(2));
             } finally {
                 Object.DestroyImmediate(avatar);
             }
