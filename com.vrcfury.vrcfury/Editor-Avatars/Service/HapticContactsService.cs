@@ -14,7 +14,6 @@ namespace VF.Service {
     [VFService]
     internal class HapticContactsService {
         [VFAutowired] private readonly ControllersService controllers;
-        [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
         [VFAutowired] private readonly OgbEnabledService ogbEnabled;
 
 
@@ -50,7 +49,6 @@ namespace VF.Service {
                 : fx.GetOrCreateFloat(req.paramName);
             var child = GameObjects.Create(req.objName, req.obj);
             
-            overlappingService.Activate();
             var receiver = child.AddComponent<VRCContactReceiver>();
             receiver.position = req.pos;
             receiver.parameter = param;

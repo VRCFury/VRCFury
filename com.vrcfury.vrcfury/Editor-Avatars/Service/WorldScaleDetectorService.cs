@@ -21,7 +21,6 @@ namespace VF.Service {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
         private VFAvatarController fx => controllers.GetFx();
-        [VFAutowired] private readonly OverlappingContactsFixService overlappingService;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
         [VFAutowired] private readonly IsObjectEnabledService isObjectEnabledService;
         [VFAutowired] private readonly ObjectTreeService objectTrees;
@@ -114,8 +113,6 @@ namespace VF.Service {
             constraint.weight = 1;
             constraint.constraintActive = true;
             constraint.locked = true;
-
-            overlappingService.Activate();
 
             var multiplier = MaxDetectedScale * localSpace.worldScale.x;
             var innerObj = GameObjects.Create("Inner", outerObj);

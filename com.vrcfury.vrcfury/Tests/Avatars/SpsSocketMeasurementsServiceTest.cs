@@ -132,14 +132,10 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void DepthOnlyConsumersActivateTheOverlapWorkaround() {
+        public void NativeDepthDoesNotCreateAnUnusedLengthOutput() {
             _ = Socket(false)(Party.Self)(SpsDepthMeters);
             Assert.That(fx.parameters.Any(p => p.name.StartsWith("Test/Self/Length")), Is.False,
                 "Native depth must read sender Z directly without generating an unused length output");
-            injector.GetService<ChangeSpsChannelsService>().Apply();
-            injector.GetService<OverlappingContactsFixService>().Fix();
-            Assert.That(new AnimatorIterator.Clips().From(fx).Any(clip => clip.GetAllBindings()
-                .Any(binding => binding.type == typeof(VRCContactReceiver) && binding.propertyName == "m_Enabled")), Is.True);
         }
 
         [Test]

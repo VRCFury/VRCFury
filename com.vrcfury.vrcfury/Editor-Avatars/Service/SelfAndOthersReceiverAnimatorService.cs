@@ -17,7 +17,6 @@ namespace VF.Service {
     internal class SelfAndOthersReceiverAnimatorService {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly ObjectTreeService objectTrees;
-        [VFAutowired] private readonly OverlappingContactsFixService overlapping;
         private readonly HashSet<SelfAndOthersReceiverService.Receivers> selectors = new();
 
         private readonly Dictionary<string, VFAParam> nativeParameters = new();
@@ -61,7 +60,6 @@ namespace VF.Service {
             objectTrees.Get(receivers.request.frame);
 
         private VFAParam RegisterParameter(SelfAndOthersReceiverService.Receiver receiver, string suggestedName) {
-            overlapping.Activate();
             var fx = controllers.GetFx();
             if (string.IsNullOrEmpty(receiver.parameter)) receiver.parameter = fx.CreateUniqueFloat(suggestedName);
             return fx.GetOrCreateFloat(receiver.parameter);
