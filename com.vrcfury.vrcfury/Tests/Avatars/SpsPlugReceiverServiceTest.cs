@@ -55,10 +55,11 @@ namespace VF.Tests {
             Assert.That(sender.collisionTags.Intersect(self.collisionTags), Is.Empty,
                 "Self contacts continue to require native SPS channels");
             Start();
-            foreach (var distance in new[] { 0.5f, 0.2f, 0f }) {
+            foreach (var distance in new[] { 0.5f, 0.2f, 0.002f, 0f }) {
                 Set(others, matches ? 0.5f : 0, matches ? distance : -1, native: false);
                 Evaluate();
-                Assert.That(playable.GetFloat(depth), Is.EqualTo(shared ? distance - 0.4f : 100).Within(0.001f));
+                var expectedDepth = shared && distance > 0 ? distance - 0.4f : 100;
+                Assert.That(playable.GetFloat(depth), Is.EqualTo(expectedDepth).Within(0.001f));
             }
         }
 
