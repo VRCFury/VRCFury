@@ -213,9 +213,11 @@ namespace VF.Tests {
                     Is.EqualTo(Mathf.Lerp(0.06f, MinimumRadius, 0.5f) * scale).Within(0.0001f));
             }
             playable.SetFloat(mergedParameterName, 0);
-            playable.SetFloat(mergedParameterName + "_PointSeparation", -1);
-            graph.Evaluate(1f / 60);
-            Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(MinimumRadius * scale).Within(0.0001f));
+            foreach (var idleSeparation in new[] { 0f, distance, -1f }) {
+                playable.SetFloat(mergedParameterName + "_PointSeparation", idleSeparation);
+                for (var i = 0; i < 2; i++) graph.Evaluate(1f / 60);
+                Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(MinimumRadius * scale).Within(0.0001f));
+            }
             playable.SetFloat(mergedParameterName, 1);
             playable.SetFloat(mergedParameterName + "_PointSeparation", 0);
             graph.Evaluate(1f / 60);

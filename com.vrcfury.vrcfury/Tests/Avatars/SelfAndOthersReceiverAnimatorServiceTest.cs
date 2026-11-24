@@ -173,7 +173,7 @@ namespace VF.Tests {
                     playable.SetFloat(merged.parameter + "_SenderType", selectSelf ? 1 : othersDistance < 0 ? 0 : othersDistance == 0 ? 3 : 2);
                 }
                 Evaluate();
-                var expected = party != Party.Self && othersDistance >= 0
+                var expected = party != Party.Self && proximity > 0 && othersDistance >= 0
                     && (party == Party.Others || selfDistance < 0 || othersDistance <= selfDistance);
                 Assert.That(playable.GetFloat(output), Is.EqualTo(expected ? 1 : 0).Within(0.000001f),
                     $"{party}: self={selfDistance}, others={othersDistance}, proximity={proximity}");
@@ -219,8 +219,7 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(output), Is.Zero, "Invalid separation must not count as a contact");
             Set(receiver, 0, 0.2f, native: false);
             Evaluate();
-            Assert.That(playable.GetFloat(output), Is.EqualTo(shared && party != Party.Self ? 1 : 0),
-                "Valid point separation counts as a contact even at zero proximity");
+            Assert.That(playable.GetFloat(output), Is.Zero, "Stale separation must not count as a contact at zero proximity");
         }
 
         [TestCase((int)Party.Self)]

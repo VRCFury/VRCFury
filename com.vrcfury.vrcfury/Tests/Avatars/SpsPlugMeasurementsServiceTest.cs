@@ -78,8 +78,10 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(hole), Is.Zero);
         }
 
-        [Test]
-        public void PlugDepthUsesItsOwnResizedDimensionsAndNeverDecodesSocketScaleAsLength() {
+        [TestCase(-1f)]
+        [TestCase(0f)]
+        [TestCase(0.3f)]
+        public void PlugDepthUsesItsOwnResizedDimensionsAndResetsWithNoContact(float idleSeparation) {
             var plug = root.AddComponent<VRCFuryHapticPlug>();
             plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
             plug.unitsInMeters = true;
@@ -102,7 +104,7 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(outputs[1]), Is.EqualTo(0.1f).Within(0.001f));
             Assert.That(playable.GetFloat(outputs[2]), Is.EqualTo(-0.5f).Within(0.001f));
             Assert.That(playable.GetFloat(outputs[3]), Is.EqualTo(-0.25f).Within(0.002f));
-            Set(receiver, 0, -1);
+            Set(receiver, 0, idleSeparation);
             Evaluate();
             Assert.That(playable.GetFloat(outputs[2]), Is.EqualTo(100).Within(0.001f));
         }

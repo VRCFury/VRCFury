@@ -40,7 +40,10 @@ namespace VF.Service {
             return party => byParty.GetOrCreate(party, () => {
                 var prefix = name + "/" + party;
                 VFAParam Field(string suffix) => receiverAnimator.GetAdvancedParam(main, party, suffix);
-                var present = new Lazy<BlendtreeMath.Condition>(() => BlendtreeMath.GreaterThan(Field("PointSeparation"), 0, true));
+                // A zero or stale separation must not count as a socket when proximity is zero.
+                var present = new Lazy<BlendtreeMath.Condition>(() =>
+                    BlendtreeMath.GreaterThan(receiverAnimator.GetParameter(main, party), 0)
+                        .And(BlendtreeMath.GreaterThan(Field("PointSeparation"), 0, true)));
                 var presence = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
                     present.Value.CreateBranches(tree, prefix + "/Present"));
                 var legacy = party != Party.Self && main.request.supportsLegacy;
