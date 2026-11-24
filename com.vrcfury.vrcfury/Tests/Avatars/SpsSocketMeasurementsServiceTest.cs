@@ -189,7 +189,7 @@ namespace VF.Tests {
 
         [TestCase(0.7f, 0.4f, 0.05f)]
         [TestCase(0.1f, 0.4f, 0.05f)]
-        [TestCase(0f, 0.4f, 0.05f)]
+        [TestCase(0.002f, 0.4f, 0.05f)]
         [TestCase(2.5f, 4f, 0.5f)]
         public void NativeDimensionsAndEuclideanDepthRemainLiveIncludingSaturation(float distance, float length, float radius) {
             measurements = Socket(false)(Party.Self);
@@ -217,7 +217,7 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(outputs[6]), Is.EqualTo(radius).Within(0.002f));
             Assert.That(playable.GetFloat(outputs[7]), Is.EqualTo(radius / length).Within(0.002f));
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(1));
-            foreach (var idleSeparation in new[] { 0f, distance, -1f }) {
+            foreach (var idleSeparation in new[] { 0f, -1f }) {
                 Set(Main(), 0, idleSeparation, length * 2, radius * 2, native: true);
                 Evaluate();
                 Assert.That(playable.GetFloat(outputs[2]), Is.EqualTo(100).Within(0.0001f));
@@ -464,7 +464,7 @@ namespace VF.Tests {
                 void Update(ref float value, ref bool known, VFAParam sample, bool width) {
                     var candidate = playable.GetFloat(sample);
                     var assumed = width ? 0.03f : 0.3f;
-                    if (proximity <= 0 || separation < 0) { value = assumed; known = false; }
+                    if (separation <= 0) { value = assumed; known = false; }
                     else if (playable.GetFloat(native) > 0) { value = width ? 0.08f : 0.7f; known = false; }
                     else if (width && helper <= 0) { value = assumed; known = false; }
                     else if (candidate > 0 && (proximity < 1 || !known)) { value = candidate; known = true; }

@@ -80,7 +80,6 @@ namespace VF.Tests {
 
         [TestCase(-1f)]
         [TestCase(0f)]
-        [TestCase(0.3f)]
         public void PlugDepthUsesItsOwnResizedDimensionsAndResetsWithNoContact(float idleSeparation) {
             var plug = root.AddComponent<VRCFuryHapticPlug>();
             plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
@@ -98,7 +97,10 @@ namespace VF.Tests {
             Assert.That(receiver.radius * receiver.transform.lossyScale.x, Is.EqualTo(0.64f).Within(0.0001f));
             Start();
             playable.SetFloat(scale, 2);
-            Set(receiver, 0.9f, 0.3f, length: 1, radius: 32767, native: true);
+            Set(receiver, 0, idleSeparation);
+            Evaluate();
+            Assert.That(playable.GetFloat(outputs[2]), Is.EqualTo(100).Within(0.001f));
+            Set(receiver, 0, 0.3f, length: 1, radius: 32767, native: true);
             Evaluate();
             Assert.That(playable.GetFloat(outputs[0]), Is.EqualTo(0.8f).Within(0.001f));
             Assert.That(playable.GetFloat(outputs[1]), Is.EqualTo(0.1f).Within(0.001f));

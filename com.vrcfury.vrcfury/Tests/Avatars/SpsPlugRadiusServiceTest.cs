@@ -163,7 +163,7 @@ namespace VF.Tests {
             Assert.That(cache[upperLeg].inverse.IsValueCreated, Is.False);
         }
 
-        [TestCase(0f)]
+        [TestCase(0.01f)]
         [TestCase(0.25f)]
         [TestCase(0.75f)]
         [TestCase(1f)]
@@ -205,7 +205,7 @@ namespace VF.Tests {
             root.transform.localScale = Vector3.one * (2 * scale);
             playable.SetFloat("TestInverseWorldScale", 1 / bake.bakeRoot.worldScale.x);
             var distance = 0.5f * bake.worldLength;
-            foreach (var proximity in new[] { 1 - distance / Mathf.Min(3, 0.64f * scale), 1f, 0.1f }) {
+            foreach (var proximity in new[] { 1 - distance / Mathf.Min(3, 0.64f * scale), 1f, 0f }) {
                 playable.SetFloat(mergedParameterName, proximity);
                 playable.SetFloat(mergedParameterName + "_PointSeparation", distance);
                 for (var i = 0; i < 8; i++) graph.Evaluate(1f / 60);
@@ -213,17 +213,19 @@ namespace VF.Tests {
                     Is.EqualTo(Mathf.Lerp(0.06f, MinimumRadius, 0.5f) * scale).Within(0.0001f));
             }
             playable.SetFloat(mergedParameterName, 0);
-            foreach (var idleSeparation in new[] { 0f, distance, -1f }) {
+            foreach (var idleSeparation in new[] { 0f, -1f }) {
                 playable.SetFloat(mergedParameterName + "_PointSeparation", idleSeparation);
                 for (var i = 0; i < 2; i++) graph.Evaluate(1f / 60);
                 Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(MinimumRadius * scale).Within(0.0001f));
             }
             playable.SetFloat(mergedParameterName, 1);
-            playable.SetFloat(mergedParameterName + "_PointSeparation", 0);
+            const float baseDistance = 0.002f;
+            playable.SetFloat(mergedParameterName + "_PointSeparation", baseDistance);
             graph.Evaluate(1f / 60);
             Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(MinimumRadius * scale).Within(0.0001f));
             graph.Evaluate(1f / 60);
-            Assert.That(bake.mainSender.worldScale.y, Is.EqualTo(0.06f * scale).Within(0.0001f));
+            Assert.That(bake.mainSender.worldScale.y,
+                Is.EqualTo(Mathf.Lerp(0.06f, MinimumRadius, baseDistance / bake.worldLength) * scale).Within(0.0001f));
         }
 
         [TestCase(0.5f)]

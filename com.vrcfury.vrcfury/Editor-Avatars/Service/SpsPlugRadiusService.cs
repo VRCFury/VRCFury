@@ -47,7 +47,6 @@ namespace VF.Service {
                     tree
                 );
             }
-            var proximity = receiverAnimator.GetParameter(bake.socketReceivers, Party.Merged);
             var separation = receiverAnimator.GetAdvancedParam(bake.socketReceivers, Party.Merged, "PointSeparation");
             var inverseScale = worldScale.GetInverseWorldScale(bake.bakeRoot, name);
             var normalizedDistance = controllers.GetFx().CreateUniqueFloat(name + " - Socket position", 1);
@@ -61,8 +60,8 @@ namespace VF.Service {
             var idle = normalizedDistance.MakeSetter(1);
             SetSenderRadius(bake, idle, bake.radiusCurve.Evaluate(1));
             tree.Add(normalizedDistance.MakeSetter(0));
-            tree.Add(BlendtreeMath.GreaterThan(proximity, 0).And(BlendtreeMath.GreaterThan(separation, 0, true))
-                .create(contact, idle));
+            // Point separation is normally -1 with no contact, but can be 0 until the receiver first turns on.
+            tree.Add(BlendtreeMath.GreaterThan(separation, 0).create(contact, idle));
         }
 
         private static VFMotion MakeSampler(VRCFuryHapticPlugEditor.BakeResult bake, VFAParam normalizedDistance) {
