@@ -9,19 +9,21 @@ namespace VF.Service.Compressor {
     internal class CompressorEncoding {
         private readonly Lazy<VFAParam> code;
         private readonly Lazy<VFAParam> value;
+        private readonly Lazy<VFAParam> roundingScratch;
 
         public CompressorEncoding(VFAvatarController controller) {
             code = new Lazy<VFAParam>(() => controller.CreateUniqueInt("Compressor Code"));
             value = new Lazy<VFAParam>(() => controller.CreateUniqueFloat("Compressor Value"));
+            roundingScratch = new Lazy<VFAParam>(() => controller.CreateUniqueFloat("Compressor Rounding Scratch"));
         }
 
         private readonly struct Format {
             private readonly int min, max, intervals;
-            private readonly bool isInt;
+            private readonly ValueType type;
 
             public Format(Parameter p) {
                 int codes = 1 << p.TypeCost();
-                isInt = p.valueType == ValueType.Int;
+                type = p.valueType;
 #if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH
                 bool flipped = p.flippedRepresentation;
 #else
@@ -46,13 +48,26 @@ namespace VF.Service.Compressor {
                 }
             }
 
-            public void Encode(VFState state, string source, string dest) {
+            public void Encode(VFState state, string source, string dest, Lazy<VFAParam> roundingScratch) {
+                if (type == ValueType.Float) {
+                    // Floats are one integer apart here, so the first copy rounds ties to even.
+                    const int roundingOffset = 12582912; // 1.5 * 2^23
+                    var codeZero = roundingOffset - (min < 0 ? intervals / 2 : 0);
+                    var scratch = roundingScratch.Value;
+                    // VRChat skips small changes to large floats. Reset before every encode,
+                    // including when another parameter used this scratch in the same state.
+                    state.Drives(scratch, 0);
+                    state.DrivesCopy(source, scratch, min, max, codeZero, codeZero + intervals);
+                    // The power-of-two range makes this copy an exact subtraction.
+                    state.DrivesCopy(scratch, dest, codeZero, codeZero + 256, 0, 256);
+                    return;
+                }
                 // Copy to Int drops the fraction. Bias the unsigned code by half a step to round to nearest.
                 state.DrivesCopy(source, dest, min, max, 0.5f, intervals + 0.5f);
             }
 
             public void Decode(VFState state, string source, string dest) {
-                if (isInt) {
+                if (type == ValueType.Int) {
                     // Integer codes differ from their values only by min. Use a power-of-two
                     // divisor so interpolation is exact before the driver truncates to Int.
                     state.DrivesCopy(source, dest, 0, intervals + 1, min, max + 1);
@@ -69,11 +84,11 @@ namespace VF.Service.Compressor {
                 if (local.valueType == ValueType.Bool) {
                     state.DrivesCopy(local.name, dest);
                 } else {
-                    new Format(wire).Encode(state, local.name, code.Value);
+                    new Format(wire).Encode(state, local.name, code.Value, roundingScratch);
                     state.DrivesCopy(code.Value, dest);
                 }
             } else {
-                new Format(wire).Encode(state, local.name, dest);
+                new Format(wire).Encode(state, local.name, dest, roundingScratch);
             }
         }
 
@@ -90,7 +105,7 @@ namespace VF.Service.Compressor {
 
             var localFormat = new Format(local);
             wireFormat.Decode(state, source, value.Value);
-            localFormat.Encode(state, value.Value, code.Value);
+            localFormat.Encode(state, value.Value, code.Value, roundingScratch);
             localFormat.Decode(state, code.Value, local.name);
         }
     }
