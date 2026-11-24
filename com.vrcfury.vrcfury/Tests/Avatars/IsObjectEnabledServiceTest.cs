@@ -15,7 +15,6 @@ using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     public class IsObjectEnabledServiceTest {
         [TestCase(true, false)]
         [TestCase(false, false)]

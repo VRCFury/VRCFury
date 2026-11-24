@@ -5,7 +5,6 @@ using UnityEngine;
 using VF.Utils;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     public class FallbackBoneUtilsTest {
         [Test]
         public void DistalFallsBackAlongItsOwnFingerFirst() {

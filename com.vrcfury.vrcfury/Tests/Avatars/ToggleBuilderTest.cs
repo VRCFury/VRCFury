@@ -20,7 +20,6 @@ using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     public class ToggleBuilderTest {
         [TestCase(0, false, true, false, 3, false, 0)]
         [TestCase(0, false, true, true, 3, false, 0)]
@@ -185,6 +184,83 @@ namespace VF.Tests {
                 if (avatar.expressionParameters != null) assets.Add(avatar.expressionParameters);
                 Object.DestroyImmediate(root);
                 foreach (var asset in assets.Distinct()) if (asset != null) Object.DestroyImmediate(asset);
+            }
+        }
+    }
+}
+
+namespace VF.Tests {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Reflection;
+    using NUnit.Framework;
+    using UnityEngine;
+    using VF.Builder;
+    using VF.Service;
+    using VF.Service.Compressor;
+    using VF.Utils;
+    using VRC.SDK3.Avatars.Components;
+    using VRC.SDK3.Avatars.ScriptableObjects;
+    using Object = UnityEngine.Object;
+    using VF.Utils.Controller;
+
+    internal class ToggleBuilderGlobalParameterTest : ExpressionParameterTestBase {
+        [TestCase(VRCExpressionParameters.ValueType.Bool, false)]
+        [TestCase(VRCExpressionParameters.ValueType.Bool, true)]
+        [TestCase(VRCExpressionParameters.ValueType.Int, false)]
+        [TestCase(VRCExpressionParameters.ValueType.Int, true)]
+        [TestCase(VRCExpressionParameters.ValueType.Float, false)]
+        [TestCase(VRCExpressionParameters.ValueType.Float, true)]
+        public void GlobalToggleOverridesControllerDefaultBeforeCreatingAnExpression(
+            VRCExpressionParameters.ValueType type, bool expressionAlreadyExists) {
+            var root = new GameObject("Global toggle defaults");
+            try {
+                var avatar = root.AddComponent<VRCAvatarDescriptor>();
+                avatar.baseAnimationLayers = new[] {
+                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX }
+                };
+                avatar.specialAnimationLayers = new[] {
+                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.Action }
+                };
+                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+                injector.Set("componentObject", new Func<VFGameObject>(() => root));
+                var globals = injector.GetService<GlobalsService>();
+                globals.allFeaturesInRun = new List<VF.Model.Feature.FeatureModel>();
+                globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+                var controllers = injector.GetService<ControllersService>();
+                controllers.ClearCache(applyBaseMask: false);
+                var fx = controllers.GetFx();
+                var oldDefault = type == VRCExpressionParameters.ValueType.Float ? 0.75f : 1;
+                var parameter = type == VRCExpressionParameters.ValueType.Float ? fx.GetOrCreateFloat("Shared", oldDefault)
+                    : type == VRCExpressionParameters.ValueType.Int ? fx.GetOrCreateInt("Shared", oldDefault)
+                    : fx.GetOrCreateBool("Shared", oldDefault);
+                if (expressionAlreadyExists) {
+                    var expression = new VRCExpressionParameters.Parameter {
+                        name = parameter.name, valueType = type, defaultValue = oldDefault, saved = false
+                    };
+                    if (type == VRCExpressionParameters.ValueType.Int) expression.DisableInterpolation();
+                    injector.GetService<ExpressionParamsService>().AddOrMerge(expression);
+                }
+                var toggle = injector.CreateAndFillObject<VF.Feature.ToggleBuilder>();
+                toggle.featureBaseObject = root;
+                toggle.model = new VF.Model.Feature.Toggle {
+                    name = "Toggle",
+                    useGlobalParam = true,
+                    globalParam = "Shared",
+                    slider = type == VRCExpressionParameters.ValueType.Float,
+                    useInt = type == VRCExpressionParameters.ValueType.Int,
+                    defaultSliderValue = 0.25f,
+                    defaultOn = false,
+                    addMenuItem = false
+                };
+                toggle.Apply();
+                var expected = toggle.model.slider ? 0.25f : 0;
+                Assert.That(parameter.GetDefault(), Is.EqualTo(expected));
+                Assert.That(avatar.expressionParameters.FindParameter("Shared").defaultValue,
+                    Is.EqualTo(expressionAlreadyExists ? oldDefault : expected));
+            } finally {
+                Object.DestroyImmediate(root);
             }
         }
     }

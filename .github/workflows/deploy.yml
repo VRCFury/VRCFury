@@ -114,7 +114,7 @@ jobs:
           unityVersion: ${{ matrix.vrcsdkUnityVersion[1] }}
           testMode: EditMode
           customImage: ${{ steps.image.outputs.image }}
-          customParameters: -testCategory VRCFury -buildTarget ${{ steps.image.outputs.build-target }} -disable-assembly-updater
+          customParameters: -assemblyNames VRCFury-Tests;VRCFury-Avatar-Tests -buildTarget ${{ steps.image.outputs.build-target }} -disable-assembly-updater
           githubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Unity failure logs

@@ -7,7 +7,6 @@ using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     public class FixDestroyedAvatarSelectorEntriesHookTest {
         [Test]
         public void StaleChoicesDoNotBreakAvatarNames() {

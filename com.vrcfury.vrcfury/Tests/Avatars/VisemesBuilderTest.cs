@@ -19,7 +19,6 @@ using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     internal class VisemesBuilderTest {
         [TestCase(true)]
         [TestCase(false)]
@@ -140,3 +139,133 @@ namespace VF.Tests {
         }
     }
 }
+
+#if VRCSDK_HAS_FACE_TRACKING
+namespace VF.Tests {
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Reflection;
+    using NUnit.Framework;
+    using UnityEditor;
+    using UnityEngine;
+    using UnityEngine.TestTools;
+    using UnityEngine.UIElements;
+    using VF.Feature;
+    using VF.Builder;
+    using VF.Feature.Base;
+    using VF.Inspector;
+    using VF.Model;
+    using VF.Model.Feature;
+    using VF.Model.StateAction;
+    using VF.Service;
+    using VF.Utils;
+    using VF.Utils.Controller;
+    using VRC.SDK3.Avatars.Components;
+    using FtBehaviourControl = VRC.SDKBase.VRC_AnimatorFaceTrackingBlendshapesSet.BlendSet;
+    using Toggle = VF.Model.Feature.Toggle;
+
+    internal class VisemesBuilderFaceTrackingMigrationTest : FaceTrackingTestBase {
+        [Test]
+        public void AdvancedAaVisemeMigratesAaWithoutPopulatingSilence() {
+            using (var build = new Build()) {
+                var skin = build.Skin("Mouth");
+                var model = NewVisemes();
+                model.state_aa.actions.Add(new BlendShapeAction { renderer = skin, allRenderers = false, blendShape = "Smile", blendShapeValue = 65 });
+                Assert.That(build.MigrateVisemes(model), Is.False);
+                build.Run();
+                var set = build.avatar.faceTrackingBlendshapesSetList.Single();
+                Assert.That(set.visemeBlendshapeNames[0], Is.Empty);
+                Assert.That(set.visemeBlendshapeNames[10], Is.Not.Empty);
+                Assert.That(skin.HasBlendshape(set.visemeBlendshapeNames[10]), Is.True);
+                Assert.That(set.visemeBlendshapeMultipliers[10], Is.EqualTo(0.65f));
+            }
+        }
+
+        [Test]
+        public void InstantAdvancedVisemesKeepBlendshapeActionsInTheAnimator() {
+            using (var build = new Build()) {
+                var skin = build.Skin("Mouth");
+                var model = NewVisemes();
+                model.instant = true;
+                var action = new BlendShapeAction {
+                    renderer = skin,
+                    allRenderers = false,
+                    blendShape = "Smile",
+                    blendShapeValue = 65
+                };
+                model.state_aa.actions.Add(action);
+                Assert.That(build.MigrateVisemes(model), Is.True, "Instant visemes must retain their animator output");
+                Assert.That(model.state_aa.actions, Is.EqualTo(new[] { action }));
+                build.Run();
+                Assert.That(build.avatar.faceTrackingBlendshapesSetList, Is.Null.Or.Empty);
+                Assert.That(build.avatar.lipSync,
+                    Is.Not.EqualTo(VRC.SDKBase.VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShapeFaceTracking));
+            }
+        }
+
+        [Test]
+        public void AdvancedVisemesKeepNonBlendshapeAndUnresolvedActions() {
+            using (var build = new Build()) {
+                var skin = build.Skin("Mouth");
+                var model = NewVisemes();
+                var toggle = new ObjectToggleAction { obj = skin.gameObject };
+                var unresolved = new BlendShapeAction { renderer = skin, allRenderers = false, blendShape = "Missing" };
+                model.state_PP.actions.Add(new BlendShapeAction { renderer = skin, allRenderers = false, blendShape = "Smile" });
+                model.state_PP.actions.Add(toggle);
+                model.state_FF.actions.Add(unresolved);
+                Assert.That(build.MigrateVisemes(model), Is.True);
+                Assert.That(model.state_PP.actions, Is.EqualTo(new[] { toggle }));
+                Assert.That(model.state_FF.actions, Is.EqualTo(new[] { unresolved }));
+                build.Run();
+                Assert.That(build.avatar.faceTrackingBlendshapesSetList.Single().visemeBlendshapeNames[1], Is.Not.Empty);
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AdvancedVisemeSetsPreserveIndependentActionsAndBuilders(bool separateBuilders) {
+            using (var build = new Build()) {
+                var a = build.Skin("A");
+                var b = build.Skin("B");
+                var first = NewVisemes();
+                var second = separateBuilders ? NewVisemes() : first;
+                first.state_PP.actions.Add(new BlendShapeAction { renderer = a, allRenderers = false, blendShape = "Smile", blendShapeValue = 20 });
+                second.state_PP.actions.Add(new BlendShapeAction { renderer = b, allRenderers = false, blendShape = "Smile", blendShapeValue = 80 });
+                Assert.That(build.MigrateVisemes(first), Is.False);
+                if (separateBuilders) Assert.That(build.MigrateVisemes(second), Is.False);
+                build.Run();
+                var sets = build.avatar.faceTrackingBlendshapesSetList;
+                Assert.That(sets, Has.Count.EqualTo(2));
+                Assert.That(sets.Select(set => set.setName).Distinct().Count(), Is.EqualTo(2));
+                foreach (var pair in new[] { (a, 0.2f), (b, 0.8f) }) {
+                    var set = sets.Single(entry => pair.Item1.HasBlendshape(entry.visemeBlendshapeNames[1]));
+                    Assert.That(set.visemeBlendshapeMultipliers[1], Is.EqualTo(pair.Item2));
+                }
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AdvancedVisemesSkipLinkedTargetsButKeepOtherAllRendererTargets(bool allRenderers) {
+            using (var build = new Build()) {
+                var source = build.Skin("Source");
+                var target = build.Skin("Target");
+                var other = build.Skin("Other");
+                build.Full(source.gameObject);
+                build.Link(source, target);
+                var model = NewVisemes();
+                model.state_PP.actions.Add(new BlendShapeAction { renderer = target, allRenderers = allRenderers, blendShape = "Smile" });
+                Assert.That(build.MigrateVisemes(model), Is.False);
+                Assert.That(model.state_PP.actions, Is.Empty);
+                build.Run();
+                var visemes = build.avatar.faceTrackingBlendshapesSetList.Where(set => set.setName.StartsWith("_vrcf_advanced_visemes")).ToArray();
+                Assert.That(visemes, Has.Length.EqualTo(allRenderers ? 2 : 0));
+                if (allRenderers) {
+                    Assert.That(visemes.Count(set => target.HasBlendshape(set.visemeBlendshapeNames[1])), Is.EqualTo(1));
+                    Assert.That(visemes.Count(set => other.HasBlendshape(set.visemeBlendshapeNames[1])), Is.EqualTo(1));
+                }
+            }
+        }
+    }
+}
+#endif

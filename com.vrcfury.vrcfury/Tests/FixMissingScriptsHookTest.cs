@@ -10,7 +10,6 @@ using VF.Model;
 using VF.Utils;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     internal class FixMissingScriptsHookTest {
         [Test]
         public void InstalledComponentScriptsAreHealthy() {

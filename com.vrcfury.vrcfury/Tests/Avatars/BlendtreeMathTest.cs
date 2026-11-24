@@ -17,7 +17,6 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     public class BlendtreeMathTest {
         private GameObject root;
         private VRCFuryInjector injector;
@@ -469,6 +468,53 @@ namespace VF.Tests {
             objectTrees.Apply();
             Assert.That(defaults.GetCurve(VFBinding.MakeAnimatorBinding(depth), true).FloatCurve.Evaluate(0), Is.Zero);
             Assert.That(defaults.GetCurve(VFBinding.MakeAnimatorBinding(injected), true).FloatCurve.Evaluate(0), Is.Zero);
+        }
+    }
+}
+
+namespace VF.Tests {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Reflection;
+    using NUnit.Framework;
+    using UnityEngine;
+    using VF.Builder;
+    using VF.Service;
+    using VF.Service.Compressor;
+    using VF.Utils;
+    using VRC.SDK3.Avatars.Components;
+    using VRC.SDK3.Avatars.ScriptableObjects;
+    using Object = UnityEngine.Object;
+    using VF.Utils.Controller;
+
+    internal class BlendtreeMathBufferTest : ExpressionParameterTestBase {
+        [Test]
+        public void BufferCanInheritItsInputDefaultOrExplicitlyUseNegativeOneHundred() {
+            var root = new GameObject("Buffer defaults");
+            try {
+                var avatar = root.AddComponent<VRCAvatarDescriptor>();
+                avatar.baseAnimationLayers = new[] {
+                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX }
+                };
+                avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+                var controllers = VRCFuryInjectorBuilder.GetInjector(avatar).GetService<ControllersService>();
+                controllers.ClearCache(applyBaseMask: false);
+                var fx = controllers.GetFx();
+                var input = fx.GetOrCreateBool("Input", 0.25f);
+                var math = new BlendtreeMath(fx, VFBlendTreeDirect.Create("Buffers"));
+                Assert.That(math.Buffer(input).GetDefault(), Is.EqualTo(0.25f));
+                Assert.That(math.Buffer(input, def: -100).GetDefault(), Is.EqualTo(-100));
+                Assert.That(math.Buffer(input, def: true).GetDefault(), Is.EqualTo(1));
+                Assert.That(math.Buffer(input, def: false).GetDefault(), Is.Zero);
+                var before = fx.parameters.Length;
+                fx.Always();
+                fx.Never();
+                fx.One();
+                Assert.That(fx.parameters, Has.Length.EqualTo(before + 1), "True and one share one constant");
+            } finally {
+                Object.DestroyImmediate(root);
+            }
         }
     }
 }

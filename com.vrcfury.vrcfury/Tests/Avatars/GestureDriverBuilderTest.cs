@@ -16,7 +16,6 @@ using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     internal class GestureDriverBuilderTest {
         [Test]
         public void EitherFistWritesTheLargerWeightDirectlyWhileActive() {
@@ -85,6 +84,46 @@ namespace VF.Tests {
                 Object.DestroyImmediate(root);
                 foreach (var asset in assets.Distinct()) if (asset != null) Object.DestroyImmediate(asset);
             }
+        }
+    }
+}
+
+namespace VF.Tests {
+    using System;
+    using System.Linq;
+    using NUnit.Framework;
+    using UnityEngine;
+    using VF.Builder;
+    using VF.Exceptions;
+    using VF.Injector;
+    using VF.Service;
+    using VF.Service.Compressor;
+    using VF.Utils;
+    using VRC.Core;
+    using VRC.SDK3.Avatars.Components;
+    using Object = UnityEngine.Object;
+
+    internal class GestureDriverParameterNamingTest : ParameterPlatformBuildTestBase {
+        [Test]
+        public void GestureLockNamesSurviveOmittedAndSharedGestures() {
+            using var desktop = new Build("Desktop");
+            using var mobile = new Build("Mobile");
+            string WaveParameter(Build build, params string[] locks) {
+                build.injector.Set("componentObject", new Func<VFGameObject>(() => build.root));
+                var builder = build.injector.CreateAndFillObject<VF.Feature.GestureDriverBuilder>();
+                builder.featureBaseObject = build.root;
+                builder.model = new VF.Model.Feature.GestureDriver();
+                foreach (var path in locks) {
+                    builder.model.gestures.Add(new VF.Model.Feature.GestureDriver.Gesture {
+                        enableLockMenuItem = true,
+                        lockMenuItem = path
+                    });
+                }
+                builder.Apply();
+                var menu = build.injector.GetService<MenuService>().GetReadOnlyMenu();
+                return menu.controls.Single(c => c.name == "Wave").parameter.name;
+            }
+            Assert.That(WaveParameter(mobile, "Wave"), Is.EqualTo(WaveParameter(desktop, "Smile", "Wave", "Wave")));
         }
     }
 }

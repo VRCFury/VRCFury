@@ -17,7 +17,6 @@ using VF.Utils;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Injector {
-    [Category("VRCFury")]
     public class VRCFuryInjectorTest {
         private UnityEngine.GameObject root;
 

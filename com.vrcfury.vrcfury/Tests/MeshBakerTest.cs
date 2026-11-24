@@ -6,7 +6,6 @@ using VF.Builder;
 using VF.Utils;
 using Object = UnityEngine.Object;
 
-[Category("VRCFury")]
 public class MeshBakerTest {
     [Test]
     public void BoneAssignmentsAndAncestorMovementRefreshDependencies() {

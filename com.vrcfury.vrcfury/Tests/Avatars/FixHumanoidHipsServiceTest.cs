@@ -14,7 +14,6 @@ using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     public class FixHumanoidHipsServiceTest {
         [TestCase(false, "Armature", true, 0)]
         [TestCase(false, "Root", false, 0)]

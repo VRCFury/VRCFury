@@ -12,7 +12,6 @@ using Object = UnityEngine.Object;
 using Mode = VF.Component.VRCFuryHapticSocket.AddLight;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     internal class VRCFuryHapticSocketEditorTest {
         private GameObject obj;
         private VRCFuryHapticSocket socket;
@@ -246,8 +245,8 @@ namespace VF.Tests {
             }
         }
 
-        private EditorChangeTrackingTest.Panel CreatePanel() {
-            var panel = new EditorChangeTrackingTest.Panel(editor);
+        private InspectorTestBase.Panel CreatePanel() {
+            var panel = new InspectorTestBase.Panel(editor);
             typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.UIElements.UIElementsEditorUtility")
                 .GetMethod("AddDefaultEditorStyleSheets", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
                 .Invoke(null, new object[] { panel.root });
@@ -256,7 +255,7 @@ namespace VF.Tests {
             return panel;
         }
 
-        private static void Pump(EditorChangeTrackingTest.Panel panel) {
+        private static void Pump(InspectorTestBase.Panel panel) {
             for (var i = 0; i < 3; i++) {
                 panel.Pump();
                 panel.panel.GetType().GetMethod("ValidateLayout", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
@@ -299,5 +298,341 @@ namespace VF.Tests {
 
         private static UnityEngine.UIElements.Toggle ExitCheckbox(VisualElement gui) => gui.Query<Label>().ToList()
             .SingleOrDefault(label => label.text == "Collapse plug at exit")?.parent.parent.Q<UnityEngine.UIElements.Toggle>();
+    }
+}
+
+namespace VF.Tests {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Reflection;
+    using NUnit.Framework;
+    using UnityEditor;
+    using UnityEditor.UIElements;
+    using UnityEngine;
+    using UnityEngine.UIElements;
+    using VF.Inspector;
+    using VF.Component;
+    using Object = UnityEngine.Object;
+
+    internal class VRCFuryHapticSocketEditorRangesTest : InspectorTestBase {
+        [Test]
+        public void SocketPlugRadiusRangeStoresLocalUnits() {
+            var panelOwner = ScriptableObject.CreateInstance<Fields>();
+            var obj = new GameObject("Weighted socket");
+            obj.transform.localScale = Vector3.one * 2;
+            try {
+                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                socket.depthActions2.Add(new VRCFuryHapticSocket.DepthActionNew());
+                using (var serialized = new SerializedObject(socket))
+                using (var panel = new Panel(panelOwner)) {
+                    var action = serialized.FindProperty("depthActions2").GetArrayElementAtIndex(0);
+                    var editor = new VRCFuryHapticSocketEditor.DepthActionDrawer().CreatePropertyGUI(action);
+                    panel.root.Add(editor);
+                    panel.root.Bind(serialized);
+                    panel.Pump();
+                    var toggle = editor.Q<UnityEngine.UIElements.Toggle>("multiplyPlugRadius");
+                    var field = editor.Q<FloatField>("plugRadiusForFullWeight");
+                    Assert.That(editor.Q("plugRadiusControls").Query<UnityEngine.UIElements.Slider>().ToList(), Is.Empty);
+                    Assert.That(editor.Q("plugRadiusControls").Query<MinMaxSlider>().ToList(), Has.Count.EqualTo(1));
+                    Assert.That(editor.Q("plugRadiusControls").Query<FloatField>().ToList(), Has.Count.EqualTo(2));
+                    var minimumField = editor.Q<FloatField>("plugRadiusForZeroWeight");
+                    var minimumRadius = action.FindPropertyRelative("plugRadiusForZeroWeight");
+                    Assert.That(field.isDelayed, Is.True);
+                    var radius = action.FindPropertyRelative("plugRadiusForFullWeight");
+                    Assert.That(toggle.value, Is.False);
+                    toggle.value = true;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.125f));
+                    Assert.That(field.value, Is.EqualTo(0.125f));
+                    Assert.That(editor.Q<Label>("plugRadiusMeters").text, Is.EqualTo("0.25 m"));
+                    obj.transform.localScale = Vector3.one * 4;
+                    VF.Utils.EditorChanges.Changed();
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.125f));
+                    Assert.That(field.value, Is.EqualTo(0.125f), "Scale changes must not modify the local radius");
+                    Assert.That(editor.Q<Label>("plugRadiusMeters").text, Is.EqualTo("0.5 m"));
+                    field.value = 2;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(2), "Typing must not clamp to the old slider range");
+                    Assert.That(editor.Q<Label>("plugRadiusMeters").text, Is.EqualTo("8 m"));
+                    minimumField.value = 0.05f;
+                    panel.Pump();
+                    Assert.That(minimumRadius.floatValue, Is.EqualTo(0.05f));
+                    Assert.That(editor.Q("plugRadiusControls").Q<Label>("rangeMetersMin").text, Is.EqualTo("0.2 m"));
+                    Undo.IncrementCurrentGroup();
+                    editor.Q("plugRadiusControls").Q<MinMaxSlider>().value = new Vector2(0.1f, 0.3f);
+                    panel.Pump();
+                    Assert.That(minimumRadius.floatValue, Is.EqualTo(0.1f));
+                    Assert.That(radius.floatValue, Is.EqualTo(0.3f));
+                    Undo.PerformUndo();
+                    serialized.Update();
+                    panel.Pump();
+                    Assert.That(minimumRadius.floatValue, Is.EqualTo(0.05f));
+                    Assert.That(radius.floatValue, Is.EqualTo(2f));
+                    field.value = -1;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.Zero);
+                    Assert.That(minimumRadius.floatValue, Is.Zero);
+                    Assert.That(field.value, Is.Zero);
+                    Assert.That(toggle.value, Is.False);
+                    toggle.value = true;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.0625f));
+                    toggle.value = false;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.Zero);
+                    panel.root.Unbind();
+                    panel.root.Bind(serialized);
+                    panel.Pump();
+                    Undo.IncrementCurrentGroup();
+                    toggle.value = true;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.0625f));
+                    Undo.PerformUndo();
+                    serialized.Update();
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.Zero);
+                    Assert.That(toggle.value, Is.False);
+                    Assert.That(editor.Q("plugRadiusControls").resolvedStyle.display, Is.EqualTo(DisplayStyle.None));
+                    Undo.PerformRedo();
+                    serialized.Update();
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.0625f));
+                    Assert.That(toggle.value, Is.True);
+                    Assert.That(field.value, Is.EqualTo(0.0625f));
+                    Assert.That(editor.Q("plugRadiusControls").resolvedStyle.display, Is.EqualTo(DisplayStyle.Flex));
+                    Undo.IncrementCurrentGroup();
+                    field.value = 0.125f;
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.125f));
+                    Undo.PerformUndo();
+                    serialized.Update();
+                    panel.Pump();
+                    Assert.That(radius.floatValue, Is.EqualTo(0.0625f), "One numeric edit must undo in one step");
+                    Assert.That(field.value, Is.EqualTo(0.0625f));
+                }
+            } finally {
+                Object.DestroyImmediate(obj);
+                Object.DestroyImmediate(panelOwner);
+            }
+        }
+
+        [Test]
+        public void SocketRadiusCapCheckboxKeepsZeroUntilEditedAndFollowsUndo() {
+            var panelOwner = ScriptableObject.CreateInstance<Fields>();
+            var obj = new GameObject("Socket radius cap");
+            UnityEditor.Editor editor = null;
+            try {
+                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                socket.useRadiusOffset = true;
+                Assert.That(socket.maxRadiusOffset, Is.Zero);
+                editor = UnityEditor.Editor.CreateEditor(socket);
+                using (var panel = new Panel(panelOwner)) {
+                    UnityEngine.UIElements.Toggle checkbox = null;
+                    VisualElement field = null;
+                    void Render() {
+                        panel.root.Unbind();
+                        panel.root.Clear();
+                        var gui = editor.CreateInspectorGUI();
+                        panel.root.Add(gui);
+                        panel.root.Bind(editor.serializedObject);
+                        panel.Pump();
+                        checkbox = gui.Q<UnityEngine.UIElements.Toggle>("limitRadiusOffset");
+                        field = gui.Q("maxRadiusOffsetControls");
+                    }
+                    Render();
+                    Assert.That(checkbox.value, Is.False);
+                    Assert.That(field.resolvedStyle.display, Is.EqualTo(DisplayStyle.None));
+                    checkbox.value = true;
+                    for (var i = 0; i < 5; i++) panel.Pump();
+                    Assert.That(socket.maxRadiusOffset, Is.Zero, "Enabling the editor must not assign a radius.");
+                    Assert.That(checkbox.value, Is.True);
+                    Assert.That(field.resolvedStyle.display, Is.EqualTo(DisplayStyle.Flex));
+                    Render();
+                    Assert.That(checkbox.value, Is.False, "Zero must reopen unchecked.");
+                    Assert.That(field.resolvedStyle.display, Is.EqualTo(DisplayStyle.None));
+                    checkbox.value = true;
+                    panel.Pump();
+                    field.Q<FloatField>().value = .025f;
+                    panel.Pump();
+                    Assert.That(socket.maxRadiusOffset, Is.EqualTo(.025f));
+                    Render();
+                    Assert.That(checkbox.value, Is.True, "A nonzero cap must reopen checked.");
+                    Assert.That(field.resolvedStyle.display, Is.EqualTo(DisplayStyle.Flex));
+                    Undo.IncrementCurrentGroup();
+                    checkbox.value = false;
+                    panel.Pump();
+                    Assert.That(socket.maxRadiusOffset, Is.Zero);
+                    Assert.That(field.resolvedStyle.display, Is.EqualTo(DisplayStyle.None));
+                    Undo.PerformUndo();
+                    panel.Pump();
+                    Assert.That(socket.maxRadiusOffset, Is.EqualTo(.025f));
+                    Assert.That(checkbox.value, Is.True);
+                    Assert.That(field.resolvedStyle.display, Is.EqualTo(DisplayStyle.Flex));
+                    Undo.PerformRedo();
+                    panel.Pump();
+                    Assert.That(socket.maxRadiusOffset, Is.Zero);
+                    Assert.That(checkbox.value, Is.False);
+                    Assert.That(field.resolvedStyle.display, Is.EqualTo(DisplayStyle.None));
+                }
+            } finally {
+                if (editor != null) Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(obj);
+                Object.DestroyImmediate(panelOwner);
+            }
+        }
+
+        [Test]
+        public void SocketRadiusCapUsesSingleSliderAndGizmoAtTheSocket(
+            [Values(.5f, 2f)] float scale,
+            [Values(0f, .025f)] float initialRadius
+        ) {
+            var panelOwner = ScriptableObject.CreateInstance<Fields>();
+            var obj = new GameObject("Socket radius cap gizmo");
+            UnityEditor.Editor editor = null;
+            try {
+                obj.transform.SetPositionAndRotation(new Vector3(1, 2, 3), Quaternion.Euler(20, 30, 40));
+                obj.transform.localScale = Vector3.one * scale;
+                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                socket.useRadiusOffset = true;
+                socket.maxRadiusOffset = initialRadius;
+                socket.position = new Vector3(.1f, .2f, .3f);
+                socket.rotation = new Vector3(10, 20, 30);
+                editor = UnityEditor.Editor.CreateEditor(socket);
+                using (var panel = new Panel(panelOwner)) {
+                    var gui = editor.CreateInspectorGUI();
+                    panel.root.Add(gui);
+                    panel.root.Bind(editor.serializedObject);
+                    panel.Pump();
+                    var checkbox = gui.Q<UnityEngine.UIElements.Toggle>("limitRadiusOffset");
+                    var field = gui.Q("maxRadiusOffsetControls");
+                    var control = field.Q<DepthActionSlider>();
+                    Assert.That(field.Query<FloatField>().ToList(), Has.Count.EqualTo(1));
+                    Assert.That(field.Query<UnityEngine.UIElements.Slider>().ToList(), Has.Count.EqualTo(1));
+                    Assert.That(field.Query<MinMaxSlider>().ToList(), Is.Empty);
+                    checkbox.value = true;
+                    panel.Pump();
+                    Assert.That(socket.maxRadiusOffset, Is.EqualTo(initialRadius));
+                    var expectedRotation = obj.transform.rotation * Quaternion.Euler(socket.rotation);
+                    var expectedCenter = obj.transform.TransformPoint(socket.position);
+                    var calls = 0;
+                    Undo.IncrementCurrentGroup();
+                    control.EditRangeVisually((center, rotation, radius, minimum) => {
+                        Assert.That(minimum, Is.False);
+                        Assert.That(Vector3.Distance(center, expectedCenter), Is.LessThan(.00001f));
+                        Assert.That(Quaternion.Angle(rotation, expectedRotation), Is.LessThan(.01f));
+                        Assert.That(radius, Is.EqualTo(initialRadius * scale).Within(.000001f));
+                        calls++;
+                        return .1f * scale;
+                    });
+                    panel.Pump();
+                    Assert.That(calls, Is.EqualTo(1));
+                    Assert.That(socket.maxRadiusOffset, Is.EqualTo(.1f).Within(.000001f));
+                    Assert.That(field.Q<Label>("rangeMetersMax").text, Is.EqualTo($"{.1f * scale:G4} m"));
+                    Assert.That(field.Q<Label>("rangeMetersMin"), Is.Null);
+                    Undo.PerformUndo();
+                    editor.serializedObject.Update();
+                    panel.Pump();
+                    Assert.That(socket.maxRadiusOffset, Is.EqualTo(initialRadius));
+                    Assert.That(control.value.y, Is.EqualTo(initialRadius));
+                    checkbox.value = true;
+                    panel.Pump();
+                    field.Q<UnityEngine.UIElements.Slider>().value = .125f;
+                    panel.Pump();
+                    Assert.That(socket.maxRadiusOffset, Is.EqualTo(.125f));
+                    field.Q<FloatField>().value = 2;
+                    panel.Pump();
+                    Assert.That(socket.maxRadiusOffset, Is.EqualTo(2), "The text field must allow values above the default slider range.");
+                    checkbox.value = false;
+                    panel.Pump();
+                    control.EditRangeVisually((center, rotation, radius, minimum) => {
+                        Assert.Fail("An unchecked cap must not draw a handle.");
+                        return radius;
+                    });
+                }
+            } finally {
+                if (editor != null) Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(obj);
+                Object.DestroyImmediate(panelOwner);
+            }
+        }
+
+        [Test]
+        public void SocketMenuToggleClearsAdditionalActionsInTheSameUndoOperation() {
+            var panelOwner = ScriptableObject.CreateInstance<Fields>();
+            var obj = new GameObject("Socket menu actions");
+            UnityEditor.Editor editor = null;
+            try {
+                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                socket.activeActions.actions.Add(new VF.Model.StateAction.FxFloatAction { name = "Test", value = 1 });
+                editor = UnityEditor.Editor.CreateEditor(socket);
+                using (var panel = new Panel(panelOwner)) {
+                    var gui = editor.CreateInspectorGUI();
+                    panel.root.Add(gui);
+                    panel.root.Bind(editor.serializedObject);
+                    panel.Pump();
+                    var labels = gui.Query<Label>().ToList();
+                    var menuSection = labels.Single(label => label.text == "Menu Toggle").parent.parent;
+                    Assert.That(menuSection.Query<Label>().ToList().Any(label =>
+                        label.text == "Additional Actions While Menu Item is Active"), Is.True);
+                    var checkbox = labels.Single(label => label.text == "Enable Menu Toggle").parent.parent
+                        .Q<UnityEngine.UIElements.Toggle>();
+                    Undo.IncrementCurrentGroup();
+                    checkbox.value = false;
+                    panel.Pump();
+                    Assert.That(socket.addMenuItem, Is.False);
+                    Assert.That(socket.activeActions.actions, Is.Empty);
+                    Undo.PerformUndo();
+                    panel.Pump();
+                    Assert.That(socket.addMenuItem, Is.True);
+                    Assert.That(socket.activeActions.actions, Has.Count.EqualTo(1));
+                    Assert.That(checkbox.value, Is.True);
+                    Undo.PerformRedo();
+                    panel.Pump();
+                    Assert.That(socket.addMenuItem, Is.False);
+                    Assert.That(socket.activeActions.actions, Is.Empty);
+                    Assert.That(checkbox.value, Is.False);
+                }
+            } finally {
+                if (editor != null) Object.DestroyImmediate(editor);
+                Object.DestroyImmediate(obj);
+                Object.DestroyImmediate(panelOwner);
+            }
+        }
+
+        [Test]
+        public void DepthRadiusMeterTimerSurvivesUndoRemovingItsAction() {
+            var panelOwner = ScriptableObject.CreateInstance<Fields>();
+            var obj = new GameObject("Removed depth action");
+            try {
+                var socket = obj.AddComponent<VRCFuryHapticSocket>();
+                using (var serialized = new SerializedObject(socket))
+                using (var panel = new Panel(panelOwner)) {
+                    var list = serialized.FindProperty("depthActions2");
+                    Undo.IncrementCurrentGroup();
+                    var action = VRCFuryEditorUtils.AddToList(list);
+                    var gui = new VRCFuryHapticSocketEditor.DepthActionDrawer().CreatePropertyGUI(action);
+                    panel.root.Add(gui);
+                    panel.root.Bind(serialized);
+                    panel.Pump();
+                    Assert.That(gui.Q<Label>("plugRadiusMeters").text, Is.EqualTo("0 m"));
+                    Undo.PerformUndo();
+                    serialized.Update();
+                    // The list may not detach its old row until after scheduled callbacks have run.
+                    panel.Pump();
+                    Assert.That(list.arraySize, Is.Zero);
+                    Assert.That(gui.Q<Label>("plugRadiusMeters").text, Is.Empty);
+                    Undo.PerformRedo();
+                    serialized.Update();
+                    panel.Pump();
+                    Assert.That(list.arraySize, Is.EqualTo(1));
+                    Assert.That(gui.Q<Label>("plugRadiusMeters").text, Is.EqualTo("0 m"));
+                }
+            } finally {
+                Object.DestroyImmediate(obj);
+                Object.DestroyImmediate(panelOwner);
+            }
+        }
     }
 }

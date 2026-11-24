@@ -9,7 +9,6 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     public class MenuManagerTest {
         private readonly HashSet<VRCExpressionsMenu> menus = new HashSet<VRCExpressionsMenu>();
 

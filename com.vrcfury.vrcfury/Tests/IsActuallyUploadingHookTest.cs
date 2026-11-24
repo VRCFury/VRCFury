@@ -7,7 +7,6 @@ using VF.Utils;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     public class IsActuallyUploadingHookTest {
         [TestCase("Idle", false)]
         [TestCase("Building", true)]

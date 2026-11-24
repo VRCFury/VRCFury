@@ -2,7 +2,6 @@ using NUnit.Framework;
 using UnityEngine;
 using VF.Utils;
 
-[Category("VRCFury")]
 public class MaterialExtensionsTest {
     [Test]
     public void NativeSettersCanBeReadByFastGetters() {

@@ -2,7 +2,6 @@ using NUnit.Framework;
 using VF.Utils;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     public class ReflectionHelperTest {
         [Test]
         public void RequiredBindingsResolve() {

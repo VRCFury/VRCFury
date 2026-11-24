@@ -14,7 +14,6 @@ using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     internal class VRCFuryHapticTouchReceiverBuilderTest {
         [TestCase(false)]
         [TestCase(true)]

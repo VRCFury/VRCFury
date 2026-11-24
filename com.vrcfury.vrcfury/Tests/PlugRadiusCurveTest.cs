@@ -6,7 +6,6 @@ using UnityEngine;
 using VF.Builder.Haptics;
 using VF.Component;
 
-[Category("VRCFury")]
 public class PlugRadiusCurveTest {
     private static AnimationCurve Fit(params (float depth, float radius)[] rings) {
         return Fit(rings, null);

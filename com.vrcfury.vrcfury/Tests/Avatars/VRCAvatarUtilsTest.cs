@@ -4,7 +4,6 @@ using VF.Builder;
 using VRC.SDK3.Avatars.Components;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     internal class VRCAvatarUtilsTest {
         [TestCase(false)]
         [TestCase(true)]

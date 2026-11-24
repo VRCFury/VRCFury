@@ -3,7 +3,6 @@ using UnityEngine;
 using VF.Exceptions;
 
 namespace VF.Tests {
-    [Category("VRCFury")]
     public class VRCFArmatureCacheTest {
         [Test]
         public void HipsLookupDoesNotFallBackToNestedClothes() {
