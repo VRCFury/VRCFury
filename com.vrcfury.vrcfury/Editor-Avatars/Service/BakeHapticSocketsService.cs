@@ -91,6 +91,7 @@ namespace VF.Service {
 
             var autoSockets = new List<(string name, VFAParam enabled, VFGameObject receiverSpace, HumanBodyBones? bone)>();
             var exclusiveTriggers = new List<(string name, VFAParam on)>();
+            var usedToggleParameters = new HashSet<string>();
             var usedMenuNames = new HashSet<string>();
             var usedOscIds = new HashSet<string>();
             foreach (var socket in avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>()) {
@@ -108,7 +109,13 @@ namespace VF.Service {
 
                     VFAParam toggleParam = null;
                     if (socket.addMenuItem) {
-                        toggleParam = fx.GetOrCreateBool(uniqueParams.GetObjectScopedName(obj, "Socket"));
+                        var parameterName = string.IsNullOrWhiteSpace(socket.menuGlobalParameter)
+                            ? uniqueParams.GetObjectScopedName(obj, "Socket")
+                            : socket.menuGlobalParameter;
+                        if (!usedToggleParameters.Add(parameterName)) {
+                            throw new VRCFBuilderException($"Multiple SPS sockets use the parameter '{parameterName}'. Give each socket a different parameter name.");
+                        }
+                        toggleParam = fx.GetOrCreateBool(parameterName);
                         toggleParam.MakeExpressionBool(saved: saved);
                         var icon = socket.menuIcon?.Get();
                         menu.NewMenuToggle($"{spsOptions.GetMenuPath()}/{menuName}", toggleParam, icon: icon);

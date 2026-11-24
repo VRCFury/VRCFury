@@ -263,6 +263,30 @@ namespace VF.Inspector {
                 toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("menuIcon"), "Menu Icon", tooltip: "Override the menu icon used for this socket's individual toggle. Looking to move or change the icon of the main SPS menu? Add a VRCFury 'SPS Options' component to the avatar root."));
                 toggles.Add(VRCFuryEditorUtils.BetterProp(serializedObject.FindProperty("enableAuto"), "Include in Auto selection?",
                     tooltip: "If checked, this socket will be eligible to be automatically enabled during Auto Mode."));
+                var parameter = serializedObject.FindProperty(nameof(VRCFuryHapticSocket.menuGlobalParameter));
+                var useGlobalParameter = new Toggle();
+                var parameterField = VRCFuryEditorUtils.BetterProp(
+                    parameter,
+                    "Parameter Name",
+                    fieldOverride: new TextField { bindingPath = parameter.propertyPath }
+                );
+                void ShowParameter(bool enabled) {
+                    useGlobalParameter.SetValueWithoutNotify(enabled);
+                    parameterField.SetVisible(enabled);
+                }
+                useGlobalParameter.TrackProperty(parameter, value => {
+                    if (!string.IsNullOrWhiteSpace(value.stringValue)) ShowParameter(true);
+                });
+                useGlobalParameter.RegisterValueChangedCallback(e => {
+                    if (!e.newValue) {
+                        parameter.stringValue = "";
+                        serializedObject.ApplyModifiedProperties();
+                    }
+                    ShowParameter(e.newValue);
+                });
+                ShowParameter(!string.IsNullOrWhiteSpace(parameter.stringValue));
+                toggles.Add(VRCFuryEditorUtils.BetterProp(parameter, "Use a global parameter", fieldOverride: useGlobalParameter));
+                toggles.Add(parameterField);
                 toggles.Add(VRCFuryEditorUtils.CheckboxList(
                     serializedObject.FindProperty("activeActions.actions"),
                     "Additional Actions While Menu Item is Active",

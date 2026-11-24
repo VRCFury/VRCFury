@@ -14,6 +14,7 @@ namespace VF.Tests {
     using VF.Builder;
     using VF.Builder.Haptics;
     using VF.Component;
+    using VF.Exceptions;
     using VF.Injector;
     using VF.Inspector;
     using VF.Model.Feature;
@@ -27,6 +28,45 @@ namespace VF.Tests {
     using Object = UnityEngine.Object;
 
     internal class BakeHapticSocketsServiceTest : SpsAvatarBuildTestBase {
+        private BakeHapticSocketsService PrepareSocketMenuBuild() {
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var globals = injector.GetService<GlobalsService>();
+            globals.allBuildersInRun = new List<VF.Feature.Base.FeatureBuilder>();
+            globals.allFeaturesInRun = new List<FeatureModel> { new SpsOptions { autoModeAvailable = false } };
+            globals.addOtherFeature = _ => { };
+            return injector.GetService<BakeHapticSocketsService>();
+        }
+
+        [Test]
+        public void SocketMenuCanUseAnExistingGlobalParameter() {
+            var builder = PrepareSocketMenuBuild();
+            var existing = fx.GetOrCreateBool("SharedSocket");
+            existing.MakeExpressionBool();
+            var socket = GameObjects.Create("Socket", root).AddComponent<VRCFuryHapticSocket>();
+            socket.name = "First";
+            socket.menuGlobalParameter = "SharedSocket";
+            var hidden = GameObjects.Create("Hidden", root).AddComponent<VRCFuryHapticSocket>();
+            hidden.addMenuItem = false;
+            hidden.menuGlobalParameter = "UnusedSocket";
+
+            builder.Apply();
+
+            Assert.That(SocketMenuParameter("First"), Is.SameAs(existing));
+            Assert.That(injector.GetService<ExpressionParamsService>().Count(p => p.name == "SharedSocket"), Is.EqualTo(1));
+            Assert.That(fx.TryGetParam("UnusedSocket", out _), Is.False);
+        }
+
+        [Test]
+        public void SocketMenusRejectDuplicateGlobalParameterNames() {
+            var builder = PrepareSocketMenuBuild();
+            GameObjects.Create("First", root).AddComponent<VRCFuryHapticSocket>().menuGlobalParameter = "SharedSocket";
+            GameObjects.Create("Second", root).AddComponent<VRCFuryHapticSocket>().menuGlobalParameter = "SharedSocket";
+
+            var error = Assert.Throws<ExceptionWithCause>(() => builder.Apply());
+            Assert.That(error.InnerException, Is.TypeOf<VRCFBuilderException>());
+            Assert.That(error.Message, Does.Contain("Multiple SPS sockets").And.Contain("SharedSocket"));
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void SocketBakeProtectsGuidedPathSourcesFromHeadChop(bool disabled) {

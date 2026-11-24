@@ -31,6 +31,55 @@ namespace VF.Tests {
         }
 
         [Test]
+        public void GlobalMenuParameterCanStayOpenWithAnEmptyName() {
+            Toggle GlobalParameterCheckbox(VisualElement gui) {
+                var label = gui.Query<Label>().ToList().Single(l => l.text == "Use a global parameter");
+                return label.parent.Q<Toggle>();
+            }
+
+            VisualElement AddInspector(InspectorTestBase.Panel panel) {
+                var gui = editor.CreateInspectorGUI();
+                panel.root.Add(gui);
+                panel.root.Bind(editor.serializedObject);
+                Pump(panel);
+                return gui;
+            }
+
+            using (var panel = CreatePanel()) {
+                var gui = AddInspector(panel);
+                var checkbox = GlobalParameterCheckbox(gui);
+                var property = editor.serializedObject.FindProperty(nameof(VRCFuryHapticSocket.menuGlobalParameter));
+                var field = gui.Query<TextField>().ToList().Single(f => f.bindingPath == property.propertyPath);
+                Assert.That(checkbox.value, Is.False);
+
+                checkbox.value = true;
+                Pump(panel);
+                Assert.That(property.stringValue, Is.Empty);
+                Assert.That(checkbox.value, Is.True);
+
+                field.value = "SharedSocket";
+                Pump(panel);
+                Assert.That(socket.menuGlobalParameter, Is.EqualTo("SharedSocket"));
+                Assert.That(checkbox.value, Is.True);
+
+                field.value = "";
+                Pump(panel);
+                Assert.That(socket.menuGlobalParameter, Is.Empty);
+                Assert.That(checkbox.value, Is.True);
+
+                field.value = "SharedSocket";
+                Pump(panel);
+                checkbox.value = false;
+                Assert.That(socket.menuGlobalParameter, Is.Empty);
+                checkbox.value = true;
+            }
+
+            using (var panel = CreatePanel()) {
+                Assert.That(GlobalParameterCheckbox(AddInspector(panel)).value, Is.False);
+            }
+        }
+
+        [Test]
         public void GuidedPathListIsReorderableLimitedAndRestoresModeWhenEmptied() {
             using (var panel = CreatePanel()) {
                 var gui = editor.CreateInspectorGUI();
