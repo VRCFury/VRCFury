@@ -380,7 +380,7 @@ namespace VF.Feature {
                 return "Go/" + name;
             }
 
-            var isGlobal = false;
+            var isGlobal = model.allNonsyncedAreGlobal;
             foreach (var _global in model.globalParams) {
                 var global = _global;
                 var negative = false;
@@ -758,6 +758,11 @@ namespace VF.Feature {
                 adv.Add(a);
                 adv.Add(b);
                 adv.Add(VRCFuryEditorUtils.List(prop.FindPropertyRelative("globalParams")));
+                adv.Add(VRCFuryEditorUtils.Prop(
+                    prop.FindPropertyRelative("allNonsyncedAreGlobal"),
+                    "(Deprecated) Mark all params as global",
+                    tooltip: "Use * in the Global Parameters list instead."
+                ));
             }
 
             {

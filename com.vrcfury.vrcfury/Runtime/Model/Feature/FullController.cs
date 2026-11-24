@@ -33,7 +33,7 @@ namespace VF.Model.Feature {
         public string injectSpsDepthParam;
         public string injectSpsVelocityParam;
 
-        [Obsolete] public bool allNonsyncedAreGlobal;
+        public bool allNonsyncedAreGlobal;
         [Obsolete] public GuidController controller;
         [Obsolete] public GuidMenu menu;
         [Obsolete] public GuidParams parameters;
