@@ -1,3 +1,4 @@
+#if !GESTURE_MANAGER_USES_SDK_PLAYER_IDS
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -5,8 +6,9 @@ using HarmonyLib;
 using VF.Utils;
 
 namespace VF.Hooks.GestureManagerFixes {
-    /** Gesture Manager assigns its own player ID to avatar dynamics components (because the VRCSDK used to not do it itself)
-     * This breaks things, since it DOESNT set playerid on some newer vrcsdk components like global colliders.
+    /**
+     * Stops older Gesture Manager builds from overriding SDK-assigned player IDs on only some dynamics components.
+     * https://github.com/BlackStartx/VRC-Gesture-Manager/releases/tag/v3.10.0
      */
     internal static class DisableGestureManagerPlayerIdHook {
         [ReflectionHelperOptional]
@@ -61,3 +63,4 @@ namespace VF.Hooks.GestureManagerFixes {
         }
     }
 }
+#endif

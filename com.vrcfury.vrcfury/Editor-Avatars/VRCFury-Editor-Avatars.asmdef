@@ -185,6 +185,16 @@
             "name": "com.vrchat.avatars",
             "expression": "3.10.6",
             "define": "VRCSDK_HAS_FACE_TRACKING"
+        },
+        {
+            "name": "lyuma.av3emulator",
+            "expression": "3.5.0",
+            "define": "AV3EMU_HAS_ADVANCED_CONTACTS"
+        },
+        {
+            "name": "vrchat.blackstartx.gesture-manager",
+            "expression": "3.10.0",
+            "define": "GESTURE_MANAGER_USES_SDK_PLAYER_IDS"
         }
     ],
     "noEngineReferences": false

@@ -1,9 +1,13 @@
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
 using System;
 using VRC.Dynamics;
 using VRC.SDKBase;
 using VF.Utils;
 
 namespace VF.Hooks.GestureManagerFixes {
+    /**
+     * Routes advanced contact outputs through Gesture Manager on builds without native bindings.
+     */
     internal static class FixGestureManagerAdvancedContactsHook {
         [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
@@ -28,3 +32,4 @@ namespace VF.Hooks.GestureManagerFixes {
         }
     }
 }
+#endif

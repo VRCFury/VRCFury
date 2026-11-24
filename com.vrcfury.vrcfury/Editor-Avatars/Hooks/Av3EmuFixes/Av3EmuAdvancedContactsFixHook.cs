@@ -1,15 +1,20 @@
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS && !AV3EMU_HAS_ADVANCED_CONTACTS
 using System;
 using VRC.SDK3.Dynamics.Contact.Components;
 using VRC.SDKBase;
 using VF.Utils;
 
 namespace VF.Hooks.Av3EmuFixes {
+    /**
+     * Connects advanced contact outputs to the Av3Emulator parameter bridge on builds before native support.
+     * https://github.com/lyuma/Av3Emulator/releases/tag/v3.5.0
+     */
     internal static class Av3EmuAdvancedContactsFixHook {
         [ReflectionHelperOptional]
         private abstract class Reflection : ReflectionHelper {
             public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(Av3EmuAdvancedContactsFixHook), nameof(Postfix),
-                Av3EmuAnimatorFixHook.LyumaAv3Runtime, "assignContactParameters",
+                Av3EmuTypes.Runtime, "assignContactParameters",
                 HarmonyUtils.PatchMode.Postfix);
         }
 
@@ -36,3 +41,4 @@ namespace VF.Hooks.Av3EmuFixes {
         }
     }
 }
+#endif

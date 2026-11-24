@@ -84,6 +84,11 @@
             "name": "com.vrchat.avatars",
             "expression": "",
             "define": "VRCF_AVATARS"
+        },
+        {
+            "name": "lyuma.av3emulator",
+            "expression": "3.5.0",
+            "define": "AV3EMU_HAS_ADVANCED_CONTACTS"
         }
     ],
     "noEngineReferences": false

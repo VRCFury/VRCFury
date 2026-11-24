@@ -1,5 +1,4 @@
 using System.Reflection;
-using UnityEditor;
 using VF.Utils;
 
 namespace VF.Hooks.Av3EmuFixes {
@@ -10,11 +9,11 @@ namespace VF.Hooks.Av3EmuFixes {
     internal static class Av3EmuSyncTimeFixHook {
         [ReflectionHelperOptional]
         private abstract class Av3EmuReflection : ReflectionHelper {
-            public static readonly FieldInfo NonLocalSyncInterval = Av3EmuAnimatorFixHook.LyumaAv3Runtime?.VFField("NonLocalSyncInterval");
+            public static readonly FieldInfo NonLocalSyncInterval = Av3EmuTypes.Runtime?.VFField("NonLocalSyncInterval");
             public static readonly HarmonyUtils.PatchObj Patch = HarmonyUtils.Patch(
                 typeof(Av3EmuSyncTimeFixHook),
                 nameof(Prefix),
-                Av3EmuAnimatorFixHook.LyumaAv3Runtime,
+                Av3EmuTypes.Runtime,
                 "Awake"
             );
         }
@@ -25,9 +24,10 @@ namespace VF.Hooks.Av3EmuFixes {
             Av3EmuReflection.Patch.apply();
         }
 
-        private static bool Prefix(object __instance) {
-            Av3EmuReflection.NonLocalSyncInterval.SetValue(__instance, 0.1f);
-            return true;
+        private static void Prefix(object __instance) {
+            if (Equals(Av3EmuReflection.NonLocalSyncInterval.GetValue(__instance), 0.2f)) {
+                Av3EmuReflection.NonLocalSyncInterval.SetValue(__instance, 0.1f);
+            }
         }
     }
 }

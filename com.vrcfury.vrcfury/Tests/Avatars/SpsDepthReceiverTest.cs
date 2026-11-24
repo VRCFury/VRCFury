@@ -16,7 +16,9 @@ using VF.Component;
 using VF.Injector;
 using VF.Inspector;
 using VF.Hooks.GestureManagerFixes;
+#if !AV3EMU_HAS_ADVANCED_CONTACTS
 using VF.Hooks.Av3EmuFixes;
+#endif
 using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
@@ -1288,9 +1290,31 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(velocity), Is.EqualTo(-1.2f).Within(0.001f));
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void SdkAdvancedContactValuesMustUseThePlayableParameterBridge(bool av3Emu) {
+        [Test]
+        public void GestureManagerAdvancedContactsUseThePlayableParameterBridge() {
+            VerifyAdvancedContactParameterBridge((receiver, playableAccess) => {
+                receiver.paramAccess = new GestureParameterAccess(playableAccess, receiver.parameter);
+                FixGestureManagerAdvancedContactsHook.Postfix(playableAccess, receiver);
+            });
+        }
+
+#if !AV3EMU_HAS_ADVANCED_CONTACTS
+        [Test]
+        public void Av3EmuAdvancedContactsUseThePlayableParameterBridge() {
+            VerifyAdvancedContactParameterBridge((receiver, playableAccess) => {
+                receiver.paramAccess = new Av3EmuParameterAccess { runtime = playableAccess, paramName = receiver.parameter };
+                // A skipped remote contact must retain its existing advanced accessors.
+                var before = receiver.param_PointSeparation;
+                Av3EmuAdvancedContactsFixHook.Postfix(new object(), new[] { receiver });
+                Assert.That(receiver.param_PointSeparation, Is.SameAs(before));
+                Av3EmuAdvancedContactsFixHook.Postfix(playableAccess, new[] { receiver });
+            });
+        }
+#endif
+
+        private void VerifyAdvancedContactParameterBridge(
+            Action<VRCContactReceiver, Func<string, IAnimParameterAccess>> bind
+        ) {
             measurements = Socket()(Party.Self);
             var length = measurements(SpsPlugLengthMeters);
             var radius = measurements(SpsPlugRadiusMeters);
@@ -1359,17 +1383,7 @@ namespace VF.Tests {
                 Assert.That(playable.GetFloat(length), Is.EqualTo(0.3f).Within(0.001f));
                 Assert.That(playable.GetFloat(radius), Is.EqualTo(0.03f).Within(0.001f));
 
-                if (av3Emu) {
-                    receiver.paramAccess = new Av3EmuParameterAccess { runtime = playableAccess, paramName = receiver.parameter };
-                    // A skipped remote contact must retain its existing advanced accessors.
-                    var before = receiver.param_PointSeparation;
-                    Av3EmuAdvancedContactsFixHook.Postfix(new object(), new[] { receiver });
-                    Assert.That(receiver.param_PointSeparation, Is.SameAs(before));
-                    Av3EmuAdvancedContactsFixHook.Postfix(playableAccess, new[] { receiver });
-                } else {
-                    receiver.paramAccess = new GestureParameterAccess(playableAccess, receiver.parameter);
-                    FixGestureManagerAdvancedContactsHook.Postfix(playableAccess, receiver);
-                }
+                bind(receiver, playableAccess);
                 Tick(); Tick();
                 receiver.param_SenderVelocityZ.floatVal = -0.6f;
                 Evaluate();
@@ -1392,6 +1406,7 @@ namespace VF.Tests {
             }
         }
 
+#if !AV3EMU_HAS_ADVANCED_CONTACTS
         public sealed class Av3EmuParameterAccess : IAnimParameterAccess {
             public Func<string, IAnimParameterAccess> runtime;
             public string paramName;
@@ -1399,6 +1414,7 @@ namespace VF.Tests {
             public int intVal { get => (int)floatVal; set => floatVal = value; }
             public bool boolVal { get => floatVal != 0; set => floatVal = value ? 1 : 0; }
         }
+#endif
 
         private sealed class TestParameterAccess : IAnimParameterAccess {
             private readonly Func<float> read;
