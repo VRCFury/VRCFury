@@ -19,6 +19,7 @@ namespace VF.Tests {
     using VF.Service;
     using VF.Utils;
     using VF.Utils.Controller;
+    using VRC.Dynamics;
     using VRC.SDK3.Avatars.Components;
     using VRC.SDK3.Dynamics.Contact.Components;
     using VRC.SDK3.Dynamics.PhysBone.Components;
@@ -207,7 +208,7 @@ namespace VF.Tests {
         public void SwitchesContactsAndRestoresOriginalChannels(bool socket, bool shared) {
 #if !VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             Assert.Ignore(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
-#endif
+#else
             if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Target", root);
             var action = Action(obj, !shared);
@@ -226,7 +227,7 @@ namespace VF.Tests {
             }
             var receiverAnimator = injector.GetService<SelfAndOthersReceiverAnimatorService>();
             var merged = receiverAnimator.GetParameter(main, Party.Merged);
-            var distance = receiverAnimator.GetAdvancedParam(main, Party.Others, "PointSeparation");
+            var distance = receiverAnimator.GetParameter(main, Party.Others, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
             // Simulate an already selected Others receiver for the pre-animation channel check.
             main.Find(false, true).obj.active = true;
             var senderCount = obj.GetComponentsInChildren<VRCContactSender>(true).Length;
@@ -268,6 +269,7 @@ namespace VF.Tests {
             SampleWithContact(off);
             AssertTags("old", shared);
             Assert.That(obj.GetComponentsInChildren<VRCContactSender>(true).Length, Is.GreaterThan(senderCount));
+#endif
         }
 
         [TestCase(false, false)]
@@ -326,15 +328,15 @@ namespace VF.Tests {
         public void SharesRadiusAndMergedSelectorBindingsWithoutBufferingMeasurements() {
 #if !VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             Assert.Ignore(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
-#endif
+#else
             if (!BuildTargetUtils.IsDesktop()) Assert.Ignore("Requires desktop SPS baking");
             GameObject obj = GameObjects.Create("Plug", root);
             var action = Action(obj, false);
             var bake = BakePlug(Plug(obj, true));
             var animator = injector.GetService<SelfAndOthersReceiverAnimatorService>();
             var merged = animator.GetParameter(bake.socketReceivers, Party.Merged);
-            var selfInput = animator.GetAdvancedParam(bake.socketReceivers, Party.Self, "PointSeparation");
-            var othersInput = animator.GetAdvancedParam(bake.socketReceivers, Party.Others, "PointSeparation");
+            var selfInput = animator.GetParameter(bake.socketReceivers, Party.Self, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
+            var othersInput = animator.GetParameter(bake.socketReceivers, Party.Others, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
             var fx = injector.GetService<ControllersService>().GetFx();
             var paramCount = fx.parameters.Count();
             var animation = Track(VFClip.Create());
@@ -359,6 +361,7 @@ namespace VF.Tests {
                 Assert.That(sphere.transform.lossyScale.y, Is.EqualTo(0.015f).Within(0.00001f));
                 Assert.That(sphere.radius, Is.EqualTo(senderRadius));
             });
+#endif
         }
 
         [Test]

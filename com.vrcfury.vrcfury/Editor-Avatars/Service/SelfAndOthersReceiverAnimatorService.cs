@@ -7,6 +7,7 @@ using VF.Component;
 using VF.Injector;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.Dynamics;
 using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
 using AdvancedParameter = VRC.Dynamics.ContactReceiver.AdvancedParameter;
@@ -44,7 +45,7 @@ namespace VF.Service {
                     tree.Add(output.MakeSetter(0));
                     foreach (var tag in tags) {
                         var formatted = data.component is VRCFuryHapticPlug ? SpsTags.FormatSocket(tag) : SpsTags.FormatPlug(tag);
-                        var input = fx.GetOrCreateFloat(source.name + "_CollisionTag_" + formatted);
+                        var input = fx.GetOrCreateFloat(source.name + ContactReceiver.PARAM_COLLISION_TAG_PREFIX + formatted);
                         tree.Add(input, output.MakeSetter(1));
                     }
                 });
@@ -66,11 +67,11 @@ namespace VF.Service {
         }
 
         public void RegisterOgbDepth(SelfAndOthersReceiverService.Receivers receivers, string prefix) {
-            foreach (var self in new[] { true, false }) {
+            foreach (var party in new[] { Party.Self, Party.Others }) {
                 GetParameter(
                     receivers,
-                    self,
-                    prefix + (self ? "/DepthSelf" : "/DepthOthers"),
+                    party,
+                    prefix + (party == Party.Self ? "/DepthSelf" : "/DepthOthers"),
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
                     advancedParameters: AdvancedParameter.All,
 #endif
@@ -81,56 +82,50 @@ namespace VF.Service {
 
         public VFAParam GetParameter(
             SelfAndOthersReceiverService.Receivers receivers,
-            bool self,
+            Party party,
             string parameterName = null,
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             AdvancedParameter advancedParameters = 0,
+            string suffix = null,
 #endif
             bool localOnly = false
         ) {
-            var receiver = receivers.Find(self, false, preferParameter: true, parameterName: parameterName, localOnly: localOnly);
-            // Explicit names are public outputs (for example OGB)
-            // Never rename an existing output already used by another consumer
-            if (parameterName != null) receiver.parameter = parameterName;
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-            receiver.advancedParameters |= advancedParameters;
+            if (suffix != null) advancedParameters |= VRCContactReceiverExtensions.GetAdvancedParameterFlag(suffix);
 #endif
-            return RegisterParameter(receiver, receivers.request.name + (self ? "/Self" : "/Others"));
+            VFAParam parameter;
+            if (party == Party.Self || party == Party.Others) {
+                var self = party == Party.Self;
+                var receiver = receivers.Find(self, false, preferParameter: true, parameterName: parameterName, localOnly: localOnly);
+                // Explicit names are public outputs (for example OGB)
+                // Never rename an existing output already used by another consumer
+                if (parameterName != null) receiver.parameter = parameterName;
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+                receiver.advancedParameters |= advancedParameters;
+#endif
+                parameter = RegisterParameter(receiver, receivers.request.name + (self ? "/Self" : "/Others"));
+            } else {
+                if (party != Party.Merged) throw new ArgumentOutOfRangeException(nameof(party));
+                if (parameterName != null) throw new ArgumentException("Merged contact parameters cannot have an explicit name.", nameof(parameterName));
+                if (localOnly) throw new ArgumentException("Merged contact parameters cannot be local-only.", nameof(localOnly));
+                parameter = GetMergedParameter(receivers
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+                    , advancedParameters
+#endif
+                );
+            }
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
+            if (suffix != null) {
+                var output = parameter.Controller.GetOrCreateFloat(parameter.name + suffix);
+                if (suffix == ContactReceiver.PARAM_POINT_SEPARATION) output.SetDefault(-1);
+                return output;
+            }
+#endif
+            return parameter;
         }
 
-        public VFAParam GetParameter(SelfAndOthersReceiverService.Receivers receivers, Party party, string parameterName = null
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-            , AdvancedParameter advancedParameters = 0
-#endif
-        ) {
-            if (party == Party.Self || party == Party.Others) return GetParameter(receivers, party == Party.Self, parameterName
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-                , advancedParameters
-#endif
-            );
-            if (party != Party.Merged) throw new ArgumentOutOfRangeException(nameof(party));
-            if (parameterName != null) throw new ArgumentException("Merged contact parameters cannot have an explicit name.", nameof(parameterName));
-            return GetMergedParameter(receivers
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-                , advancedParameters
-#endif
-            );
-        }
-
-        public VFAParam GetAdvancedParam(SelfAndOthersReceiverService.Receivers receivers, Party party, string suffix) {
-#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-            var fullSuffix = "_" + suffix;
-            var flag = VRCContactReceiverExtensions.GetAdvancedParameterFlag(suffix);
-            var parameter = GetParameter(receivers, party, advancedParameters: flag);
-            var output = parameter.Controller.GetOrCreateFloat(parameter.name + fullSuffix);
-            if (flag == AdvancedParameter.PointSeparation) output.SetDefault(-1);
-            return output;
-#else
-            throw new InvalidOperationException(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
-#endif
-        }
-
-        private VFAParam GetMergedParameter(SelfAndOthersReceiverService.Receivers receivers
+        private VFAParam GetMergedParameter(
+            SelfAndOthersReceiverService.Receivers receivers
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             , AdvancedParameter advancedParameters = 0
 #endif
@@ -153,8 +148,11 @@ namespace VF.Service {
         }
 
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-        private VFMotion CreateSelector(SelfAndOthersReceiverService.Receivers receivers,
-            SelfAndOthersReceiverService.Receiver mergedSelf, SelfAndOthersReceiverService.Receiver mergedOthers) {
+        private VFMotion CreateSelector(
+            SelfAndOthersReceiverService.Receivers receivers,
+            SelfAndOthersReceiverService.Receiver mergedSelf,
+            SelfAndOthersReceiverService.Receiver mergedOthers
+        ) {
             VFClip Select(string name, bool self = false, bool others = false) {
                 var clip = VFClip.Create(receivers.request.name + " " + name);
                 clip.SetEnabled(mergedSelf.obj, self);
@@ -164,8 +162,8 @@ namespace VF.Service {
             var chooseSelf = Select("select self", self: true);
             var chooseOthers = Select("select others", others: true);
             var chooseNeither = Select("no contact");
-            var selfDistance = GetAdvancedParam(receivers, Party.Self, "PointSeparation");
-            var othersDistance = GetAdvancedParam(receivers, Party.Others, "PointSeparation");
+            var selfDistance = GetParameter(receivers, Party.Self, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
+            var othersDistance = GetParameter(receivers, Party.Others, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
 
             var tree = VFBlendTree2D.CreateFreeformCartesian(receivers.request.name + " closest contact", othersDistance, selfDistance);
             // With both distances nonnegative, compare near the origin. Tilt the Others stop

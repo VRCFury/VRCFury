@@ -8,6 +8,7 @@ using VF.Inspector;
 using BakeResult = VF.Inspector.VRCFuryHapticPlugEditor.BakeResult;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.Dynamics;
 
 namespace VF.Service {
     [VFService]
@@ -39,9 +40,9 @@ namespace VF.Service {
             var byParty = new Dictionary<Party, Func<string, VFAParam>>();
             return party => byParty.GetOrCreate(party, () => {
                 var prefix = name + "/" + party;
-                VFAParam Field(string suffix) => receiverAnimator.GetAdvancedParam(main, party, suffix);
+                VFAParam Field(string suffix) => receiverAnimator.GetParameter(main, party, suffix: suffix);
                 // Point separation is normally -1 with no contact, but can be 0 until the receiver first turns on.
-                var present = new Lazy<BlendtreeMath.Condition>(() => BlendtreeMath.GreaterThan(Field("PointSeparation"), 0));
+                var present = new Lazy<BlendtreeMath.Condition>(() => BlendtreeMath.GreaterThan(Field(ContactReceiver.PARAM_POINT_SEPARATION), 0));
                 var presence = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
                     present.Value.CreateBranches(tree, prefix + "/Present"));
                 var legacy = party != Party.Self && main.request.supportsLegacy;
@@ -54,7 +55,7 @@ namespace VF.Service {
                     presence.Value.whenTrue.Add(BlendtreeMath.Add(
                         prefix + "/Dist/Socket",
                         output,
-                        (Field("PointSeparation"), 1),
+                        (Field(ContactReceiver.PARAM_POINT_SEPARATION), 1),
                         (raw, -localLength * multiplier)
                     ));
                     presence.Value.whenFalse.Add(output.MakeSetter(100));
@@ -62,7 +63,7 @@ namespace VF.Service {
                 });
                 var velocity = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Velocity");
-                    presence.Value.whenTrue.Add(output.MakeCopier(Field("SenderVelocityZ"), -100, 100));
+                    presence.Value.whenTrue.Add(output.MakeCopier(Field(ContactReceiver.PARAM_SENDER_VELOCITY_Z), -100, 100));
                     presence.Value.whenFalse.Add(output.MakeSetter(0));
                     return output;
                 });
@@ -76,7 +77,7 @@ namespace VF.Service {
                             if (party == Party.Self) return fx.Zero();
                             var othersOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithOthers");
                             // SDK SenderType: 0 = none, 1 = self, 2 = another avatar, 3 = world.
-                            var others = party == Party.Others ? BlendtreeMath.True() : BlendtreeMath.GreaterThan(Field("SenderType"), 1);
+                            var others = party == Party.Others ? BlendtreeMath.True() : BlendtreeMath.GreaterThan(Field(ContactReceiver.PARAM_SENDER_TYPE), 1);
                             presence.Value.whenTrue.Add(others.create(othersOutput.MakeSetter(1), othersOutput.MakeSetter(0)));
                             presence.Value.whenFalse.Add(othersOutput.MakeSetter(0));
                             return othersOutput;
@@ -95,20 +96,20 @@ namespace VF.Service {
                             var on = flagOutput.MakeSetter(1);
                             // Collapse is the highest bit in the packed X scale.
                             var nativeCollapse = BlendtreeMath.GreaterThan(
-                                Field("SenderLossyScaleX"),
+                                Field(ContactReceiver.PARAM_SENDER_LOSSY_SCALE_X),
                                 (int)SpsTags.SocketScaleFlagsX.Collapse - 0.5f,
                                 orEqual: true,
                                 name: flagOutput.name + "/NativeFlag"
                             );
                             var animatorHole = BlendtreeMath.GreaterThan(
-                                Field("SenderLossyScaleZ"),
+                                Field(ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Z),
                                 (int)SpsTags.SocketScaleFlagsZ.AnimatorHole - 0.5f,
                                 orEqual: true
                             );
                             encoding.Value.whenTrue.Add(animatorHole.Or(nativeCollapse).create(on, off));
                             if (legacy) {
-                                var holeTag = BlendtreeMath.GreaterThan(Field("CollisionTag_" + SpsTags.LegacySocketHole), 0);
-                                var ringTag = BlendtreeMath.GreaterThan(Field("CollisionTag_" + SpsTags.LegacySocketRing), 0);
+                                var holeTag = BlendtreeMath.GreaterThan(Field(ContactReceiver.PARAM_COLLISION_TAG_PREFIX + SpsTags.LegacySocketHole), 0);
+                                var ringTag = BlendtreeMath.GreaterThan(Field(ContactReceiver.PARAM_COLLISION_TAG_PREFIX + SpsTags.LegacySocketRing), 0);
                                 var legacyFlag = holeTag.And(ringTag.Not());
                                 encoding.Value.whenFalse.Add(legacyFlag.create(flagOutput.MakeSetter(1), flagOutput.MakeSetter(0)));
                             }

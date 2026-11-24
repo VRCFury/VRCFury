@@ -8,6 +8,7 @@ using VF.Component;
 using VF.Injector;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.Dynamics;
 using BakeResult = VF.Inspector.VRCFuryHapticSocketEditor.BakeResult;
 
 namespace VF.Service {
@@ -42,9 +43,9 @@ namespace VF.Service {
                 var legacy = includeLegacy && !self;
                 var prefix = name + "/" + party;
                 var proximity = new Lazy<VFAParam>(() => receiverAnimator.GetParameter(main, party));
-                VFAParam Field(string suffix) => receiverAnimator.GetAdvancedParam(main, party, suffix);
+                VFAParam Field(string suffix) => receiverAnimator.GetParameter(main, party, suffix: suffix);
                 // Point separation is normally -1 with no contact, but can be 0 until the receiver first turns on.
-                var present = new Lazy<BlendtreeMath.Condition>(() => BlendtreeMath.GreaterThan(Field("PointSeparation"), 0));
+                var present = new Lazy<BlendtreeMath.Condition>(() => BlendtreeMath.GreaterThan(Field(ContactReceiver.PARAM_POINT_SEPARATION), 0));
                 var native = new Lazy<BlendtreeMath.Condition>(() => receiverAnimator.GetNative(main, party));
                 var presence = new Lazy<(VFBlendTreeDirect whenTrue, VFBlendTreeDirect whenFalse)>(() =>
                     present.Value.CreateBranches(tree, prefix + "/Present"));
@@ -62,22 +63,22 @@ namespace VF.Service {
                 // At saturation this is a lower bound; use it to seed a missing estimate.
                 var length = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Length", 0.3f);
-                    var nativeInput = Field("SenderLossyScaleZ");
+                    var nativeInput = Field(ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Z);
                     var estimate = legacy ? estimateMath.Value.Add(prefix + "/LegacyLengthEstimate",
-                        (Field("PointSeparation"), 1), (proximity.Value, worldRadius), (1, -worldRadius)) : null;
+                        (Field(ContactReceiver.PARAM_POINT_SEPARATION), 1), (proximity.Value, worldRadius), (1, -worldRadius)) : null;
                     AddSize("Length", output, nativeInput, 0.3f, estimate);
                     return output;
                 });
                 var radius = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Radius", 0.03f);
-                    var nativeInput = Field("SenderLossyScaleX");
+                    var nativeInput = Field(ContactReceiver.PARAM_SENDER_LOSSY_SCALE_X);
                     if (legacy) {
                         var legacyWidthReceiver = contacts.GetLegacyWidthReceiver(main);
                         var helper = receiverAnimator.GetParameter(legacyWidthReceiver, Party.Others);
-                        VFAParam HelperField(string suffix) => receiverAnimator.GetAdvancedParam(legacyWidthReceiver, Party.Others, suffix);
+                        VFAParam HelperField(string suffix) => receiverAnimator.GetParameter(legacyWidthReceiver, Party.Others, suffix: suffix);
                         var helperPresent = BlendtreeMath.GreaterThan(helper, 0);
                         var helperRadius = estimateMath.Value.Add(prefix + "/LegacyHelperRadius",
-                            (HelperField("PointSeparation"), 1), (helper, worldRadius), (1, -worldRadius));
+                            (HelperField(ContactReceiver.PARAM_POINT_SEPARATION), 1), (helper, worldRadius), (1, -worldRadius));
                         var estimate = estimateMath.Value.Add(prefix + "/LegacyRadiusEstimate", (proximity.Value, worldRadius / 2), (helper, -worldRadius / 2));
                         var measurable = BlendtreeMath.GreaterThan(helperRadius, 0.01001f)
                             .And(BlendtreeMath.LessThan(helper, 1));
@@ -92,11 +93,11 @@ namespace VF.Service {
                     var output = fx.CreateUniqueFloat(prefix + "/Dist/Meters", 100);
                     VFMotion Sum(string label, params (BlendtreeMath.Value input, float multiplier)[] terms) =>
                         BlendtreeMath.Add(prefix + "/Dist/" + label, output, terms);
-                    encoding.Value.whenTrue.Add(Sum("Native", (Field("PointSeparation"), 1), (Field("SenderLossyScaleZ"), -1)));
+                    encoding.Value.whenTrue.Add(Sum("Native", (Field(ContactReceiver.PARAM_POINT_SEPARATION), 1), (Field(ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Z), -1)));
                     if (legacy) {
                         encoding.Value.whenFalse.Add(BlendtreeMath.LessThan(proximity.Value, 1).create(
                             Sum("LegacyOutside", (1, worldRadius), (proximity.Value, -worldRadius)),
-                            Sum("LegacyInside", (Field("PointSeparation"), 1), (length.Value, -1))));
+                            Sum("LegacyInside", (Field(ContactReceiver.PARAM_POINT_SEPARATION), 1), (length.Value, -1))));
                     }
                     presence.Value.whenFalse.Add(output.MakeSetter(100));
                     return output;
@@ -104,7 +105,7 @@ namespace VF.Service {
                 var velocity = new Lazy<VFAParam>(() => {
                     var output = fx.CreateUniqueFloat(prefix + "/Velocity");
                     // Deliberately axial velocity, not total speed or a buffered radial-depth derivative.
-                    presence.Value.whenTrue.Add(output.MakeCopier(Field("SenderVelocityZ"), -100, 100));
+                    presence.Value.whenTrue.Add(output.MakeCopier(Field(ContactReceiver.PARAM_SENDER_VELOCITY_Z), -100, 100));
                     presence.Value.whenFalse.Add(output.MakeSetter(0));
                     return output;
                 });
@@ -120,7 +121,7 @@ namespace VF.Service {
                     // Modern plugs reach their sampled radius at the entrance, tapering to zero 5% outside.
                     var depth = GetOutput(SpsParamDepth, SpsUnitsPlugLengths);
                     encoding.Value.whenTrue.Add(VFBlendTree1D.CreateWithData(prefix + "/PlugEntryRadius/NativeTaper",
-                        depth, (0, output.MakeCopier(Field("SenderLossyScaleY"))), (0.05f, output.MakeSetter(0))));
+                        depth, (0, output.MakeCopier(Field(ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y))), (0.05f, output.MakeSetter(0))));
                     if (legacy) {
                         var helper = receiverAnimator.GetParameter(contacts.GetLegacyWidthReceiver(main), Party.Others);
                         var taper = VFBlendTree1D.CreateWithData(prefix + "/PlugEntryRadius/LegacyTaper",
@@ -143,7 +144,7 @@ namespace VF.Service {
                             if (self) return fx.Zero();
                             var othersOutput = fx.CreateUniqueFloat(prefix + "/InteractingWithOthers");
                             // SDK SenderType: 0 = none, 1 = self, 2 = another avatar, 3 = world.
-                            var others = party == Party.Others ? BlendtreeMath.True() : BlendtreeMath.GreaterThan(Field("SenderType"), 1);
+                            var others = party == Party.Others ? BlendtreeMath.True() : BlendtreeMath.GreaterThan(Field(ContactReceiver.PARAM_SENDER_TYPE), 1);
                             presence.Value.whenTrue.Add(others.create(othersOutput.MakeSetter(1), othersOutput.MakeSetter(0)));
                             presence.Value.whenFalse.Add(othersOutput.MakeSetter(0));
                             return othersOutput;

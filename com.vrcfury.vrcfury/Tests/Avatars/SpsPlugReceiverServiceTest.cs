@@ -81,7 +81,7 @@ namespace VF.Tests {
             _ = factory(Party.Others)(SpsDepthMeters);
             if (!materialsFirst) visual.Create(plug, new[] { renderer });
             var parameters = new[] { true, false }.ToDictionary(self => self,
-                self => receiverAnimator.GetParameter(visual.GetReceivers(plug), self).name);
+                self => receiverAnimator.GetParameter(visual.GetReceivers(plug), self ? Party.Self : Party.Others).name);
             injector.GetService<ChangeSpsChannelsService>().Apply();
             var contacts = root.GetComponentsInChildren<VRCContactReceiver>(true);
             Assert.That(contacts, Has.Length.EqualTo(3));
@@ -373,18 +373,19 @@ namespace VF.Tests {
         [TestCase(false, false)]
         public void NamedOgbParameterIsReusedByDepthAndShaderConsumers(bool self, bool shaderFirst) {
             var receivers = bake.socketReceivers;
+            var party = self ? Party.Self : Party.Others;
             var parameterName = "OGB/Plug/Test/" + (self ? "DepthSelf" : "DepthOthers");
             var renderer = plug.configureTpsMesh.Single();
             void Materials() => receivers.SetMaterials(new[] { renderer }, self, false, "ShaderOutput");
             if (shaderFirst) Materials();
-            var ogb = receiverAnimator.GetParameter(receivers, self, parameterName, ContactReceiver.AdvancedParameter.SenderType);
+            var ogb = receiverAnimator.GetParameter(receivers, party, parameterName, ContactReceiver.AdvancedParameter.SenderType);
             if (!shaderFirst) Materials();
-            var depth = receiverAnimator.GetParameter(receivers, self, advancedParameters: ContactReceiver.AdvancedParameter.PointSeparation);
+            var depth = receiverAnimator.GetParameter(receivers, party, advancedParameters: ContactReceiver.AdvancedParameter.PointSeparation);
             Assert.That(ogb.name, Is.EqualTo(parameterName));
             Assert.That(depth.name, Is.EqualTo(parameterName));
             Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameterName), Is.Not.Null);
             receiverAnimator.GetParameter(receivers, Party.Merged);
-            Assert.That(receiverAnimator.GetParameter(receivers, self, parameterName).name, Is.EqualTo(parameterName));
+            Assert.That(receiverAnimator.GetParameter(receivers, party, parameterName).name, Is.EqualTo(parameterName));
             receiverAnimator.GetParameter(receivers, Party.Merged);
             injector.GetService<ChangeSpsChannelsService>().Apply();
             var receiver = root.GetComponentsInChildren<VRCContactReceiver>(true).Single(r => r.parameter == parameterName);
@@ -393,7 +394,7 @@ namespace VF.Tests {
             Assert.That(receiver.shaderTargetRenderers, Is.EqualTo(new[] { renderer }));
             Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderType
                 | ContactReceiver.AdvancedParameter.PointSeparation));
-            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameterName + "_PointSeparation"), Is.Not.Null);
+            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameterName + ContactReceiver.PARAM_POINT_SEPARATION), Is.Not.Null);
             Assert.That(SourceReceiver(self), Is.SameAs(receiver));
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(4));
         }
@@ -402,12 +403,12 @@ namespace VF.Tests {
         [Test]
         public void DifferentExplicitParameterNamesDoNotRenameExistingReceivers() {
             var receivers = bake.socketReceivers;
-            var first = receiverAnimator.GetParameter(receivers, true, "OGB/First");
-            var second = receiverAnimator.GetParameter(receivers, true, "OGB/Second");
+            var first = receiverAnimator.GetParameter(receivers, Party.Self, "OGB/First");
+            var second = receiverAnimator.GetParameter(receivers, Party.Self, "OGB/Second");
             Assert.That(first.name, Is.EqualTo("OGB/First"));
             Assert.That(second.name, Is.EqualTo("OGB/Second"));
-            Assert.That(receiverAnimator.GetParameter(receivers, true).name, Is.EqualTo(first.name));
-            Assert.That(receiverAnimator.GetParameter(receivers, true, "OGB/Second").name, Is.EqualTo(second.name));
+            Assert.That(receiverAnimator.GetParameter(receivers, Party.Self).name, Is.EqualTo(first.name));
+            Assert.That(receiverAnimator.GetParameter(receivers, Party.Self, "OGB/Second").name, Is.EqualTo(second.name));
             injector.GetService<ChangeSpsChannelsService>().Apply();
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true).Select(r => r.parameter),
                 Is.EquivalentTo(new[] { "OGB/First", "OGB/Second" }));
@@ -420,18 +421,19 @@ namespace VF.Tests {
         [TestCase(false, false)]
         public void ParameterRequestsReuseShaderReceiversAndUnionAdvancedOutputs(bool self, bool shaderFirst) {
             var receivers = bake.socketReceivers;
+            var party = self ? Party.Self : Party.Others;
             var targets = Enumerable.Range(0, 9)
                 .Select(i => (Renderer)GameObjects.Create("Target " + i, root).AddComponent<MeshRenderer>()).ToArray();
             void Materials() => receivers.SetMaterials(targets, self, true, "ShaderOutput");
             if (shaderFirst) Materials();
-            var parameter = receiverAnimator.GetParameter(receivers, self, advancedParameters: ContactReceiver.AdvancedParameter.SenderLocalPosition);
+            var parameter = receiverAnimator.GetParameter(receivers, party, advancedParameters: ContactReceiver.AdvancedParameter.SenderLocalPosition);
             if (!shaderFirst) Materials();
-            var again = receiverAnimator.GetParameter(receivers, self, advancedParameters: ContactReceiver.AdvancedParameter.SenderLossyScale);
+            var again = receiverAnimator.GetParameter(receivers, party, advancedParameters: ContactReceiver.AdvancedParameter.SenderLossyScale);
             Assert.That(again.name, Is.EqualTo(parameter.name));
-            var requested = receiverAnimator.GetAdvancedParam(receivers, self ? Party.Self : Party.Others, "SenderLossyScaleY");
-            Assert.That(requested.name, Is.EqualTo(parameter.name + "_SenderLossyScaleY"));
+            var requested = receiverAnimator.GetParameter(receivers, party, suffix: ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y);
+            Assert.That(requested.name, Is.EqualTo(parameter.name + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y));
             var parameterCount = fx.parameters.Length;
-            receiverAnimator.GetParameter(receivers, self);
+            receiverAnimator.GetParameter(receivers, party);
             Assert.That(fx.parameters, Has.Length.EqualTo(parameterCount));
             injector.GetService<ChangeSpsChannelsService>().Apply();
             var all = root.GetComponentsInChildren<VRCContactReceiver>(true);
@@ -441,9 +443,9 @@ namespace VF.Tests {
             var receiver = all.Single(r => r.parameter == parameter.name);
             Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderLocalPosition
                 | ContactReceiver.AdvancedParameter.SenderLossyScale));
-            foreach (var suffix in new[] { "_SenderLocalPositionX", "_SenderLocalPositionY", "_SenderLocalPositionZ",
-                         "_SenderLossyScaleX", "_SenderLossyScaleY", "_SenderLossyScaleZ" }) {
-                Assert.That(fx.TryGetParam(parameter.name + suffix, out _), Is.EqualTo(suffix == "_SenderLossyScaleY"),
+            foreach (var suffix in new[] { ContactReceiver.PARAM_SENDER_LOCAL_POSITION_X, ContactReceiver.PARAM_SENDER_LOCAL_POSITION_Y, ContactReceiver.PARAM_SENDER_LOCAL_POSITION_Z,
+                         ContactReceiver.PARAM_SENDER_LOSSY_SCALE_X, ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Z }) {
+                Assert.That(fx.TryGetParam(parameter.name + suffix, out _), Is.EqualTo(suffix == ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y),
                     "Enabling an SDK output group must not declare its unused animator fields");
             }
             Assert.That(receiver.advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.SenderLocalPosition
@@ -459,7 +461,7 @@ namespace VF.Tests {
             var layers = fx.GetLayers().Count();
             var again = receiverAnimator.GetParameter(receivers, Party.Merged, advancedParameters: ContactReceiver.AdvancedParameter.SenderLossyScale);
             Assert.That(again.name, Is.EqualTo(parameter.name));
-            _ = receiverAnimator.GetAdvancedParam(receivers, Party.Merged, "SenderType");
+            _ = receiverAnimator.GetParameter(receivers, Party.Merged, suffix: ContactReceiver.PARAM_SENDER_TYPE);
             Assert.That(fx.GetLayers().Count(), Is.EqualTo(layers));
             injector.GetService<ChangeSpsChannelsService>().Apply();
             Assert.That(root.GetComponentsInChildren<VRCContactReceiver>(true), Has.Length.EqualTo(4));
@@ -468,8 +470,8 @@ namespace VF.Tests {
                     | ContactReceiver.AdvancedParameter.SenderLossyScale));
                 Assert.That(SourceReceiver(self).advancedParameters, Is.EqualTo(ContactReceiver.AdvancedParameter.PointSeparation));
             }
-            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameter.name + "_SenderType"), Is.Not.Null);
-            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameter.name + "_SenderLossyScaleY"), Is.Null);
+            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameter.name + ContactReceiver.PARAM_SENDER_TYPE), Is.Not.Null);
+            Assert.That(fx.parameters.FirstOrDefault(p => p.name == parameter.name + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y), Is.Null);
         }
 #endif
 #if VRCSDK_HAS_MATERIAL_CONTACTS

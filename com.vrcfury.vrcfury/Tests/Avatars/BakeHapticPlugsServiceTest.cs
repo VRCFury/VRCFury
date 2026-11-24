@@ -289,7 +289,7 @@ namespace VF.Tests {
             baker.Apply();
             baker.ApplySpsRewrites();
             var receivers = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
-            var othersName = receiverAnimator.GetParameter(receivers, false).name;
+            var othersName = receiverAnimator.GetParameter(receivers, Party.Others).name;
             var mergedName = receiverAnimator.GetParameter(receivers, Party.Merged).name;
             Start();
             var others = root.GetComponentsInChildren<VRCContactReceiver>(true).Single(r => r.parameter == othersName);

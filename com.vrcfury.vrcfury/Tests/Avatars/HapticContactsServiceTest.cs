@@ -110,8 +110,8 @@ namespace VF.Tests {
                 injector.GetService<BakeHapticPlugsService>().Apply();
                 injector.GetService<VF.Feature.VRCFuryHapticTouchReceiverBuilder>().Apply();
                 var plugReceivers = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
-                var plugSelfParameter = receiverAnimator.GetParameter(plugReceivers, true);
-                var plugOthersParameter = receiverAnimator.GetParameter(plugReceivers, false);
+                var plugSelfParameter = receiverAnimator.GetParameter(plugReceivers, Party.Self);
+                var plugOthersParameter = receiverAnimator.GetParameter(plugReceivers, Party.Others);
                 injector.GetService<ChangeSpsChannelsService>().Apply();
                 var receivers = root.GetComponentsInChildren<VRCContactReceiver>(true);
                 Assert.That(receivers.Where(r => r.allowSelf).SelectMany(r => r.collisionTags)

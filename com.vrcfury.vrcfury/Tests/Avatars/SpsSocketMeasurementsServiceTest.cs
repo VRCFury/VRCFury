@@ -233,7 +233,7 @@ namespace VF.Tests {
             var radiusOutput = measurements(SpsPlugRadiusMeters);
             Start();
             Set(Main(self), 0.8f, 1.2f, length, radius, native: true);
-            var legacyTag = Main(self).parameter + "_CollisionTag_" + SpsTags.LegacyPlugSphere;
+            var legacyTag = Main(self).parameter + ContactReceiver.PARAM_COLLISION_TAG_PREFIX + SpsTags.LegacyPlugSphere;
             if (fx.TryGetParam(legacyTag, out _)) playable.SetFloat(legacyTag, 1);
             Evaluate();
             Assert.That(playable.GetFloat(depth), Is.EqualTo(1.2f - length).Within(0.001f));
@@ -258,9 +258,9 @@ namespace VF.Tests {
             var velocity = measurements(SpsVelocityMeters);
             Start();
             Set(Main(self), 1, 0.2f, 0.4f, 0.05f, native: false);
-            var legacyTag = Main(self).parameter + "_CollisionTag_" + SpsTags.LegacyPlugSphere;
+            var legacyTag = Main(self).parameter + ContactReceiver.PARAM_COLLISION_TAG_PREFIX + SpsTags.LegacyPlugSphere;
             if (fx.TryGetParam(legacyTag, out _)) playable.SetFloat(legacyTag, 0);
-            playable.SetFloat(Main(self).parameter + "_SenderVelocityZ", 0.6f);
+            playable.SetFloat(Main(self).parameter + ContactReceiver.PARAM_SENDER_VELOCITY_Z, 0.6f);
             Evaluate();
             Assert.That(playable.GetFloat(depth), Is.EqualTo(includeLegacy ? 0 : -0.2f).Within(0.001f));
             Assert.That(playable.GetFloat(length), Is.EqualTo(includeLegacy ? 0.2f : 0.4f).Within(0.001f));
@@ -287,7 +287,7 @@ namespace VF.Tests {
             playable.SetFloat(scale, 2);
             var receiver = merged ? Merged() : Main(self);
             Set(receiver, 1, 0.3f, length: 0.8f, radius: 0.12f, native: true);
-            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.04f);
+            playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, 0.04f);
             Evaluate();
             Assert.That(playable.GetFloat(meters), Is.EqualTo(0.04f).Within(0.001f));
             Assert.That(playable.GetFloat(local), Is.EqualTo(0.02f).Within(0.001f));
@@ -295,7 +295,7 @@ namespace VF.Tests {
             foreach (var plugLength in new[] { 0.4f, 0.8f }) {
                 foreach (var (outside, fraction) in new[] { (0.1f, 0f), (0.05f, 0f), (0.025f, 0.5f), (0f, 1f), (-0.1f, 1f) }) {
                     Set(receiver, 0.9f, plugLength * (1 + outside), length: plugLength, radius: 0.12f, native: true);
-                    playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.04f);
+                    playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, 0.04f);
                     Evaluate(30);
                     Assert.That(playable.GetFloat(meters), Is.EqualTo(0.04f * fraction).Within(0.001f),
                         $"Entry radius at {outside:P} outside a {plugLength}m plug");
@@ -336,7 +336,7 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.06f).Within(0.001f), "Further insertion");
             var receiver = merged ? Merged() : Main(false);
             Set(receiver, 1, 0.3f, length: 0.6f, radius: 0.2f, native: true);
-            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.04f);
+            playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, 0.04f);
             Evaluate(30);
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.04f).Within(0.001f), "Native plugs use sampled radius even with a stale legacy helper");
             Contact(0.3f, 1, 0);
@@ -507,7 +507,7 @@ namespace VF.Tests {
                 Set(Main(false), 0.8f, sample.distance);
                 Set(Width(false), sample.helper, sample.helperDistance);
                 var speed = frame % 2 == 0 ? -0.4f : 0.7f;
-                playable.SetFloat(Main(false).parameter + "_SenderVelocityZ", speed);
+                playable.SetFloat(Main(false).parameter + ContactReceiver.PARAM_SENDER_VELOCITY_Z, speed);
                 Evaluate(1);
                 Assert.That(new[] { 0.3f, 0.6f, 0.8f }.Any(v => Mathf.Abs(v - playable.GetFloat(length)) < 0.001f), Is.True,
                     "A stale validity decision must not accept a negative or oversized length");
@@ -609,28 +609,28 @@ namespace VF.Tests {
             playable.SetFloat(scale, 2);
             Set(Merged(), 1, 0.4f, 0.4f, 0.05f, native: true);
             Set(Main(false), 0, -1);
-            playable.SetFloat(Merged().parameter + "_SenderVelocityX", 3);
-            playable.SetFloat(Merged().parameter + "_SenderVelocityY", 4);
-            playable.SetFloat(Merged().parameter + "_SenderVelocityMagnitude", 5);
-            playable.SetFloat(Merged().parameter + "_SenderVelocityZ", -0.3f);
+            playable.SetFloat(Merged().parameter + ContactReceiver.PARAM_SENDER_VELOCITY_X, 3);
+            playable.SetFloat(Merged().parameter + ContactReceiver.PARAM_SENDER_VELOCITY_Y, 4);
+            playable.SetFloat(Merged().parameter + ContactReceiver.PARAM_SENDER_VELOCITY_MAGNITUDE, 5);
+            playable.SetFloat(Merged().parameter + ContactReceiver.PARAM_SENDER_VELOCITY_Z, -0.3f);
             Evaluate();
             Assert.That(playable.GetFloat(velocity), Is.EqualTo(-0.3f).Within(0.001f));
             Assert.That(playable.GetFloat(localVelocity), Is.EqualTo(-0.15f).Within(0.002f));
             Assert.That(playable.GetFloat(normalizedVelocity), Is.EqualTo(-0.75f).Within(0.002f));
-            playable.SetFloat(Merged().parameter + "_SenderVelocityZ", 0.8f);
+            playable.SetFloat(Merged().parameter + ContactReceiver.PARAM_SENDER_VELOCITY_Z, 0.8f);
             Evaluate(1);
             Assert.That(playable.GetFloat(velocity), Is.EqualTo(0.8f).Within(0.001f), "Z changes must not pass through an AAP history pipeline");
-            playable.SetFloat(Merged().parameter + "_SenderVelocityZ", 0);
+            playable.SetFloat(Merged().parameter + ContactReceiver.PARAM_SENDER_VELOCITY_Z, 0);
             Evaluate(1);
             Assert.That(playable.GetFloat(velocity), Is.EqualTo(0).Within(0.001f));
             Set(Merged(), 0, -1);
-            playable.SetFloat(Merged().parameter + "_SenderVelocityZ", 10);
+            playable.SetFloat(Merged().parameter + ContactReceiver.PARAM_SENDER_VELOCITY_Z, 10);
             Evaluate();
             Assert.That(playable.GetFloat(velocity), Is.EqualTo(0).Within(0.005f));
             Set(Main(false), 1, 0.1f, 0.4f, 0.05f, native: true);
             Set(Merged(), 1, 0.1f, 0.4f, 0.05f, native: true);
-            playable.SetFloat(Main(false).parameter + "_SenderVelocityZ", -1.2f);
-            playable.SetFloat(Merged().parameter + "_SenderVelocityZ", -1.2f);
+            playable.SetFloat(Main(false).parameter + ContactReceiver.PARAM_SENDER_VELOCITY_Z, -1.2f);
+            playable.SetFloat(Merged().parameter + ContactReceiver.PARAM_SENDER_VELOCITY_Z, -1.2f);
             Evaluate();
             Assert.That(playable.GetFloat(velocity), Is.EqualTo(-1.2f).Within(0.001f));
         }

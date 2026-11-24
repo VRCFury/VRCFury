@@ -11,6 +11,7 @@ using VF.Builder.Haptics;
 using VF.Service;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.Dynamics;
 using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
@@ -46,8 +47,8 @@ namespace VF.Tests {
                 var receiverAnimator = injector.GetService<SelfAndOthersReceiverAnimatorService>();
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
                 receiverAnimator.GetParameter(receivers, Party.Merged);
-                var self = receiverAnimator.GetAdvancedParam(receivers, Party.Self, "PointSeparation");
-                var others = receiverAnimator.GetAdvancedParam(receivers, Party.Others, "PointSeparation");
+                var self = receiverAnimator.GetParameter(receivers, Party.Self, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
+                var others = receiverAnimator.GetParameter(receivers, Party.Others, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
                 Assert.That(self.GetDefault(), Is.EqualTo(-1));
                 Assert.That(others.GetDefault(), Is.EqualTo(-1));
                 var selector = new AnimatorIterator.Trees().From(fx).Single(tree => tree.BlendParameter == others.name);
@@ -236,12 +237,12 @@ namespace VF.Tests {
             var receivers = injector.GetService<SelfAndOthersReceiverService>().Create(new SelfAndOthersReceiverService.Request {
                 frame = root, name = "Advanced", worldRadius = 3, getTags = (_, _) => new[] { "tag" }, channels = data
             });
-            var velocity = receiverAnimator.GetAdvancedParam(receivers, party, "SenderVelocityZ");
+            var velocity = receiverAnimator.GetParameter(receivers, party, suffix: ContactReceiver.PARAM_SENDER_VELOCITY_Z);
             var parameter = receiverAnimator.GetParameter(receivers, party);
             Assert.That(velocity.name, Is.EqualTo(parameter.name + "_SenderVelocityZ"));
-            var scale = receiverAnimator.GetAdvancedParam(receivers, party, "SenderLossyScaleX");
+            var scale = receiverAnimator.GetParameter(receivers, party, suffix: ContactReceiver.PARAM_SENDER_LOSSY_SCALE_X);
             Assert.That(scale.name, Is.EqualTo(parameter.name + "_SenderLossyScaleX"));
-            var tag = receiverAnimator.GetAdvancedParam(receivers, party, "CollisionTag_tag");
+            var tag = receiverAnimator.GetParameter(receivers, party, suffix: ContactReceiver.PARAM_COLLISION_TAG_PREFIX + "tag");
             channels.Apply(data);
             var writers = root.GetComponentsInChildren<VRCContactReceiver>(true).Where(r => r.parameter == parameter.name).ToArray();
             Assert.That(writers, Has.Length.EqualTo(party == Party.Merged ? 2 : 1));
@@ -259,8 +260,8 @@ namespace VF.Tests {
             var receivers = injector.GetService<SelfAndOthersReceiverService>().Create(new SelfAndOthersReceiverService.Request {
                 frame = root, name = "Advanced", worldRadius = 3
             });
-            Assert.Throws<ArgumentOutOfRangeException>(() => receiverAnimator.GetAdvancedParam(receivers, (Party)999, "PointSeparation"));
-            Assert.Throws<ArgumentException>(() => receiverAnimator.GetAdvancedParam(receivers, Party.Self, "Unknown"));
+            Assert.Throws<ArgumentOutOfRangeException>(() => receiverAnimator.GetParameter(receivers, (Party)999, suffix: ContactReceiver.PARAM_POINT_SEPARATION));
+            Assert.Throws<ArgumentException>(() => receiverAnimator.GetParameter(receivers, Party.Self, suffix: "Unknown"));
             Assert.That(receivers.IsCreated, Is.False);
         }
     }
@@ -548,11 +549,11 @@ namespace VF.Tests {
             GameObject obj = GameObjects.Create("Plug", root);
             var bake = BakePlug(Plug(obj, true));
             var animator = injector.GetService<SelfAndOthersReceiverAnimatorService>();
-            animator.GetAdvancedParam(bake.socketReceivers, Party.Self, "PointSeparation");
+            animator.GetParameter(bake.socketReceivers, Party.Self, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
             animator.GetParameter(bake.socketReceivers, Party.Merged);
             animator.GetNative(bake.socketReceivers, Party.Others);
             injector.GetService<ChangeSpsChannelsService>().Apply();
-            Assert.That(() => animator.GetAdvancedParam(bake.socketReceivers, Party.Self, "PointSeparation"),
+            Assert.That(() => animator.GetParameter(bake.socketReceivers, Party.Self, suffix: ContactReceiver.PARAM_POINT_SEPARATION),
                 Throws.Exception.With.Message.Contains("finalized"));
             Assert.That(() => animator.GetParameter(bake.socketReceivers, Party.Self),
                 Throws.Exception.With.Message.Contains("finalized"));
@@ -562,7 +563,7 @@ namespace VF.Tests {
                 Throws.Exception.With.Message.Contains("finalized"));
             Assert.That(() => animator.GetNative(bake.socketReceivers, Party.Self),
                 Throws.Exception.With.Message.Contains("finalized"));
-            Assert.That(() => animator.GetAdvancedParam(bake.socketReceivers, Party.Self, "SenderVelocityZ"),
+            Assert.That(() => animator.GetParameter(bake.socketReceivers, Party.Self, suffix: ContactReceiver.PARAM_SENDER_VELOCITY_Z),
                 Throws.Exception.With.Message.Contains("finalized"));
             Assert.That(() => animator.GetParameter(bake.socketReceivers, Party.Others),
                 Throws.Exception.With.Message.Contains("finalized"));

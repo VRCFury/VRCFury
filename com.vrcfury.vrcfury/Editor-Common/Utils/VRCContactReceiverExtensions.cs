@@ -26,27 +26,27 @@ namespace VF.Utils {
 
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
         private static readonly (AdvancedParameter flag, string suffix)[] AdvancedOutputs = {
-            (AdvancedParameter.SenderType, "SenderType"),
-            (AdvancedParameter.SenderLocalPosition, "SenderLocalPositionX"),
-            (AdvancedParameter.SenderLocalPosition, "SenderLocalPositionY"),
-            (AdvancedParameter.SenderLocalPosition, "SenderLocalPositionZ"),
-            (AdvancedParameter.SenderLossyScale, "SenderLossyScaleX"),
-            (AdvancedParameter.SenderLossyScale, "SenderLossyScaleY"),
-            (AdvancedParameter.SenderLossyScale, "SenderLossyScaleZ"),
-            (AdvancedParameter.SenderVelocity, "SenderVelocityX"),
-            (AdvancedParameter.SenderVelocity, "SenderVelocityY"),
-            (AdvancedParameter.SenderVelocity, "SenderVelocityZ"),
-            (AdvancedParameter.SenderVelocity, "SenderVelocityMagnitude"),
-            (AdvancedParameter.PointSeparation, "PointSeparation"),
-            (AdvancedParameter.ProximitySpeed, "ProximitySpeed")
+            (AdvancedParameter.SenderType, ContactReceiver.PARAM_SENDER_TYPE),
+            (AdvancedParameter.SenderLocalPosition, ContactReceiver.PARAM_SENDER_LOCAL_POSITION_X),
+            (AdvancedParameter.SenderLocalPosition, ContactReceiver.PARAM_SENDER_LOCAL_POSITION_Y),
+            (AdvancedParameter.SenderLocalPosition, ContactReceiver.PARAM_SENDER_LOCAL_POSITION_Z),
+            (AdvancedParameter.SenderLossyScale, ContactReceiver.PARAM_SENDER_LOSSY_SCALE_X),
+            (AdvancedParameter.SenderLossyScale, ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y),
+            (AdvancedParameter.SenderLossyScale, ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Z),
+            (AdvancedParameter.SenderVelocity, ContactReceiver.PARAM_SENDER_VELOCITY_X),
+            (AdvancedParameter.SenderVelocity, ContactReceiver.PARAM_SENDER_VELOCITY_Y),
+            (AdvancedParameter.SenderVelocity, ContactReceiver.PARAM_SENDER_VELOCITY_Z),
+            (AdvancedParameter.SenderVelocity, ContactReceiver.PARAM_SENDER_VELOCITY_MAGNITUDE),
+            (AdvancedParameter.PointSeparation, ContactReceiver.PARAM_POINT_SEPARATION),
+            (AdvancedParameter.ProximitySpeed, ContactReceiver.PARAM_PROXIMITY_SPEED)
         };
 
         public static AdvancedParameter GetAdvancedParameterFlag(string suffix) {
             foreach (var (flag, name) in AdvancedOutputs) {
                 if (suffix == name) return flag;
             }
-            if (suffix != null && suffix.StartsWith("CollisionTag_", StringComparison.Ordinal)
-                && suffix.Length > "CollisionTag_".Length) return AdvancedParameter.CollisionTags;
+            if (suffix != null && suffix.StartsWith(ContactReceiver.PARAM_COLLISION_TAG_PREFIX, StringComparison.Ordinal)
+                && suffix.Length > ContactReceiver.PARAM_COLLISION_TAG_PREFIX.Length) return AdvancedParameter.CollisionTags;
             throw new ArgumentException("Unknown advanced contact parameter: " + suffix, nameof(suffix));
         }
 #endif
@@ -56,12 +56,12 @@ namespace VF.Utils {
             yield return receiver.parameter;
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             foreach (var (flag, suffix) in AdvancedOutputs) {
-                if ((receiver.advancedParameters & flag) != 0) yield return receiver.parameter + "_" + suffix;
+                if ((receiver.advancedParameters & flag) != 0) yield return receiver.parameter + suffix;
             }
             if ((receiver.advancedParameters & AdvancedParameter.CollisionTags) == 0) yield break;
             if (receiver.collisionTags == null) yield break;
             foreach (var tag in receiver.collisionTags) {
-                if (!string.IsNullOrWhiteSpace(tag)) yield return receiver.parameter + "_CollisionTag_" + tag;
+                if (!string.IsNullOrWhiteSpace(tag)) yield return receiver.parameter + ContactReceiver.PARAM_COLLISION_TAG_PREFIX + tag;
             }
 #endif
         }

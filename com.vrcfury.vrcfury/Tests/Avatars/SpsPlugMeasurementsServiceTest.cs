@@ -66,8 +66,8 @@ namespace VF.Tests {
             if (shared && party != Party.Self) {
                 foreach (var (holeTag, ringTag) in new[] { (0, 0), (1, 0), (0, 1), (1, 1) }) {
                     Set(receiver, 0.9f, 0.2f, length: pathHole, radius: 32767, native: false);
-                    playable.SetFloat(receiver.parameter + "_CollisionTag_" + SpsTags.LegacySocketHole, holeTag);
-                    playable.SetFloat(receiver.parameter + "_CollisionTag_" + SpsTags.LegacySocketRing, ringTag);
+                    playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_COLLISION_TAG_PREFIX + SpsTags.LegacySocketHole, holeTag);
+                    playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_COLLISION_TAG_PREFIX + SpsTags.LegacySocketRing, ringTag);
                     Evaluate();
                     Assert.That(playable.GetFloat(hole), Is.EqualTo(holeTag == 1 && ringTag == 0 ? 1 : 0));
                     Assert.That(playable.GetFloat(isLegacy), Is.EqualTo(1));
@@ -175,7 +175,7 @@ namespace VF.Tests {
             var othersDepth = others(SpsDepthMeters);
             var receivers = injector.GetService<SpsPlugReceiverService>().GetReceivers(plug);
             var mergedName = receiverAnimator.GetParameter(receivers, Party.Merged).name;
-            var otherName = receiverAnimator.GetParameter(receivers, false).name;
+            var otherName = receiverAnimator.GetParameter(receivers, Party.Others).name;
             Start();
             var all = root.GetComponentsInChildren<VRCContactReceiver>(true);
             var merged = all.First(r => r.parameter == mergedName);
@@ -183,15 +183,15 @@ namespace VF.Tests {
             Assert.That(fx.parameters.Any(p => p.name.Contains("/Closest/IsSelf") || p.name.Contains("/Closest/IsOthers")), Is.False);
             Set(other, 0.9f, 0.7f);
             Set(merged, 0.8f, 0.1f);
-            playable.SetFloat(mergedName + "_SenderVelocityZ", -0.8f);
+            playable.SetFloat(mergedName + ContactReceiver.PARAM_SENDER_VELOCITY_Z, -0.8f);
             Evaluate();
             Assert.That(playable.GetFloat(depth), Is.EqualTo(-0.3f).Within(0.001f));
             Assert.That(playable.GetFloat(velocity), Is.EqualTo(-0.8f).Within(0.001f));
             Assert.That(playable.GetFloat(normalizedDepth), Is.EqualTo(-0.75f).Within(0.002f));
             Assert.That(playable.GetFloat(normalizedVelocity), Is.EqualTo(-2).Within(0.002f));
             Assert.That(playable.GetFloat(othersDepth), Is.EqualTo(0.3f).Within(0.001f));
-            playable.SetFloat(mergedName + "_PointSeparation", 0.3f);
-            playable.SetFloat(mergedName + "_SenderVelocityZ", 0.4f);
+            playable.SetFloat(mergedName + ContactReceiver.PARAM_POINT_SEPARATION, 0.3f);
+            playable.SetFloat(mergedName + ContactReceiver.PARAM_SENDER_VELOCITY_Z, 0.4f);
             Evaluate(1);
             Assert.That(playable.GetFloat(depth), Is.EqualTo(-0.1f).Within(0.001f));
             Assert.That(playable.GetFloat(velocity), Is.EqualTo(0.4f).Within(0.001f));

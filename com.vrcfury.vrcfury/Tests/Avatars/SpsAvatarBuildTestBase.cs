@@ -156,17 +156,17 @@ namespace VF.Tests {
                 if (fx.TryGetParam(receiver.parameter + suffix, out _)) playable.SetFloat(receiver.parameter + suffix, value);
             }
             playable.SetFloat(receiver.parameter, proximity);
-            Field("_PointSeparation", distance);
-            Field("_SenderLossyScaleX", radius);
-            Field("_SenderLossyScaleY", radius);
-            Field("_SenderLossyScaleZ", length);
-            Field("_SenderLocalPositionX", x);
-            Field("_SenderLocalPositionY", y);
-            Field("_SenderLocalPositionZ", z);
+            Field(ContactReceiver.PARAM_POINT_SEPARATION, distance);
+            Field(ContactReceiver.PARAM_SENDER_LOSSY_SCALE_X, radius);
+            Field(ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, radius);
+            Field(ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Z, length);
+            Field(ContactReceiver.PARAM_SENDER_LOCAL_POSITION_X, x);
+            Field(ContactReceiver.PARAM_SENDER_LOCAL_POSITION_Y, y);
+            Field(ContactReceiver.PARAM_SENDER_LOCAL_POSITION_Z, z);
             foreach (var tag in receiver.collisionTags.Where(t => t.StartsWith(SpsTags.Prefix))) {
-                Field("_CollisionTag_" + tag, native ? 1 : 0);
+                Field(ContactReceiver.PARAM_COLLISION_TAG_PREFIX + tag, native ? 1 : 0);
             }
-            Field("_CollisionTag_" + SpsTags.LegacyPlugSphere, !native && proximity > 0 ? 1 : 0);
+            Field(ContactReceiver.PARAM_COLLISION_TAG_PREFIX + SpsTags.LegacyPlugSphere, !native && proximity > 0 ? 1 : 0);
         }
 
         protected void Evaluate(int frames = 12) {

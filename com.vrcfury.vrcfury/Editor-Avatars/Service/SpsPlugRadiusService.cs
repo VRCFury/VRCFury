@@ -7,6 +7,7 @@ using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
 using VF.Utils.Controller;
+using VRC.Dynamics;
 
 namespace VF.Service {
     [VFService]
@@ -18,6 +19,7 @@ namespace VF.Service {
         [VFAutowired] [CanBeNull] private readonly SpsAutoChannelGenerator autoChannelGenerator;
 
         public void Create(VRCFuryHapticPlugEditor.BakeResult bake, string name) {
+#if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
             var tree = objectTrees.Get(bake.bakeRoot);
             var renderers = bake.renderers.Where(r => r.spsBlendshapes != null).ToArray();
             var left = autoChannelGenerator?.GetBone(bake.bakeRoot, HumanBodyBones.LeftUpperLeg);
@@ -47,7 +49,7 @@ namespace VF.Service {
                     tree
                 );
             }
-            var separation = receiverAnimator.GetAdvancedParam(bake.socketReceivers, Party.Merged, "PointSeparation");
+            var separation = receiverAnimator.GetParameter(bake.socketReceivers, Party.Merged, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
             var inverseScale = worldScale.GetInverseWorldScale(bake.bakeRoot, name);
             var normalizedDistance = controllers.GetFx().CreateUniqueFloat(name + " - Socket position", 1);
             // PointSeparation is world meters; divide by the live plug length. Only scale
@@ -62,6 +64,9 @@ namespace VF.Service {
             tree.Add(normalizedDistance.MakeSetter(0));
             // Point separation is normally -1 with no contact, but can be 0 until the receiver first turns on.
             tree.Add(BlendtreeMath.GreaterThan(separation, 0).create(contact, idle));
+#else
+            throw new System.InvalidOperationException(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired);
+#endif
         }
 
         private static VFMotion MakeSampler(VRCFuryHapticPlugEditor.BakeResult bake, VFAParam normalizedDistance) {

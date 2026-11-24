@@ -27,6 +27,46 @@ namespace VF.Tests {
     using Object = UnityEngine.Object;
 
     internal class SpsDepthAnimationServiceTest : SpsAvatarBuildTestBase {
+        [Test]
+        public void ZeroSeparationOnInactiveMergedReceiversDoesNotStartPlugDepthAnimation() {
+            optimizeTrees = true;
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.autoRenderer = plug.autoLength = plug.autoRadius = plug.enableSps = false;
+            plug.unitsInMeters = true;
+            plug.length = 0.4f;
+            plug.radius = 0.05f;
+            var measurements = PlugMeasurements(plug);
+            var bakeRoot = injector.GetService<PlugFrameService>().Get(plug);
+            var output = fx.GetOrCreateFloat("Plug depth action output");
+            var action = new VRCFuryHapticSocket.DepthActionNew {
+                range = new Vector2(-0.3f, 0),
+                units = VRCFuryHapticSocket.DepthActionUnits.Meters,
+                enableSelf = true,
+                enableOthers = true
+            };
+            action.actionSet.actions.Add(new VF.Model.StateAction.FxFloatAction { name = output.name, value = 1 });
+            injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Plug", measurements, bakeRoot);
+            Start();
+
+            var receivers = root.GetComponentsInChildren<VRCContactReceiver>(true);
+            var merged = receivers.Where(r => r.name.Contains("Merged")).ToArray();
+            Assert.That(merged, Has.Length.EqualTo(2));
+            Assert.That(merged[0].parameter, Is.EqualTo(merged[1].parameter));
+            // VRChat can expose zero before either receiver has ever been enabled.
+            Set(merged[0], 0, 0);
+            Evaluate();
+            Assert.That(merged.All(r => !r.gameObject.activeInHierarchy), Is.True);
+            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
+
+            var self = receivers.Single(r => r.allowSelf && !r.name.Contains("Merged"));
+            Set(self, 0.9f, 0.05f);
+            Set(merged[0], 0.9f, 0.05f);
+            Evaluate();
+            Assert.That(merged.Single(r => r.allowSelf).gameObject.activeInHierarchy, Is.True);
+            Assert.That(playable.GetFloat(output), Is.EqualTo(1).Within(0.001f));
+        }
+
         [TestCase(0f, false, false)]
         [TestCase(0.1f, false, false)]
         [TestCase(0.1f, false, true)]
@@ -67,30 +107,30 @@ namespace VF.Tests {
             playable.SetFloat(toggle, 1);
             var receiver = self ? Merged() : Main(false);
             Set(receiver, 0.9f, 0.66f, length: 0.6f, radius: 0.2f, native: true);
-            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.05f);
+            playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, 0.05f);
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.01f), "Radius animations stay off beyond 5% outside");
             Set(receiver, 0.9f, 0.615f, length: 0.6f, radius: 0.2f, native: true);
-            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.05f);
+            playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, 0.05f);
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.25f).Within(0.01f), "2.5% outside gives half the sampled radius");
             Set(receiver, 1, 0.6f, length: 0.6f, radius: 0.2f, native: true);
-            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.05f);
+            playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, 0.05f);
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.5f).Within(0.01f), "Tip touching the entrance permits radius animations");
             Set(receiver, 1, 0.3f, length: 0.6f, radius: 0.2f, native: true);
-            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.05f);
+            playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, 0.05f);
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.5f).Within(0.01f));
-            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.0005f);
+            playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, 0.0005f);
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.EqualTo(0.005f).Within(0.0001f),
                 "Radius animations must follow values below 1% of the animation range");
-            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.1f);
+            playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, 0.1f);
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.EqualTo(1).Within(0.01f));
             Set(receiver, 0.9f, 0.66f, length: 0.6f, radius: 0.2f, native: true);
-            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.1f);
+            playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, 0.1f);
             if (smoothingSeconds > 0) {
                 Evaluate(4);
                 Assert.That(playable.GetFloat(output), Is.GreaterThan(0.01f), "Withdrawing must let smoothing fade the animation out");
@@ -98,7 +138,7 @@ namespace VF.Tests {
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.01f), "Withdrawing returns the animation to zero");
             Set(receiver, 1, 0.3f, length: 0.6f, radius: 0.2f, native: true);
-            playable.SetFloat(receiver.parameter + "_SenderLossyScaleY", 0.1f);
+            playable.SetFloat(receiver.parameter + ContactReceiver.PARAM_SENDER_LOSSY_SCALE_Y, 0.1f);
             Evaluate(120);
             playable.SetFloat(toggle, 0);
             Evaluate(120);
