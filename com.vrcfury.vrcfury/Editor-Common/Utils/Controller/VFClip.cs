@@ -412,8 +412,9 @@ namespace VF.Utils.Controller {
                 }
             }
 
-            if (!times.Contains(0)) return false;
-            return times.Count == 2;
+            // A two-page flipbook holds its second key until the clip ends. Blending
+            // the endpoints would lose the page switch in the middle of the clip.
+            return times.Count == 2 && times.Contains(0) && times.Contains(GetLengthInSeconds());
         }
 
         internal override VFClip FlattenToClip(VFMotionFlattenMode mode) {

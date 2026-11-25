@@ -28,6 +28,40 @@ namespace VF.Tests {
 
     internal class LayerToTreeServiceTest : SpsAvatarBuildTestBase {
         [Test]
+        public void TwoPageFlipbookKeepsItsPageBoundary() {
+            optimizeTrees = true;
+            var tail = GameObjects.Create("Tail", root);
+            var ninetails = GameObjects.Create("Ninetails", root);
+            tail.active = ninetails.active = false;
+            var toggle = new Toggle {
+                name = "Tails",
+                slider = true,
+                sliderInactiveAtZero = true,
+                defaultSliderValue = 0.25f,
+                usePrefixOnParam = false,
+                addMenuItem = false
+            };
+            var flipbook = new VF.Model.StateAction.FlipBookBuilderAction();
+            toggle.state.actions.Add(flipbook);
+            foreach (var obj in new[] { tail, ninetails }) {
+                var page = new VF.Model.StateAction.FlipBookBuilderAction.FlipBookPage();
+                page.state.actions.Add(new VF.Model.StateAction.ObjectToggleAction { obj = obj });
+                flipbook.pages.Add(page);
+            }
+            injector.Set("componentObject", new Func<VFGameObject>(() => root));
+            var builder = (VF.Feature.ToggleBuilder)VF.Feature.Base.FeatureFinder.GetBuilder(toggle, root, injector);
+            builder.featureBaseObject = root;
+            builder.Apply();
+            Start();
+            foreach (var slider in new[] { 0.4f, 0.9f, 1f, 0.4f }) {
+                playable.SetFloat("Tails", slider);
+                Evaluate(4);
+                Assert.That(tail.active, Is.EqualTo(slider == 0.4f), $"Tail at {slider}");
+                Assert.That(ninetails.active, Is.EqualTo(slider != 0.4f), $"Ninetails at {slider}");
+            }
+        }
+
+        [Test]
         public void IndependentStaticSpsActionFoldsEmptyRampEnd(
             [Values] bool increasing,
             [Values] bool toggleOwner,

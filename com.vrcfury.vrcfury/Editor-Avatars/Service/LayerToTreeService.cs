@@ -305,7 +305,7 @@ namespace VF.Service {
             }
 
             if (!state.motion.IsTwoState()) {
-                throw new DoNotOptimizeException($"{state.name} contains a non-static clip with more than 2 keyframes");
+                throw new DoNotOptimizeException($"{state.name} contains a non-static clip whose keys are not confined to its endpoints");
             }
 
             var clipsInMotion = new AnimatorIterator.Clips().From(state.motion);
