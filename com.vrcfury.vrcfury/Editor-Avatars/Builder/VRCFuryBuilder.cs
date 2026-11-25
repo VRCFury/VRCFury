@@ -15,6 +15,7 @@ using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
+using Stopwatch = System.Diagnostics.Stopwatch;
 
 namespace VF.Builder {
 
@@ -149,7 +150,10 @@ namespace VF.Builder {
                 totalActionCount += list.Count;
             }
 
-            progress.Progress(0, "Collecting VRCFury components");
+            var timings = new List<(double milliseconds, string description)>();
+            const string collectMessage = "Collecting VRCFury components";
+            progress.Progress(0, collectMessage);
+            var timer = Stopwatch.StartNew();
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
                 c.Upgrade();
             }
@@ -210,6 +214,7 @@ namespace VF.Builder {
                 }
             }
 
+            timings.Add((timer.Elapsed.TotalMilliseconds, collectMessage));
             FeatureOrder? lastPriority = null;
             while (actions.Count > 0) {
                 var action = actions.Min();
@@ -235,11 +240,18 @@ namespace VF.Builder {
                 var statusMessage = $"{service.GetType().Name}.{action.GetName()} on {objectName} ({currentServiceNumber})";
                 progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
+                timer.Restart();
                 try {
                     action.Call();
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to build VRCFury component: {currentModelName}", VRCFExceptionUtils.GetGoodCause(e));
                 }
+                timings.Add((timer.Elapsed.TotalMilliseconds, statusMessage));
+            }
+
+            var workLog = injector.GetService<SaveAssetsService>().Session;
+            foreach (var (milliseconds, description) in timings.OrderByDescending(timing => timing.milliseconds)) {
+                workLog.AddWorkLogEntry("Build Step Timing", $"{milliseconds:F1} ms  {description}");
             }
         }
     }

@@ -58,7 +58,6 @@ namespace VF {
 
         public void Progress(float current, string info) {
             var percent = Math.Round(current * 100);
-            Debug.Log($"Progress ({percent}%): {info}");
             label.text = info;
             progress.value = current * 100;
             progress.title = $"{percent}%";

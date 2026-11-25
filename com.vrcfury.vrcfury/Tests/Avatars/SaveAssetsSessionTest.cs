@@ -14,6 +14,31 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     internal class SaveAssetsSessionTest {
         [Test]
+        public void WritesSectionsWithoutAssetEntriesAndClearsThemAfterSaving() {
+            var session = new SaveAssetsSession("WorkLogSections");
+            var outputDir = (string)typeof(SaveAssetsSession)
+                .GetField("outputDir", BindingFlags.NonPublic | BindingFlags.Instance)
+                .GetValue(session);
+            try {
+                session.AddWorkLogEntry("Build Steps", "First");
+                session.AddWorkLogEntry("Other", "Detail");
+                session.AddWorkLogEntry("Build Steps", "Second");
+                session.WriteWorkLogManifest();
+                session.WriteWorkLogManifest();
+                var lines = File.ReadAllLines(Directory.GetFiles(outputDir, "*.txt").Single());
+                Assert.That(lines.Where(line => line.Length > 0), Is.EqualTo(new[] {
+                    "Build Steps:",
+                    "* First",
+                    "* Second",
+                    "Other:",
+                    "* Detail"
+                }));
+            } finally {
+                AssetDatabase.DeleteAsset(outputDir);
+            }
+        }
+
+        [Test]
         public void WorkLogPreservesNamesOrderAndOwnershipAcrossFiles() {
             var session = new SaveAssetsSession("SaveAssetsSessionTest " + Guid.NewGuid().ToString("N"));
             var outputDir = (string)typeof(SaveAssetsSession)

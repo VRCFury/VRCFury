@@ -13,6 +13,7 @@ namespace VF.Utils {
         private readonly string outputDir;
         private readonly Lazy<Object> otherParent;
         private readonly Dictionary<Object, Object> workLogManifest = new Dictionary<Object, Object>();
+        private readonly Dictionary<string, List<string>> additionalSections = new();
         private readonly HashSet<Object> assetsToSave = new HashSet<Object>();
         private readonly HashSet<string> savedMaterialGuids = new HashSet<string>();
 
@@ -132,8 +133,12 @@ namespace VF.Utils {
             if (!string.IsNullOrEmpty(guid)) savedMaterialGuids.Add(guid);
         }
 
+        public void AddWorkLogEntry(string section, string entry) {
+            additionalSections.GetOrCreate(section, () => new List<string>()).Add(entry);
+        }
+
         public void WriteWorkLogManifest() {
-            if (workLogManifest.Count == 0) return;
+            if (workLogManifest.Count == 0 && additionalSections.Count == 0) return;
             VRCFuryAssetDatabase.CreateFolder(outputDir);
 
             var manifestPath = VRCFuryAssetDatabase.GetUniquePath(outputDir, "_ work-log", "txt");
@@ -159,11 +164,17 @@ namespace VF.Utils {
                 }
                 builder.AppendLine();
             }
+            foreach (var section in additionalSections) {
+                builder.AppendLine($"{section.Key}:");
+                foreach (var entry in section.Value) builder.AppendLine($"* {entry}");
+                builder.AppendLine();
+            }
             builder.AppendLine();
 
             File.WriteAllText(manifestPath, builder.ToString());
             AssetDatabase.ImportAsset(manifestPath, ImportAssetOptions.ForceSynchronousImport);
             workLogManifest.Clear();
+            additionalSections.Clear();
         }
 
         public void FlushAssets() {
