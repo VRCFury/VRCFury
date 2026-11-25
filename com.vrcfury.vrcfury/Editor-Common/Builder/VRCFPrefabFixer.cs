@@ -76,10 +76,10 @@ namespace VF.Builder {
                 for (var vrcf = sceneVrcf; vrcf != null; vrcf = GetCorrespondingObjectFromSource(vrcf)) {
                     var mods = GetModifications(vrcf);
                     if (mods.Count > 0) {
-                        Debug.Log($"Reverting overrides on {vrcf}: {mods.Select(m => m.propertyPath).Join(", ")}");
+                        //Debug.Log($"Reverting overrides on {vrcf}: {mods.Select(m => m.propertyPath).Join(", ")}");
                         PrefabUtility.RevertObjectOverride(vrcf, InteractionMode.AutomatedAction);
                         vrcf.Dirty();
-                        Debug.Log($"Done");
+                        //Debug.Log($"Done");
                     }
                 }
             }

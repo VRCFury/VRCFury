@@ -13,6 +13,7 @@ namespace VF.Service {
     internal class BoundingBoxFixService {
         private const float MaxStepSizeInMeters = 1f;
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
         private VFGameObject avatarObject => globals.avatarObject;
 
         [FeatureBuilderAction(FeatureOrder.BoundingBoxFix)]
@@ -24,14 +25,14 @@ namespace VF.Service {
                 .Where(r => r.GetMesh() != null)
                 .ToList();
 
-            DebugLargestBox(renderers);
+            ReportLargestBox(renderers);
 
             foreach (var skin in renderers.OfType<SkinnedMeshRenderer>()) {
                 AdjustBoundingBox(skin);
             }
         }
 
-        private void DebugLargestBox(IList<Renderer> renderers) {
+        private void ReportLargestBox(IList<Renderer> renderers) {
             float maxLinear = 0;
             Renderer maxRenderer = null;
             foreach (var renderer in renderers) {
@@ -46,7 +47,10 @@ namespace VF.Service {
             }
 
             if (maxRenderer != null) {
-                Debug.Log($"Largest renderer is {maxRenderer.owner().GetPath(avatarObject)} with linear size of {maxLinear}");
+                saveAssets.Session.AddWorkLogSection(
+                    "Bounding Box Report",
+                    $"Largest renderer is {maxRenderer.owner().GetPath(avatarObject)} with linear size of {maxLinear}"
+                );
             }
         }
 

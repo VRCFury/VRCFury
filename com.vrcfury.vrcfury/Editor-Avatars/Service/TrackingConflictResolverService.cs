@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
@@ -16,6 +15,7 @@ namespace VF.Service {
     [VFService]
     internal class TrackingConflictResolverService {
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
         private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly FrameTimeService frameTimeService;
         [VFAutowired] private readonly DbtLayerService dbtLayerService;
@@ -54,10 +54,12 @@ namespace VF.Service {
             }
 
             var useMerger = whenCollected.Any() || inhibitors.GetKeys().Any() || usedOwners.Count > 1;
-            Debug.Log("Tracking Control Conflict Report:\n"
-                      + "Consumers (vrcf blink / visemes): " + (whenCollected.Any() ? "Yes" : "No")
-                      + "Inhibitors (vrcf actions affecting tracking control): " + (inhibitors.GetKeys().Any() ? "Yes" : "No")
-                      + "Tracking Control Contributors: " + usedOwners.Join(','));
+            saveAssets.Session.AddWorkLogSection(
+                "Tracking Control Conflict Report",
+                "Consumers (vrcf blink / visemes): " + (whenCollected.Any() ? "Yes" : "No")
+                + "\nInhibitors (vrcf actions affecting tracking control): " + (inhibitors.GetKeys().Any() ? "Yes" : "No")
+                + "\nTracking Control Contributors: " + usedOwners.Join(',')
+            );
             if (!useMerger) {
                 return;
             }

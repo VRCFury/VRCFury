@@ -26,6 +26,7 @@ namespace VF.Service {
         [VFAutowired] private readonly FullBodyEmoteService fullBodyEmoteService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
         private VFAvatarController fx => controllers.GetFx();
 
         public void RecordDefaultNow(VFBinding binding, bool isFloat, bool force = false) {
@@ -199,12 +200,13 @@ namespace VF.Service {
                 useWriteDefaults = analysis.shouldBeOnIfWeAreNotInControl;
             }
             
-            Debug.Log("VRCFury is fixing write defaults "
-                      + (applyToUnmanagedLayers ? "(ALL layers)" : "(Only managed layers)") + " -> "
-                      + (useWriteDefaults ? "ON" : "OFF")
-                      + $" counts ({analysis.debugInfo})"
-                      + $" mode ({mode})"
-                      + (analysis.weirdStates.Count > 0 ? ("\n\nWeird states: " + analysis.weirdStates.Join(',')) : "")
+            saveAssets.Session.AddWorkLogSection(
+                "Write Defaults Report",
+                (applyToUnmanagedLayers ? "All layers" : "Only managed layers") + " -> "
+                + (useWriteDefaults ? "ON" : "OFF")
+                + $" counts ({analysis.debugInfo})"
+                + $" mode ({mode})"
+                + (analysis.weirdStates.Count > 0 ? ("\n\nWeird states: " + analysis.weirdStates.Join(',')) : "")
             );
 
             _buildSettings = new BuildSettings {

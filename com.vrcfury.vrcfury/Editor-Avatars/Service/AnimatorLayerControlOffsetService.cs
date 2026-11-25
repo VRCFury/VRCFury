@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
 using VF.Injector;
@@ -19,6 +18,7 @@ namespace VF.Service {
     [VFService]
     internal class AnimatorLayerControlOffsetService {
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
 
         private readonly VFMultimapList<long, VFLayer> mapping
             = new VFMultimapList<long, VFLayer>();
@@ -79,7 +79,9 @@ namespace VF.Service {
                 }
             }
             
-            Debug.Log("Animator Layer Control Offset Builder Report:\n" + debugLog.Join('\n'));
+            if (debugLog.Count > 0) {
+                saveAssets.Session.AddWorkLogSection("Animator Layer Control Offset Report", debugLog.Join('\n'));
+            }
         }
 
         public void RegisterControllerSet<T>(ICollection<T> set) where T : VFControllerWithVrcType {
