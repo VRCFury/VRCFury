@@ -38,7 +38,7 @@ namespace VF.Utils {
          * Empty arrays are not entered because they cannot currently contain object references.
          */
         public static System.Collections.Generic.IEnumerable<SerializedProperty> IterateFast(this SerializedObject serialized) {
-            var prop = serialized.GetIterator();
+            using var prop = serialized.GetIterator();
             while (prop.NextFast()) {
                 var path = prop.propertyPath;
                 if (path == "m_CorrespondingSourceObject") continue;

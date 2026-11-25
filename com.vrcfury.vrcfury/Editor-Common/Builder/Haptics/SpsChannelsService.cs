@@ -79,9 +79,9 @@ namespace VF.Builder.Haptics {
             }
             if (select != null) select(data.sets);
             else {
-                var clip = (AnimationClip)data.Default.clip.Save(data.component.owner().root);
-                try { clip.SampleAnimation(data.component.owner().root, 0); }
-                finally { UnityEngine.Object.DestroyImmediate(clip); }
+                var root = data.component.owner().root;
+                var clip = (AnimationClip)data.Default.clip.Save(root);
+                clip.SampleAnimation(root, 0);
             }
         }
     }

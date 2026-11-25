@@ -44,18 +44,17 @@ namespace VF.Utils {
         private static void Init() {
             if (!ReflectionHelper.IsReady<Reflection>()) return;
 
-            void Cleanup() {
-                if (restore == null) return;
-                var r = restore;
-                restore = null;
-                r();
-            }
-
             EditorApplication.update += () => {
                 if (restore != null && !IsRecording()) Cleanup();
             };
 
             AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
+        }
+
+        private static void Cleanup() {
+            var previous = restore;
+            restore = null;
+            previous?.Invoke();
         }
 
         private static bool IsRecording() {
@@ -78,6 +77,16 @@ namespace VF.Utils {
                 return;
             }
 
+            Cleanup();
+            try {
+                StartRecording(clip, baseObj, rewriteClip);
+            } catch {
+                Cleanup();
+                throw;
+            }
+        }
+
+        private static void StartRecording(AnimationClip clip, VFGameObject baseObj, bool rewriteClip) {
             var animationWindow = EditorWindowFinder.GetOrOpenWindow<AnimationWindow>();
             animationWindow.Focus();
             var animState = Reflection.AnimationWindowState.GetValue(animationWindow);
@@ -85,17 +94,26 @@ namespace VF.Utils {
             var avatarObject = baseObj.GetAvatarRoot();
 
             var wasActive = avatarObject.active;
+            var expanded = CollapseUtils.GetExpanded();
+            var wasExpanded = expanded.Contains(avatarObject);
+            VFGameObject clone = null;
+            restore = () => {
+                if (clone != null) Object.DestroyImmediate((GameObject)clone);
+                if (baseObj != null) Selection.activeGameObject = baseObj;
+                if (avatarObject != null) {
+                    if (wasActive) avatarObject.active = true;
+                    if (wasExpanded) CollapseUtils.SetExpanded(avatarObject, true);
+                }
+            };
             avatarObject.active = false;
 
-            var clone = avatarObject.Clone();
+            clone = avatarObject.Clone();
             clone.active = true;
             clone.name = avatarObject.name + " (VRCFury Recording Copy)";
             if (clone.scene != avatarObject.scene) {
                 SceneManager.MoveGameObjectToScene(clone, avatarObject.scene);
             }
 
-            var expanded = CollapseUtils.GetExpanded();
-            var wasExpanded = expanded.Contains(avatarObject);
             CollapseUtils.SetExpanded(avatarObject, false);
             foreach (var child in avatarObject.GetSelfAndAllChildren()) {
                 if (expanded.Contains(child)) {
@@ -118,9 +136,12 @@ namespace VF.Utils {
             }
             var animator = clone.AddComponent<Animator>();
             var controller = new AnimatorController();
+            restore += () => Object.DestroyImmediate(controller);
             controller.AddLayer("Temp Controller For Recording");
             var layer = controller.layers.Last();
+            restore += () => Object.DestroyImmediate(layer.stateMachine);
             var state = layer.stateMachine.AddState("Main");
+            restore += () => Object.DestroyImmediate(state);
             state.motion = clip;
             animator.runtimeAnimatorController = controller;
 
@@ -147,14 +168,8 @@ namespace VF.Utils {
                 OverwriteClip(clip, wrapped.Save(avatarObject) as AnimationClip);
             }
 
-            restore = () => {
-                if (clone != null) clone.Destroy();
-                if (baseObj != null) Selection.activeGameObject = baseObj;
-                if (avatarObject != null) {
-                    if (wasActive) avatarObject.active = true;
-                    if (wasExpanded) CollapseUtils.SetExpanded(avatarObject, true);
-                }
-                if (clip != null && rewriteClip) {
+            restore += () => {
+                if (clip != null && rewriteClip && baseObj != null && avatarObject != null) {
                     var wrapped = VFMotion.Load(clip, new VFLoadContext {
                         OwnerObject = avatarObject,
                         AnimatorObject = avatarObject,
@@ -168,7 +183,11 @@ namespace VF.Utils {
         }
 
         private static void OverwriteClip(AnimationClip target, AnimationClip source) {
-            if (target == null || source == null) return;
+            if (target == null || source == null || source == target) return;
+            // Rewriting the bindings must preserve the authored additive reference, even a self-reference.
+            var settings = AnimationUtility.GetAnimationClipSettings(source);
+            settings.additiveReferencePoseClip = AnimationUtility.GetAnimationClipSettings(target).additiveReferencePoseClip;
+            AnimationUtility.SetAnimationClipSettings(source, settings);
             EditorUtility.CopySerialized(source, target);
         }
 

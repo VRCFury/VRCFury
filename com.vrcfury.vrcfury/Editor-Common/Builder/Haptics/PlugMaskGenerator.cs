@@ -67,20 +67,9 @@ namespace VF.Builder.Haptics {
         private static Texture2D MakeReadable(Texture2D texture) {
             if (texture == null) return null;
             if (texture.isReadable) return texture;
-            var tmp = RenderTexture.GetTemporary(
-                texture.width,
-                texture.height,
-                0,
-                RenderTextureFormat.Default,
-                RenderTextureReadWrite.Linear);
-            Graphics.Blit(texture, tmp);
-            RenderTexture previous = RenderTexture.active;
-            RenderTexture.active = tmp;
             var myTexture2D = VrcfObjectFactory.CreateTexture2D(texture.width, texture.height);
-            myTexture2D.ReadPixels(new Rect(0, 0, tmp.width, tmp.height), 0, 0);
+            myTexture2D.ReadPixelsFrom(texture, RenderTextureReadWrite.Linear);
             myTexture2D.Apply();
-            RenderTexture.active = previous;
-            RenderTexture.ReleaseTemporary(tmp);
             return myTexture2D;
         }
     }

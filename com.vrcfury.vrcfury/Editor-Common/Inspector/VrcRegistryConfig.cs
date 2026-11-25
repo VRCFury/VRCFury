@@ -8,7 +8,7 @@ namespace VF.Inspector {
         private readonly Dictionary<string, int> data = new Dictionary<string, int>();
         public VrcRegistryConfig() {
             try {
-                RegistryKey root = Registry.CurrentUser.OpenSubKey("Software\\VRChat\\VRChat");
+                using var root = Registry.CurrentUser.OpenSubKey("Software\\VRChat\\VRChat");
                 if (root == null) return;
                 foreach (var subkey in root.GetValueNames()) {
                     var clean = Regex.Replace(subkey, "_h[0-9]+", "").ToLower();

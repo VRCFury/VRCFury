@@ -44,9 +44,6 @@ namespace VF.Utils {
             texture.ForceReadable();
 
             if (needsResized) {
-                var renderTexture = RenderTexture.GetTemporary(outputWidth, outputHeight);
-                Graphics.Blit(texture, renderTexture);
-
                 var scaled = VrcfObjectFactory.CreateTexture2D(
                     outputWidth,
                     outputHeight,
@@ -58,10 +55,7 @@ namespace VF.Utils {
                 scaled.name = texture.name;
                 scaled.filterMode = FilterMode.Bilinear;
                 scaled.wrapMode = TextureWrapMode.Clamp;
-                RenderTexture.active = renderTexture;
-                scaled.ReadPixels(new Rect(0, 0, outputWidth, outputHeight), 0, 0);
-                RenderTexture.active = null;
-                RenderTexture.ReleaseTemporary(renderTexture);
+                scaled.ReadPixelsFrom(texture, RenderTextureReadWrite.Default);
                 texture = scaled;
                 texture.WorkLog($"Resized from {original.width}x{original.height} to {outputWidth}x{outputHeight} to satisfy VRCSDK requirements");
                 needsCompressed = true;
@@ -83,6 +77,25 @@ namespace VF.Utils {
             }
 
             return texture;
+        }
+
+        public static void ReadPixelsFrom(this Texture2D destination, Texture source, RenderTextureReadWrite readWrite) {
+            var previous = RenderTexture.active;
+            var temporary = RenderTexture.GetTemporary(
+                destination.width,
+                destination.height,
+                0,
+                RenderTextureFormat.Default,
+                readWrite
+            );
+            try {
+                Graphics.Blit(source, temporary);
+                RenderTexture.active = temporary;
+                destination.ReadPixels(new Rect(0, 0, destination.width, destination.height), 0, 0);
+            } finally {
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(temporary);
+            }
         }
     }
 }

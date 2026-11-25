@@ -29,11 +29,11 @@ namespace VF.Service {
             var tempRoot = new GameObject(avatarObject.name);
             try {
                 var avatar = AvatarBuilder.BuildGenericAvatar(tempRoot, "");
+                if (avatar != null) VrcfObjectFactory.Register(avatar);
                 if (avatar == null || !avatar.isValid) {
                     throw new Exception("Failed to build a valid root-only generic avatar");
                 }
                 avatar.name = "Root Only Generic Avatar";
-                VrcfObjectFactory.Register(avatar);
                 avatar.WorkLog("Created to provide a valid root-only generic avatar");
                 animator.avatar = avatar;
             } finally {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
@@ -20,7 +21,26 @@ namespace VF.Inspector {
                 }
                 return true;
             });
-            SearchWindow.Open(searchContext, provider);
+            try {
+                if (SearchWindow.Open(searchContext, provider)) {
+                    var window = Resources.FindObjectsOfTypeAll<SearchWindow>()[0];
+                    void Cleanup() {
+                        EditorApplication.update -= CheckClosed;
+                        AssemblyReloadEvents.beforeAssemblyReload -= Cleanup;
+                        UnityEngine.Object.DestroyImmediate(provider);
+                    }
+                    void CheckClosed() {
+                        if (window == null) Cleanup();
+                    }
+                    EditorApplication.update += CheckClosed;
+                    AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
+                    return;
+                }
+            } catch {
+                UnityEngine.Object.DestroyImmediate(provider);
+                throw;
+            }
+            UnityEngine.Object.DestroyImmediate(provider);
         }
 
         public Group GetMainGroup() {

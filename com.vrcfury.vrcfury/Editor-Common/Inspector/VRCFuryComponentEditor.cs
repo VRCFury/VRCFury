@@ -42,19 +42,21 @@ namespace VF.Inspector {
         internal static C CreateUpgradedClone<C>(C original, out GameObject cloneObject)
             where C : VRCFuryComponent {
             cloneObject = EditorUtility.CreateGameObjectWithHideFlags("", HideFlags.HideAndDontSave);
-            cloneObject.SetActive(false);
-            // Don't use AddComponent<C>, since C might not be the concrete type.
-            var copy = (C)cloneObject.AddComponent(original.GetType());
-            UnitySerializationUtils.CloneSerializable(original, copy);
-            // Some migrations depend on the component's world transform. Don't use gameObjectOverride until after
-            // upgrading, since an upgrade that adds components must not mutate the original prefab.
-            cloneObject.transform.SetPositionAndRotation(original.transform.position, original.transform.rotation);
-            cloneObject.transform.localScale = original.transform.lossyScale;
-
             var wasRunningFakeUpgrade = VRCFury.RunningFakeUpgrade;
             try {
+                cloneObject.SetActive(false);
+                // Don't use AddComponent<C>, since C might not be the concrete type.
+                var copy = (C)cloneObject.AddComponent(original.GetType());
+                UnitySerializationUtils.CloneSerializable(original, copy);
+                // Some migrations depend on the component's world transform.
+                cloneObject.transform.SetPositionAndRotation(original.transform.position, original.transform.rotation);
+                cloneObject.transform.localScale = original.transform.lossyScale;
                 VRCFury.RunningFakeUpgrade = true;
                 copy.Upgrade();
+                foreach (var component in cloneObject.GetComponents<VRCFuryComponent>()) {
+                    component.gameObjectOverride = original.owner();
+                }
+                return copy;
             } catch {
                 DestroyImmediate(cloneObject);
                 cloneObject = null;
@@ -62,10 +64,6 @@ namespace VF.Inspector {
             } finally {
                 VRCFury.RunningFakeUpgrade = wasRunningFakeUpgrade;
             }
-            foreach (var component in cloneObject.GetComponents<VRCFuryComponent>()) {
-                component.gameObjectOverride = original.owner();
-            }
-            return copy;
         }
 
         protected override VisualElement CreateEditor(SerializedObject serializedObject, VRCFuryComponent target) {

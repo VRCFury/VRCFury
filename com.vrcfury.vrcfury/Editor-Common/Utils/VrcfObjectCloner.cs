@@ -30,8 +30,11 @@ namespace VF.Utils {
             T copy;
             if (original is Texture2D t && !t.isReadable) {
                 t.ForceReadable();
-                copy = Object.Instantiate(original);
-                t.ForceReadable(false);
+                try {
+                    copy = Object.Instantiate(original);
+                } finally {
+                    t.ForceReadable(false);
+                }
             } else {
                 copy = Object.Instantiate(original);
             }

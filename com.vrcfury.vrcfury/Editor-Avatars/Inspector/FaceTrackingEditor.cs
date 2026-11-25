@@ -51,7 +51,7 @@ namespace VF.Inspector {
             behaviorsSection.Add(ClipboardButtons(behaviors, true));
             behaviorsSection.Add(VRCFuryEditorUtils.List(behaviors, renderItem: (item, index) => {
                 var entry = new VisualElement();
-                var copy = CopyButton(item.Copy(), true, "Copy");
+                var copy = CopyButton(item, true, "Copy");
                 copy.style.alignSelf = Align.FlexEnd;
                 entry.Add(copy);
                 entry.Add(Field(item, () => new FaceTrackingParameterBehaviorDrawer(), meshes));

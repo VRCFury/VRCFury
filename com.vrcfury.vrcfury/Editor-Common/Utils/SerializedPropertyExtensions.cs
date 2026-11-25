@@ -71,7 +71,8 @@ namespace VF.Utils {
 
             if (prop.isArray) {
                 if (prop.arraySize == 0) return prop.Next(false);
-                var firstType = prop.GetArrayElementAtIndex(0).propertyType;
+                using var first = prop.GetArrayElementAtIndex(0);
+                var firstType = first.propertyType;
                 return prop.Next(firstType == SerializedPropertyType.ObjectReference
                                  || firstType == SerializedPropertyType.ExposedReference
                                  || firstType == SerializedPropertyType.Generic
