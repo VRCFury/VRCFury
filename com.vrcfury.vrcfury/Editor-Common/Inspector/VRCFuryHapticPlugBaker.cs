@@ -174,7 +174,7 @@ namespace VF.Inspector {
                                 if (spsCopies.TryGetValue(mat, out var configured)) return configured;
                                 // Bake data belongs to this renderer, even if another
                                 // feature already made the source material mutable.
-                                var copy = mat.Clone("Needed to swap shader to SPS", forceClone: true);
+                                var copy = mat.Clone("Switched the shader to SPS", forceClone: true);
                                 SpsConfigurer.ConfigureSpsMaterial(
                                     renderer,
                                     copy,

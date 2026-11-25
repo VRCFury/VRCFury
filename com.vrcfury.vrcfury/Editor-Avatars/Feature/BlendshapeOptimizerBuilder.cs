@@ -21,6 +21,10 @@ namespace VF.Feature {
     [FeatureOnlyOneAllowed]
     [FeatureRootOnly]
     internal class BlendshapeOptimizerBuilder : FeatureBuilder<BlendshapeOptimizer> {
+        // Position tolerance is a fraction of the mesh's longest dimension.
+        private const float TinyPositionFraction = 0.0001f;
+        private const float TinyNormalDelta = 0.0001f;
+
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
@@ -31,8 +35,8 @@ namespace VF.Feature {
         public static VisualElement Editor() {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
-                "This feature will automatically bake all non-animated blendshapes into the mesh," +
-                " saving VRAM for free!"
+                "This feature saves VRAM by baking non-animated blendshapes into the mesh" +
+                " and removing blendshapes whose position and normal changes are all tiny."
             ));
             return content;
         }
@@ -47,16 +51,12 @@ namespace VF.Feature {
                     .ToList()
             );
 
-            var logOutput = "";
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
                 var mesh = skin.GetMesh();
                 if (mesh == null) continue;
                 var blendshapeCount = mesh.blendShapeCount;
                 if (blendshapeCount == 0) continue;
                 var path = skin.owner().GetPath(avatarObject);
-
-                // will print with ┬─ at the start, for nicer viewing in the console
-                logOutput += $"\n\u252c\u2500 Optimizing {path}\n";
 
                 var animatedBlendshapes = CollectAnimatedBlendshapesForMesh(skin, blendshapeCurves);
 
@@ -66,130 +66,149 @@ namespace VF.Feature {
                     return false;
                 }
 
-                var blendshapeIdsToKeep = Enumerable.Range(0, blendshapeCount)
+                var animatedBlendshapeIds = Enumerable.Range(0, blendshapeCount)
                     .Where(id => ShouldKeepName(mesh.GetBlendShapeName(id)))
                     .ToImmutableHashSet();
 
-                if (blendshapeIdsToKeep.Count == blendshapeCount) {
-                    continue;
-                }
-
-                var savedWeights = Enumerable.Range(0, blendshapeCount)
-                    .Select(skin.GetBlendShapeWeight).ToArray();
-
-                var savedBlendshapes = Enumerable.Range(0, blendshapeCount)
-                    .Select(id => new SavedBlendshape(mesh, id, blendshapeIdsToKeep.Contains(id) || savedWeights[id] != 0))
-                    .ToArray();
-
-                mesh = skin.GetMutableMesh("Needed to remove blendshapes for blendshape optimizer");
-                mesh.ClearBlendShapes();
-
-                for (var id = 0; id < blendshapeCount; id++) {
-                    var savedBlendshape = savedBlendshapes[id];
-                    var keep = blendshapeIdsToKeep.Contains(id);
-
-                    string logOutputDetail;
-                    if (keep) {
-                        savedBlendshape.SaveTo(mesh, out logOutputDetail);
-                    } else {
-                        savedBlendshape.BakeTo(mesh, savedWeights[id], out logOutputDetail);
+                var frames = new FrameBuffer(mesh.vertexCount);
+                var tinyShapes = new Dictionary<int, string>();
+                if (animatedBlendshapeIds.Count > 0) {
+                    var meshSize = GetMeshSize(mesh);
+                    var tolerance = meshSize * TinyPositionFraction;
+                    var toleranceSq = tolerance * tolerance;
+                    foreach (var id in animatedBlendshapeIds) {
+                        if (!frames.HasOnlyTinyChanges(mesh, id, toleranceSq, out var peak)) continue;
+                        var fraction = meshSize > 0 ? peak.position / meshSize : 0;
+                        tinyShapes[id] = FormattableString.Invariant($"peak position {peak.position:G4} mesh units ({fraction:G4} of mesh size), normal {peak.normal:G4}");
                     }
-                    // add ├ and └ for nicer looking log output
-                    logOutput += (id != blendshapeCount-1 ? "\u251c" : "\u2514") + logOutputDetail;
                 }
+                if (animatedBlendshapeIds.Count == blendshapeCount && tinyShapes.Count == 0) continue;
+
+                var savedWeights = Enumerable.Range(0, blendshapeCount).Select(skin.GetBlendShapeWeight).ToArray();
+                var source = mesh;
+                mesh = skin.GetMutableMesh(
+                    $"Removed {blendshapeCount - animatedBlendshapeIds.Count} unanimated blendshapes and {tinyShapes.Count} blendshapes with negligible deltas",
+                    forceClone: true
+                );
+                mesh.ClearBlendShapes();
+                var shapesToBake = new List<int>();
+                for (var id = 0; id < blendshapeCount; id++) {
+                    var name = source.GetBlendShapeName(id);
+                    if (tinyShapes.TryGetValue(id, out var deltas)) {
+                        mesh.WorkLog($"Removed \"{name}\" ({deltas})");
+                    } else if (animatedBlendshapeIds.Contains(id)) {
+                        frames.CopyShape(source, id, mesh);
+                    } else {
+                        // Shapes with negative frame weights can contribute at renderer weight zero.
+                        if (savedWeights[id] != 0 || source.GetBlendShapeFrameWeight(id, 0) <= 0) shapesToBake.Add(id);
+                        mesh.WorkLog($"Removed unanimated \"{name}\" at weight {savedWeights[id]}");
+                    }
+                }
+                if (shapesToBake.Count > 0) BakeShapes(source, mesh, frames, shapesToBake, savedWeights);
                 mesh.Dirty();
 
-                var newId = 0;
-                for (var id = 0; id < blendshapeCount; id++) {
-                    var keep = blendshapeIdsToKeep.Contains(id);
-                    if (keep) {
-                        skin.SetBlendShapeWeight(newId, savedWeights[id]);
-                        if (avatar.customEyeLookSettings.eyelidsSkinnedMesh == skin) {
-                            for (var i = 0; i < avatar.customEyeLookSettings.eyelidsBlendshapes.Length; i++) {
-                                if (avatar.customEyeLookSettings.eyelidsBlendshapes[i] == id) {
-                                    avatar.customEyeLookSettings.eyelidsBlendshapes[i] = newId;
-                                    avatar.Dirty();
-                                }
-                            }
-                        }
-                        newId++;
+                for (var id = 0; id < mesh.blendShapeCount; id++) {
+                    var originalId = source.GetBlendShapeIndex(mesh.GetBlendShapeName(id));
+                    skin.SetBlendShapeWeight(id, savedWeights[originalId]);
+                }
+                if (avatar.customEyeLookSettings.eyelidsSkinnedMesh == skin) {
+                    var eyelids = avatar.customEyeLookSettings.eyelidsBlendshapes;
+                    for (var i = 0; i < eyelids.Length; i++) {
+                        var id = eyelids[i];
+                        if (id < 0 || id >= blendshapeCount) continue;
+                        eyelids[i] = mesh.GetBlendShapeIndex(source.GetBlendShapeName(id));
+                        if (eyelids[i] != id) avatar.Dirty();
                     }
                 }
             }
-            Debug.Log($"Blendshape Optimizer Actions:\n{logOutput}");
         }
 
-        private class SavedBlendshape {
-            private readonly string name;
-            private readonly List<Tuple<float, Vector3[], Vector3[], Vector3[]>> frames
-                = new List<Tuple<float, Vector3[], Vector3[], Vector3[]>>();
-            public SavedBlendshape(Mesh mesh, int id, bool saveFrames) {
-                name = mesh.GetBlendShapeName(id);
-                // Discarded zero-weight shapes do not contribute to the mesh.
-                if (!saveFrames) return;
-                for (var i = 0; i < mesh.GetBlendShapeFrameCount(id); i++) {
-                    var weight = mesh.GetBlendShapeFrameWeight(id, i);
-                    var v = new Vector3[mesh.vertexCount];
-                    var n = new Vector3[mesh.vertexCount];
-                    var t = new Vector3[mesh.vertexCount];
-                    mesh.GetBlendShapeFrameVertices(id, i, v, n, t);
-                    frames.Add(Tuple.Create(weight, v, n, t));
-                }
+        private static float GetMeshSize(Mesh mesh) {
+            var vertices = mesh.vertices;
+            if (vertices.Length == 0) return 0;
+            var min = vertices[0];
+            var max = min;
+            foreach (var vertex in vertices) {
+                min = Vector3.Min(min, vertex);
+                max = Vector3.Max(max, vertex);
+            }
+            var size = max - min;
+            return Mathf.Max(size.x, size.y, size.z);
+        }
+
+        private class FrameBuffer {
+            private readonly Vector3[] positions;
+            private readonly Vector3[] normals;
+            private readonly Vector3[] tangents;
+
+            public FrameBuffer(int vertexCount) {
+                positions = new Vector3[vertexCount];
+                normals = new Vector3[vertexCount];
+                tangents = new Vector3[vertexCount];
             }
 
-            public void SaveTo(Mesh mesh, out string logOutputDetail) {
-                logOutputDetail = $"Keeping BlendShape \"{name}\"\n";
-                foreach (var (w, v, n, t) in frames) {
-                    mesh.AddBlendShapeFrame(name, w, v, n, t);
-                }
-            }
-
-            public void BakeTo(Mesh mesh, float weight100, out string logOutputDetail) {
-                logOutputDetail = $"Baking BlendShape \"{name}\" into mesh at weight {weight100}, as weight is not animated\n";
-                // TODO: Is this how multiple frames work?
-                if (frames.Count == 0 || weight100 == 0) {
-                    return;
-                }
-                var lastFrame = frames[frames.Count - 1];
-                if (frames.Count == 1 || weight100 < 0 || weight100 >= lastFrame.Item1) {
-                    var (_, dv, dn, dt) = lastFrame;
-                    BakeTo(mesh, dv, dn, dt, weight100);
-                } else {
-                    var beforeFrame = Enumerable
-                        .Range(0, frames.Count)
-                        .First(frame => frame == frames.Count || weight100 <= frames.Count);
-                    if (beforeFrame == 0) {
-                        var (fw, fv, fn, ft) = frames[0];
-                        BakeTo(mesh, fv, fn, ft, weight100 / fw);
-                    } else {
-                        var (fw1, fv1, fn1, ft1) = frames[beforeFrame-1];
-                        var (fw2, fv2, fn2, ft2) = frames[beforeFrame];
-                        var fraction = (weight100 - fw1) / (fw2 - fw1);
-                        var dv = Enumerable.Zip(fv1, fv2, (a, b) => a + (b - a) * fraction).ToArray();
-                        var dn = Enumerable.Zip(fn1, fn2, (a, b) => a + (b - a) * fraction).ToArray();
-                        var dt = Enumerable.Zip(ft1, ft2, (a, b) => a + (b - a) * fraction).ToArray();
-                        BakeTo(mesh, dv, dn, dt);
+            public bool HasOnlyTinyChanges(
+                Mesh mesh,
+                int id,
+                float positionToleranceSquared,
+                out (float position, float normal) peak
+            ) {
+                peak = default;
+                const float normalToleranceSquared = TinyNormalDelta * TinyNormalDelta;
+                for (var frame = 0; frame < mesh.GetBlendShapeFrameCount(id); frame++) {
+                    mesh.GetBlendShapeFrameVertices(id, frame, positions, normals, null);
+                    for (var i = 0; i < positions.Length; i++) {
+                        var p = positions[i].sqrMagnitude;
+                        var n = normals[i].sqrMagnitude;
+                        if (!(p <= positionToleranceSquared && n <= normalToleranceSquared)) return false;
+                        peak.position = Mathf.Max(peak.position, p);
+                        peak.normal = Mathf.Max(peak.normal, n);
                     }
                 }
+                peak = (Mathf.Sqrt(peak.position), Mathf.Sqrt(peak.normal));
+                return true;
             }
 
-            private static void BakeTo(Mesh mesh, Vector3[] dv, Vector3[] dn, Vector3[] dt, float weight100 = 100) {
-                var verts = mesh.vertices;
-                var normals = mesh.normals;
-                var tangents = mesh.tangents;
-                for (var i = 0; i < verts.Length && i < dv.Length; i++) {
-                    verts[i] += dv[i] * (weight100 / 100);
+            public void CopyShape(Mesh source, int id, Mesh destination) {
+                var name = source.GetBlendShapeName(id);
+                for (var frame = 0; frame < source.GetBlendShapeFrameCount(id); frame++) {
+                    source.GetBlendShapeFrameVertices(id, frame, positions, normals, tangents);
+                    destination.AddBlendShapeFrame(
+                        name,
+                        source.GetBlendShapeFrameWeight(id, frame),
+                        positions,
+                        normals,
+                        tangents
+                    );
                 }
-                for (var i = 0; i < normals.Length && i < dn.Length; i++) {
-                    normals[i] += dn[i] * (weight100 / 100);
-                }
-                for (var i = 0; i < tangents.Length && i < dt.Length; i++) {
-                    var d = dt[i] * (weight100 / 100);
-                    tangents[i] += new Vector4(d.x, d.y, d.z, 0);
-                }
-                mesh.vertices = verts;
-                mesh.normals = normals;
-                mesh.tangents = tangents;
+            }
+        }
+
+        private static void BakeShapes(Mesh source, Mesh destination, FrameBuffer frames, List<int> ids, float[] weights) {
+            // Sample only the discarded shapes, in mesh local space without bones or renderer transforms.
+            var temporary = EditorUtility.CreateGameObjectWithHideFlags(
+                "Bake blendshapes",
+                HideFlags.HideAndDontSave,
+                typeof(SkinnedMeshRenderer)
+            );
+            var samplingMesh = new Mesh();
+            var baked = new Mesh();
+            try {
+                samplingMesh.vertices = source.vertices;
+                samplingMesh.normals = source.normals;
+                samplingMesh.tangents = source.tangents;
+                foreach (var id in ids) frames.CopyShape(source, id, samplingMesh);
+                var renderer = temporary.GetComponent<SkinnedMeshRenderer>();
+                renderer.sharedMesh = samplingMesh;
+                for (var i = 0; i < ids.Count; i++) renderer.SetBlendShapeWeight(i, weights[ids[i]]);
+                renderer.BakeMesh(baked);
+                destination.vertices = baked.vertices;
+                destination.normals = baked.normals;
+                destination.tangents = baked.tangents;
+            } finally {
+                UnityEngine.Object.DestroyImmediate(temporary);
+                UnityEngine.Object.DestroyImmediate(samplingMesh);
+                UnityEngine.Object.DestroyImmediate(baked);
             }
         }
 

@@ -31,8 +31,12 @@ namespace VF.Tests {
                     var separate = VrcfObjectFactory.Create<VRCExpressionParameters>();
                     separate.name = "Other file";
                     session.SaveControllerAndChildren(controller, Array.Empty<Object>(), new Object[] { first, second });
+                    session.FlushAssets();
+                    Assert.That(Directory.GetFiles(outputDir, "*.txt"), Is.Empty);
+                    first.WorkLog("Updated during the second pass");
                     session.SaveAssetAndChildren(separate);
-                    session.Finish();
+                    session.FlushAssets();
+                    session.WriteWorkLogManifest();
 
                     var otherParent = ((Lazy<Object>)typeof(SaveAssetsSession)
                         .GetField("otherParent", BindingFlags.NonPublic | BindingFlags.Instance)
@@ -50,9 +54,8 @@ namespace VF.Tests {
                     Assert.That(AssetDatabase.GetAssetPath(first), Is.EqualTo(AssetDatabase.GetAssetPath(controller)));
                     Assert.That(AssetDatabase.GetAssetPath(separate), Is.Not.EqualTo(AssetDatabase.GetAssetPath(controller)));
 
-                    session.Finish();
-                    var nextManifest = Directory.GetFiles(outputDir, "*.txt").Single(path => path != manifest);
-                    Assert.That(File.ReadAllText(nextManifest), Is.EqualTo(Environment.NewLine), "Finish must clear previous work-log entries");
+                    session.WriteWorkLogManifest();
+                    Assert.That(Directory.GetFiles(outputDir, "*.txt"), Is.EquivalentTo(new[] { manifest }));
                 }
                 AssetDatabase.ImportAsset(outputDir, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ImportRecursive);
                 var loadedController = AssetDatabase.LoadAssetAtPath<AnimatorController>(outputDir + "/Controller.controller");

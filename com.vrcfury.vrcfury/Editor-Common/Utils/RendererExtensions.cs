@@ -48,7 +48,7 @@ namespace VF.Utils {
             // while in play mode, so we make a copy that is readable and return that instead.
             if (mesh != null && !mesh.isReadable && Application.isPlaying) {
                 if (readWriteCache.TryGetValue(mesh, out var cached)) return cached;
-                var copy = mesh.Clone("Needed to enable read/write flag");
+                var copy = mesh.Clone("Enabled mesh read/write");
                 copy.ForceReadable();
                 readWriteCache[mesh] = copy;
                 // Because this value is cached, and this mesh may be used in multiple places on the avatar,

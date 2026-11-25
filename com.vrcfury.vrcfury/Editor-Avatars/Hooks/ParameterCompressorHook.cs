@@ -17,6 +17,8 @@ namespace VF.Hooks {
                     injector.GetService<ControllersService>().ClearCache(applyBaseMask: false);
                     injector.GetService<ExpressionParamsService>().ClearCache();
                     injector.GetService<ParameterCompressorService>().Apply();
+                    // This is the last VRCFury pass that saves avatar assets.
+                    injector.GetService<SaveAssetsService>().Session.WriteWorkLogManifest();
                 });
             }
         }

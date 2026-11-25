@@ -132,7 +132,8 @@ namespace VF.Utils {
             if (!string.IsNullOrEmpty(guid)) savedMaterialGuids.Add(guid);
         }
 
-        private void WriteWorkLogManifest() {
+        public void WriteWorkLogManifest() {
+            if (workLogManifest.Count == 0) return;
             VRCFuryAssetDatabase.CreateFolder(outputDir);
 
             var manifestPath = VRCFuryAssetDatabase.GetUniquePath(outputDir, "_ work-log", "txt");
@@ -160,19 +161,18 @@ namespace VF.Utils {
             }
             builder.AppendLine();
 
-            File.AppendAllText(manifestPath, builder.ToString());
+            File.WriteAllText(manifestPath, builder.ToString());
             AssetDatabase.ImportAsset(manifestPath, ImportAssetOptions.ForceSynchronousImport);
+            workLogManifest.Clear();
         }
 
-        public void Finish() {
+        public void FlushAssets() {
             foreach (var asset in assetsToSave) {
                 AssetDatabase.SaveAssetIfDirty(asset);
             }
             assetsToSave.Clear();
             PoiyomiUtils.AddToKnownMaterials(savedMaterialGuids);
             savedMaterialGuids.Clear();
-            WriteWorkLogManifest();
-            workLogManifest.Clear();
         }
     }
 }

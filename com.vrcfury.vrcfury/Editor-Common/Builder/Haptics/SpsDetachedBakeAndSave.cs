@@ -67,7 +67,8 @@ namespace VF.Builder.Haptics {
                 }
             }
 
-            saveSession.Finish();
+            saveSession.FlushAssets();
+            saveSession.WriteWorkLogManifest();
         }
     }
 }

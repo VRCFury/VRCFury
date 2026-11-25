@@ -48,7 +48,7 @@ namespace VF.Utils {
                 .Select(index => new BlendshapeFrames(originalMesh, index))
                 .ToArray();
 
-            var mesh = skin.GetMutableMesh("Needed to rename blendshapes for face tracking", forceClone: true);
+            var mesh = skin.GetMutableMesh("Renamed blendshapes for face tracking", forceClone: true);
             mesh.ClearBlendShapes();
             for (var index = 0; index < blendshapeCount; index++) {
                 var name = renames.TryGetValue(blendshapeNames[index], out var renamed) ? renamed : blendshapeNames[index];

@@ -23,7 +23,7 @@ namespace VF.Service {
             Texture2D OptimizeTexture(Texture2D original) {
                 if (texCache.TryGetValue(original, out var output)) return output;
                 if (original.mipmapCount > 1 && !original.streamingMipmaps) {
-                    output = original.Clone("Needed to enable mipmap streaming on texture to make VRCSDK happy");
+                    output = original.Clone("Enabled mipmap streaming");
                     var so = new SerializedObject(output);
                     so.FindProperty("m_StreamingMipmaps").boolValue = true;
                     so.FindProperty("m_StreamingMipmapsPriority").intValue = 0;
@@ -45,7 +45,7 @@ namespace VF.Service {
                     if (oldTexture == null) continue;
                     var newTexture = OptimizeTexture(oldTexture);
                     if (oldTexture != newTexture) {
-                        output = output.Clone($"Needed to swap texture {oldTexture.name} to a copy that has mipmap streaming enabled");
+                        output = output.Clone($"Replaced {oldTexture.name} with a copy that has mipmap streaming enabled");
                         output.SetTextureFast(propertyName, newTexture);
                     }
                 }

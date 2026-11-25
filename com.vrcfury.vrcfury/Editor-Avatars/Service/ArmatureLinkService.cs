@@ -306,7 +306,7 @@ namespace VF.Service {
                 // Update skins to use bones and bind poses from the original avatar
                 var bones = skin.bones;
                 if (bones.Contains((Transform)fromBone)) {
-                    var mesh = skin.GetMutableMesh("Needed to change bone bind-poses for Armature Link to re-use bones on base armature");
+                    var mesh = skin.GetMutableMesh("Updated bind poses to reuse bones on the base armature");
                     if (mesh != null) {
                         var bindposes = mesh.bindposes;
                         var length = Math.Min(bones.Length, bindposes.Length);

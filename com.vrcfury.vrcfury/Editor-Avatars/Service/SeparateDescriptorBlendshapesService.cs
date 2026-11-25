@@ -36,7 +36,7 @@ namespace VF.Service {
             foreach (var (skin, shapes) in descriptorShapes) {
                 var shared = animated[skin.owner()].Where(name => shapes.Contains(name) && skin.HasBlendshape(name)).ToArray();
                 if (shared.Length == 0) continue;
-                var mesh = skin.GetMutableMesh("Needed to separate descriptor blendshapes from animations", forceClone: true);
+                var mesh = skin.GetMutableMesh("Separated descriptor blendshapes from animations", forceClone: true);
                 var reserved = skin.GetBlendshapeNames().ToHashSet();
                 foreach (var name in shared) {
                     var originalIndex = mesh.GetBlendShapeIndex(name);

@@ -66,7 +66,7 @@ namespace VF.Service {
                 Session.SaveAssetAndChildren(animator);
             }
 
-            Session.Finish();
+            Session.FlushAssets();
         }
 
         internal static void NameMenuAssets(VRCExpressionsMenu root) {
