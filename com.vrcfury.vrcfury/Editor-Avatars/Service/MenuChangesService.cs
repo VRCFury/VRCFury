@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
-using UnityEngine;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Model.Feature;
@@ -30,8 +28,6 @@ namespace VF.Service {
                     var icon = iconChange.icon.Get();
                     var result = menu.SetIcon(iconChange.path, icon);
                     if (result) {
-                        var filePath = icon != null ? AssetDatabase.GetAssetPath(icon) : "";
-                        Debug.Log($"Changed icon of {iconChange.path} to {filePath}");
                         iconChanges.Remove(iconChange);
                     }
                 }

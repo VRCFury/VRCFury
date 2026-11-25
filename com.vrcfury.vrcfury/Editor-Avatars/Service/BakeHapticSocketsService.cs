@@ -105,7 +105,6 @@ namespace VF.Service {
                         usedOscIds,
                         HapticUtils.GetPreferredId(socket, s => s.oscId, _ => preferredMenuName)
                     );
-                    Debug.Log("Baking haptic component in " + socket.owner().GetDebugPath() + " as " + oscId);
 
                     VFAParam toggleParam = null;
                     if (socket.addMenuItem) {

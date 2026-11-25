@@ -109,7 +109,6 @@ namespace VF.Service {
             ISet<string> usedNames
         ) {
             var name = HapticUtils.MakeUniqueOgbId(usedNames, bakeInfo.oscId);
-            Debug.Log("Baking haptic component in " + plug.owner().GetDebugPath() + " as " + name);
 
             var bakeRoot = bakeInfo.bakeRoot;
             var renderers = bakeInfo.renderers;

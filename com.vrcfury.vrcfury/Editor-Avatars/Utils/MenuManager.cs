@@ -72,6 +72,11 @@ namespace VF.Utils {
                     control.icon = icon;
                 }
             }
+            if (changed && VrcfObjectFactory.DidCreate(parentMenu)) {
+                parentMenu.WorkLog(icon != null
+                    ? $"Changed icon of {path} to {icon.GetPathAndName()}"
+                    : $"Cleared icon of {path}");
+            }
             return changed;
         }
 

@@ -374,6 +374,9 @@ namespace VF.Tests {
             Assert.That(button.name, Is.EqualTo("Renamed"));
             Assert.That(manager.SetIcon(@"Group\/One/Nested/Renamed", Texture2D.whiteTexture), Is.True);
             Assert.That(button.icon, Is.SameAs(Texture2D.whiteTexture));
+            Assert.That(manager.SetIcon(@"Group\/One/Nested/Renamed", Texture2D.whiteTexture), Is.False);
+            Assert.That(nested.GetWorkLog().Count(entry => entry.StartsWith("Changed icon of ")), Is.EqualTo(1));
+            Assert.That(root.GetWorkLog(), Has.None.StartsWith("Changed icon of "));
             Assert.That(manager.Reorder(@"Group\/One/Nested/Renamed", 0), Is.True);
         }
 

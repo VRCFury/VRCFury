@@ -154,8 +154,6 @@ namespace VF.Service {
                 Debug.LogWarning("Root bone is null on armature link.");
                 return;
             }
-            
-            Debug.Log("Armature Linking " + model.propBone.asVf().GetPath(avatarObject));
 
             var links = GetLinks(model, avatarObject, objectPaths, armatureCache);
             if (links == null) {
