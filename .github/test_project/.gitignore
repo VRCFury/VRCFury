@@ -8,3 +8,6 @@ ProjectSettings/*
 *.sln
 Packages/*
 !Packages/manifest.json
+!Packages/com.vrcfury.temp/
+Packages/com.vrcfury.temp/*
+!Packages/com.vrcfury.temp/package.json
