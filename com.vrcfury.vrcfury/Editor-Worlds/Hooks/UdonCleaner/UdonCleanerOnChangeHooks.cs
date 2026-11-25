@@ -103,7 +103,17 @@ namespace VF.Hooks.UdonCleaner {
             var holder = ScriptableObject.CreateInstance<DummySerializedProgramAssetHolder>();
             holder.hideFlags = HideFlags.HideAndDontSave;
             var so = new SerializedObject(holder);
-            return so.FindProperty(nameof(DummySerializedProgramAssetHolder.serializedProgramAsset));
+            var prop = so.FindProperty(nameof(DummySerializedProgramAssetHolder.serializedProgramAsset));
+            void Cleanup() {
+                AssemblyReloadEvents.beforeAssemblyReload -= Cleanup;
+                EditorApplication.quitting -= Cleanup;
+                prop.Dispose();
+                so.Dispose();
+                UnityEngine.Object.DestroyImmediate(holder);
+            }
+            AssemblyReloadEvents.beforeAssemblyReload += Cleanup;
+            EditorApplication.quitting += Cleanup;
+            return prop;
         });
 
         /**

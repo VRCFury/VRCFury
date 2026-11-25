@@ -59,7 +59,7 @@ namespace VF.Hooks {
         }
 
         private static void CollectTrackedMaterials(UnityEngine.Object obj, HashSet<Material> foundMaterials) {
-            var so = new SerializedObject(obj);
+            using var so = new SerializedObject(obj);
             foreach (var prop in so.IterateFast()) {
                 if (prop.propertyType != SerializedPropertyType.ObjectReference) continue;
                 AddTrackedMaterial(prop.objectReferenceValue, foundMaterials);

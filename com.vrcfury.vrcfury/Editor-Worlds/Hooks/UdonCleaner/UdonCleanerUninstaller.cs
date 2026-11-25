@@ -88,7 +88,7 @@ namespace VF.Hooks.UdonCleaner {
                 .FirstOrDefault(x => UdonSharpEditorUtility.GetBackingUdonBehaviour(x) == ub);
             if (usb == null) return false;
 
-            var so = new SerializedObject(ub);
+            using var so = new SerializedObject(ub);
             so.UpdateIfRequiredOrScript();
 
             var programSource = so.FindProperty("programSource");

@@ -66,7 +66,8 @@ namespace VF.Menu {
 
                 foreach (var sceneComponent in VFGameObject.GetRoots().SelectMany(root => root.GetComponentsInSelfAndChildren())) {
                     if (!PrefabUtility.IsPartOfPrefabInstance(sceneComponent)) continue;
-                    foreach (var sceneProp in new SerializedObject(sceneComponent).IterateFast()) {
+                    using var sceneObject = new SerializedObject(sceneComponent);
+                    foreach (var sceneProp in sceneObject.IterateFast()) {
                         if (sceneProp.propertyType != SerializedPropertyType.ObjectReference) continue;
                         if (sceneProp.objectReferenceValue != ssMaterial) continue;
 
@@ -78,7 +79,8 @@ namespace VF.Menu {
                                 if (c != sceneComponent) sourceToHoldSsMaterial = c;
                                 break;
                             } else {
-                                var sourceProp = new SerializedObject(source).FindProperty(sceneProp.propertyPath);
+                                using var sourceObject = new SerializedObject(source);
+                                var sourceProp = sourceObject.FindProperty(sceneProp.propertyPath);
                                 if (sourceProp == null || sourceProp.propertyType != SerializedPropertyType.ObjectReference) break;
                                 if (sourceProp.objectReferenceValue != ssMaterial && sourceProp.objectReferenceValue != null) break;
                                 c = source;
@@ -103,7 +105,7 @@ namespace VF.Menu {
                             .ToImmutableDictionary(pair => pair.Item1, pair => pair.Item2);
                         foreach (var action in singlePrefabActions) {
                             if (!idsToComponents.TryGetValue(action.Key.objectid, out var component)) continue;
-                            var so = new SerializedObject(component);
+                            using var so = new SerializedObject(component);
                             var prop = so.FindProperty(action.Key.propertyName);
                             if (prop == null) continue;
                             var task = action.Value;

@@ -36,7 +36,7 @@ namespace VF.Tests {
                     component.plugEntryRadiusActions.Add(new VRCFuryHapticSocket.PlugEntryRadiusAction());
                     owner = component;
                 }
-                var serialized = new UnityEditor.SerializedObject(owner);
+                using var serialized = new UnityEditor.SerializedObject(owner);
                 var action = serialized.FindProperty(radius ? "plugEntryRadiusActions" : "depthActions2").GetArrayElementAtIndex(0);
                 var editor = radius ? new VRCFuryHapticSocketEditor.PlugEntryRadiusActionDrawer().CreatePropertyGUI(action)
                     : new VRCFuryHapticSocketEditor.DepthActionDrawer().CreatePropertyGUI(action);
@@ -67,7 +67,7 @@ namespace VF.Tests {
                 var socket = root.AddComponent<VRCFuryHapticSocket>();
                 socket.plugEntryRadiusActions.Add(new VRCFuryHapticSocket.PlugEntryRadiusAction());
                 if (existingPlugUnits) socket.plugEntryRadiusActions[0].units = VRCFuryHapticSocket.DepthActionUnits.Plugs;
-                var serialized = new UnityEditor.SerializedObject(socket);
+                using var serialized = new UnityEditor.SerializedObject(socket);
                 var action = serialized.FindProperty("plugEntryRadiusActions").GetArrayElementAtIndex(0);
                 var editor = new VRCFuryHapticSocketEditor.PlugEntryRadiusActionDrawer().CreatePropertyGUI(action);
                 Assert.That(editor.Query<Label>().ToList().Any(label => label.text == "Reverse clip (Deprecated, Do not use)"), Is.False);

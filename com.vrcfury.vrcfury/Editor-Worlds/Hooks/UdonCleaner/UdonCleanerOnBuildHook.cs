@@ -60,7 +60,7 @@ namespace VF.Hooks.UdonCleaner {
 
             while (stack.TryPop(out var obj)) {
                 foreach (var ub in obj.GetComponentsInSelfAndChildren<UdonBehaviour>()) {
-                    var so = new SerializedObject(ub);
+                    using var so = new SerializedObject(ub);
                     so.FindProperty("programSource").objectReferenceValue = UdonCleanerAssetPatcher.programSource_get(ub);
                     so.FindProperty("serializedProgramAsset").objectReferenceValue = UdonCleanerAssetPatcher.serializedProgramAsset_get(ub);
                     if (UdonCleanerSyncMethodManager.IsActive()) so.FindProperty("_syncMethod").enumValueIndex = (int)ub.SyncMethod;
@@ -68,7 +68,7 @@ namespace VF.Hooks.UdonCleaner {
                     so.ApplyModifiedPropertiesWithoutUndo();
                 }
                 foreach (var ub in obj.GetComponentsInSelfAndChildren<UdonSharpBehaviour>()) {
-                    var so = new SerializedObject(ub);
+                    using var so = new SerializedObject(ub);
                     if (ReplacePrefabsWithInst(so)) {
                         so.ApplyModifiedPropertiesWithoutUndo();
                     }

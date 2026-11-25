@@ -66,8 +66,8 @@ namespace VF.Menu {
             var sourceComponent = PrefabUtility.GetCorrespondingObjectFromSource(component);
             if (sourceComponent == null) return 0;
 
-            var so = new SerializedObject(component);
-            var sourceSo = new SerializedObject(sourceComponent);
+            using var so = new SerializedObject(component);
+            using var sourceSo = new SerializedObject(sourceComponent);
             var revertPaths = new List<string>();
 
             foreach (var prop in so.IterateFast()) {
@@ -84,7 +84,7 @@ namespace VF.Menu {
 
             var reverted = 0;
             foreach (var path in revertPaths) {
-                var revertSo = new SerializedObject(component);
+                using var revertSo = new SerializedObject(component);
                 var revertProp = revertSo.FindProperty(path);
                 if (revertProp == null) continue;
                 if (!revertProp.prefabOverride) continue;

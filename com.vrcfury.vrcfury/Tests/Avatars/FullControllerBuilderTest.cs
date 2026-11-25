@@ -24,13 +24,14 @@ namespace VF.Tests {
             var root = new GameObject("Inject parameters");
             var panelOwner = ScriptableObject.CreateInstance<PanelSettings>();
             IPanel panel = null;
+            UnityEditor.SerializedObject serialized = null;
             try {
                 root.AddComponent<VRCFuryHapticSocket>();
                 var component = root.AddComponent<VF.Model.VRCFury>();
                 component.content = new FullController {
                     injectParams = { new FullController.InjectParamEntry { sourceObject = root, sourceParam = "custom" } }
                 };
-                var serialized = new UnityEditor.SerializedObject(component);
+                serialized = new UnityEditor.SerializedObject(component);
                 var inject = serialized.FindProperty("content").FindPropertyRelative("injectParams").GetArrayElementAtIndex(0);
                 var sourceParam = inject.FindPropertyRelative("sourceParam");
                 var editor = new VF.Feature.FullControllerBuilder.InjectParamDrawer().CreatePropertyGUI(inject);
@@ -143,6 +144,7 @@ namespace VF.Tests {
                 Assert.That(unitsField.style.display.value, Is.EqualTo(DisplayStyle.None));
             } finally {
                 (panel as IDisposable)?.Dispose();
+                serialized?.Dispose();
                 Object.DestroyImmediate(panelOwner);
                 Object.DestroyImmediate(root);
             }
@@ -161,7 +163,7 @@ namespace VF.Tests {
                 component.content = new FullController {
                     injectParams = { new FullController.InjectParamEntry { sourceObject = root, sourceParam = sourceParam } }
                 };
-                var serialized = new UnityEditor.SerializedObject(component);
+                using var serialized = new UnityEditor.SerializedObject(component);
                 var inject = serialized.FindProperty("content").FindPropertyRelative("injectParams").GetArrayElementAtIndex(0);
                 var editor = new VF.Feature.FullControllerBuilder.InjectParamDrawer().CreatePropertyGUI(inject);
                 Assert.That(editor.Query<PopupField<string>>().ToList(), Is.Empty);

@@ -24,7 +24,7 @@ namespace VF.Service {
                 if (texCache.TryGetValue(original, out var output)) return output;
                 if (original.mipmapCount > 1 && !original.streamingMipmaps) {
                     output = original.Clone("Enabled mipmap streaming");
-                    var so = new SerializedObject(output);
+                    using var so = new SerializedObject(output);
                     so.FindProperty("m_StreamingMipmaps").boolValue = true;
                     so.FindProperty("m_StreamingMipmapsPriority").intValue = 0;
                     so.ApplyModifiedPropertiesWithoutUndo();

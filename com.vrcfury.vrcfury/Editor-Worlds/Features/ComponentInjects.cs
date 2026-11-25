@@ -85,7 +85,7 @@ namespace VF.Features {
 
                 var value = GetValue(fieldType, inject, registry, sceneComponents);
 
-                var so = new SerializedObject(component);
+                using var so = new SerializedObject(component);
                 var prop = so.FindProperty(inject.targetField);
                 if (prop.isArray && value is Object[] arr) {
                     prop.ClearArray();

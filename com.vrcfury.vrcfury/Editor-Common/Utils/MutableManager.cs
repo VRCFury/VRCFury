@@ -16,7 +16,7 @@ namespace VF.Utils {
             }
 
             var changed = false;
-            var serialized = new SerializedObject(obj);
+            using var serialized = new SerializedObject(obj);
             foreach (var prop in serialized.IterateFast()) {
                 if (prop.propertyType == SerializedPropertyType.ObjectReference) {
                     var value = prop.GetObjectReferenceValueSafe();

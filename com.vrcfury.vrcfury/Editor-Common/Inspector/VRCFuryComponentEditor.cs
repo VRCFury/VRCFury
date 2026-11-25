@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
@@ -74,6 +75,8 @@ namespace VF.Inspector {
 
     internal class VRCFuryComponentEditor<T> : UnityEditor.Editor where T : VRCFuryComponent {
         private GameObject dummyObject;
+        private VisualElement previewBody;
+        private readonly List<SerializedObject> previewObjects = new();
 
         public sealed override VisualElement CreateInspectorGUI() {
             VisualElement versionLabel;
@@ -138,12 +141,14 @@ namespace VF.Inspector {
                 // We need to prevent our added children from being bound to
                 // the original component by unity
                 body = new BindingBlock();
+                previewBody = body;
                 body.SetEnabled(false);
 
                 var children = copyGameObject.GetComponents<T>();
                 if (children.Length != 1) body.Add(VRCFuryComponentHeader.CreateHeaderOverlay("Legacy Multi-Component"));
                 foreach (var child in children) {
                     var childSo = new SerializedObject(child);
+                    previewObjects.Add(childSo);
                     var childEditor = _CreateEditor(childSo, child);
                     if (children.Length > 1) childEditor.AddToClassList("vrcfMultipleHeaders");
                     childEditor.Bind(childSo);
@@ -181,6 +186,12 @@ namespace VF.Inspector {
         }
 
         public void OnDestroy() {
+            if (previewBody != null) {
+                foreach (var child in previewBody.Children()) child.Unbind();
+                previewBody = null;
+            }
+            foreach (var serialized in previewObjects) serialized.Dispose();
+            previewObjects.Clear();
             if (dummyObject) {
                 DestroyImmediate(dummyObject);
             }

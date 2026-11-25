@@ -44,7 +44,7 @@ namespace VF.Menu {
         private static bool ShouldKeepModification(PropertyModification o) {
             var component = o.target as UnityEngine.Component;
             if (component == null) return true;
-            var so = new SerializedObject(component);
+            using var so = new SerializedObject(component);
             var originalProp = so.FindProperty(o.propertyPath);
             if (originalProp == null || originalProp.propertyType != SerializedPropertyType.Float) return true;
             var originalValue = originalProp.floatValue;

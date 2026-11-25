@@ -57,7 +57,7 @@ namespace VF.Tests {
 #pragma warning disable 0612
                 socket.legacyOffset = Vector3.forward * 0.2f;
 #pragma warning restore 0612
-                var serialized = new SerializedObject(socket);
+                using var serialized = new SerializedObject(socket);
                 serialized.FindProperty("offsetsInLocalUnits").boolValue = false;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 obj.transform.localScale = Vector3.one * 2;

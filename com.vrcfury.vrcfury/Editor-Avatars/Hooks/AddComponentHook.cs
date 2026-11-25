@@ -122,7 +122,7 @@ namespace VF.Hooks {
                             }
 
                             var c = Undo.AddComponent<VRCFury>(obj);
-                            var so = new SerializedObject(c);
+                            using var so = new SerializedObject(c);
                             so.FindProperty("content").managedReferenceValue = modelInst;
                             so.ApplyModifiedPropertiesWithoutUndo();
                         }

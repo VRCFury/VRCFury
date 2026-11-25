@@ -63,7 +63,8 @@ namespace VF {
             }
 #pragma warning restore 0612
 
-            var containsNull = new SerializedObject(c).IterateFast().Any(prop =>
+            using var serialized = new SerializedObject(c);
+            var containsNull = serialized.IterateFast().Any(prop =>
                 prop.propertyType == SerializedPropertyType.ManagedReference
                 && prop.managedReferenceValue == null
                 && (!hasLegacyConfig || prop.propertyPath != "content")

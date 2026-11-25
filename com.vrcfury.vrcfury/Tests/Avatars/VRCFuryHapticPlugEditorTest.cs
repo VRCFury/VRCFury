@@ -35,7 +35,8 @@ namespace VF.Tests {
                         } }
                     }
                 };
-                var settings = new UnityEditor.SerializedObject(component).FindProperty("content")
+                using var serialized = new UnityEditor.SerializedObject(component);
+                var settings = serialized.FindProperty("content")
                     .FindPropertyRelative("state").FindPropertyRelative("actions").GetArrayElementAtIndex(0)
                     .FindPropertyRelative("channelSettings");
                 var editor = VRCFuryHapticPlugEditor.SpsChannelsEditor(root, isPlug, settings);
@@ -61,7 +62,6 @@ namespace VF.Tests {
                     plug.channelSettings.channels.Add(new VF.Model.SpsChannelSettings.Channel { id = "othersonly", allowSelf = false });
                     target = plug;
                 }
-                VisualElement preview;
                 if (action) {
                     var component = root.AddComponent<VF.Model.VRCFury>();
                     component.content = new VF.Model.Feature.Toggle {
@@ -73,11 +73,15 @@ namespace VF.Tests {
                             } }
                         }
                     };
-                    var serialized = new UnityEditor.SerializedObject(component);
+                    target = component;
+                }
+                using var serialized = new UnityEditor.SerializedObject(target);
+                VisualElement preview;
+                if (action) {
                     var prop = serialized.FindProperty("content").FindPropertyRelative("state")
                         .FindPropertyRelative("actions").GetArrayElementAtIndex(0);
                     preview = VF.Actions.ChangeSpsChannelsActionBuilder.Editor(prop);
-                } else preview = VRCFuryHapticPlugEditor.SpsChannelsEditor(target.owner(), !socket, new UnityEditor.SerializedObject(target).FindProperty("channelSettings"));
+                } else preview = VRCFuryHapticPlugEditor.SpsChannelsEditor(target.owner(), !socket, serialized.FindProperty("channelSettings"));
                 var text = preview.Query<Label>().ToList().Single(l => l.text.StartsWith("Final channel list:")).text;
                 Assert.That(text, Is.EqualTo(action
                     ? "Final channel list:\noverride (Self)"
@@ -97,7 +101,7 @@ namespace VF.Tests {
                         sourceObject = missing ? null : root, sourceParam = VRCFuryHapticPlugEditor.SpsDepthMeters
                     } }
                 };
-                var serialized = new UnityEditor.SerializedObject(component);
+                using var serialized = new UnityEditor.SerializedObject(component);
                 var inject = serialized.FindProperty("content").FindPropertyRelative("injectParams").GetArrayElementAtIndex(0);
                 Assert.That(VRCFuryHapticPlugEditor.CanHandle(inject), Is.False);
                 var editor = new VF.Feature.FullControllerBuilder.InjectParamDrawer().CreatePropertyGUI(inject);
@@ -129,7 +133,7 @@ namespace VF.Tests {
                         : socketSource ? VRCFuryHapticPlugEditor.SpsPlugEntryRadiusLocal : VRCFuryHapticPlugEditor.SpsDepthMeters
                 });
                 component.content = model;
-                var serialized = new UnityEditor.SerializedObject(component);
+                using var serialized = new UnityEditor.SerializedObject(component);
                 var inject = serialized.FindProperty("content").FindPropertyRelative("injectParams").GetArrayElementAtIndex(0);
                 var editor = new VF.Feature.FullControllerBuilder.InjectParamDrawer().CreatePropertyGUI(inject);
                 var parameter = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Parameter");

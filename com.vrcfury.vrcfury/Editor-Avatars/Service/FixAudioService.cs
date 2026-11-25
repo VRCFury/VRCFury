@@ -46,7 +46,7 @@ namespace VF.Service {
                     output = input;
                 } else {
                     output = input.Clone("Enabled Load In Background");
-                    var so = new SerializedObject(output);
+                    using var so = new SerializedObject(output);
                     so.FindProperty("m_LoadInBackground").boolValue = true;
                     so.ApplyModifiedPropertiesWithoutUndo();
                 }
