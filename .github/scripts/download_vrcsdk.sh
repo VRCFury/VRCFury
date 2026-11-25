@@ -14,10 +14,10 @@ download_manifest_package() {
   local zip_path="$package_name.zip"
   local url
 
-  url="$(echo "$MANIFEST" | jq ".packages.\"$package_name\".versions.\"$version\".url" --raw-output)"
+  url="$(echo "$MANIFEST" | jq -er ".packages.\"$package_name\".versions.\"$version\".url")"
 
   echo "$package_name URL is $url"
-  curl -L -o "$zip_path" "$url"
+  curl --fail --location --retry 3 -o "$zip_path" "$url"
   mkdir -p "$PROJECT_PATH/Packages/$package_name"
   unzip -o "$zip_path" -d "$PROJECT_PATH/Packages/$package_name"
   rm "$zip_path"
@@ -86,7 +86,7 @@ patch_unity_6_5_for_ci() {
 
 MANIFEST_URL="https://vrchat.github.io/packages/index.json"
 echo "Downloading manifest from $MANIFEST_URL"
-MANIFEST="$(curl "$MANIFEST_URL")"
+MANIFEST="$(curl --fail --location --retry 3 "$MANIFEST_URL")"
 download_manifest_package "com.vrchat.base" "$VERSION"
 
 if [[ "$SDK_KIND" == "worlds" ]]; then

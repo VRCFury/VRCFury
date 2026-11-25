@@ -77,6 +77,7 @@ namespace VF.Tests {
                 Inject(uniqueParams, "pipelineId", new PipelineIdService(root));
                 Inject(faceTracking, "avatar", avatar);
                 Inject(faceTracking, "controllers", controllers);
+                Inject(faceTracking, "saveAssets", VRCFuryInjectorBuilder.GetInjector(avatar).GetService<SaveAssetsService>());
             }
 
             private static void Inject(object target, string field, object value) => target.GetType().VFField(field).SetValue(target, value);
