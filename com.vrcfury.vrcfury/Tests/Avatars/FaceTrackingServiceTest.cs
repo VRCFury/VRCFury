@@ -983,7 +983,6 @@ namespace VF.Tests {
                 Assert.That(plan.warnings.Any(warning => warning.Contains("MissingSet") && warning.Contains("JawOpen") && warning.Contains("MissingTracking")), Is.True);
                 Assert.That(plan.warnings.Any(warning => warning.Contains("MissingViseme")), Is.True);
                 Assert.That(plan.warnings.Any(warning => warning.Contains("MissingBehavior")), Is.True);
-                LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("VRCFury: Some Face Tracking blendshape mappings could not be resolved"));
                 Assert.DoesNotThrow(() => build.faceTracking.ApplyPlan(plan));
                 Assert.That(build.avatar.faceTrackingBlendshapesSetList.Single().faceTrackingBlendshapeNames, Is.All.Empty);
                 Assert.That(build.avatar.faceTrackingBlendshapesSetList.Single().visemeBlendshapeNames, Is.All.Empty);

@@ -45,7 +45,7 @@ namespace VF.Hooks {
             var go = (VFGameObject)__0;
             if (Application.isPlaying) {
                 if (go.GetComponent<VRCFuryTest>() != null || GetPlayModeState(go) != PlayModeState.Fresh) {
-                    Debug.LogWarning($"VRCFury is preventing OnPreprocessAvatar from running on {__0.name} because it already ran on that object");
+                    // Debug.LogWarning($"VRCFury is preventing OnPreprocessAvatar from running on {__0.name} because it already ran on that object");
                     __result = true;
                     return false;
                 }

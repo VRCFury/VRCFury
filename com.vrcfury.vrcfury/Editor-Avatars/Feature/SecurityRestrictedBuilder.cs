@@ -15,6 +15,7 @@ namespace VF.Feature {
     [FeatureTitle("Security Restricted")]
     internal class SecurityRestrictedBuilder : FeatureBuilder<SecurityRestricted> {
         [VFAutowired] private readonly VFGameObject avatarObject;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
         [VFAutowired] private readonly ObjectMoveService mover;
         [VFAutowired] private readonly DbtLayerService directTreeService;
         [VFAutowired] private readonly ClipFactoryService clipFactory;
@@ -39,7 +40,7 @@ namespace VF.Feature {
 
             var security = globals.allBuildersInRun.OfType<SecurityLockBuilder>().FirstOrDefault();
             if (security == null) {
-                Debug.LogWarning("Security pin not set, restriction disabled");
+                saveAssets.Session.AddNote("Security PIN is unset. Disabled the restriction.");
                 return;
             }
 

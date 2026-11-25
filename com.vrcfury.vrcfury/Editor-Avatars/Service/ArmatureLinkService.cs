@@ -151,7 +151,7 @@ namespace VF.Service {
             }
             
             if (model.propBone == null) {
-                Debug.LogWarning("Root bone is null on armature link.");
+                // Debug.LogWarning("Root bone is null on armature link.");
                 return;
             }
 

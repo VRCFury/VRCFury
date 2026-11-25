@@ -56,7 +56,7 @@ namespace VF.Hooks {
 
         private static bool Prefix(ref bool __result, object __instance) {
             if (!IsActuallyUploadingHook.Get()) {
-                Debug.Log($"VRCFury inhibited {__instance.GetType().FullName} from running because an upload isn't actually happening");
+                //Debug.Log($"VRCFury inhibited {__instance.GetType().FullName} from running because an upload isn't actually happening");
                 __result = true;
                 return false;
             }

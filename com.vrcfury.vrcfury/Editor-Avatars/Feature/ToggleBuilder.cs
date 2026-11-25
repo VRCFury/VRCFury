@@ -33,6 +33,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly MenuService menuService;
         private MenuManager menu => menuService.GetMenu();
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
 
         private VFCondition isOn;
         private VFAParam exclusiveParam;
@@ -320,7 +321,7 @@ namespace VF.Feature {
                 if (securityLockUnlocked != null) {
                     onCase = onCase.And(securityLockUnlocked.IsTrue());
                 } else {
-                    Debug.LogWarning("Security pin not set, restriction disabled");
+                    saveAssets.Session.AddNote($"Security PIN is unset. Disabled the restriction for {model.name}.");
                 }
             }
 

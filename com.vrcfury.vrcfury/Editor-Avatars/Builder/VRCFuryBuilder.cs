@@ -21,8 +21,6 @@ namespace VF.Builder {
 
     internal class VRCFuryBuilder {
         internal static void RunMain(VFGameObject avatarObject) {
-            Debug.Log("VRCFury invoked on " + avatarObject.name + " ...");
-
             try {
                 MaterialLocker.injectedAvatarObject = avatarObject;
                 Run(avatarObject);
@@ -46,7 +44,7 @@ namespace VF.Builder {
             EditorOnlyUtils.RemoveEditorOnlyObjects(avatarObject);
 
             if (!ShouldRun(avatarObject)) {
-                Debug.Log("VRCFury components not found in avatar. Skipping.");
+                // Debug.Log("VRCFury components not found in avatar. Skipping.");
                 return;
             }
             
@@ -76,8 +74,6 @@ namespace VF.Builder {
                 // Make sure all new assets we've created have actually been saved to disk
                 AssetDatabase.SaveAssets();
             }
-
-            Debug.Log("VRCFury Finished!");
         }
 
         private static void ApplyFuryConfigs(

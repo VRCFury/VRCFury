@@ -17,6 +17,7 @@ namespace VF.Service {
     [VFService]
     internal class DisableSyncForAapsService {
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
         private VFAvatarController fx => controllers.GetFx();
         [VFAutowired] private readonly ExpressionParamsService expressionParams;
 
@@ -30,7 +31,7 @@ namespace VF.Service {
 
             foreach (var param in expressionParams) {
                 if (vrcfDrivenAaps.Contains(param.name)) {
-                    Debug.LogWarning($"VRCFury is disabling network sync for {param.name} because it is driven by an AAP");
+                    saveAssets.Session.AddNote($"Disabled network sync for {param.name} because it is driven by an AAP");
                     param.Unsynced();
                 }
             }

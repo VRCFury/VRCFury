@@ -18,6 +18,7 @@ namespace VF.Service {
     internal class FaceTrackingService {
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly ControllersService controllers;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
 
         internal readonly struct FtBlendshapeRef : IEquatable<FtBlendshapeRef> {
             public readonly SkinnedMeshRenderer skin;
@@ -308,7 +309,11 @@ namespace VF.Service {
         [FeatureBuilderAction(FeatureOrder.BlendShapeLinkFixAnimations, 1)]
         public void Apply() {
             var plan = CreatePlan();
-            if (plan != null) ApplyPlan(plan);
+            if (plan == null) return;
+            ApplyPlan(plan);
+            if (plan.warnings.Count > 0) {
+                saveAssets.Session.AddWorkLogSection("Unresolved Face Tracking mappings", plan.warnings.JoinWithMore(10));
+            }
         }
 
         // After initial normalization, planning only reads staged configuration and live mesh names.
@@ -366,9 +371,6 @@ namespace VF.Service {
                 avatar.visemeDampenAmount = dampening.amount;
             }
             avatar.Dirty();
-            if (plan.warnings.Count > 0)
-                Debug.LogWarning("VRCFury: Some Face Tracking blendshape mappings could not be resolved and were skipped:\n"
-                    + plan.warnings.JoinWithMore(10), avatar);
         }
 
         private Dictionary<FtBlendshapeRef, string> ResolveNames(

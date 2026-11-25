@@ -41,11 +41,10 @@ namespace VF.Service {
             var contacts = avatarObject.GetComponentsInSelfAndChildren<ContactBase>().ToArray();
             var contactLimit = 256;
             if (contacts.Length > contactLimit) {
-                var contactPaths = contacts
-                    .Select(c => c.owner().GetPath(avatarObject))
-                    .OrderBy(path => path)
-                    .ToArray();
-                Debug.Log("Contact report:\n" + contactPaths.Join('\n'));
+                // var contactPaths = contacts
+                //     .Select(c => c.owner().GetPath(avatarObject))
+                //     .OrderBy(path => path);
+                // Debug.Log("Contact report:\n" + contactPaths.Join('\n'));
                 var usesSps = avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticPlug>().Any()
                               || avatarObject.GetComponentsInSelfAndChildren<VRCFuryHapticSocket>().Any();
                 if (usesSps) {

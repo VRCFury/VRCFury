@@ -24,7 +24,7 @@ namespace VF.Hooks {
 
         private static bool OnPreprocessAvatarPrefix(GameObject __0, ref bool __result) {
             if (!HasVrcfBoundingBoxFix(__0)) return true;
-            Debug.Log($"VRCFury inhibited Thry VRCAutoAnchor from running because avatar uses VRCFury Anchor Override Fix");
+            // Debug.Log("VRCFury inhibited Thry VRCAutoAnchor from running because avatar uses VRCFury Anchor Override Fix");
             __result = true;
             return false;
         }

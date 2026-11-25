@@ -22,6 +22,8 @@ namespace VF.Tests {
             try {
                 session.AddWorkLogSection("Build Step Timing", "* First" + Environment.NewLine + "* Second");
                 session.AddWorkLogSection("Other", "Detail");
+                session.AddNote("First note");
+                session.AddNote("Second note");
                 session.WriteWorkLogManifest();
                 session.WriteWorkLogManifest();
                 var lines = File.ReadAllLines(Directory.GetFiles(outputDir, "*.txt").Single());
@@ -30,7 +32,10 @@ namespace VF.Tests {
                     "* First",
                     "* Second",
                     "Other:",
-                    "Detail"
+                    "Detail",
+                    "Notes:",
+                    "* First note",
+                    "* Second note"
                 }));
             } finally {
                 AssetDatabase.DeleteAsset(outputDir);

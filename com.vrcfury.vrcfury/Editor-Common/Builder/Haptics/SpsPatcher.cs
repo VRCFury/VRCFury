@@ -1030,7 +1030,7 @@ namespace VF.Builder.Haptics {
                     isLib = true;
                 }
                 if (!File.Exists(fullPath)) {
-                    Debug.LogWarning("Failed to find include at " + attempts.Join(" or "));
+                    // Debug.LogWarning("Failed to find include at " + attempts.Join(" or "));
                     return match.Groups[0].ToString();
                 }
                 if (!includeLibraryFiles && isLib) {

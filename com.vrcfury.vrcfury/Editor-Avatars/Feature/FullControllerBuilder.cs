@@ -35,6 +35,7 @@ namespace VF.Feature {
         private const string InhibitHandControlsParam = "_VRCF_InhibitHandControls";
         [VFAutowired] private readonly UniqueParamService uniqueParams;
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
         [VFAutowired] private readonly AnimatorLayerControlOffsetService animatorLayerControlManager;
         [VFAutowired] private readonly SmoothingService smoothingService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
@@ -228,7 +229,7 @@ namespace VF.Feature {
             if (missingAssets.Count > 0) {
                 if (model.allowMissingAssets) {
                     var list = missingAssets.Select(w => VrcfObjectId.FromId(w.id).Pretty()).Join(", ");
-                    Debug.LogWarning($"Missing Assets: {list}");
+                        saveAssets.Session.AddNote($"Missing Full Controller assets: {list}");
                 } else {
                     var list = missingAssets.Select(w => VrcfObjectId.FromId(w.id).Pretty()).Join("\n");
                     throw new Exception(

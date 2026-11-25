@@ -26,6 +26,7 @@ namespace VF.Feature {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
 #if VRCSDK_HAS_FACE_TRACKING
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
         [VFAutowired] private readonly FaceTrackingService faceTracking;
@@ -291,7 +292,7 @@ namespace VF.Feature {
         public void Apply() {
             var baseSkin = GetBaseSkin(avatarObject, model);
             if (baseSkin == null) {
-                Debug.LogWarning("Failed to find base skin on avatar");
+                saveAssets.Session.AddNote("Blendshape Link could not find the base skinned mesh renderer on the avatar.");
                 return;
             }
             var linkSkins = GetLinkSkins(model);

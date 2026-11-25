@@ -15,6 +15,7 @@ namespace VF.Service {
     [VFService]
     internal class FixAnimatedPhysbonesService {
         [VFAutowired] private readonly GlobalsService globals;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
         [VFAutowired] private readonly VRCFArmatureCache armatureCache;
         private VFGameObject avatarObject => globals.avatarObject;
 
@@ -25,7 +26,7 @@ namespace VF.Service {
                 var root = physbone.GetRootTransform();
                 if (root == avatarObject || bones.Contains(root)) {
                     if (!physbone.isAnimated) {
-                        Debug.LogWarning($"Marking physbone on {physbone.owner().GetPath(avatarObject, true)} as animated since it targets a humanoid bone");
+                        saveAssets.Session.AddNote($"Marked PhysBone on {physbone.owner().GetPath(avatarObject, true)} as animated because it targets a humanoid bone");
                         physbone.isAnimated = true;
                     }
                 }

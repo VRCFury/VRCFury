@@ -11,7 +11,7 @@ namespace VF.Hooks {
             // This is only here just in case the RunPreprocessorsOnlyOncePatch harmony patch didn't work (user running on a platform that doesn't support harmony)
             var go = (VFGameObject)obj;
             if (!RunPreprocessorsOnlyOncePatch.ShouldRunPreprocessors(go)) {
-                Debug.LogWarning("Skipping " + GetType().FullName + " preprocessor because preprocessors already ran on this object");
+                // Debug.LogWarning("Skipping " + GetType().FullName + " preprocessor because preprocessors already ran on this object");
                 return true;
             }
             return VRCFuryBuildContext.Run(() => Process(obj));
