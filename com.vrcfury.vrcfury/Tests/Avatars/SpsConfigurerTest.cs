@@ -62,17 +62,29 @@ namespace VF.Tests {
         }
 
         [TestCase(HumanBodyBones.Hips, false)]
+        [TestCase(HumanBodyBones.LeftUpperLeg, false)]
+        [TestCase(HumanBodyBones.RightUpperLeg, false)]
+        [TestCase(HumanBodyBones.Spine, false)]
+        [TestCase(HumanBodyBones.Chest, false)]
+        [TestCase(HumanBodyBones.UpperChest, false)]
         [TestCase(HumanBodyBones.Head, true)]
+        [TestCase(HumanBodyBones.LeftLowerLeg, true)]
         [TestCase(HumanBodyBones.LastBone, true)]
-        public void SocketAutoChannelsAddSelfOnlyNotHipsOutsideHips(HumanBodyBones bone, bool expected) {
+        public void HipAvoidanceUsesClosestBoneForBothSocketAndPlug(HumanBodyBones bone, bool outsideHips) {
             injector.Set("autoChannelGenerator", new AutoChannels(bone));
             var socket = root.AddComponent<VRCFuryHapticSocket>();
             var configurer = injector.GetService<SpsConfigurer>();
-            Assert.That(configurer.GetAutoSocketChannels(socket.owner(), true).Contains("nothips"), Is.EqualTo(expected));
-            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings).Contains(SelfTag("nothips")), Is.EqualTo(expected));
+            Assert.That(configurer.GetAutoSocketChannels(socket.owner(), true).Contains("nothips"), Is.EqualTo(outsideHips));
+            Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings).Contains(SelfTag("nothips")), Is.EqualTo(outsideHips));
             Assert.That(configurer.GetChannels(socket.owner(), false, Party.Others, socket.channelSettings), Does.Not.Contain("nothips"));
             socket.channelSettings.useSharedTag = false;
             Assert.That(configurer.GetChannels(socket.owner(), false, Party.Merged, socket.channelSettings), Does.Not.Contain(SelfTag("nothips")));
+
+            var plug = root.AddComponent<VRCFuryHapticPlug>();
+            plug.channelSettings.useHipAvoidance = true;
+            var expected = outsideHips ? "_public" : "nothips";
+            Assert.That(configurer.GetChannels(plug.owner(), true, Party.Self, plug.channelSettings), Is.EquivalentTo(new[] { SelfTag(expected) }));
+            Assert.That(configurer.GetChannels(plug.owner(), true, Party.Others, plug.channelSettings), Is.EquivalentTo(new[] { "_public" }));
         }
 
         [Test]

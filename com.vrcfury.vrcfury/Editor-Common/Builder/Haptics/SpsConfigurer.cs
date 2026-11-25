@@ -103,7 +103,7 @@ namespace VF.Builder.Haptics {
             if (settings.useSharedTag) {
                 if (!isPlug) channels.UnionWith(GetAutoSocketChannels(obj, self));
                 channels.Add(self && isPlug && settings.useHipAvoidance
-                    && autoChannelGenerator?.GetClosestBone(obj) == HumanBodyBones.Hips
+                    && IsHipAvoidanceBone(autoChannelGenerator?.GetClosestBone(obj))
                     ? SpsTags.NotHipsChannel : SpsTags.PublicChannel);
             }
             return channels;
@@ -114,6 +114,10 @@ namespace VF.Builder.Haptics {
                 .Select(rule => NormalizeUserChannel(rule.id)).Where(channel => !string.IsNullOrWhiteSpace(channel)).ToHashSet();
 
         private static string NormalizeUserChannel(string channel) => channel?.Trim().ToLowerInvariant() ?? "";
+
+        private static bool IsHipAvoidanceBone(HumanBodyBones? bone) =>
+            bone is HumanBodyBones.Hips or HumanBodyBones.LeftUpperLeg or HumanBodyBones.RightUpperLeg
+                or HumanBodyBones.Spine or HumanBodyBones.Chest or HumanBodyBones.UpperChest;
 
         private string GetAutoHipFrontBackChannel(
             VFGameObject socket,
@@ -170,7 +174,7 @@ namespace VF.Builder.Haptics {
                 _ => Array.Empty<string>()
             };
             var result = channels.Where(channel => !string.IsNullOrWhiteSpace(channel)).ToHashSet();
-            if (self && bone != HumanBodyBones.Hips) result.Add(SpsTags.NotHipsChannel);
+            if (self && !IsHipAvoidanceBone(bone)) result.Add(SpsTags.NotHipsChannel);
             return result;
         }
     }
