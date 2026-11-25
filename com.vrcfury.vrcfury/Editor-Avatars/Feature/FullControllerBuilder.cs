@@ -662,7 +662,7 @@ namespace VF.Feature {
                         && sourceObject.GetComponent<VRCFuryHapticSocket>() == null) return;
                     if (VRCFuryHapticPlugEditor.ParseSpsMagicParam(sourceParamProp.stringValue,
                         isSocket: sourceObject.GetComponent<VRCFuryHapticSocket>() != null) != null) return;
-                    sourceParamProp.stringValue = VRCFuryHapticPlugEditor.SpsDepthMeters;
+                    sourceParamProp.stringValue = VRCFuryHapticPlugEditor.SpsDepthLocal;
                 }
                 var sourceField = new ObjectField { objectType = typeof(GameObject), name = "SourceObject" };
                 sourceField.SetValueWithoutNotify(sourceObjectProp.objectReferenceValue);

@@ -79,7 +79,7 @@ namespace VF.Tests {
                 // Advancing the group must not split the edit and its automatic default selection.
                 UnityEditor.Undo.IncrementCurrentGroup();
                 Pump();
-                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthMeters));
+                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthLocal));
                 Assert.That(editor.Query<PopupField<string>>().ToList(), Has.Count.EqualTo(2));
                 UnityEditor.Undo.FlushUndoRecordObjects();
                 UnityEditor.Undo.PerformUndo();
@@ -89,7 +89,7 @@ namespace VF.Tests {
                 UnityEditor.Undo.PerformRedo();
                 serialized.Update();
                 Pump();
-                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthMeters));
+                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthLocal));
                 var plug = GameObjects.Create("Plug", root).AddComponent<VRCFuryHapticPlug>();
                 sourceParam.stringValue = VRCFuryHapticPlugEditor.SpsPlugEntryRadiusLocal;
                 serialized.ApplyModifiedProperties();
@@ -97,7 +97,7 @@ namespace VF.Tests {
                 UnityEditor.Undo.IncrementCurrentGroup();
                 editor.Q<UnityEditor.UIElements.ObjectField>("SourceObject").value = plug.gameObject;
                 Pump();
-                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthMeters));
+                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthLocal));
                 UnityEditor.Undo.FlushUndoRecordObjects();
                 UnityEditor.Undo.PerformUndo();
                 serialized.Update();
@@ -105,12 +105,12 @@ namespace VF.Tests {
                 Assert.That(inject.FindPropertyRelative("sourceObject").objectReferenceValue, Is.SameAs(root));
                 Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsPlugEntryRadiusLocal),
                     "Changing the source and selecting a supported default must be one undo operation");
-                sourceParam.stringValue = VRCFuryHapticPlugEditor.SpsDepthLocal;
+                sourceParam.stringValue = VRCFuryHapticPlugEditor.SpsVelocityLocal;
                 serialized.ApplyModifiedProperties();
                 Pump();
                 editor.Q<UnityEditor.UIElements.ObjectField>("SourceObject").value = plug.gameObject;
                 Pump();
-                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthLocal),
+                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsVelocityLocal),
                     "Changing sources must preserve a supported parameter and its units");
                 var unitsField = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Units");
                 UnityEditor.Undo.IncrementCurrentGroup();
@@ -121,7 +121,7 @@ namespace VF.Tests {
                 UnityEditor.Undo.PerformUndo();
                 serialized.Update();
                 Pump();
-                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsDepthLocal));
+                Assert.That(sourceParam.stringValue, Is.EqualTo(VRCFuryHapticPlugEditor.SpsVelocityLocal));
                 Assert.That(unitsField.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsUnitsLocal), "Units must follow Undo");
                 Assert.That(editor.Q("spsMetersWarning").style.display.value, Is.EqualTo(DisplayStyle.None));
                 var parameterField = editor.Query<PopupField<string>>().ToList().Single(field => field.label == "Parameter");
@@ -133,7 +133,7 @@ namespace VF.Tests {
                 UnityEditor.Undo.PerformUndo();
                 serialized.Update();
                 Pump();
-                Assert.That(parameterField.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsParamDepth), "Parameter selection must follow Undo");
+                Assert.That(parameterField.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsParamVelocity), "Parameter selection must follow Undo");
                 Assert.That(unitsField.value, Is.EqualTo(VRCFuryHapticPlugEditor.SpsUnitsLocal));
                 Assert.That(unitsField.style.display.value, Is.EqualTo(DisplayStyle.Flex));
                 UnityEditor.Undo.PerformRedo();

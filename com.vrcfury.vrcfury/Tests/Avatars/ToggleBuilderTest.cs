@@ -21,6 +21,52 @@ using Object = UnityEngine.Object;
 
 namespace VF.Tests {
     public class ToggleBuilderTest {
+        [TestCase("")]
+        [TestCase("Clothing")]
+        public void ExclusiveOffStateTurnsOnWhenItIsTheOnlyTaggedToggle(string tag) {
+            var root = new GameObject("Avatar");
+            try {
+                var avatar = root.AddComponent<VRCAvatarDescriptor>();
+                avatar.baseAnimationLayers = new[] {
+                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX },
+                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.Action }
+                };
+                avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+                injector.Set("componentObject", new Func<VFGameObject>(() => root));
+                var controllers = injector.GetService<ControllersService>();
+                controllers.ClearCache(applyBaseMask: false);
+                var toggle = injector.CreateAndFillObject<ToggleBuilder>();
+                toggle.featureBaseObject = root;
+                toggle.model = new Toggle {
+                    name = "Default outfit",
+                    useGlobalParam = true,
+                    globalParam = "Outfit",
+                    addMenuItem = false,
+                    enableExclusiveTag = true,
+                    exclusiveTag = tag,
+                    exclusiveOffState = true
+                };
+                injector.GetService<GlobalsService>().allBuildersInRun = new List<FeatureBuilder> { toggle };
+                toggle.Apply();
+                toggle.ApplyExclusiveTags();
+                var layer = controllers.GetAction().GetLayers().SingleOrDefault(l => l.name.EndsWith("Exclusive Tag - Off States"));
+                if (tag == "") {
+                    Assert.That(layer, Is.Null);
+                    return;
+                }
+                Assert.That(layer, Is.Not.Null);
+                var transition = layer.allTransitions.Single(t => t.destinationState?.name == toggle.model.name);
+                var condition = transition.conditions.Single();
+                Assert.That(condition.parameter, Is.EqualTo("Outfit"));
+                Assert.That(condition.mode, Is.EqualTo(AnimatorConditionMode.IfNot));
+                Assert.That(transition.destinationState.behaviours.FindBehaviour<VRCAvatarParameterDriver>(
+                    driver => driver.parameters.Any(p => p.name == "Outfit" && p.value == 1)), Is.Not.Null);
+            } finally {
+                Object.DestroyImmediate(root);
+            }
+        }
+
         [TestCase(0, false, true, false, 3, false, 0)]
         [TestCase(0, false, true, true, 3, false, 0)]
 #if VRCSDK_HAS_DYNAMIC_PARAMETER_BIT_WIDTH

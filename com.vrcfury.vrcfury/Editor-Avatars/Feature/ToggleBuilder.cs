@@ -487,21 +487,15 @@ namespace VF.Feature {
                 return (layer,idle);
             });
             foreach (var toggle in allToggles.Where(t => t.model.exclusiveOffState)) {
-                var conflictsWith = toggle.GetExclusiveTags()
+                var members = toggle.GetExclusiveTags()
                     .SelectMany(tag => tagToToggles.Get(tag))
-                    .Where(t => t != toggle)
+                    .Distinct()
                     .ToArray();
-                if (conflictsWith.Any()) {
-                    toggle.exclusiveParam?.CopyTo(actionController);
-                    foreach (var other in conflictsWith) other.exclusiveParam?.CopyTo(actionController);
-                    var triggerWhen = toggle.isOn.Not();
-                    foreach (var other in conflictsWith) {
-                        triggerWhen = triggerWhen.And(other.isOn.Not());
-                    }
-                    var state = exclusiveOffLayer.Value.Item1.NewState(toggle.model.name);
-                    state.TransitionsFromAny().When(triggerWhen);
-                    toggle.drive(state, true);
-                }
+                if (members.Length == 0) continue;
+                foreach (var member in members) member.exclusiveParam?.CopyTo(actionController);
+                var state = exclusiveOffLayer.Value.Item1.NewState(toggle.model.name);
+                state.TransitionsFromAny().When(VFCondition.All(members.Select(member => member.isOn.Not())));
+                toggle.drive(state, true);
             }
             if (exclusiveOffLayer.IsValueCreated) {
                 exclusiveOffLayer.Value.Item2.TransitionsFromAny().When(actionController.Always());
