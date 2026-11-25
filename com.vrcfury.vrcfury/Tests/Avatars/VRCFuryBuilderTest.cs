@@ -73,6 +73,10 @@ namespace VF.Tests {
                     outputFolder = VRCFuryAssetDatabase.GetDirectoryName(AssetDatabase.GetAssetPath(fx));
                     VRCFuryInjectorBuilder.GetInjector(avatar).GetService<SaveAssetsService>().Session.WriteWorkLogManifest();
                     var workLog = System.IO.File.ReadAllLines(System.IO.Directory.GetFiles(outputFolder, "*.txt").Single());
+                    var restingHeader = System.Array.IndexOf(workLog, "Resting state after ApplyImplicitRestingStates:");
+                    Assert.That(restingHeader, Is.GreaterThanOrEqualTo(0));
+                    var restingChanges = workLog.Skip(restingHeader + 1).TakeWhile(line => line.Length > 0);
+                    Assert.That(restingChanges.Any(line => line.Contains("Marker GameObject m_IsActive")), Is.True);
                     var timingHeader = System.Array.IndexOf(workLog, "Build Step Timing:");
                     Assert.That(timingHeader, Is.GreaterThanOrEqualTo(0));
                     var steps = workLog.Skip(timingHeader + 1).TakeWhile(line => line.StartsWith("* ")).ToArray();

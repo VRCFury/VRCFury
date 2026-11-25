@@ -195,9 +195,7 @@ namespace VF.Builder {
                     continue;
                 }
 
-                var debugLogString = $"Importing {vrcFury.content.GetType().Name} from {configObject.name}";
                 AddComponent(vrcFury.content, configObject);
-                Debug.Log(debugLogString);
             }
 
             foreach (var type in collectedBuilders.Select(builder => builder.GetType()).ToImmutableHashSet()) {
@@ -228,8 +226,10 @@ namespace VF.Builder {
 
                 var priority = action.GetPriorty();
                 if (lastPriority != priority) {
+                    if (lastPriority.HasValue) {
+                        injector.GetService<RestingStateService>().OnPhaseChanged(lastPriority.Value);
+                    }
                     lastPriority = priority;
-                    injector.GetService<RestingStateService>().OnPhaseChanged();
                 }
 
                 globals.currentMenuSortPosition = globals.currentFeatureNum = currentServiceNumber = action.serviceNum;
@@ -247,6 +247,10 @@ namespace VF.Builder {
                     throw new ExceptionWithCause($"Failed to build VRCFury component: {currentModelName}", VRCFExceptionUtils.GetGoodCause(e));
                 }
                 timings.Add((timer.Elapsed.TotalMilliseconds, statusMessage));
+            }
+
+            if (lastPriority.HasValue) {
+                injector.GetService<RestingStateService>().OnPhaseChanged(lastPriority.Value);
             }
 
             var workLog = injector.GetService<SaveAssetsService>().Session;

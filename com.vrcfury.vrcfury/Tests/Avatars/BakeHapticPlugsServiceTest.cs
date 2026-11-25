@@ -97,7 +97,7 @@ namespace VF.Tests {
                 baker.ApplyEarlyBake();
                 var skin = plug.GetComponent<SkinnedMeshRenderer>();
                 Assert.That(skin != null, Is.True);
-                injector.GetService<RestingStateService>().OnPhaseChanged();
+                injector.GetService<RestingStateService>().OnPhaseChanged(VF.Feature.Base.FeatureOrder.BakeHapticPlugs);
                 Assert.That(renderer != null, Is.True);
                 Assert.That(renderer.sharedMaterial, Is.SameAs(resting));
                 Assert.That(skin.GetBlendShapeWeight(0), Is.EqualTo(25));

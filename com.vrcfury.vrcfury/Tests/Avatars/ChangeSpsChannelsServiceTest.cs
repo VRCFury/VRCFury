@@ -297,7 +297,7 @@ namespace VF.Tests {
             injector.GetService<IsObjectEnabledService>().Apply();
             injector.GetService<ObjectTreeService>().Apply();
             toggle.ApplyRestingState();
-            injector.GetService<RestingStateService>().OnPhaseChanged();
+            injector.GetService<RestingStateService>().OnPhaseChanged(VF.Feature.Base.FeatureOrder.ApplyToggleRestingState);
             defaults.RecordAllDefaults();
             defaults.AdjustWriteDefaults();
             injector.GetService<FixEmptyMotionService>().Apply();
@@ -597,7 +597,7 @@ namespace VF.Tests {
             injector.GetService<ObjectTreeService>().Apply();
             animatorPrepared = true;
             toggle.ApplyRestingState();
-            injector.GetService<RestingStateService>().OnPhaseChanged();
+            injector.GetService<RestingStateService>().OnPhaseChanged(VF.Feature.Base.FeatureOrder.ApplyToggleRestingState);
             defaults.RecordAllDefaults();
             defaults.AdjustWriteDefaults();
             injector.GetService<FixEmptyMotionService>().Apply();

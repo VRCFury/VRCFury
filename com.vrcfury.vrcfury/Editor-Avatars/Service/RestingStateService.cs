@@ -29,6 +29,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ActionClipService actionClipService;
         [VFAutowired] private readonly AvatarBindingStateService bindingstateService;
         [VFAutowired] private readonly AllClipsService allClipsService;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
         private readonly List<PendingClip> pendingClips = new List<PendingClip>();
 
         public class PendingClip {
@@ -42,25 +43,24 @@ namespace VF.Service {
             allClipsService.AddAdditionalManagedClip(copy);
         }
 
-        public void OnPhaseChanged() {
-            if (!pendingClips.Any()) return;
+        public void OnPhaseChanged(FeatureOrder finishedPhase) {
+            if (pendingClips.Count == 0) return;
 
-            var debugLog = new List<string>();
-            
+            var report = new List<string>();
             foreach (var pending in pendingClips) {
                 bindingstateService.ApplyClip(pending.clip, pending.owner);
-                foreach (var pair in pending.clip.GetAllCurves()) {
-                    var binding = pair.Item1;
-                    var curve = pair.Item2;
+                foreach (var (binding, curve) in pending.clip.GetAllCurves()) {
                     var value = curve.GetLast();
-                    debugLog.Add($"{binding.PrettyString()} = {value}\n  via {pending.owner}");
+                    report.Add($"{binding.PrettyString()} = {value}\n  via {pending.owner}");
                     StoreBinding(binding, value, pending.owner);
                 }
             }
             pendingClips.Clear();
             stored.Clear();
-            
-            Debug.Log("Resting state report:\n" + debugLog.Join('\n'));
+
+            if (report.Count > 0) {
+                saveAssets.Session.AddWorkLogSection($"Resting state after {finishedPhase}", report.Join('\n'));
+            }
         }
 
         [FeatureBuilderAction(FeatureOrder.ApplyImplicitRestingStates)]
