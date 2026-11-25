@@ -19,6 +19,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ControllersService controllers;
         [VFAutowired] private readonly AnimatorHolderService animators;
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
         private readonly HashSet<VFLayer> layersToRemove = new HashSet<VFLayer>();
 
         public bool WouldRemove(VFLayer layer) {
@@ -27,6 +28,10 @@ namespace VF.Service {
         
         [FeatureBuilderAction(FeatureOrder.CleanupEmptyLayers)]
         public void Apply() {
+            void RecordPruning(string message) {
+                saveAssets.Session.AddWorkLogEntry("Pruned controller content", message);
+            }
+
             layersToRemove.Clear();
             foreach (var c in controllers.GetAllUsedControllers()) {
                 var removedBindings = new List<string>();
@@ -51,8 +56,8 @@ namespace VF.Service {
                 }
 
                 if (removedBindings.Count > 0) {
-                    Debug.LogWarning(
-                        $"Removed {removedBindings.Count} properties from animation clips that targeted objects that do not exist:\n" +
+                    RecordPruning(
+                        $"Removed {removedBindings.Count} properties from {c.GetType()} animation clips that targeted objects that do not exist:\n" +
                         removedBindings.Join('\n'));
                 }
 
@@ -64,8 +69,8 @@ namespace VF.Service {
 
                     if (!hasNonEmptyClip && !hasBehaviour) {
                         layersToRemove.Add(layer);
-                        Debug.LogWarning($"Removing layer {layer.name} from {c.GetType()} because it doesn't do anything");
                         if (layer.hasDefaultState && !IsActuallyUploadingHook.Get()) {
+                            RecordPruning($"Layer {layer.name} in {c.GetType()} has no valid animations and will be removed on upload");
                             layer.name += " (NO VALID ANIMATIONS)";
                             var s = layer.NewState(
                                 "Warning from VRCFury!\n" +
@@ -77,6 +82,7 @@ namespace VF.Service {
                             var warningPos = new Vector2(entryPos.x, entryPos.y - 100);
                             s.SetRawPosition(warningPos);
                         } else {
+                            RecordPruning($"Removed layer {layer.name} from {c.GetType()} because it has no valid animations or behaviours");
                             layer.Remove();
                         }
                     } else if (!hasNonEmptyClip) {
@@ -96,7 +102,7 @@ namespace VF.Service {
                     });
                 if (hasValidBinding || hasValidAnimatorPlayAudio) continue;
 
-                Debug.LogWarning($"Removing Animator from {owner.GetDebugPath()} because it contains no valid animation bindings or Animator Play Audio actions");
+                RecordPruning($"Removed Animator from {owner.GetDebugPath()} because it contains no valid animation bindings or Animator Play Audio actions");
                 animators.RemoveSubAnimator(owner);
             }
         }
