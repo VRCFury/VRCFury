@@ -20,18 +20,17 @@ namespace VF.Tests {
                 .GetField("outputDir", BindingFlags.NonPublic | BindingFlags.Instance)
                 .GetValue(session);
             try {
-                session.AddWorkLogEntry("Build Steps", "First");
-                session.AddWorkLogEntry("Other", "Detail");
-                session.AddWorkLogEntry("Build Steps", "Second");
+                session.AddWorkLogSection("Build Step Timing", "* First" + Environment.NewLine + "* Second");
+                session.AddWorkLogSection("Other", "Detail");
                 session.WriteWorkLogManifest();
                 session.WriteWorkLogManifest();
                 var lines = File.ReadAllLines(Directory.GetFiles(outputDir, "*.txt").Single());
                 Assert.That(lines.Where(line => line.Length > 0), Is.EqualTo(new[] {
-                    "Build Steps:",
+                    "Build Step Timing:",
                     "* First",
                     "* Second",
                     "Other:",
-                    "* Detail"
+                    "Detail"
                 }));
             } finally {
                 AssetDatabase.DeleteAsset(outputDir);

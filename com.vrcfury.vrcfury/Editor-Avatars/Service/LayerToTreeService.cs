@@ -29,6 +29,7 @@ namespace VF.Service {
         [VFAutowired] private readonly ValidateBindingsService validateBindingsService;
         [VFAutowired] private readonly LayerSourceService layerSourceService;
         [VFAutowired] private readonly CleanupEmptyLayersService cleanupEmptyLayers;
+        [VFAutowired] private readonly SaveAssetsService saveAssets;
 
         private VFAParam GetExistingParameter(string name) {
             if (!fx.TryGetParam(name, out var parameter)) throw new DoNotOptimizeException($"Uses undeclared parameter {name}");
@@ -58,18 +59,20 @@ namespace VF.Service {
 
             var directTree = new Lazy<VFBlendTreeDirect>(() => directTreeService.Create());
             
-            var debugLog = new List<string>();
+            var report = new List<string>();
             foreach (var layer in applyToLayers) {
                 try {
                     OptimizeLayer(layer, bindingsByLayer, layersByBinding, directTree);
-                    debugLog.Add($"{layer.name} - OPTIMIZED");
+                    report.Add($"{layer.name} - OPTIMIZED");
                     layer.Remove();
                 } catch (DoNotOptimizeException e) {
-                    debugLog.Add($"{layer.name} - Not Optimizing ({e.Message})");
+                    report.Add($"{layer.name} - Not Optimizing ({e.Message})");
                 }
             }
             
-            Debug.Log("Optimization report:\n\n" + debugLog.Join('\n'));
+            if (report.Count > 0) {
+                saveAssets.Session.AddWorkLogSection("LayerToTree Optimizer", string.Join(Environment.NewLine, report));
+            }
         }
 
         private void OptimizeLayer(

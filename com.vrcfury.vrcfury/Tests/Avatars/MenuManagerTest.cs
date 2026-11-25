@@ -136,7 +136,15 @@ namespace VF.Tests {
             control.value = 0.75f;
             control.parameter = new VRCExpressionsMenu.Control.Parameter { name = "Enabled" };
 
-            Assert.That(Manager(root).Move("Original", "Parent/Renamed"), Is.True);
+            var manager = Manager(root);
+            Assert.That(manager.Move("Original", "Parent/Renamed"), Is.True);
+            Assert.That(manager.Move("Original", "Parent/Missing"), Is.False);
+            Assert.That(manager.Move("Parent/Renamed", "Parent/Renamed"), Is.True);
+            Assert.That(
+                Child(root, "Parent").GetWorkLog().Where(entry => entry.StartsWith("Moved ")),
+                Is.EqualTo(new[] { "Moved Original to Parent/Renamed" })
+            );
+            Assert.That(root.GetWorkLog(), Has.None.StartsWith("Moved "));
 
             Assert.That(Child(Child(root, "Parent"), "Renamed"), Is.SameAs(source));
             Assert.That(Child(root, "Alias"), Is.SameAs(source));

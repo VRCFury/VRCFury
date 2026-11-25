@@ -92,6 +92,9 @@ namespace VF.Utils {
             var (toMenu, toName) = GetSubmenuAndItem(to, true);
             foreach (var control in fromControls) control.name = toName;
             MergeControls(toMenu, fromControls, preserveSubmenuLinks: true);
+            if (VrcfObjectFactory.DidCreate(toMenu)) {
+                toMenu.WorkLog($"Moved {from} to {to}");
+            }
             return true;
         }
         

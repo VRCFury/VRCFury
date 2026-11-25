@@ -4,6 +4,7 @@ namespace VF.Tests {
     using Party = VF.Builder.Haptics.SelfAndOthersReceiverService.Party;
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using System.Reflection;
     using NUnit.Framework;
@@ -214,12 +215,20 @@ namespace VF.Tests {
             var inputs = Enumerable.Range(0, conditionCount).Select(i => fx.CreateUniqueFloat("Gate " + i, 1)).ToArray();
             var positive = VFCondition.Any(inputs.Select(input => input.IsGreaterThan(0)));
             var negative = VFCondition.All(inputs.Select(input => input.IsGreaterThan(0).Not()));
-            if (!shouldOptimize) {
-                // A later tree-size rejection must not mask an unbounded negation.
-                UnityEngine.TestTools.LogAssert.Expect(LogType.Log,
-                    new System.Text.RegularExpressions.Regex("Contains more than six conditions before negation"));
-            }
             CheckConditionGateLimit(positive, inputs, shouldOptimize, false, negative);
+            if (shouldOptimize) return;
+
+            // A later tree-size rejection must not mask an unbounded negation.
+            var session = injector.GetService<SaveAssetsService>().Session;
+            var outputDir = (string)typeof(SaveAssetsSession).VFField("outputDir").GetValue(session);
+            try {
+                session.WriteWorkLogManifest();
+                var report = File.ReadAllText(Directory.GetFiles(outputDir, "*.txt").Single());
+                Assert.That(report, Does.Contain("LayerToTree Optimizer:"));
+                Assert.That(report, Does.Contain("Contains more than six conditions before negation"));
+            } finally {
+                UnityEditor.AssetDatabase.DeleteAsset(outputDir);
+            }
         }
 
         [Test]

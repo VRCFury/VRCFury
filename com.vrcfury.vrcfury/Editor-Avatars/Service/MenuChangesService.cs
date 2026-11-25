@@ -39,7 +39,6 @@ namespace VF.Service {
 
             BetweenSteps();
             foreach (var model in allActions.OfType<MoveMenuItem>()) {
-                Debug.Log($"Moving {model.fromPath} to {model.toPath}");
                 var result = menu.Move(model.fromPath, model.toPath);
                 if (result) {
                     BetweenSteps();

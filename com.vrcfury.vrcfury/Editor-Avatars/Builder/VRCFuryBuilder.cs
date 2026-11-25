@@ -250,9 +250,9 @@ namespace VF.Builder {
             }
 
             var workLog = injector.GetService<SaveAssetsService>().Session;
-            foreach (var (milliseconds, description) in timings.OrderByDescending(timing => timing.milliseconds)) {
-                workLog.AddWorkLogEntry("Build Step Timing", $"{milliseconds:F1} ms  {description}");
-            }
+            var timingLines = timings.OrderByDescending(timing => timing.milliseconds)
+                .Select(timing => $"* {timing.milliseconds:F1} ms  {timing.description}");
+            workLog.AddWorkLogSection("Build Step Timing", string.Join(Environment.NewLine, timingLines));
         }
     }
 
