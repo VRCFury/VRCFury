@@ -30,13 +30,12 @@ namespace VF.Service {
         ) {
             var calculations = objectTrees.Get(bakeRoot);
             var increasing = measurement == SpsParamPlugEntryRadius;
-            var controls = new Dictionary<(string input, float off, float on, float seconds, float initial, string filters), VFAParam>();
+            var controls = new Dictionary<(string input, float off, float on, float seconds, bool reverse, string filters), VFAParam>();
             var actionNum = 0;
             foreach (var depthAction in actions) {
                 if (!depthAction.enableSelf && !depthAction.enableOthers) continue;
                 var plugDepth = spsComponentOwner.GetComponent<VRCFuryHapticPlug>() != null;
                 if (plugDepth && !depthAction.allowHole && !depthAction.allowRing) continue;
-                var reverseClip = !increasing && depthAction.reverseClip;
                 actionNum++;
                 var prefix = $"{name}/Anim/{actionNum}";
 
@@ -59,24 +58,35 @@ namespace VF.Service {
                     : depthAction.units == VRCFuryHapticSocket.DepthActionUnits.Meters ? SpsUnitsMeters : SpsUnitsLocal;
                 var unsmoothed = measurements(GetSpsMagicParam(measurement, units));
                 var action = actionClipService.LoadStateAdv(prefix, depthAction.actionSet, spsComponentOwner, ActionClipService.MotionTimeMode.Auto);
+                var reverseClip = action.useMotionTime && !increasing && depthAction.reverseClip;
                 var useRawInput = depthAction.smoothingSeconds <= 0 && !action.useMotionTime
                     && depthAction.range.Min() < depthAction.range.Max();
                 var parameter = unsmoothed;
                 var offThreshold = increasing ? depthAction.range.Min() : depthAction.range.Max();
                 var onThreshold = increasing ? depthAction.range.Max() : depthAction.range.Min();
                 if (!useRawInput) {
-                    var initial = action.useMotionTime && reverseClip ? 1f : 0f;
                     var seconds = Math.Max(0, Math.Min(10, depthAction.smoothingSeconds));
-                    parameter = controls.GetOrCreate((unsmoothed.name, offThreshold, onThreshold, seconds, initial, filterKey), () =>
-                        smoothing.Smooth(calculations, prefix + (seconds > 0 ? "/Smoothed" : "/Mapped"), seconds, initial,
-                            output => allowed.create(BlendtreeMath.Map(output, unsmoothed, offThreshold, onThreshold, 0, 1), output.MakeSetter(initial)),
-                            minSupported: 0, maxSupported: 1));
+                    var far = reverseClip ? 1f : 0f;
+                    parameter = controls.GetOrCreate((unsmoothed.name, offThreshold, onThreshold, seconds, reverseClip, filterKey), () =>
+                        smoothing.Smooth(
+                            calculations,
+                            prefix + (seconds > 0 ? "/Smoothed" : "/Mapped"),
+                            seconds,
+                            far,
+                            output => allowed.create(
+                                BlendtreeMath.Map(output, unsmoothed, offThreshold, onThreshold, far, 1 - far),
+                                output.MakeSetter(far)
+                            ),
+                            minSupported: 0,
+                            maxSupported: 1
+                        )
+                    );
                     offThreshold = 0;
                     onThreshold = 1;
                 }
 
                 var layer = fx.NewLayer($"{name} - {(increasing ? "Plug Entry Radius" : "Depth")} Animations - {actionNum} - Action");
-                var off = layer.NewState("Off");
+                var off = reverseClip ? null : layer.NewState("Off");
                 var on = layer.NewState("On");
                 if (!action.useMotionTime) {
                     var tree = VFBlendTree1D.Create(prefix + " tree", parameter);
@@ -92,10 +102,8 @@ namespace VF.Service {
                     on.WithAnimation(tree);
                 } else {
                     on.WithAnimation(action.onClip).MotionTime(parameter);
-                    if (reverseClip) {
-                        foreach (var clip in new AnimatorIterator.Clips().From(action.onClip)) clip.Reverse();
-                    }
                 }
+                if (reverseClip) continue;
 
                 VFAParam weightedRadius = null;
                 if (!plugDepth && !increasing && depthAction.plugRadiusForFullWeight > 0) {
@@ -113,22 +121,15 @@ namespace VF.Service {
                     on.WithAnimation(weighted);
                 }
 
-                VFCondition onWhen;
-                if (action.useMotionTime && reverseClip) {
-                    onWhen = allowedInState;
-                } else {
-                    // Ignore residuals from smoothing. Adjacent floats at this cutoff are
-                    // far enough apart that the animator can interpolate without subnormals.
-                    const float smoothedOffThreshold = 1e-30f;
-                    onWhen = useRawInput && !increasing
-                        ? parameter.IsLessThan(offThreshold)
-                        : parameter.IsGreaterThan(useRawInput ? offThreshold : smoothedOffThreshold);
-                    if (useRawInput) {
-                        if (filters.Count > 0) onWhen = onWhen.And(allowedInState);
-                    }
-                }
-                onWhen = onWhen.And(objectEnabled.Get(bakeRoot).IsGreaterThan(0));
+                // Ignore residuals from smoothing. Adjacent floats at this cutoff are
+                // far enough apart that the animator can interpolate without subnormals.
+                const float smoothedOffThreshold = 1e-30f;
+                var onWhen = useRawInput && !increasing
+                    ? parameter.IsLessThan(offThreshold)
+                    : parameter.IsGreaterThan(useRawInput ? offThreshold : smoothedOffThreshold);
+                if (useRawInput && filters.Count > 0) onWhen = onWhen.And(allowedInState);
                 if (weightedRadius != null) onWhen = onWhen.And(weightedRadius.IsGreaterThan(depthAction.plugRadiusForZeroWeight));
+                onWhen = onWhen.And(objectEnabled.Get(bakeRoot).IsGreaterThan(0));
                 off.TransitionsTo(on).When(onWhen);
                 on.TransitionsTo(off).When(onWhen.Not());
             }

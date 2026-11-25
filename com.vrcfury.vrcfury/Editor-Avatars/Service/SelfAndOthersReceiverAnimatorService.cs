@@ -115,11 +115,7 @@ namespace VF.Service {
                 );
             }
 #if VRCSDK_HAS_CONTACT_PARAMETER_FLAGS
-            if (suffix != null) {
-                var output = parameter.Controller.GetOrCreateFloat(parameter.name + suffix);
-                if (suffix == ContactReceiver.PARAM_POINT_SEPARATION) output.SetDefault(-1);
-                return output;
-            }
+            if (suffix != null) return parameter.Controller.GetOrCreateFloat(parameter.name + suffix);
 #endif
             return parameter;
         }
@@ -165,21 +161,24 @@ namespace VF.Service {
             var selfDistance = GetParameter(receivers, Party.Self, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
             var othersDistance = GetParameter(receivers, Party.Others, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
 
-            var tree = VFBlendTree2D.CreateFreeformCartesian(receivers.request.name + " closest contact", othersDistance, selfDistance);
-            // With both distances nonnegative, compare near the origin. Tilt the Others stop
-            // along the equality diagonal so equal distances continue to pick Others.
-            const float step = 1f / (1 << 30);
-            const float tie = step * 1e-7f;
-            tree.Add(new Vector2(tie, tie), chooseOthers);
-            tree.Add(new Vector2(step, -step), chooseSelf);
-
-            // The SDK reports -1 for an absent sender. Stops between -1 and 0 select
-            // the surviving receiver, or disable both when neither source has a sender.
-            const float absent = -0.001f;
-            tree.Add(new Vector2(absent, 0), chooseSelf);
-            tree.Add(new Vector2(0, absent), chooseOthers);
-            tree.Add(new Vector2(absent, absent), chooseNeither);
-            return tree;
+            // Point separation is normally -1 with no contact, but can start at zero.
+            var closest = VFBlendTree2D.CreateFreeformCartesian(
+                receivers.request.name + " closest contact",
+                othersDistance,
+                selfDistance
+            );
+            // Keep the interpolation between stops far below any measurable contact distance.
+            const float step = 1e-15f;
+            const float right = 1.5f * step;
+            const float top = step * 1.0000002f;
+            closest.Add(Vector2.zero, chooseNeither);
+            // On either axis only the sender with positive separation is present.
+            closest.Add(new Vector2(right, 0), chooseOthers);
+            closest.Add(new Vector2(0, top), chooseSelf);
+            // Inside the quadrant the smaller distance wins. Bias the diagonal tie toward Others.
+            closest.Add(new Vector2(right, 0.5f * step), chooseSelf);
+            closest.Add(new Vector2(step, top), chooseOthers);
+            return closest;
         }
 #endif
     }

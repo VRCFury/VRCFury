@@ -49,10 +49,12 @@ namespace VF.Tests {
                 receiverAnimator.GetParameter(receivers, Party.Merged);
                 var self = receiverAnimator.GetParameter(receivers, Party.Self, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
                 var others = receiverAnimator.GetParameter(receivers, Party.Others, suffix: ContactReceiver.PARAM_POINT_SEPARATION);
-                Assert.That(self.GetDefault(), Is.EqualTo(-1));
-                Assert.That(others.GetDefault(), Is.EqualTo(-1));
-                var selector = new AnimatorIterator.Trees().From(fx).Single(tree => tree.BlendParameter == others.name);
-                Assert.That(selector.children.Count, Is.EqualTo(5));
+                Assert.That(self.GetDefault(), Is.Zero);
+                Assert.That(others.GetDefault(), Is.Zero);
+                var selectionTrees = new AnimatorIterator.Trees().From(fx)
+                    .Where(tree => tree.BlendParameter == self.name || tree.BlendParameter == others.name).ToArray();
+                Assert.That(selectionTrees, Has.Length.EqualTo(1));
+                Assert.That(selectionTrees[0].children.Count, Is.EqualTo(5));
                 var mergedSelf = receivers.Find(true, true).obj;
                 var mergedOthers = receivers.Find(false, true).obj;
                 injector.GetService<SpsChannelsService>().Apply(channels, _ => { });
@@ -78,19 +80,44 @@ namespace VF.Tests {
                     playable.SetFloat(self, selfValue);
                     playable.SetFloat(others, othersValue);
                     for (var i = 0; i < frames; i++) graph.Evaluate(1f / 60);
-                    Assert.That(mergedSelf.active, Is.EqualTo(expectSelf));
-                    Assert.That(mergedOthers.active, Is.EqualTo(expectOthers));
+                    Assert.That(mergedSelf.active, Is.EqualTo(expectSelf), $"Self at ({selfValue}, {othersValue})");
+                    Assert.That(mergedOthers.active, Is.EqualTo(expectOthers), $"Others at ({selfValue}, {othersValue})");
                 }
 
                 graph.Evaluate(1f / 60);
                 Assert.That(mergedSelf.active || mergedOthers.active, Is.False);
-                Check(0, -1, true, false);
-                Check(-1, 0, false, true);
-                Check(0, .5f, true, false);
-                Check(.5f, 0, false, true);
+                Check(0, -1, false, false);
+                Check(-1, 0, false, false);
+                Check(0, .5f, false, true);
+                Check(.5f, 0, true, false);
+                Check(0, 1e-8f, false, true);
+                Check(1e-8f, 0, true, false);
+                Check(.2f, .5f, true, false);
+                Check(.5f, .2f, false, true);
                 Check(.5f, .5f, false, true);
-                Check(0, 0, false, true);
+                Check(0, 0, false, false);
                 Check(-1, -1, false, false);
+                var distances = new[] { -1f, 0f, 1e-12f, 0.00001f, 0.1f, 1f, 10f };
+                foreach (var s in distances) {
+                    foreach (var o in distances) {
+                        Check(s, o, s > 0 && (o <= 0 || s < o), o > 0 && (s <= 0 || o <= s));
+                    }
+                }
+                foreach (var distance in new[] { 1e-12f, 0.001f, 0.1f, 0.2f, 0.5f, 1f, 10f }) {
+                    var bits = BitConverter.SingleToInt32Bits(distance);
+                    for (var offset = -64; offset <= 64; offset++) {
+                        var other = BitConverter.Int32BitsToSingle(bits + offset);
+                        playable.SetFloat(self, distance);
+                        playable.SetFloat(others, other);
+                        graph.Evaluate(1f / 60);
+                        Assert.That(mergedSelf.active || mergedOthers.active, Is.True);
+                        // The Cartesian tree blends across a narrow band around equal distances.
+                        if (Mathf.Abs(other - distance) > Mathf.Max(1e-15f, distance * 1e-6f)) {
+                            Assert.That(mergedSelf.active, Is.EqualTo(distance < other));
+                            Assert.That(mergedOthers.active, Is.EqualTo(other < distance));
+                        }
+                    }
+                }
 #else
                 Assert.That(() => receiverAnimator.GetParameter(receivers, Party.Merged),
                     Throws.TypeOf<InvalidOperationException>().With.Message.EqualTo(VF.Exceptions.VRCFExceptionUtils.NewerVrcsdkRequired));
@@ -331,12 +358,13 @@ namespace VF.Tests {
                          (1f, 1f, 0.1f, 0.3f, true),
                          (1f, 1f, 0.3f, 0.1f, false),
                          (1f, 1f, 0.2f, 0.2f, false),
-                         (1f, 1f, 0f, 0.1f, true),
+                         (1f, 1f, 0f, 0.1f, false),
+                         (1f, 1f, 0.1f, 0f, true),
                          (1f, 0.9f, 0.3f, 0.1f, false),
                          (0.9f, 1f, 0.1f, 0.3f, true),
                          (0.9f, 0.1f, -1f, 0.3f, false),
                          (0.1f, 0.9f, 0.1f, -1f, true),
-                         (0f, 1f, 0f, -1f, true),
+                         (0f, 1f, 0f, -1f, false),
                          (1f, 0f, -1f, 0f, false),
                          (1f, 1f, 0f, 0f, false),
                          (0f, 0f, -1f, -1f, false),
@@ -344,7 +372,7 @@ namespace VF.Tests {
                          (VRCFuryEditorUtils.NextFloatDown(1), 1f, 0.1f, 0.3f, true),
                          (1f, VRCFuryEditorUtils.NextFloatDown(1), 0.3f, 0.1f, false)
                      }) {
-                var hasContact = values.Item3 >= 0 || values.Item4 >= 0;
+                var hasContact = values.Item3 > 0 || values.Item4 > 0;
                 playable.SetFloat(self, values.Item1);
                 playable.SetFloat(others, values.Item2);
                 playable.SetFloat(self + "_PointSeparation", values.Item3);

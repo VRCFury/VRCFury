@@ -53,8 +53,7 @@ namespace VF.Tests {
             var merged = receivers.Where(r => r.name.Contains("Merged")).ToArray();
             Assert.That(merged, Has.Length.EqualTo(2));
             Assert.That(merged[0].parameter, Is.EqualTo(merged[1].parameter));
-            // VRChat can expose zero before either receiver has ever been enabled.
-            Set(merged[0], 0, 0);
+            Assert.That(playable.GetFloat(merged[0].parameter + ContactReceiver.PARAM_POINT_SEPARATION), Is.Zero);
             Evaluate();
             Assert.That(merged.All(r => !r.gameObject.activeInHierarchy), Is.True);
             Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
@@ -194,19 +193,21 @@ namespace VF.Tests {
                 return source => source == SpsSocketIsHole ? hole : depth;
             }, root);
             Start();
+            var filteredValue = motionTime && reverse ? 1f : 0f;
             foreach (var isHole in new[] { false, true }) {
                 playable.SetFloat(hole, isHole ? 1 : 0);
                 Evaluate(120);
-                Assert.That(playable.GetFloat(output), Is.EqualTo(isHole == holeAllowed ? 0.5f : 0).Within(0.001f));
+                Assert.That(playable.GetFloat(output), Is.EqualTo(isHole == holeAllowed ? 0.5f : filteredValue).Within(0.001f));
             }
-            if (seconds > 0 && !reverse) {
+            if (seconds > 0) {
                 playable.SetFloat(hole, holeAllowed ? 1 : 0);
                 Evaluate(120);
                 playable.SetFloat(hole, holeAllowed ? 0 : 1);
                 Evaluate(3);
-                Assert.That(playable.GetFloat(output), Is.GreaterThan(0.001f), "Filters feed smoothing instead of snapping the animation off");
+                Assert.That(playable.GetFloat(output), Is.EqualTo(0.5f).Within(0.5f - 0.001f),
+                    "Filters feed smoothing instead of snapping to the idle pose");
                 Evaluate(120);
-                Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
+                Assert.That(playable.GetFloat(output), Is.EqualTo(filteredValue).Within(0.001f));
             }
         }
 
@@ -248,7 +249,7 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void ZeroPlugWidthLetsLowerLayersDriveTheDepthAction(
+        public void ZeroPlugWidthSamplesTheReverseClipOrLetsLowerLayersDriveTheDepthAction(
             [Values(false, true)] bool motionTime,
             [Values(false, true)] bool optimize,
             [Values(false, true)] bool reverse,
@@ -271,15 +272,16 @@ namespace VF.Tests {
                 _ => measurement => measurement == SpsPlugRadiusLocal ? radius : depth, root);
             Start();
             Evaluate(120);
-            Assert.That(playable.GetFloat(output), Is.EqualTo(0.6f).Within(0.001f));
+            var idleValue = motionTime && reverse ? 0.75f : 0.6f;
+            Assert.That(playable.GetFloat(output), Is.EqualTo(idleValue).Within(0.001f));
             playable.SetFloat(radius, 0.125f);
             Evaluate(120);
             var radiusWeight = (0.125f - zeroRadius) / (0.25f - zeroRadius);
-            Assert.That(playable.GetFloat(output), Is.EqualTo((motionTime && reverse ? 0.75f : 0.25f) * radiusWeight).Within(0.001f));
+            Assert.That(playable.GetFloat(output), Is.EqualTo(motionTime && reverse ? 0.75f : 0.25f * radiusWeight).Within(0.001f));
             foreach (var value in new[] { zeroRadius, 0, -0.125f }) {
                 playable.SetFloat(radius, value);
                 Evaluate(120);
-                Assert.That(playable.GetFloat(output), Is.EqualTo(0.6f).Within(0.001f), "Zero width must release the shared property");
+                Assert.That(playable.GetFloat(output), Is.EqualTo(idleValue).Within(0.001f));
             }
         }
 
@@ -382,7 +384,7 @@ namespace VF.Tests {
         }
 
         [Test]
-        public void EnableSpsDisablesMotionTimeDepthActions(
+        public void EnableSpsKeepsOnlyReverseMotionTimeDepthActionsActiveWhenDisabled(
             [Values(false, true)] bool reverse,
             [Values(false, true)] bool optimize
         ) {
@@ -430,7 +432,8 @@ namespace VF.Tests {
             Assert.That(playable.GetFloat(output), Is.EqualTo(.5f).Within(.001f));
             playable.SetFloat(enabled, 0);
             Evaluate(10);
-            Assert.That(playable.GetFloat(output), Is.EqualTo(.2f).Within(.001f), "Disabled depth actions must inherit lower layers.");
+            Assert.That(playable.GetFloat(output), Is.EqualTo(reverse ? 1f : .2f).Within(.001f),
+                "Reverse clips must hold their idle frame while ordinary depth actions inherit lower layers.");
             playable.SetFloat(enabled, 1);
             Evaluate(30);
             Assert.That(playable.GetFloat(output), Is.EqualTo(.5f).Within(.001f));
@@ -501,7 +504,7 @@ namespace VF.Tests {
 
             // Reproduce the former mapped-AAP + two-pass smoother with the same live speed.
             var speed = fx.parameters.Single(p => p.name.Contains("smoothingSpeed/"));
-            var mapped = math.Map("Reference mapped", input, 0, -0.25f, 0, 1);
+            var mapped = math.Map("Reference mapped", input, 0, -0.25f, reverseMotion ? 1 : 0, reverseMotion ? 0 : 1);
             mapped.SetDefault(actual.GetDefault());
             VFAParam ReferencePass(string name, VFAParam target) {
                 var output = fx.CreateUniqueFloat(name, actual.GetDefault());
@@ -521,16 +524,17 @@ namespace VF.Tests {
                         $"Input {value}, frame {frame}");
                     previous = playable.GetFloat(actual);
                 }
-                Assert.That(playable.GetFloat(actual), Is.EqualTo(Mathf.Clamp01(value / -0.25f)).Within(0.001f));
+                var depth = Mathf.Clamp01(value / -0.25f);
+                Assert.That(playable.GetFloat(actual), Is.EqualTo(reverseMotion ? 1 - depth : depth).Within(0.001f));
             }
         }
 
         [TestCase(0f, "range")]
         [TestCase(0f, "input")]
-        [TestCase(0f, "initial")]
+        [TestCase(0f, "reverse")]
         [TestCase(0.1f, "range")]
         [TestCase(0.1f, "input")]
-        [TestCase(0.1f, "initial")]
+        [TestCase(0.1f, "reverse")]
         [TestCase(0.1f, "smoothing")]
         public void DepthActionsShareControlsOnlyWhenTheirSettingsMatch(float seconds, string difference) {
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
@@ -543,7 +547,7 @@ namespace VF.Tests {
                     units = VRCFuryHapticSocket.DepthActionUnits.Meters,
                     enableSelf = !(different && difference == "input"),
                     smoothingSeconds = different && difference == "smoothing" ? seconds * 2 : seconds,
-                    reverseClip = different && difference == "initial"
+                    reverseClip = different && difference == "reverse"
                 };
                 var clip = VFClip.Create("MotionTime " + i);
                 clip.SetAap(fx.GetOrCreateFloat("Output " + i), AnimationCurve.Linear(0, 0, 1, 1));
@@ -553,8 +557,8 @@ namespace VF.Tests {
             injector.GetService<SpsDepthAnimationService>().CreateAnims(actions, root, "Test",
                 party => _ => party == Party.Merged ? selfInput : otherInput, root);
             var controls = fx.parameters.Where(p => seconds > 0 ? p.name.Contains("/Smoothed/Pass2") : p.name.Contains("/Mapped")).ToArray();
-            Assert.That(controls, Has.Length.EqualTo(2), "The first two actions share a control; the third must remain independent");
-            Assert.That(controls.Select(p => p.GetDefault()), Is.EquivalentTo(difference == "initial" ? new[] { 0f, 1f } : new[] { 0f, 0f }));
+            Assert.That(controls, Has.Length.EqualTo(2));
+            Assert.That(controls.Select(p => p.GetDefault()), Is.EquivalentTo(new[] { 0f, difference == "reverse" ? 1f : 0f }));
             Start();
             playable.SetFloat(selfInput, -0.125f);
             playable.SetFloat(otherInput, -0.2f);
@@ -569,7 +573,9 @@ namespace VF.Tests {
         [TestCase(0.2f, false)]
         [TestCase(0f, true)]
         [TestCase(0.2f, true)]
-        public void DisabledDepthActionsResetTheirInputs(float smoothingSeconds, bool reverseMotion) {
+        [TestCase(0f, true, true)]
+        [TestCase(0.2f, true, true)]
+        public void DisabledDepthActionsResetTheirInputs(float smoothingSeconds, bool reverseMotion, bool useSpsWeight = false) {
             injector.Set("componentObject", new Func<VFGameObject>(() => root));
             var input = fx.CreateUniqueFloat("Raw depth", 0);
             var enabled = fx.CreateUniqueFloat("Socket enabled", 1);
@@ -580,7 +586,7 @@ namespace VF.Tests {
             };
             if (reverseMotion) {
                 var clip = VFClip.Create("Reverse action");
-                clip.SetAap(output, AnimationCurve.Linear(0, 0, 1, 1));
+                clip.SetAap(output, AnimationCurve.Linear(0, 0.25f, 1, 1));
                 action.actionSet.actions.Add(new VF.Model.StateAction.AnimationClipAction { vfClip = clip });
             } else {
                 action.actionSet.actions.Add(new VF.Model.StateAction.FxFloatAction { name = output.name, value = 1 });
@@ -591,15 +597,23 @@ namespace VF.Tests {
             fx.NewLayer("Socket toggle").NewState("Socket toggle").WithAnimation(
                 VFBlendTree1D.CreateWithData("Socket toggle", enabled, (0, off), (1, on)));
             injector.GetService<SpsDepthAnimationService>().CreateAnims(new[] { action }, root, "Test",
-                _ => _ => input, actionRoot);
+                _ => _ => input, actionRoot, weight: useSpsWeight ? enabled : null);
             var internalValues = fx.parameters.Where(p => p.name.Contains("/Mapped") || p.name.Contains("/Smoothed")).ToArray();
             Start();
             playable.SetFloat(input, reverseMotion ? 0 : -0.25f);
             Evaluate(120);
             Assert.That(playable.GetFloat(output), Is.EqualTo(1).Within(0.001f));
+            if (useSpsWeight) {
+                playable.SetFloat(input, -0.125f);
+                playable.SetFloat(enabled, 0.75f);
+                Evaluate(120);
+                Assert.That(actionRoot.active, Is.True);
+                Assert.That(playable.GetFloat(output), Is.EqualTo(0.625f).Within(0.001f));
+            }
             playable.SetFloat(enabled, 0);
             Evaluate(4);
-            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
+            var idleValue = reverseMotion ? 1f : 0f;
+            Assert.That(playable.GetFloat(output), Is.EqualTo(idleValue).Within(0.001f));
             foreach (var parameter in internalValues) {
                 Assert.That(parameter.GetDefault(), Is.EqualTo(reverseMotion ? 1 : 0));
                 Assert.That(playable.GetFloat(parameter), Is.EqualTo(parameter.GetDefault()));
@@ -612,7 +626,7 @@ namespace VF.Tests {
                 Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f), "A re-enabled socket must not reuse its old smoothed penetration");
             }
             Evaluate(120);
-            Assert.That(playable.GetFloat(output), Is.Zero.Within(0.001f));
+            Assert.That(playable.GetFloat(output), Is.EqualTo(reverseMotion ? 0.25f : 0f).Within(0.001f));
         }
     }
 }
