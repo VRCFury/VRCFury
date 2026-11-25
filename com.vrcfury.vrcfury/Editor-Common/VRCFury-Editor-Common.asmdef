@@ -21,6 +21,7 @@
     "VRC.SDK3.Dynamics.Constraint.dll",
     "VRCSDKBase-Editor.dll",
     "VRCCore-Editor.dll",
+    "Newtonsoft.Json.dll",
     "0Harmony.dll"
   ],
   "autoReferenced": false,

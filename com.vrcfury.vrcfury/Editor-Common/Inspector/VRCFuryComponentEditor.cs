@@ -28,6 +28,16 @@ namespace VF.Inspector {
 #endif
         }
 
+        internal static void AddRepositoryWarnings(VisualElement content) {
+            var warning = new VisualElement();
+            content.Add(warning);
+            warning.RegisterCallback<AttachToPanelEvent>(async _ => {
+                var message = await VccRepositoryStatus.GetWarning();
+                warning.Clear();
+                if (message != null) warning.Add(VRCFuryEditorUtils.Warn(message));
+            });
+        }
+
         internal static C CreateUpgradedClone<C>(C original, out GameObject cloneObject)
             where C : VRCFuryComponent {
             cloneObject = EditorUtility.CreateGameObjectWithHideFlags("", HideFlags.HideAndDontSave);
@@ -77,6 +87,7 @@ namespace VF.Inspector {
             var content = new VisualElement();
             content.styleSheets.Add(VRCFuryEditorUtils.GetResource<StyleSheet>("VRCFuryStyle.uss"));
             VRCFuryComponentEditor.AddUnityVersionWarning(content);
+            VRCFuryComponentEditor.AddRepositoryWarnings(content);
 
             try {
                 content.Add(CreateInspectorGUIUnsafe(versionLabel));
