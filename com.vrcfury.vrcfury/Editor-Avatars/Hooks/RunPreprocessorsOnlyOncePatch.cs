@@ -65,7 +65,7 @@ namespace VF.Hooks {
                 "Error",
                 "Avatar preprocessors have already run on this object and can not be run again." +
                 " You may be trying to upload a test copy of your avatar, which is not allowed." +
-                " Running preprocessors multiple times can cause various bugs, such as as parameter desync on different platforms," +
+                " Running preprocessors multiple times can cause various bugs, such as parameter desync on different platforms," +
                 " worse performance due to optimizers running multiple times, and other unexpected outcomes.",
                 "Ok"
             );

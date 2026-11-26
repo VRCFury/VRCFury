@@ -335,7 +335,7 @@ namespace VF.Utils {
                 }
                 warnings.Add(VRCFuryEditorUtils.Warn(
                     $"You're animating these properties on materials using Poiyomi, but the materials don't have the property set as Animated. " +
-                    $"Check the right click menu of the property on the material:\n" +
+                    $"Check the property's right-click menu on the material:\n" +
                     lines.JoinWithMore(20)
                 ));
             }
@@ -391,7 +391,7 @@ namespace VF.Utils {
             }
             if (overLimitConstraints.Any()) {
                 warnings.Add(VRCFuryEditorUtils.Warn(
-                    "VRC Constraints can only have the first 16 source animated, but you are animating a constraint source above this limit!" +
+                    "VRC Constraints can only have the first 16 sources animated, but you are animating a constraint source above this limit!" +
                     " This will break these animations if this avatar is upgraded to VRC Constraints.\n" + overLimitConstraints.JoinWithMore(20)));
             }
 

@@ -19,7 +19,7 @@ namespace VF.Actions {
             }
 
             if (FullControllerBuilder.VRChatGlobalParams.Contains(model.name)) {
-                throw new Exception("Set an FX Float cannot set built-in vrchat parameters");
+                throw new Exception("Set an FX Float cannot set built-in VRChat parameters");
             }
 
             onClip.SetAap(model.name, model.value);

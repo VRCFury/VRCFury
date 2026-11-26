@@ -71,7 +71,7 @@ namespace VF.Inspector {
                     addLight,
                     "Mode",
                     fieldOverride: mode,
-                    tooltip: "'Auto' will set to Hole if attached to hips or head bone.\n" +
+                    tooltip: "'Auto' selects Hole if the socket is attached to the hips or head bone.\n" +
                              "'Rings' can be entered from either side using SPS, but TPS/DPS will only enter one side.\n" +
                              "'One-Way Rings' can only be entered from one side."
                 ));

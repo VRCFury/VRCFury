@@ -95,7 +95,7 @@ namespace VF.Inspector {
             } catch (Exception e) {
                 Debug.LogException(new Exception("Failed to render editor", e));
                 content.Add(versionLabel);
-                content.Add(VRCFuryEditorUtils.Error("Failed to render editor (see unity console)"));
+                content.Add(VRCFuryEditorUtils.Error("Failed to render editor (see Unity Console)"));
             }
 
             return content;
@@ -113,7 +113,7 @@ namespace VF.Inspector {
             if (loadError != null) {
                 return VRCFuryEditorUtils.Error(
                     $"This VRCFury component failed to load ({loadError}). Please update VRCFury." +
-                    $" If this doesn't help, let us know on the discord at https://vrcfury.com/discord");
+                    $" If this doesn't help, let us know on Discord at https://vrcfury.com/discord");
             }
             
             var isInstance = PrefabUtility.IsPartOfPrefabInstance(v);
@@ -174,7 +174,7 @@ namespace VF.Inspector {
                 var isDeleted = EditorOnlyUtils.IsInsideEditorOnly(c.owner());
                 if (isDeleted && !hasDelete) {
                     warning.Add(VRCFuryEditorUtils.Error(
-                        "This VRCFury component is placed within an object that is tagged as EditorOnly or has a vrcfury 'Delete During Upload' component, and thus will not do anything!"));
+                        "This VRCFury component is placed within an object that is tagged as EditorOnly or has a VRCFury 'Delete During Upload' component, and thus will not do anything!"));
                 }
                 
                 return warning;

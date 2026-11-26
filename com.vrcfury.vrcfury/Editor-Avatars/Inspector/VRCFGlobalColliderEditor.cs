@@ -31,7 +31,7 @@ namespace VF.Inspector {
             var container = new VisualElement();
             
             container.Add(VRCFuryEditorUtils.Info(
-                "This will add a collider which can be used to interact with other player's physbones and trigger haptics.\n\n" +
+                "This will add a collider which can be used to interact with other players' PhysBones and trigger haptics.\n\n" +
                 "Note: This steals one of the colliders from your avatar's fingers. If you don't need to interact with physbones, you can use" +
                 " a VRCFury Touch Sender instead, which can only trigger haptics and does not steal a finger."
             ));

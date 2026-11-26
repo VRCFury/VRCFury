@@ -62,7 +62,7 @@ namespace VF.Hooks {
             var editor = Editor.CreateEditor(avatar);
             try {
                 if (!Reflection.AvatarDescriptorEditor3.IsInstanceOfType(editor)) {
-                    throw new Exception("Avatar descriptor editor was not a AvatarDescriptorEditor3");
+                    throw new Exception("Avatar descriptor editor was not an AvatarDescriptorEditor3");
                 }
 
                 Reflection.avatarDescriptor.SetValue(editor, avatar);

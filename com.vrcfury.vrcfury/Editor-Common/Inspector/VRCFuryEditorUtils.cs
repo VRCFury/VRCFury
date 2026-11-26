@@ -69,7 +69,7 @@ namespace VF.Inspector {
                     list.DeleteArrayElementAtIndex(0);
                     list.serializedObject.ApplyModifiedProperties();
                 } else {
-                    DialogUtils.DisplayDialog("VRCFury", "Right click on the element you would like to remove", "Ok");
+                    DialogUtils.DisplayDialog("VRCFury", "Right-click the element you would like to remove", "OK");
                 }
             }
 
@@ -271,7 +271,7 @@ namespace VF.Inspector {
                     }
                     list.serializedObject.Update();
                 } else {
-                    UnityEngine.Debug.LogError("Failed to find list to reset new entry. This is likely a VRCFury bug, please report on the discord.");
+                    UnityEngine.Debug.LogError("Failed to find the list to reset the new entry. This is likely a VRCFury bug. Please report it on Discord.");
                 }
             }
 

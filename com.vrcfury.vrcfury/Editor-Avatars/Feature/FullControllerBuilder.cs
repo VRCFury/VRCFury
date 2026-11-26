@@ -135,11 +135,11 @@ namespace VF.Feature {
                     if (AssetDatabase.GetAssetPath(toSource)?.ToLower().Contains("goloco") ?? false) {
                         throw new Exception(
                             "You've installed GogoLoco using VRCFury, but your avatar descriptor also contains GogoLoco controllers." +
-                            " Make sure your Avatar Descriptor does not contain any gogoloco files."
+                            " Make sure your Avatar Descriptor does not contain any GogoLoco files."
                         );
                     } else {
                         throw new Exception(
-                            "This Full Controller component is setup to merge the same controller file that is already on your avatar descriptor. VRCFury Full Controller components" +
+                            "This Full Controller component is set up to merge the same controller file that is already on your avatar descriptor. VRCFury Full Controller components" +
                             " should only contain the things you want to ADD to your avatar. Do not include your avatar's base files."
                         );
                     }
@@ -748,7 +748,7 @@ namespace VF.Feature {
                     "parameters in the avatar itself or other instances of the prop. Note that VRChat global " +
                     "parameters (such as gestures) are included by default.\n" +
                     "\n" +
-                    "If you want to make all parameters global, you can use enter a *\n" +
+                    "If you want to make all parameters global, you can enter a *\n" +
                     "\n" +
                     "You can also make a specific prefix global by adding a * to the end: MyGlobalParams/*\n" +
                     "\n" +

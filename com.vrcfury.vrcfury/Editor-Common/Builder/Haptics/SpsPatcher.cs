@@ -56,7 +56,7 @@ namespace VF.Builder.Haptics {
                 throw new SneakyException(msg);
             } catch (Exception e) {
                 throw new ExceptionWithCause(
-                    $"Failed to patch shader with SPS. Report this on the VRCFury discord." +
+                    $"Failed to patch shader with SPS. Report this on the VRCFury Discord. " +
                     $"Maybe this shader isn't supported yet: {mat.shader.name}",
                     e
                 );
@@ -226,7 +226,7 @@ namespace VF.Builder.Haptics {
 
             var newShader = Shader.Find(newShaderName);
             if (!newShader) {
-                throw new VRCFBuilderException("Patch succeeded, but shader failed to generate. Check the unity log for compile error?\n\n" + newPath);
+                throw new VRCFBuilderException("Patch succeeded, but shader failed to generate. Check the Unity log for compiler errors.\n\n" + newPath);
             }
 
             if (ShaderUtil.ShaderHasError(newShader)) {

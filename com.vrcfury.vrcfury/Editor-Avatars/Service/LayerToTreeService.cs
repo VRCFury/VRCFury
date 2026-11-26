@@ -168,7 +168,7 @@ namespace VF.Service {
                 .ToArray();
             if (otherLayersAnimateTheSameThing.Length > 0) {
                 var names = otherLayersAnimateTheSameThing.Select(l => l.name).Join(", ");
-                throw new DoNotOptimizeException($"Shares animations with other layer: {names}");
+                throw new DoNotOptimizeException($"Shares animations with other layers: {names}");
             }
 
             if (states.Length == 1) {

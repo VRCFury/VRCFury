@@ -119,7 +119,7 @@ namespace VF.Builder {
                 if (current.bonePaths.TryGetValue(findBone, out var path)) {
                     throw new VRCFBuilderException(
                         "Failed to find " + findBone + " object on avatar, but bone was listed in humanoid descriptor. " +
-                        "Did you rename one of your avatar's bones on accident? The path to this bone should be:\n" +
+                        "Did you rename one of your avatar's bones by accident? The path to this bone should be:\n" +
                         path
                     );
                 }

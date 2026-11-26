@@ -47,7 +47,7 @@ namespace VF.Feature {
         public static VisualElement Builder(SerializedProperty prop) {
             var content = new VisualElement();
             content.Add(VRCFuryEditorUtils.Info(
-                "This component forces a VRC Constraint on the current object to point to affect a bone on the base avatar." +
+                "This component makes a VRC Constraint on the current object target a bone on the base avatar." +
                 "\n\n" +
                 "This is basically only useful for GogoLoco."));
             content.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("bone"), "Bone to target"));

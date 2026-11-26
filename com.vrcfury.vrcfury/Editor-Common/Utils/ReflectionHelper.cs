@@ -62,7 +62,7 @@ namespace VF.Utils {
         private static void Init() {
             var notReady = GetMissingRequiredBindings();
             if (notReady.Count > 0) {
-                Debug.LogWarning("VRCFury failed to find hook into some parts of Unity properly. Perhaps this version of Unity is not fully supported?\n" + notReady.Join('\n'));
+                Debug.LogWarning("VRCFury failed to hook into some parts of Unity properly. Perhaps this version of Unity is not fully supported?\n" + notReady.Join('\n'));
             }
         }
     }

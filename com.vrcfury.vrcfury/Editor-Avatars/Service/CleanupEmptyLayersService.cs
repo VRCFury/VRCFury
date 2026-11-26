@@ -73,7 +73,7 @@ namespace VF.Service {
                             var s = layer.NewState(
                                 "Warning from VRCFury!\n" +
                                 "This layer contains no valid animations," +
-                                " and will be removed during a real upload," +
+                                " and will be removed during a real upload." +
                                 " Make sure the animated objects / components" +
                                 " actually exist at the paths used in the clips");
                             var entryPos = layer.entryPosition;

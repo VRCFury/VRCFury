@@ -27,7 +27,7 @@ namespace VF.Feature {
             var content = new VisualElement();
 
             content.Add(VRCFuryEditorUtils.Info(
-                "The following actions will be applied and baked into to the avatar during the upload process." +
+                "The following actions will be applied and baked into the avatar during the upload process." +
                 " This is useful if you want to enforce a specific upload state of your prop, even if the user has messed with it in the editor."));
             
             content.Add(VRCFuryEditorUtils.Info(

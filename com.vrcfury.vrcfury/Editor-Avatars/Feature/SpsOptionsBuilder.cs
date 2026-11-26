@@ -49,9 +49,9 @@ namespace VF.Feature {
                 compatibility.Add(subtitle);
             }
             CompatibilityCheckbox("legacyModeAvailable", "DPS/TPS/SPS1/SPS2 Plugs",
-                "Makes your sockets work with other player's legacy plugs\nAdds 2 lights per socket\nRequires Legacy Mode On");
+                "Makes your sockets work with other players' legacy plugs\nAdds 2 lights per socket\nRequires Legacy Mode On");
             CompatibilityCheckbox("legacySocketCompatibility", "DPS/TPS/SPS1/SPS2 Sockets",
-                "Makes your plugs work with other player's legacy sockets\nAdds 2 contact senders per plug");
+                "Makes your plugs work with other players' legacy sockets\nAdds 2 contact senders per plug");
             CompatibilityCheckbox("tpsDepthAnimationCompatibility", "TPS Plug Animations (Not Recommended, Rare)",
                 "Adds 1 contact sender per socket\nRequires Legacy Mode On", enabledWhen: plugs);
             CompatibilityCheckbox("addDpsTipLight", "DPS Socket Animations (Not Recommended, Rare)",
@@ -71,7 +71,7 @@ namespace VF.Feature {
             c.Add(VRCFuryEditorUtils.BetterProp(autoAvailable, "Include Auto Mode in Avatar"));
             c.Add(VRCFuryEditorUtils.RefreshOnChange(() => {
                 if (!autoAvailable.boolValue) return new VisualElement();
-                var auto = VRCFuryEditorUtils.Section("Auto Mode", "Automatically activates socket that touches a plug.");
+                var auto = VRCFuryEditorUtils.Section("Auto Mode", "Automatically activates a socket that touches a plug.");
                 auto.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("autoModeDefaultOn"), "Default On"));
                 auto.Add(VRCFuryEditorUtils.BetterProp(prop.FindPropertyRelative("autoModeSaved"), "Save Setting Between Worlds"));
                 return auto;

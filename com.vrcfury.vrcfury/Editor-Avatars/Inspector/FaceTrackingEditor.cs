@@ -97,7 +97,7 @@ namespace VF.Inspector {
                 error = $"Cannot paste {values.Count} configurations here. The maximum is {max}; no configurations were pasted.";
                 return false;
             }
-            Undo.SetCurrentGroupName(behaviors ? "Paste Parameter Behaviors" : "Paste Blendshapes Sets");
+            Undo.SetCurrentGroupName(behaviors ? "Paste Parameter Behaviors" : "Paste Blendshape Sets");
             var first = list.arraySize;
             list.arraySize += values.Count;
             for (var i = 0; i < values.Count; i++) {
@@ -150,7 +150,7 @@ namespace VF.Inspector {
         internal sealed class BlendshapeSetsEditor : VisualElement {
             private readonly SerializedProperty sets;
             private readonly SerializedProperty meshes;
-            private readonly DropdownField selector = new DropdownField("Selected Blendshapes Set");
+            private readonly DropdownField selector = new DropdownField("Selected Blendshape Set");
             private readonly VisualElement body = new VisualElement();
             private readonly Button add;
             private readonly Button remove;
@@ -221,7 +221,7 @@ namespace VF.Inspector {
                 if (sets.arraySize >= FaceTrackingUtils.MaxBlendshapeSets) return;
                 var name = "unnamed".MakeUnique(Enumerable.Range(0, sets.arraySize)
                     .Select(i => sets.GetArrayElementAtIndex(i).FindPropertyRelative("setName").stringValue), FaceTrackingUtils.MaxSetNameLength);
-                Change("Add Blendshapes Set", () => {
+                Change("Add Blendshape Set", () => {
                     SelectedIndex = sets.arraySize++;
                     sets.GetArrayElementAtIndex(SelectedIndex).boxedValue = FaceTrackingUtils.CreateBlendshapeSet(name);
                 });
@@ -229,13 +229,13 @@ namespace VF.Inspector {
 
             internal void RemoveSet() {
                 if (sets.arraySize == 0) return;
-                Change("Remove Blendshapes Set", () => sets.DeleteArrayElementAtIndex(SelectedIndex));
+                Change("Remove Blendshape Set", () => sets.DeleteArrayElementAtIndex(SelectedIndex));
             }
 
             internal void Move(int offset) {
                 var destination = SelectedIndex + offset;
                 if (destination < 0 || destination >= sets.arraySize) return;
-                Change("Move Blendshapes Set", () => {
+                Change("Move Blendshape Set", () => {
                     sets.MoveArrayElement(SelectedIndex, destination);
                     SelectedIndex = destination;
                 });

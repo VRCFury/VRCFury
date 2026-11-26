@@ -24,7 +24,7 @@ namespace VF.Actions {
             var renderer = model.renderer;
             if (renderer == null) return clip;
             if (model.row > 3 || model.row < 0 || model.column > 3 || model.column < 0) {
-                throw new ArgumentException("Poiyomi UV Tiles are ranges between 0-3, check if slots are within these ranges.");
+                throw new ArgumentException("Poiyomi UV tile rows and columns must be between 0 and 3.");
             }
             var matProp = model.dissolve ? "_UVTileDissolveAlpha_Row" : "_UDIMDiscardRow";
             matProp += $"{model.row}_{(model.column)}";
@@ -48,7 +48,7 @@ namespace VF.Actions {
                 value = false
             };
             adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("dissolve"), "Use UV Tile Dissolve"));
-            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renamedMaterial"), "Renamed Material", tooltip: "Material suffix when using poiyomi renamed properties"));
+            adv.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("renamedMaterial"), "Renamed Material", tooltip: "Material suffix when using Poiyomi's renamed properties"));
             content.Add(adv);
             return content;
         }

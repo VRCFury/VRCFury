@@ -59,7 +59,7 @@ namespace VF.Feature {
         [FeatureEditor]
         public static VisualElement Editor() {
             return VRCFuryEditorUtils.Info(
-                "This feature automatically tweaks your avatar eyes so that they can't go cross-eyed in VRChat." +
+                "This feature automatically tweaks your avatar's eyes so that they can't go cross-eyed in VRChat." +
                 " It does this by eliminating eye bone roll through fake eye bones and rotation constraints."
             );
         }

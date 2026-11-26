@@ -636,7 +636,7 @@ namespace VF.Feature {
                         prop.serializedObject.ApplyModifiedProperties();
                     });
 
-                    advMenu.AddItem(new GUIContent("This is Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
+                    advMenu.AddItem(new GUIContent("This is the Exclusive Off State"), exclusiveOffStateProp.boolValue, () => {
                         exclusiveOffStateProp.boolValue = !exclusiveOffStateProp.boolValue;
                         prop.serializedObject.ApplyModifiedProperties();
                     });

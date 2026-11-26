@@ -104,7 +104,7 @@ namespace VF.Feature {
                 label: "Ignore name suffix/prefix",
                 tooltip: "If set, this substring will be ignored when matching object names against the avatar. This is useful for props where the artist added " +
                          "something like _PropName to the end of every bone. If empty, the suffix will be predicted " +
-                         "based on the difference between the name of the given root bones."
+                         "based on the difference between the names of the given root bones."
             ));
 
             var alignment = VRCFuryEditorUtils.Section("Transform Alignment", "Snap merged objects to the existing transform on the avatar").AddTo(adv);
@@ -178,7 +178,7 @@ namespace VF.Feature {
                 "These clothes are designed for a different version of your avatar's rig. You may" +
                 " have downloaded the wrong version of the clothes for your avatar version, or the clothes may not be designed for your avatar." +
                 " Contact the clothing creator, and see if they have a proper version of the clothing for your rig.\n\n" +
-                "VRCFury will attempt to merge it anyways, but the affected areas may have slight clipping issues.\n"
+                "VRCFury will attempt to merge it anyway, but the affected areas may have slight clipping issues.\n"
             ).AddTo(hackWarningWrapper);
             var hackWarningList = VRCFuryEditorUtils.WrappedLabel("").AddTo(hackWarningWrapper);
             var hackWarning = VRCFuryEditorUtils.Warn(hackWarningWrapper);

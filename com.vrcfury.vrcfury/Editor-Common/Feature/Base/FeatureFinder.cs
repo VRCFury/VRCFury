@@ -119,7 +119,7 @@ namespace VF.Feature.Base {
                 Debug.LogException(e);
                 return RenderFeatureEditor(
                     title,
-                    VRCFuryEditorUtils.Error("Editor threw an exception, check the unity console"),
+                    VRCFuryEditorUtils.Error("The editor threw an exception. Check the Unity Console."),
                     null
                 );
             }

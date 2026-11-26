@@ -22,8 +22,7 @@ namespace VF.Menu {
             if (!DialogUtils.DisplayDialog(
                     "Useless Override Cleanup",
                     "This utility will remove all useless prefab overrides from the selected avatar." +
-                    "These are overrides where the override value is identical to the base value, and may be useful to cleanup" +
-                    " overrides after using unity's Reconnect Prefab feature." +
+                    " These overrides have the same value as the base prefab. Removing them can be useful after using Unity's Reconnect Prefab feature." +
                     "\n\nContinue?",
                     "Yes",
                     "Cancel"

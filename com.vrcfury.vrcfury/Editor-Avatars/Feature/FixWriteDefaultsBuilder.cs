@@ -18,7 +18,7 @@ namespace VF.Feature {
         public static VisualElement Editor(SerializedProperty prop, VFGameObject avatarObject) {
             var container = new VisualElement();
             container.Add(VRCFuryEditorUtils.Info(
-                "This feature attempt to fix an avatar with a broken mix of Write Defaults."));
+                "This feature attempts to fix an avatar with a broken mix of Write Defaults."));
             container.Add(VRCFuryEditorUtils.Prop(prop.FindPropertyRelative("mode"), "Fix Mode"));
             container.Add(VRCFuryEditorUtils.Info(
                 "Auto - Will force all states to on or off, whichever requires the fewest changes to the existing avatar\n" +

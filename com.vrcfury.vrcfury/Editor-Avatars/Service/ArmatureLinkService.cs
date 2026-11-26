@@ -177,7 +177,7 @@ namespace VF.Service {
                 }
                 AddDebugInfo($"" +
                              $"VRCFury Armature Link Debug Info\n" +
-                             $"Aramature link root: {links.propMain.GetPath(avatarObject, true)} -> {links.avatarMain.GetPath(avatarObject, true)}\n" +
+                             $"Armature link root: {links.propMain.GetPath(avatarObject, true)} -> {links.avatarMain.GetPath(avatarObject, true)}\n" +
                              $"This object: {propBone.GetPath(avatarObject, true)} -> {avatarBone.GetPath(avatarObject, true)}");
 
                 var animSources = anim.GetDebugSources(propBone);
