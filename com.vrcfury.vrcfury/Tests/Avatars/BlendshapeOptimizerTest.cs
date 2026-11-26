@@ -15,6 +15,50 @@ using Object = UnityEngine.Object;
 
 namespace VF.Tests {
     internal class BlendshapeOptimizerTest {
+        [Test]
+        public void ReplacesTinyLegacyVisemesWithEmptyShapes() {
+            var root = new GameObject("Avatar");
+            var source = new Mesh { vertices = new[] { Vector3.zero, Vector3.right, Vector3.up } };
+            var skin = root.AddComponent<SkinnedMeshRenderer>();
+            skin.sharedMesh = source;
+            try {
+                var tiny = new[] { Vector3.right * .00001f, Vector3.zero, Vector3.zero };
+                source.AddBlendShapeFrame("Unused", 100, tiny, null, null);
+                source.AddBlendShapeFrame("sil", 50, tiny, tiny, tiny);
+                source.AddBlendShapeFrame("sil", 100, tiny, tiny, tiny);
+                source.AddBlendShapeFrame("PP", 100, tiny, tiny, tiny);
+                source.AddBlendShapeFrame("aa", 100, new[] { Vector3.up, Vector3.zero, Vector3.zero }, null, null);
+                var avatar = root.AddComponent<VRCAvatarDescriptor>();
+                avatar.lipSync = VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape;
+                avatar.VisemeSkinnedMesh = skin;
+                avatar.VisemeBlendShapes = Enumerable.Repeat("aa", (int)VRC_AvatarDescriptor.Viseme.Count).ToArray();
+                avatar.VisemeBlendShapes[0] = "sil";
+                avatar.VisemeBlendShapes[1] = "PP";
+
+                Optimize(avatar);
+
+                Assert.That(skin.sharedMesh.GetBlendShapeIndex("Unused"), Is.EqualTo(-1));
+                Assert.That(avatar.lipSync, Is.EqualTo(VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape));
+                Assert.That(avatar.VisemeBlendShapes[0], Is.EqualTo("sil"));
+                Assert.That(avatar.VisemeBlendShapes[1], Is.EqualTo("PP"));
+                Assert.That(avatar.VisemeBlendShapes.All(name => skin.sharedMesh.GetBlendShapeIndex(name) >= 0), Is.True);
+                var mesh = skin.sharedMesh;
+                foreach (var name in new[] { "sil", "PP" }) {
+                    var index = mesh.GetBlendShapeIndex(name);
+                    Assert.That(mesh.GetBlendShapeFrameCount(index), Is.EqualTo(1));
+                    var positions = new Vector3[mesh.vertexCount];
+                    var normals = new Vector3[mesh.vertexCount];
+                    var tangents = new Vector3[mesh.vertexCount];
+                    mesh.GetBlendShapeFrameVertices(index, 0, positions, normals, tangents);
+                    Assert.That(positions.Concat(normals).Concat(tangents), Is.All.EqualTo(Vector3.zero));
+                }
+            } finally {
+                if (skin.sharedMesh != source) Object.DestroyImmediate(skin.sharedMesh);
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(source);
+            }
+        }
+
         [TestCase(0f)]
         [TestCase(37f)]
         public void RemovingZeroWeightShapesPreservesBakingAndKeptFrames(float keptWeight) {
@@ -116,7 +160,7 @@ namespace VF.Tests {
                 output = skin.sharedMesh;
                 var removed = significantChannel == null || significantChannel == "tangent";
                 var workLog = string.Join("\n", output.GetWorkLog());
-                Assert.That(workLog, Does.Contain($"Removed 1 unanimated blendshapes and {(removed ? 1 : 0)} blendshapes with negligible deltas"));
+                Assert.That(workLog, Does.Contain($"Removed 1 unanimated blendshapes and pruned {(removed ? 1 : 0)} blendshapes with negligible deltas"));
                 Assert.That(workLog, Does.Contain("Removed unanimated \"Unused\" at weight 0"));
                 if (removed) {
                     Assert.That(workLog, Does.Contain(FormattableString.Invariant($"Removed \"Kept\" (peak position {size * tiny:G4} mesh units ({tiny:G4} of mesh size), normal {tiny:G4})")));

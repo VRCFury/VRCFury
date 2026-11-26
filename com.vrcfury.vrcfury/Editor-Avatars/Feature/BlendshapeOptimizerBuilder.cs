@@ -59,6 +59,11 @@ namespace VF.Feature {
                 var path = skin.owner().GetPath(avatarObject);
 
                 var animatedBlendshapes = CollectAnimatedBlendshapesForMesh(skin, blendshapeCurves);
+                var legacyVisemes = avatar.VisemeSkinnedMesh == skin
+                    && avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape
+                    ? avatar.VisemeBlendShapes ?? Array.Empty<string>()
+                    : Array.Empty<string>();
+                animatedBlendshapes.UnionWith(legacyVisemes);
 
                 bool ShouldKeepName(string name) {
                     if (animatedBlendshapes.Contains(name)) return true;
@@ -87,15 +92,23 @@ namespace VF.Feature {
                 var savedWeights = Enumerable.Range(0, blendshapeCount).Select(skin.GetBlendShapeWeight).ToArray();
                 var source = mesh;
                 mesh = skin.GetMutableMesh(
-                    $"Removed {blendshapeCount - animatedBlendshapeIds.Count} unanimated blendshapes and {tinyShapes.Count} blendshapes with negligible deltas",
+                    $"Removed {blendshapeCount - animatedBlendshapeIds.Count} unanimated blendshapes and pruned {tinyShapes.Count} blendshapes with negligible deltas",
                     forceClone: true
                 );
                 mesh.ClearBlendShapes();
                 var shapesToBake = new List<int>();
+                Vector3[] emptyDeltas = null;
                 for (var id = 0; id < blendshapeCount; id++) {
                     var name = source.GetBlendShapeName(id);
                     if (tinyShapes.TryGetValue(id, out var deltas)) {
-                        mesh.WorkLog($"Removed \"{name}\" ({deltas})");
+                        if (legacyVisemes.Contains(name)) {
+                            // An empty frame keeps the slot valid. VRChat disables legacy lip sync if any viseme is missing.
+                            emptyDeltas ??= new Vector3[mesh.vertexCount];
+                            mesh.AddBlendShapeFrame(name, 100, emptyDeltas, null, null);
+                            mesh.WorkLog($"Cleared deltas for legacy viseme \"{name}\" ({deltas})");
+                        } else {
+                            mesh.WorkLog($"Removed \"{name}\" ({deltas})");
+                        }
                     } else if (animatedBlendshapeIds.Contains(id)) {
                         frames.CopyShape(source, id, mesh);
                     } else {
@@ -219,7 +232,7 @@ namespace VF.Feature {
                 .Where(pair => pair.Item1.propertyName.StartsWith("blendShape."));
         }
 
-        private ICollection<string> CollectAnimatedBlendshapesForMesh(
+        private HashSet<string> CollectAnimatedBlendshapesForMesh(
             SkinnedMeshRenderer skin,
             Lazy<ICollection<(VFBinding, AnimationCurve)>> animatedBindings
         ) {
@@ -254,16 +267,8 @@ namespace VF.Feature {
                 }
             }
 
-            if (skin == avatar.VisemeSkinnedMesh) {
-                if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.JawFlapBlendShape) {
-                    animatedBlendshapes.Add(avatar.MouthOpenBlendShapeName);
-                }
-
-                if (avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.VisemeBlendShape) {
-                    foreach (var b in avatar.VisemeBlendShapes) {
-                        animatedBlendshapes.Add(b);
-                    }
-                }
+            if (skin == avatar.VisemeSkinnedMesh && avatar.lipSync == VRC_AvatarDescriptor.LipSyncStyle.JawFlapBlendShape) {
+                animatedBlendshapes.Add(avatar.MouthOpenBlendShapeName);
             }
 
 #if VRCSDK_HAS_FACE_TRACKING
