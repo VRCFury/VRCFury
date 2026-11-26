@@ -8,15 +8,16 @@ using UnityEngine;
 
 namespace VF.Builder.Haptics {
     /**
-     * Unity 2022 can schedule a separate compile job for every on/off combination of dynamic
-     * shader keywords. For example, Poiyomi's three dynamic fog keywords produce eight jobs
-     * for the same GPU program. That one program handles all eight combinations at runtime.
+     * Unity can schedule identical compile jobs when keyword declarations overlap. Older Poiyomi
+     * shaders declare VERTEXLIGHT_ON both explicitly and through multi_compile_fwdbase.
+     * Unity can also schedule multiple jobs for dynamic keywords even though a single GPU program
+     * handles all of their on/off combinations at runtime.
      *
      * Before Unity compiles each pass and stage of an SPS-patched shader, keep the first job
      * for each combination of static keywords and compiler settings. Unity tells us which
      * keywords are dynamic, so this works for any shader that SPS patches.
      */
-    internal class SpsDynamicShaderVariants : IPreprocessShaders {
+    internal class SpsShaderVariantDeduplicator : IPreprocessShaders {
         public int callbackOrder => int.MaxValue;
 
         public void OnProcessShader(
@@ -33,8 +34,6 @@ namespace VF.Builder.Haptics {
                 .Where(keyword => keyword.isDynamic)
                 .Select(keyword => keyword.name)
                 .ToHashSet();
-            if (dynamicKeywords.Count == 0) return;
-
             var seen = new HashSet<(ShaderCompilerData, string)>();
             var kept = 0;
             for (var i = 0; i < variants.Count; i++) {
