@@ -11,7 +11,7 @@ using UnityEngine.Rendering;
 using VF.Builder.Haptics;
 
 namespace VF.Tests {
-    public class SpsDynamicShaderVariantsTest : IPreprocessShaders {
+    public class SpsShaderVariantDeduplicatorTest : IPreprocessShaders {
         private static string testId;
         private static readonly List<(string shader, object[] expected, object[] actual)> results = new();
         public int callbackOrder => 0;
@@ -22,15 +22,17 @@ namespace VF.Tests {
             IList<ShaderCompilerData> variants
         ) {
             if (testId == null || !shader.name.EndsWith("/" + testId, StringComparison.Ordinal) || variants.Count == 0) return;
-            var dynamicBranch = new LocalKeyword(shader, "TEST_BRANCH");
+            var dynamicBranch = shader.keywordSpace.FindKeyword("TEST_BRANCH");
             var staticFeature = new LocalKeyword(shader, "TEST_FEATURE");
 
             // Model an earlier stripper that kept only the branch-on job for one static variant.
             var jobs = variants.ToList();
-            if (jobs.Any(v => v.shaderKeywordSet.IsEnabled(dynamicBranch))) {
+            if (dynamicBranch.isValid && jobs.Any(v => v.shaderKeywordSet.IsEnabled(dynamicBranch))) {
                 jobs.RemoveAll(v => v.shaderKeywordSet.IsEnabled(staticFeature)
                     && !v.shaderKeywordSet.IsEnabled(dynamicBranch));
             }
+            // Overlapping declarations can submit the same static variant more than once.
+            jobs.Add(jobs[0]);
             var isPatched = !shader.name.StartsWith("Hidden/Control/", StringComparison.Ordinal);
             object Describe(ShaderCompilerData job) {
                 var names = job.shaderKeywordSet.GetShaderKeywords()
@@ -48,13 +50,14 @@ namespace VF.Tests {
             }
             var expected = jobs.Select(Describe).ToArray();
             if (isPatched) expected = expected.Distinct().ToArray();
-            new SpsDynamicShaderVariants().OnProcessShader(shader, snippet, jobs);
+            new SpsShaderVariantDeduplicator().OnProcessShader(shader, snippet, jobs);
             results.Add((shader.name, expected, jobs.Select(Describe).ToArray()));
             variants.Clear(); // This test only needs the build callback.
         }
 
-        [Test]
-        public void KeepsOneJobForEachStaticVariantOfPatchedShaders() {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void KeepsOneJobForEachStaticVariantOfPatchedShaders(bool dynamicBranch) {
             testId = Guid.NewGuid().ToString("N");
             var folder = "Assets/SpsDynamicVariants_" + testId;
             var output = Path.GetFullPath("Temp/SpsDynamicVariants_" + testId);
@@ -68,12 +71,13 @@ namespace VF.Tests {
                     "Hidden/Control/"
                 }) {
                     var path = folder + "/Test" + paths.Count + ".shader";
+                    var branch = dynamicBranch ? "#pragma dynamic_branch_local __ TEST_BRANCH" : "#define TEST_BRANCH false";
                     var source = "Shader \"" + prefix + testId + "\" { SubShader { Pass {\n" + @"
 CGPROGRAM
 #pragma vertex vert
 #pragma fragment frag
 #pragma multi_compile __ TEST_FEATURE
-#pragma dynamic_branch_local __ TEST_BRANCH
+" + branch + @"
 float4 vert(float4 pos : POSITION) : SV_POSITION { return pos; }
 float4 frag() : SV_Target {
     #ifdef TEST_FEATURE
