@@ -34,7 +34,7 @@ namespace VF.Builder.Haptics {
 
         internal const string ShaderNamePrefix = "Hidden/SPSPatched/";
         internal const string LockedShaderNamePrefix = "Hidden/Locked/SPSPatched/";
-        private const string HashBuster = "71";
+        private const string HashBuster = "72";
         private static readonly Regex ProgramStartRegex = GetRegex(@"\G(?:^|\n)[ \t]*(CGPROGRAM|HLSLPROGRAM)[ \t]*(?:\n|$)");
         private static readonly Regex CgProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDCG[ \t]*(?:\n|$)");
         private static readonly Regex HlslProgramEndRegex = GetRegex(@"(?:^|\n)[ \t]*ENDHLSL[ \t]*(?:\n|$)");
@@ -271,6 +271,22 @@ namespace VF.Builder.Haptics {
             return (pass, patchedPrograms);
         }
 
+        private static string StripBuiltInShaderGraphVariants(string program) {
+            if (!GetRegex(@"(?m)^[ \t]*#define[ \t]+BUILTIN_TARGET_API[ \t]+1\b").IsMatch(program)) return program;
+
+            // Shader Graph emits SRP lighting keywords even for the Built-In pipeline.
+            // Built-In uses its own fwdbase/fwdadd/shadowcaster variants. Keep those,
+            // the shared lightmap keywords, and all user-authored Graph Keywords.
+            return GetRegex(@"(?ms)^([ \t]*// Keywords\r?\n)(.*?)(?=^[ \t]*// GraphKeywords\b)")
+                .Replace(program, block => block.Groups[1].Value + GetRegex(
+                    @"(?m)^[ \t]*#pragma[ \t]+multi_compile[ \t]+(?:"
+                    + @"_[ \t]+(?:_SCREEN_SPACE_OCCLUSION|_ADDITIONAL_LIGHT_SHADOWS|_SHADOWS_SOFT)"
+                    + @"|_[ \t]+_MAIN_LIGHT_SHADOWS[ \t]+_MAIN_LIGHT_SHADOWS_CASCADE[ \t]+_MAIN_LIGHT_SHADOWS_SCREEN"
+                    + @"|_ADDITIONAL_LIGHTS_VERTEX[ \t]+_ADDITIONAL_LIGHTS[ \t]+_ADDITIONAL_OFF"
+                    + @")[ \t]*\r?\n"
+                ).Replace(block.Groups[2].Value, ""));
+        }
+
         internal static string PatchProgram(string originalProgram, bool isCgProgram, string spsMain, string cgIncludes, bool isSurfaceShader) {
             // The native contact path uses dynamic indexing/loops and integer bit fields.
             // Low-target shaders otherwise try to unroll the entire path builder.
@@ -278,6 +294,7 @@ namespace VF.Builder.Haptics {
             var program = target.Replace(originalProgram, match =>
                 float.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture) < 4.5f
                     ? match.Groups[1].Value + "4.5" : match.Value);
+            program = StripBuiltInShaderGraphVariants(program);
             if (!target.IsMatch(program)) program = "#pragma target 4.5\n" + program;
             // The patched material disables ordinary GPU instancing. Single-pass stereo has its own keyword.
             if (!isSurfaceShader) program = "#pragma skip_variants INSTANCING_ON\n" + program;

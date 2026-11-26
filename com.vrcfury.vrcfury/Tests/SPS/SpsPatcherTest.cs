@@ -27,6 +27,39 @@ float4 frag() : SV_Target {
 
     private const string SpsStub = "void sps_apply(inout SpsInputs input) {}";
 
+    [TestCase(true)]
+    [TestCase(false)]
+    public void StripsOnlyGeneratedSrpLightingVariantsFromBuiltInShaderGraph(bool builtIn) {
+        const string mainShadows = "#pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN";
+        const string additionalLights = "#pragma multi_compile _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS _ADDITIONAL_OFF";
+        var program = Common + @"
+#pragma multi_compile_fwdadd_fullshadows
+#pragma vertex vert
+// Keywords
+" + mainShadows + @"
+" + additionalLights + @"
+#pragma multi_compile _ LIGHTMAP_ON
+#pragma multi_compile _ SHADOWS_SHADOWMASK
+#pragma multi_compile _ _FUTURE_LIGHTING_FEATURE
+// GraphKeywords
+#pragma multi_compile _ _SHADOWS_SOFT
+" + (builtIn ? "#define BUILTIN_TARGET_API 1" : "#define UNIVERSAL_TARGET_API 1") + @"
+VertexOutput vert(AppData input) {
+    VertexOutput output;
+    output.position = input.vertex;
+    return output;
+}
+";
+        var patched = SpsPatcher.PatchProgram(program, false, SpsStub, "", false);
+        Assert.That(patched.Contains(mainShadows), Is.EqualTo(!builtIn));
+        Assert.That(patched.Contains(additionalLights), Is.EqualTo(!builtIn));
+        Assert.That(patched, Does.Contain("#pragma multi_compile_fwdadd_fullshadows"));
+        Assert.That(patched, Does.Contain("#pragma multi_compile _ LIGHTMAP_ON"));
+        Assert.That(patched, Does.Contain("#pragma multi_compile _ SHADOWS_SHADOWMASK"));
+        Assert.That(patched, Does.Contain("#pragma multi_compile _ _FUTURE_LIGHTING_FEATURE"));
+        Assert.That(patched, Does.Contain("#pragma multi_compile _ _SHADOWS_SOFT"));
+    }
+
     [TestCase("PenetratorReshape")]
     [TestCase("applyRalivDynamicPenetrationSystem")]
     [TestCase("ApplyTPSPenetrator")]
