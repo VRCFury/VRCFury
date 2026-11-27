@@ -84,8 +84,7 @@ namespace VF.Service {
             var origParams = VRCAvatarUtils.GetAvatarParams(avatar);
             if (globals.useOriginalAssets && origParams != null) return origParams;
             VRCExpressionParameters prms;
-            if (VrcfObjectFactory.DidCreate(origParams)) {
-                // We probably made this in an earlier preprocessor hook, so we can just adopt it
+            if (VrcfObjectFactory.DidCreate(origParams) && !origParams.IsSaved()) {
                 prms = origParams;
             } else if (origParams != null) {
                 prms = origParams.Clone();
