@@ -5,6 +5,7 @@ using NUnit.Framework;
 using UnityEngine;
 using VF.Utils;
 using VF.Service;
+using VF.Utils.Controller;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
@@ -500,6 +501,27 @@ namespace VF.Tests {
             Assert.That(root.controls.Select(control => control.name), Is.EqualTo(new[] { "Keep" }));
             Assert.That(child.controls.Count, Is.EqualTo(1));
             Assert.That(manager.Move("", ""), Is.False);
+        }
+
+        [Test]
+        public void MovingToSamePathReplacesFormattedLabelInPlace() {
+            var manager = Manager(Menu());
+            const string path = "SPS/Legacy Support";
+            var sps = manager.GetSubmenu("SPS");
+            manager.NewMenuButton("SPS/Before");
+            var legacy = VFController.Create().GetOrCreateBool("SpsLegacy");
+            manager.NewMenuToggle(
+                "SPS/<b>Legacy Support<\\/b>\n<size=20>DPS\\/TPS\\/SPS1\\/SPS2\nOne socket at a time",
+                legacy
+            );
+            manager.NewMenuButton("SPS/After");
+            var before = sps.controls.ToArray();
+
+            Assert.That(manager.Move(path, path), Is.True);
+
+            Assert.That(sps.controls, Is.EqualTo(before));
+            Assert.That(before[1].name, Is.EqualTo("Legacy Support"));
+            Assert.That(before[1].parameter.name, Is.EqualTo("SpsLegacy"));
         }
 
         [Test]

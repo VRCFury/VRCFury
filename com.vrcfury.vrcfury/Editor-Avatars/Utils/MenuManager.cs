@@ -86,7 +86,14 @@ namespace VF.Utils {
             
             var fromControls = FindControlsWithName(fromMenu, fromName);
             if (fromControls.Length == 0) return false;
-            if (from == to && !string.IsNullOrWhiteSpace(to)) return true;
+            if (from == to && !string.IsNullOrWhiteSpace(to)) {
+                if (fromControls.All(control => control.name == fromName)) return true;
+                foreach (var control in fromControls) control.name = fromName;
+                if (VrcfObjectFactory.DidCreate(fromMenu)) {
+                    fromMenu.WorkLog($"Set the menu item label for {from} to {fromName}");
+                }
+                return true;
+            }
             fromMenu.controls.RemoveAll(c => fromControls.Contains(c));
 
             if (string.IsNullOrWhiteSpace(to)) {
