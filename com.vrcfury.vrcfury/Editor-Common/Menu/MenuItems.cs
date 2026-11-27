@@ -88,8 +88,6 @@ namespace VF.Menu {
         public const int unpackWarningPriority = settingsPriority + 105;
         public const string alignMobile = settings + "Align Mobile Parameters to match Desktop";
         public const int alignMobilePriority = settingsPriority + 106;
-        public const string disableVpmResolverInit = settings + "Disable Buggy VRCSDK VPM Resolver";
-        public const int disableVpmResolverInitPriority = settingsPriority + 107;
         public const string udonCleaner = settings + "Enable Udon Cleaner (Alpha)";
         public const int udonCleanerPriority = settingsPriority + 108;
         

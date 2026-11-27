@@ -288,9 +288,12 @@ namespace VF.Service {
                 : binding;
         }
 
-        private IEnumerable<(Material material, bool hasBlendshapes)> GetSpsMaterials() {
-            if (spsRewritesToDo.Count == 0) yield break;
+        private bool TryGetSpsMaterialSlot(VFBinding rendererBinding, SpsRewriteToDo rewrite, out int slot) {
+            return avatarBindingStateService.TryParseMaterialSlot(rendererBinding, out _, out slot)
+                   && rewrite.shouldPatchMaterial(slot);
+        }
 
+        private IEnumerable<(Material material, bool hasBlendshapes)> GetSpsMaterials(IEnumerable<VFClip> clips) {
             // Prepare the shaders for both the current materials and animated swaps before importing any of them.
             var byObject = spsRewritesToDo.ToLookup(rewrite => rewrite.skin.owner());
             foreach (var rewrite in spsRewritesToDo) {
@@ -303,13 +306,12 @@ namespace VF.Service {
                 }
             }
 
-            foreach (var clip in allClipsService.GetAllClips()) {
+            foreach (var clip in clips) {
                 foreach (var binding in clip.GetObjectBindings()) {
                     if (binding.target == null) continue;
                     foreach (var rewrite in byObject[binding.target]) {
                         var rendererBinding = GetRendererBinding(binding, rewrite.skin);
-                        if (!avatarBindingStateService.TryParseMaterialSlot(rendererBinding, out _, out var slot)) continue;
-                        if (!rewrite.shouldPatchMaterial(slot)) continue;
+                        if (!TryGetSpsMaterialSlot(rendererBinding, rewrite, out _)) continue;
                         foreach (var key in clip.GetObjectCurve(binding)) {
                             if (key.value is Material material && material != null) {
                                 yield return (material, rewrite.spsBlendshapes.Count > 0);
@@ -325,15 +327,18 @@ namespace VF.Service {
             foreach (var finish in finishRendererSwaps) finish();
             finishRendererSwaps.Clear();
 
+            // The generated Enable SPS clips only target baked objects, so they need no rewrites.
+            var clips = allClipsService.GetAllClips();
             // Enable SPS also controls non-deforming plugs, which have no renderer rewrites.
-            foreach (var clip in allClipsService.GetAllClips()) {
+            foreach (var clip in clips) {
                 foreach (var (binding, curve) in clip.GetFloatCurves()) {
                     if (binding.type != typeof(VRCFuryHapticPlug) || binding.propertyName != "spsAnimatedEnabled") continue;
                     var plug = binding.target?.GetComponent<VRCFuryHapticPlug>();
                     if (plug != null && bakeResults.ContainsKey(plug)) clip.SetAap(GetEnabledWeight(plug), curve);
                 }
             }
-            spsConfigurer.PrepareMaterials(GetSpsMaterials());
+            if (spsRewritesToDo.Count == 0) return;
+            spsConfigurer.PrepareMaterials(GetSpsMaterials(clips));
             foreach (var rewrite in spsRewritesToDo) {
                 var rendererObject = rewrite.skin.owner();
                 void RewriteClip(VFClip clip) {
@@ -372,7 +377,7 @@ namespace VF.Service {
                             }
                         }
 
-                        if (!curve.IsFloat && isRendererBinding && avatarBindingStateService.TryParseMaterialSlot(finalBinding, out _, out var slotNum)) {
+                        if (!curve.IsFloat && isRendererBinding && TryGetSpsMaterialSlot(finalBinding, rewrite, out var slotNum)) {
                             var newKeys = curve.ObjectCurve.Select(frame => {
                                 if (frame.value is Material m) frame.value = rewrite.configureMaterial(slotNum, m);
                                 return frame;
@@ -383,13 +388,13 @@ namespace VF.Service {
                 }
 
                 try {
-                    allClipsService.GetAllClips().ForEach(clip => {
+                    foreach (var clip in clips) {
                         try {
                             RewriteClip(clip);
                         } catch (Exception e) {
                             throw new ExceptionWithCause($"Failed to patch clip: {clip.name}", e);
                         }
-                    });
+                    }
 
                     rewrite.skin.sharedMaterials = rewrite.skin.sharedMaterials
                         .Select((mat,slotNum) => rewrite.configureMaterial(slotNum, mat))
