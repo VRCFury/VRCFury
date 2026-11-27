@@ -293,15 +293,15 @@ namespace VF.Service {
                    && rewrite.shouldPatchMaterial(slot);
         }
 
-        private IEnumerable<(Material material, bool hasBlendshapes)> GetSpsMaterials(IEnumerable<VFClip> clips) {
-            // Prepare the shaders for both the current materials and animated swaps before importing any of them.
+        private IEnumerable<Material> GetSpsMaterials(IEnumerable<VFClip> clips) {
+            // Lock both the current materials and animated swaps before patching them.
             var byObject = spsRewritesToDo.ToLookup(rewrite => rewrite.skin.owner());
             foreach (var rewrite in spsRewritesToDo) {
                 var materials = rewrite.skin.sharedMaterials;
                 for (var slot = 0; slot < materials.Length; slot++) {
                     var material = materials[slot];
                     if (material != null && rewrite.shouldPatchMaterial(slot)) {
-                        yield return (material, rewrite.spsBlendshapes.Count > 0);
+                        yield return material;
                     }
                 }
             }
@@ -314,7 +314,7 @@ namespace VF.Service {
                         if (!TryGetSpsMaterialSlot(rendererBinding, rewrite, out _)) continue;
                         foreach (var key in clip.GetObjectCurve(binding)) {
                             if (key.value is Material material && material != null) {
-                                yield return (material, rewrite.spsBlendshapes.Count > 0);
+                                yield return material;
                             }
                         }
                     }
@@ -338,7 +338,7 @@ namespace VF.Service {
                 }
             }
             if (spsRewritesToDo.Count == 0) return;
-            spsConfigurer.PrepareMaterials(GetSpsMaterials(clips));
+            MaterialLocker.TryLockBatch(GetSpsMaterials(clips));
             foreach (var rewrite in spsRewritesToDo) {
                 var rendererObject = rewrite.skin.owner();
                 void RewriteClip(VFClip clip) {

@@ -108,7 +108,7 @@ namespace VF.Builder.Haptics {
                                     ? Path.GetDirectoryName(sourcePath) + "/" + Path.GetFileNameWithoutExtension(sourcePath) + " SPS Depth.anim"
                                     : "Assets/SPS Depth.anim";
                                 asset.hideFlags = HideFlags.None;
-                                AssetDatabase.CreateAsset(asset, AssetDatabase.GenerateUniqueAssetPath(path));
+                                VRCFuryAssetDatabase.SaveAsset(asset, AssetDatabase.GenerateUniqueAssetPath(path));
                                 action.clip = asset;
                             } else {
                                 action.vfClip = clip;

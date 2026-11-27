@@ -75,8 +75,8 @@ namespace VF.Hooks.UdonCleaner {
             STORAGE_DIRS
         }
 
-        private static bool isAssetEditing = false;
-        private static ISet<Object> dirtyObjects = new HashSet<Object>();
+        private static IDisposable assetEditing;
+        private static readonly ISet<Object> dirtyObjects = new HashSet<Object>();
 
         public static void Reorganize(Layout layout) {
             var storagePath = GetStoragePath();
@@ -185,33 +185,35 @@ namespace VF.Hooks.UdonCleaner {
 
 #if UNITY_2021_2_OR_NEWER
                     foreach (var obj in dirtyObjects) {
-                        AssetDatabase.SaveAssetIfDirty(obj);
+                        VRCFuryAssetDatabase.SaveAssetIfDirty(obj);
                     }
 #endif
                 } finally {
-                    if (isAssetEditing) {
-                        isAssetEditing = false;
-                        AssetDatabase.StopAssetEditing();
-                    }
+                    var editing = assetEditing;
+                    assetEditing = null;
+                    editing?.Dispose();
                 }
 
                 // RefreshProgram performs importer work and must run outside StartAssetEditing.
-                if (programsWithNewSerialized != null) {
-                    foreach (var program in programsWithNewSerialized) {
-                        if (program == null) continue;
-                        program.RefreshProgram();
+                VRCFuryAssetDatabase.WithoutAssetEditing(() => {
+                    if (programsWithNewSerialized != null) {
+                        foreach (var program in programsWithNewSerialized) {
+                            if (program == null) continue;
+                            program.RefreshProgram();
+                        }
                     }
-                }
-                UdonCleanerReflection.ClearProgramAssetCache();
+                    UdonCleanerReflection.ClearProgramAssetCache();
 
-                if (layout != Layout.STORAGE_ASSET) {
-                    AssetDatabase.DeleteAsset(storageAssetPath);
-                }
-                VRCFuryAssetDatabase.DeleteDirIfEmpty("Assets/SerializedUdonPrograms");
-                VRCFuryAssetDatabase.DeleteDirIfEmpty($"{storagePath}/SerializedPrograms");
-                VRCFuryAssetDatabase.DeleteDirIfEmpty($"{storagePath}/UdonSharpPrograms");
-                VRCFuryAssetDatabase.DeleteDirIfEmpty(storagePath);
+                    if (layout != Layout.STORAGE_ASSET) {
+                        VRCFuryAssetDatabase.Delete(storageAssetPath);
+                    }
+                    VRCFuryAssetDatabase.DeleteDirIfEmpty("Assets/SerializedUdonPrograms");
+                    VRCFuryAssetDatabase.DeleteDirIfEmpty($"{storagePath}/SerializedPrograms");
+                    VRCFuryAssetDatabase.DeleteDirIfEmpty($"{storagePath}/UdonSharpPrograms");
+                    VRCFuryAssetDatabase.DeleteDirIfEmpty(storagePath);
+                });
             } finally {
+                dirtyObjects.Clear();
                 isReorganizing = false;
             }
         }
@@ -219,9 +221,7 @@ namespace VF.Hooks.UdonCleaner {
         private static void Dirty(Object obj) {
             EditorUtility.SetDirty(obj);
             dirtyObjects.Add(obj);
-            if (isAssetEditing) return;
-            isAssetEditing = true;
-            AssetDatabase.StartAssetEditing();
+            assetEditing ??= VRCFuryAssetDatabase.WithAssetEditing();
         }
 
         public class PostProcessor : AssetPostprocessor {
@@ -319,9 +319,9 @@ namespace VF.Hooks.UdonCleaner {
 
         private static void Destroy(Object obj) {
             if (obj == null) return;
-            var outputPath = AssetDatabase.GetAssetPath(obj);
+            var outputPath = VRCFuryAssetDatabase.GetAssetPath(obj);
             if (!string.IsNullOrEmpty(outputPath)) {
-                if (AssetDatabase.IsMainAsset(obj)) AssetDatabase.DeleteAsset(outputPath);
+                if (AssetDatabase.IsMainAsset(obj)) VRCFuryAssetDatabase.Delete(outputPath);
                 else AssetDatabase.RemoveObjectFromAsset(obj);
             }
         }
@@ -329,26 +329,27 @@ namespace VF.Hooks.UdonCleaner {
         private static void Move(Object obj, AssetOrPath dest) {
             if (dest == null) return;
 
-            var oldPath = AssetDatabase.GetAssetPath(obj);
-
             if (dest.asset != null) {
                 var storageAsset = dest.asset;
-                if (AssetDatabase.GetAssetPath(storageAsset) == oldPath) return;
+                // Both assets can have empty paths while the storage file waits for import.
+                if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out var guid, out long _)
+                    && guid == GetGuid(storageAsset)) return;
                 Dirty(obj);
-                var wasMainAsset = AssetDatabase.IsMainAsset(obj);
+                var oldMainAssetPath = AssetDatabase.IsMainAsset(obj) ? VRCFuryAssetDatabase.GetAssetPath(obj) : null;
                 VRCFuryAssetDatabase.AttachAsset(obj, storageAsset);
-                if (wasMainAsset) {
-                    AssetDatabase.DeleteAsset(oldPath);
+                if (!string.IsNullOrEmpty(oldMainAssetPath)) {
+                    VRCFuryAssetDatabase.Delete(oldMainAssetPath);
                 }
                 return;
             }
             if (dest.path != null) {
                 var desiredPath = dest.path;
+                var oldPath = VRCFuryAssetDatabase.GetAssetPath(obj);
                 if (oldPath == desiredPath) return;
                 Dirty(obj);
-                AssetDatabase.DeleteAsset(desiredPath);
+                VRCFuryAssetDatabase.Delete(desiredPath);
                 if (AssetDatabase.IsMainAsset(obj)) {
-                    VRCFuryAssetDatabase.MoveAsset(oldPath, desiredPath);
+                    VRCFuryAssetDatabase.WithoutAssetEditing(() => VRCFuryAssetDatabase.MoveAsset(oldPath, desiredPath));
                 } else {
                     VRCFuryAssetDatabase.SaveAsset(obj, desiredPath);
                 }

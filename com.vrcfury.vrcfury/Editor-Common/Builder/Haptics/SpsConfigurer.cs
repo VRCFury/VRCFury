@@ -31,17 +31,6 @@ namespace VF.Builder.Haptics {
 
         private static bool KeepShaderImports => SpsDevModeMenuItem.Get() && !IsActuallyUploadingHook.Get();
 
-        internal void PrepareMaterials(IEnumerable<(Material material, bool hasBlendshapes)> materials) {
-            var requests = materials.Distinct().ToArray();
-            if (requests.Length == 0) return;
-            MaterialLocker.TryLockBatch(requests.Select(request => request.material));
-            patcher.PrepareBatch(
-                requests.Where(request => request.material != null)
-                    .Select(request => (request.material.shader, request.hasBlendshapes)),
-                KeepShaderImports
-            );
-        }
-
         public static void ExtendBoundsForSps(Renderer renderer, VFGameObject bakeRoot, float worldLength) {
             if (renderer == null || bakeRoot == null) return;
 

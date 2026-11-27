@@ -166,9 +166,9 @@ namespace VF.Utils {
         }
 
         public static IEnumerable<(string name, Texture2D texture)> GetTexture2DProperties(this Material mat) {
-            // Material.GetTexture can compile shader variants on its first call. Read plain materials'
-            // saved assignments directly. Use Unity's lookup for variants, which can inherit textures.
-            var assigned = mat.parent == null ? ReadAssignedTextures(mat) : null;
+            // Material.GetTexture can compile shader variants on its first call.
+            // Read saved assignments before asking Unity to resolve texture overrides.
+            var assigned = ReadAssignedTextures(mat);
             foreach (var name in mat.shader.GetPropertyNames(ShaderPropertyType.Texture)) {
                 if (assigned != null) {
                     if (assigned.TryGetValue(name, out var assignedTexture)) yield return (name, assignedTexture);
@@ -183,8 +183,20 @@ namespace VF.Utils {
             using var textures = serialized.FindProperty("m_SavedProperties.m_TexEnvs");
             if (textures == null) return null;
 
-            var assigned = new Dictionary<string, Texture2D>();
             var count = textures.arraySize;
+            var parent = mat.parent;
+            if (parent != null) {
+                // With no local texture entries, a plain parent using the same shader supplies
+                // all the texture assignments.
+                if (count == 0 && parent.parent == null && parent.shader == mat.shader) {
+                    return ReadAssignedTextures(parent);
+                }
+                // Falls back to Material.GetTexture, since there's multiple levels involved and figuring out the overrides
+                // would be complex.
+                return null;
+            }
+
+            var assigned = new Dictionary<string, Texture2D>();
             using var entry = count > 0 ? textures.GetArrayElementAtIndex(0) : null;
             for (var i = 0; i < count; i++, entry.Next(false)) {
                 using var name = entry.FindPropertyRelative("first");

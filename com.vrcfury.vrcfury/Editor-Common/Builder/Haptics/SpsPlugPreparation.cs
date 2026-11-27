@@ -84,7 +84,7 @@ namespace VF.Builder.Haptics {
                         var path = !materialPath.StartsWith("Assets/") ? "Assets/SPS Mask.asset"
                             : Path.GetDirectoryName(materialPath) + "/" + Path.GetFileNameWithoutExtension(materialPath) + " SPS Mask.asset";
                         mask.hideFlags = HideFlags.None;
-                        AssetDatabase.CreateAsset(mask, AssetDatabase.GenerateUniqueAssetPath(path));
+                        VRCFuryAssetDatabase.SaveAsset(mask, AssetDatabase.GenerateUniqueAssetPath(path));
                     }
                     plug.textureMask = mask;
                     return;

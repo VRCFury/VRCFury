@@ -10,6 +10,24 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     internal class VFClipTest {
         [Test]
+        public void ReusesSavedClipWhileImportsArePaused() {
+            var root = new GameObject("Avatar");
+            var clip = new AnimationClip();
+            var path = AssetDatabase.GenerateUniqueAssetPath("Assets/VF Pending Clip.anim");
+            try {
+                using (VRCFuryAssetDatabase.WithAssetEditing()) {
+                    AssetDatabase.CreateAsset(clip, path);
+                    var loaded = VFClip.Load(clip, new VFLoadContext());
+                    Assert.That(loaded.GetUseOriginalUserClip(root), Is.SameAs(clip));
+                }
+            } finally {
+                if (clip != null && !clip.IsSaved()) Object.DestroyImmediate(clip);
+                AssetDatabase.DeleteAsset(path);
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void SamplingPreservesObjectKeysAndTheAdditiveReferencePose() {
             var root = new GameObject("Avatar");
             var raw = new AnimationClip();

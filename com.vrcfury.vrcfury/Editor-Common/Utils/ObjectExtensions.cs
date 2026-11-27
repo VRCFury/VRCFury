@@ -63,6 +63,11 @@ namespace VF.Utils {
             return workLog.Get(obj);
         }
 
+        public static bool IsSaved(this Object obj) {
+            // The object is persistent as soon as it is saved, even while its path awaits import.
+            return obj != null && EditorUtility.IsPersistent(obj);
+        }
+
         public static string GetPathAndName(this Object obj) {
             if (obj == null) return "(null)";
             var path = AssetDatabase.GetAssetPath(obj);

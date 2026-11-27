@@ -136,6 +136,11 @@ public class MaterialExtensionsTest {
 
             variant.SetTexture("_Assigned", texture);
             AssertMatchesNative(variant);
+
+            material.SetTexture("_Assigned", texture);
+            variant.SetTexture("_Assigned", null);
+            Assert.That(variant.GetTexture("_Assigned"), Is.Null);
+            AssertMatchesNative(variant);
             AssertMatchesNative(material);
         } finally {
             if (variant != null) Object.DestroyImmediate(variant);

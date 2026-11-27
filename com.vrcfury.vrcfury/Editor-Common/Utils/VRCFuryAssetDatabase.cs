@@ -10,6 +10,25 @@ using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     internal static class VRCFuryAssetDatabase {
+        private abstract class Reflection : ReflectionHelper {
+            public static readonly Action<Object[], string> CreateAssetFromObjects = typeof(AssetDatabase)
+                .GetMatchingDelegate<Action<Object[], string>>("CreateAssetFromObjects");
+        }
+
+        private static readonly Dictionary<string, string> pendingSavePaths = new Dictionary<string, string>();
+        private static HashSet<Object> pendingAssetSaves;
+
+        public static string GetAssetPath(Object obj) {
+            // Unity assigns the file GUID before it registers the path. Subassets share that GUID.
+            if (pendingSavePaths.Count > 0
+                && AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out var guid, out long _)
+                && pendingSavePaths.TryGetValue(guid, out var path)
+                && (File.Exists(path) || Directory.Exists(path))) {
+                return path;
+            }
+            return AssetDatabase.GetAssetPath(obj);
+        }
+
         public static string GetDirectoryName(string path) {
             // Path.GetDirectoryName returns with backslashes on windows :(
             return Path.GetDirectoryName(path)?.Replace("\\", "/");
@@ -66,23 +85,45 @@ namespace VF.Utils {
         }
 
         public static void SaveAsset(Object obj, string fullPath) {
+            SaveAsset(obj, fullPath, subAssets: null);
+        }
+
+        /** Writes the main asset and its subassets together so Unity's first import sees the complete file. */
+        public static void SaveAsset(Object obj, string fullPath, IReadOnlyCollection<Object> subAssets) {
             CreateFolder(GetDirectoryName(fullPath));
 
             // If object was already part of another asset, or was recently deleted, we MUST
             // call this first, or unity will throw an exception
             AssetDatabase.RemoveObjectFromAsset(obj);
             obj.hideFlags &= ~HideFlags.DontSaveInEditor;
-#if UNITY_6000_0_OR_NEWER
-            // Unity 6 just silently... doesn't do anything if you call CreateAsset inside StartAssetEditing
-            WithoutAssetEditing(() => { AssetDatabase.CreateAsset(obj, fullPath); });
-#else
-            AssetDatabase.CreateAsset(obj, fullPath);
-#endif
+            if (subAssets == null || subAssets.Count == 0) {
+                AssetDatabase.CreateAsset(obj, fullPath);
+            } else {
+                var objects = new Object[subAssets.Count + 1];
+                objects[0] = obj;
+                var index = 1;
+                foreach (var subAsset in subAssets) {
+                    subAsset.hideFlags &= ~HideFlags.DontSaveInEditor;
+                    AssetDatabase.RemoveObjectFromAsset(subAsset);
+                    objects[index++] = subAsset;
+                }
+                Reflection.CreateAssetFromObjects(objects, fullPath);
+            }
+            if (assetEditing && AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out var guid, out long _)) {
+                pendingSavePaths[guid] = fullPath;
+            }
         }
 
         public static void MoveAsset(string from, string to) {
+            if (assetEditing) {
+                // Technically this "could" be supported, but it's complicated because we'd have to update
+                // all the
+                throw new InvalidOperationException($"Cannot move asset '{from}' to '{to}' while asset editing is active.");
+            }
+
             CreateFolder(GetDirectoryName(to));
-            AssetDatabase.MoveAsset(from, to);
+            var error = AssetDatabase.MoveAsset(from, to);
+            if (!string.IsNullOrEmpty(error)) throw new InvalidOperationException(error);
         }
 
         public static void SaveAsset(Object obj, string dir, string filename) {
@@ -109,6 +150,20 @@ namespace VF.Utils {
             AssetDatabase.AddObjectToAsset(objectToAttach, parent);
         }
 
+        public static void SaveAssetIfDirty(Object asset) {
+#if UNITY_6000_0_OR_NEWER
+            // Unity can skip writing subassets until their file has been imported.
+            if (assetEditing && pendingSavePaths.Count > 0
+                && AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out var guid, out long _)
+                && pendingSavePaths.ContainsKey(guid)) {
+                pendingAssetSaves ??= new HashSet<Object>();
+                pendingAssetSaves.Add(asset);
+                return;
+            }
+#endif
+            AssetDatabase.SaveAssetIfDirty(asset);
+        }
+
         private static bool assetEditing = false;
 
         private class AssetEditingScope : IDisposable {
@@ -121,11 +176,21 @@ namespace VF.Utils {
             public void Dispose() {
                 if (!startedAssetEditing) return;
                 startedAssetEditing = false;
-                try {
-                    AssetDatabase.StopAssetEditing();
-                    Unity6RendererFixHook.Process();
-                } finally {
-                    assetEditing = false;
+                StopAssetEditing();
+                Unity6RendererFixHook.Process();
+            }
+        }
+
+        private static void StopAssetEditing() {
+            // Import callbacks can open a new batch while Unity is finishing this one.
+            var saves = pendingAssetSaves;
+            pendingAssetSaves = null;
+            pendingSavePaths.Clear();
+            assetEditing = false;
+            AssetDatabase.StopAssetEditing();
+            if (saves != null) {
+                foreach (var asset in saves) {
+                    if (asset != null) AssetDatabase.SaveAssetIfDirty(asset);
                 }
             }
         }
@@ -146,9 +211,8 @@ namespace VF.Utils {
 
         public static void WithoutAssetEditing(Action go) {
             if (assetEditing) {
-                AssetDatabase.StopAssetEditing();
-                assetEditing = false;
                 try {
+                    StopAssetEditing();
                     go();
                 } finally {
                     AssetDatabase.StartAssetEditing();
@@ -161,7 +225,15 @@ namespace VF.Utils {
 
         public static void Delete(string path) {
             //Debug.Log("Deleting " + path);
-            AssetDatabase.DeleteAsset(path);
+            if (!AssetDatabase.DeleteAsset(path) || pendingSavePaths.Count == 0) return;
+            foreach (var entry in pendingSavePaths.ToArray()) {
+                if (IsPathAtOrBelow(entry.Value, path)) pendingSavePaths.Remove(entry.Key);
+            }
+        }
+
+        private static bool IsPathAtOrBelow(string path, string root) {
+            return path.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+                && (path.Length == root.Length || path[root.Length] == '/');
         }
 
         public static void DeleteFiltered(string path, Func<string,bool> filter) {
@@ -204,23 +276,18 @@ namespace VF.Utils {
                     continue;
                 }
 
+                var exists = Directory.Exists(p);
                 if (AssetDatabase.IsValidFolder(p)) {
-                    // It already exists in the assetDB
-                    if (Directory.Exists(p)) {
-                        // We're all good here, everything already exists.
-                    } else {
-                        // Database is corrupt, it thinks the dir exists, but it doesn't.
-                        // Create it manually to get the db in-line.
-                        Directory.CreateDirectory(p);
-                    }
+                    if (!exists) Directory.CreateDirectory(p);
                     continue;
                 }
 
-                if (Directory.Exists(p)) {
-                    // Database is corrupt, it thinks the dir is missing, but it exists.
-                    // Delete it manually to get the db in line.
+                if (exists) {
+                    // Unity may still be waiting to import a folder or the assets we saved inside it.
+                    if (pendingSavePaths.Values.Any(pending => IsPathAtOrBelow(pending, p))) continue;
                     Directory.Delete(p, true);
                 }
+
                 if (File.Exists(p + ".meta")) {
                     // Delete the meta too, because the assetdb is going to try to write a new one when we "create" the new folder
                     File.Delete(p + ".meta");
@@ -233,6 +300,7 @@ namespace VF.Utils {
                 if (string.IsNullOrEmpty(guid)) {
                     throw new Exception("Failed to create directory " + p);
                 }
+                if (assetEditing) pendingSavePaths[guid] = p;
             }
         }
 
@@ -285,8 +353,8 @@ namespace VF.Utils {
         public static void DeleteDirIfEmpty(string path) {
             if (string.IsNullOrEmpty(path)) return;
             if (!AssetDatabase.IsValidFolder(path)) return;
-            if (AssetDatabase.FindAssets("", new[] { path }).Length > 0) return;
-            AssetDatabase.DeleteAsset(path);
+            if (!Directory.Exists(path) || Directory.EnumerateFileSystemEntries(path).Any()) return;
+            Delete(path);
         }
     }
 }

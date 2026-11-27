@@ -22,6 +22,7 @@ namespace VF.Tests {
                 .GetValue(session);
             try {
                 var binding = EditorCurveBinding.FloatCurve("Bone", typeof(Transform), "m_LocalPosition.x");
+                var materialBinding = EditorCurveBinding.PPtrCurve("Bone", typeof(MeshRenderer), "m_Materials.Array.data[0]");
                 var curve = AnimationCurve.Linear(0, 2, 1, 5);
                 using (VRCFuryAssetDatabase.WithAssetEditing()) {
                     var controller = VrcfObjectFactory.Create<AnimatorController>();
@@ -31,6 +32,14 @@ namespace VF.Tests {
                     var clip = VrcfObjectFactory.Create<AnimationClip>();
                     clip.name = "Animation";
                     AnimationUtility.SetEditorCurve(clip, binding, curve);
+                    var material = VrcfObjectFactory.CreateMaterial(Shader.Find("Standard"));
+                    material.name = "Animated material";
+                    material.mainTexture = VrcfObjectFactory.CreateTexture2D(2, 2);
+                    AnimationUtility.SetObjectReferenceCurve(
+                        clip,
+                        materialBinding,
+                        new[] { new ObjectReferenceKeyframe { time = 0, value = material } }
+                    );
                     var settings = AnimationUtility.GetAnimationClipSettings(clip);
                     settings.additiveReferencePoseClip = reference;
                     AnimationUtility.SetAnimationClipSettings(clip, settings);
@@ -43,14 +52,19 @@ namespace VF.Tests {
                     session.SaveControllerAndChildren(
                         controller,
                         new Object[] { machine, state, reference, clip },
-                        Array.Empty<Object>(),
+                        new Object[] { material },
                         useBinary ? 4096 : 2
                     );
                     session.FlushAssets();
                 }
 
-                AssetDatabase.ImportAsset(outputDir, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ImportRecursive);
-                var loadedController = AssetDatabase.LoadAssetAtPath<AnimatorController>(outputDir + "/Controller.controller");
+                var controllerPath = outputDir + "/Controller.controller";
+                var savedContents = File.ReadAllBytes(controllerPath);
+                AssetDatabase.SaveAssetIfDirty(AssetDatabase.GUIDFromAssetPath(controllerPath));
+                Assert.That(File.ReadAllBytes(controllerPath), Is.EqualTo(savedContents), "The batch should have saved the complete controller.");
+
+                AssetDatabase.ImportAsset(outputDir, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceUpdate);
+                var loadedController = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
                 var loadedClip = (AnimationClip)loadedController.layers.Single().stateMachine.defaultState.motion;
                 var loadedReference = AnimationUtility.GetAnimationClipSettings(loadedClip).additiveReferencePoseClip;
                 var clipPath = outputDir + (useBinary ? "/Controller Clips.asset" : "/Controller.controller");
@@ -58,6 +72,10 @@ namespace VF.Tests {
                 Assert.That(AssetDatabase.GetAssetPath(loadedReference), Is.EqualTo(clipPath));
                 Assert.That(loadedReference.name, Is.EqualTo("Reference"));
                 Assert.That(AnimationUtility.GetEditorCurve(loadedClip, binding).keys, Is.EqualTo(curve.keys));
+                var loadedMaterial = (Material)AnimationUtility.GetObjectReferenceCurve(loadedClip, materialBinding).Single().value;
+                Assert.That(loadedMaterial.name, Is.EqualTo("Animated material"));
+                Assert.That(AssetDatabase.GetAssetPath(loadedMaterial), Is.EqualTo(controllerPath));
+                Assert.That(AssetDatabase.GetAssetPath(loadedMaterial.mainTexture), Is.EqualTo(controllerPath));
                 if (useBinary) {
                     using var data = File.OpenRead(clipPath);
                     var prefix = new byte[5];
@@ -105,49 +123,64 @@ namespace VF.Tests {
                 .GetField("outputDir", BindingFlags.NonPublic | BindingFlags.Instance)
                 .GetValue(session);
             try {
+                var controller = VrcfObjectFactory.Create<AnimatorController>();
+                controller.name = "Controller";
+                var first = VrcfObjectFactory.Create<VRCExpressionParameters>();
+                first.name = "Z last";
+                first.WorkLog("First line\nSecond line");
+                var second = VrcfObjectFactory.Create<VRCExpressionParameters>();
+                second.name = "A first";
+                var separate = VrcfObjectFactory.Create<VRCExpressionParameters>();
+                separate.name = "Other file";
+                var material = VrcfObjectFactory.CreateMaterial(Shader.Find("Standard"));
+                material.name = "Material";
+                var texture = VrcfObjectFactory.CreateTexture2D(2, 2);
+                texture.name = "Material texture";
+                material.mainTexture = texture;
+                Object otherParent;
+                string manifest;
                 using (VRCFuryAssetDatabase.WithAssetEditing()) {
-                    var controller = VrcfObjectFactory.Create<AnimatorController>();
-                    controller.name = "Controller";
-                    var first = VrcfObjectFactory.Create<VRCExpressionParameters>();
-                    first.name = "Z last";
-                    first.WorkLog("First line\nSecond line");
-                    var second = VrcfObjectFactory.Create<VRCExpressionParameters>();
-                    second.name = "A first";
-                    var separate = VrcfObjectFactory.Create<VRCExpressionParameters>();
-                    separate.name = "Other file";
                     session.SaveControllerAndChildren(
                         controller,
                         Array.Empty<Object>(),
                         new Object[] { first, second },
                         0
                     );
+                    var nativeControllerPath = AssetDatabase.GetAssetPath(controller);
                     session.FlushAssets();
                     Assert.That(Directory.GetFiles(outputDir, "*.txt"), Is.Empty);
                     first.WorkLog("Updated during the second pass");
                     session.SaveAssetAndChildren(separate);
+                    session.SaveAssetAndChildren(material);
                     session.FlushAssets();
                     session.WriteWorkLogManifest();
-
-                    var otherParent = ((Lazy<Object>)typeof(SaveAssetsSession)
+                    Assert.That(AssetDatabase.GetAssetPath(controller), Is.EqualTo(nativeControllerPath));
+                    Assert.That(VRCFuryAssetDatabase.GetAssetPath(material), Is.EqualTo(outputDir + "/VRCFury Other.asset"));
+                    otherParent = ((Lazy<BinaryContainer>)typeof(SaveAssetsSession)
                         .GetField("otherParent", BindingFlags.NonPublic | BindingFlags.Instance)
                         .GetValue(session)).Value;
-                    var expected = new StringBuilder();
-                    foreach (var obj in new Object[] { controller, first, second, separate, otherParent }
-                                 .OrderBy(obj => obj.GetPathAndName())) {
-                        expected.AppendLine(obj.GetPathAndName() + ":");
-                        foreach (var item in obj.GetWorkLog()) expected.AppendLine("* " + item);
-                        expected.AppendLine();
-                    }
-                    expected.AppendLine();
-                    var manifest = Directory.GetFiles(outputDir, "*.txt").Single();
-                    Assert.That(File.ReadAllText(manifest), Is.EqualTo(expected.ToString()));
-                    Assert.That(AssetDatabase.GetAssetPath(first), Is.EqualTo(AssetDatabase.GetAssetPath(controller)));
-                    Assert.That(AssetDatabase.GetAssetPath(separate), Is.Not.EqualTo(AssetDatabase.GetAssetPath(controller)));
-
+                    manifest = Directory.GetFiles(outputDir, "*.txt").Single();
                     session.WriteWorkLogManifest();
                     Assert.That(Directory.GetFiles(outputDir, "*.txt"), Is.EquivalentTo(new[] { manifest }));
                 }
-                AssetDatabase.ImportAsset(outputDir, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ImportRecursive);
+
+                var expected = new StringBuilder();
+                foreach (var obj in new Object[] { controller, first, second, separate, material, texture, otherParent }
+                             .OrderBy(obj => obj.GetPathAndName())) {
+                    expected.AppendLine(obj.GetPathAndName() + ":");
+                    foreach (var item in obj.GetWorkLog()) expected.AppendLine("* " + item);
+                    expected.AppendLine();
+                }
+                expected.AppendLine();
+                Assert.That(File.ReadAllText(manifest), Is.EqualTo(expected.ToString()));
+                Assert.That(AssetDatabase.LoadAssetAtPath<TextAsset>(manifest.Replace('\\', '/')), Is.Not.Null);
+                Assert.That(AssetDatabase.GetAssetPath(controller), Is.EqualTo(outputDir + "/Controller.controller"));
+                Assert.That(AssetDatabase.GetAssetPath(first), Is.EqualTo(AssetDatabase.GetAssetPath(controller)));
+                Assert.That(AssetDatabase.GetAssetPath(separate), Is.Not.EqualTo(AssetDatabase.GetAssetPath(controller)));
+                var otherPath = outputDir + "/VRCFury Other.asset";
+                var loadedMaterial = AssetDatabase.LoadAssetAtPath<Material>(otherPath);
+                Assert.That(loadedMaterial.mainTexture.name, Is.EqualTo("Material texture"));
+                Assert.That(AssetDatabase.GetAssetPath(loadedMaterial.mainTexture), Is.EqualTo(otherPath));
                 var loadedController = AssetDatabase.LoadAssetAtPath<AnimatorController>(outputDir + "/Controller.controller");
                 Assert.That(loadedController, Is.Not.Null);
                 Assert.That(AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(loadedController))

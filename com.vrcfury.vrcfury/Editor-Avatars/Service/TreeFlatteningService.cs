@@ -164,11 +164,11 @@ namespace VF.Service {
 
                 // If the two clips share any bindings, don't merge them since they
                 // would normally be additive
-                if (firstClip.GetAllBindings().Intersect(clip.GetAllBindings()).Any()) {
+                if (firstClip.SharesBindingWith(clip)) {
                     return child;
                 }
 
-                firstClip.SetCurves(clip.GetAllCurves());
+                firstClip.CopyFrom(clip);
                 firstClip.name = firstClip.name + " + " + clip.name;
                 return System.Array.Empty<VFTreeChild>();
             });

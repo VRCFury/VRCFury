@@ -8,7 +8,6 @@ using UnityEngine;
 using VF.Component;
 using VF.Exceptions;
 using VF.Feature.Base;
-using VF.Hooks.UnityFixes;
 using VF.Inspector;
 using VF.Model;
 using VF.Model.Feature;
@@ -41,7 +40,6 @@ namespace VF.Builder {
         }
 
         private static void Run(VFGameObject avatarObject) {
-            Unity6RendererFixHook.Register(avatarObject);
             EditorOnlyUtils.RemoveEditorOnlyObjects(avatarObject);
 
             if (!ShouldRun(avatarObject)) {
@@ -71,9 +69,6 @@ namespace VF.Builder {
                 }
             } finally {
                 progress.Close();
-
-                // Make sure all new assets we've created have actually been saved to disk
-                AssetDatabase.SaveAssets();
             }
         }
 

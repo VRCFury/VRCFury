@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Pool;
 using UnityEngine.Rendering;
 using VF.Utils;
 
@@ -135,7 +136,13 @@ namespace VF.Builder {
 
                 Vector3[] vertices = mesh.vertices;
                 Vector3[] normals = mesh.normals;
-                Vector3[] tangents = mesh.tangents.Select(t => new Vector3(t.x, t.y, t.z)).ToArray();
+                using var tangentBuffer = ListPool<Vector4>.Get(out var meshTangents);
+                mesh.GetTangents(meshTangents);
+                var tangents = new Vector3[meshTangents.Count];
+                for (var i = 0; i < tangents.Length; i++) {
+                    var tangent = meshTangents[i];
+                    tangents[i] = new Vector3(tangent.x, tangent.y, tangent.z);
+                }
                 // BakeMesh scales skinned vertices, normals, and tangents. Return them in renderer-local
                 // space so the conversion above applies scale exactly once for every renderer type.
                 if (!inverseScale.Equals(Vector3.one)) {

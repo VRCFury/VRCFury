@@ -1,33 +1,26 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using VF.Utils;
 
 namespace VF.Hooks.UnityFixes {
     /**
-     * Unity 6 (maybe only some versions?) has a bug where renderers created
-     * using materials which are not yet saved never actually render those materials.
-     * Seemingly the only way to fix this is to turn the renderer off and back on again
-     * once the contents is saved.
-     *
-     * Not 100% sure if it's caused by unsaved mats, it may be caused by unsaved meshes
-     * or something else.
+     * On Unity 6.4, importing a newly saved skinned mesh can leave its live renderer
+     * with stale mesh data even though sharedMesh still points to the correct asset.
+     * Reassign the mesh after import to refresh the renderer.
      */
     internal static class Unity6RendererFixHook {
-        private static readonly List<VFGameObject> pending = new List<VFGameObject>();
+        private static readonly HashSet<SkinnedMeshRenderer> pending = new();
 
-        public static void Register(VFGameObject obj) {
-            pending.Add(obj);
+        public static void Register(SkinnedMeshRenderer renderer) {
+            pending.Add(renderer);
         }
 
         public static void Process() {
             if (pending.Count == 0) return;
-            foreach (var obj in pending) {
-                if (obj.activeInHierarchy) {
-                    //Debug.Log("Toggling " + obj.GetDebugPath());
-                    obj.active = false;
-                    obj.active = true;
-                }
+            foreach (var renderer in pending) {
+                if (renderer == null) continue;
+                var mesh = renderer.sharedMesh;
+                if (mesh.IsSaved() && VrcfObjectFactory.DidCreate(mesh)) renderer.sharedMesh = mesh;
             }
             pending.Clear();
         }

@@ -275,20 +275,19 @@ namespace VF.Utils.Controller {
             Func<AnimatorCondition, AnimatorConditionExtensions.Rewritten> action
         ) {
             var conditions = transition.conditions ?? Array.Empty<AnimatorCondition>();
-            var updated = false;
-            var andOr = conditions.SelectMany(condition => {
-                var rewritten = action(condition);
-                if (rewritten.andOr.Length != 1 || rewritten.andOr[0].Length != 1 || !rewritten.andOr[0][0].Equals(condition)) {
-                    updated = true;
+            List<AnimatorCondition[]> groups = null;
+            for (var i = 0; i < conditions.Length; i++) {
+                var result = action(conditions[i]);
+                if (groups == null) {
+                    if (result.IsUnchanged(conditions[i])) continue;
+                    groups = new List<AnimatorCondition[]>(conditions.Length);
+                    for (var j = 0; j < i; j++) groups.Add(new[] { conditions[j] });
                 }
-                return rewritten.andOr;
-            }).ToArray();
-
-            if (!updated) {
-                return transition;
+                result.AddTo(groups);
             }
+            if (groups == null) return transition;
 
-            return andOr.CrossProduct()
+            return groups.CrossProduct()
                 .Select(and => {
                     var clone = transition.Clone(
                         new Dictionary<VFState, VFState>(),

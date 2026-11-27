@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Immutable;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 using VF.Builder;
 using VF.Feature.Base;
@@ -23,7 +22,7 @@ namespace VF.Service {
             var usedFolders = Resources.FindObjectsOfTypeAll<VRCAvatarDescriptor>()
                 .SelectMany(VRCAvatarUtils.GetAllControllers)
                 .Where(c => !c.isDefault && c.controller != null)
-                .Select(c => AssetDatabase.GetAssetPath(c.controller))
+                .Select(c => VRCFuryAssetDatabase.GetAssetPath(c.controller))
                 .Where(path => !string.IsNullOrEmpty(path))
                 .Select(VRCFuryAssetDatabase.GetDirectoryName)
                 .ToImmutableHashSet();

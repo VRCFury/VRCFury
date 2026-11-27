@@ -4,7 +4,6 @@ using System.Linq;
 using UnityEngine;
 using VF.Component;
 using VF.Exceptions;
-using VF.Hooks.UnityFixes;
 using VF.Injector;
 using VF.Inspector;
 using VF.Utils;
@@ -52,7 +51,6 @@ namespace VF.Builder.Haptics {
                     var result = plugBaker.Bake(plug);
                     onPlugBaked?.Invoke(plug, result);
                     injector.GetService<SpsChannelsService>().Apply(result.channelContacts);
-                    Unity6RendererFixHook.Register(result.bakeRoot);
                     foreach (var component in result.bakeRoot.GetComponentsInSelfAndChildren<UnityEngine.Component>()) {
                         saveSession.SaveAssetAndChildren(component);
                     }

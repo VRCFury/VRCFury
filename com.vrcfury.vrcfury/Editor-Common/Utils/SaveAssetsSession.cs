@@ -6,17 +6,19 @@ using System.Text;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VF.Hooks.UnityFixes;
 using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     internal class SaveAssetsSession {
         private const int BinaryClipMinKeyCount = 4096;
         private readonly string outputDir;
-        private readonly Lazy<Object> otherParent;
+        private readonly Lazy<BinaryContainer> otherParent;
         private readonly Dictionary<Object, Object> workLogManifest = new Dictionary<Object, Object>();
         private readonly List<(string title, string body)> additionalSections = new();
         private readonly List<string> notes = new();
         private readonly HashSet<Object> assetsToSave = new HashSet<Object>();
+        private readonly HashSet<Object> otherAssetsToSave = new HashSet<Object>();
         private readonly HashSet<string> savedMaterialGuids = new HashSet<string>();
 
         public SaveAssetsSession(string outputDirName) {
@@ -25,39 +27,38 @@ namespace VF.Utils {
                 outputDirName,
                 startMaxLen: 16
             );
-            otherParent = new Lazy<Object>(() => {
+            otherParent = new Lazy<BinaryContainer>(() => {
                 var parent = VrcfObjectFactory.Create<BinaryContainer>();
                 parent.name = "VRCFury Other";
-                SaveParent(parent);
                 return parent;
             });
         }
 
-        public void SaveAssetAndChildren(Object root, Func<Object> getParent = null, bool recurse = true) {
-            IEnumerable<Object> toSave;
-            if (recurse) {
-                toSave = GetUnsavedChildren(root, true);
-            } else {
-                toSave = new [] { root };
+        public void SaveAssetAndChildren(Object root) {
+            otherAssetsToSave.UnionWith(GetUnsavedChildren(root, otherAssetsToSave));
+
+#if UNITY_6000_0_OR_NEWER
+            if (root is SkinnedMeshRenderer skin && VrcfObjectFactory.DidCreate(skin.sharedMesh)) {
+                Unity6RendererFixHook.Register(skin);
             }
-            var parent = new Lazy<Object>(() => {
-                if (getParent == null) return otherParent.Value;
-                return getParent();
-            });
-            foreach (var child in toSave) {
-                if (IsControllerInternalAsset(child)) {
-                    child.hideFlags |= HideFlags.HideInHierarchy;
-                }
-                VRCFuryAssetDatabase.AttachAsset(child, parent.Value);
-                RecordSavedMaterial(child);
-                RecordWorkLog(child, parent.Value);
-            }
-            // If we don't do this, the attached assets don't show up in the browser
-            // until the next time all assets are saved
-            if (parent.IsValueCreated) assetsToSave.Add(parent.Value);
+#endif
         }
 
-        private static IEnumerable<Object> GetUnsavedChildren(Object obj, bool recurse) {
+        private void AttachAsset(Object child, Object parent) {
+            if (IsControllerInternalAsset(child)) child.hideFlags |= HideFlags.HideInHierarchy;
+            VRCFuryAssetDatabase.AttachAsset(child, parent);
+            RecordSavedAsset(child, parent);
+            assetsToSave.Add(parent);
+        }
+
+        private void RecordSavedAsset(Object child, Object parent) {
+            if (child is Material && AssetDatabase.TryGetGUIDAndLocalFileIdentifier(child, out var guid, out long _)) {
+                savedMaterialGuids.Add(guid);
+            }
+            RecordWorkLog(child, parent);
+        }
+
+        private static IEnumerable<Object> GetUnsavedChildren(Object obj, ISet<Object> alreadyQueued) {
             var unsavedChildren = new List<Object>();
             MutableManager.ForEachChild(obj, asset => {
                 if (asset is AnimatorController || asset is GameObject || asset is UnityEngine.Component) {
@@ -66,18 +67,12 @@ namespace VF.Utils {
                 }
                 if (obj is MonoBehaviour m && MonoScript.FromMonoBehaviour(m) == asset) return false;
                 if (!VrcfObjectFactory.DidCreate(asset)) return false;
-                if (!IsUnsaved(asset)) return true;
+                if (alreadyQueued.Contains(asset)) return false;
+                if (asset.IsSaved()) return true;
                 unsavedChildren.Add(asset);
-                return recurse;
+                return true;
             });
-            return unsavedChildren
-                .Distinct()
-                // If you save a material before a texture it contains, the texture reference disappears
-                .OrderBy(child => child is Texture2D ? 0 : 1);
-        }
-
-        private static bool IsUnsaved(Object asset) {
-            return asset != null && string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset));
+            return unsavedChildren.Distinct();
         }
 
         public void SaveControllerAndChildren(
@@ -88,20 +83,28 @@ namespace VF.Utils {
         ) {
             if (!VrcfObjectFactory.DidCreate(controller)) return;
             SaveParent(controller);
-            var animations = new Lazy<Object>(() => {
-                var parent = VrcfObjectFactory.Create<BinaryContainer>();
-                parent.name = controller.name + " Clips";
-                SaveParent(parent);
-                return parent;
-            });
+            var clips = new HashSet<Object>();
             foreach (var asset in children) {
                 // A second asset file is worthwhile when the animation keys would make the controller large.
-                var useBinary = asset is AnimationClip && clipKeyCount >= BinaryClipMinKeyCount;
-                SaveAssetAndChildren(asset, () => useBinary ? animations.Value : controller, false);
+                if (asset is AnimationClip && clipKeyCount >= BinaryClipMinKeyCount) clips.Add(asset);
+                else AttachAsset(asset, controller);
             }
+            // Save objects used by animation keyframes before serializing the clips that reference them.
             foreach (var asset in otherAssets) {
-                SaveAssetAndChildren(asset, () => controller, true);
+                foreach (var child in GetUnsavedChildren(asset, clips)) AttachAsset(child, controller);
             }
+            if (clips.Count > 0) {
+                var parent = VrcfObjectFactory.Create<BinaryContainer>();
+                parent.name = controller.name + " Clips";
+                SaveBinaryFile(parent, clips);
+            }
+        }
+
+        private void SaveBinaryFile(BinaryContainer parent, IReadOnlyCollection<Object> children) {
+            var path = VRCFuryAssetDatabase.GetUniquePath(outputDir, parent.name, "asset");
+            VRCFuryAssetDatabase.SaveAsset(parent, path, children);
+            RecordWorkLog(parent, parent);
+            foreach (var child in children) RecordSavedAsset(child, parent);
         }
 
         private static bool IsControllerInternalAsset(Object asset) {
@@ -113,9 +116,10 @@ namespace VF.Utils {
         }
 
         private void SaveParent(Object parent) {
-            if (!VrcfObjectFactory.DidCreate(parent)) return;
-            if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(parent))) {
+            if (parent == null || !VrcfObjectFactory.DidCreate(parent)) return;
+            if (!parent.IsSaved()) {
                 VRCFuryAssetDatabase.SaveAsset(parent, outputDir, parent.name);
+                assetsToSave.Add(parent);
             }
             RecordWorkLog(parent, parent);
         }
@@ -137,13 +141,6 @@ namespace VF.Utils {
             workLogManifest[obj] = parent;
         }
 
-        private void RecordSavedMaterial(Object obj) {
-            if (!(obj is Material)) return;
-            var path = AssetDatabase.GetAssetPath(obj);
-            var guid = AssetDatabase.AssetPathToGUID(path);
-            if (!string.IsNullOrEmpty(guid)) savedMaterialGuids.Add(guid);
-        }
-
         public void AddWorkLogSection(string title, string body) {
             additionalSections.Add((title, body));
         }
@@ -162,10 +159,10 @@ namespace VF.Utils {
             var parentPaths = new Dictionary<Object, string>();
             string GetName(Object obj, Object parent) {
                 if (!parentPaths.TryGetValue(parent, out var path)) {
-                    path = AssetDatabase.GetAssetPath(parent);
+                    path = VRCFuryAssetDatabase.GetAssetPath(parent);
                     parentPaths[parent] = path;
                 }
-                return AssetDatabase.IsMainAsset(obj) ? path : $"{path} ({obj.name})";
+                return obj == parent ? path : $"{path} ({obj.name})";
             }
             foreach (var entry in workLogManifest
                          .Where(entry => entry.Key != null)
@@ -199,8 +196,18 @@ namespace VF.Utils {
         }
 
         public void FlushAssets() {
+            var otherAssets = otherAssetsToSave.Where(asset => !asset.IsSaved()).ToArray();
+            if (otherAssets.Length > 0) {
+                var parent = otherParent.Value;
+                if (parent.IsSaved()) {
+                    foreach (var asset in otherAssets) AttachAsset(asset, parent);
+                } else {
+                    SaveBinaryFile(parent, otherAssets);
+                }
+            }
+            otherAssetsToSave.Clear();
             foreach (var asset in assetsToSave) {
-                AssetDatabase.SaveAssetIfDirty(asset);
+                VRCFuryAssetDatabase.SaveAssetIfDirty(asset);
             }
             assetsToSave.Clear();
             PoiyomiUtils.AddToKnownMaterials(savedMaterialGuids);

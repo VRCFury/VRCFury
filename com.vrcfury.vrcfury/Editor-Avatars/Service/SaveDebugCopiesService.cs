@@ -29,6 +29,7 @@ namespace VF.Service {
                 c.name = $"{folderName} {VRCFEnumUtils.GetName(c.vrcType)}";
                 c.Save(avatarObject, SaveAssetsService.Session, reuseSourceAssets: false);
             }
+            SaveAssetsService.Session.FlushAssets();
         }
     }
 }

@@ -15,7 +15,7 @@ namespace VF {
             public static readonly Action Resolve = typeof(Client).GetMatchingDelegate<Action>("Resolve");
         }
 
-        private const string TmpDirPath = "Packages/com.vrcfury.temp";
+        internal const string TmpDirPath = "Packages/com.vrcfury.temp";
         private const string TmpPackagePath = TmpDirPath + "/" + "package.json";
 
         public static void Cleanup(ISet<string> usedFolders = null) {

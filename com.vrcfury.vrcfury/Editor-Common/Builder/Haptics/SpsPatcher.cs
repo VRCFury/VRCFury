@@ -34,7 +34,9 @@ namespace VF.Builder.Haptics {
 
         internal const string ShaderNamePrefix = "Hidden/SPSPatched/";
         internal const string LockedShaderNamePrefix = "Hidden/Locked/SPSPatched/";
-        private const string HashBuster = "74";
+        private const string ShaderCacheDirectory = "SPS";
+        private const string ShaderCacheFolder = TmpFilePackage.TmpDirPath + "/" + ShaderCacheDirectory + "/";
+        private const string HashBuster = "77";
         private const string ShaderLabComment = @"(?s:/\*.*?\*/)|//[^\r\n]*";
         private const string ShaderLabTrivia = @"(?:\s|" + ShaderLabComment + ")*";
         private const int MaxCachedPatterns = 256;
@@ -47,10 +49,7 @@ namespace VF.Builder.Haptics {
         private readonly Dictionary<string, IncludeContent> includeFiles = new();
         private readonly Dictionary<string, string> flattenedSpsFiles = new();
         private readonly Dictionary<string, (string source, HashSet<string> visited)> flattenedCgIncludes = new();
-        private readonly Dictionary<
-            (Shader shader, bool keepImports, bool hasBlendshapes),
-            (PatchResult root, List<PatchResult> imports, bool batchImported)
-        > preparedShaders = new();
+        private readonly Dictionary<(Shader shader, bool keepImports, bool hasBlendshapes), Shader> patchedShaders = new();
 
         public static void Patch(Material mat, bool keepImports, bool hasBlendshapes) {
             new SpsPatcher().PatchMaterial(mat, keepImports, hasBlendshapes);
@@ -104,83 +103,41 @@ namespace VF.Builder.Haptics {
         }
 
         private void PatchUnsafe(Material mat, bool keepImports, bool hasBlendshapes) {
-            var shader = mat.shader;
-            var newShader = PatchUnsafe(shader, keepImports, hasBlendshapes);
-            ShaderExtensions.WithAsyncCompilationDuringBuild(() => mat.shader = newShader.shader);
+            var newShader = GetPatchedShader(mat.shader, keepImports, hasBlendshapes);
+            ShaderExtensions.WithAsyncCompilationDuringBuild(() => mat.shader = newShader);
             mat.enableInstancing = false;
             mat.Dirty();
         }
 
-        public class PatchResult {
+        private class PatchResult {
             public Shader shader;
-            public int patchedPrograms;
             public Shader source;
             public string name;
             public string path;
             public string contents;
         }
 
-        internal void PrepareBatch(IEnumerable<(Shader shader, bool hasBlendshapes)> shaders, bool keepImports) {
-            var requests = new Dictionary<
-                (Shader shader, bool keepImports, bool hasBlendshapes),
-                (PatchResult root, List<PatchResult> imports)
-            >();
-            foreach (var (shader, hasBlendshapes) in shaders.Distinct()) {
-                if (shader == null || shader.name == "VRChat/Mobile/Particles/Additive") continue;
-                try {
-                    SpsPlugReceiverService.RequireMaterialContacts();
-                    var imports = new List<PatchResult>();
-                    var root = PrepareShader(
-                        shader,
-                        keepImports,
-                        hasBlendshapes,
-                        null,
-                        imports
-                    );
-                    requests[(shader, keepImports, hasBlendshapes)] = (root, imports);
-                } catch (Exception) {
-                    // Retrying in the material pass includes the plug, material, and clip in the error.
-                }
-            }
-            var batchImported = false;
-            try {
-                ImportShaderBatch(requests.Values.SelectMany(request => request.imports).ToList());
-                batchImported = true;
-            } catch (Exception) {
-                // Keep the generated sources for a serial retry with the material's error context.
-            }
-            foreach (var (key, patch) in requests) {
-                preparedShaders[key] = (patch.root, patch.imports, batchImported);
-            }
-        }
-
-        private PatchResult PatchUnsafe(
+        private Shader GetPatchedShader(
             Shader shader,
             bool keepImports,
             bool hasBlendshapes
         ) {
             var key = (shader, keepImports, hasBlendshapes);
-            if (!preparedShaders.TryGetValue(key, out var prepared)) {
-                var imports = new List<PatchResult>();
-                var root = PrepareShader(
-                    shader,
-                    keepImports,
-                    hasBlendshapes,
-                    null,
-                    imports
-                );
-                prepared = (root, imports, false);
-            }
-            if (prepared.root.shader != null) return prepared.root;
+            if (patchedShaders.TryGetValue(key, out var cached) && cached != null) return cached;
 
-            // Unity can finish importing the batch and still return a missing or broken shader.
-            // Retry the entire request in dependency order so the parent sees every UsePass target.
-            if (!prepared.batchImported || !prepared.imports.All(patch => TryLoadPatchedShader(patch))) {
-                ImportShadersInOrder(prepared.imports);
+            var pending = new List<PatchResult>();
+            var root = PrepareShader(
+                shader,
+                keepImports,
+                hasBlendshapes,
+                null,
+                pending
+            );
+            if (pending.Count > 0) {
+                if (keepImports) ImportShadersInOrder(pending);
+                else CreateShaderAssets(pending);
             }
-            foreach (var patch in prepared.imports) patch.contents = null;
-            preparedShaders[key] = prepared;
-            return prepared.root;
+            return patchedShaders[key] = root.shader;
         }
 
         private PatchResult PrepareShader(
@@ -210,11 +167,14 @@ namespace VF.Builder.Haptics {
             } else {
                 newShaderName = ShaderNamePrefix + hash;
             }
+            var path = $"{TmpFilePackage.GetPath()}/{ShaderCacheDirectory}/{hash}.{(keepImports ? "shader" : "asset")}";
             var alreadyExists = Shader.Find(newShaderName);
-            if (alreadyExists != null && !ShaderUtil.ShaderHasError(alreadyExists)) {
+            var loadNativeAsset = !alreadyExists && !keepImports;
+            if (loadNativeAsset) alreadyExists = AssetDatabase.LoadAssetAtPath<Shader>(path);
+            if (alreadyExists != null && alreadyExists.name == newShaderName && !ShaderUtil.ShaderHasError(alreadyExists)) {
+                if (loadNativeAsset) ShaderUtil.RegisterShader(alreadyExists);
                 return new PatchResult {
                     shader = alreadyExists,
-                    patchedPrograms = 0,
                     name = newShaderName
                 };
             }
@@ -270,6 +230,7 @@ namespace VF.Builder.Haptics {
                     }
                 );
             });
+            var hasUsePass = false;
             if (contents.Contains("UsePass")) {
                 var usePass = GetRegex(@"(?:^|\n)[ \t]*UsePass[ \t]+""([^""]+)/([^""/]+)""");
                 Shader FindIncludedShader(string shaderName) {
@@ -294,26 +255,25 @@ namespace VF.Builder.Haptics {
                         pending,
                         passes.ToHashSet(StringComparer.OrdinalIgnoreCase)
                     );
-                    patchedPrograms += output.patchedPrograms;
                     childShaders[passes.Key] = output;
                 }
                 if (childShaders.Count > 0) {
+                    hasUsePass = true;
                     contents = usePass.Replace(contents, match => {
                         var child = childShaders[FindIncludedShader(match.Groups[1].Value)];
                         return $"\nUsePass \"{child.name}/{match.Groups[2].Value}\"\n";
                     });
                 }
             }
-            if (patchedPrograms == 0) {
+            if (patchedPrograms == 0 && !hasUsePass) {
                 throw new Exception($"No programs found");
             }
 
             var patch = new PatchResult {
                 source = shader,
                 name = newShaderName,
-                path = $"{TmpFilePackage.GetPath()}/SPS/{hash}.shader",
-                contents = contents,
-                patchedPrograms = patchedPrograms
+                path = path,
+                contents = contents
             };
             pending.Add(patch);
             return patch;
@@ -387,23 +347,49 @@ namespace VF.Builder.Haptics {
         }
 
         /**
-         * Queues the whole batch in its own asset-editing scope so Unity can import all the
-         * shaders together before the avatar build resumes.
+         * The list is ordered with UsePass targets before their parents. Register each
+         * shader by name so Unity can resolve those passes while imports are paused.
          */
-        private static void ImportShaderBatch(List<PatchResult> pending) {
-            if (pending.Count == 0) return;
-            VRCFuryAssetDatabase.WithoutAssetEditing(() => {
-                VRCFuryAssetDatabase.WithAssetEditing(() => {
-                    VRCFuryAssetDatabase.CreateFolder(VRCFuryAssetDatabase.GetDirectoryName(pending[0].path));
-                    foreach (var patch in pending) WriteFile(patch.path, patch.contents);
-                    foreach (var patch in pending) AssetDatabase.ImportAsset(patch.path, ImportAssetOptions.ForceSynchronousImport);
-                });
-            });
+        private static void CreateShaderAssets(List<PatchResult> pending) {
+            foreach (var patch in pending) {
+                var shader = ShaderUtil.CreateShaderAsset(patch.contents, compileInitialShaderVariants: true);
+                BinaryContainer container = null;
+                try {
+                    ValidatePatchedShader(patch, shader);
+                    // Unity's YAML writer can produce unreadable files for large generated shaders.
+                    container = ScriptableObject.CreateInstance<BinaryContainer>();
+                    VRCFuryAssetDatabase.SaveAsset(container, patch.path, subAssets: new[] { shader });
+                    if (!shader.IsSaved()) {
+                        throw new VRCFBuilderException($"Failed to save the generated SPS shader at {patch.path}.");
+                    }
+                    ShaderUtil.RegisterShader(shader);
+                    patch.shader = shader;
+                } catch {
+                    if (shader != null && !shader.IsSaved()) UnityEngine.Object.DestroyImmediate(shader);
+                    if (container != null && !container.IsSaved()) UnityEngine.Object.DestroyImmediate(container);
+                    throw;
+                }
+            }
+        }
+
+        private sealed class ShaderCacheSaveProcessor : AssetModificationProcessor {
+            /**
+             * Cache entries are written in full when created. Unity can mark a loaded native Shader
+             * dirty after importing it. Saving it again reimports it and restarts the cycle.
+             */
+            private static string[] OnWillSaveAssets(string[] paths) {
+                return paths.Where(path => !IsShaderCacheAsset(path)).ToArray();
+            }
+        }
+
+        private static bool IsShaderCacheAsset(string path) {
+            return path.StartsWith(ShaderCacheFolder, StringComparison.Ordinal)
+                && path.EndsWith(".asset", StringComparison.Ordinal);
         }
 
         /**
-         * Imports shaders individually for a standalone patch or a failed batch, validating each
-         * UsePass dependency before importing the shader that refers to it.
+         * Imports editable shader files, validating each UsePass dependency before
+         * importing the shader that refers to it.
          */
         private static void ImportShadersInOrder(List<PatchResult> pending) {
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
@@ -411,19 +397,15 @@ namespace VF.Builder.Haptics {
                 foreach (var patch in pending) {
                     WriteFile(patch.path, patch.contents);
                     AssetDatabase.ImportAsset(patch.path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
-                    TryLoadPatchedShader(patch, reportErrors: true);
+                    patch.shader = AssetDatabase.LoadAssetAtPath<Shader>(patch.path);
+                    ValidatePatchedShader(patch, patch.shader);
                 }
             });
         }
 
-        private static bool TryLoadPatchedShader(PatchResult patch, bool reportErrors = false) {
-            var newShader = AssetDatabase.LoadAssetAtPath<Shader>(patch.path);
+        private static void ValidatePatchedShader(PatchResult patch, Shader newShader) {
             var hasErrors = newShader && ShaderUtil.ShaderHasError(newShader);
-            if (newShader && !hasErrors && newShader.name == patch.name) {
-                patch.shader = newShader;
-                return true;
-            }
-            if (!reportErrors) return false;
+            if (newShader && !hasErrors && newShader.name == patch.name) return;
             if (!newShader) {
                 throw new VRCFBuilderException("Patch succeeded, but shader failed to generate. Check the Unity log for compiler errors.\n\n" + patch.path);
             }

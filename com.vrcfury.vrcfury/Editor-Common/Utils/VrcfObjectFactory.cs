@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -17,8 +16,7 @@ namespace VF.Utils {
         private static void Prune() {
             var removed = 0;
             foreach (var asset in created) {
-                if (asset == null) continue;
-                if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(asset))) continue;
+                if (asset == null || asset.IsSaved()) continue;
                 Object.DestroyImmediate(asset);
                 removed++;
             }

@@ -31,9 +31,8 @@ namespace VF.Hooks.VrcsdkFixes {
             }
 
             if (!hasUnknownFile) {
-                VRCFuryAssetDatabase.CreateFolder($"{tmpFolder}/XR");
                 var uniq = VRCFuryAssetDatabase.GetUniquePath($"{tmpFolder}/XR", "XR");
-                AssetDatabase.MoveAsset("Assets/XR", uniq);
+                VRCFuryAssetDatabase.MoveAsset("Assets/XR", uniq);
             }
         }
     }

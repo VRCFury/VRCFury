@@ -49,8 +49,7 @@ namespace VF.Utils.Controller {
             output.loopTime = settings.loopTime;
             output.additiveReferencePoseClip = VFMotion.Load(settings.additiveReferencePoseClip, context) as VFClip;
 
-            var path = AssetDatabase.GetAssetPath(raw);
-            if (string.IsNullOrEmpty(path)) {
+            if (!raw.IsSaved()) {
                 output.changedFromOriginalSourceClip = true;
             } else if (raw.name.StartsWith("proxy_")) {
                 output.originalSourceIsProxyClip = true;
@@ -280,6 +279,12 @@ namespace VF.Utils.Controller {
 
         internal VFBinding[] GetAllBindings() {
             return curves.Keys.ToArray();
+        }
+
+        internal bool SharesBindingWith(VFClip other) {
+            return curves.Count <= other.curves.Count
+                ? curves.Keys.Any(other.curves.ContainsKey)
+                : other.curves.Keys.Any(curves.ContainsKey);
         }
 
         internal void RemoveBindings(Func<VFBinding, bool> remove) {
