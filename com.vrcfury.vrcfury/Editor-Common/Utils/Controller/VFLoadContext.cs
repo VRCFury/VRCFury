@@ -10,6 +10,7 @@ namespace VF.Utils.Controller {
         public VFGameObject AnimatorObject;
         public bool RootBindingsApplyToAvatar;
         public bool AdjustRootScale;
+        public bool SkipAnimationClips;
         public VRCFObjectPathCache ObjectPaths;
         public bool ReverseObjectPaths;
         public Func<string, string> RewritePath;
@@ -18,5 +19,13 @@ namespace VF.Utils.Controller {
         public HashSet<AnimatorStateMachine> LinkedStateMachines = new HashSet<AnimatorStateMachine>();
         public Dictionary<AnimatorState, VFState> States = new Dictionary<AnimatorState, VFState>();
         public Dictionary<Motion, VFMotion> Motions = new Dictionary<Motion, VFMotion>();
+        // A controller load resolves many curves against the same hierarchy.
+        private readonly Dictionary<(string path, Type type), VFGameObject> resolvedTargets = new();
+
+        public VFGameObject ResolveTarget(string path, Type type) => resolvedTargets.GetOrCreate(
+            (path, type),
+            this,
+            static (key, context) => AnimationBindingUtils.ResolveTarget(context, key.path, key.type)
+        );
     }
 }

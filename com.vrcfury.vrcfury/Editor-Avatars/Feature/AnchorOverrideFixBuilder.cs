@@ -38,11 +38,16 @@ namespace VF.Feature {
                 .Select(b => b.target)
                 .NotNull()
                 .ToImmutableHashSet();
+
+            var constraintsByTarget = new Lazy<ILookup<VFGameObject, VFConstraint>>(avatarObject.GetConstraintsByTarget);
             foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<Renderer>()) {
-                if (skin.owner().GetComponentInSelfOrParent<Rigidbody>() != null) {
+                var owner = skin.owner();
+                if (owner.GetComponentInSelfOrParent<Rigidbody>() != null) {
                     continue;
                 }
-                if (skin.owner().GetConstraints(includeParents: true).Any(c => IsWorldConstraint(c, worldAnimatedObjs))) {
+                if (owner.GetSelfAndAllParents()
+                    .SelectMany(parent => constraintsByTarget.Value[parent])
+                    .Any(c => IsWorldConstraint(c, worldAnimatedObjs))) {
                     continue;
                 }
                 skin.probeAnchor = root;

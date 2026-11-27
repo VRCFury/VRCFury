@@ -12,6 +12,8 @@ namespace VF.Injector {
      * an entire DI library into VRCF.
      */
     internal class VRCFuryInjector {
+        private static readonly Dictionary<Type, (ParameterInfo[] parameters, FieldInfo[] fields)> injectionLayouts = new();
+        private static readonly Dictionary<Type, Type> listItemTypes = new();
         private readonly Dictionary<Type, object> services = new Dictionary<Type, object>();
         private readonly Dictionary<string, object> qualifiedObjects = new Dictionary<string, object>();
 
@@ -73,7 +75,7 @@ namespace VF.Injector {
         }
 
         private static bool IsPrototypeScope(Type type) {
-            return type.GetCustomAttribute<VFPrototypeScopeAttribute>() != null;
+            return type.IsDefined(typeof(VFPrototypeScopeAttribute), true);
         }
         
         public T CreateAndFillObject<T>() {
@@ -85,9 +87,15 @@ namespace VF.Injector {
             var parent = context.scope;
             if (context.scope == null) context.scope = nextParentHolder;
 
-            var constructor = type.GetConstructors().FirstOrDefault(c => c.GetCustomAttribute<VFAutowiredAttribute>() != null) ??
-                type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First();
-            var args = constructor.GetParameters().Select(p => Get(p, context)).ToArray();
+            if (!injectionLayouts.TryGetValue(type, out var layout)) {
+                var constructors = type.GetConstructors();
+                var constructor = constructors.FirstOrDefault(c => c.IsDefined(typeof(VFAutowiredAttribute), true))
+                    ?? constructors.OrderByDescending(c => c.GetParameters().Length).First();
+                var fields = ReflectionUtils.GetAllFields(type)
+                    .Where(field => field.IsDefined(typeof(VFAutowiredAttribute), true)).ToArray();
+                injectionLayouts[type] = layout = (constructor.GetParameters(), fields);
+            }
+            var args = layout.parameters.Select(p => Get(p, context)).ToArray();
             var instance = Activator.CreateInstance(type, args);
             nextParentHolder.parent = instance;
             
@@ -95,8 +103,7 @@ namespace VF.Injector {
                 if (field.FieldType == typeof(VFInjectorParent) && parent != null) return parent;
                 return Get(field, context);
             }
-            foreach (var field in ReflectionUtils.GetAllFields(type)) {
-                if (field.GetCustomAttribute<VFAutowiredAttribute>() == null) continue;
+            foreach (var field in layout.fields) {
                 field.SetValue(instance, GetField(field));
             }
 
@@ -123,7 +130,9 @@ namespace VF.Injector {
 
         private object GetService(Type type, Context context = default) {
             try {
-                var listItemType = ReflectionUtils.GetGenericArgument(type, typeof(IList<>));
+                if (!listItemTypes.TryGetValue(type, out var listItemType)) {
+                    listItemTypes[type] = listItemType = ReflectionUtils.GetGenericArgument(type, typeof(IList<>));
+                }
                 if (listItemType != null) {
                     var list = Activator.CreateInstance(typeof(List<>).MakeGenericType(listItemType));
                     foreach (var s in GetServices(listItemType, context, includeScoped: false)) {
@@ -139,11 +148,12 @@ namespace VF.Injector {
                     return finished2;
                 }
 
-                var implementations = GetServices(type, context, includeScoped: true, requireSingle: true);
-                if (implementations.Length == 1) return implementations[0];
-                if (context.nullable && implementations.Length == 0) {
-                    return null;
+                var implementations = GetServiceTypes(type);
+                if (implementations.Count == 1) return GetConcreteService(implementations.First(), context);
+                if (implementations.Count > 1) {
+                    throw new Exception($"{type.FullName} {context.fieldName} has multiple implementations in this injector");
                 }
+                if (context.nullable) return null;
                 throw new Exception($"{type.FullName} {context.fieldName} was not found in this injector");
             } catch(Exception e) {
                 throw new Exception($"Error while constructing {type.FullName} service", e);
@@ -152,8 +162,8 @@ namespace VF.Injector {
 
         private object GetConcreteService(Type type, Context context) {
             try {
-                var isPrototypeScope = IsPrototypeScope(type);
                 if (services.TryGetValue(type, out var finished)) return finished;
+                var isPrototypeScope = IsPrototypeScope(type);
 
                 var cache = isPrototypeScope ? context.scope?.scopedServices : null;
                 if (cache != null && cache.TryGetValue(type, out var cached)) return cached;
@@ -192,13 +202,10 @@ namespace VF.Injector {
             return GetServices(typeof(T), new Context(), includeScoped: false).OfType<T>().ToArray();
         }
 
-        private object[] GetServices(Type type, Context context, bool includeScoped, bool requireSingle = false) {
+        private object[] GetServices(Type type, Context context, bool includeScoped) {
             var serviceTypes = GetServiceTypes(type)
                 .Where(t => includeScoped || !IsPrototypeScope(t))
                 .ToArray();
-            if (requireSingle && serviceTypes.Length > 1) {
-                throw new Exception($"{type.FullName} {context.fieldName} has multiple implementations in this injector");
-            }
             return serviceTypes
                 .Select(t => GetConcreteService(t, context))
                 .ToArray();

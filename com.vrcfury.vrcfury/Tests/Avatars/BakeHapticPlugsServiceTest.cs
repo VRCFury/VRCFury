@@ -40,7 +40,7 @@ namespace VF.Tests {
             var original = new Material(Shader.Find("Unlit/Color"));
             var resting = new Material(original);
             resting.SetColor("_Color", Color.green);
-            var replacement = new Material(original);
+            var replacement = new Material(Shader.Find("Standard"));
             replacement.SetColor("_Color", Color.red);
             var clip = new AnimationClip();
             AnimationClip output = null;
@@ -120,6 +120,7 @@ namespace VF.Tests {
                 var keys = AnimationUtility.GetObjectReferenceCurve(output, bindings[0]);
                 var swapMaterial = (Material)keys[0].value;
                 Assert.That(swapMaterial.HasProperty("_SPS_Enabled"), Is.True);
+                Assert.That(swapMaterial.shader, Is.Not.EqualTo(skin.sharedMaterial.shader));
                 var bakedTexture = (Texture2D)swapMaterial.GetTexture("_SPS_Bake");
                 var firstBlendshapeDelta = 1 + 10 * mesh.vertexCount + 1;
                 Assert.That(bakedTexture.GetRawTextureData<float>()[firstBlendshapeDelta], Is.EqualTo(.01f).Within(1e-5f));
@@ -517,7 +518,8 @@ namespace VF.Tests {
                 skin = renderer,
                 bakeRoot = bakeRoot,
                 spsBlendshapes = Array.Empty<string>(),
-                configureMaterial = (_, material) => material
+                configureMaterial = (_, material) => material,
+                shouldPatchMaterial = _ => false
             });
             service.ApplySpsRewrites();
             Assert.That(clip.GetFloatCurves().Single(pair => pair.Item1.Targets(unrelated)).Item2.keys, Is.EqualTo(sourceCurve.keys));

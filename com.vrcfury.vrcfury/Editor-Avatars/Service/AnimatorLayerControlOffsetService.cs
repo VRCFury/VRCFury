@@ -25,7 +25,9 @@ namespace VF.Service {
         
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlRecordBase)]
         public void RecordBase() {
-            RegisterControllerSet(controllers.GetAllUsedControllers());
+            RegisterControllerSet(controllers.GetAllUsedControllers()
+                .Select(controller => ((VFController)controller, controller.vrcType))
+                .ToArray());
         }
 
         [FeatureBuilderAction(FeatureOrder.AnimatorLayerControlFix)]
@@ -84,20 +86,16 @@ namespace VF.Service {
             }
         }
 
-        public void RegisterControllerSet<T>(ICollection<T> set) where T : VFControllerWithVrcType {
-            foreach (var controller in set) {
+        public void RegisterControllerSet(IReadOnlyList<(VFController controller, VRCAvatarDescriptor.AnimLayerType type)> set) {
+            foreach (var (controller, type) in set) {
                 foreach (var layer in controller.GetLayers()) {
                     layer.RewriteBehaviours<VRCAnimatorLayerControl>((behaviour, control) => {
-                        T targetController;
-                        if (VRCFEnumUtils.GetName(controller.vrcType) == VRCFEnumUtils.GetName(control.playable)) {
-                            targetController = controller;
-                        } else {
-                            targetController = set.FirstOrDefault(other => VRCFEnumUtils.GetName(other.vrcType) == VRCFEnumUtils.GetName(control.playable));
-                        }
-                        if (targetController == null) return null;
-                        if (control.layer < 0 || control.layer >= targetController.layers.Count) return null;
-                        var targetSm = targetController.layers[control.layer];
-                        Register(behaviour, targetSm);
+                        var playableName = VRCFEnumUtils.GetName(control.playable);
+                        var targetController = VRCFEnumUtils.GetName(type) == playableName ? controller
+                            : set.FirstOrDefault(other => VRCFEnumUtils.GetName(other.type) == playableName).controller;
+                        var targetLayer = targetController?.GetLayer(control.layer);
+                        if (targetLayer == null) return null;
+                        Register(behaviour, targetLayer);
                         return behaviour;
                     });
                 }

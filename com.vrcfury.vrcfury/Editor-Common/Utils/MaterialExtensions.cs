@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using VF.Hooks.UnityFixes;
@@ -161,6 +163,36 @@ namespace VF.Utils {
                 return false;
             }
             return value != null;
+        }
+
+        public static IEnumerable<(string name, Texture2D texture)> GetTexture2DProperties(this Material mat) {
+            // Material.GetTexture can compile shader variants on its first call. Read plain materials'
+            // saved assignments directly. Use Unity's lookup for variants, which can inherit textures.
+            var assigned = mat.parent == null ? ReadAssignedTextures(mat) : null;
+            foreach (var name in mat.shader.GetPropertyNames(ShaderPropertyType.Texture)) {
+                if (assigned != null) {
+                    if (assigned.TryGetValue(name, out var assignedTexture)) yield return (name, assignedTexture);
+                } else if (mat.TryGetTextureFast(name, out var texture) && texture is Texture2D texture2D) {
+                    yield return (name, texture2D);
+                }
+            }
+        }
+
+        private static Dictionary<string, Texture2D> ReadAssignedTextures(Material mat) {
+            using var serialized = new SerializedObject(mat);
+            using var textures = serialized.FindProperty("m_SavedProperties.m_TexEnvs");
+            if (textures == null) return null;
+
+            var assigned = new Dictionary<string, Texture2D>();
+            var count = textures.arraySize;
+            using var entry = count > 0 ? textures.GetArrayElementAtIndex(0) : null;
+            for (var i = 0; i < count; i++, entry.Next(false)) {
+                using var name = entry.FindPropertyRelative("first");
+                using var texture = entry.FindPropertyRelative("second.m_Texture");
+                if (texture == null || name == null) return null;
+                if (texture.objectReferenceValue is Texture2D texture2D) assigned[name.stringValue] = texture2D;
+            }
+            return assigned;
         }
 
         public static Vector2 GetTextureScaleFast(this Material mat, string propertyName) {

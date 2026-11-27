@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -29,6 +30,15 @@ namespace VF.Utils {
                     $"You can update it from https://poiyomi.github.io/vpm",
                     e
                 );
+            }
+        }
+
+        internal static void TryLockBatch(IEnumerable<Material> materials) {
+            try {
+                if (UsesD4rk(injectedAvatarObject, true)) return;
+                PoiyomiUtils.LockPoiyomiMaterials(materials);
+            } catch (Exception) {
+                // The clone path retries individual locks with the material and plug in its error.
             }
         }
 

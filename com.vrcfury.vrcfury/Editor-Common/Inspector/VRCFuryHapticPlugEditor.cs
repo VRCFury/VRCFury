@@ -694,6 +694,7 @@ namespace VF.Inspector {
         public class RendererResult {
             public Renderer renderer;
             public Func<int, Material, Material> configureMaterial;
+            public Func<int, bool> shouldPatchMaterial;
             public IList<string> spsBlendshapes;
             public float[] activeFromMask;
         }

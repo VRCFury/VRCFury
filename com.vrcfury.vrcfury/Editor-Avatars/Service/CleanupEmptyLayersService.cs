@@ -31,12 +31,14 @@ namespace VF.Service {
         public void Apply() {
             var prunedContent = new List<string>();
             layersToRemove.Clear();
+            // All playable layers share the same root and the hierarchy stays put during cleanup.
+            var bindingPaths = new Dictionary<VFGameObject, string>();
             foreach (var c in controllers.GetAllUsedControllers()) {
                 var removedBindings = new List<string>();
 
                 // Delete bindings targeting things that don't exist
                 foreach (var clip in c.GetClips()) {
-                    if (clip.GetUseOriginalUserClip(avatarObject) != null) {
+                    if (clip.GetUseOriginalUserClip(avatarObject, bindingPaths) != null) {
                         // We haven't touched this clip at all during the build so far,
                         // so go ahead and just leave it as is
                         // so the original file will be used, rather than generating a fresh copy.

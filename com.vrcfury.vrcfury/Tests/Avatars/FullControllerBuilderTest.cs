@@ -398,6 +398,7 @@ namespace VF.Tests {
 namespace VF.Tests {
 
     using System;
+    using System.Linq;
     using NUnit.Framework;
     using UnityEditor.Animations;
     using UnityEngine;
@@ -410,6 +411,69 @@ namespace VF.Tests {
     using VRC.SDK3.Avatars.ScriptableObjects;
     using VRC.SDK3.Dynamics.PhysBone.Components;
     using Object = UnityEngine.Object;
+
+    internal class FullControllerBindingRewriteTest {
+        [Test]
+        public void AppliesRenamedAndDeletedPathsAcrossClips() {
+            var root = new GameObject("Avatar");
+            var raw = new AnimatorController();
+            var first = new AnimationClip { name = "First" };
+            var second = new AnimationClip { name = "Second" };
+            try {
+                var avatar = root.AddComponent<VRCAvatarDescriptor>();
+                avatar.customizeAnimationLayers = true;
+                avatar.baseAnimationLayers = new[] {
+                    new VRCAvatarDescriptor.CustomAnimLayer { type = VRCAvatarDescriptor.AnimLayerType.FX }
+                };
+                avatar.specialAnimationLayers = Array.Empty<VRCAvatarDescriptor.CustomAnimLayer>();
+                var renamed = GameObjects.Create("New", root);
+                GameObjects.Create("Delete", root);
+                raw.AddLayer("FX");
+                foreach (var clip in new[] { first, second }) {
+                    var curve = AnimationCurve.Constant(0, 1, 1);
+                    clip.SetCurve("Old", typeof(Transform), "m_LocalPosition.x", curve);
+                    clip.SetCurve("Delete", typeof(Transform), "m_LocalPosition.y", curve);
+                    raw.layers[0].stateMachine.AddState(clip.name).motion = clip;
+                }
+
+                var injector = VRCFuryInjectorBuilder.GetInjector(avatar);
+                injector.Set("componentObject", new Func<VFGameObject>(() => root));
+                var controllers = injector.GetService<ControllersService>();
+                controllers.ClearCache(applyBaseMask: false);
+                var builder = injector.CreateAndFillObject<FullControllerBuilder>();
+                builder.featureBaseObject = root;
+                builder.model = new FullController {
+                    controllers = {
+                        new FullController.ControllerEntry { controller = raw }
+                    },
+                    rewriteBindings = {
+                        new FullController.BindingRewrite {
+                            from = "Old",
+                            to = "New"
+                        },
+                        new FullController.BindingRewrite {
+                            from = "Delete",
+                            delete = true
+                        }
+                    }
+                };
+                builder.Apply();
+
+                var clips = controllers.GetFx().GetClips().ToArray();
+                Assert.That(clips, Has.Length.EqualTo(2));
+                foreach (var clip in clips) {
+                    var bindings = clip.GetFloatBindings();
+                    Assert.That(bindings.Any(binding => binding.propertyName == "m_LocalPosition.x"), Is.True);
+                    Assert.That(bindings.All(binding => binding.Targets(renamed)), Is.True);
+                }
+            } finally {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(raw);
+                Object.DestroyImmediate(first);
+                Object.DestroyImmediate(second);
+            }
+        }
+    }
 
     public class FullControllerGlobalParametersTest {
         [TestCase(false, false)]

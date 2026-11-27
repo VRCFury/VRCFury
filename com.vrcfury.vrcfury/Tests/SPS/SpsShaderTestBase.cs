@@ -288,7 +288,7 @@ Shader ""Hidden/VRCFury/Tests/SpsBend"" {
         protected Texture2D SetProfile(params Keyframe[] keys) => SetProfile(0, 0, keys);
 
         protected Texture2D SetProfile(int vertices, int blendshapes, params Keyframe[] keys) {
-            var baked = new SpsBakedTexture();
+            using var baked = new SpsBakedTexture(0);
             var curve = ProfileCurve(keys);
             baked.WriteFloat(0);
             for (var i = 0; i < vertices * 10 + (vertices * 9 + 1) * blendshapes; i++) baked.WriteFloat(7);

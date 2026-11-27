@@ -17,6 +17,7 @@ namespace VF.Inspector {
     [VFService]
     internal class VRCFuryHapticPlugBaker {
         [VFAutowired] private readonly SpsChannelsService channels;
+        [VFAutowired] private readonly SpsConfigurer spsConfigurer;
         [VFAutowired] private readonly SpsPlugReceiverService spsPlugReceiverService;
         [VFAutowired] private readonly PlugSizeService plugSizes;
         [VFAutowired] private readonly PlugFrameService plugFrames;
@@ -164,9 +165,9 @@ namespace VF.Inspector {
                         );
 
                         var spsCopies = new Dictionary<Material, Material>();
+                        bool ShouldPatchMaterial(int slotNum) => size.matSlots.Get(renderer.owner()).Contains(slotNum);
                         Material ConfigureMaterial(int slotNum, Material mat) {
-                            var shouldPatch = size.matSlots.Get(renderer.owner()).Contains(slotNum);
-                            if (!shouldPatch) return mat;
+                            if (!ShouldPatchMaterial(slotNum)) return mat;
 
                             try {
                                 if (mat == null) return null;
@@ -175,7 +176,7 @@ namespace VF.Inspector {
                                 // Bake data belongs to this renderer, even if another
                                 // feature already made the source material mutable.
                                 var copy = mat.Clone("Switched the shader to SPS", forceClone: true);
-                                SpsConfigurer.ConfigureSpsMaterial(
+                                spsConfigurer.ConfigureSpsMaterial(
                                     renderer,
                                     copy,
                                     worldLength,
@@ -196,6 +197,7 @@ namespace VF.Inspector {
                         return new RendererResult {
                             renderer = renderer,
                             configureMaterial = ConfigureMaterial,
+                            shouldPatchMaterial = ShouldPatchMaterial,
                             spsBlendshapes = spsBlendshapes,
                             activeFromMask = activeFromMask
                         };

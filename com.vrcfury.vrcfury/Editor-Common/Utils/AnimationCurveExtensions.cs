@@ -10,7 +10,7 @@ namespace VF.Utils {
          * do tricky mesh culling. We have to handle all these keys specially to maintain them.
          */
         public static AnimationCurve Clone(this AnimationCurve curve) {
-            var keyCount = curve.keys.Length;
+            var keyCount = curve.length;
             
             var copy = new AnimationCurve();
 #if UNITY_2022_3_OR_NEWER
@@ -20,13 +20,13 @@ namespace VF.Utils {
             copy.preWrapMode = curve.preWrapMode;
             copy.postWrapMode = curve.postWrapMode;
 #endif
-            if (copy.keys.Length != keyCount) {
+            if (copy.length != keyCount) {
                 foreach (var key in curve.keys) {
                     if (float.IsNaN(key.value)) {
                         copy.AddKey(key.time, key.value);
                     }
                 }
-                if (copy.keys.Length != keyCount) {
+                if (copy.length != keyCount) {
                     throw new Exception("Keys are missing from AnimationCurve after cloning");
                 }
             }
@@ -53,7 +53,7 @@ namespace VF.Utils {
             foreach (var nanTime in nanTimes) {
                 curve.AddKey(nanTime, float.NaN);
             }
-            if (curve.keys.Length != keyCount) {
+            if (curve.length != keyCount) {
                 throw new Exception("AnimationCurve key count changed during mutation");
             }
         }

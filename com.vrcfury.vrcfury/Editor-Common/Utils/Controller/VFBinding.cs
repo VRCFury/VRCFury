@@ -20,6 +20,7 @@ namespace VF.Utils {
 
         private readonly EditorCurveBinding rawBinding;
         private readonly VFResolvedObject? resolvedObject;
+        private readonly bool isMuscle;
         public VFGameObject target => resolvedObject?.target;
 
         internal static VFBinding MakeAnimatorBinding(string propertyName) {
@@ -47,6 +48,9 @@ namespace VF.Utils {
             this.resolvedObject = resolvedObject;
             rawBinding.path = "";
             this.rawBinding = rawBinding;
+            isMuscle = rawBinding.type == typeof(Animator)
+                && rawBinding.propertyName != null
+                && IsMuscleName(rawBinding.propertyName);
         }
 
         public Type type => rawBinding.type;
@@ -61,14 +65,20 @@ namespace VF.Utils {
             return resolvedObject?.UnresolvedPath;
         }
 
-        internal string GetPath([CanBeNull] VFGameObject root = null) {
+        internal string GetPath(
+            [CanBeNull] VFGameObject root = null,
+            Dictionary<VFGameObject, string> cachedPaths = null
+        ) {
             if (!resolvedObject.HasValue) return "";
-            return resolvedObject.Value.GetPath(root);
+            return resolvedObject.Value.GetPath(root, cachedPaths);
         }
 
-        internal EditorCurveBinding ToEditorCurveBinding(VFGameObject root) {
+        internal EditorCurveBinding ToEditorCurveBinding(
+            VFGameObject root,
+            Dictionary<VFGameObject, string> cachedPaths = null
+        ) {
             var output = rawBinding;
-            output.path = GetPath(root);
+            output.path = GetPath(root, cachedPaths);
             return output;
         }
 
@@ -93,21 +103,18 @@ namespace VF.Utils {
         }
 
         internal EditorCurveBindingType GetPropType() {
-            if (target != null) return EditorCurveBindingType.Fx;
-            if (type != typeof(Animator)) return EditorCurveBindingType.Fx;
+            if (type != typeof(Animator) || target != null) return EditorCurveBindingType.Fx;
+            return isMuscle ? EditorCurveBindingType.Muscle : EditorCurveBindingType.Aap;
+        }
 
-            var name = propertyName;
+        private static bool IsMuscleName(string name) {
             var muscleName = name.Replace("RightHand", "Right");
             muscleName = muscleName.Replace("LeftHand", "Left");
             muscleName = muscleName.Replace(".", " ");
-            if (GetHumanMuscleList().Contains(muscleName)) {
-                return EditorCurveBindingType.Muscle;
-            }
-            if (name.EndsWith("TDOF.x") || name.EndsWith("TDOF.y") || name.EndsWith("TDOF.z")) {
-                return EditorCurveBindingType.Muscle;
-            }
-
-            return EditorCurveBindingType.Aap;
+            return GetHumanMuscleList().Contains(muscleName)
+                   || name.EndsWith("TDOF.x")
+                   || name.EndsWith("TDOF.y")
+                   || name.EndsWith("TDOF.z");
         }
 
         private static HashSet<string> GetHumanMuscleList() {
@@ -207,11 +214,19 @@ namespace VF.Utils {
             return From(resolvedObject, output);
         }
 
-        internal bool ShouldDropOnSave(VFGameObject bindingRoot) {
-            return resolvedObject?.ShouldDropOnSave(bindingRoot) ?? false;
+        internal EditorCurveBinding? ToEditorCurveBindingForSave(
+            VFGameObject bindingRoot,
+            Dictionary<VFGameObject, string> cachedPaths
+        ) {
+            var path = resolvedObject.HasValue ? resolvedObject.Value.GetPathForSave(bindingRoot, cachedPaths) : "";
+            if (path == null) return null;
+            var output = rawBinding;
+            output.path = path;
+            return output;
         }
 
         public bool Equals(VFBinding other) {
+            var target = this.target;
             if (target != other.target) return false;
             if (IsResolved != other.IsResolved) return false;
             if (!rawBinding.Equals(other.rawBinding)) return false;
@@ -224,9 +239,13 @@ namespace VF.Utils {
         }
 
         public override int GetHashCode() {
+            var target = this.target;
+            // Older Unity versions format a string in EditorCurveBinding.GetHashCode.
+            // This binding already stores its path separately from the Unity binding.
             return HashCode.Combine(
                 target,
-                rawBinding,
+                type,
+                propertyName,
                 IsResolved,
                 target == null ? (resolvedObject?.UnresolvedPath ?? "") : null
             );

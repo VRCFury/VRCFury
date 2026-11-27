@@ -10,6 +10,180 @@ using Object = UnityEngine.Object;
 namespace VF.Tests {
     internal class VFClipTest {
         [Test]
+        public void SamplingPreservesObjectKeysAndTheAdditiveReferencePose() {
+            var root = new GameObject("Avatar");
+            var raw = new AnimationClip();
+            var rawReference = new AnimationClip();
+            var first = new Material(Shader.Find("Standard"));
+            var second = new Material(Shader.Find("Standard"));
+            try {
+                root.AddComponent<MeshRenderer>();
+                var rawFloat = EditorCurveBinding.FloatCurve("", typeof(Transform), "m_LocalPosition.x");
+                var rawObject = EditorCurveBinding.PPtrCurve("", typeof(MeshRenderer), "m_Materials.Array.data[0]");
+                AnimationUtility.SetEditorCurve(raw, rawFloat, AnimationCurve.Linear(0, 2, 2, 6));
+                AnimationUtility.SetEditorCurve(rawReference, rawFloat, AnimationCurve.Linear(0, 1, 2, 9));
+                AnimationUtility.SetObjectReferenceCurve(
+                    raw,
+                    rawObject,
+                    new[] {
+                        new ObjectReferenceKeyframe { time = 0, value = first },
+                        new ObjectReferenceKeyframe { time = 1, value = second }
+                    }
+                );
+                var settings = AnimationUtility.GetAnimationClipSettings(raw);
+                settings.additiveReferencePoseClip = rawReference;
+                AnimationUtility.SetAnimationClipSettings(raw, settings);
+
+                var source = VFClip.Load(raw, new VFLoadContext {
+                    OwnerObject = root,
+                    AnimatorObject = root,
+                    ObjectPaths = new VRCFObjectPathCache()
+                });
+                var sampled = (VFClip)source.EvaluateMotion(0.5f);
+                var binding = source.GetFloatBindings()[0];
+                Assert.That(sampled.GetLengthInSeconds(), Is.EqualTo(0));
+                Assert.That(sampled.GetFloatCurve(binding).keys[0].value, Is.EqualTo(4));
+                var objectKey = sampled.GetAllCurves(b => b.propertyName == rawObject.propertyName)[0].Item2.ObjectCurve[0];
+                Assert.That(objectKey.value, Is.SameAs(second));
+                Assert.That(source.GetFloatCurve(binding).length, Is.EqualTo(2));
+                var reference = sampled.GetAdditiveReferencePoseClip();
+                Assert.That(reference, Is.Not.SameAs(source.GetAdditiveReferencePoseClip()));
+                Assert.That(reference.GetLengthInSeconds(), Is.EqualTo(2));
+                Assert.That(reference.GetFloatCurve(binding).Evaluate(1), Is.EqualTo(5));
+            } finally {
+                Object.DestroyImmediate(raw);
+                Object.DestroyImmediate(rawReference);
+                Object.DestroyImmediate(first);
+                Object.DestroyImmediate(second);
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void NewSaveReadsRenamedTargetAfterAnEarlierSaveReusedTheClip() {
+            var root = new GameObject("Avatar");
+            var target = new GameObject("Before");
+            target.transform.SetParent(root.transform, false);
+            var folder = AssetDatabase.GenerateUniqueAssetPath("Assets/VF Clip Path Cache Test");
+            VRCFuryAssetDatabase.CreateFolder(folder);
+            var source = new AnimationClip();
+            var saveAfterRename = new VFSaveContext(root);
+            try {
+                var binding = EditorCurveBinding.FloatCurve("Before", typeof(Transform), "m_LocalPosition.x");
+                AnimationUtility.SetEditorCurve(source, binding, AnimationCurve.Constant(0, 1, 2));
+                AssetDatabase.CreateAsset(source, folder + "/Original.anim");
+                var loaded = VFClip.Load(source, new VFLoadContext {
+                    OwnerObject = root,
+                    AnimatorObject = root,
+                    ObjectPaths = new VRCFObjectPathCache()
+                });
+                Assert.That(loaded.Save(new VFSaveContext(root)), Is.SameAs(source));
+
+                target.name = "After";
+                var saved = (AnimationClip)loaded.Save(saveAfterRename);
+                Assert.That(saved, Is.Not.SameAs(source));
+                var bindings = AnimationUtility.GetCurveBindings(saved);
+                Assert.That(bindings, Has.Length.EqualTo(1));
+                Assert.That(bindings[0].path, Is.EqualTo("After"));
+                Assert.That(AnimationUtility.GetEditorCurve(saved, bindings[0]).Evaluate(1), Is.EqualTo(2));
+                Assert.That(AnimationUtility.GetEditorCurve(source, binding).Evaluate(1), Is.EqualTo(2));
+            } finally {
+                foreach (var asset in saveAfterRename.NewAssets) Object.DestroyImmediate(asset);
+                if (!EditorUtility.IsPersistent(source)) Object.DestroyImmediate(source);
+                AssetDatabase.DeleteAsset(folder);
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void SaveMovesObjectCurvesAndRetainsClipSettings() {
+            var root = new GameObject("Avatar");
+            var target = new GameObject("Before");
+            target.transform.SetParent(root.transform, false);
+            target.AddComponent<MeshRenderer>();
+            var material = new Material(Shader.Find("Standard"));
+            var source = new AnimationClip {
+                frameRate = 30,
+                wrapMode = WrapMode.PingPong
+            };
+            var context = new VFSaveContext(root, false);
+            try {
+                var original = EditorCurveBinding.PPtrCurve(
+                    "Before",
+                    typeof(MeshRenderer),
+                    "m_Materials.Array.data[0]"
+                );
+                AnimationUtility.SetObjectReferenceCurve(
+                    source,
+                    original,
+                    new[] { new ObjectReferenceKeyframe { time = 0, value = material } }
+                );
+                var settings = AnimationUtility.GetAnimationClipSettings(source);
+                settings.loopTime = true;
+                AnimationUtility.SetAnimationClipSettings(source, settings);
+
+                var loaded = VFClip.Load(source, new VFLoadContext {
+                    OwnerObject = root,
+                    AnimatorObject = root,
+                    ObjectPaths = new VRCFObjectPathCache()
+                });
+                target.name = "After";
+
+                var saved = (AnimationClip)loaded.Save(context);
+                var bindings = AnimationUtility.GetObjectReferenceCurveBindings(saved);
+                Assert.That(bindings, Has.Length.EqualTo(1));
+                Assert.That(bindings[0].path, Is.EqualTo("After"));
+                Assert.That(AnimationUtility.GetObjectReferenceCurve(saved, bindings[0])[0].value, Is.SameAs(material));
+                Assert.That(saved.frameRate, Is.EqualTo(30));
+                Assert.That(saved.wrapMode, Is.EqualTo(WrapMode.PingPong));
+                Assert.That(AnimationUtility.GetAnimationClipSettings(saved).loopTime, Is.True);
+                Assert.That(AnimationUtility.GetObjectReferenceCurveBindings(source)[0].path, Is.EqualTo("Before"));
+            } finally {
+                foreach (var asset in context.NewAssets) Object.DestroyImmediate(asset);
+                Object.DestroyImmediate(source);
+                Object.DestroyImmediate(material);
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void SaveKeepsUnresolvedPathsAndDropsTargetsRemovedFromTheAnimator() {
+            var root = new GameObject("Avatar");
+            var moving = new GameObject("Moving");
+            var deleted = new GameObject("Deleted");
+            moving.transform.SetParent(root.transform, false);
+            deleted.transform.SetParent(root.transform, false);
+            var source = new AnimationClip();
+            var saving = new VFSaveContext(root, reuseSourceAssets: false);
+            try {
+                foreach (var path in new[] { "Moving", "Deleted", "Unresolved" }) {
+                    AnimationUtility.SetEditorCurve(
+                        source,
+                        EditorCurveBinding.FloatCurve(path, typeof(Transform), "m_LocalPosition.x"),
+                        AnimationCurve.Constant(0, 1, 2)
+                    );
+                }
+                var loaded = VFClip.Load(source, new VFLoadContext {
+                    OwnerObject = root,
+                    AnimatorObject = root,
+                    ObjectPaths = new VRCFObjectPathCache()
+                });
+
+                moving.transform.SetParent(null);
+                Object.DestroyImmediate(deleted);
+                var saved = (AnimationClip)loaded.Save(saving);
+                var bindings = AnimationUtility.GetCurveBindings(saved);
+                Assert.That(bindings, Has.Length.EqualTo(1));
+                Assert.That(bindings[0].path, Is.EqualTo("Unresolved"));
+            } finally {
+                foreach (var asset in saving.NewAssets) Object.DestroyImmediate(asset);
+                Object.DestroyImmediate(source);
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(moving);
+            }
+        }
+
+        [Test]
         public void SavePreservesRotationOrdersAndCurvesAcrossRemappedCopies([Values(0, 1, 2, 3, 4, 5)] int order) {
             var root = new GameObject("Avatar");
             var source = new AnimationClip();

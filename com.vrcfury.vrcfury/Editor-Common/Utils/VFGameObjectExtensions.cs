@@ -2,14 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEngine;
+using VF.Component;
 
 namespace VF.Utils {
     internal static class VFGameObjectExtensions {
         public static VFGameObject owner(this UnityEngine.Component component) {
-            // Some components (ahem VrcFury) override gameObject for some cases, so we need to make sure
-            // we call the overridden version
-            dynamic d = component;
-            return d.gameObject;
+            return component is VRCFuryComponent vrcfury ? vrcfury.gameObject : component.gameObject;
         }
         [CanBeNull]
         public static VFGameObject asVf(this GameObject gameObject) {

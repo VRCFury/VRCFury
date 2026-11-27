@@ -13,6 +13,62 @@ using Object = UnityEngine.Object;
 
 namespace VF.Tests {
     internal class SaveAssetsSessionTest {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SavesAnimationClipsWithControllerAndClipReferencesIntact(bool useBinary) {
+            var session = new SaveAssetsSession("BinaryClips " + Guid.NewGuid().ToString("N"));
+            var outputDir = (string)typeof(SaveAssetsSession)
+                .GetField("outputDir", BindingFlags.NonPublic | BindingFlags.Instance)
+                .GetValue(session);
+            try {
+                var binding = EditorCurveBinding.FloatCurve("Bone", typeof(Transform), "m_LocalPosition.x");
+                var curve = AnimationCurve.Linear(0, 2, 1, 5);
+                using (VRCFuryAssetDatabase.WithAssetEditing()) {
+                    var controller = VrcfObjectFactory.Create<AnimatorController>();
+                    controller.name = "Controller";
+                    var reference = VrcfObjectFactory.Create<AnimationClip>();
+                    reference.name = "Reference";
+                    var clip = VrcfObjectFactory.Create<AnimationClip>();
+                    clip.name = "Animation";
+                    AnimationUtility.SetEditorCurve(clip, binding, curve);
+                    var settings = AnimationUtility.GetAnimationClipSettings(clip);
+                    settings.additiveReferencePoseClip = reference;
+                    AnimationUtility.SetAnimationClipSettings(clip, settings);
+                    var machine = VrcfObjectFactory.Create<AnimatorStateMachine>();
+                    var state = VrcfObjectFactory.Create<AnimatorState>();
+                    state.motion = clip;
+                    machine.states = new[] { new ChildAnimatorState { state = state } };
+                    machine.defaultState = state;
+                    controller.layers = new[] { new AnimatorControllerLayer { name = "Layer", stateMachine = machine } };
+                    session.SaveControllerAndChildren(
+                        controller,
+                        new Object[] { machine, state, reference, clip },
+                        Array.Empty<Object>(),
+                        useBinary ? 4096 : 2
+                    );
+                    session.FlushAssets();
+                }
+
+                AssetDatabase.ImportAsset(outputDir, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ImportRecursive);
+                var loadedController = AssetDatabase.LoadAssetAtPath<AnimatorController>(outputDir + "/Controller.controller");
+                var loadedClip = (AnimationClip)loadedController.layers.Single().stateMachine.defaultState.motion;
+                var loadedReference = AnimationUtility.GetAnimationClipSettings(loadedClip).additiveReferencePoseClip;
+                var clipPath = outputDir + (useBinary ? "/Controller Clips.asset" : "/Controller.controller");
+                Assert.That(AssetDatabase.GetAssetPath(loadedClip), Is.EqualTo(clipPath));
+                Assert.That(AssetDatabase.GetAssetPath(loadedReference), Is.EqualTo(clipPath));
+                Assert.That(loadedReference.name, Is.EqualTo("Reference"));
+                Assert.That(AnimationUtility.GetEditorCurve(loadedClip, binding).keys, Is.EqualTo(curve.keys));
+                if (useBinary) {
+                    using var data = File.OpenRead(clipPath);
+                    var prefix = new byte[5];
+                    Assert.That(data.Read(prefix, 0, prefix.Length), Is.EqualTo(prefix.Length));
+                    Assert.That(Encoding.ASCII.GetString(prefix), Is.Not.EqualTo("%YAML"));
+                }
+            } finally {
+                AssetDatabase.DeleteAsset(outputDir);
+            }
+        }
+
         [Test]
         public void WritesSectionsWithoutAssetEntriesAndClearsThemAfterSaving() {
             var session = new SaveAssetsSession("WorkLogSections");
@@ -59,7 +115,12 @@ namespace VF.Tests {
                     second.name = "A first";
                     var separate = VrcfObjectFactory.Create<VRCExpressionParameters>();
                     separate.name = "Other file";
-                    session.SaveControllerAndChildren(controller, Array.Empty<Object>(), new Object[] { first, second });
+                    session.SaveControllerAndChildren(
+                        controller,
+                        Array.Empty<Object>(),
+                        new Object[] { first, second },
+                        0
+                    );
                     session.FlushAssets();
                     Assert.That(Directory.GetFiles(outputDir, "*.txt"), Is.Empty);
                     first.WorkLog("Updated during the second pass");

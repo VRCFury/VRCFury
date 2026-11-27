@@ -38,12 +38,13 @@ namespace VF.Service {
                 if (shared.Length == 0) continue;
                 var mesh = skin.GetMutableMesh("Separated descriptor blendshapes from animations", forceClone: true);
                 var reserved = skin.GetBlendshapeNames().ToHashSet();
+                var frames = new BlendshapeUtils.BlendshapeFrameBuffer(mesh.vertexCount);
                 foreach (var name in shared) {
                     var originalIndex = mesh.GetBlendShapeIndex(name);
                     var weight = skin.GetBlendShapeWeight(originalIndex);
                     var copyName = ("VF_Animated_" + name).MakeUnique(reserved);
                     reserved.Add(copyName);
-                    new BlendshapeUtils.BlendshapeFrames(mesh, originalIndex).SaveTo(mesh, copyName);
+                    frames.CopyShape(mesh, originalIndex, mesh, copyName);
                     // Move the resting weight with the animations to preserve the initial pose.
                     skin.SetBlendShapeWeight(mesh.GetBlendShapeIndex(copyName), weight);
                     skin.SetBlendShapeWeight(originalIndex, 0);

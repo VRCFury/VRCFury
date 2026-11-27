@@ -2,7 +2,6 @@
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Rendering;
 using VF.Feature.Base;
 using VF.Injector;
 using VF.Utils;
@@ -39,10 +38,7 @@ namespace VF.Service {
                 if (original == null) return null;
                 if (matCache.TryGetValue(original, out var output)) return output;
                 output = original;
-                foreach (var propertyName in original.shader.GetPropertyNames(ShaderPropertyType.Texture)) {
-                    if (!original.TryGetTextureFast(propertyName, out var texture)) continue;
-                    var oldTexture = texture as Texture2D;
-                    if (oldTexture == null) continue;
+                foreach (var (propertyName, oldTexture) in original.GetTexture2DProperties()) {
                     var newTexture = OptimizeTexture(oldTexture);
                     if (oldTexture != newTexture) {
                         output = output.Clone($"Replaced {oldTexture.name} with a copy that has mipmap streaming enabled");

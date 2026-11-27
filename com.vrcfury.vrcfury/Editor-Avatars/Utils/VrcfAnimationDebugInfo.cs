@@ -88,13 +88,15 @@ namespace VF.Utils {
 
         public static IList<WriteDefaultsStateInfo> GetWriteDefaultsStates(RuntimeAnimatorController controller) {
             if (controller == null) return Array.Empty<WriteDefaultsStateInfo>();
-            return controllerCache.Get(
-                controller,
-                () => BuildControllerDebugInfo(controller)
-            ).writeDefaultsStates;
+            // Write Defaults depends on the states and their trees. The inspector's
+            // clip bindings are expensive to collect and are only needed for its warnings.
+            return BuildControllerDebugInfo(controller, includeBindings: false).writeDefaultsStates;
         }
 
-        private static ControllerDebugInfo BuildControllerDebugInfo(RuntimeAnimatorController source) {
+        private static ControllerDebugInfo BuildControllerDebugInfo(
+            RuntimeAnimatorController source,
+            bool includeBindings = true
+        ) {
             var overrides = new List<AnimatorOverrideController>();
             while (source is AnimatorOverrideController ov) {
                 overrides.Add(ov);
@@ -134,14 +136,8 @@ namespace VF.Utils {
                         stateMachines.Push(childStateMachine.stateMachine);
                     }
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-                    foreach (var behaviour in VFBehaviourContainer.GetRawBehaviours(stateMachine)) {
-                        if (!(behaviour is VRCAnimatorPlayAudio playAudio)
-                            || string.IsNullOrEmpty(playAudio.SourcePath)) continue;
-                        bindings.Add(EditorCurveBinding.FloatCurve(
-                            playAudio.SourcePath,
-                            typeof(GameObject),
-                            "animatorPlayAudio"
-                        ));
+                    if (includeBindings) {
+                        AddAudioBindings(VFBehaviourContainer.GetRawBehaviours(stateMachine));
                     }
 #endif
                     foreach (var childState in stateMachine.states) {
@@ -159,23 +155,28 @@ namespace VF.Utils {
                             });
                         }
 
-                        var behaviours = isSynced
-                            ? VFBehaviourContainer.GetRawOverrideBehaviours(layer, state)
-                            : VFBehaviourContainer.GetRawBehaviours(state);
-                        foreach (var behaviour in behaviours) {
 #if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
-                            if (!(behaviour is VRCAnimatorPlayAudio playAudio)
-                                || string.IsNullOrEmpty(playAudio.SourcePath)) continue;
-                            bindings.Add(EditorCurveBinding.FloatCurve(
-                                playAudio.SourcePath,
-                                typeof(GameObject),
-                                "animatorPlayAudio"
-                            ));
-#endif
+                        if (includeBindings) {
+                            var behaviours = isSynced
+                                ? VFBehaviourContainer.GetRawOverrideBehaviours(layer, state)
+                                : VFBehaviourContainer.GetRawBehaviours(state);
+                            AddAudioBindings(behaviours);
                         }
+#endif
                     }
                 }
             }
+
+#if VRCSDK_HAS_ANIMATOR_PLAY_AUDIO
+            void AddAudioBindings(IEnumerable<StateMachineBehaviour> behaviours) {
+                foreach (var behaviour in behaviours) {
+                    if (!(behaviour is VRCAnimatorPlayAudio playAudio)
+                        || string.IsNullOrEmpty(playAudio.SourcePath)) continue;
+                    bindings.Add(EditorCurveBinding.FloatCurve(playAudio.SourcePath, typeof(GameObject), "animatorPlayAudio"));
+                }
+            }
+#endif
+            if (!includeBindings) return new ControllerDebugInfo { writeDefaultsStates = writeDefaultsStates };
 
             var clips = new HashSet<AnimationClip>();
             foreach (var baseClip in animatorController.animationClips ?? Array.Empty<AnimationClip>()) {
@@ -210,9 +211,10 @@ namespace VF.Utils {
         }
 
         private static bool UsesDirectBlendTree(Motion motion) {
+            if (!(motion is BlendTree)) return false;
             var pending = new Stack<Motion>();
             var seen = new HashSet<Motion>();
-            if (motion != null) pending.Push(motion);
+            pending.Push(motion);
             while (pending.Count > 0) {
                 var current = pending.Pop();
                 if (current == null || !seen.Add(current)) continue;

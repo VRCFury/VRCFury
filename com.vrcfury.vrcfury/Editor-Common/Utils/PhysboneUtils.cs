@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using VF.Utils;
@@ -22,7 +23,11 @@ namespace VF.Utils {
             if (!force && ContainsBonesUsedExternally(obj)) {
                 return;
             }
-            foreach (var physbone in obj.GetComponentsInUploadRoot<VRCPhysBone>()) {
+            RemoveFromPhysbones(obj, obj.GetComponentsInUploadRoot<VRCPhysBone>());
+        }
+
+        public static void RemoveFromPhysbones(VFGameObject obj, IEnumerable<VRCPhysBone> physbones) {
+            foreach (var physbone in physbones) {
                 var root = physbone.GetRootTransform();
                 if (obj != root && obj.IsSameOrChildOf(root)) {
                     var alreadyExcluded = physbone.ignoreTransforms.Any(other => other != null && obj.IsSameOrChildOf(other));

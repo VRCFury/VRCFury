@@ -4,12 +4,132 @@ using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.Animations;
+using VF.Builder;
+using VF.Exceptions;
+using VF.Feature.Base;
+using VF.Model;
+using VF.Model.Feature;
 using VF.Service;
 using VF.Utils;
+using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 using Object = UnityEngine.Object;
 
 namespace VF.Tests {
     internal class ArmatureLinkServiceTest {
+        [Test]
+        public void ForcedMergedNameRejectsASourceOutsideTheAvatar() {
+            var avatar = new GameObject("Avatar");
+            var external = new GameObject("External source");
+            try {
+                var descriptor = avatar.AddComponent<VRCAvatarDescriptor>();
+                var model = new ArmatureLink {
+                    propBone = external,
+                    forceMergedName = "Imported",
+                    linkTo = new List<ObjectReference> {
+                        new ObjectReference {
+                            useBone = false,
+                            useObj = false
+                        }
+                    }
+                };
+                var injector = VRCFuryInjectorBuilder.GetInjector(descriptor);
+                var builder = FeatureFinder.GetBuilder(model, avatar, injector);
+                builder.featureBaseObject = avatar;
+                injector.GetService<GlobalsService>().allBuildersInRun = new List<FeatureBuilder> { builder };
+
+                var service = injector.GetService<ArmatureLinkService>();
+                var error = Assert.Throws<ExceptionWithCause>(service.ApplyForceMergedNamesEarly);
+
+                Assert.That(error.Message, Does.Contain("External source is not a child of Avatar"));
+                Assert.That(external.transform.parent, Is.Null);
+                Assert.That(external.name, Is.EqualTo("External source"));
+            } finally {
+                Object.DestroyImmediate(avatar);
+                if (external != null) Object.DestroyImmediate(external);
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RemovesOnlyParentConstraintsAffectingLinkedBones(bool removeParentConstraints) {
+            var avatar = new GameObject("Avatar");
+            try {
+                var descriptor = avatar.AddComponent<VRCAvatarDescriptor>();
+                var target = GameObjects.Create("Target", avatar, removeFromPhysbones: false);
+                var prop = GameObjects.Create("Prop", avatar, removeFromPhysbones: false);
+                prop.AddComponent<BoxCollider>();
+                var position = prop.AddComponent<PositionConstraint>();
+                var attached = VFConstraint.CreateParent(prop).GetComponent();
+                var other = VFConstraint.CreateParent(target).GetComponent();
+                var targetField = attached.GetType().VFField("TargetTransform");
+                UnityEngine.Component hosted = null;
+                if (targetField != null) {
+                    var host = GameObjects.Create("Constraint host", avatar, removeFromPhysbones: false);
+                    hosted = VFConstraint.CreateParent(host).GetComponent();
+                    targetField.SetValue(hosted, (Transform)prop);
+                }
+
+                var model = new ArmatureLink {
+                    propBone = prop,
+                    removeParentConstraints = removeParentConstraints,
+                    linkTo = new List<ObjectReference> {
+                        new ObjectReference {
+                            useBone = false,
+                            useObj = true,
+                            obj = target
+                        }
+                    }
+                };
+                var injector = VRCFuryInjectorBuilder.GetInjector(descriptor);
+                var builder = FeatureFinder.GetBuilder(model, prop, injector);
+                injector.GetService<GlobalsService>().allBuildersInRun = new List<FeatureBuilder> { builder };
+                injector.GetService<ArmatureLinkService>().Apply();
+
+                Assert.That(attached == null, Is.EqualTo(removeParentConstraints));
+                if (targetField != null) Assert.That(hosted == null, Is.EqualTo(removeParentConstraints));
+                Assert.That(other != null, Is.True);
+                Assert.That(position != null, Is.True);
+                Assert.That(prop.parent.parent, Is.EqualTo(target));
+            } finally {
+                Object.DestroyImmediate(avatar);
+            }
+        }
+
+        [Test]
+        public void ExcludingTheLinkWrapperAlsoExcludesMovedObjectsAndNestedToggleWrappers() {
+            var avatar = new GameObject("Avatar");
+            try {
+                var descriptor = avatar.AddComponent<VRCAvatarDescriptor>();
+                var bone = GameObjects.Create("Target bone", avatar, removeFromPhysbones: false);
+                var outside = GameObjects.Create("Physbone settings", avatar, removeFromPhysbones: false);
+                var physbone = outside.AddComponent<VRCPhysBone>();
+                physbone.rootTransform = bone;
+                var inactive = GameObjects.Create("Toggle source", avatar, removeFromPhysbones: false);
+                inactive.active = false;
+                var prop = GameObjects.Create("Prop", inactive, removeFromPhysbones: false);
+                prop.AddComponent<BoxCollider>();
+
+                var model = new ArmatureLink {
+                    propBone = prop,
+                    recursive = false,
+                    linkTo = new List<ObjectReference> { new ObjectReference { useBone = false, useObj = true, obj = bone } }
+                };
+                var injector = VRCFuryInjectorBuilder.GetInjector(descriptor);
+                var builder = FeatureFinder.GetBuilder(model, prop, injector);
+                injector.GetService<GlobalsService>().allBuildersInRun = new List<FeatureBuilder> { builder };
+                injector.GetService<ArmatureLinkService>().Apply();
+
+                Assert.That(prop.parent.name, Is.EqualTo("Toggle From Toggle source"));
+                Assert.That(prop.parent.parent.parent, Is.EqualTo(bone));
+                Assert.That(physbone.ignoreTransforms, Is.EqualTo(new[] { (Transform)prop.parent.parent }));
+                Assert.That(physbone.IsIgnored(prop), Is.True);
+            } finally {
+                Object.DestroyImmediate(avatar);
+            }
+        }
+
         [TestCase(2)]
         [TestCase(3)]
         [TestCase(4)]
@@ -49,13 +169,17 @@ namespace VF.Tests {
                 var withoutMesh = Child("No mesh").gameObject.AddComponent<SkinnedMeshRenderer>();
                 withoutMesh.bones = new[] { from };
 
+                var rewriter = new ArmatureLinkService.SkinRewriter(root);
                 void Rewrite(Transform oldBone, Transform newBone) {
-                    typeof(ArmatureLinkService).GetMethod("RewriteSkins", BindingFlags.NonPublic | BindingFlags.Static)
-                        .Invoke(null, new object[] { (VFGameObject)oldBone, (VFGameObject)newBone, (VFGameObject)root });
+                    rewriter.Rewrite(oldBone, newBone);
                     outputs.Add(skin.sharedMesh);
                 }
+                Assert.That(rewriter.GetRootName(to), Is.EqualTo("To"));
                 Rewrite(from, to);
+                Assert.That(rewriter.GetRootName(to), Is.EqualTo("Avatar"));
                 Rewrite(to, final);
+                Assert.That(rewriter.GetRootName(to), Is.EqualTo("To"));
+                Assert.That(rewriter.GetRootName(from), Is.EqualTo("Avatar"));
                 Assert.That(skin.bones, Is.EqualTo(new[] { final, untouched, final }));
                 Assert.That(withoutMesh.bones, Is.EqualTo(new[] { final }));
                 Assert.That(skin.rootBone, Is.SameAs(from), "Root bone controls bounds and must remain unchanged");

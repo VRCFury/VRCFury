@@ -82,19 +82,25 @@ namespace VF.Builder.Haptics {
             if (!(r is SkinnedMeshRenderer skin)) return 0;
             var mesh = skin.GetMesh();
             if (mesh == null) return 0;
-            var childrenBoneIds = skin.bones.Select((b, i) => (b, i))
-                // TODO: Verify .contains works when it's two different instances
-                .Where(pair => children.Contains(pair.b))
-                .Select(pair => pair.i)
-                .ToImmutableHashSet();
-            if (childrenBoneIds.Count == 0) return 0;
-            return mesh.boneWeights.Count(weight => {
-                var match = weight.weight0 > 0 && childrenBoneIds.Contains(weight.boneIndex0);
-                match |= weight.weight1 > 0 && childrenBoneIds.Contains(weight.boneIndex1);
-                match |= weight.weight2 > 0 && childrenBoneIds.Contains(weight.boneIndex2);
-                match |= weight.weight3 > 0 && childrenBoneIds.Contains(weight.boneIndex3);
-                return match;
-            });
+            var bones = skin.bones;
+            bool[] included = null;
+            for (var index = 0; index < bones.Length; index++) {
+                if (!children.Contains(bones[index])) continue;
+                (included ??= new bool[bones.Length])[index] = true;
+            }
+            if (included == null) return 0;
+
+            bool Matches(int index) => (uint)index < (uint)included.Length && included[index];
+            var count = 0;
+            foreach (var weight in mesh.boneWeights) {
+                if ((weight.weight0 > 0 && Matches(weight.boneIndex0))
+                    || (weight.weight1 > 0 && Matches(weight.boneIndex1))
+                    || (weight.weight2 > 0 && Matches(weight.boneIndex2))
+                    || (weight.weight3 > 0 && Matches(weight.boneIndex3))) {
+                    count++;
+                }
+            }
+            return count;
         }
     }
 }

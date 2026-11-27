@@ -11,7 +11,13 @@ namespace VF.Service {
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly VRCFArmatureCache armatureCache;
 
-        public void Move(VFGameObject obj, VFGameObject newParent = null, string newName = null, bool worldPositionStays = true) {
+        public void Move(
+            VFGameObject obj,
+            VFGameObject newParent = null,
+            string newName = null,
+            bool worldPositionStays = true,
+            bool removeFromPhysbones = true
+        ) {
             if (armatureCache.IsNonEyeBoneParent(obj)) {
                 throw new Exception(
                     $"VRCFury is trying to move the {obj.name} object, but bones / root avatar objects cannot be moved." +
@@ -30,7 +36,7 @@ namespace VF.Service {
             if (newName != null)
                 obj.name = newName;
             obj.EnsureAnimationSafeName();
-            PhysboneUtils.RemoveFromPhysbones(obj, true);
+            if (removeFromPhysbones) PhysboneUtils.RemoveFromPhysbones(obj, true);
         }
     }
 }

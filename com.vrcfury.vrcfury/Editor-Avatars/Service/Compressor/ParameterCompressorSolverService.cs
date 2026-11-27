@@ -36,8 +36,8 @@ namespace VF.Service.Compressor {
             var drivenParams = new HashSet<string>();
             var addDrivenParams = new HashSet<string>();
 
-            // Avoid making this clone controllers
-            foreach (var drivenParam in controllers.GetAllUsedControllers()
+            var controllerViews = controllers.GetControllersForParameterInspection();
+            foreach (var drivenParam in controllerViews
                          .SelectMany(controller => controller.layers)
                          .SelectMany(layer => layer.GetBehaviours<VRCAvatarParameterDriver>())
                          .SelectMany(driver => driver.parameters)) {
@@ -86,7 +86,7 @@ namespace VF.Service.Compressor {
             }
 
             var controllerUsedParams = new HashSet<string>();
-            foreach (var c in controllers.GetAllUsedControllers()) {
+            foreach (var c in controllerViews) {
                 c.RewriteParameters(p => {
                     controllerUsedParams.Add(p);
                     return p;

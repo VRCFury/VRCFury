@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -155,6 +156,40 @@ public class MeshBakerTest {
             Assert.That(local.vertices[0], Is.EqualTo(Vector3.right));
         } finally {
             Object.DestroyImmediate(root);
+            Object.DestroyImmediate(origin);
+            Object.DestroyImmediate(mesh);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void LargeOriginConversionWritesEveryVertexAndDirection(bool hasDirections) {
+        const int vertexCount = 32771;
+        var owner = new GameObject("Renderer");
+        var origin = new GameObject("Origin");
+        var mesh = new Mesh {
+            vertices = Enumerable.Range(0, vertexCount).Select(i => new Vector3(i * 0.01f, i % 3, i % 7)).ToArray()
+        };
+        try {
+            if (hasDirections) {
+                mesh.normals = Enumerable.Repeat(Vector3.up * 2, vertexCount).ToArray();
+                mesh.tangents = Enumerable.Repeat(new Vector4(3, 1, 0, -1), vertexCount).ToArray();
+            }
+            owner.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = owner.AddComponent<MeshRenderer>();
+            owner.transform.SetPositionAndRotation(Vector3.forward, Quaternion.Euler(5, 10, 15));
+            origin.transform.SetPositionAndRotation(Vector3.right, Quaternion.Euler(25, 30, 35));
+            origin.transform.localScale = new Vector3(0.5f, 1.25f, 1.75f);
+            var local = MeshBaker.BakeMesh(renderer);
+            var matrix = Matrix4x4.Scale(origin.transform.lossyScale)
+                * (origin.transform.worldToLocalMatrix * renderer.localToWorldMatrix);
+            var converted = MeshBaker.BakeMesh(renderer, origin.transform, true);
+            CollectionAssert.AreEqual(local.vertices.Select(matrix.MultiplyPoint3x4), converted.vertices);
+            CollectionAssert.AreEqual(local.normals.Select(matrix.MultiplyVector), converted.normals);
+            CollectionAssert.AreEqual(local.tangents.Select(matrix.MultiplyVector), converted.tangents);
+            Assert.That(MeshBaker.BakeMesh(renderer), Is.SameAs(local));
+        } finally {
+            Object.DestroyImmediate(owner);
             Object.DestroyImmediate(origin);
             Object.DestroyImmediate(mesh);
         }

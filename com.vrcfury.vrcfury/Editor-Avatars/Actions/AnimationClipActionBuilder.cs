@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
@@ -79,15 +80,12 @@ namespace VF.Actions {
             if (types.Contains(VFBinding.MuscleBindingType.Body)) {
                 types = ImmutableHashSet.Create(VFBinding.MuscleBindingType.Body);
             }
-            var copy = clip.Clone() as VFClip;
-            foreach (var muscleType in types) {
-                var trigger = fullBodyEmoteService.AddClip(copy, muscleType);
+            // Copy each emote before adding its triggers to the original FX clip.
+            var triggers = types.Select(muscleType => fullBodyEmoteService.AddClip(clip, muscleType)).ToArray();
+            foreach (var trigger in triggers) {
                 clip.SetAap(trigger, 1);
             }
-            clip.Rewrite(AnimationRewriter.RewriteBinding(b => {
-                if (b.GetPropType() == EditorCurveBindingType.Muscle) return null;
-                return b;
-            }));
+            clip.RemoveBindings(b => b.GetPropType() == EditorCurveBindingType.Muscle);
         }
     }
 }

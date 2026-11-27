@@ -20,15 +20,18 @@ namespace VF.Utils {
             Func<int> currentFeatureNumProvider,
             Func<string, string> internalParamName,
             LayerSourceService layerSourceService,
-            ExpressionParamsService expressionParams = null
-        ) : base(ctrl, type) {
+            ExpressionParamsService expressionParams = null,
+            bool takeOwnership = false
+        ) : base(ctrl, type, takeOwnership) {
             this.currentFeatureNumProvider = currentFeatureNumProvider;
             this.internalParamName = internalParamName;
             this.layerSourceService = layerSourceService;
             this.expressionParams = expressionParams;
 
-            foreach (var pair in ctrl.GetLayers().Zip(GetLayers(), (from, to) => (from, to))) {
-                layerSourceService.CopySource(pair.from, pair.to);
+            if (!takeOwnership) {
+                foreach (var pair in ctrl.GetLayers().Zip(GetLayers(), (from, to) => (from, to))) {
+                    layerSourceService.CopySource(pair.from, pair.to);
+                }
             }
         }
 

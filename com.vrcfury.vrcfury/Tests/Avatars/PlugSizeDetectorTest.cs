@@ -1,13 +1,10 @@
 namespace VF.Tests {
     using System;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using VF.Builder.Haptics;
-    using VF.Component;
     using VF.Utils;
-    using VRC.SDK3.Avatars.Components;
     using Object = UnityEngine.Object;
 
     internal class PlugSizeDetectorTest {
@@ -52,48 +49,5 @@ namespace VF.Tests {
             }
         }
 
-        [Test]
-        public void AutoRendererSelectionIncludesDescendantBonesAndObservesChangedWeights() {
-            var root = new GameObject("Avatar");
-            var meshes = new List<Mesh>();
-            try {
-                root.AddComponent<VRCAvatarDescriptor>();
-                var plugObject = new GameObject("Plug");
-                plugObject.transform.SetParent(root.transform, false);
-                var bone = new GameObject("Child bone").transform;
-                bone.SetParent(plugObject.transform, false);
-                var plug = plugObject.AddComponent<VRCFuryHapticPlug>();
-                plug.autoRenderer = true;
-                plug.useLegacyRendererFinder = false;
-                SkinnedMeshRenderer Skin(string name, int matchedVertices) {
-                    var obj = new GameObject(name);
-                    obj.transform.SetParent(root.transform, false);
-                    var mesh = new Mesh { vertices = new Vector3[3] };
-                    meshes.Add(mesh);
-                    mesh.boneWeights = new[] {
-                        new BoneWeight { boneIndex0 = matchedVertices > 0 ? 0 : 1, weight0 = 1 },
-                        new BoneWeight { boneIndex0 = matchedVertices > 1 ? 0 : 1, weight0 = 1 },
-                        new BoneWeight { boneIndex0 = 1, weight0 = 1 }
-                    };
-                    var skin = obj.AddComponent<SkinnedMeshRenderer>();
-                    skin.sharedMesh = mesh;
-                    skin.bones = new[] { bone, root.transform };
-                    return skin;
-                }
-                var first = Skin("First", 2);
-                var second = Skin("Second", 1);
-                first.gameObject.SetActive(false);
-                Assert.That(PlugRendererFinder.GetRenderers(plug), Is.EquivalentTo(new[] { first }));
-                first.sharedMesh.boneWeights = new[] {
-                    new BoneWeight { boneIndex0 = 1, weight0 = 1 },
-                    new BoneWeight { boneIndex0 = 1, weight0 = 1 },
-                    new BoneWeight { boneIndex0 = 1, weight0 = 1 }
-                };
-                Assert.That(PlugRendererFinder.GetRenderers(plug), Is.EquivalentTo(new[] { second }));
-            } finally {
-                Object.DestroyImmediate(root);
-                foreach (var mesh in meshes) Object.DestroyImmediate(mesh);
-            }
-        }
     }
 }

@@ -24,10 +24,7 @@ namespace VF.Service {
             var raw = clip?.Save(avatarObject) as AnimationClip;
             raw?.SampleAnimation(avatarObject, 0);
             if (clip == null) return;
-            foreach (var pair in clip.GetAllCurves()) {
-                var binding = pair.Item1;
-                var curve = pair.Item2;
-                var value = curve.GetLast();
+            foreach (var (binding, value) in clip.GetLastValues()) {
                 HandleMaterialSwaps(binding, value);
                 HandleMaterialProperties(binding, value, reason);
             }

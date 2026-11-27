@@ -20,6 +20,7 @@ using Stopwatch = System.Diagnostics.Stopwatch;
 namespace VF.Builder {
 
     internal class VRCFuryBuilder {
+        private static readonly Dictionary<Type, (MethodInfo method, FeatureBuilderActionAttribute attribute)[]> actionMethodsByType = new();
         internal static void RunMain(VFGameObject avatarObject) {
             try {
                 MaterialLocker.injectedAvatarObject = avatarObject;
@@ -84,7 +85,9 @@ namespace VF.Builder {
             var currentServiceNumber = 0;
             var currentServiceGameObject = avatarObject;
 
-            var actions = new List<FeatureBuilderAction>();
+            // Actions can enqueue more actions. CompareTo ties on equal priority and offset because it
+            // uses the same service number on both sides, so we use the insertion order as the "tie breaker".
+            var actions = new SortedSet<(FeatureBuilderAction action, int insertionOrder)>();
             var totalActionCount = 0;
             var totalServiceCount = 0;
             var collectedModels = new List<FeatureModel>();
@@ -132,18 +135,17 @@ namespace VF.Builder {
                     collectedBuilders.Add(builder);
                 }
 
-                var actionMethods = service.GetType().GetMethods()
-                    .Select(m => (m, m.GetCustomAttribute<FeatureBuilderActionAttribute>()))
-                    .Where(tuple => tuple.Item2 != null)
-                    .ToArray();
-                if (actionMethods.Length == 0) return;
-
-                var list = new List<FeatureBuilderAction>();
-                foreach (var (method, attr) in actionMethods) {
-                    list.Add(new FeatureBuilderAction(attr, method, service, serviceNum, configObject));
+                var type = service.GetType();
+                if (!actionMethodsByType.TryGetValue(type, out var actionMethods)) {
+                    actionMethodsByType[type] = actionMethods = type.GetMethods()
+                        .Select(m => (m, m.GetCustomAttribute<FeatureBuilderActionAttribute>()))
+                        .Where(tuple => tuple.Item2 != null)
+                        .ToArray();
                 }
-                actions.AddRange(list);
-                totalActionCount += list.Count;
+                foreach (var (method, attr) in actionMethods) {
+                    var action = new FeatureBuilderAction(attr, method, service, serviceNum, configObject);
+                    actions.Add((action, totalActionCount++));
+                }
             }
 
             var timings = new List<(double milliseconds, string description)>();
@@ -211,8 +213,9 @@ namespace VF.Builder {
             timings.Add((timer.Elapsed.TotalMilliseconds, collectMessage));
             FeatureOrder? lastPriority = null;
             while (actions.Count > 0) {
-                var action = actions.Min();
-                actions.Remove(action);
+                var next = actions.Min;
+                actions.Remove(next);
+                var action = next.action;
                 var service = action.GetService();
                 if (action.configObject == null) {
                     var statusSkipMessage = $"{service.GetType().Name} ({currentServiceNumber}) Skipped (Object no longer exists)";

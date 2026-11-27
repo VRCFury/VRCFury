@@ -56,8 +56,8 @@ namespace VF.Utils {
 
         public FloatOrObject GetFirst() {
             if (isFloat) {
-                if (floatCurve == null || floatCurve.keys.Length == 0) return 0;
-                return floatCurve.keys[0].value;
+                if (floatCurve == null || floatCurve.length == 0) return 0;
+                return floatCurve[0].value;
             } else {
                 if (objectCurve == null || objectCurve.Length == 0) return new FloatOrObject(null);
                 return objectCurve[0].value;
@@ -66,9 +66,8 @@ namespace VF.Utils {
 
         public FloatOrObject GetLast() {
             if (isFloat) {
-                if (floatCurve == null || floatCurve.keys.Length == 0) return 0;
-                var length = floatCurve.keys.Length;
-                return floatCurve.keys[length - 1].value;
+                var length = floatCurve?.length ?? 0;
+                return length == 0 ? 0 : floatCurve[length - 1].value;
             } else {
                 if (objectCurve == null || objectCurve.Length == 0) return new FloatOrObject(null);
                 var length = objectCurve.Length;

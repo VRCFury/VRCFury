@@ -61,7 +61,7 @@ namespace VF.Service {
         private bool IsUsed(string name) {
             if (reserved.ContainsKey(name)) return true;
             if (expressionParams.Contains(name)) return true;
-            foreach (var controller in controllers.GetAllUsedControllers()) {
+            foreach (var controller in controllers.GetControllersForParameterInspection()) {
                 if (controller.TryGetParam(name, out _)) return true;
             }
             return false;

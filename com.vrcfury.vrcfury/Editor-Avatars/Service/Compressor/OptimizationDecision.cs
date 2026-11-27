@@ -11,16 +11,6 @@ namespace VF.Service.Compressor {
 
         public IList<VRCExpressionParameters.Parameter> compress = new VRCExpressionParameters.Parameter[] { };
 
-        private OptimizationDecision TempCopy(Action<OptimizationDecision> with) {
-            var copy = new OptimizationDecision {
-                numberSlots = numberSlots,
-                boolSlots = boolSlots,
-                compress = compress.ToList()
-            };
-            with.Invoke(copy);
-            return copy;
-        }
-
         public int GetIndexBitCount() {
             return GetIndexBitCount(GetBatchCount());
         }
@@ -35,16 +25,21 @@ namespace VF.Service.Compressor {
         }
 
         public int GetFinalCost(int originalCost) {
-            return originalCost
-                   + GetIndexBitCount()
-                   + numberSlots * 8
-                   + boolSlots
-                   - compress.Sum(p => p.TypeCost());
+            return originalCost - compress.Sum(p => p.TypeCost()) + GetSyncCost(numberSlots, boolSlots, GetBatchCount());
         }
 
         public int GetBatchCount() {
-            var batches = GetBatches();
-            return Math.Max(batches.numberBatches.Count, batches.boolBatches.Count);
+            var boolCount = compress.Count(p => p.valueType == VRCExpressionParameters.ValueType.Bool);
+            return GetBatchCount(compress.Count - boolCount, boolCount, numberSlots, boolSlots);
+        }
+
+        private static int GetBatchCount(int numberCount, int boolCount, int numberSlots, int boolSlots) {
+            int CountBatches(int count, int slots) => count == 0 ? 0 : (count - 1) / slots + 1;
+            return Math.Max(CountBatches(numberCount, numberSlots), CountBatches(boolCount, boolSlots));
+        }
+
+        private static int GetSyncCost(int numberSlots, int boolSlots, int batchCount) {
+            return GetIndexBitCount(batchCount) + numberSlots * 8 + boolSlots;
         }
 
         public (
@@ -74,19 +69,23 @@ namespace VF.Service.Compressor {
          */
         public void Optimize(int originalCost) {
             var boolCount = compress.Count(p => p.valueType == VRCExpressionParameters.ValueType.Bool);
-            var numberCount = compress.Count(p => p.valueType != VRCExpressionParameters.ValueType.Bool);
+            var numberCount = compress.Count - boolCount;
             boolSlots = boolCount > 0 ? 1 : 0;
             numberSlots = numberCount > 0 ? 1 : 0;
             var maxCost = ExpressionParamsService.GetMaxCost();
-            //maxCost = 50;
+            var fixedCost = originalCost - compress.Sum(p => p.TypeCost());
+            bool Fits(int numbers, int bools) {
+                var batches = GetBatchCount(numberCount, boolCount, numbers, bools);
+                return fixedCost + GetSyncCost(numbers, bools, batches) <= maxCost;
+            }
             while (true) {
                 if (numberSlots < numberCount
-                    && TempCopy(o => o.numberSlots++).GetFinalCost(originalCost) <= maxCost
+                    && Fits(numberSlots + 1, boolSlots)
                     && (boolCount == 0 || (float)numberSlots / numberCount < (float)boolSlots / boolCount)
                    ) {
                     numberSlots++;
                 } else if (boolSlots < boolCount
-                           && TempCopy(o => o.boolSlots++).GetFinalCost(originalCost) <= maxCost
+                           && Fits(numberSlots, boolSlots + 1)
                           ) {
                     boolSlots++;
                 } else {

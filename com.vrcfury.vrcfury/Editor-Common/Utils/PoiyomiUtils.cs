@@ -118,19 +118,27 @@ namespace VF.Utils {
 
         public static void LockPoiyomi(Material mat) {
             if (!IsPoiUnlocked(mat)) return;
+            LockUnlockedMaterials(new[] { mat });
+        }
 
+        internal static void LockPoiyomiMaterials(IEnumerable<Material> materials) {
+            LockUnlockedMaterials(materials.Where(IsPoiUnlocked).Distinct().ToArray());
+        }
+
+        private static void LockUnlockedMaterials(Material[] materials) {
+            if (materials.Length == 0) return;
             if (PoiReflection.SetLockedForAllMaterials == null) {
                 throw new Exception("Failed to find Poiyomi's lockdown method. Try updating poiyomi or locking the material manually.");
             }
             VRCFuryAssetDatabase.WithoutAssetEditing(() => {
                 var result =
-                    (bool)ReflectionUtils.CallWithOptionalParams(PoiReflection.SetLockedForAllMaterials, null, new Material[] { mat }, 1);
+                    (bool)ReflectionUtils.CallWithOptionalParams(PoiReflection.SetLockedForAllMaterials, null, materials, 1);
                 if (!result) {
                     throw new Exception("Poiyomi's lockdown method returned false without an exception. Check the console for the reason.");
                 }
             });
 
-            if (!mat.shader.name.StartsWith("Hidden/Locked/")) {
+            if (materials.Any(mat => !mat.shader.name.StartsWith("Hidden/Locked/"))) {
                 throw new Exception("Failed to lockdown poi material. Try unlocking and relocking the material manually. If that doesn't work, try updating poiyomi.");
             }
         }

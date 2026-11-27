@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -186,54 +187,39 @@ namespace VF.Feature {
                 .FirstOrDefault();
         }
 
-        delegate string Normalizer(string input);
-
         private class FuzzyFinder {
-            private readonly Normalizer[] normalizers;
-            private readonly IDictionary<string, string>[] preNormalized;
+            private static readonly Regex Whitespace = new Regex(@"\s+", RegexOptions.Compiled);
+            private readonly IDictionary<string, string> exactNames;
+            private readonly Lazy<IDictionary<string, string>> looseNames;
 
-            public FuzzyFinder(ICollection<string> names, params Normalizer[] normalizers) {
-                this.normalizers = normalizers;
-                preNormalized = normalizers.Select(n => PreNormalize(names, n)).ToArray();
+            public FuzzyFinder(ICollection<string> names, bool exact) {
+                exactNames = Index(names, name => name);
+                if (!exact) looseNames = new Lazy<IDictionary<string, string>>(() => Index(names, Normalize));
             }
 
-            private static IDictionary<string, string> PreNormalize(ICollection<string> names, Normalizer normalizer) {
-                return names
-                    .Select(name => (normalizer(name), name))
-                    .GroupBy(tuple => tuple.Item1)
-                    .Select(group => (group.Key, group.Select(i => i.Item2).ToArray()))
-                    .Where(pair => pair.Item2.Length == 1)
-                    .ToDictionary(pair => pair.Item1, pair => pair.Item2[0]);
+            private static string Normalize(string name) => Whitespace.Replace(name.ToLower(), "");
+
+            private static IDictionary<string, string> Index(ICollection<string> names, Func<string, string> normalize) {
+                var index = new Dictionary<string, string>();
+                foreach (var name in names) {
+                    var key = normalize(name);
+                    if (!index.TryAdd(key, name)) index[key] = null;
+                }
+                return index;
             }
 
             public string Lookup(string name) {
-                for (var i = 0; i < normalizers.Length; i++) {
-                    var normalizer = normalizers[i];
-                    var preNorm = preNormalized[i];
-                    var normalized = normalizer(name);
-                    if (preNorm.TryGetValue(normalized, out var result)) {
-                        return result;
-                    }
-                }
+                if (exactNames.TryGetValue(name, out var result) && result != null) return result;
+                if (looseNames != null && looseNames.Value.TryGetValue(Normalize(name), out result)) return result;
                 return null;
             }
         }
 
         private static VFMultimapSet<string, string> GetMappings(BlendShapeLink model, SkinnedMeshRenderer baseSkin, SkinnedMeshRenderer linkSkin, bool exact) {
-            Normalizer[] normalizers;
-            if (exact) {
-                normalizers = new Normalizer[] { s => s };
-            } else {
-                normalizers = new Normalizer[] {
-                    s => s,
-                    s => Regex.Replace(s.ToLower(), @"\s", ""),
-                };
-            }
-
             var baseBlendshapes = baseSkin.GetBlendshapeNames();
-            var baseBlendshapesLookup = new FuzzyFinder(baseBlendshapes, normalizers);
+            var baseBlendshapesLookup = new FuzzyFinder(baseBlendshapes, exact);
             var linkBlendshapes = linkSkin.GetBlendshapeNames();
-            var linkBlendshapesLookup = new FuzzyFinder(linkBlendshapes, normalizers);
+            var linkBlendshapesLookup = new FuzzyFinder(linkBlendshapes, exact);
             var outputMap = new VFMultimapSet<string, string>();
 
             void Attempt(string from, string to, bool allowDuplicates) {
@@ -296,8 +282,13 @@ namespace VF.Feature {
                 return;
             }
             var linkSkins = GetLinkSkins(model);
+            var baseObject = baseSkin.owner();
+            bool IsBaseBlendShape(VFBinding binding) => binding.Targets(baseObject)
+                && binding.propertyName.StartsWith("blendShape.", StringComparison.Ordinal)
+                && binding.type == typeof(SkinnedMeshRenderer);
 
             foreach (var linked in linkSkins) {
+                var linkedObject = linked.owner();
                 var baseToLinkedMapping = GetMappings(model, baseSkin, linked, model.exactMatch);
 #if VRCSDK_HAS_FACE_TRACKING
                 foreach (var mapping in baseToLinkedMapping)
@@ -316,17 +307,14 @@ namespace VF.Feature {
 
                 foreach (var c in controllers.GetAllUsedControllers()) {
                     foreach (var clip in c.GetClips()) {
-                        foreach (var binding in clip.GetFloatBindings()) {
-                            if (binding.type != typeof(SkinnedMeshRenderer)) continue;
-                            if (!binding.Targets(baseSkin.owner())) continue;
-                            if (!binding.propertyName.StartsWith("blendShape.")) continue;
+                        foreach (var binding in clip.GetFloatBindings(IsBaseBlendShape)) {
                             var baseName = binding.propertyName.Substring(11);
 
                             foreach (var linkedName in baseToLinkedMapping.Get(baseName)) {
                                 var linkedI = linked.GetBlendShapeIndex(linkedName);
                                 if (linkedI < 0) continue;
                                 var newBinding = binding
-                                    .WithTarget(linked.owner())
+                                    .WithTarget(linkedObject)
                                     .WithPropertyName("blendShape." + linkedName);
 
                                 clip.SetCurve(newBinding, clip.GetFloatCurve(binding));

@@ -39,12 +39,13 @@ namespace VF.Utils.Controller {
             output.minThreshold = raw.minThreshold;
             output.maxThreshold = raw.maxThreshold;
             output.normalizedBlendValues = GetNormalizedBlendValuesRaw(raw);
-            output._children = raw.children
-                .Select(child => VFTreeChild.Load(child, context))
-                .ToList();
-            output.isDirty = raw.children
-                .Select((child, i) => !ReferenceEquals(output._children[i].motion?.GetSourceAsset(), child.motion))
-                .Any(changed => changed);
+            var rawChildren = raw.children;
+            output._children = new List<VFTreeChild>(rawChildren.Length);
+            foreach (var child in rawChildren) {
+                var loaded = VFTreeChild.Load(child, context);
+                output._children.Add(loaded);
+                output.isDirty |= !ReferenceEquals(loaded.motion?.GetSourceAsset(), child.motion);
+            }
             return output;
         }
 
@@ -159,6 +160,10 @@ namespace VF.Utils.Controller {
 
         internal override VFMotion Clone(VFCloneContext context = null) {
             if (context == null) context = new VFCloneContext();
+            return CloneWithChildren(context, child => child.Clone(context));
+        }
+
+        private VFMotion CloneWithChildren(VFCloneContext context, Func<VFTreeChild, VFTreeChild> copyChild) {
             if (context.Motions.TryGetValue(this, out var existing)) {
                 return existing;
             }
@@ -174,7 +179,7 @@ namespace VF.Utils.Controller {
             output.minThreshold = minThreshold;
             output.maxThreshold = maxThreshold;
             output.normalizedBlendValues = normalizedBlendValues;
-            output._children = _children.Select(child => child.Clone(context)).ToList();
+            output._children = _children.Select(copyChild).ToList();
             output.isDirty = isDirty;
             return output;
         }
@@ -250,33 +255,22 @@ namespace VF.Utils.Controller {
         }
 
         internal override VFMotion EvaluateMotion(float fraction) {
-            var clone = (VFTree)Clone();
-            foreach (var tree in clone.GetAllSubtrees()) {
-                tree.treeName = $"{tree.name} (sampled at {Math.Round(fraction * 100)}%)";
-                tree.RewriteChildren(child => {
-                    if (child.motion is VFClip clip) {
-                        child.motion = clip.EvaluateMotion(fraction);
-                    }
-                    return child;
+            var context = new VFCloneContext();
+            var percent = Math.Round(fraction * 100);
+            VFMotion SampleTree(VFTree tree) {
+                if (context.Motions.TryGetValue(tree, out var existing)) return existing;
+                var sampled = (VFTree)tree.CloneWithChildren(context, child => {
+                    var copy = child.ShallowClone();
+                    if (copy.motion is VFTree subtree) copy.motion = SampleTree(subtree);
+                    // Each occurrence gets a separate sampled clip.
+                    else if (copy.motion is VFClip clip) copy.motion = clip.EvaluateMotion(fraction);
+                    return copy;
                 });
+                sampled.treeName = $"{tree.name} (sampled at {percent}%)";
+                sampled.isDirty |= tree._children.Any(child => child.motion is VFClip);
+                return sampled;
             }
-            return clone;
-        }
-
-        private IEnumerable<VFTree> GetAllSubtrees() {
-            var visited = new HashSet<VFTree>();
-            var pending = new Stack<VFTree>();
-            pending.Push(this);
-            while (pending.Count > 0) {
-                var tree = pending.Pop();
-                if (!visited.Add(tree)) continue;
-                yield return tree;
-                foreach (var child in tree.children.Reverse()) {
-                    if (child.motion is VFTree childTree) {
-                        pending.Push(childTree);
-                    }
-                }
-            }
+            return SampleTree(this);
         }
 
         private IEnumerable<VFClip> GetAllClips() {

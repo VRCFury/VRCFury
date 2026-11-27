@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
+using VF.Hooks;
 
 namespace VF.Utils {
     internal static class ShaderExtensions {
@@ -13,6 +15,24 @@ namespace VF.Utils {
         private struct ShaderProperty {
             public ShaderPropertyType type;
             public int index;
+        }
+
+        /**
+         * Lets Unity queue editor preview shader variants during a VRChat SDK build.
+         * Restores the previous setting when the action finishes so the SDK can compile the bundle normally.
+         */
+        internal static void WithAsyncCompilationDuringBuild(Action action) {
+            if (ShaderUtil.allowAsyncCompilation || !IsActuallyUploadingHook.Get()) {
+                action();
+                return;
+            }
+
+            ShaderUtil.allowAsyncCompilation = true;
+            try {
+                action();
+            } finally {
+                ShaderUtil.allowAsyncCompilation = false;
+            }
         }
 
         private class ShaderAssetPostprocessor : AssetPostprocessor {

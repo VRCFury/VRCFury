@@ -50,8 +50,7 @@ namespace VF.Hooks {
             return c.owner().GetAvatarRoot();
         }
 
-        private static bool AllowRootFeatures(VFGameObject gameObject) {
-            var avatarRoot = gameObject.GetAvatarRoot();
+        private static bool AllowRootFeatures(VFGameObject gameObject, VFGameObject avatarRoot) {
             if (gameObject == avatarRoot) {
                 return true;
             }
@@ -89,21 +88,21 @@ namespace VF.Hooks {
             };
 
             FeatureFinder.onInjectEditor = (gameObject, builderType, injector) => {
-                var allowRootFeatures = AllowRootFeatures(gameObject);
-                if (builderType.GetCustomAttribute<FeatureRootOnlyAttribute>() != null && !allowRootFeatures) {
+                var avatarObject = gameObject.GetAvatarRoot();
+                if (builderType.IsDefined(typeof(FeatureRootOnlyAttribute), inherit: true)
+                    && !AllowRootFeatures(gameObject, avatarObject)) {
                     throw new RenderFeatureEditorException(
                         "To avoid abuse by prefab creators, this component can only be placed on the root object" +
                         " containing the avatar descriptor, OR a child object containing ONLY vrcfury components."
                     );
                 }
-                var avatarObject = gameObject.GetAvatarRoot();
                 if (avatarObject != null) injector.Set("avatarObject", avatarObject);
             };
 
             FeatureFinder.onGetBuilder = (gameObject, builderType, title) => {
+                if (!builderType.IsDefined(typeof(FeatureRootOnlyAttribute), inherit: true)) return;
                 var avatarObject = gameObject.GetAvatarRoot();
-                var allowRootFeatures = AllowRootFeatures(gameObject);
-                if (builderType.GetCustomAttribute<FeatureRootOnlyAttribute>() != null && !allowRootFeatures) {
+                if (!AllowRootFeatures(gameObject, avatarObject)) {
                     throw new Exception($"This VRCFury component ({title}) is only allowed on the root object of the avatar, but was found in {gameObject.GetPath(avatarObject)}.");
                 }
             };

@@ -113,7 +113,7 @@ namespace VF.Utils.Controller {
             }
             var saveBindingRoot = context.BindingRoot;
             if (context.ReuseSourceAssets) {
-                var reuseSource = GetUseOriginalUserClip(saveBindingRoot);
+                var reuseSource = GetUseOriginalUserClip(saveBindingRoot, context.BindingPaths);
                 if (reuseSource != null) {
                     context.Motions[this] = reuseSource;
                     var savedAdditiveReferencePoseClip = additiveReferencePoseClip?.Save(context) as AnimationClip;
@@ -126,26 +126,31 @@ namespace VF.Utils.Controller {
                 ? originalSourceClip.Clone()
                 : VrcfObjectFactory.Create<AnimationClip>();
             context.Motions[this] = clip;
-            var savableCurves = curves
-                .Where(pair => !pair.Key.ShouldDropOnSave(saveBindingRoot))
-                .ToArray();
+            var savableCurves = new List<(EditorCurveBinding binding, FloatOrObjectCurve curve)>(curves.Count);
+            var keyCount = 0L;
+            foreach (var (binding, curve) in curves) {
+                var rawBinding = binding.ToEditorCurveBindingForSave(saveBindingRoot, context.BindingPaths);
+                if (!rawBinding.HasValue) continue;
+                savableCurves.Add((rawBinding.Value, curve));
+                keyCount += curve.IsFloat ? curve.FloatCurve.length : curve.ObjectCurve.Length;
+            }
             clip.name = clipName ?? clip.name;
             clip.frameRate = frameRate;
             if (clip.events.Length > 0) {
                 AnimationUtility.SetAnimationEvents(clip, new AnimationEvent[] { });
             }
 
-            ClearRawCurves(clip);
+            if (originalSourceClip != null) clip.ClearCurves();
 
             var curveLength = savableCurves
-                .Select(c => c.Value.lengthInSeconds)
+                .Select(c => c.curve.lengthInSeconds)
                 .DefaultIfEmpty(0)
                 .Max();
             var addLengthBinding = lengthInSeconds > curveLength;
 #if UNITY_2018_1_OR_NEWER
             var floatCurves = savableCurves
-                .Where(pair => pair.Value.IsFloat)
-                .Select(pair => (pair.Key.ToEditorCurveBinding(saveBindingRoot), pair.Value.FloatCurve))
+                .Where(pair => pair.curve.IsFloat)
+                .Select(pair => (pair.binding, pair.curve.FloatCurve))
                 .ToList();
             if (addLengthBinding) {
                 floatCurves.Add((
@@ -160,8 +165,8 @@ namespace VF.Utils.Controller {
                 );
             }
             var objectCurves = savableCurves
-                .Where(pair => !pair.Value.IsFloat)
-                .Select(pair => (pair.Key.ToEditorCurveBinding(saveBindingRoot), pair.Value.ObjectCurve))
+                .Where(pair => !pair.curve.IsFloat)
+                .Select(pair => (pair.binding, pair.curve.ObjectCurve))
                 .ToList();
             foreach (var (_, curve) in objectCurves) {
                 foreach (var keyframe in curve) {
@@ -177,9 +182,7 @@ namespace VF.Utils.Controller {
                 );
             }
 #else
-            foreach (var pair in savableCurves) {
-                var b = pair.Key.ToEditorCurveBinding(saveBindingRoot);
-                var c = pair.Value;
+            foreach (var (b, c) in savableCurves) {
                 if (c.IsFloat) {
                     AnimationUtility.SetEditorCurve(clip, b, c.FloatCurve);
                 } else {
@@ -195,26 +198,33 @@ namespace VF.Utils.Controller {
             }
 #endif
 
-            PreserveNonStandardEulerOrders(clip, saveBindingRoot);
+            PreserveNonStandardEulerOrders(clip, saveBindingRoot, context.BindingPaths);
 
             var settings = AnimationUtility.GetAnimationClipSettings(clip);
             settings.loopTime = loopTime;
             settings.additiveReferencePoseClip = additiveReferencePoseClip?.Save(context) as AnimationClip;
             AnimationUtility.SetAnimationClipSettings(clip, settings);
 
-            context.AddNewAsset(clip);
+            context.AddNewClip(clip, keyCount);
             context.Motions[this] = clip;
             return clip;
         }
 
         internal override VFMotion Clone(VFCloneContext context = null) {
+            return CloneWithCurves(context, curve => curve.Clone());
+        }
+
+        private VFMotion CloneWithCurves(
+            VFCloneContext context,
+            Func<FloatOrObjectCurve, FloatOrObjectCurve> copyCurve
+        ) {
             if (context == null) context = new VFCloneContext();
             if (context.Motions.TryGetValue(this, out var existing)) {
                 return existing;
             }
             var clone = new VFClip(sourceRaw as AnimationClip);
             context.Motions[this] = clone;
-            clone.curves = curves.ToDictionary(pair => pair.Key, pair => pair.Value.Clone());
+            clone.curves = curves.ToDictionary(pair => pair.Key, pair => copyCurve(pair.Value));
             clone.originalSourceClip = originalSourceClip;
             clone.changedFromOriginalSourceClip = changedFromOriginalSourceClip;
             clone.originalSourceIsProxyClip = originalSourceIsProxyClip;
@@ -252,13 +262,16 @@ namespace VF.Utils.Controller {
             }
         }
 
-        internal AnimationClip GetUseOriginalUserClip(VFGameObject bindingRoot) {
+        internal AnimationClip GetUseOriginalUserClip(
+            VFGameObject bindingRoot,
+            Dictionary<VFGameObject, string> cachedPaths = null
+        ) {
             if (bindingRoot == null) throw new ArgumentNullException(nameof(bindingRoot));
             if (changedFromOriginalSourceClip || originalSourceClip == null) {
                 return null;
             }
             foreach (var binding in curves.Keys) {
-                if (binding.GetPath(bindingRoot) != binding.GetStoredPath()) {
+                if (binding.GetPath(bindingRoot, cachedPaths) != binding.GetStoredPath()) {
                     return null;
                 }
             }
@@ -269,11 +282,25 @@ namespace VF.Utils.Controller {
             return curves.Keys.ToArray();
         }
 
+        internal void RemoveBindings(Func<VFBinding, bool> remove) {
+            List<VFBinding> matches = null;
+            foreach (var binding in curves.Keys) {
+                if (remove(binding)) (matches ??= new List<VFBinding>()).Add(binding);
+            }
+            if (matches == null) return;
+            foreach (var binding in matches) curves.Remove(binding);
+            changedFromOriginalSourceClip = true;
+        }
+
         internal (VFBinding, FloatOrObjectCurve)[] GetAllCurves(Func<VFBinding, bool> filter = null) {
             return curves
                 .Where(pair => filter == null || filter(pair.Key))
                 .Select(pair => (pair.Key, pair.Value.Clone()))
                 .ToArray();
+        }
+
+        internal IEnumerable<(VFBinding binding, FloatOrObject value)> GetLastValues() {
+            return curves.Select(pair => (pair.Key, pair.Value.GetLast()));
         }
 
         internal (VFBinding, AnimationCurve)[] GetFloatCurves() {
@@ -283,9 +310,11 @@ namespace VF.Utils.Controller {
                 .ToArray();
         }
 
-        internal override VFBinding[] GetFloatBindings() {
+        internal override VFBinding[] GetFloatBindings() => GetFloatBindings(null);
+
+        internal VFBinding[] GetFloatBindings(Func<VFBinding, bool> filter) {
             return curves
-                .Where(pair => pair.Value.IsFloat)
+                .Where(pair => pair.Value.IsFloat && (filter == null || filter(pair.Key)))
                 .Select(pair => pair.Key)
                 .ToArray();
         }
@@ -437,21 +466,17 @@ namespace VF.Utils.Controller {
 
         internal override VFMotion EvaluateMotion(float fraction) {
             var timeSeconds = fraction * GetLengthInSeconds();
-            var output = Clone() as VFClip;
-            output.name = $"{name} (sampled at {timeSeconds}s)";
-            output.Rewrite(AnimationRewriter.RewriteCurve((binding, curve) => {
+            var output = (VFClip)CloneWithCurves(null, curve => {
                 if (curve.IsFloat) {
-                    return (binding, (FloatOrObjectCurve)curve.FloatCurve.Evaluate(timeSeconds), true);
+                    return curve.FloatCurve.Evaluate(timeSeconds);
                 }
-                var val = curve.ObjectCurve.Length > 0 ? curve.ObjectCurve[0].value : null;
-                foreach (var key in curve.ObjectCurve.Reverse()) {
-                    if (timeSeconds >= key.time) {
-                        val = key.value;
-                        break;
-                    }
+                var keys = curve.ObjectCurve;
+                for (var i = keys.Length - 1; i >= 0; i--) {
+                    if (timeSeconds >= keys[i].time) return keys[i].value;
                 }
-                return (binding, (FloatOrObjectCurve)val, true);
-            }));
+                return keys.Length > 0 ? keys[0].value : null;
+            });
+            output.name = $"{name} (sampled at {timeSeconds}s)";
             output.lengthInSeconds = 0;
             return output;
         }
@@ -506,6 +531,10 @@ namespace VF.Utils.Controller {
             return curve.Clone();
         }
 
+        internal bool HasCurve(VFBinding binding, bool isFloat) {
+            return curves.TryGetValue(binding, out var curve) && curve != null && curve.IsFloat == isFloat;
+        }
+
         internal ObjectReferenceKeyframe[] GetObjectCurve(VFBinding binding) {
             if (curves.TryGetValue(binding, out var curve) && !curve.IsFloat) {
                 return curve.ObjectCurve.ToArray();
@@ -537,8 +566,14 @@ namespace VF.Utils.Controller {
             changedFromOriginalSourceClip = true;
         }
 
-        private void PreserveNonStandardEulerOrders(AnimationClip clip, VFGameObject bindingRoot) {
+        private void PreserveNonStandardEulerOrders(
+            AnimationClip clip,
+            VFGameObject bindingRoot,
+            Dictionary<VFGameObject, string> cachedPaths
+        ) {
             if (originalSourceClip == null) return;
+            // Rotation order only affects transform curves.
+            if (!curves.Keys.Any(binding => typeof(Transform).IsAssignableFrom(binding.type))) return;
 
             var nonStandardEulerOrders = new Dictionary<string, int>();
             var finalizedPathsByStoredPath = curves.Keys
@@ -546,23 +581,23 @@ namespace VF.Utils.Controller {
                 .ToDictionary(
                     group => group.Key,
                     group => group
-                        .Select(binding => binding.GetPath(bindingRoot))
+                        .Select(binding => binding.GetPath(bindingRoot, cachedPaths))
                         .Distinct()
                         .ToArray()
                 );
             using (var so = new SerializedObject(originalSourceClip)) {
                 so.Update();
                 void ProcessArray(string arrayPath) {
-                    var array = so.FindProperty(arrayPath);
+                    using var array = so.FindProperty(arrayPath);
                     var length = array?.arraySize ?? 0;
                     if (length == 0) return;
-                    var element = array.GetArrayElementAtIndex(0);
+                    using var element = array.GetArrayElementAtIndex(0);
                     for (var i = 0; i < length; i++, element.Next(false)) {
-                        var rotationOrderProp = element.FindPropertyRelative("curve.m_RotationOrder");
+                        using var rotationOrderProp = element.FindPropertyRelative("curve.m_RotationOrder");
                         if (rotationOrderProp == null || rotationOrderProp.propertyType != SerializedPropertyType.Integer) continue;
                         var rotationOrder = rotationOrderProp.intValue;
                         if (rotationOrder == 4) continue;
-                        var pathProp = element.FindPropertyRelative("path");
+                        using var pathProp = element.FindPropertyRelative("path");
                         if (pathProp == null || pathProp.propertyType != SerializedPropertyType.String) continue;
                         var storedPath = pathProp.stringValue;
                         if (!finalizedPathsByStoredPath.TryGetValue(storedPath, out var finalizedPaths)) {
@@ -583,19 +618,32 @@ namespace VF.Utils.Controller {
                 so.Update();
                 var changedOne = false;
                 void ProcessArray(string arrayPath) {
-                    var array = so.FindProperty(arrayPath);
+                    using var array = so.FindProperty(arrayPath);
                     var length = array?.arraySize ?? 0;
                     if (length == 0) return;
-                    var element = array.GetArrayElementAtIndex(0);
-                    for (var i = 0; i < length; i++, element.Next(false)) {
-                        var pathProp = element.FindPropertyRelative("path");
-                        if (pathProp == null || pathProp.propertyType != SerializedPropertyType.String) continue;
-                        var path = pathProp.stringValue;
-                        if (!nonStandardEulerOrders.TryGetValue(path, out var rotationOrder)) continue;
-                        var rotationOrderProp = element.FindPropertyRelative("curve.m_RotationOrder");
-                        if (rotationOrderProp == null || rotationOrderProp.propertyType != SerializedPropertyType.Integer) continue;
-                        rotationOrderProp.intValue = rotationOrder;
-                        changedOne = true;
+                    using var element = array.GetArrayElementAtIndex(0);
+                    var elementDepth = element.depth;
+                    for (var i = 0; i < length; i++) {
+                        using var path = element.FindPropertyRelative("path");
+                        if (path == null || path.propertyType != SerializedPropertyType.String
+                            || !nonStandardEulerOrders.TryGetValue(path.stringValue, out var rotationOrder)) {
+                            element.Next(false);
+                            continue;
+                        }
+
+                        // Resolve the rotation order by walking the curve fields in place. Unity's
+                        // relative lookup is slow here while it tracks pending edits to the array.
+                        var enterChildren = true;
+                        while (element.Next(enterChildren)) {
+                            var depth = element.depth - elementDepth;
+                            if (depth <= 0) break;
+                            enterChildren = depth == 1 && element.name == "curve";
+                            if (depth == 2 && element.name == "m_RotationOrder"
+                                && element.propertyType == SerializedPropertyType.Integer) {
+                                element.intValue = rotationOrder;
+                                changedOne = true;
+                            }
+                        }
                     }
                 }
                 ProcessArray("m_EulerCurves");
@@ -607,30 +655,5 @@ namespace VF.Utils.Controller {
             }
         }
 
-        private static void ClearRawCurves(AnimationClip clip) {
-            var floatBindings = AnimationUtility.GetCurveBindings(clip);
-            var objectBindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
-#if UNITY_2018_1_OR_NEWER
-            if (floatBindings.Any()) {
-                AnimationUtility.SetEditorCurves(clip,
-                    floatBindings,
-                    floatBindings.Select(_ => (AnimationCurve)null).ToArray()
-                );
-            }
-            if (objectBindings.Any()) {
-                AnimationUtility.SetObjectReferenceCurves(clip,
-                    objectBindings,
-                    objectBindings.Select(_ => (ObjectReferenceKeyframe[])null).ToArray()
-                );
-            }
-#else
-            foreach (var b in floatBindings) {
-                AnimationUtility.SetEditorCurve(clip, b, null);
-            }
-            foreach (var b in objectBindings) {
-                AnimationUtility.SetObjectReferenceCurve(clip, b, null);
-            }
-#endif
-        }
     }
 }

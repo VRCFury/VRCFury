@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using JetBrains.Annotations;
@@ -8,6 +9,7 @@ using Object = UnityEngine.Object;
 
 namespace VF {
     internal static class UnitySerializationUtils {
+        private static readonly ConcurrentDictionary<Type, IList<FieldInfo>> serializableFields = new();
         public class IterateVisit {
             public string path = "";
             [CanBeNull] public FieldInfo field;
@@ -111,7 +113,10 @@ namespace VF {
         }
 
         // https://docs.unity3d.com/6000.0/Documentation/Manual/script-serialization-rules.html
-        private static IList<FieldInfo> GetAllSerializableFields(Type objType) {
+        private static IList<FieldInfo> GetAllSerializableFields(Type objType) =>
+            serializableFields.GetOrAdd(objType, FindSerializableFields);
+
+        private static IList<FieldInfo> FindSerializableFields(Type objType) {
             var output = new List<FieldInfo>();
 
             for (var current = objType; current != null; current = current.BaseType) {

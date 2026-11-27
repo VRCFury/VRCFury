@@ -25,6 +25,7 @@ namespace VF.Service {
 
         private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController> _controllers
             = new Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController>();
+        private readonly Dictionary<VRCAvatarDescriptor.AnimLayerType, VFAvatarController> inspectionControllers = new();
         private bool applyBaseMask = true;
         private bool controllerLoadingAllowed;
         private readonly Dictionary<VFAvatarController, (HashSet<VFLayer> layers, HashSet<string> parameters)> originals
@@ -34,7 +35,7 @@ namespace VF.Service {
             return _controllers.GetOrCreate(type, () => MakeController(type));
         }
 
-        private VFAvatarController MakeController(VRCAvatarDescriptor.AnimLayerType type) {
+        private VFAvatarController MakeController(VRCAvatarDescriptor.AnimLayerType type, bool skipAnimationClips = false) {
             if (!globals.useOriginalAssets && applyBaseMask && !controllerLoadingAllowed) {
                 throw new System.InvalidOperationException(
                     "A playable-layer controller was loaded before the Load All Controllers build phase."
@@ -49,6 +50,7 @@ namespace VF.Service {
                     OwnerObject = globals.avatarObject,
                     AnimatorObject = globals.avatarObject,
                     RootBindingsApplyToAvatar = true,
+                    SkipAnimationClips = skipAnimationClips,
                     ObjectPaths = objectPaths,
                     ReverseObjectPaths = true
                 };
@@ -59,15 +61,17 @@ namespace VF.Service {
             if (ctrl == null) {
                 ctrl = VFController.Create();
             }
+            // Loading already made a private copy of the descriptor's controller.
             var output = new VFAvatarController(
                 ctrl,
                 type,
                 () => globals.currentFeatureNum,
                 name => uniqueParams.Value.GetInternalName(name),
                 layerSourceService,
-                expressionParams
+                expressionParams,
+                takeOwnership: true
             );
-            if (existingController != null) {
+            if (existingController != null && !skipAnimationClips) {
                 foreach (var layer in output.GetLayers()) {
                     layerSourceService.SetSource(layer,
                         isDefault ? LayerSourceService.VrcDefaultSource : LayerSourceService.AvatarDescriptorSource);
@@ -82,6 +86,7 @@ namespace VF.Service {
         public void ClearCache(bool applyBaseMask = true) {
             this.applyBaseMask = applyBaseMask;
             _controllers.Clear();
+            inspectionControllers.Clear();
             originals.Clear();
         }
 
@@ -99,10 +104,22 @@ namespace VF.Service {
         public IList<VFAvatarController> GetAllMutatedControllers() {
             return _controllers.Values.ToArray();
         }
-        public IList<VFAvatarController> GetAllUsedControllers() {
+        public IList<VFAvatarController> GetAllUsedControllers() => GetAllUsedControllers(GetController);
+
+        public IList<VFAvatarController> GetControllersForParameterInspection() {
+            if (applyBaseMask) return GetAllUsedControllers();
+            return GetAllUsedControllers(type => {
+                // Reuse pending edits on loaded controllers. The compressor loads Action
+                // through GetAction when it has changes to make.
+                if (_controllers.TryGetValue(type, out var loaded)) return loaded;
+                return inspectionControllers.GetOrCreate(type, () => MakeController(type, skipAnimationClips: true));
+            });
+        }
+
+        private IList<VFAvatarController> GetAllUsedControllers(Func<VRCAvatarDescriptor.AnimLayerType, VFAvatarController> load) {
             return VRCAvatarUtils.GetAllControllers(avatar)
                 .Where(c => c.controller != null)
-                .Select(c => GetController(c.type))
+                .Select(c => load(c.type))
                 .Concat(_controllers.Values)
                 .Distinct()
                 .ToArray();

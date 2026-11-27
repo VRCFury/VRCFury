@@ -107,8 +107,9 @@ namespace VF.Utils.Controller {
                     .Where(t => t != null)
             );
 
-            for (var i = 0; i < raw.stateMachines.Length; i++) {
-                var rawChild = raw.stateMachines[i];
+            var machines = raw.stateMachines;
+            for (var i = 0; i < machines.Length; i++) {
+                var rawChild = machines[i];
                 var childStateMachine = output.childStateMachines[i];
                 childStateMachine.transitions.AddRange(
                     raw.GetStateMachineTransitions(rawChild.stateMachine)
@@ -118,9 +119,10 @@ namespace VF.Utils.Controller {
                 LoadTransitionsRecursive(childStateMachine.stateMachine, rawChild.stateMachine, context);
             }
 
-            for (var i = 0; i < raw.states.Length; i++) {
+            var states = raw.states;
+            for (var i = 0; i < states.Length; i++) {
                 output.statesValue[i].transitions.AddRange(
-                    raw.states[i].state.transitions
+                    states[i].state.transitions
                         .Select(t => VFTransition.Load(t, context.States, context.StateMachines))
                         .Where(t => t != null)
                 );

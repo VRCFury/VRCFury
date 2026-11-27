@@ -86,8 +86,19 @@ namespace VF.Feature {
                 );
             }
 
-            var fromControllers = new List<VFControllerWithVrcType>();
+            var fromControllers = new List<(VFController controller, VRCAvatarDescriptor.AnimLayerType type)>();
             var baseObject = GetBaseObject(model, featureBaseObject);
+            Func<string, string> rewritePath = null;
+            if (model.rewriteBindings.Count > 0) {
+                var rewrittenPaths = new Dictionary<string, string>();
+                rewritePath = path => {
+                    if (!rewrittenPaths.TryGetValue(path, out var rewritten)) {
+                        rewritten = AnimationBindingUtils.RewriteRelativePath(path, model.rewriteBindings);
+                        rewrittenPaths[path] = rewritten;
+                    }
+                    return rewritten;
+                };
+            }
             foreach (var c in model.controllers) {
                 var source = c.controller.Get();
                 if (source == null) {
@@ -103,26 +114,26 @@ namespace VF.Feature {
                         RootBindingsApplyToAvatar = model.rootBindingsApplyToAvatar,
                         AdjustRootScale = true,
                         ObjectPaths = objectPaths,
-                        RewritePath = path => AnimationBindingUtils.RewriteRelativePath(path, model.rewriteBindings)
+                        RewritePath = rewritePath
                     }
                 );
                 if (copy != null) {
-                    fromControllers.Add(new VFControllerWithVrcType(copy, c.type));
+                    fromControllers.Add((copy, c.type));
                 }
             }
 
 #if VRCSDK_HAS_FACE_TRACKING
             var faceTrackingSetNames = RegisterFaceTrackingSets();
-            foreach (var from in fromControllers)
+            foreach (var (from, _) in fromControllers)
                 RewriteFaceTrackingSetNames(from, faceTrackingSetNames);
 #endif
 
             // Record the offsets so we can fix them later
             animatorLayerControlManager.RegisterControllerSet(fromControllers);
 
-            foreach (var from in fromControllers) {
-                var to = controllers.GetController(from.vrcType);
-                if (from.vrcType == VRCAvatarDescriptor.AnimLayerType.FX
+            foreach (var (from, type) in fromControllers) {
+                var to = controllers.GetController(type);
+                if (type == VRCAvatarDescriptor.AnimLayerType.FX
                     && from.TryGetParam(InhibitHandControlsParam, out var inhibitHandControlsParam)) {
                     hasInhibitHandControlsParam = true;
                     inhibitHandControlsDefault = inhibitHandControlsParam.GetDefault();

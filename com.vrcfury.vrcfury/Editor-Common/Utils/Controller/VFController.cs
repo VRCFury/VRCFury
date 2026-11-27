@@ -31,11 +31,19 @@ namespace VF.Utils.Controller {
             InitFromRaw(ctrl, context);
         }
 
-        protected VFController(VFController source) {
+        protected VFController(VFController source, bool takeOwnership = false) {
             if (source == null) throw new ArgumentNullException(nameof(source));
             _name = source._name;
             sourceAsset = source.sourceAsset;
             workLog.AddRange(source.workLog);
+            if (takeOwnership) {
+                _layers = source._layers;
+                source._layers = new List<VFLayer>();
+                foreach (var layer in _layers) layer?.ReassignController(this);
+                foreach (var parameter in source.parametersByName.Values) AddOrMergeParam(parameter);
+                source.parametersByName.Clear();
+                return;
+            }
             SetParameters(source.parameters.Select(p => p.Clone(this)));
             var context = new VFCloneContext();
             _layers = source._layers.Select(layer => layer?.Clone(this, context)).ToList();
@@ -359,7 +367,8 @@ namespace VF.Utils.Controller {
             saveSession.SaveControllerAndChildren(
                 finalizedRaw,
                 context.NewAssets,
-                context.OtherAssets
+                context.OtherAssets,
+                context.NewClipKeyCount
             );
             return finalizedRaw;
         }
@@ -494,23 +503,12 @@ namespace VF.Utils.Controller {
             return new VFController(this);
         }
 
-        private IEnumerable<VFMotion> GetMotions(IEnumerable<VFLayer> layerList = null) {
-            return (layerList ?? layers)
-                .SelectMany(layer => layer.allStates)
-                .Select(state => state.motion)
-                .Where(motion => motion != null);
-        }
-
         public IEnumerable<VFClip> GetClips(IEnumerable<VFLayer> layerList = null) {
-            return GetMotions(layerList)
-                .SelectMany(motion => new AnimatorIterator.Clips().From(motion))
-                .Distinct();
+            foreach (var clip in new AnimatorIterator.Clips().From(layerList ?? layers)) yield return clip;
         }
 
         public IEnumerable<VFTree> GetTrees(IEnumerable<VFLayer> layerList = null) {
-            return GetMotions(layerList)
-                .SelectMany(motion => new AnimatorIterator.Trees().From(motion))
-                .Distinct();
+            foreach (var tree in new AnimatorIterator.Trees().From(layerList ?? layers)) yield return tree;
         }
 
         public void RemoveWrongParamTypes([CanBeNull] string firstFloat) {
@@ -618,12 +616,10 @@ namespace VF.Utils.Controller {
                 }
             }
 
-            Rewrite(AnimationRewriter.RewriteBinding(binding => {
-                if (binding.GetPropType() == EditorCurveBindingType.Aap && !IsFloat(binding.propertyName)) {
-                    return null;
-                }
-                return binding;
-            }));
+            bool RemoveBinding(VFBinding binding) =>
+                binding.GetPropType() == EditorCurveBindingType.Aap && !IsFloat(binding.propertyName);
+            foreach (var clip in GetClips()) clip.RemoveBindings(RemoveBinding);
+            onRewriteClips?.Invoke(this, AnimationRewriter.RewriteBinding(binding => RemoveBinding(binding) ? null : binding));
         }
 
         /**
@@ -668,10 +664,8 @@ namespace VF.Utils.Controller {
                     UpgradeType(state.cycleOffsetParameter, AnimatorControllerParameterType.Float);
             }
             foreach (var clip in GetClips()) {
-                foreach (var binding in clip.GetFloatBindings()) {
-                    if (binding.GetPropType() == EditorCurveBindingType.Aap) {
-                        UpgradeType(binding.propertyName, AnimatorControllerParameterType.Float);
-                    }
+                foreach (var binding in clip.GetFloatBindings(b => b.GetPropType() == EditorCurveBindingType.Aap)) {
+                    UpgradeType(binding.propertyName, AnimatorControllerParameterType.Float);
                 }
             }
 

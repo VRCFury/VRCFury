@@ -1,5 +1,9 @@
+using System.IO;
+using System.Linq;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using VF.Utils;
 
 public class MaterialExtensionsTest {
@@ -92,6 +96,60 @@ public class MaterialExtensionsTest {
         } finally {
             UnityEngine.Object.DestroyImmediate(mat);
         }
+    }
+
+    [Test]
+    public void TextureEnumerationMatchesMaterialAssignmentsAndDefaults() {
+        var folder = AssetDatabase.GenerateUniqueAssetPath("Assets/VF Texture Reference Test");
+        VRCFuryAssetDatabase.CreateFolder(folder);
+        var shaderPath = folder + "/Test.shader";
+        var texture = new Texture2D(2, 2);
+        Material material = null;
+        Material variant = null;
+        try {
+            File.WriteAllText(shaderPath, @"Shader ""Hidden/VF Texture Reference Test"" {
+                Properties {
+                    _Default (""Default"", 2D) = ""white"" {}
+                    _Assigned (""Assigned"", 2D) = ""black"" {}
+                    _Unset (""Unset"", 2D) = ""white"" {}
+                }
+                SubShader { Pass {} }
+            }");
+            AssetDatabase.ImportAsset(shaderPath, ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabase.CreateAsset(texture, folder + "/Texture.asset");
+            var importer = (ShaderImporter)AssetImporter.GetAtPath(shaderPath);
+            importer.SetDefaultTextures(new[] { "_Default" }, new Texture[] { texture });
+            importer.SaveAndReimport();
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>(shaderPath);
+            material = new Material(shader);
+            material.SetTexture("_Assigned", texture);
+            AssertMatchesNative(material);
+
+            AssetDatabase.CreateAsset(material, folder + "/Parent.mat");
+            variant = new Material(material) { parent = material };
+            Assert.That(variant.GetTexture("_Assigned"), Is.EqualTo(texture));
+            AssertMatchesNative(variant);
+
+            material.SetTexture("_Assigned", null);
+            Assert.That(variant.GetTexture("_Assigned"), Is.Null);
+            AssertMatchesNative(variant);
+
+            variant.SetTexture("_Assigned", texture);
+            AssertMatchesNative(variant);
+            AssertMatchesNative(material);
+        } finally {
+            if (variant != null) Object.DestroyImmediate(variant);
+            if (material != null && !EditorUtility.IsPersistent(material)) Object.DestroyImmediate(material);
+            if (!EditorUtility.IsPersistent(texture)) Object.DestroyImmediate(texture);
+            AssetDatabase.DeleteAsset(folder);
+        }
+    }
+
+    private static void AssertMatchesNative(Material material) {
+        var expected = material.shader.GetPropertyNames(ShaderPropertyType.Texture)
+            .Select(name => (name, texture: material.GetTexture(name) as Texture2D))
+            .Where(pair => pair.texture != null);
+        Assert.That(material.GetTexture2DProperties(), Is.EqualTo(expected));
     }
 
     private static void AssertColor(Color actual, Color expected) {

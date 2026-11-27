@@ -11,7 +11,11 @@ namespace VF.Utils {
             return vrcType;
         }
 
-        public VFControllerWithVrcType(VFController ctrl, VRCAvatarDescriptor.AnimLayerType vrcType) : base(ctrl) {
+        public VFControllerWithVrcType(
+            VFController ctrl,
+            VRCAvatarDescriptor.AnimLayerType vrcType,
+            bool takeOwnership = false
+        ) : base(ctrl, takeOwnership) {
             this.vrcType = vrcType;
         }
 

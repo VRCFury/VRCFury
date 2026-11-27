@@ -20,8 +20,7 @@ namespace VF.Builder.Haptics {
 
         public bool AlreadyExistsAboveOrBelow(VFGameObject obj, IEnumerable<VFGameObject> existing) {
             if (!WillSurvive(obj)) return true;
-            var occupied = new HashSet<VFGameObject>(existing);
-            return obj.GetSelfAndAllChildren().Concat(obj.GetSelfAndAllParents()).Any(occupied.Contains);
+            return existing.Any(other => other != null && (obj.IsSameOrChildOf(other) || other.IsSameOrChildOf(obj)));
         }
 
         public string GetPath(VFGameObject obj) => obj.GetPath(root);

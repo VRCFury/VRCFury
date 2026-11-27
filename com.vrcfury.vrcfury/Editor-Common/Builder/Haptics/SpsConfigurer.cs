@@ -27,6 +27,20 @@ namespace VF.Builder.Haptics {
 
         [VFAutowired] [CanBeNull] private readonly SpsAutoChannelGenerator autoChannelGenerator;
         internal readonly string selfTagSuffix = "/self/" + BitConverter.ToUInt32(Guid.NewGuid().ToByteArray(), 0);
+        private readonly SpsPatcher patcher = new();
+
+        private static bool KeepShaderImports => SpsDevModeMenuItem.Get() && !IsActuallyUploadingHook.Get();
+
+        internal void PrepareMaterials(IEnumerable<(Material material, bool hasBlendshapes)> materials) {
+            var requests = materials.Distinct().ToArray();
+            if (requests.Length == 0) return;
+            MaterialLocker.TryLockBatch(requests.Select(request => request.material));
+            patcher.PrepareBatch(
+                requests.Where(request => request.material != null)
+                    .Select(request => (request.material.shader, request.hasBlendshapes)),
+                KeepShaderImports
+            );
+        }
 
         public static void ExtendBoundsForSps(Renderer renderer, VFGameObject bakeRoot, float worldLength) {
             if (renderer == null || bakeRoot == null) return;
@@ -46,7 +60,7 @@ namespace VF.Builder.Haptics {
             renderer.SetLocalBounds(bounds, "SPS bounds expansion");
         }
 
-        public static void ConfigureSpsMaterial(
+        public void ConfigureSpsMaterial(
             Renderer skin,
             Material m,
             float worldLength,
@@ -56,7 +70,7 @@ namespace VF.Builder.Haptics {
             VFGameObject bakeRoot,
             IList<string> spsBlendshapes
         ) {
-            SpsPatcher.Patch(m, SpsDevModeMenuItem.Get() && !IsActuallyUploadingHook.Get(), spsBlendshapes.Count > 0);
+            patcher.PatchMaterial(m, KeepShaderImports, spsBlendshapes.Count > 0);
             {
                 // Prevent poi from stripping our parameters
                 var count = m.shader.GetPropertyCount();

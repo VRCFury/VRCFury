@@ -41,10 +41,12 @@ namespace VF.Service {
                 var saved = controller.Save(avatarObject, Session);
                 VRCAvatarUtils.SetAvatarController(avatar, controller.GetType(), saved);
             }
-            if (controllersToSaveArray.Any(controller => controller == controllers.GetFx())) {
+            if (controllersToSaveArray.Any(controller => controller.GetType() == VRCAvatarDescriptor.AnimLayerType.FX)) {
                 var rootAnimator = avatarObject.GetComponent<Animator>();
                 if (rootAnimator != null && rootAnimator.runtimeAnimatorController != null) {
-                    rootAnimator.runtimeAnimatorController = VRCAvatarUtils.GetAvatarController(avatar, controllers.GetFx().GetType()).Item2;
+                    var fxController = VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX).Item2;
+                    // Assigning the controller reinitializes the Animator, which can compile editor preview shader variants.
+                    ShaderExtensions.WithAsyncCompilationDuringBuild(() => rootAnimator.runtimeAnimatorController = fxController);
                 }
             }
 

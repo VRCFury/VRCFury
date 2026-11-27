@@ -98,11 +98,15 @@ namespace VF.Builder.Haptics {
             // Include vertex depths to preserve narrow bulges between the regular slices.
             var depthSet = new HashSet<float>();
             for (var i = 0; i <= SliceIntervals; i++) depthSet.Add((float)i / SliceIntervals);
+            var visitedVertices = new bool[vertices.Length];
             foreach (var index in triangles) {
+                if (visitedVertices[index]) continue;
+                visitedVertices[index] = true;
                 var z = vertices[index].z;
                 if (z >= 0 && z <= 1) depthSet.Add(z);
             }
-            var depths = depthSet.OrderBy(z => z).ToArray();
+            var depths = depthSet.ToArray();
+            Array.Sort(depths);
             var radii = SampleRadii(vertices, triangles, depths);
 
             var keptDepths = new List<float> { 0 };
@@ -154,13 +158,27 @@ namespace VF.Builder.Haptics {
 
                 // A triangle's widest points in each slice are on its edges.
                 var count = triangles.Length / 3;
+                var previousA = -1;
+                var previousB = -1;
+                var previousC = -1;
+                bool WasInPreviousTriangle(int index) => index == previousA || index == previousB || index == previousC;
                 for (var i = count * worker / workers * 3; i < count * (worker + 1) / workers * 3; i += 3) {
-                    var a = vertices[triangles[i]];
-                    var b = vertices[triangles[i + 1]];
-                    var c = vertices[triangles[i + 2]];
-                    AddEdge(a, b);
-                    AddEdge(b, c);
-                    AddEdge(c, a);
+                    var indexA = triangles[i];
+                    var indexB = triangles[i + 1];
+                    var indexC = triangles[i + 2];
+                    var a = vertices[indexA];
+                    var b = vertices[indexB];
+                    var c = vertices[indexC];
+                    // The preceding triangle already sampled any edge that shares both vertices.
+                    var seenA = WasInPreviousTriangle(indexA);
+                    var seenB = WasInPreviousTriangle(indexB);
+                    var seenC = WasInPreviousTriangle(indexC);
+                    if (!seenA || !seenB || indexA == indexB) AddEdge(a, b);
+                    if (!seenB || !seenC || indexB == indexC) AddEdge(b, c);
+                    if (!seenC || !seenA || indexC == indexA) AddEdge(c, a);
+                    previousA = indexA;
+                    previousB = indexB;
+                    previousC = indexC;
                 }
             }
             if (workers == 1) Sample(0);

@@ -26,6 +26,7 @@ namespace VF.Utils.Controller {
 
             VFMotion output;
             if (raw is AnimationClip clip) {
+                if (context.SkipAnimationClips) return null;
                 output = VFClip.Load(clip, context);
             } else if (raw is BlendTree tree) {
                 output = VFTree.Load(tree, context);

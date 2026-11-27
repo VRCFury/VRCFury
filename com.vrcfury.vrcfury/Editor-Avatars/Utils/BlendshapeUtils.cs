@@ -38,42 +38,45 @@ namespace VF.Utils {
             var originalMesh = skin.GetMesh();
             if (originalMesh == null) return;
             var blendshapeCount = originalMesh.blendShapeCount;
-            var blendshapeNames = Enumerable.Range(0, blendshapeCount)
-                .Select(index => originalMesh.GetBlendShapeName(index))
-                .ToArray();
             var weights = Enumerable.Range(0, blendshapeCount)
                 .Select(skin.GetBlendShapeWeight)
-                .ToArray();
-            var frames = Enumerable.Range(0, blendshapeCount)
-                .Select(index => new BlendshapeFrames(originalMesh, index))
                 .ToArray();
 
             var mesh = skin.GetMutableMesh("Renamed blendshapes for face tracking", forceClone: true);
             mesh.ClearBlendShapes();
+            var frames = new BlendshapeFrameBuffer(mesh.vertexCount);
             for (var index = 0; index < blendshapeCount; index++) {
-                var name = renames.TryGetValue(blendshapeNames[index], out var renamed) ? renamed : blendshapeNames[index];
-                frames[index].SaveTo(mesh, name);
+                var originalName = originalMesh.GetBlendShapeName(index);
+                var name = renames.TryGetValue(originalName, out var renamed) ? renamed : originalName;
+                frames.CopyShape(originalMesh, index, mesh, name);
                 skin.SetBlendShapeWeight(index, weights[index]);
             }
             mesh.Dirty();
         }
 
-        internal class BlendshapeFrames {
-            private readonly List<(float weight, Vector3[] vertices, Vector3[] normals, Vector3[] tangents)> frames = new();
+        internal class BlendshapeFrameBuffer {
+            private readonly Vector3[] positions;
+            private readonly Vector3[] normals;
+            private readonly Vector3[] tangents;
 
-            public BlendshapeFrames(Mesh mesh, int index) {
-                for (var frame = 0; frame < mesh.GetBlendShapeFrameCount(index); frame++) {
-                    var vertices = new Vector3[mesh.vertexCount];
-                    var normals = new Vector3[mesh.vertexCount];
-                    var tangents = new Vector3[mesh.vertexCount];
-                    mesh.GetBlendShapeFrameVertices(index, frame, vertices, normals, tangents);
-                    frames.Add((mesh.GetBlendShapeFrameWeight(index, frame), vertices, normals, tangents));
-                }
+            public BlendshapeFrameBuffer(int vertexCount) {
+                positions = new Vector3[vertexCount];
+                normals = new Vector3[vertexCount];
+                tangents = new Vector3[vertexCount];
             }
 
-            public void SaveTo(Mesh mesh, string name) {
-                foreach (var (weight, vertices, normals, tangents) in frames)
-                    mesh.AddBlendShapeFrame(name, weight, vertices, normals, tangents);
+            public void CopyShape(Mesh source, int index, Mesh destination, string name) {
+                var count = source.GetBlendShapeFrameCount(index);
+                for (var frame = 0; frame < count; frame++) {
+                    source.GetBlendShapeFrameVertices(index, frame, positions, normals, tangents);
+                    destination.AddBlendShapeFrame(
+                        name,
+                        source.GetBlendShapeFrameWeight(index, frame),
+                        positions,
+                        normals,
+                        tangents
+                    );
+                }
             }
         }
 

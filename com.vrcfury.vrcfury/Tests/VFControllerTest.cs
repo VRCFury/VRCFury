@@ -8,6 +8,27 @@ namespace VF.Tests {
     using Object = UnityEngine.Object;
 
     internal class VFControllerTest : ControllerParameterTestBase {
+        [Test]
+        public void MotionEnumerationUsesTheCurrentGraphAndKeepsItsLayerScope() {
+            var controller = VFController.Create();
+            var first = controller.NewLayer("Included");
+            var second = controller.NewLayer("Excluded");
+            var shared = VFTree.Create("Shared", BlendTreeType.Direct);
+            var clip = VFClip.Create("Shared clip");
+            var excluded = VFClip.Create("Excluded clip");
+            var clips = controller.GetClips(new[] { first });
+            var trees = controller.GetTrees();
+
+            shared.AddChild(new VFTreeChild { motion = clip });
+            first.NewState("One").WithAnimation(shared);
+            first.NewState("Two").WithAnimation(shared);
+            second.NewState("Other").WithAnimation(excluded);
+
+            Assert.That(clips, Is.EqualTo(new[] { clip }));
+            Assert.That(trees, Is.EqualTo(new[] { shared }));
+            Assert.That(controller.GetClips(), Is.EquivalentTo(new[] { clip, excluded }));
+        }
+
         [TestCase(AnimatorControllerParameterType.Trigger, 0, AnimatorControllerParameterType.Trigger)]
         [TestCase(AnimatorControllerParameterType.Bool, 0, AnimatorControllerParameterType.Bool)]
         [TestCase(AnimatorControllerParameterType.Bool, 1, AnimatorControllerParameterType.Bool)]

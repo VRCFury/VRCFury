@@ -70,12 +70,13 @@ namespace VF.Builder.Haptics {
 
         public void Discover() {
             foreach (var renderer in context.root.GetComponentsInSelfAndChildren<Renderer>()) {
+                var owner = renderer.owner();
+                if (context.AlreadyExistsAboveOrBelow(owner, existing.Concat(added))) continue;
                 if (!TpsUtils.HasDpsOrTpsMaterial(renderer)) continue;
-                if (context.AlreadyExistsAboveOrBelow(renderer.owner(), existing.Concat(added))) continue;
                 var size = PlugSizeDetector.GetAutoWorldSize(new[] { renderer },
                     renderer.GetRootBone().worldPosition, SpsPlugPreparation.GetLegacyRotation(renderer));
                 if (size == null) continue;
-                var plug = Add(renderer.owner());
+                var plug = Add(owner);
                 if (plug != null) {
                     plug.autoRenderer = false;
                     plug.configureTpsMesh.Add(renderer);

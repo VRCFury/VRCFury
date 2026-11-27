@@ -6,8 +6,10 @@ using Object = UnityEngine.Object;
 
 namespace VF.Tests {
     public class SpsBakerTest {
-        [Test]
-        public void RadiusProfileIsAppendedWithoutMovingMeshOrBlendshapeData() {
+        [TestCase(0f)]
+        [TestCase(25f)]
+        [TestCase(100f)]
+        public void RadiusProfileIsAppendedWithoutMovingMeshOrBlendshapeData(float restingWeight) {
             var obj = new GameObject("Baked profile");
             var mesh = new Mesh();
             Texture2D original = null;
@@ -25,7 +27,7 @@ namespace VF.Tests {
                 );
                 var renderer = obj.AddComponent<SkinnedMeshRenderer>();
                 renderer.sharedMesh = mesh;
-                renderer.SetBlendShapeWeight(0, 25);
+                renderer.SetBlendShapeWeight(0, restingWeight);
                 var curve = new AnimationCurve(
                     new Keyframe(0, .1f),
                     new Keyframe(.3f, .15f),
@@ -50,15 +52,19 @@ namespace VF.Tests {
                 );
                 var before = original.GetRawTextureData<float>().ToArray();
                 var after = profiled.GetRawTextureData<float>().ToArray();
-                var offset = 1 + 3 * 10 + 1 + 3 * 9;
+                var blendshapeOffset = 1 + 3 * 10;
+                var offset = blendshapeOffset + 1 + 3 * 9;
                 Assert.That(before[0], Is.Zero);
                 Assert.That(after[0], Is.Zero);
+                Assert.That(after[3], Is.EqualTo(restingWeight / 100).Within(0.000001));
+                Assert.That(after[blendshapeOffset], Is.EqualTo(restingWeight));
+                Assert.That(after[blendshapeOffset + 3], Is.EqualTo(1).Within(0.000001));
                 Assert.That(after.Skip(1).Take(offset - 1), Is.EqualTo(before.Skip(1).Take(offset - 1)));
                 for (var i = 0; i < SpsBaker.RadiusProfileSamples; i++) {
                     var depth = i / (SpsBaker.RadiusProfileSamples - 1f);
                     Assert.That(after[offset + i], Is.EqualTo(curve.Evaluate(depth) / .2f));
                 }
-                Assert.That(renderer.GetBlendShapeWeight(0), Is.EqualTo(25));
+                Assert.That(renderer.GetBlendShapeWeight(0), Is.EqualTo(restingWeight));
             } finally {
                 Object.DestroyImmediate(original);
                 Object.DestroyImmediate(profiled);

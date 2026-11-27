@@ -39,11 +39,9 @@ namespace VF.Builder.Haptics {
         }
 
         public void RestoreAttachments() {
-            var constrainedObjects = context.root.GetConstraints(includeChildren: true)
-                .Where(c => c.IsParent()).Select(c => c.GetAffectedObject()).ToHashSet();
-            foreach (var parent in context.root.GetComponentsInSelfAndChildren<Transform>()) {
-                if (!constrainedObjects.Contains(parent.owner())) continue;
-                var constraint = parent.owner().GetConstraints().FirstOrDefault(c => c.IsParent());
+            var constraintsByTarget = context.root.GetConstraintsByTarget();
+            foreach (var parent in context.root.GetSelfAndAllChildren()) {
+                var constraint = constraintsByTarget[parent].FirstOrDefault(c => c.IsParent());
                 if (constraint == null) continue;
                 var sources = constraint.GetSources();
                 if (sources.Length < 2) continue;

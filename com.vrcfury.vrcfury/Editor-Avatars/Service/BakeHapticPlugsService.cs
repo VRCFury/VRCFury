@@ -40,6 +40,7 @@ namespace VF.Service {
         [VFAutowired] private readonly SpsPlugRadiusService plugRadiusService;
         [VFAutowired] private readonly SpsPlugMeasurementsService plugMeasurements;
         [VFAutowired] private readonly ParameterInjectService parameterInjectService;
+        [VFAutowired] private readonly SpsConfigurer spsConfigurer;
         private VFAvatarController fx => controllers.GetFx();
 
 
@@ -184,6 +185,7 @@ namespace VF.Service {
                         skin = r.renderer,
                         bakeRoot = bakeRoot,
                         configureMaterial = r.configureMaterial,
+                        shouldPatchMaterial = r.shouldPatchMaterial,
                         spsBlendshapes = r.spsBlendshapes
                     });
                 }
@@ -262,6 +264,7 @@ namespace VF.Service {
             public Renderer skin;
             public VFGameObject bakeRoot;
             public Func<int, Material, Material> configureMaterial;
+            public Func<int, bool> shouldPatchMaterial;
             public IList<string> spsBlendshapes;
         }
         private readonly List<SpsRewriteToDo> spsRewritesToDo = new List<SpsRewriteToDo>();
@@ -279,6 +282,44 @@ namespace VF.Service {
             return weight;
         });
 
+        private static VFBinding GetRendererBinding(VFBinding binding, Renderer renderer) {
+            return binding.type == typeof(MeshRenderer) && renderer is SkinnedMeshRenderer
+                ? binding.WithType(typeof(SkinnedMeshRenderer))
+                : binding;
+        }
+
+        private IEnumerable<(Material material, bool hasBlendshapes)> GetSpsMaterials() {
+            if (spsRewritesToDo.Count == 0) yield break;
+
+            // Prepare the shaders for both the current materials and animated swaps before importing any of them.
+            var byObject = spsRewritesToDo.ToLookup(rewrite => rewrite.skin.owner());
+            foreach (var rewrite in spsRewritesToDo) {
+                var materials = rewrite.skin.sharedMaterials;
+                for (var slot = 0; slot < materials.Length; slot++) {
+                    var material = materials[slot];
+                    if (material != null && rewrite.shouldPatchMaterial(slot)) {
+                        yield return (material, rewrite.spsBlendshapes.Count > 0);
+                    }
+                }
+            }
+
+            foreach (var clip in allClipsService.GetAllClips()) {
+                foreach (var binding in clip.GetObjectBindings()) {
+                    if (binding.target == null) continue;
+                    foreach (var rewrite in byObject[binding.target]) {
+                        var rendererBinding = GetRendererBinding(binding, rewrite.skin);
+                        if (!avatarBindingStateService.TryParseMaterialSlot(rendererBinding, out _, out var slot)) continue;
+                        if (!rewrite.shouldPatchMaterial(slot)) continue;
+                        foreach (var key in clip.GetObjectCurve(binding)) {
+                            if (key.value is Material material && material != null) {
+                                yield return (material, rewrite.spsBlendshapes.Count > 0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         [FeatureBuilderAction(FeatureOrder.HapticsAnimationRewrites)]
         public void ApplySpsRewrites() {
             foreach (var finish in finishRendererSwaps) finish();
@@ -292,6 +333,7 @@ namespace VF.Service {
                     if (plug != null && bakeResults.ContainsKey(plug)) clip.SetAap(GetEnabledWeight(plug), curve);
                 }
             }
+            spsConfigurer.PrepareMaterials(GetSpsMaterials());
             foreach (var rewrite in spsRewritesToDo) {
                 var rendererObject = rewrite.skin.owner();
                 void RewriteClip(VFClip clip) {
@@ -312,10 +354,8 @@ namespace VF.Service {
                             clip.SetAap(GetEnabledWeight(rewrite.plugObject.GetComponent<VRCFuryHapticPlug>()), curve);
                         }
 
-                        if (isRendererBinding
-                            && binding.type == typeof(MeshRenderer)
-                            && rewrite.skin is SkinnedMeshRenderer) {
-                            finalBinding = binding.WithType(typeof(SkinnedMeshRenderer));
+                        if (isRendererBinding) finalBinding = GetRendererBinding(binding, rewrite.skin);
+                        if (finalBinding.type != binding.type) {
                             clip.SetCurve(binding, null);
                             clip.SetCurve(finalBinding, curve);
                         }

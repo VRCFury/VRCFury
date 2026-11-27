@@ -31,7 +31,7 @@ namespace VF.Service {
 
         public void RecordDefaultNow(VFBinding binding, bool isFloat, bool force = false) {
             if (binding.IsAnimatorBinding()) return;
-            if (GetDefaultClip().GetCurve(binding, isFloat) != null) return;
+            if (GetDefaultClip().HasCurve(binding, isFloat)) return;
 
             var shouldRecord = force;
             if (!shouldRecord) {

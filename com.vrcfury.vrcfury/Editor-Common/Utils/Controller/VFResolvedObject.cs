@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using UnityEngine;
 using VF.Utils.Controller;
@@ -32,27 +33,31 @@ namespace VF.Utils {
                 return null;
             }
 
-            var target = AnimationBindingUtils.ResolveTarget(
-                context,
-                unresolvedPath,
-                type
-            );
+            var target = context.ResolveTarget(unresolvedPath, type);
             return new VFResolvedObject(target, sourcePath, unresolvedPath, target != null);
         }
 
-        public string GetPath([CanBeNull] VFGameObject root) {
+        public string GetPath(
+            [CanBeNull] VFGameObject root,
+            Dictionary<VFGameObject, string> cachedPaths = null
+        ) {
             if (target == null) return unresolvedPath;
-            if (root != null && !target.IsSameOrChildOf(root)) return unresolvedPath;
-            return target.GetPath(root);
+            return GetTargetPath(root, cachedPaths) ?? unresolvedPath;
         }
 
-        public bool ShouldDropOnSave(VFGameObject bindingRoot) {
-            if (isResolved) {
-                if (target == null) return true; // Resolved object was deleted during the build
-                if (bindingRoot != null && !target.IsSameOrChildOf(bindingRoot)) return true; // Resolved object was moved outside of the Animator
-                return false;
+        private string GetTargetPath(VFGameObject root, Dictionary<VFGameObject, string> cachedPaths) {
+            if (cachedPaths != null && cachedPaths.TryGetValue(target, out var cachedPath)) {
+                return cachedPath;
             }
-            return unresolvedPath == null; // Binding path was rewritten to null during the load-in
+            var path = root != null && !target.IsSameOrChildOf(root) ? null : target.GetPath(root);
+            cachedPaths?.Add(target, path);
+            return path;
+        }
+
+        public string GetPathForSave(VFGameObject root, Dictionary<VFGameObject, string> cachedPaths) {
+            // A resolved binding is dropped if its target was deleted or moved outside this Animator.
+            if (isResolved) return target == null ? null : GetTargetPath(root, cachedPaths);
+            return unresolvedPath == null ? null : GetPath(root, cachedPaths);
         }
 
         public VFResolvedObject WithTarget(VFGameObject newTarget, bool newIsResolved) {

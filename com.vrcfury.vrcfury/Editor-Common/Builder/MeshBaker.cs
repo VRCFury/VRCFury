@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -9,6 +10,9 @@ using VF.Utils;
 
 namespace VF.Builder {
     internal static class MeshBaker {
+        private const int VerticesPerWorker = 16384;
+        private const int MaxWorkers = 8;
+
         private class Cache {
             public Mesh mesh;
             public int meshVersion;
@@ -79,11 +83,33 @@ namespace VF.Builder {
             var conversion = origin.worldToLocalMatrix * renderer.localToWorldMatrix;
             if (applyScale) conversion = Matrix4x4.Scale(origin.lossyScale) * conversion;
             // Preserve magnitude: Poiyomi uses the world-space normal length as an effect scale.
-            return new BakedMesh {
-                vertices = baked.vertices.Select(v => conversion.MultiplyPoint3x4(v)).ToArray(),
-                normals = baked.normals.Select(v => conversion.MultiplyVector(v)).ToArray(),
-                tangents = baked.tangents.Select(v => conversion.MultiplyVector(v)).ToArray()
+            var converted = new BakedMesh {
+                vertices = new Vector3[baked.vertices.Length],
+                normals = new Vector3[baked.normals.Length],
+                tangents = new Vector3[baked.tangents.Length]
             };
+            // Converting large meshes uses only the baked arrays and a matrix, so workers
+            // can handle separate ranges without calling into the renderer or the scene.
+            var vertexCount = converted.vertices.Length;
+            var workers = Math.Max(1, Math.Min(Math.Min(Environment.ProcessorCount, MaxWorkers), vertexCount / VerticesPerWorker));
+            void ConvertRange(int worker) {
+                var start = vertexCount * worker / workers;
+                var end = vertexCount * (worker + 1) / workers;
+                for (var i = start; i < end; i++) {
+                    converted.vertices[i] = conversion.MultiplyPoint3x4(baked.vertices[i]);
+                }
+                var lastNormal = Math.Min(end, converted.normals.Length);
+                for (var i = start; i < lastNormal; i++) {
+                    converted.normals[i] = conversion.MultiplyVector(baked.normals[i]);
+                }
+                var lastTangent = Math.Min(end, converted.tangents.Length);
+                for (var i = start; i < lastTangent; i++) {
+                    converted.tangents[i] = conversion.MultiplyVector(baked.tangents[i]);
+                }
+            }
+            if (workers == 1) ConvertRange(0);
+            else Parallel.For(0, workers, ConvertRange);
+            return converted;
         }
 
         private static BakedMesh BakeLocalMesh(Renderer renderer) {

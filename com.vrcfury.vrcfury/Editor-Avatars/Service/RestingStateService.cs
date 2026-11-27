@@ -49,8 +49,7 @@ namespace VF.Service {
             var report = new List<string>();
             foreach (var pending in pendingClips) {
                 bindingstateService.ApplyClip(pending.clip, pending.owner);
-                foreach (var (binding, curve) in pending.clip.GetAllCurves()) {
-                    var value = curve.GetLast();
+                foreach (var (binding, value) in pending.clip.GetLastValues()) {
                     report.Add($"{binding.PrettyString()} = {value}\n  via {pending.owner}");
                     StoreBinding(binding, value, pending.owner);
                 }

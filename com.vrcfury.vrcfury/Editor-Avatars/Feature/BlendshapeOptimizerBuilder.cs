@@ -24,6 +24,8 @@ namespace VF.Feature {
         // Position tolerance is a fraction of the mesh's longest dimension.
         private const float TinyPositionFraction = 0.0001f;
         private const float TinyNormalDelta = 0.0001f;
+        // Check a few evenly spaced vertices first to reject large shapes before scanning for their peaks.
+        private const int TinyProbeVertexStride = 64;
 
         [VFAutowired] private readonly VFGameObject avatarObject;
         [VFAutowired] private readonly VRCAvatarDescriptor avatar;
@@ -170,6 +172,10 @@ namespace VF.Feature {
                 const float normalToleranceSquared = TinyNormalDelta * TinyNormalDelta;
                 for (var frame = 0; frame < mesh.GetBlendShapeFrameCount(id); frame++) {
                     mesh.GetBlendShapeFrameVertices(id, frame, positions, normals, null);
+                    for (var i = 0; i < positions.Length; i += TinyProbeVertexStride) {
+                        if (!(positions[i].sqrMagnitude <= positionToleranceSquared
+                              && normals[i].sqrMagnitude <= normalToleranceSquared)) return false;
+                    }
                     for (var i = 0; i < positions.Length; i++) {
                         var p = positions[i].sqrMagnitude;
                         var n = normals[i].sqrMagnitude;

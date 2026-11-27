@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VF.Utils.Controller;
 using Object = UnityEngine.Object;
@@ -25,17 +26,18 @@ namespace VF.Utils {
         public static AnimationRewriter RewriteObject(Func<Object,Object> rewrite) {
             return RewriteCurve((binding, curve) => {
                 if (curve.IsFloat) return (binding, curve, false);
-                var changed = false;
-                var newCurve = curve.ObjectCurve.Select(frame => {
-                    if (frame.value == null) return frame;
+                var frames = curve.ObjectCurve;
+                ObjectReferenceKeyframe[] updated = null;
+                for (var i = 0; i < frames.Length; i++) {
+                    var frame = frames[i];
+                    if (frame.value == null) continue;
                     var newValue = rewrite(frame.value);
-                    if (newValue != frame.value) {
-                        frame.value = newValue;
-                        changed = true;
-                    }
-                    return frame;
-                }).ToArray();
-                return (binding, newCurve, changed);
+                    if (newValue == frame.value) continue;
+                    updated ??= frames.ToArray();
+                    frame.value = newValue;
+                    updated[i] = frame;
+                }
+                return updated == null ? (binding, curve, false) : (binding, updated, true);
             });
         }
 

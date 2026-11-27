@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -29,7 +30,7 @@ namespace VF.Utils {
         public static implicit operator Object(VFGameObject d) => d?.gameObject;
         public static implicit operator Transform(VFGameObject d) => d?.transform;
         public static implicit operator bool(VFGameObject d) => d?.gameObject != null;
-        public static bool operator ==(VFGameObject a, VFGameObject b) => a?.Equals(b) ?? b?.Equals(null) ?? true;
+        public static bool operator ==(VFGameObject a, VFGameObject b) => a?._gameObject == b?._gameObject;
         public static bool operator !=(VFGameObject a, VFGameObject b) => !(a == b);
         public override bool Equals(object other) {
             return (other is VFGameObject a && _gameObject == a._gameObject)
@@ -38,7 +39,7 @@ namespace VF.Utils {
                    || (other == null && gameObject == null);
         }
         public override int GetHashCode() {
-            return Tuple.Create(gameObject).GetHashCode();
+            return _gameObject?.GetHashCode() ?? 0;
         }
 
         public override string ToString() {
@@ -145,30 +146,40 @@ namespace VF.Utils {
             return GetComponents<UnityEngine.Component>();
         }
         public UnityEngine.Component[] GetComponents(Type t) {
-            // Components can sometimes be null for some reason. Perhaps when they're corrupt?
-            // The OfType is required because unity can be tricked into blindly returning things that are NOT components
-            // if someone messed with the metadata or class type.
-            return gameObject.GetComponents(t).NotNull().OfType<UnityEngine.Component>().ToArray();
+            return FilterComponents(gameObject.GetComponents(t));
         }
         public T[] GetComponents<T>() {
-            return gameObject.GetComponents<T>().NotNull().OfType<T>().ToArray();
+            return FilterComponents(gameObject.GetComponents<T>());
         }
 
         public UnityEngine.Component[] GetComponentsInSelfAndChildren() {
             return GetComponentsInSelfAndChildren<UnityEngine.Component>();
         }
         public UnityEngine.Component[] GetComponentsInSelfAndChildren(Type type) {
-            return gameObject.GetComponentsInChildren(type, true).NotNull().OfType<UnityEngine.Component>().ToArray();
+            return FilterComponents(gameObject.GetComponentsInChildren(type, true));
         }
         public T[] GetComponentsInSelfAndChildren<T>() {
-            return gameObject.GetComponentsInChildren<T>(true).NotNull().OfType<T>().ToArray();
+            return FilterComponents(gameObject.GetComponentsInChildren<T>(true));
         }
 
         public T GetComponentInSelfOrParent<T>() {
             return GetComponentsInSelfAndParents<T>().FirstOrDefault();
         }
         public T[] GetComponentsInSelfAndParents<T>() {
-            return gameObject.GetComponentsInParent<T>(true).NotNull().OfType<T>().ToArray();
+            return FilterComponents(gameObject.GetComponentsInParent<T>(true));
+        }
+
+        /**
+         * Components can sometimes be null for some reason. Perhaps when they're corrupt?
+         * The OfType is required because unity can be tricked into blindly returning things that are NOT components
+         * if someone messed with the metadata or class type.
+         */
+        private static T[] FilterComponents<T>(T[] components) {
+            foreach (object component in components) {
+                if (component is T && component is Object unityObject && unityObject != null) continue;
+                return components.NotNull().OfType<T>().ToArray();
+            }
+            return components;
         }
         
         public UnityEngine.Component AddComponent(Type type) {
@@ -282,31 +293,53 @@ namespace VF.Utils {
         }
 
         public void Destroy() {
-            var roots = uploadRoots;
+            DestroyDependentComponents(uploadRoots, root => root.IsChildOf(this));
+            Object.DestroyImmediate(this);
+        }
+
+        public static void DestroyAll(IEnumerable<VFGameObject> objects) {
+            var targets = objects.Where(obj => obj != null).ToArray();
+            var targetsByRoot = targets
+                .SelectMany(obj => obj.uploadRoots.Select(root => (root, obj)))
+                .ToLookup(pair => pair.root, pair => (Transform)pair.obj);
+            foreach (var group in targetsByRoot) {
+                var removed = group.ToHashSet();
+                DestroyDependentComponents(new[] { group.Key }, transform => {
+                    for (var current = transform; current != null; current = current.parent) {
+                        if (removed.Contains(current)) return true;
+                    }
+                    return false;
+                });
+            }
+            foreach (var target in targets) {
+                if (target != null) Object.DestroyImmediate(target);
+            }
+        }
+
+        private static void DestroyDependentComponents(IEnumerable<VFGameObject> roots, Func<Transform, bool> matches) {
             foreach (var c in roots.SelectMany(root => root.GetComponentsInSelfAndChildren<VRCPhysBoneBase>())) {
-                if (IsRootChildOf(c.GetRootTransform(), c))
+                if (RootMatches(c.GetRootTransform(), c, matches))
                     Object.DestroyImmediate(c);
             }
             foreach (var c in roots.SelectMany(root => root.GetComponentsInSelfAndChildren<VRCPhysBoneColliderBase>())) {
-                if (IsRootChildOf(c.GetRootTransform(), c))
+                if (RootMatches(c.GetRootTransform(), c, matches))
                     Object.DestroyImmediate(c);
             }
             foreach (var c in roots.SelectMany(root => root.GetComponentsInSelfAndChildren<ContactBase>())) {
-                if (IsRootChildOf(c.GetRootTransform(), c))
+                if (RootMatches(c.GetRootTransform(), c, matches))
                     Object.DestroyImmediate(c);
             }
-            foreach (var c in GetConstraints(includeChildren: true)) {
+            foreach (var c in GetConstraints(roots, obj => matches(obj))) {
                 c.Destroy();
             }
-            Object.DestroyImmediate(this);
         }
 
         // Due to unity serialization goofs in some really old broken assets, in some rare situations, a Transform handle
         // can actually be holding a GameObject. If you try to use it as a transform, it'll throw MissingReferenceException.
         // With this try catch, at least you'll be able to find where it is.
-        private bool IsRootChildOf(Transform root, UnityEngine.Component component) {
+        private static bool RootMatches(Transform root, UnityEngine.Component component, Func<Transform, bool> matches) {
             try {
-                return root.IsChildOf(this);
+                return matches(root);
             } catch (Exception e) {
                 throw new ExceptionWithCause(
                     $"Failed to check root transform of {component.GetType().Name} on {component.owner().GetDebugPath()}",
@@ -316,23 +349,39 @@ namespace VF.Utils {
         }
 
         public VFConstraint[] GetConstraints(bool includeParents = false, bool includeChildren = false) {
-            return VFConstraint.GetConstraintsInSelfAndChildren(uploadRoots)
-                .Where(c => {
-                    try {
-                        var affectedObject = c.GetAffectedObject();
-                        if (affectedObject == null) return false;
-                        if (includeParents) return IsSameOrChildOf(affectedObject);
-                        if (includeChildren) return affectedObject.IsSameOrChildOf(this);
-                        return affectedObject == this;
-                    } catch (Exception e) {
-                        // this is here for same reason as IsRootChildOf
-                        throw new ExceptionWithCause(
-                            $"Failed to check affected object of {c.GetComponent().GetType().Name} on {c.owner().GetDebugPath()}",
-                            e
-                        );
-                    }
-                })
-                .ToArray();
+            return GetConstraints(uploadRoots, affectedObject => {
+                if (includeParents) return IsSameOrChildOf(affectedObject);
+                if (includeChildren) return affectedObject.IsSameOrChildOf(this);
+                return affectedObject == this;
+            });
+        }
+
+        public ILookup<VFGameObject, VFConstraint> GetConstraintsByTarget() {
+            return FindConstraintTargets(uploadRoots, _ => true).ToLookup(pair => pair.target, pair => pair.constraint);
+        }
+
+        private static VFConstraint[] GetConstraints(IEnumerable<VFGameObject> roots, Func<VFGameObject, bool> matches) {
+            return FindConstraintTargets(roots, matches).Select(pair => pair.constraint).ToArray();
+        }
+
+        private static IEnumerable<(VFConstraint constraint, VFGameObject target)> FindConstraintTargets(
+            IEnumerable<VFGameObject> roots,
+            Func<VFGameObject, bool> matches
+        ) {
+            foreach (var constraint in VFConstraint.GetConstraintsInSelfAndChildren(roots)) {
+                VFGameObject target;
+                try {
+                    target = constraint.GetAffectedObject();
+                    if (target == null || !matches(target)) continue;
+                } catch (Exception e) {
+                    // The affected transform can have the same malformed reference as a dynamics root.
+                    throw new ExceptionWithCause(
+                        $"Failed to check affected object of {constraint.GetComponent().GetType().Name} on {constraint.owner().GetDebugPath()}",
+                        e
+                    );
+                }
+                yield return (constraint, target);
+            }
         }
 
         public static Func<VFGameObject,VFGameObject[]> getUploadRoots;

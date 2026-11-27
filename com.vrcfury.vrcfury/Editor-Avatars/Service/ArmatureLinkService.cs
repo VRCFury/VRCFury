@@ -13,6 +13,7 @@ using VF.Injector;
 using VF.Model;
 using VF.Model.Feature;
 using VF.Utils;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 using Random = System.Random;
 
 namespace VF.Service {
@@ -36,6 +37,8 @@ namespace VF.Service {
                 try {
                     var propBone = model.propBone.asVf();
                     if (propBone == null) continue;
+                    // GetPath throws for a source outside the avatar before we can move or rename it.
+                    propBone.GetPath(avatarObject);
                     var exists = avatarObject.Find(model.forceMergedName);
                     if (exists != null && exists != propBone) {
                         throw new Exception(
@@ -74,7 +77,10 @@ namespace VF.Service {
             var pruneCheck = new HashSet<VFGameObject>();
             var saveDebugInfo = !IsActuallyUploadingHook.Get();
             
-            var animLink = new VFMultimapList<VFGameObject, VFGameObject>();
+            var toggleSources = new Dictionary<VFGameObject, VFGameObject>();
+            var skins = new Lazy<SkinRewriter>(() => new SkinRewriter(avatarObject));
+            var physbones = new Lazy<VRCPhysBone[]>(avatarObject.GetComponentsInUploadRoot<VRCPhysBone>);
+            var constraintsByTarget = new Lazy<ILookup<VFGameObject, VFConstraint>>(avatarObject.GetConstraintsByTarget);
 
             foreach (var builder in builders) {
                 try {
@@ -87,9 +93,12 @@ namespace VF.Service {
                         doNotReparent,
                         mover,
                         pruneCheck,
-                        animLink,
+                        toggleSources,
+                        skins,
+                        physbones,
                         objectPaths,
-                        armatureCache
+                        armatureCache,
+                        constraintsByTarget
                     );
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to build Armature Link: {builder.featureBaseObject.GetDebugPath()}", e);
@@ -100,22 +109,24 @@ namespace VF.Service {
             // (this should happen before toggle rewrites, so we don't have to add toggles for a ton of things that won't exist anymore)
             var usedReasons = GetUsageReasons(avatarObject);
             var attachDebugInfoTo = new HashSet<VFGameObject>();
+            var unused = new List<VFGameObject>();
             foreach (var obj in pruneCheck) {
                 if (obj == null) continue;
-                attachDebugInfoTo.UnionWith(obj.GetSelfAndAllChildren());
-                if (!usedReasons.ContainsKey(obj)) obj.Destroy();
+                if (!usedReasons.ContainsKey(obj)) unused.Add(obj);
+                else if (saveDebugInfo) attachDebugInfoTo.UnionWith(obj.GetSelfAndAllChildren());
             }
+            VFGameObject.DestroyAll(unused);
 
             // Rewrite animations that turn off parents
-            foreach (var clip in controllers.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
-                foreach (var binding in clip.GetFloatBindings()) {
-                    if (binding.type != typeof(GameObject)) continue;
-                    var transform = binding.target;
-                    if (transform == null) continue;
-                    foreach (var other in animLink.Get(transform)) {
-                        if (other == null) continue; // it got deleted because the propBone wasn't used
-                        var b = binding.WithTarget(other);
-                        clip.SetCurve(b, clip.GetFloatCurve(binding));
+            var toggleTargets = toggleSources.Where(pair => pair.Key != null).ToLookup(pair => pair.Value, pair => pair.Key);
+            if (toggleTargets.Count > 0) {
+                foreach (var clip in controllers.GetAllUsedControllers().SelectMany(c => c.GetClips())) {
+                    foreach (var binding in clip.GetFloatBindings()) {
+                        if (binding.type != typeof(GameObject) || binding.target == null) continue;
+                        foreach (var other in toggleTargets[binding.target]) {
+                            var b = binding.WithTarget(other);
+                            clip.SetCurve(b, clip.GetFloatCurve(binding));
+                        }
                     }
                 }
             }
@@ -142,14 +153,15 @@ namespace VF.Service {
             ISet<VFGameObject> doNotReparent,
             ObjectMoveService mover,
             ISet<VFGameObject> pruneCheck,
-            VFMultimapList<VFGameObject, VFGameObject> animLink,
+            Dictionary<VFGameObject, VFGameObject> toggleSources,
+            Lazy<SkinRewriter> skins,
+            Lazy<VRCPhysBone[]> physbones,
             VRCFObjectPathCache objectPaths,
-            VRCFArmatureCache armatureCache
+            VRCFArmatureCache armatureCache,
+            Lazy<ILookup<VFGameObject, VFConstraint>> constraintsByTarget
         ) {
-            if (model.onlyIf != null && !model.onlyIf.Invoke()) {
-                return;
-            }
-            
+            if (model.onlyIf != null && !model.onlyIf.Invoke()) return;
+
             if (model.propBone == null) {
                 // Debug.LogWarning("Root bone is null on armature link.");
                 return;
@@ -162,7 +174,7 @@ namespace VF.Service {
 
             var (_, _, scalingFactor) = GetScalingFactor(model, links);
 
-            var rootName = GetRootName(links.propMain, avatarObject);
+            var rootName = skins.Value.GetRootName(links.propMain);
 
             var didNotReparent = new HashSet<VFGameObject>();
 
@@ -220,7 +232,7 @@ namespace VF.Service {
 
                 // Rip out parent constraints, since they were likely there from an old pre-vrcfury merge process
                 if (model.removeParentConstraints) {
-                    foreach (var c in propBone.GetConstraints().Where(c => c.IsParent())) {
+                    foreach (var c in constraintsByTarget.Value[propBone].Where(c => c.GetComponent() != null && c.IsParent())) {
                         c.Destroy();
                         AddDebugInfo(
                             "An existing parent constraint component was removed, because it was probably a leftover from before Armature Link");
@@ -237,7 +249,7 @@ namespace VF.Service {
                     }
                     parents.Reverse();
                     foreach (var parent in parents) {
-                        if (anim.activated.Contains(parent) || !parent.active || animLink.ContainsValue(parent)) {
+                        if (anim.activated.Contains(parent) || !parent.active || toggleSources.ContainsKey(parent)) {
                             animatedParents.Add(parent);
                         }
                     }
@@ -263,27 +275,30 @@ namespace VF.Service {
 
                 var newName = $"[VF{new Random().Next(100,999)}] {propBone.name}";
                 if (propBone.name != rootName) newName += $" from {rootName}";
-                var current = GameObjects.Create(newName, avatarBone, useTransformFrom: propBone.parent);
+                var current = GameObjects.Create(
+                    newName,
+                    avatarBone,
+                    useTransformFrom: propBone.parent,
+                    removeFromPhysbones: false
+                );
+                PhysboneUtils.RemoveFromPhysbones(current, physbones.Value);
                 pruneCheck.Add(current);
 
                 foreach (var parent in animatedParents) {
                     // If this animated parent come from a toggle created during another armature link,
                     // We have to follow the link back to find the original toggle source
-                    var original = animLink
-                        .Where(pair => pair.Value == parent)
-                        .Select(pair => pair.Key)
-                        .DefaultIfEmpty(parent)
-                        .First();
-                    current = GameObjects.Create($"Toggle From {original.name}", current);
+                    if (!toggleSources.TryGetValue(parent, out var original)) original = parent;
+                    current = GameObjects.Create($"Toggle From {original.name}", current, removeFromPhysbones: false);
                     current.active = original.active;
-                    animLink.Put(original, current);
+                    toggleSources.Add(current, original);
                     AddDebugInfo($"A toggle wrapper object was added to maintain the animated toggle of {original.name}");
                 }
 
-                mover.Move(propBone, current, "Original Object");
+                // The new branch was already excluded when its outer wrapper was created.
+                mover.Move(propBone, current, "Original Object", removeFromPhysbones: false);
 
                 if (ShouldReuseBone()) {
-                    RewriteSkins(propBone, avatarBone, avatarObject);
+                    skins.Value.Rewrite(propBone, avatarBone);
                 }
             }
         }
@@ -299,29 +314,60 @@ namespace VF.Service {
             return true;
         }
 
-        private static void RewriteSkins(VFGameObject fromBone, VFGameObject toBone, VFGameObject avatarObject) {
-            foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                // Update skins to use bones and bind poses from the original avatar
-                var bones = skin.bones;
-                if (bones.Contains((Transform)fromBone)) {
+        internal sealed class SkinRewriter {
+            private readonly VFGameObject avatar;
+            private readonly VFMultimapSet<Transform, SkinnedMeshRenderer> skinsByBone = new();
+            private readonly HashSet<Transform> roots = new();
+
+            internal SkinRewriter(VFGameObject avatar) {
+                this.avatar = avatar;
+                foreach (var skin in avatar.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
+                    var root = skin.rootBone;
+                    if (root != null) roots.Add(root);
+                    foreach (var bone in skin.bones) {
+                        if (bone != null) skinsByBone.Put(bone, skin);
+                    }
+                }
+            }
+
+            internal string GetRootName(VFGameObject bone) {
+                for (; bone != null; bone = bone.parent) {
+                    if (roots.Contains(bone) || skinsByBone.Get(bone).Count > 0) continue;
+                    if (bone.name.Trim().Equals("armature", StringComparison.OrdinalIgnoreCase)) continue;
+                    return bone.name;
+                }
+                return "Unknown";
+            }
+
+            internal void Rewrite(VFGameObject fromBone, VFGameObject toBone) {
+                var from = (Transform)fromBone;
+                var to = (Transform)toBone;
+                var affected = skinsByBone.Get(from);
+                // Retain hierarchy order when several affected renderers can share a mutable mesh.
+                IEnumerable<SkinnedMeshRenderer> skins = affected.Count <= 1
+                    ? affected
+                    : avatar.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>().Where(affected.Contains);
+                foreach (var skin in skins) {
+                    var bones = skin.bones;
                     var mesh = skin.GetMutableMesh("Updated bind poses to reuse bones on the base armature");
                     if (mesh != null) {
                         var bindposes = mesh.bindposes;
-                        var length = Math.Min(bones.Length, bindposes.Length);
-                        var rewritten = new Matrix4x4[length];
-                        var transform = toBone.worldToLocalMatrix * fromBone.localToWorldMatrix;
-                        for (var i = 0; i < length; i++) {
-                            rewritten[i] = bones[i] == fromBone ? transform * bindposes[i] : bindposes[i];
+                        if (bindposes.Length > bones.Length) Array.Resize(ref bindposes, bones.Length);
+                        var transform = to.worldToLocalMatrix * from.localToWorldMatrix;
+                        for (var i = 0; i < bindposes.Length; i++) {
+                            if (bones[i] == from) bindposes[i] = transform * bindposes[i];
                         }
-                        mesh.bindposes = rewritten;
+                        mesh.bindposes = bindposes;
                     }
 
                     for (var i = 0; i < bones.Length; i++) {
-                        if (bones[i] == fromBone) bones[i] = toBone;
+                        if (bones[i] == from) bones[i] = to;
                     }
                     skin.bones = bones;
                     skin.Dirty();
+                    if (from != to) skinsByBone.Put(to, skin);
                 }
+                if (from != to) affected.Clear();
 
                 // We never rewrite rootBone because of two reasons:
                 // 1. It defines the origin of the bounds (which may rotate and be impossible to reproduce)
@@ -407,21 +453,6 @@ namespace VF.Service {
             }
 
             return reasons;
-        }
-
-        private static string GetRootName(VFGameObject rootBone, VFGameObject avatarObject) {
-            if (rootBone == null) return "Unknown";
-
-            var isBone = false;
-            foreach (var skin in avatarObject.GetComponentsInSelfAndChildren<SkinnedMeshRenderer>()) {
-                isBone |= skin.rootBone == rootBone;
-                isBone |= skin.bones.Contains((Transform)rootBone);
-            }
-            isBone |= rootBone.name.ToLower().Trim() == "armature";
-
-            if (isBone) return GetRootName(rootBone.parent, avatarObject);
-
-            return rootBone.name;
         }
 
         public class Links {

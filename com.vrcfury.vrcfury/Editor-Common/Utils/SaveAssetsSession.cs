@@ -10,6 +10,7 @@ using Object = UnityEngine.Object;
 
 namespace VF.Utils {
     internal class SaveAssetsSession {
+        private const int BinaryClipMinKeyCount = 4096;
         private readonly string outputDir;
         private readonly Lazy<Object> otherParent;
         private readonly Dictionary<Object, Object> workLogManifest = new Dictionary<Object, Object>();
@@ -82,12 +83,21 @@ namespace VF.Utils {
         public void SaveControllerAndChildren(
             AnimatorController controller,
             IEnumerable<Object> children,
-            IEnumerable<Object> otherAssets
+            IEnumerable<Object> otherAssets,
+            long clipKeyCount
         ) {
             if (!VrcfObjectFactory.DidCreate(controller)) return;
             SaveParent(controller);
+            var animations = new Lazy<Object>(() => {
+                var parent = VrcfObjectFactory.Create<BinaryContainer>();
+                parent.name = controller.name + " Clips";
+                SaveParent(parent);
+                return parent;
+            });
             foreach (var asset in children) {
-                SaveAssetAndChildren(asset, () => controller, false);
+                // A second asset file is worthwhile when the animation keys would make the controller large.
+                var useBinary = asset is AnimationClip && clipKeyCount >= BinaryClipMinKeyCount;
+                SaveAssetAndChildren(asset, () => useBinary ? animations.Value : controller, false);
             }
             foreach (var asset in otherAssets) {
                 SaveAssetAndChildren(asset, () => controller, true);

@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Rendering;
 using UnityEngine;
+using UnityEngine.TestTools;
+using VF;
 using VF.Builder.Haptics;
 
 public class SpsPatcherTest {
@@ -26,6 +29,188 @@ float4 frag() : SV_Target {
 ";
 
     private const string SpsStub = "void sps_apply(inout SpsInputs input) {}";
+
+    [Test]
+    public void IncludeSearchPreservesMatchSpansAndGroups() {
+        const string source = "\r\n\t#include \"First.inc\"\r\n"
+            + "code #include \"Inline.inc\"\r\n"
+            + "\n  #include_with_pragmas \"Second.inc\"\n"
+            + "#include  \"WrongWhitespace.inc\"\n"
+            + "#include_with_hyphen \"WrongKeyword.inc\"\n"
+            + "#include \"Multiline\nPath.inc\"\n"
+            + "#include\t\"Last.inc\"";
+        var expected = Regex.Matches(source, @"(?:^|\n)(\s*#(?:include|include_with_pragmas)\s"")([^""]+)("")")
+            .Cast<Match>()
+            .Select(match => (match.Index, match.Value, match.Groups[1].Value, match.Groups[2].Value));
+        var actual = SpsPatcher.FindIncludes(source)
+            .Select(match => (match.Index, match.Value, match.Groups[1].Value, match.Groups[2].Value));
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+#if VRCSDK_HAS_MATERIAL_CONTACTS
+    private const string UsePassTestPass = @"
+    Pass {
+        Name ""IMPORTED""
+        CGPROGRAM
+        #pragma target 5.0
+        #pragma vertex vert
+        #pragma fragment frag
+        " + Common + @"
+        VertexOutput vert(AppData data) {
+            VertexOutput output;
+            output.position = data.vertex;
+            return output;
+        }
+        ENDCG
+    }";
+
+    [Test]
+    public void BatchImportsBothShaderModesAndTheirUsePassDependencies(
+        [Values] bool multipleSubShaders,
+        [Values] bool breakBatchDependency
+    ) {
+        var id = Guid.NewGuid().ToString("N");
+        var sourcePath = $"Assets/SpsBatch_{id}.shader";
+        var childPath = $"Assets/SpsBatchChild_{id}.shader";
+        var sourceName = $"Hidden/VRCFury/Tests/SpsBatch/{id}";
+        var childName = sourceName + "/Child";
+        const string pass = UsePassTestPass;
+        const string commentedShader = "/*\nShader \"Hidden/CommentedDecoy\" {\nProperties {}\n}\n*/\n";
+        var secondSubShader = multipleSubShaders ? $"SubShader {{\n{pass.Replace("IMPORTED", "SECOND")}\n}}\n" : "";
+        var materials = new List<Material>();
+        var generated = new HashSet<string>();
+        var output = TmpFilePackage.GetPath() + "/SPS";
+        IEnumerable<string> GeneratedShaders() => Directory.Exists(output)
+            ? Directory.GetFiles(output, "*.shader").Select(path => path.Replace('\\', '/'))
+            : Enumerable.Empty<string>();
+        var existing = GeneratedShaders().ToHashSet();
+        try {
+            File.WriteAllText(
+                childPath,
+                commentedShader + $"Shader \"{childName}\" {{\nProperties {{}}\nSubShader {{\n{pass}\n"
+                + pass.Replace("IMPORTED", "OTHER") + "\n"
+                + pass.Replace("IMPORTED", "UNUSED") + "\n}\n"
+                + secondSubShader + "}"
+            );
+            File.WriteAllText(
+                sourcePath,
+                commentedShader + $"Shader \"{sourceName}\" {{\nProperties {{}}\nSubShader {{\n"
+                + $"UsePass \"{childName}/IMPORTED\"\nUsePass \"{childName}/OTHER\"\n"
+                + $"{pass.Replace("IMPORTED", "LOCAL")}\n}}\n}}"
+            );
+            AssetDatabase.ImportAsset(childPath, ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabase.ImportAsset(sourcePath, ImportAssetOptions.ForceSynchronousImport);
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>(sourcePath);
+            var patcher = new SpsPatcher();
+            patcher.PrepareBatch(new[] { (shader, false), (shader, true) }, keepImports: false);
+            generated.UnionWith(GeneratedShaders().Except(existing));
+            Assert.That(generated.Count, Is.EqualTo(4));
+            var brokenPath = breakBatchDependency
+                ? generated.First(path => Path.GetFileNameWithoutExtension(path).Contains("-"))
+                : null;
+            if (brokenPath != null) {
+                var brokenShader = AssetDatabase.LoadAssetAtPath<Shader>(brokenPath);
+                var shaderName = brokenShader.name;
+                // Simulate Unity producing an errored shader without throwing during batch import.
+                var ignoreErrors = LogAssert.ignoreFailingMessages;
+                try {
+                    LogAssert.ignoreFailingMessages = true;
+                    File.WriteAllText(brokenPath, $"Shader \"{shaderName}\" {{ InvalidShaderLab }}");
+                    AssetDatabase.ImportAsset(brokenPath, ImportAssetOptions.ForceSynchronousImport);
+                } finally {
+                    LogAssert.ignoreFailingMessages = ignoreErrors;
+                }
+                brokenShader = AssetDatabase.LoadAssetAtPath<Shader>(brokenPath);
+                Assert.That(brokenShader, Is.Not.Null);
+                Assert.That(ShaderUtil.ShaderHasError(brokenShader), Is.True);
+            }
+            foreach (var hasBlendshapes in new[] { false, true }) {
+                var material = new Material(shader);
+                materials.Add(material);
+                patcher.PatchMaterial(material, keepImports: false, hasBlendshapes: hasBlendshapes);
+                var path = AssetDatabase.GetAssetPath(material.shader);
+                Assert.That(path, Is.Not.EqualTo(sourcePath));
+                Assert.That(generated, Does.Contain(path));
+                var stem = Path.GetFileNameWithoutExtension(path);
+                var dependencies = Directory.GetFiles(Path.GetDirectoryName(path), stem + "-*.shader");
+                Assert.That(dependencies, Has.Length.EqualTo(1));
+                var dependencySource = File.ReadAllText(dependencies[0]);
+                Assert.That(dependencySource.Contains("Name \"UNUSED\""), Is.EqualTo(multipleSubShaders));
+                Assert.That(material.FindPass("IMPORTED"), Is.GreaterThanOrEqualTo(0));
+                Assert.That(material.FindPass("OTHER"), Is.GreaterThanOrEqualTo(0));
+                Assert.That(material.FindPass("LOCAL"), Is.GreaterThanOrEqualTo(0));
+                Assert.That(material.HasProperty(SpsConfigurer.SpsEnabled), Is.True);
+                Assert.That(ShaderUtil.ShaderHasError(material.shader), Is.False);
+            }
+            Assert.That(materials[0].shader, Is.Not.EqualTo(materials[1].shader));
+            if (brokenPath != null) {
+                Assert.That(ShaderUtil.ShaderHasError(AssetDatabase.LoadAssetAtPath<Shader>(brokenPath)), Is.False);
+            }
+        } finally {
+            foreach (var material in materials) UnityEngine.Object.DestroyImmediate(material);
+            foreach (var path in generated) AssetDatabase.DeleteAsset(path);
+            AssetDatabase.DeleteAsset(sourcePath);
+            AssetDatabase.DeleteAsset(childPath);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void RepatchesSameLengthUsePassEdit(bool deleteGeneratedParent) {
+        var id = Guid.NewGuid().ToString("N");
+        var sourcePath = $"Assets/SpsPassEdit_{id}.shader";
+        var childPath = $"Assets/SpsPassEditChild_{id}.shader";
+        var sourceName = $"Hidden/VRCFury/Tests/SpsPassEdit/{id}";
+        var childName = sourceName + "/Child";
+        var localPass = UsePassTestPass.Replace("IMPORTED", "LOCAL");
+        var generated = new HashSet<string>();
+        string PatchParent(string passName) {
+            File.WriteAllText(
+                sourcePath,
+                $"Shader \"{sourceName}\" {{\nProperties {{}}\nSubShader {{\n"
+                + $"UsePass \"{childName}/{passName}\"\n{localPass}\n}}\n}}"
+            );
+            AssetDatabase.ImportAsset(sourcePath, ImportAssetOptions.ForceSynchronousImport);
+            var material = new Material(AssetDatabase.LoadAssetAtPath<Shader>(sourcePath));
+            try {
+                Assert.That(material.FindPass(passName), Is.GreaterThanOrEqualTo(0));
+                SpsPatcher.Patch(material, keepImports: false, hasBlendshapes: false);
+                var path = AssetDatabase.GetAssetPath(material.shader);
+                generated.Add(path);
+                var stem = Path.GetFileNameWithoutExtension(path);
+                foreach (var dependency in Directory.GetFiles(Path.GetDirectoryName(path), stem + "-*.shader")) {
+                    generated.Add(dependency.Replace('\\', '/'));
+                }
+                Assert.That(material.FindPass(passName), Is.GreaterThanOrEqualTo(0));
+                return path;
+            } finally {
+                UnityEngine.Object.DestroyImmediate(material);
+            }
+        }
+
+        try {
+            File.WriteAllText(
+                childPath,
+                $"Shader \"{childName}\" {{\nSubShader {{\n"
+                + UsePassTestPass.Replace("IMPORTED", "FIRST")
+                + UsePassTestPass.Replace("IMPORTED", "OTHER") + "\n}\n}"
+            );
+            AssetDatabase.ImportAsset(childPath, ImportAssetOptions.ForceSynchronousImport);
+            var firstGenerated = PatchParent("FIRST");
+            var sourceLength = new FileInfo(sourcePath).Length;
+            if (deleteGeneratedParent) AssetDatabase.DeleteAsset(firstGenerated);
+
+            var secondGenerated = PatchParent("OTHER");
+
+            Assert.That(new FileInfo(sourcePath).Length, Is.EqualTo(sourceLength));
+            Assert.That(secondGenerated, Is.Not.EqualTo(firstGenerated));
+        } finally {
+            foreach (var path in generated) AssetDatabase.DeleteAsset(path);
+            AssetDatabase.DeleteAsset(sourcePath);
+            AssetDatabase.DeleteAsset(childPath);
+        }
+    }
+#endif
 
     [TestCase(true)]
     [TestCase(false)]
@@ -84,6 +269,18 @@ VertexOutput vert(AppData data) {
         Assert.That(patched, Does.Contain("vertex.x += 100"));
         Assert.That(patched, Does.Contain(function + "(data.vertex)"));
         AssertShaderCompiles(SpsPatcher.PatchProgram(patched, true, SpsStub, "", false), "CGPROGRAM", "ENDCG");
+    }
+
+    [Test]
+    public void AddsLegacyUndefsAfterFullLineProgramHeaders() {
+        const string header = "\tCGPROGRAM \r\n";
+        const string otherLines = "// HLSLPROGRAM\nNotCGINCLUDE\n";
+        const string secondHeader = "  HLSLINCLUDE\n";
+        const string undef = "\n#undef TPS_Penetrator\n#undef RALIV_PENETRATION\n";
+        Assert.That(
+            SpsPatcher.DisableLegacyDeformation(header + otherLines + secondHeader),
+            Is.EqualTo(header + undef + otherLines + secondHeader + undef)
+        );
     }
 
     [Test]
@@ -1095,6 +1292,21 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/PreprocessorBraces"" {
 }";
         var output = SpsPatcher.WithEachPass(input, pass => "PATCHED" + pass, rest => rest);
         Assert.That(output, Does.Contain("PATCHED"));
+    }
+
+    [Test]
+    public void RewritesOnlyCompleteProgramMarkersAndPreservesTheOtherText() {
+        const string input = "CGPROGRAM \t\nbody\nENDCG\n"
+            + "// HLSLPROGRAM\nCGPROGRAM_SUFFIX\n"
+            + " \tHLSLPROGRAM\nother body\n\tENDHLSL";
+        var output = SpsPatcher.WithEachProgram(input, (program, isCg) =>
+            isCg ? "<cg>" + program + "</cg>" : "<hlsl>" + program + "</hlsl>"
+        );
+        Assert.That(output, Is.EqualTo(
+            "CGPROGRAM \t\n<cg>body</cg>\nENDCG\n"
+            + "// HLSLPROGRAM\nCGPROGRAM_SUFFIX\n"
+            + " \tHLSLPROGRAM\n<hlsl>other body</hlsl>\n\tENDHLSL"
+        ));
     }
 
     [TestCase(false, false)]

@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Animations;
 using VF.Exceptions;
 using VF.Utils;
 using VRC.SDK3.Avatars.Components;
@@ -29,6 +30,56 @@ namespace VF.Tests {
         public void TearDown() {
             Object.DestroyImmediate(root);
             AssetDatabase.DeleteAsset(folder);
+        }
+
+        [Test]
+        public void ComponentScansSkipMissingScriptsAndKeepInterfaceMatches() {
+            var child = new GameObject("Components");
+            child.transform.SetParent(root.transform);
+            child.AddComponent<VRCContactSender>();
+            child.AddComponent<ParentConstraint>();
+            var path = folder + "/Components.prefab";
+            PrefabUtility.SaveAsPrefabAsset(child, path);
+            File.WriteAllText(
+                path,
+                Regex.Replace(
+                    File.ReadAllText(path),
+                    @"(m_Script: \{fileID: -?\d+, guid: )[0-9a-f]{32}",
+                    "${1}" + Guid.NewGuid().ToString("N")
+                )
+            );
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            Assert.That(GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(prefab), Is.EqualTo(1));
+
+            var constraint = prefab.GetComponent<ParentConstraint>();
+            var wrapped = prefab.asVf();
+            Assert.That(wrapped.GetComponents(), Is.EqualTo(new UnityEngine.Component[] { prefab.transform, constraint }));
+            Assert.That(wrapped.GetComponentsInSelfAndChildren<IConstraint>(), Is.EqualTo(new[] { constraint }));
+        }
+
+        [Test]
+        public void DestroyAllRemovesDynamicsThatUseAnyDeletedBranch() {
+            var first = new GameObject("First");
+            first.transform.SetParent(root.transform);
+            var child = new GameObject("Child");
+            child.transform.SetParent(first.transform);
+            var second = new GameObject("Second");
+            second.transform.SetParent(root.transform);
+
+            var receiver = root.AddComponent<VRCContactReceiver>();
+            receiver.rootTransform = child.transform;
+            var collider = root.AddComponent<VRCPhysBoneCollider>();
+            collider.rootTransform = second.transform;
+            var unrelated = root.AddComponent<VRCContactSender>();
+
+            VFGameObject.DestroyAll(new[] { first.asVf(), second.asVf() });
+
+            Assert.That(first == null, Is.True);
+            Assert.That(second == null, Is.True);
+            Assert.That(receiver == null, Is.True);
+            Assert.That(collider == null, Is.True);
+            Assert.That(unrelated != null, Is.True);
         }
 
         [TestCase(typeof(VRCContactReceiver), "rootTransform")]
@@ -74,6 +125,9 @@ namespace VF.Tests {
             var error = Assert.Throws<ExceptionWithCause>(() => unrelated.asVf().Destroy());
             Assert.That(error.Message, Does.Contain(type.Name).And.Contain(component.owner().GetDebugPath()));
             Assert.That(error.InnerException, Is.TypeOf<MissingReferenceException>());
+            var batchError = Assert.Throws<ExceptionWithCause>(() => VFGameObject.DestroyAll(new[] { unrelated.asVf() }));
+            Assert.That(batchError.Message, Is.EqualTo(error.Message));
+            Assert.That(batchError.InnerException, Is.TypeOf<MissingReferenceException>());
             Assert.That(unrelated != null, Is.True);
             Assert.That(component != null, Is.True);
             Assert.That(

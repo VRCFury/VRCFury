@@ -112,7 +112,7 @@ namespace VF.Tests {
                 controllers.ClearCache(applyBaseMask: false);
                 Assert.That(names.GetObjectScopedName(root, "Existing"), Is.EqualTo(prefix + "Existing_2"));
                 Assert.That(names.GetObjectScopedName(root, "FromAction"), Is.EqualTo(prefix + "FromAction_2"));
-                Assert.That(controllers.GetAllMutatedControllers().Count, Is.EqualTo(2));
+                Assert.That(controllers.GetAllMutatedControllers(), Is.Empty);
                 controllers.ClearCache(applyBaseMask: false);
                 var fx = controllers.GetFx();
                 fx.GetOrCreateBool(prefix + "Transient");
