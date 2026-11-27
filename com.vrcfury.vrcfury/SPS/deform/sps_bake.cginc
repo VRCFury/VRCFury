@@ -51,18 +51,19 @@ void SpsGetBakedPosition(uint vertexId, out float3 position, out float3 normal, 
     if (position.z < 0) active = 0;
 
     #ifdef SPS_HAS_BLENDSHAPES
-    // Saves ~0.2s per vertex variant.
-    float blendshapeValues[SPS_MAX_BLENDSHAPES] = {
-        _SPS_Blendshape0, _SPS_Blendshape1, _SPS_Blendshape2, _SPS_Blendshape3,
-        _SPS_Blendshape4, _SPS_Blendshape5, _SPS_Blendshape6, _SPS_Blendshape7,
-        _SPS_Blendshape8, _SPS_Blendshape9, _SPS_Blendshape10, _SPS_Blendshape11,
-        _SPS_Blendshape12, _SPS_Blendshape13, _SPS_Blendshape14, _SPS_Blendshape15,
-    };
-
     uint count = sps_to_uint(_SPS_BlendshapeCount);
     for (uint i = 0; i < SPS_MAX_BLENDSHAPES; i++) {
         if (i >= count) break;
-        SpsApplyBlendshape(vertexId, position, normal, tangent, blendshapeValues[i], i);
+        // Keep this direct weight lookup. With a dynamically indexed local array here, some vertices
+        // stretched toward the world origin on Radeon RX 570/580, even at a runtime count of zero.
+        float4 weights = i < 8
+            ? (i < 4 ? float4(_SPS_Blendshape0, _SPS_Blendshape1, _SPS_Blendshape2, _SPS_Blendshape3)
+                     : float4(_SPS_Blendshape4, _SPS_Blendshape5, _SPS_Blendshape6, _SPS_Blendshape7))
+            : (i < 12 ? float4(_SPS_Blendshape8, _SPS_Blendshape9, _SPS_Blendshape10, _SPS_Blendshape11)
+                      : float4(_SPS_Blendshape12, _SPS_Blendshape13, _SPS_Blendshape14, _SPS_Blendshape15));
+        float2 pair = (i & 2) ? weights.zw : weights.xy;
+        float weight = (i & 1) ? pair.y : pair.x;
+        SpsApplyBlendshape(vertexId, position, normal, tangent, weight, i);
     }
     #endif
 }

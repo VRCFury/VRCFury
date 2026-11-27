@@ -12,6 +12,24 @@ using VF.Builder.Haptics;
 using VF.Utils;
 
 public class SpsPatcherTest {
+    [Test]
+    public void DeletesOnlyOldShaderCacheFolders() {
+        var root = AssetDatabase.GenerateUniqueAssetPath("Assets/SpsCacheCleanupTest");
+        try {
+            VRCFuryAssetDatabase.CreateFolder(root);
+            foreach (var name in new[] { "SPS", "SPS-0", SpsPatcher.ShaderCacheDirectory, "XR" }) {
+                AssetDatabase.CreateFolder(root, name);
+            }
+            SpsPatcher.DeleteOldShaderCaches(root);
+            Assert.That(AssetDatabase.GetSubFolders(root), Is.EquivalentTo(new[] {
+                root + "/" + SpsPatcher.ShaderCacheDirectory,
+                root + "/XR"
+            }));
+        } finally {
+            AssetDatabase.DeleteAsset(root);
+        }
+    }
+
     private const string Common = @"
 struct AppData {
     float4 vertex : POSITION;
@@ -75,7 +93,7 @@ float4 frag() : SV_Target {
         const string commentedShader = "/*\nShader \"Hidden/CommentedDecoy\" {\nProperties {}\n}\n*/\n";
         var secondSubShader = multipleSubShaders ? $"SubShader {{\n{pass.Replace("IMPORTED", "SECOND")}\n}}\n" : "";
         var materials = new List<Material>();
-        var output = TmpFilePackage.GetPath() + "/SPS";
+        const string output = SpsPatcher.ShaderCacheFolder;
         IEnumerable<string> GeneratedShaders() => Directory.Exists(output)
             ? Directory.GetFiles(output, "*.shader").Select(path => path.Replace('\\', '/'))
             : Enumerable.Empty<string>();
@@ -135,7 +153,7 @@ float4 frag() : SV_Target {
         var materialPath = folder + "/Material.mat";
         var shaderName = $"Hidden/VRCFury/Tests/BatchedSPS/{Guid.NewGuid():N}";
         var childName = shaderName + "/Child";
-        var generated = TmpFilePackage.GetPath() + "/SPS";
+        const string generated = SpsPatcher.ShaderCacheFolder;
         var output = new HashSet<string>();
         IEnumerable<string> GeneratedShaders() => Directory.Exists(generated)
             ? Directory.GetFiles(generated, "*.asset").Select(path => path.Replace('\\', '/'))
@@ -1417,7 +1435,7 @@ Shader ""Hidden/VRCFury/Tests/SpsPatcher/UrpSubShader"" {
             Assert.That(ShaderUtil.ShaderHasError(material.shader), Is.False);
 
             patchedPath = AssetDatabase.GetAssetPath(material.shader);
-            Assert.That(patchedPath, Does.Contain("SPS/"));
+            Assert.That(patchedPath, Does.StartWith(SpsPatcher.ShaderCacheFolder));
             var patchedSource = File.ReadAllText(patchedPath);
             Assert.That(patchedSource, Does.Not.Contain("_VFGrid"));
             Assert.That(patchedSource, Does.Not.Contain("GrabPass"));

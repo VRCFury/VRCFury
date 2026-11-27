@@ -7,6 +7,7 @@ using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.PackageManager;
 using VF.Builder;
+using VF.Builder.Haptics;
 using VF.Utils;
 
 namespace VF {
@@ -22,9 +23,10 @@ namespace VF {
             var tmpDir = GetPathNullable();
             if (tmpDir == null) return;
             var buildsDir = tmpDir + "/Builds";
-            if (!AssetDatabase.IsValidFolder(buildsDir)) return;
 
             VRCFuryAssetDatabase.WithAssetEditing(() => {
+                SpsPatcher.DeleteOldShaderCaches(tmpDir);
+                if (!AssetDatabase.IsValidFolder(buildsDir)) return;
                 VRCFuryAssetDatabase.DeleteFiltered(buildsDir, path => {
                     if (usedFolders != null && usedFolders.Any(used => path.StartsWith($"{used}/") || path == used || used.StartsWith($"{path}/"))) return false;
                     return true;

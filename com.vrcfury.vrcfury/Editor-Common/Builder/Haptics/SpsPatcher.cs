@@ -34,9 +34,9 @@ namespace VF.Builder.Haptics {
 
         internal const string ShaderNamePrefix = "Hidden/SPSPatched/";
         internal const string LockedShaderNamePrefix = "Hidden/Locked/SPSPatched/";
-        private const string ShaderCacheDirectory = "SPS";
-        private const string ShaderCacheFolder = TmpFilePackage.TmpDirPath + "/" + ShaderCacheDirectory + "/";
-        private const string HashBuster = "77";
+        private const string HashBuster = "78";
+        internal const string ShaderCacheDirectory = "SPS-" + HashBuster;
+        internal const string ShaderCacheFolder = TmpFilePackage.TmpDirPath + "/" + ShaderCacheDirectory + "/";
         private const string ShaderLabComment = @"(?s:/\*.*?\*/)|//[^\r\n]*";
         private const string ShaderLabTrivia = @"(?:\s|" + ShaderLabComment + ")*";
         private const int MaxCachedPatterns = 256;
@@ -368,6 +368,16 @@ namespace VF.Builder.Haptics {
                     if (shader != null && !shader.IsSaved()) UnityEngine.Object.DestroyImmediate(shader);
                     if (container != null && !container.IsSaved()) UnityEngine.Object.DestroyImmediate(container);
                     throw;
+                }
+            }
+        }
+
+        internal static void DeleteOldShaderCaches(string tmpDir) {
+            foreach (var folder in AssetDatabase.GetSubFolders(tmpDir)) {
+                var name = Path.GetFileName(folder);
+                if (name == ShaderCacheDirectory) continue;
+                if (name == "SPS" || name.StartsWith("SPS-", StringComparison.Ordinal)) {
+                    VRCFuryAssetDatabase.Delete(folder);
                 }
             }
         }
