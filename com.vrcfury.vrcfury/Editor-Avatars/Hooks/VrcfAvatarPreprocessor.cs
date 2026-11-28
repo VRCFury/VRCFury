@@ -14,10 +14,13 @@ namespace VF.Hooks {
                 // Debug.LogWarning("Skipping " + GetType().FullName + " preprocessor because preprocessors already ran on this object");
                 return true;
             }
-            return VRCFuryBuildContext.Run(() => Process(obj));
+            return UsesBuildContext
+                ? VRCFuryBuildContext.Run(() => Process(obj))
+                : VRCFExceptionUtils.ErrorDialogBoundary(() => Process(obj));
         }
 
         protected abstract int order { get; }
+        protected virtual bool UsesBuildContext => true;
         protected abstract void Process(VFGameObject obj);
     }
 }

@@ -67,8 +67,11 @@ namespace VF.Tests {
                 var progress = ScriptableObject.CreateInstance<VRCFProgressWindow>();
                 string outputFolder = null;
                 try {
-                    typeof(VRCFuryBuilder).GetMethod("ApplyFuryConfigs", BindingFlags.Static | BindingFlags.NonPublic)
-                        .Invoke(null, new object[] { (VFGameObject)root, progress });
+                    var timings = new VRCFuryBuilder.StepTimings();
+                    var session = (SaveAssetsSession)typeof(VRCFuryBuilder)
+                        .GetMethod("ApplyFuryConfigs", BindingFlags.Static | BindingFlags.NonPublic)
+                        .Invoke(null, new object[] { (VFGameObject)root, progress, timings });
+                    timings.WriteTo(session);
                     var fx = (UnityEditor.Animations.AnimatorController)VRCAvatarUtils.GetAvatarController(avatar, VRCAvatarDescriptor.AnimLayerType.FX).Item2;
                     outputFolder = VRCFuryAssetDatabase.GetDirectoryName(AssetDatabase.GetAssetPath(fx));
                     VRCFuryInjectorBuilder.GetInjector(avatar).GetService<SaveAssetsService>().Session.WriteWorkLogManifest();
@@ -82,6 +85,9 @@ namespace VF.Tests {
                     var steps = workLog.Skip(timingHeader + 1).TakeWhile(line => line.StartsWith("* ")).ToArray();
                     Assert.That(steps.Any(line => line.EndsWith("Collecting VRCFury components")), Is.True);
                     Assert.That(steps.Any(line => line.Contains("SaveAssetsService.Run on ")), Is.True);
+                    Assert.That(steps.Any(line => line.EndsWith("Setting up build services")), Is.True);
+                    Assert.That(steps.Any(line => line.EndsWith("Updating the build progress window")), Is.True);
+                    Assert.That(steps.Any(line => line.EndsWith("Applying resting states between build phases")), Is.True);
                     var durations = steps.Select(line => double.Parse(line.Substring(2, line.IndexOf(" ms") - 2))).ToArray();
                     Assert.That(durations, Is.Ordered.Descending);
                     var ft = avatar.faceTrackingBlendshapesSetList.Single(entry => entry.faceTrackingBlendshapeNames[(int)VRCAvatarDescriptor.FaceTrackingKey.JawOpen] != "");

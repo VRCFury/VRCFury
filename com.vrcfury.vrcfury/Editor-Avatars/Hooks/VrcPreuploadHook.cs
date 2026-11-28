@@ -6,6 +6,7 @@ using VF.Utils;
 namespace VF.Hooks {
     internal class VrcPreuploadHook : VrcfAvatarPreprocessor {
         protected override int order => -10000;
+        protected override bool UsesBuildContext => false;
 
         protected override void Process(VFGameObject obj) {
             if (Application.isPlaying && !PlayModeMenuItem.Get()) return;

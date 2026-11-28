@@ -21,12 +21,19 @@ namespace VF.Builder {
     internal class VRCFuryBuilder {
         private static readonly Dictionary<Type, (MethodInfo method, FeatureBuilderActionAttribute attribute)[]> actionMethodsByType = new();
         internal static void RunMain(VFGameObject avatarObject) {
+            var timings = new StepTimings();
+            timings.StartStep("Entering build context");
+            var context = new VRCFuryBuildContext();
+            SaveAssetsSession workLog;
             try {
                 MaterialLocker.injectedAvatarObject = avatarObject;
-                Run(avatarObject);
+                workLog = Run(avatarObject, timings);
             } finally {
                 MaterialLocker.injectedAvatarObject = null;
+                timings.StartStep("Closing build context and importing generated assets");
+                context.Dispose();
             }
+            if (workLog != null) timings.WriteTo(workLog);
         }
 
         internal static bool ShouldRun(VFGameObject avatarObject) {
@@ -39,12 +46,13 @@ namespace VF.Builder {
             return false;
         }
 
-        private static void Run(VFGameObject avatarObject) {
+        private static SaveAssetsSession Run(VFGameObject avatarObject, StepTimings timings) {
+            timings.StartStep("Preparing the avatar");
             EditorOnlyUtils.RemoveEditorOnlyObjects(avatarObject);
 
             if (!ShouldRun(avatarObject)) {
                 // Debug.Log("VRCFury components not found in avatar. Skipping.");
-                return;
+                return null;
             }
             
             /*
@@ -54,28 +62,36 @@ namespace VF.Builder {
              *   fail with "Global asset import parameters have been changed during the import. Importing is restarted."
              *   followed by "Unable to import newly created asset..."
              */
+            timings.StartStep("Saving pending assets before the build");
             AssetDatabase.SaveAssets();
 
+            timings.StartStep("Opening the build progress window");
             var progress = VRCFProgressWindow.Create();
 
             try {
-                ApplyFuryConfigs(
+                var workLog = ApplyFuryConfigs(
                     avatarObject,
-                    progress
+                    progress,
+                    timings
                 );
 
+                timings.StartStep("Marking the built avatar");
                 if (avatarObject.GetComponent<VRCFuryTest>() == null) {
                     avatarObject.AddComponent<VRCFuryTest>();
                 }
+                return workLog;
             } finally {
+                timings.StartStep("Closing the build progress window");
                 progress.Close();
             }
         }
 
-        private static void ApplyFuryConfigs(
+        private static SaveAssetsSession ApplyFuryConfigs(
             VFGameObject avatarObject,
-            VRCFProgressWindow progress
+            VRCFProgressWindow progress,
+            StepTimings timings
         ) {
+            timings.StartStep("Setting up build services");
             var currentModelName = "";
             var currentServiceNumber = 0;
             var currentServiceGameObject = avatarObject;
@@ -143,10 +159,22 @@ namespace VF.Builder {
                 }
             }
 
-            var timings = new List<(double milliseconds, string description)>();
+            const string scheduling = "Scheduling build steps";
+
+            void UpdateProgress(float percent, string message) {
+                timings.StartStep("Updating the build progress window");
+                progress.Progress(percent, message);
+            }
+
+            void ApplyRestingState(FeatureOrder phase) {
+                timings.StartStep("Applying resting states between build phases");
+                injector.GetService<RestingStateService>().OnPhaseChanged(phase);
+                timings.StartStep(scheduling);
+            }
+
             const string collectMessage = "Collecting VRCFury components";
-            progress.Progress(0, collectMessage);
-            var timer = Stopwatch.StartNew();
+            UpdateProgress(0, collectMessage);
+            timings.StartStep(collectMessage);
             foreach (var c in avatarObject.GetComponentsInSelfAndChildren<VRCFuryComponent>()) {
                 c.Upgrade();
             }
@@ -205,7 +233,7 @@ namespace VF.Builder {
                 }
             }
 
-            timings.Add((timer.Elapsed.TotalMilliseconds, collectMessage));
+            timings.StartStep(scheduling);
             FeatureOrder? lastPriority = null;
             while (actions.Count > 0) {
                 var next = actions.Min;
@@ -214,14 +242,15 @@ namespace VF.Builder {
                 var service = action.GetService();
                 if (action.configObject == null) {
                     var statusSkipMessage = $"{service.GetType().Name} ({currentServiceNumber}) Skipped (Object no longer exists)";
-                    progress.Progress(1 - (actions.Count / (float)totalActionCount), statusSkipMessage);
+                    UpdateProgress(1 - (actions.Count / (float)totalActionCount), statusSkipMessage);
+                    timings.StartStep(scheduling);
                     continue;
                 }
 
                 var priority = action.GetPriorty();
                 if (lastPriority != priority) {
                     if (lastPriority.HasValue) {
-                        injector.GetService<RestingStateService>().OnPhaseChanged(lastPriority.Value);
+                        ApplyRestingState(lastPriority.Value);
                     }
                     lastPriority = priority;
                 }
@@ -232,25 +261,45 @@ namespace VF.Builder {
                 currentServiceGameObject = action.configObject;
 
                 var statusMessage = $"{service.GetType().Name}.{action.GetName()} on {objectName} ({currentServiceNumber})";
-                progress.Progress(1 - (actions.Count / (float)totalActionCount), statusMessage);
+                UpdateProgress(1 - (actions.Count / (float)totalActionCount), statusMessage);
 
-                timer.Restart();
+                timings.StartStep(statusMessage);
                 try {
                     action.Call();
                 } catch (Exception e) {
                     throw new ExceptionWithCause($"Failed to build VRCFury component: {currentModelName}", VRCFExceptionUtils.GetGoodCause(e));
                 }
-                timings.Add((timer.Elapsed.TotalMilliseconds, statusMessage));
+                timings.StartStep(scheduling);
             }
 
             if (lastPriority.HasValue) {
-                injector.GetService<RestingStateService>().OnPhaseChanged(lastPriority.Value);
+                ApplyRestingState(lastPriority.Value);
             }
 
-            var workLog = injector.GetService<SaveAssetsService>().Session;
-            var timingLines = timings.OrderByDescending(timing => timing.milliseconds)
-                .Select(timing => $"* {timing.milliseconds:F1} ms  {timing.description}");
-            workLog.AddWorkLogSection("Build Step Timing", string.Join(Environment.NewLine, timingLines));
+            return injector.GetService<SaveAssetsService>().Session;
+        }
+
+        internal sealed class StepTimings {
+            private readonly Dictionary<string, long> elapsedTicks = new();
+            private string currentStep;
+            private long started;
+
+            public void StartStep(string nextStep) {
+                var now = Stopwatch.GetTimestamp();
+                if (currentStep != null) {
+                    elapsedTicks.TryGetValue(currentStep, out var previous);
+                    elapsedTicks[currentStep] = previous + now - started;
+                }
+                currentStep = nextStep;
+                started = now;
+            }
+
+            public void WriteTo(SaveAssetsSession workLog) {
+                StartStep(null);
+                var lines = elapsedTicks.OrderByDescending(step => step.Value)
+                    .Select(step => $"* {step.Value * 1000.0 / Stopwatch.Frequency:F1} ms  {step.Key}");
+                workLog.AddWorkLogSection("Build Step Timing", string.Join(Environment.NewLine, lines));
+            }
         }
     }
 
