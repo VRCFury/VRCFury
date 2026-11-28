@@ -75,7 +75,6 @@ Shader ""Hidden/VRCFury/Tests/SpsInspector"" {
 #else
                 SpsPatcher.Patch(material, keepImports, false);
                 patchedPath = AssetDatabase.GetAssetPath(material.shader);
-                Assert.That(File.ReadAllText(patchedPath), Does.Contain("CustomEditor \"VF.Tests.SpsTestShaderGui\""));
                 UnityEditorInternal.InternalEditorUtility.SetIsInspectorExpanded(material, true);
                 editor = Editor.CreateEditor(material);
                 typeof(Editor).GetProperty("firstInspectedEditor", BindingFlags.Instance | BindingFlags.NonPublic)

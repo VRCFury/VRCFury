@@ -117,7 +117,7 @@ namespace VF.Tests {
             if (!available) {
                 Assert.That(legacy, Is.Null);
                 Assert.That(menu == null || menu.controls.Single(c => c.name == "SPS").subMenu.controls
-                    .All(c => !c.name.Contains("Legacy Support")), Is.True);
+                    .All(c => !c.name.Contains("Legacy Mode")), Is.True);
                 return;
             }
             var controls = menu.controls.Single(c => c.name == "SPS").subMenu.controls;
@@ -181,7 +181,7 @@ namespace VF.Tests {
             options.MoveMenus();
             var menu = injector.GetService<MenuService>().GetReadOnlyMenu();
             Assert.That(menu.controls.Single(c => c.name == "SPS").subMenu.controls
-                .Count(c => c.name.Contains("Legacy Support")), Is.EqualTo(legacy != null ? 1 : 0));
+                .Count(c => c.name.Contains("Legacy Mode")), Is.EqualTo(legacy != null ? 1 : 0));
             if (legacy == null) return;
             var legacyObjects = transforms.Where(t => t.name == "LegacyLights"
                 || t.name == "Sender - Legacy Front" || t.name == "Light - Legacy DPS Trigger").ToArray();

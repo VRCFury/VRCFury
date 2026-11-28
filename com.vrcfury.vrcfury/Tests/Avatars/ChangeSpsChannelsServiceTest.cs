@@ -607,7 +607,7 @@ namespace VF.Tests {
             var menu = injector.GetService<MenuService>().GetReadOnlyMenu();
             var channelParameter = menu.controls.Single(c => c.name == "Channels").parameter.name;
             var legacyParameter = menu.controls.Single(c => c.name == "SPS").subMenu.controls
-                .Single(c => c.name.Contains("Legacy Support")).parameter.name;
+                .Single(c => c.name.Contains("Legacy Mode")).parameter.name;
             var tip = obj.GetComponentsInChildren<Light>(true).Single(l => l.name == "Light - Legacy DPS Trigger");
             RunAnimation(VFClip.Create(), (graph, playable) => {
                 for (var i = 0; i < 10; i++) graph.Evaluate(1f / 60);

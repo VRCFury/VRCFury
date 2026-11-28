@@ -647,7 +647,7 @@ namespace VF.Tests {
             Assert.That(menu.controls.Count, Is.EqualTo(4), "Both sockets, Auto, and Legacy must remain");
             Assert.That(menu.controls.Count(c => c.name == "Socket One" || c.name == "Socket Two"), Is.EqualTo(2));
             Assert.That(menu.controls.Count(c => c.name.Contains("Auto")), Is.EqualTo(1));
-            Assert.That(menu.controls.Count(c => c.name.Contains("Legacy Support")), Is.EqualTo(1));
+            Assert.That(menu.controls.Count(c => c.name.Contains("Legacy Mode")), Is.EqualTo(1));
             var menuParams = menu.controls.Select(c => c.parameter.name).ToArray();
             Assert.That(injector.GetService<ExpressionParamsService>().Select(p => p.name), Is.EquivalentTo(menuParams),
                 "Only menu expression parameters should be created, with no OGB outputs");

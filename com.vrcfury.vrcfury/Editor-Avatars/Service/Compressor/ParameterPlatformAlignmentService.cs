@@ -47,7 +47,10 @@ namespace VF.Service.Compressor {
             return Path.Combine(localAppData, "VRCFury", "DesktopSyncData", blueprintId + ".json");
         }
 
-        private static void Warn(string message) => DialogUtils.DisplayDialog("VRCFury Mobile Sync", message, "Ok");
+        private static void Warn(string message) {
+            if (Application.isBatchMode) VFLog.Warning(message);
+            else DialogUtils.DisplayDialog("VRCFury Mobile Sync", message, "Ok");
+        }
 
         private SavedData GetDesktopUpload() {
             desktopUpload ??= new Lazy<SavedData>(() => {
