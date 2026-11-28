@@ -69,7 +69,7 @@ namespace VF.Service {
                 var menu = menuService.GetMenu();
                 menu.GetSubmenu(mainPath);
                 // Menus sort by service ID, whose order is independent of build phase order.
-                menu.OverrideSortPosition(int.MaxValue, () => menu.NewMenuToggle($"{mainPath}/<b>Legacy Support<\\/b>\n<size=20>DPS\\/TPS\\/SPS1\\/SPS2\nOne socket at a time", legacyParameter));
+                menu.OverrideSortPosition(int.MaxValue, () => menu.NewMenuToggle($"{mainPath}/<b>Legacy Mode<\\/b>", legacyParameter));
             }
             
             menuChanges.AddExtraAction(new MoveMenuItem {
